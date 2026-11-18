@@ -1,7 +1,7 @@
 /**
  * Agreement projection — the off-chain validation sign gate (`assertAgreementSignable`,
  * the ONE thrower every signature routes through) and the golden-vector
- * byte-exactness of `buildOrderAgreement` + `buildAssembly`.
+ * byte-exactness of `buildOrderAgreement` + `buildProcessDesign`.
  *
  * The SpecSource is built from the canonical off-chain specs (`clauses/*.json`)
  * via `parseClauseSpec` + `parseProjectionHints` — the same construction any
@@ -13,11 +13,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
     agreementHashOf,
-    assemblyHashOf,
+    processDesignHashOf,
     assertAgreementSignable,
-    buildAssembly,
+    buildProcessDesign,
     composeOrderAgreement,
-    deriveAssemblySlug,
+    deriveProcessDesignSlug,
     withholdClauseContent,
     buildOrderAgreement,
     canonicalize,
@@ -26,12 +26,12 @@ import {
     clauseByField,
     hashClauseData,
     parseProjectionHints,
-    serializeAssembly,
+    serializeProcessDesign,
     specHasPrivateField,
     validateCommitmentAgreement,
     warnProcessLogFillsTrap,
     type Agreement,
-    type HydratedAssembly,
+    type HydratedProcessDesign,
     type ProjectionSpecView,
     type SpecSource,
     type Commitment,
@@ -50,14 +50,14 @@ const COMMITMENT: Commitment = {
     processId: `0x${"00".repeat(32)}`,
     buyer: BUYER,
     seller: SELLER,
-    currency: CURRENCY,
+    token: CURRENCY,
     payment: 1n,
-    expectedCumulativeValue: 1n,
+    runningTotal: 1n,
     checkoutHash: `0x${"00".repeat(32)}`,
     salt: 0n,
-    deadline: 0n,
+    commitDeadline: 0n,
 };
-const OTHER_COMMITMENT: Commitment = { ...COMMITMENT, currency: OTHER_TOKEN };
+const OTHER_COMMITMENT: Commitment = { ...COMMITMENT, token: OTHER_TOKEN };
 
 const SPECS = specSourceFromFixtures([
     "figaro-commerce",
@@ -90,17 +90,17 @@ describe("assertAgreementSignable — the shared sign gate", () => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, { [keyOf("figaro-commerce")]: commerceData() }, SPECS);
         const registered = { clauses: { [keyOf("figaro-commerce")]: {} } };
         const agreementHash = agreementHashOf(registered);
-        const design: HydratedAssembly = {
+        const design: HydratedProcessDesign = {
             assembly: { agreements: [{ id: "agreement-0", agreementHash, clauses: {} }] },
             agreements: { [agreementHash.toLowerCase() as `0x${string}`]: registered },
         };
-        const named = { ...agreement, follows: [], provenance: { agreementHash, assemblyHash: assemblyHashOf(design.assembly) } };
+        const named = { ...agreement, follows: [], provenance: { agreementHash, processDesignHash: processDesignHashOf(design.assembly) } };
         expect(() => assertAgreementSignable(named, computeCheckoutHash(named), SPECS, COMMITMENT, design)).not.toThrow();
         // The root without the provenance leaf is not this agreement's.
         expect(() => assertAgreementSignable(named, computeCheckoutHash(agreement), SPECS, COMMITMENT, design)).toThrow(/merkle/);
         // An agreement naming a design no one read is refused.
         expect(() => assertAgreementSignable(named, computeCheckoutHash(named), SPECS, COMMITMENT, null)).toThrow(/was not read/);
-        const malformed = { ...agreement, follows: [], provenance: { agreementHash: `0x${"6f".repeat(32)}`, assemblyHash: "0x5e" } as const };
+        const malformed = { ...agreement, follows: [], provenance: { agreementHash: `0x${"6f".repeat(32)}`, processDesignHash: "0x5e" } as const };
         expect(() => assertAgreementSignable(malformed, computeCheckoutHash(agreement), SPECS, COMMITMENT, null))
             .toThrow(/32-byte/);
     });
@@ -221,7 +221,7 @@ describe("the sign gate reads the token and the payment from the commitment, nev
             [keyOf("figaro-utility-token")]: { currency: "0x000000000000000000000000000000000000000A" },
         });
         expect(() => assertAgreementSignable(
-            agreement, checkoutHash, SPECS, { ...COMMITMENT, currency: "0x000000000000000000000000000000000000000a" }, null,
+            agreement, checkoutHash, SPECS, { ...COMMITMENT, token: "0x000000000000000000000000000000000000000a" }, null,
         )).not.toThrow();
     });
 
@@ -253,7 +253,7 @@ describe("projection — golden-vector byte-exactness", () => {
                 [keyOf("figaro-commerce")]: commerceData(),
                 [keyOf("figaro-merchant-process")]: {},
             }, SPECS);
-            const built = buildAssembly({
+            const built = buildProcessDesign({
                 name: "Golden Vector Chain",
                 orders: [
                     { orderHash: "synthetic-root", follows: [] },
@@ -263,14 +263,14 @@ describe("projection — golden-vector byte-exactness", () => {
                 assemblyClauses: { [keyOf("figaro-applicable-law")]: {} },
                 specs: SPECS,
             });
-            const assembly = serializeAssembly(built.assembly);
+            const assembly = serializeProcessDesign(built.assembly);
             current.agreementProjection = {
                 defaults: { canonicalAgreement: canonicalize(defaults.agreement), checkoutHash: defaults.checkoutHash },
                 processLog: { canonicalAgreement: canonicalize(processLog.agreement), checkoutHash: processLog.checkoutHash },
             };
             current.assembly = {
                 canonicalJson: assembly.json,
-                assemblyHash: assembly.assemblyHash,
+                processDesignHash: assembly.processDesignHash,
                 agreements: Object.fromEntries(Object.entries(built.agreements).map(([k, v]) => [k, canonicalize(v)])),
             };
             writeFileSync(FIXTURE, JSON.stringify(current, null, 2) + "\n");
@@ -281,7 +281,7 @@ describe("projection — golden-vector byte-exactness", () => {
             defaults: { canonicalAgreement: string; checkoutHash: string };
             processLog: { canonicalAgreement: string; checkoutHash: string };
         };
-        assembly: { canonicalJson: string; assemblyHash: string; agreements: Record<string, string> };
+        assembly: { canonicalJson: string; processDesignHash: string; agreements: Record<string, string> };
     };
 
     it("spec-default injection reproduces the frozen agreement + hash", () => {
@@ -304,12 +304,12 @@ describe("projection — golden-vector byte-exactness", () => {
         expect(checkoutHash).toBe(vectors.agreementProjection.processLog.checkoutHash);
     });
 
-    it("the composed clauses + relabeling + assembly terms reproduce the frozen assembly + assemblyHash", () => {
+    it("the composed clauses + relabeling + assembly terms reproduce the frozen assembly + processDesignHash", () => {
         // figaro-applicable-law is ASSEMBLY-SCOPED (design.scope: "assembly")
         // with no design fill: the designer composes it with no values and the
         // buyer fills it at checkout, so the assembly carries the clause under
         // its key with an empty value, and that is what the frozen output holds.
-        const built = buildAssembly({
+        const built = buildProcessDesign({
             name: "Golden Vector Chain",
             orders: [
                 { orderHash: "synthetic-root", follows: [] },
@@ -319,9 +319,9 @@ describe("projection — golden-vector byte-exactness", () => {
             assemblyClauses: { [keyOf("figaro-applicable-law")]: {} },
             specs: SPECS,
         });
-        const assembly = serializeAssembly(built.assembly);
+        const assembly = serializeProcessDesign(built.assembly);
         expect(assembly.json).toBe(vectors.assembly.canonicalJson);
-        expect(assembly.assemblyHash).toBe(vectors.assembly.assemblyHash);
+        expect(assembly.processDesignHash).toBe(vectors.assembly.processDesignHash);
         expect(Object.fromEntries(Object.entries(built.agreements).map(([k, v]) => [k, canonicalize(v)])))
             .toEqual(vectors.assembly.agreements);
     });
@@ -329,13 +329,13 @@ describe("projection — golden-vector byte-exactness", () => {
     it("refuses wrong-level composition (scope verification)", () => {
         // An assembly-scoped clause on an order is a BUILD error, never a
         // silent no-op…
-        expect(() => buildAssembly({
+        expect(() => buildProcessDesign({
             orders: [{ orderHash: "synthetic-root", follows: [] }],
             clausesByOrderId: { "synthetic-root": { [keyOf("figaro-applicable-law")]: {} } },
             specs: SPECS,
         })).toThrow(/design\.scope "assembly"/);
         // …and an agreement-scoped clause at the assembly level likewise.
-        expect(() => buildAssembly({
+        expect(() => buildProcessDesign({
             orders: [{ orderHash: "synthetic-root", follows: [] }],
             clausesByOrderId: { "synthetic-root": COMMERCE },
             assemblyClauses: { [keyOf("figaro-geolocation")]: {} },
@@ -555,7 +555,7 @@ describe("parseProjectionHints — block.checkout.catalogueMeasures", () => {
     });
 });
 
-describe("buildAssembly — an agreement carries exactly the clauses its designer composed", () => {
+describe("buildProcessDesign — an agreement carries exactly the clauses its designer composed", () => {
     // No clause is written in: commerce is a clause like any other, and an
     // article word confers no standing. The commitment carries the payment
     // and the token, and the format carries the topology (each entry's
@@ -575,7 +575,7 @@ describe("buildAssembly — an agreement carries exactly the clauses its designe
     });
 
     it("composes an agreement without the commerce clause, and nothing writes it in", () => {
-        const { assembly, agreements } = buildAssembly({
+        const { assembly, agreements } = buildProcessDesign({
             orders: ORDERS,
             clausesByOrderId: { "synthetic-root": { [keyOf("figaro-geolocation")]: {} }, "synthetic-child": { [keyOf("figaro-geolocation")]: { origin: "u4pru" } } },
             specs: base,
@@ -586,7 +586,7 @@ describe("buildAssembly — an agreement carries exactly the clauses its designe
     });
 
     it("composes the commerce clause as it composes any clause", () => {
-        const { assembly, agreements } = buildAssembly({
+        const { assembly, agreements } = buildProcessDesign({
             orders: ORDERS,
             clausesByOrderId: { "synthetic-root": COMMERCE, "synthetic-child": { ...COMMERCE, [keyOf("figaro-geolocation")]: { origin: "u4pru" } } },
             specs: base,
@@ -603,21 +603,21 @@ describe("buildAssembly — an agreement carries exactly the clauses its designe
             block: { ...(r.block as Record<string, unknown>), design: { ...((r.block as { design?: object }).design ?? {}), article: "mandatory" } },
         }));
         const specs = specSourceWithRegistrations(base, [theirs]);
-        const without = buildAssembly({ orders: [ORDERS[0]], clausesByOrderId: { "synthetic-root": { [keyOf("figaro-geolocation")]: {} } }, specs });
+        const without = buildProcessDesign({ orders: [ORDERS[0]], clausesByOrderId: { "synthetic-root": { [keyOf("figaro-geolocation")]: {} } }, specs });
         expect(without.agreements[without.assembly.agreements[0].agreementHash].clauses).toEqual({ [keyOf("figaro-geolocation")]: {} });
-        const withIt = buildAssembly({ orders: [ORDERS[0]], clausesByOrderId: { "synthetic-root": { [theirs.clauseKey]: {} } }, specs });
+        const withIt = buildProcessDesign({ orders: [ORDERS[0]], clausesByOrderId: { "synthetic-root": { [theirs.clauseKey]: {} } }, specs });
         expect(withIt.agreements[withIt.assembly.agreements[0].agreementHash].clauses).toEqual({ [theirs.clauseKey]: {} });
     });
 
     it("refuses an agreement composing no clause, naming the agreement", () => {
-        expect(() => buildAssembly({ orders: ORDERS, clausesByOrderId: {}, specs: base }))
+        expect(() => buildProcessDesign({ orders: ORDERS, clausesByOrderId: {}, specs: base }))
             .toThrow(/the agreement: composes no clause/);
     });
 
     it("composes the key the design names, whatever else shares its name", () => {
         const fake = lookalike("figaro-geolocation");
         const specs = specSourceWithRegistrations(base, [fake]);
-        const { assembly, agreements } = buildAssembly({
+        const { assembly, agreements } = buildProcessDesign({
             orders: [ORDERS[0]],
             clausesByOrderId: { "synthetic-root": { [keyOf("figaro-geolocation")]: {} } },
             specs,
@@ -629,12 +629,12 @@ describe("buildAssembly — an agreement carries exactly the clauses its designe
 
     it("a composed key whose spec is not loaded is a build error", () => {
         const unloaded = `0x${"77".repeat(32)}` as const;
-        expect(() => buildAssembly({
+        expect(() => buildProcessDesign({
             orders: [ORDERS[0]],
             clausesByOrderId: { "synthetic-root": { [unloaded]: {} } },
             specs: base,
         })).toThrow(new RegExp(`clause ${unloaded} is composed on an order but its spec is not loaded`));
-        expect(() => buildAssembly({
+        expect(() => buildProcessDesign({
             orders: [ORDERS[0]],
             clausesByOrderId: { "synthetic-root": COMMERCE },
             assemblyClauses: { [unloaded]: {} },
@@ -643,7 +643,7 @@ describe("buildAssembly — an agreement carries exactly the clauses its designe
     });
 
     it("puts the topology's parents on each entry, and no topology in the registered agreement", () => {
-        const { assembly, agreements } = buildAssembly({ orders: ORDERS, clausesByOrderId: { "synthetic-root": COMMERCE, "synthetic-child": COMMERCE }, specs: base });
+        const { assembly, agreements } = buildProcessDesign({ orders: ORDERS, clausesByOrderId: { "synthetic-root": COMMERCE, "synthetic-child": COMMERCE }, specs: base });
         // Both agreements compose the same clauses, so they bind one agreement.
         expect(Object.keys(agreements)).toHaveLength(1);
         const [root, child] = assembly.agreements;
@@ -657,7 +657,7 @@ describe("buildAssembly — an agreement carries exactly the clauses its designe
 
     it("binds a registered agreement as is, whatever it composes", () => {
         const registered = { name: "Registered", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-geolocation")]: {} } };
-        const { assembly, agreements } = buildAssembly({
+        const { assembly, agreements } = buildProcessDesign({
             orders: ORDERS,
             clausesByOrderId: { "synthetic-root": COMMERCE },
             registeredByOrderId: { "synthetic-child": registered },
@@ -668,7 +668,7 @@ describe("buildAssembly — an agreement carries exactly the clauses its designe
         // Only the newly composed agreement is returned to register.
         expect(Object.keys(agreements)).toEqual([assembly.agreements[0].agreementHash]);
         // One order binding a registered agreement and composing clauses too is refused.
-        expect(() => buildAssembly({
+        expect(() => buildProcessDesign({
             orders: ORDERS,
             clausesByOrderId: { "synthetic-root": COMMERCE, "synthetic-child": { [keyOf("figaro-geolocation")]: {} } },
             registeredByOrderId: { "synthetic-child": registered },
@@ -705,10 +705,10 @@ describe("buildOrderAgreement — every clause reads the spec its key names", ()
 });
 
 describe("composeOrderAgreement — one agreement's registered agreement, on its own", () => {
-    it("keys exactly what buildAssembly keys for the same composed clauses", () => {
+    it("keys exactly what buildProcessDesign keys for the same composed clauses", () => {
         const clauses = { ...COMMERCE, [keyOf("figaro-geolocation")]: { ignored: "transaction particular" } };
         const alone = composeOrderAgreement({ clauses, specs: SPECS });
-        const built = buildAssembly({
+        const built = buildProcessDesign({
             orders: [{ orderHash: "synthetic-root", follows: [] }],
             clausesByOrderId: { "synthetic-root": clauses },
             specs: SPECS,
@@ -747,15 +747,15 @@ describe("the sign gate's design check — the designer's values against the des
     const EVENTS = ["Sale of the consignment agreed mid-voyage, ownership passing at resolution"];
     const registered = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-consent")]: { documents: DOCS } } };
     const agreementHash = agreementHashOf(registered);
-    const design: HydratedAssembly = {
+    const design: HydratedProcessDesign = {
         assembly: {
             assemblyClauses: { [keyOf("figaro-property-transfer")]: { anticipatedEvents: EVENTS } },
             agreements: [{ id: "agreement-0", agreementHash, clauses: {} }],
         },
         agreements: { [agreementHash.toLowerCase() as `0x${string}`]: registered },
     };
-    const assemblyHash = assemblyHashOf(design.assembly);
-    const instantiate = (consent: Record<string, unknown>, transfer: Record<string, unknown>, provenance = { agreementHash, assemblyHash }) => {
+    const processDesignHash = processDesignHashOf(design.assembly);
+    const instantiate = (consent: Record<string, unknown>, transfer: Record<string, unknown>, provenance = { agreementHash, processDesignHash }) => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-consent")]: consent,
@@ -788,7 +788,7 @@ describe("the sign gate's design check — the designer's values against the des
             expect(check.ok).toBe(false);
             expect(check.issues).toHaveLength(1);
             expect(() => assertAgreementSignable(short, computeCheckoutHash(short), DESIGN_SPECS, COMMITMENT, design))
-                .toThrow(new RegExp(`${dropped} clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(assemblyHash)} \\(${assemblyHash}\\) composes`));
+                .toThrow(new RegExp(`${dropped} clause: the order does not carry this clause, which assembly ${deriveProcessDesignSlug(processDesignHash)} \\(${processDesignHash}\\) composes`));
         }
     });
 
@@ -796,11 +796,11 @@ describe("the sign gate's design check — the designer's values against the des
         const LOG_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-merchant-process"]);
         const withLog = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-merchant-process")]: {} } };
         const logKey = agreementHashOf(withLog);
-        const logDesign: HydratedAssembly = {
+        const logDesign: HydratedProcessDesign = {
             assembly: { agreements: [{ id: "agreement-0", agreementHash: logKey, clauses: {} }] },
             agreements: { [logKey.toLowerCase() as `0x${string}`]: withLog },
         };
-        const provenance = { agreementHash: logKey, assemblyHash: assemblyHashOf(logDesign.assembly) };
+        const provenance = { agreementHash: logKey, processDesignHash: processDesignHashOf(logDesign.assembly) };
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-merchant-process")]: {},
@@ -826,17 +826,17 @@ describe("the sign gate's design check — the designer's values against the des
     });
 
     it("refuses an order missing the commerce clause its agreement composes, as for any composed clause", () => {
-        const built = buildAssembly({
+        const built = buildProcessDesign({
             orders: [{ orderHash: "synthetic-root", follows: [] }],
             clausesByOrderId: { "synthetic-root": { ...COMMERCE, [keyOf("figaro-merchant-process")]: {} } },
             specs: SPECS,
         });
         const [entry] = built.assembly.agreements;
-        const picked: HydratedAssembly = {
+        const picked: HydratedProcessDesign = {
             assembly: built.assembly,
             agreements: { [entry.agreementHash.toLowerCase() as `0x${string}`]: built.agreements[entry.agreementHash] },
         };
-        const provenance = { agreementHash: entry.agreementHash, assemblyHash: assemblyHashOf(built.assembly) };
+        const provenance = { agreementHash: entry.agreementHash, processDesignHash: processDesignHashOf(built.assembly) };
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-merchant-process")]: {},
@@ -849,17 +849,17 @@ describe("the sign gate's design check — the designer's values against the des
     });
 
     it("refuses, at each party's signature, a design-built agreement whose topology leaf is absent or not well formed", () => {
-        const built = buildAssembly({
+        const built = buildProcessDesign({
             orders: [{ orderHash: "synthetic-root", follows: [] }],
             clausesByOrderId: { "synthetic-root": COMMERCE },
             specs: SPECS,
         });
         const [entry] = built.assembly.agreements;
-        const picked: HydratedAssembly = {
+        const picked: HydratedProcessDesign = {
             assembly: built.assembly,
             agreements: { [entry.agreementHash.toLowerCase() as `0x${string}`]: built.agreements[entry.agreementHash] },
         };
-        const provenance = { agreementHash: entry.agreementHash, assemblyHash: assemblyHashOf(built.assembly) };
+        const provenance = { agreementHash: entry.agreementHash, processDesignHash: processDesignHashOf(built.assembly) };
         const { agreement } = buildOrderAgreement(BUYER, SELLER, { [keyOf("figaro-commerce")]: commerceData() }, SPECS);
         const issuesOf = (follows: unknown) => {
             const a = { ...agreement, provenance, ...(follows === undefined ? {} : { follows }) } as Agreement;
@@ -885,7 +885,7 @@ describe("the sign gate's design check — the designer's values against the des
         // The root and the grandchild bind one registered agreement (commerce
         // alone), with zero and two edges; the child binds another, with one.
         const LOG = keyOf("figaro-merchant-process");
-        const built = buildAssembly({
+        const built = buildProcessDesign({
             orders: [
                 { orderHash: "root", follows: [] },
                 { orderHash: "child", follows: ["root"] },
@@ -900,12 +900,12 @@ describe("the sign gate's design check — the designer's values against the des
         });
         const [rootEntry, childEntry, grandchildEntry] = built.assembly.agreements;
         expect(rootEntry.agreementHash).toBe(grandchildEntry.agreementHash);
-        const picked: HydratedAssembly = { assembly: built.assembly, agreements: built.agreements };
-        const assemblyHash = assemblyHashOf(built.assembly);
+        const picked: HydratedProcessDesign = { assembly: built.assembly, agreements: built.agreements };
+        const processDesignHash = processDesignHashOf(built.assembly);
         const edge = (n: number) => `0x${n.toString(16).padStart(2, "0").repeat(32)}` as `0x${string}`;
         const orderFor = (agreementHash: `0x${string}`, clauses: Record<string, Record<string, unknown>>, follows: `0x${string}`[]) => {
             const { agreement } = buildOrderAgreement(BUYER, SELLER, clauses, SPECS);
-            const signed: Agreement = { ...agreement, provenance: { agreementHash, assemblyHash }, follows };
+            const signed: Agreement = { ...agreement, provenance: { agreementHash, processDesignHash }, follows };
             return { signed, root: computeCheckoutHash(signed) };
         };
         const commerceOnly = { [keyOf("figaro-commerce")]: commerceData() };
@@ -963,7 +963,7 @@ describe("the sign gate's design check — the designer's values against the des
 
     it("refuses a design that is not the one the agreement's provenance names", () => {
         const { agreement, checkoutHash } = instantiate({ documents: DOCS }, { applicableLaw: "England-Wales" },
-            { agreementHash, assemblyHash: `0x${"5e".repeat(32)}` });
+            { agreementHash, processDesignHash: `0x${"5e".repeat(32)}` });
         expect(() => assertAgreementSignable(agreement, checkoutHash, DESIGN_SPECS, COMMITMENT, design))
             .toThrow(/provenance/);
     });

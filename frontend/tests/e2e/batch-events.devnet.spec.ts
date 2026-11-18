@@ -78,7 +78,7 @@ const PAYMENT = 1n * 10n ** 18n;
 const RESOLVE_TYPES = {
     ResolveProcess: [
         { name: 'processId', type: 'bytes32' },
-        { name: 'cumulativeValue', type: 'uint256' },
+        { name: 'runningTotal', type: 'uint256' },
     ],
 } as const;
 const ATTEST_SELLER_TYPES = {
@@ -140,7 +140,7 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
                 BATCH_VERIFIER_ADDRESS: verifier,
                 USAGE_COUNTER_ADDRESS: config.usageCounter as string,
                 CLAUSE_REGISTRY_ADDRESS: config.clauseRegistry as string,
-                ASSEMBLY_REGISTRY_ADDRESS: config.assemblyRegistry as string,
+                PROCESS_REGISTRY_ADDRESS: config.processRegistry as string,
                 AGREEMENT_REGISTRY_ADDRESS: config.agreementRegistry as string,
                 MEMBERS_REGISTRY_ADDRESS: config.membersRegistry as string,
                 // The batch path's EIP-712 verifyingContract is the verifier.
@@ -192,12 +192,12 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
                 processId: `0x${'0'.repeat(64)}` as Hex,
                 buyer: BUYER.address,
                 seller: SELLER.address,
-                currency: token,
+                token: token,
                 payment: PAYMENT,
-                expectedCumulativeValue: PAYMENT,
+                runningTotal: PAYMENT,
                 checkoutHash,
                 salt: BigInt(Date.now()),
-                deadline: BigInt((await publicClient.getBlock()).timestamp) + 3600n,
+                commitDeadline: BigInt((await publicClient.getBlock()).timestamp) + 3600n,
             }, domain);
             const buyerSig = await BUYER.signTypedData(typedData);
             const sellerSig = await SELLER.signTypedData(typedData);
@@ -276,7 +276,7 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
             // ── The buyer's resolution, through the relay. ──
             const resolveSig = await BUYER.signTypedData({
                 domain, types: RESOLVE_TYPES, primaryType: 'ResolveProcess',
-                message: { processId, cumulativeValue: PAYMENT },
+                message: { processId, runningTotal: PAYMENT },
             });
             const resolved = await client.submitResolve(processId, PAYMENT, [commitment], resolveSig);
             expect(typeof resolved.id, 'the relay admits the resolution').toBe('number');

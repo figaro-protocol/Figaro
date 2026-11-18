@@ -104,7 +104,7 @@ close its own frame. Two rules follow:
    (a self-signed action, only the wallet's own key). **It is `payable`, and `msg.value`
    must EQUAL `registrationDeposit()` exactly** — read that view off the contract before
    sending; it is a deploy-time immutable, so it differs per deployment and a hardcoded
-   figure is a revert waiting to happen. Under or over both revert (`InsufficientDeposit`);
+   figure is a revert waiting to happen. Under or over both revert (`WrongStake`);
    there is no sweep, and an overpay is not sent back. The stake is reclaimable. If the
    wallet is already registered `register()` reverts `AlreadyRegistered`, so
    publish or refresh the profile with `updateProfile(metadataURI)` instead — that one is
@@ -150,7 +150,7 @@ const specs = {
 ```
 
 **2. Take the deadline from CHAIN time — required, never the machine clock.** The Core
-compares the signed struct's `deadline` against `block.timestamp` and reverts
+compares the signed struct's `commitDeadline` against `block.timestamp` and reverts
 `DeadlineExpired`. `deadline` is a REQUIRED parameter on every origination call — the SDK
 ships no default on purpose. Reading it off the host clock is the failure that takes every
 origination down with it: a chain's time drifts from wall time, and a stale deadline reverts
@@ -180,8 +180,8 @@ without the clause, term and designer checks.
   payload, `makeSellerOfferHandler` from its `publicClient` and the race and quote handlers
   from their `chainClient` (a viem `PublicClient`). `design` is the hydrated assembly the
   payload's provenance leaf names; `readDesign` reads it per payload (`(provenance) =>
-  Promise<HydratedAssembly | null>`: the assembly by its assembly hash, verified with
-  `anchorAssembly`, its registered agreements with `hydrateAssembly`). `readProfile` reads the
+  Promise<HydratedProcessDesign | null>`: the assembly by its assembly hash, verified with
+  `anchorProcessDesign`, its registered agreements with `hydrateProcessDesign`). `readProfile` reads the
   seller's OWN member profile when the payload arrives (`(member) =>
   Promise<MemberProfileMetadata | null>`: MembersRegistry's latest metadataURI for the
   member, from a fresh `ctx.sync()` and `ctx.getMembers()`, then the pinned document through
@@ -192,12 +192,12 @@ without the clause, term and designer checks.
   no `readDesign` the gate cannot check the designer's values and refuses; with no
   `readProfile` it cannot read your bound assemblies and refuses. A payload with no provenance leaf, under an assembly your profile
   does not bind, or arriving while your profile cannot be read is refused too
-  (`checkSellerBindsAssembly`) — bind the assembly in your profile's `assemblyBindings` (by its
-  full `assemblyHash`) before you serve it.
+  (`checkSellerBindsProcess`) — bind the assembly in your profile's `processBindings` (by its
+  full `processDesignHash`) before you serve it.
 
 ```ts
 channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, addresses, {
-  accept: (offer) => offer.commitment.currency === myAcceptedToken,
+  accept: (offer) => offer.commitment.token === myAcceptedToken,
   policy: { requireRootShape: true, currencyAllowlist: [myAcceptedToken], maxValue: myMaxBond },
   specs, readDesign, readProfile,
 }));
@@ -207,7 +207,7 @@ const result = await originateProcess(buyerWallet, publicClient, addresses, {
 ```
 
 **4. Write the transaction particulars — ROUTED BY DECLARED FIELD, never by clause name.**
-A published assembly arrives value-free and is passed HYDRATED (`HydratedAssembly {
+A published assembly arrives value-free and is passed HYDRATED (`HydratedProcessDesign {
 assembly, agreements }`): each agreement names a registered agreement by `agreementHash`, and
 you hydrate it from its `AgreementRegistry` binding with `anchorRegisteredAgreement(raw,
 agreementHash)`, which returns the agreement only when its recomputed key matches —
@@ -239,12 +239,12 @@ the gate stops objecting.
 Two of them are not yours to write. The **token** — the `currency` leaf — is a TERM
 that the commitment struct MIRRORS: write the same address into both, or the gate refuses.
 And the **provenance** — the agreement's `agreementHash` and the assembly's
-`assemblyHash` — is written by the instantiation itself, with or without `specs`:
+`processDesignHash` — is written by the instantiation itself, with or without `specs`:
 `instantiateRootAgreement` and the assembly walk set `agreement.provenance` on every order to
-the registered agreement its agreement holds and `assemblyHashOf(assembly)` — the
+the registered agreement its agreement holds and `processDesignHashOf(assembly)` — the
 agreement format's reserved provenance leaf (key `PROVENANCE_LEAF_KEY`,
 `keccak256("figaro-agreement-provenance")`; bytes
-`{"agreementHash":"0x<lowercase hex>","assemblyHash":"0x<lowercase hex>"}`), a leaf of the
+`{"agreementHash":"0x<lowercase hex>","processDesignHash":"0x<lowercase hex>"}`), a leaf of the
 agreement and never a clause. Do not hand-write provenance: an agreement naming a
 different pair than the agreement you instantiated is a claim to a different design, and the
 SDK throws on it. Instantiation adds and drops no clause: it fills values and writes the
@@ -253,7 +253,7 @@ While the process is OPEN you may attest that leaf as the buyer —
 `attestAsBuyer(walletClient, coordinator, target, p.clauseId, p.stage, p.clauseDataHash,
 p.proof, p.contentRef)` with `p = provenanceLeafAttestation(agreement)` — which makes the
 process-to-design link public: a reader matches the attestation's `contentRef` against
-`provenanceContentRef(agreementHash, assemblyHash)` for a registered agreement and assembly. The coordinator refuses
+`provenanceContentRef(agreementHash, processDesignHash)` for a registered agreement and assembly. The coordinator refuses
 every attestation once the order is resolved (`OrderResolved`).
 
 **5. Resolve — and count the usage in the same breath.** Only the buyer can end a process,
@@ -282,9 +282,9 @@ process carries (`attempted` / `recorded`). The once-per-process agreement and a
 INDEPENDENT legs (`agreementRecorded`, `assemblyRecorded`): `recordAgreementUsage` is called
 with the agreement's `provenance` (both keys) and the provenance leaf's inclusion proof — the
 counter rebuilds the leaf under its `provenanceLeaf()` key, proves it, and requires the
-agreement to hold a live `AgreementRegistry` binding; `recordAssemblyUsage` proves the same
-leaf plus the agreement's membership proof under `assemblyHash` and requires a live
-`AssemblyRegistry` binding. An agreement with no `provenance` credits neither designer. A leg that reverts lands in `report.failures` with its reason, nothing thrown. Report
+agreement to hold a live `AgreementRegistry` binding; `recordProcessDesignUsage` proves the same
+leaf plus the agreement's membership proof under `processDesignHash` and requires a live
+`ProcessRegistry` binding. An agreement with no `provenance` credits neither designer. A leg that reverts lands in `report.failures` with its reason, nothing thrown. Report
 the report, never "it reverted, so it failed".
 
 ## Trading the wallet's data — an ordinary bonded order
@@ -333,8 +333,8 @@ README. Read the section; never reconstruct one from the ABI.
 - **Claiming what the owner's clauses, agreements and assemblies earned** — `RpgfMinter.claim` for a
   CLOSED period, carrying the `(kind, key)` pairs the wallet designed (each key is rewarded once per
   period, so the pairs may go in one call or several, and a pair already claimed counts zero) —
-  `{ kind: USAGE_KIND_CLAUSE, key: clauseKey }`, `{ kind: USAGE_KIND_ASSEMBLY, key:
-  assemblyHash }` or `{ kind: USAGE_KIND_AGREEMENT, key: agreementHash }`, each checked
+  `{ kind: USAGE_KIND_CLAUSE, key: clauseKey }`, `{ kind: USAGE_KIND_PROCESS, key:
+  processDesignHash }` or `{ kind: USAGE_KIND_AGREEMENT, key: agreementHash }`, each checked
   against the one registry its kind names (a duplicate
   pair or a key it did not register under that kind reverts): "Claiming the designer's mint".
 
@@ -342,7 +342,7 @@ README. Read the section; never reconstruct one from the ABI.
 
 If the owner registered a clause, an agreement or an assembly, its stake comes back with one call
 (`ClauseRegistry.withdrawDeposit(clauseKey)` / `AgreementRegistry.withdrawDeposit(agreementHash)` /
-`AssemblyRegistry.withdrawDeposit(assemblyHash)`)
+`ProcessRegistry.withdrawDeposit(processDesignHash)`)
 — which **de-surfaces the entry for new compositions while the binding stays permanent**,
 because orders already committed against it still resolve. The rule the stake
 encodes: do not reclaim it while processes composed from that clause, agreement or assembly are still
@@ -351,7 +351,7 @@ in flight. Derive that before withdrawing:
 ```ts
 import { fetchCoreEvents } from "@figaro-protocol/sdk";
 import { deriveInFlightOrders, deriveClauseWithdrawGate, deriveAgreementWithdrawGate,
-         deriveAssemblyWithdrawGate } from "@figaro-protocol/sdk/derive";
+         deriveProcessWithdrawGate } from "@figaro-protocol/sdk/derive";
 
 // fromBlock is `deploymentBlock` from the same deployment record you mapped `addresses`
 // out of — never 0n. Public RPC endpoints cap the eth_getLogs range, so a from-genesis
@@ -364,7 +364,7 @@ const inFlight = deriveInFlightOrders(
 const gate = deriveClauseWithdrawGate(clauseKey, agreements);  // the key you registered, never a name
 if (!gate.canWithdraw) { /* report inFlightCount + unverifiedCount; do not withdraw */ }
 // an agreement or an assembly: the same shape, attributed by each verified agreement's
-// decoded provenance { agreementHash, assemblyHash }
+// decoded provenance { agreementHash, processDesignHash }
 ```
 
 `canWithdraw === (inFlightCount === 0)`; `unverifiedCount` is a caveat to surface, never a
@@ -484,8 +484,8 @@ Confirm the rest on chain the same way, with `BATCH_VERIFIER_ABI` from
 Exactly one thing crosses the seam: the uses behind designer rewards, carried by the proof
 into `UsageCounter.applyBatchAccrual` and counted into the same tally a direct call feeds — a
 use is a use whichever way its process reached the chain. So if the owner asks what their
-clauses, agreements and assemblies earned, read `scoreOf(kind, clauseOrAssembly, period)` — kind `0`
-a clause key, `1` an assembly `assemblyHash`, `2` an `agreementHash` — the one tally's score;
+clauses, agreements and assemblies earned, read `scoreOf(kind, clauseOrProcess, period)` — kind `0`
+a clause key, `1` an assembly `processDesignHash`, `2` an `agreementHash` — the one tally's score;
 if you mirror the events off-chain, fold `UsageRecorded`, which both routes emit.
 
 Public statement of all of this, for the owner: `/spec#resolution-paths` § "The two paths
@@ -550,7 +550,7 @@ Market formation is signature choreography, not a contract: the buyer's wallet s
 UNSIGNED drafts to candidate sellers, candidates counter-sign, and the buyer signs
 EXACTLY ONE winner — that single buyer signature is both the selection and the seller
 address. A draft binds nobody (`FigaroCore` needs both signatures to commit); a losing
-counter-signature expires inert at the struct `deadline`; counter-signing costs nothing
+counter-signature expires inert at the struct `commitDeadline`; counter-signing costs nothing
 and needs no tokens — being COMMITTED pulls the bond, so an unfunded winner reverts and
 the next reply is the free fallback. Two legs, one choreography, from
 `@figaro-protocol/sdk/agent`:

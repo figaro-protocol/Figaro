@@ -3,30 +3,30 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { keccak256, toHex, concat, type Hex } from "viem";
 import {
-    computeAssemblyLeaf,
-    ASSEMBLY_LEAF_DOMAIN,
-    ASSEMBLY_LEAF_DOMAIN_LABEL,
-    ASSEMBLY_TERMS_LEAF_KEY,
+    computeProcessLeaf,
+    PROCESS_LEAF_DOMAIN,
+    PROCESS_LEAF_DOMAIN_LABEL,
+    PROCESS_TERMS_LEAF_KEY,
     agreementHashOf,
     assertNotReservedKey,
     buildAgreementInclusionProof,
     resolveAuthoredClauseKeys,
     agreementClauses,
     agreementLeafBytes,
-    assemblyComposedClauseKeys,
-    assemblyHashOf,
-    assemblyLeaves,
-    assemblyFollows,
+    processDesignComposedClauseKeys,
+    processDesignHashOf,
+    processDesignLeaves,
+    processDesignFollows,
     agreementClauseLeaves,
     buildRegisteredClauseInclusionProof,
 } from "../src/assembly.js";
-import type { Assembly, RegisteredAgreement } from "../src/assembly.js";
+import type { ProcessDesign, RegisteredAgreement } from "../src/assembly.js";
 import { PROVENANCE_LEAF_KEY, buildMerkleRoot, canonicalize, computeClauseLeaf, hashClauseData, sortLeaves, verifyInclusionProof } from "../src/agreement.js";
-import { assembleAuthored, composeAuthoredAgreement, composeAuthoredAgreements } from "../src/projection.js";
+import { composeAuthoredProcessDesign, composeAuthoredAgreement, composeAuthoredAgreements } from "../src/projection.js";
 import { hydrateAuthored } from "./hydrate.js";
 import { keyOf, rawSpecOf, specSourceOf, viewOf } from "./specFixtures.js";
 
-describe("assemblyComposedClauseKeys", () => {
+describe("processDesignComposedClauseKeys", () => {
     it("unions the assembly-scoped clauses with every agreement's clauses, sorted and de-duplicated", () => {
         const { assembly, agreements } = hydrateAuthored({
             assemblyClauses: { [keyOf("figaro-applicable-law")]: {} },
@@ -35,7 +35,7 @@ describe("assemblyComposedClauseKeys", () => {
                 { id: "agreement-1", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-handoff")]: {} } },
             ],
         });
-        expect(assemblyComposedClauseKeys(assembly, agreements)).toEqual(
+        expect(processDesignComposedClauseKeys(assembly, agreements)).toEqual(
             ["figaro-applicable-law", "figaro-commerce", "figaro-handoff"].map(keyOf).sort(),
         );
     });
@@ -44,8 +44,8 @@ describe("assemblyComposedClauseKeys", () => {
         const { assembly, agreements } = hydrateAuthored({
             agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {} } }],
         });
-        expect(assemblyComposedClauseKeys(assembly, agreements)).toEqual([keyOf("figaro-commerce")]);
-        expect(() => assemblyComposedClauseKeys(assembly, {})).toThrow(/not hydrated/);
+        expect(processDesignComposedClauseKeys(assembly, agreements)).toEqual([keyOf("figaro-commerce")]);
+        expect(() => processDesignComposedClauseKeys(assembly, {})).toThrow(/not hydrated/);
     });
 });
 
@@ -80,7 +80,7 @@ describe("the registered agreement hash", () => {
     it("refuses a duplicate clause key and a reserved format key", () => {
         const k = keyOf("figaro-commerce");
         expect(() => agreementHashOf({ clauses: { [k]: {}, [k.toUpperCase().replace("0X", "0x") as Hex]: {} } })).toThrow(/Duplicate/);
-        expect(() => agreementHashOf({ clauses: { [ASSEMBLY_TERMS_LEAF_KEY]: {} } })).toThrow(/reserved/);
+        expect(() => agreementHashOf({ clauses: { [PROCESS_TERMS_LEAF_KEY]: {} } })).toThrow(/reserved/);
     });
 
     it("moves with any clause or value", () => {
@@ -97,13 +97,13 @@ describe("the composition tree", () => {
     it("an agreement's bytes are canonical {clauses, follows, slot} — slot, the wire name for the agreement's index", () => {
         const bytes = agreementLeafBytes({ clauses: { [COMMERCE]: { x: 1 } }, follows: ["agreement-0"] }, 1);
         expect(Buffer.from(bytes.slice(2), "hex").toString("utf8"))
-            .toBe(`{"clauses":{"${COMMERCE}":{"x":1}},"follows":["agreement-0"],"slot":1}`);
+            .toBe(`{"agreement":1,"clauses":{"${COMMERCE}":{"x":1}},"follows":["agreement-0"]}`);
         // An absent follows commits as the root's empty list.
         expect(agreementLeafBytes({ clauses: {} }, 0)).toBe(agreementLeafBytes({ clauses: {}, follows: [] }, 0));
         // The edges are part of the assembly's identity.
-        const root: Assembly = { agreements: [{ id: "agreement-0", agreementHash: A, clauses: {}, follows: [] }, { id: "agreement-1", agreementHash: B, clauses: {}, follows: ["agreement-0"] }] };
-        const flat: Assembly = { agreements: [{ id: "agreement-0", agreementHash: A, clauses: {}, follows: [] }, { id: "agreement-1", agreementHash: B, clauses: {}, follows: [] }] };
-        expect(assemblyHashOf(root)).not.toBe(assemblyHashOf(flat));
+        const root: ProcessDesign = { agreements: [{ id: "agreement-0", agreementHash: A, clauses: {}, follows: [] }, { id: "agreement-1", agreementHash: B, clauses: {}, follows: ["agreement-0"] }] };
+        const flat: ProcessDesign = { agreements: [{ id: "agreement-0", agreementHash: A, clauses: {}, follows: [] }, { id: "agreement-1", agreementHash: B, clauses: {}, follows: [] }] };
+        expect(processDesignHashOf(root)).not.toBe(processDesignHashOf(flat));
         expect(() => agreementLeafBytes({ clauses: {} }, -1)).toThrow(/non-negative/);
         expect(() => agreementLeafBytes({ clauses: {}, follows: [1 as unknown as string] }, 0)).toThrow(/list of entry labels/);
         // One label named twice: the design could register but never check
@@ -112,65 +112,65 @@ describe("the composition tree", () => {
     });
 
     it("a one-entry assembly's root is its agreement's leaf; terms add a leaf", () => {
-        const one: Assembly = { agreements: [{ id: "agreement-0", agreementHash: A, clauses: {} }] };
-        const { leaf, proof, slotContentHash } = buildAgreementInclusionProof(one, 0);
+        const one: ProcessDesign = { agreements: [{ id: "agreement-0", agreementHash: A, clauses: {} }] };
+        const { leaf, proof, agreementContentHash } = buildAgreementInclusionProof(one, 0);
         expect(proof).toEqual([]);
-        expect(assemblyHashOf(one)).toBe(leaf);
-        expect(slotContentHash).toBe(keccak256(agreementLeafBytes({ clauses: {} }, 0)));
-        expect(leaf).toBe(computeAssemblyLeaf(A, slotContentHash));
+        expect(processDesignHashOf(one)).toBe(leaf);
+        expect(agreementContentHash).toBe(keccak256(agreementLeafBytes({ clauses: {} }, 0)));
+        expect(leaf).toBe(computeProcessLeaf(A, agreementContentHash));
         const termed = { ...one, assemblyClauses: { [keyOf("figaro-applicable-law")]: { law: "x" } } };
-        expect(assemblyLeaves(termed)).toHaveLength(2);
-        expect(assemblyLeaves(termed)).toContain(
-            computeAssemblyLeaf(ASSEMBLY_TERMS_LEAF_KEY, hashClauseData({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: termed.assemblyClauses })),
+        expect(processDesignLeaves(termed)).toHaveLength(2);
+        expect(processDesignLeaves(termed)).toContain(
+            computeProcessLeaf(PROCESS_TERMS_LEAF_KEY, hashClauseData({ clause: PROCESS_TERMS_LEAF_KEY, data: termed.assemblyClauses })),
         );
-        expect(assemblyHashOf(termed)).not.toBe(assemblyHashOf(one));
+        expect(processDesignHashOf(termed)).not.toBe(processDesignHashOf(one));
         // Empty terms are no leaf.
-        expect(assemblyHashOf({ ...one, assemblyClauses: {} })).toBe(assemblyHashOf(one));
+        expect(processDesignHashOf({ ...one, assemblyClauses: {} })).toBe(processDesignHashOf(one));
     });
 
     it("the same agreement in two agreements is two leaves; editorial prose never moves the root", () => {
-        const two: Assembly = {
+        const two: ProcessDesign = {
             agreements: [
                 { id: "agreement-0", agreementHash: A, clauses: {}, follows: [] },
                 { id: "agreement-1", agreementHash: A, clauses: {}, follows: ["agreement-0"] },
             ],
         };
-        expect(new Set(assemblyLeaves(two)).size).toBe(2);
-        expect(assemblyHashOf({ ...two, name: "x", faq: [{ question: "q", answer: "a" }] })).toBe(assemblyHashOf(two));
+        expect(new Set(processDesignLeaves(two)).size).toBe(2);
+        expect(processDesignHashOf({ ...two, name: "x", faq: [{ question: "q", answer: "a" }] })).toBe(processDesignHashOf(two));
         for (const i of [0, 1]) {
             const { leaf, proof } = buildAgreementInclusionProof(two, i);
-            expect(verifyInclusionProof(assemblyHashOf(two), leaf, proof)).toBe(true);
+            expect(verifyInclusionProof(processDesignHashOf(two), leaf, proof)).toBe(true);
         }
         expect(() => buildAgreementInclusionProof(two, 2)).toThrow(/not in the assembly/);
     });
 
     it("an assembly leaf carries the assembly tree's domain, so an assembly root never shares the agreement format's shape", () => {
-        expect(ASSEMBLY_LEAF_DOMAIN).toBe(keccak256(toHex(ASSEMBLY_LEAF_DOMAIN_LABEL)));
+        expect(PROCESS_LEAF_DOMAIN).toBe(keccak256(toHex(PROCESS_LEAF_DOMAIN_LABEL)));
         const dataHash = keccak256(agreementLeafBytes({ clauses: {} }, 0));
-        const assemblyLeaf = computeAssemblyLeaf(A, dataHash);
+        const assemblyLeaf = computeProcessLeaf(A, dataHash);
         const agreementFormatLeaf = computeClauseLeaf({ clause: A, dataHash });
         expect(assemblyLeaf).not.toBe(agreementFormatLeaf);
-        expect(assemblyLeaf).toBe(keccak256(keccak256(concat([ASSEMBLY_LEAF_DOMAIN, A, dataHash]))));
+        expect(assemblyLeaf).toBe(keccak256(keccak256(concat([PROCESS_LEAF_DOMAIN, A, dataHash]))));
         // a one-agreement assembly's root is its assembly leaf, never the clause-shaped leaf of the same key and bytes
         const one = { agreements: [{ id: "agreement-0", agreementHash: A, clauses: {} }] };
-        expect(assemblyHashOf(one)).toBe(assemblyLeaf);
-        expect(assemblyHashOf(one)).not.toBe(agreementHashOf({ clauses: { [A]: {} } }));
+        expect(processDesignHashOf(one)).toBe(assemblyLeaf);
+        expect(processDesignHashOf(one)).not.toBe(agreementHashOf({ clauses: { [A]: {} } }));
     });
 
     it("a membership proof under a different root does not verify", () => {
-        const t1: Assembly = { agreements: [{ id: "agreement-0", agreementHash: A, clauses: {} }, { id: "agreement-1", agreementHash: B, clauses: {} }] };
-        const t2: Assembly = { agreements: [{ id: "agreement-0", agreementHash: B, clauses: {} }, { id: "agreement-1", agreementHash: A, clauses: {} }] };
+        const t1: ProcessDesign = { agreements: [{ id: "agreement-0", agreementHash: A, clauses: {} }, { id: "agreement-1", agreementHash: B, clauses: {} }] };
+        const t2: ProcessDesign = { agreements: [{ id: "agreement-0", agreementHash: B, clauses: {} }, { id: "agreement-1", agreementHash: A, clauses: {} }] };
         const { leaf, proof } = buildAgreementInclusionProof(t1, 0);
-        expect(verifyInclusionProof(assemblyHashOf(t2), leaf, proof)).toBe(false);
+        expect(verifyInclusionProof(processDesignHashOf(t2), leaf, proof)).toBe(false);
     });
 
     it("refuses the two reserved format keys as an agreement's agreement hash", () => {
-        for (const reserved of [PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
-            const t: Assembly = { agreements: [{ id: "agreement-0", agreementHash: reserved, clauses: {} }] };
-            expect(() => assemblyHashOf(t)).toThrow(/reserved format key/);
+        for (const reserved of [PROVENANCE_LEAF_KEY, PROCESS_TERMS_LEAF_KEY]) {
+            const t: ProcessDesign = { agreements: [{ id: "agreement-0", agreementHash: reserved, clauses: {} }] };
+            expect(() => processDesignHashOf(t)).toThrow(/reserved format key/);
             expect(() => assertNotReservedKey(reserved)).toThrow(/reserved format key/);
         }
-        expect(ASSEMBLY_TERMS_LEAF_KEY).toBe(keccak256(toHex("figaro-assembly-terms")));
+        expect(PROCESS_TERMS_LEAF_KEY).toBe(keccak256(toHex("figaro-assembly-terms")));
     });
 });
 
@@ -188,8 +188,8 @@ describe("an agreement's clauses at checkout", () => {
         expect(s0.agreementHash).toBe(s1.agreementHash);
         expect(agreementClauses(hydrated, s1)).toEqual({ [COMMERCE]: {} });
         expect(agreementClauses(hydrated, { ...s1, clauses: { [COMMERCE]: { x: 1 } } })).toEqual({ [COMMERCE]: { x: 1 } });
-        expect(assemblyFollows(s1)).toEqual(["agreement-0"]);
-        expect(assemblyFollows(s0)).toEqual([]);
+        expect(processDesignFollows(s1)).toEqual(["agreement-0"]);
+        expect(processDesignFollows(s0)).toEqual([]);
     });
 
     it("refuses an agreement fill naming a clause its agreement does not compose", () => {
@@ -198,7 +198,7 @@ describe("an agreement's clauses at checkout", () => {
     });
 });
 
-describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", () => {
+describe("composeAuthoredAgreement + composeAuthoredProcessDesign (seed-time derivation)", () => {
     const names = ["figaro-commerce", "figaro-applicable-law", "figaro-handoff"];
     const specs = specSourceOf(names.map((n) => viewOf(rawSpecOf(n))));
     /** The commerce clause, named as a designer composes it. */
@@ -236,7 +236,7 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
     it("assembles an authored assembly over named agreements: the entry binds the agreement's hash and carries its own parents", () => {
         const handoff = composeAuthoredAgreement({ clauses: { ...COMMERCE, "figaro-handoff": {} } }, specs).document;
         const bare = base;
-        const { assembly, agreements } = assembleAuthored({
+        const { assembly, agreements } = composeAuthoredProcessDesign({
             name: "editorial",
             assemblyClauses: { "figaro-applicable-law": { applicableLaw: "ch" } },
             agreements: [
@@ -259,10 +259,10 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
 
     it("refuses a entry that names no agreement, an unknown one, or inline clauses", () => {
         const bare = base;
-        expect(() => assembleAuthored({ agreements: [{ id: "o" }] }, { bare }, specs)).toThrow(/names no agreement/);
-        expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "nope" }] }, { bare }, specs)).toThrow(/not among the authored agreements/);
-        expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "bare", clauses: {} }] }, { bare }, specs)).toThrow(/inline/);
-        expect(() => assembleAuthored({ agreements: [] }, { bare }, specs)).toThrow(/no agreements/);
+        expect(() => composeAuthoredProcessDesign({ agreements: [{ id: "o" }] }, { bare }, specs)).toThrow(/names no agreement/);
+        expect(() => composeAuthoredProcessDesign({ agreements: [{ id: "o", agreement: "nope" }] }, { bare }, specs)).toThrow(/not among the authored agreements/);
+        expect(() => composeAuthoredProcessDesign({ agreements: [{ id: "o", agreement: "bare", clauses: {} }] }, { bare }, specs)).toThrow(/inline/);
+        expect(() => composeAuthoredProcessDesign({ agreements: [] }, { bare }, specs)).toThrow(/no agreements/);
     });
 
     it("derives every reference assembly in assemblies/ over agreements/ against clauses/, each agreement file bound", () => {
@@ -285,9 +285,9 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
         for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
             const authored = JSON.parse(readFileSync(path.join(dir, file), "utf8")) as { agreements: { agreement: string }[] };
             for (const entry of authored.agreements) used.add(entry.agreement);
-            const { assembly, agreements } = assembleAuthored(authored, byName, all);
-            for (const key of assemblyComposedClauseKeys(assembly, agreements)) expect(all.get(key), `${file} ${key}`).toBeDefined();
-            expect(assemblyHashOf(assembly)).toMatch(/^0x[0-9a-f]{64}$/);
+            const { assembly, agreements } = composeAuthoredProcessDesign(authored, byName, all);
+            for (const key of processDesignComposedClauseKeys(assembly, agreements)) expect(all.get(key), `${file} ${key}`).toBeDefined();
+            expect(processDesignHashOf(assembly)).toMatch(/^0x[0-9a-f]{64}$/);
             for (const entry of assembly.agreements) expect(agreements[entry.agreementHash], `${file} ${entry.id}`).toBeDefined();
         }
         for (const name of Object.keys(byName)) expect(used.has(name), `agreements/${name}.json is bound by a reference assembly`).toBe(true);
@@ -320,11 +320,11 @@ describe("resolveAuthoredClauseKeys (seed-time authoring resolver)", () => {
     it("rewrites a member document's named clause references to clauseKey", () => {
         const profile = {
             name: "m",
-            assemblyBindings: [{ bindingId: "b", coSellerBindings: [{ clauseId: "figaro-commerce", addresses: [] }] }],
+            processBindings: [{ bindingId: "b", coSellerBindings: [{ clauseId: "figaro-commerce", addresses: [] }] }],
             profileClauseValues: { "figaro-commerce": { a: 1 } },
         };
         const resolved = resolveAuthoredClauseKeys(profile, specs) as unknown as Record<string, any>;
-        expect(resolved.assemblyBindings[0].coSellerBindings[0]).toEqual({ clauseKey: keyOf("figaro-commerce"), addresses: [] });
+        expect(resolved.processBindings[0].coSellerBindings[0]).toEqual({ clauseKey: keyOf("figaro-commerce"), addresses: [] });
         expect(resolved.profileClauseValues).toEqual({ [keyOf("figaro-commerce")]: { a: 1 } });
 
         const catalog = { items: [{ id: "i", clauseValues: { "figaro-commerce": {} } }] };

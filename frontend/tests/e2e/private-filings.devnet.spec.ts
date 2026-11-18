@@ -149,12 +149,12 @@ test.describe('PRIVATE FILINGS — the counterparty asks, the attester sends sea
             processId: `0x${'0'.repeat(64)}` as Hex,
             buyer: BUYER.address,
             seller: SELLER.address,
-            currency: token,
+            token: token,
             payment: PAYMENT,
-            expectedCumulativeValue: PAYMENT,
+            runningTotal: PAYMENT,
             checkoutHash,
             salt: generateSalt(),
-            deadline: BigInt((await publicClient.getBlock()).timestamp) + 3600n,
+            commitDeadline: BigInt((await publicClient.getBlock()).timestamp) + 3600n,
         }, buildDomain(LOCAL_ANVIL.id, core));
         const bonds = calculateBonds(PAYMENT, PAYMENT);
         await send(BUYER, { address: token, abi: MINT_ABI, functionName: 'mint', args: [BUYER.address, bonds.buyerBond] });

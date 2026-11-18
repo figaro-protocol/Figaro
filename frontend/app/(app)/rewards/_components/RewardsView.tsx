@@ -40,7 +40,7 @@ import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
  *  loaded (read from the spec the key names); every other row keeps its
  *  label. */
 function accrualLabel(a: RpgfPeriodState["accruals"][number]): string {
-    const spec = a.family === "clause" ? getClauseSpec(a.clauseOrAssembly) : undefined;
+    const spec = a.family === "clause" ? getClauseSpec(a.clauseOrProcess) : undefined;
     return spec ? `${spec.clauseId} v${spec.version}` : a.label;
 }
 
@@ -208,9 +208,9 @@ export function RewardsView() {
                                     <ul className="text-sm text-ink-muted space-y-1">
                                         {t.accruals.map((a) => (
                                             <li
-                                                key={`${a.kind}:${a.clauseOrAssembly}`}
+                                                key={`${a.kind}:${a.clauseOrProcess}`}
                                                 className="font-mono break-all"
-                                                data-testid={`period-accrual-${t.periodId}-${a.family}-${a.clauseOrAssembly.toLowerCase()}`}
+                                                data-testid={`period-accrual-${t.periodId}-${a.family}-${a.clauseOrProcess.toLowerCase()}`}
                                             >
                                                 <span className="font-sans">{a.family} </span>{accrualLabel(a)} — {a.c.toString()} resolved process
                                                 {a.c === 1n ? "" : "es"},{" "}

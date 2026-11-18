@@ -44,7 +44,7 @@ import { readFileSync } from "node:fs";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
 import {
-    addressesFromDeploymentRecord, anchorAssembly, hydrateAssembly, parseProjectionHints,
+    addressesFromDeploymentRecord, anchorProcessDesign, hydrateProcessDesign, parseProjectionHints,
     tryParseMemberProfileDocument, ERC20_ABI,
 } from "@figaro-protocol/sdk";
 import { FigaroContext } from "@figaro-protocol/sdk/agent";
@@ -99,12 +99,12 @@ export const specs = {
 export const clauseDeclaring = (clauses, field) =>
     Object.keys(clauses).find((key) => (specs.get(key)?.fields ?? []).some((f) => f.name === field));
 
-// An assembly is used only when its document hashes to its assemblyHash and
+// An assembly is used only when its document hashes to its processDesignHash and
 // every registered agreement it binds verifies against its key.
 export async function hydrate(registered) {
-    const doc = anchorAssembly(await readIpfs(registered.contentURI), registered.assemblyHash);
+    const doc = anchorProcessDesign(await readIpfs(registered.contentURI), registered.processDesignHash);
     if (!doc) return null;
-    return hydrateAssembly(doc, async (key) => {
+    return hydrateProcessDesign(doc, async (key) => {
         const binding = ctx.getAgreementBinding(key);
         return binding ? readIpfs(binding.contentURI) : null;
     });
@@ -136,18 +136,18 @@ export async function printDeltas(label, before) {
 
 ## 3. Find the assembly
 
-The assembly is found on the chain, not in the repository: `AssemblyRegistry` emits its `assemblyHash` and `contentURI`, and `hydrate` keeps it only when the pinned document hashes to that key (`anchorAssembly`) and each registered agreement it binds verifies against its own key (`hydrateAssembly`). Selecting it by the name its designer gave it is a reader's choice; the identity is the hash.
+The assembly is found on the chain, not in the repository: `ProcessRegistry` emits its `processDesignHash` and `contentURI`, and `hydrate` keeps it only when the pinned document hashes to that key (`anchorProcessDesign`) and each registered agreement it binds verifies against its own key (`hydrateProcessDesign`). Selecting it by the name its designer gave it is a reader's choice; the identity is the hash.
 
 ```bash
 node -e '
 const { ctx, hydrate } = await import("./figaro.mjs");
 for (const r of ctx.getAssemblies()) {
   const h = await hydrate(r);
-  if (h) console.log(r.assemblyHash, h.assembly.agreements.length, h.assembly.name);
+  if (h) console.log(r.processDesignHash, h.assembly.agreements.length, h.assembly.name);
 }'
 ```
 
-One line reads `<assemblyHash> 6 Containerized import chain`. Its six agreements, in commit order, compose these clauses (each agreement also carries the commerce clause and its own topology leaf, and every one carries the three assembly terms):
+One line reads `<processDesignHash> 6 Containerized import chain`. Its six agreements, in commit order, compose these clauses (each agreement also carries the commerce clause and its own topology leaf, and every one carries the three assembly terms):
 
 | Agreement | Seller | Clauses beside commerce |
 |---|---|---|
@@ -214,8 +214,8 @@ import { addresses, pub, walletOf, pin, specs, TOKEN, clauseDeclaring, findAssem
 import { ASSEMBLY_NAME, DESIGNATE_BY, SELLERS } from "./sellers.mjs";
 
 const { registered, hydrated } = await findAssembly(ASSEMBLY_NAME);
-const assemblyHash = registered.assemblyHash;
-console.log("assemblyHash", assemblyHash);
+const processDesignHash = registered.processDesignHash;
+console.log("processDesignHash", processDesignHash);
 const clausesOf = (id) => agreementClauses(hydrated, hydrated.assembly.agreements.find((a) => a.id === id));
 
 // The root seller designates who serves each sub-order, per clause the
@@ -250,8 +250,8 @@ for (const [i, s] of SELLERS.entries()) {
         name: s.name, subjectAddress: s.key.address, catalogURI: await pin(canonicalize(catalog), "catalog.json"),
         acceptedTokens: [{ address: TOKEN, symbol: "MOCK", chainId }], defaultTokenAddress: TOKEN,
         ...(Object.keys(profileClauseValues).length ? { profileClauseValues } : {}),
-        assemblyBindings: [{ bindingId: `${s.agreement}:${s.key.address.toLowerCase()}`, subjectAddress: s.key.address,
-                             assemblyHash, ...(i === 0 ? { coSellerBindings } : {}) }],
+        processBindings: [{ bindingId: `${s.agreement}:${s.key.address.toLowerCase()}`, subjectAddress: s.key.address,
+                             processDesignHash, ...(i === 0 ? { coSellerBindings } : {}) }],
     });
     const metadataURI = await pin(canonicalize(profile), "profile.json");
     const isMember = await pub.readContract({ address: addresses.membersRegistry, abi: MEMBERS_REGISTRY_ABI, functionName: "registered", args: [s.key.address] });
@@ -265,7 +265,7 @@ for (const [i, s] of SELLERS.entries()) {
 }
 
 // Read it back as a buyer will: the root seller's own profile names every sub-order's seller.
-const binding = (await readProfile(SELLERS[0].key.address)).assemblyBindings.find((b) => b.assemblyHash === assemblyHash);
+const binding = (await readProfile(SELLERS[0].key.address)).processBindings.find((b) => b.processDesignHash === processDesignHash);
 const plan = planSubOrderSellers({ hydratedAssembly: hydrated, coSellerBindings: binding.coSellerBindings });
 for (const { node, seller } of plan) console.log(`  ${node.nodeId} → ${seller}`);
 ```
@@ -283,7 +283,7 @@ cast call "$(jq -r .membersRegistry "$DEPLOYMENT_FILE")" "registered(address)(bo
 
 ## 6. Open the chain as the importer
 
-The importer knows the shipper; everything else it reads. The shipper's profile names the five sub-order sellers, each seller's catalog names its item and price, and the importer fills its particulars by the field each spec declares — never by a clause's name. `fillDerivedClauses` folds the catalog-sourced values (the cargo's mass and volume from the shipper's item, the cold-chain window from the carrier's, the freight class from the drayage carrier's). `originateChain` then walks the assembly (`reconstructOrdersFromAssembly`), signs all six orders, sends each to its seller over the channel, and commits root first only once every seller has counter-signed; each seller's handler runs the same spec gate before it signs and approves its own bond.
+The importer knows the shipper; everything else it reads. The shipper's profile names the five sub-order sellers, each seller's catalog names its item and price, and the importer fills its particulars by the field each spec declares — never by a clause's name. `fillDerivedClauses` folds the catalog-sourced values (the cargo's mass and volume from the shipper's item, the cold-chain window from the carrier's, the freight class from the drayage carrier's). `originateChain` then walks the assembly (`reconstructOrdersFromProcessDesign`), signs all six orders, sends each to its seller over the channel, and commits root first only once every seller has counter-signed; each seller's handler runs the same spec gate before it signs and approves its own bond.
 
 The importer's particulars sit in their own module, keyed by field; a field no composed spec declares is ignored. The six sellers' agents run in this one process because you hold all seven keys; across machines the channel is `HttpChannel` or `A2aChannel`, with the same envelope.
 
@@ -312,7 +312,7 @@ export const ROUTES = {
 import { mkdirSync, writeFileSync } from "node:fs";
 import { parseEther } from "viem";
 import {
-    planAssemblyOrders, planSubOrderSellers, fillDerivedClauses, parseMemberCatalogDocument,
+    planProcessOrders, planSubOrderSellers, fillDerivedClauses, parseMemberCatalogDocument,
     computeDeadline, readChainTimestamp, calculateBonds, CORE_ABI,
 } from "@figaro-protocol/sdk";
 import { InProcessChannel, makeSellerOfferHandler, originateChain, serializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
@@ -330,14 +330,14 @@ const { registered, hydrated } = await findAssembly(ASSEMBLY_NAME);
 //    offer arrives. Each keeps the order it counter-signs. ──────────────────
 const readDesign = async (provenance) => {
     await ctx.sync();
-    const r = ctx.getAssemblies().find((a) => a.assemblyHash.toLowerCase() === provenance.assemblyHash.toLowerCase());
+    const r = ctx.getAssemblies().find((a) => a.processDesignHash.toLowerCase() === provenance.processDesignHash.toLowerCase());
     return r ? hydrate(r) : null;
 };
 mkdirSync("orders", { recursive: true });
 const channel = new InProcessChannel();
 for (const [i, s] of SELLERS.entries()) {
     const handler = makeSellerOfferHandler(walletOf(s.key), pub, addresses, {
-        accept: (offer) => offer.commitment.currency.toLowerCase() === TOKEN.toLowerCase(),
+        accept: (offer) => offer.commitment.token.toLowerCase() === TOKEN.toLowerCase(),
         policy: { requireRootShape: i === 0, currencyAllowlist: [TOKEN], maxValue: parseEther("1000") },
         specs, readDesign, readProfile,
     });
@@ -351,13 +351,13 @@ for (const [i, s] of SELLERS.entries()) {
 // ── The buyer's side. It knows the root seller; that seller's own profile
 //    names who serves every sub-order. ─────────────────────────────────────
 const ROOT_SELLER = SELLERS[0].key.address;
-const binding = (await readProfile(ROOT_SELLER)).assemblyBindings.find((b) => b.assemblyHash === registered.assemblyHash);
+const binding = (await readProfile(ROOT_SELLER)).processBindings.find((b) => b.processDesignHash === registered.processDesignHash);
 const sellerOf = { [hydrated.assembly.agreements[0].id]: ROOT_SELLER };
 for (const { node, seller } of planSubOrderSellers({ hydratedAssembly: hydrated, coSellerBindings: binding.coSellerBindings }))
     sellerOf[node.nodeId] = seller;
 
 const nodes = [];
-for (const planned of planAssemblyOrders(hydrated)) {
+for (const planned of planProcessOrders(hydrated)) {
     const seller = sellerOf[planned.nodeId];
     // What the seller lists, read from its own published catalog.
     const profile = await readProfile(seller);
@@ -406,8 +406,8 @@ for (const hash of result.hashes) {
     const [e] = (await pub.getContractEvents({ address: addresses.core, abi: CORE_ABI, eventName: "OrderCommitted",
         fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber })).filter((l) => l.transactionHash === hash);
     processId = e.args.processId;
-    const { buyerBond, sellerBond } = calculateBonds(e.args.cumulativeValue, e.args.payment);
-    console.log(`${e.args.seller}  P ${e.args.payment}  G ${e.args.cumulativeValue}  buyer bond ${buyerBond}  seller bond ${sellerBond}`);
+    const { buyerBond, sellerBond } = calculateBonds(e.args.runningTotal, e.args.payment);
+    console.log(`${e.args.seller}  P ${e.args.payment}  G ${e.args.runningTotal}  buyer bond ${buyerBond}  seller bond ${sellerBond}`);
 }
 console.log("processId", processId);
 await printDeltas("after commit", before);
@@ -418,7 +418,7 @@ writeFileSync("process.json", JSON.stringify({ processId, orders: signed.map(ser
 node open.mjs
 ```
 
-The importer bonds `2P` on each order and each seller `2G`, where `G` is the process's running total through its order (`FigaroCore.commit` pulls `c.payment * 2` from the buyer and `c.expectedCumulativeValue * 2` from the seller):
+The importer bonds `2P` on each order and each seller `2G`, where `G` is the process's running total through its order (`FigaroCore.commit` pulls `c.payment * 2` from the buyer and `c.runningTotal * 2` from the seller):
 
 | Order | P | G | Importer bond | Seller bond |
 |---|---:|---:|---:|---:|
@@ -453,7 +453,7 @@ An attestation is a party's signed statement about a clause of its own order, fi
 | customs agent | `figaro-merchant-process` | prep started, ready for pickup, handed off |
 | destination drayage | `figaro-courier-process`; `figaro-proximity-policy`, stage 1 | the five courier events, the band the hand-off was detected in |
 
-Each seller files on its own order and on no other. The importer then attests each order's provenance leaf (`provenanceLeafAttestation`). That attestation is the buyer's declaration that the order runs a registered agreement and the assembly it instantiated. `AttestationCoordinator` proves the leaf against the signed `checkoutHash` but never ties the attestation's `contentRef` to it; `provenanceLeafAttestation` is what sets the two equal. A reader checks the declaration by computing `provenanceContentRef(agreementHash, assemblyHash)` for registered pairs and comparing it with the attestation's `contentRef`. Times are chain time (`readChainTimestamp`), never the machine clock.
+Each seller files on its own order and on no other. The importer then attests each order's provenance leaf (`provenanceLeafAttestation`). That attestation is the buyer's declaration that the order runs a registered agreement and the assembly it instantiated. `AttestationCoordinator` proves the leaf against the signed `checkoutHash` but never ties the attestation's `contentRef` to it; `provenanceLeafAttestation` is what sets the two equal. A reader checks the declaration by computing `provenanceContentRef(agreementHash, processDesignHash)` for registered pairs and comparing it with the attestation's `contentRef`. Times are chain time (`readChainTimestamp`), never the machine clock.
 
 ```js title="attest.mjs"
 // attest.mjs — each party files what it did, on its own order, while the process is open.

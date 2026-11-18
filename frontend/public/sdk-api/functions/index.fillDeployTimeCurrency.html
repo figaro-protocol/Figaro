@@ -20,7 +20,7 @@
 assembly is written once and anchored on every chain, but the token it is
 denominated in exists only on a deployed chain (the devnet's deployment,
 Sepolia's ruled token), so the written file leaves the pin unfilled and the
-seeding fills it before anchoring: the anchored <code>assemblyHash</code> is over the
+seeding fills it before anchoring: the anchored <code>processDesignHash</code> is over the
 filled assembly, never the written one. Unfilled, the pin is what the format
 reads it as, a required field missing, so the written file signs nothing as
 it stands. Read by the spec's shape, never by a clause or field name: every

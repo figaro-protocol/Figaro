@@ -17,7 +17,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { serializeAssembly } from "@figaro-protocol/sdk";
+import { serializeProcessDesign } from "@figaro-protocol/sdk";
 import { _primeRegisteredAgreement_TESTING_ONLY } from "@/lib/protocol/useAgreementRegistry";
 import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 import {
@@ -35,7 +35,7 @@ import {
     createSyntheticSubOrder,
     startSyntheticSession,
 } from "@/lib/designer/syntheticProcess";
-import { deriveAssemblySlug } from "@/lib/shared/assembly";
+import { deriveProcessDesignSlug } from "@/lib/shared/assembly";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import type { Order } from "@/lib/core/store";
 
@@ -147,11 +147,11 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
     it("is the SAME BYTES publish anchors — one assembly, one hash", () => {
         const review = projectSnapshotForReview(composed);
         if (!review.ok) throw new Error(review.error);
-        const published = serializeAssembly(snapshotToAssembly(composed).assembly);
-        expect(review.assemblyHash).toBe(published.assemblyHash);
-        expect(review.slug).toBe(deriveAssemblySlug(published.assemblyHash));
+        const published = serializeProcessDesign(snapshotToAssembly(composed).assembly);
+        expect(review.processDesignHash).toBe(published.processDesignHash);
+        expect(review.slug).toBe(deriveProcessDesignSlug(published.processDesignHash));
         // And the canvas's own identity readout agrees with the review's.
-        expect(snapshotAssemblyIdentity(composed).assemblyHash).toBe(review.assemblyHash);
+        expect(snapshotAssemblyIdentity(composed).processDesignHash).toBe(review.processDesignHash);
     });
 
     it("carries the assembly-scoped terms and their design fills", () => {
@@ -174,7 +174,7 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
             },
         });
         if (!first.ok || !other.ok) throw new Error("both compositions build");
-        expect(other.assemblyHash).not.toBe(first.assemblyHash);
+        expect(other.processDesignHash).not.toBe(first.processDesignHash);
     });
 
     it("reads a assembly's composition the same way for a published assembly", () => {

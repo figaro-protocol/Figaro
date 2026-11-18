@@ -13,7 +13,7 @@
  * `acceptOrder` is the one act that signs after a counterparty; the role is
  * the entry still empty. Three paths run through it:
  * - the seller after the buyer, on a root order;
- * - the seller after the buyer, on a sub-order (expectedCumulativeValue above
+ * - the seller after the buyer, on a sub-order (runningTotal above
  *   the payment, a process id of its own);
  * - the buyer after the seller, when the seller signed first.
  * On each, a valid counterparty signature opens the wallet; a signature by
@@ -73,7 +73,7 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
 // passes. `verifyCommitmentSignature` is the SDK's own, unmocked.
 vi.mock("@figaro-protocol/sdk", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@figaro-protocol/sdk")>()),
-    checkSellerBindsAssembly: async () => ({ ok: true }),
+    checkSellerBindsProcess: async () => ({ ok: true }),
 }));
 const confirm = vi.fn(async (..._args: unknown[]) => true);
 vi.mock("@/lib/checkout/orderPreview", async (importOriginal) => ({
@@ -90,7 +90,7 @@ const { useOrderCommitmentFlow } = await import("@/lib/checkout/orderCommitmentF
 
 /** An order between the two keys, its agreement merkled into the signed
  *  checkoutHash so the sign gate passes it. */
-function order(shape: { processId: Hex; payment: bigint; expectedCumulativeValue: bigint }) {
+function order(shape: { processId: Hex; payment: bigint; runningTotal: bigint }) {
     const { agreement } = buildOrderAgreement(buyerAccount.address, sellerAccount.address, {
         [keyOf("figaro-commerce")]: {
             lineItems: [{ itemId: "item-1", name: "Item", quantity: 1, unitPrice: shape.payment.toString() }],
@@ -98,9 +98,9 @@ function order(shape: { processId: Hex; payment: bigint; expectedCumulativeValue
     }, specSource());
     const commitment: Commitment = {
         processId: shape.processId,
-        buyer: buyerAccount.address, seller: sellerAccount.address, currency: CURRENCY,
-        payment: shape.payment, expectedCumulativeValue: shape.expectedCumulativeValue,
-        checkoutHash: computeCheckoutHash(agreement), salt: 9n, deadline: 9_999_999_999n,
+        buyer: buyerAccount.address, seller: sellerAccount.address, token: CURRENCY,
+        payment: shape.payment, runningTotal: shape.runningTotal,
+        checkoutHash: computeCheckoutHash(agreement), salt: 9n, commitDeadline: 9_999_999_999n,
     };
     return { agreement, commitment };
 }
@@ -128,17 +128,17 @@ const PATHS = [
     {
         name: "the seller after the buyer, on a root order",
         signer: sellerAccount, counterparty: buyerAccount, counterSigKey: "buyerSig" as const,
-        shape: { processId: ZERO_PROCESS_ID as Hex, payment: 100n, expectedCumulativeValue: 100n },
+        shape: { processId: ZERO_PROCESS_ID as Hex, payment: 100n, runningTotal: 100n },
     },
     {
         name: "the seller after the buyer, on a sub-order",
         signer: sellerAccount, counterparty: buyerAccount, counterSigKey: "buyerSig" as const,
-        shape: { processId: `0x${"0f".repeat(32)}` as Hex, payment: 100n, expectedCumulativeValue: 300n },
+        shape: { processId: `0x${"0f".repeat(32)}` as Hex, payment: 100n, runningTotal: 300n },
     },
     {
         name: "the buyer after the seller",
         signer: buyerAccount, counterparty: sellerAccount, counterSigKey: "sellerSig" as const,
-        shape: { processId: ZERO_PROCESS_ID as Hex, payment: 100n, expectedCumulativeValue: 100n },
+        shape: { processId: ZERO_PROCESS_ID as Hex, payment: 100n, runningTotal: 100n },
     },
 ];
 

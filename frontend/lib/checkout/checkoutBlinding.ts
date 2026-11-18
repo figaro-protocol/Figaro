@@ -13,7 +13,7 @@
  * clause and read back from `kept` every time after. Keyed on the spec's own
  * attribute, never on a clause id or a field name.
  */
-import { agreementClauses, withClauseBlinding, type Hex, type HydratedAssembly, type SpecSource } from "@figaro-protocol/sdk";
+import { agreementClauses, withClauseBlinding, type Hex, type HydratedProcessDesign, type SpecSource } from "@figaro-protocol/sdk";
 
 /** A checkout's fills: assembly node id → clause key → field values. */
 export type CheckoutFills = Record<string, Record<string, Record<string, unknown>>>;
@@ -65,7 +65,7 @@ export function freshBlindingStore(
  * `onRefusal`, when given, receives the sentence the page shows.
  */
 export function withCheckoutBlinding(
-    hydrated: HydratedAssembly,
+    hydrated: HydratedProcessDesign,
     fills: CheckoutFills,
     specs: SpecSource,
     kept: CheckoutFills,
@@ -115,7 +115,7 @@ export function withCheckoutBlinding(
  * the struct the winner countersigned.
  */
 export function redrawNodeBlinding(
-    hydrated: HydratedAssembly,
+    hydrated: HydratedProcessDesign,
     fills: CheckoutFills,
     nodeId: string,
     specs: SpecSource,
@@ -130,7 +130,7 @@ export function redrawNodeBlinding(
 
 /** The clause keys of the registered agreement an assembly entry binds, or
  *  none when the hydrated assembly does not carry it. */
-function registeredClauseKeys(hydrated: HydratedAssembly, entry: HydratedAssembly["assembly"]["agreements"][number]): string[] {
+function registeredClauseKeys(hydrated: HydratedProcessDesign, entry: HydratedProcessDesign["assembly"]["agreements"][number]): string[] {
     try {
         return Object.keys(agreementClauses(hydrated, entry));
     } catch {

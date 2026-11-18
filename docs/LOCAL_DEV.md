@@ -88,7 +88,7 @@ Full harness inventory (file lists, property names, rule counts) → `TESTING.md
 ## Deployment scripts (`script/`)
 
 - `script/Deploy.s.sol` — devnet (Anvil); uses mock verifier and mock tokens. The wrapper deploys from a RANDOMIZED throwaway deployer (funded from anvil[0]) so contract addresses are per-machine unique — the universal Anvil-default addresses trip MetaMask/Blockaid threat lists ("deceptive request" on the commit signature). Explicit `PRIVATE_KEY` env overrides (testnet/mainnet path). Mints MOCK/permit tokens to anvil[0..19] explicitly.
-- `script/DeployMainnet.s.sol` — mainnet; no mocks; reads all sensitive params from env (`PRIVATE_KEY`, `FOUNDER_WALLET`, `SUPPORTERS_WALLET`, `DAO_WALLET`, `SP1_VERIFIER` (the routed verifier the wrapper resolves on `SP1_VERIFIER_GATEWAY`), `SP1_PROGRAM_VKEY`, `RPGF_GENESIS`, `SWAP_ROUTER` = Uniswap SwapRouter02 on the chain — probed for behavior; `PERMIT2` defaults to the canonical address). Deploys the Core, all four registries (Clause / Members / Agreement / Assembly; `deployments/<chainId>.json` names `agreementRegistry` beside `assemblyRegistry`), BOTH coordinators (attestation + the swap-funded on-ramp `WitnessSwapAndCommitCoordinator`), `FigaroBatchVerifier`, then FlorinToken with UsageCounter + RpgfMinter registered at genesis (400M founder/supporters/DAO genesis mint, then deployer-mint renounce). No match pool: a round is not a genesis contract.
+- `script/DeployMainnet.s.sol` — mainnet; no mocks; reads all sensitive params from env (`PRIVATE_KEY`, `FOUNDER_WALLET`, `SUPPORTERS_WALLET`, `DAO_WALLET`, `SP1_VERIFIER` (the routed verifier the wrapper resolves on `SP1_VERIFIER_GATEWAY`), `SP1_PROGRAM_VKEY`, `RPGF_GENESIS`, `SWAP_ROUTER` = Uniswap SwapRouter02 on the chain — probed for behavior; `PERMIT2` defaults to the canonical address). Deploys the Core, all four registries (Clause / Members / Agreement / Assembly; `deployments/<chainId>.json` names `agreementRegistry` beside `processRegistry`), BOTH coordinators (attestation + the swap-funded on-ramp `WitnessSwapAndCommitCoordinator`), `FigaroBatchVerifier`, then FlorinToken with UsageCounter + RpgfMinter registered at genesis (400M founder/supporters/DAO genesis mint, then deployer-mint renounce). No match pool: a round is not a genesis contract.
 - `script/DeploySepolia.s.sol` — Sepolia; mirror of `DeployMainnet.s.sol` with exactly ONE testnet divergence (`MockTreasuryMultisig` deployed as the DAO wallet — mock-as-code, mainnet Safe = config). Real yearly periods + 28d cooldown: Sepolia is the public incremental release; the devnet runs the same yearly periods and a test closes one by advancing the chain's clock. Env contract = mainnet's minus `DAO_WALLET`, plus `SWAP_QUOTER`; `SWAP_ROUTER` stays required (Sepolia's SwapRouter02 is supplied via env, not defaulted).
 - `script/DeploySepoliaPair.s.sol` — Sepolia, pair only: the counter↔verifier pair against the stack `deployments/11155111.json` names, run by `deploy-sepolia.sh` under `PAIR_ONLY=1` (EXISTING_* read from `deployments/11155111.json`, `EXISTING_AGREEMENT_REGISTRY` among them, `RPGF_GENESIS` derived from the live counter's `periodEnd[0]`, the file updated in place: `usageCounter`, `batchVerifier`, `programVKey`). After a pair redeploy the live `RpgfMinter` keeps the counter it was deployed with, because the florin's minter registration is renounced.
 - `script/MintTokens.s.sol` — utility: mint test tokens to existing devnet accounts.
@@ -105,7 +105,7 @@ the order of operations and the lessons (swap floor, keyed fork upstream,
 `SP1_SKIP_PROGRAM_BUILD` discipline); `prover/sequencer/README.md` owns the
 sequencer environment table. The usage-claim pre-filter reads one registry per
 kind, so the sequencer takes `AGREEMENT_REGISTRY_ADDRESS` (env only, no flag)
-beside `CLAUSE_REGISTRY_ADDRESS` and `ASSEMBLY_REGISTRY_ADDRESS`. The
+beside `CLAUSE_REGISTRY_ADDRESS` and `PROCESS_REGISTRY_ADDRESS`. The
 pre-filter keys on the counter address, and it drops a claim whose registry
 read fails — a zero registry address does not disable it.
 
@@ -154,7 +154,7 @@ NEXT_PUBLIC_ATTESTATION_COORDINATOR=0x...
 NEXT_PUBLIC_CLAUSE_REGISTRY=0x...
 NEXT_PUBLIC_MEMBERS_REGISTRY=0x...
 NEXT_PUBLIC_AGREEMENT_REGISTRY=0x...
-NEXT_PUBLIC_ASSEMBLY_REGISTRY=0x...
+NEXT_PUBLIC_PROCESS_REGISTRY=0x...
 
 # Swap-and-commit funding (composition) — the coordinator plus its Permit2 and
 # swap venue. Devnet: MockWitnessPermit2 + MockSwapVenue (deploy-local.sh

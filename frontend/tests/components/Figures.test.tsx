@@ -199,7 +199,7 @@ const BANNED_FORMATION_IDENTIFIERS = [
     "verifyRaceReply",
     "verifyQuoteReply",
     "selectRaceWinner",
-    "expectedCumulativeValue",
+    "runningTotal",
     "CommitmentPayload",
     "quoteRequest",
     "sellerSig",
@@ -313,9 +313,9 @@ describe("RegistryLifecycleFigure", () => {
         const text = container.textContent ?? "";
         expect(text).toContain("ClauseRegistry — hash of the spec without block");
         expect(text).toContain("AgreementRegistry — root of its composed clauses");
-        expect(text).toContain("AssemblyRegistry — hash of the pinned composition");
+        expect(text).toContain("ProcessRegistry — hash of the pinned composition");
         // Collapsing both into one "by hash" line loses the distinction.
-        expect(text).not.toContain("ClauseRegistry / AssemblyRegistry — by hash");
+        expect(text).not.toContain("ClauseRegistry / ProcessRegistry — by hash");
     });
 
     it("states the withdraw gate as a PROTOCOL-SURFACE refusal, not a contract check", () => {

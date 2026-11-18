@@ -91,12 +91,12 @@ export function useAttestationCoordinatorActions() {
             processId: String(args.processId) as Hex,
             buyer: String(args.buyer) as Hex,
             seller: String(args.seller) as Hex,
-            currency: String(args.currency) as Hex,
+            token: String(args.currency) as Hex,
             payment: BigInt((args.payment as bigint | string | number) ?? 0),
-            expectedCumulativeValue: BigInt((args.cumulativeValue as bigint | string | number) ?? 0),
+            runningTotal: BigInt((args.runningTotal as bigint | string | number) ?? 0),
             checkoutHash: String(args.checkoutHash) as Hex,
             salt: BigInt((args.salt as bigint | string | number) ?? 0),
-            deadline: BigInt((args.deadline as bigint | string | number) ?? 0),
+            commitDeadline: BigInt((args.deadline as bigint | string | number) ?? 0),
         };
         // The coordinator recomputes orderHash from hashStruct(commitment), so it
         // needs the SIGNED commitment — restore the root's processId 0.

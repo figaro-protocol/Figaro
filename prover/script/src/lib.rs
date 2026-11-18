@@ -178,7 +178,7 @@ fn parse_spec(spec_json: &str) -> figaro_clause::ClauseSpec {
 /// its inclusion proof, gate I alone) → resolve.
 ///
 /// Attestations precede the resolve because the evidence window closes at
-/// resolution (the mirror's OrderResolved gate). The single-clause
+/// resolution (the mirror's OrderAlreadyResolved gate). The single-clause
 /// agreement makes `checkout_hash` the lone clause leaf, so both
 /// inclusion proofs are empty.
 pub fn build_canonical_batch_input() -> BatchInput {
@@ -218,12 +218,12 @@ pub fn build_canonical_batch_input() -> BatchInput {
         process_id: B256::ZERO,
         buyer: BUYER,
         seller: SELLER1,
-        currency: TOKEN,
+        token: TOKEN,
         payment: U256::from(100_000_000_000_000_000_000u128),
-        expected_cumulative_value: U256::from(100_000_000_000_000_000_000u128),
+        running_total: U256::from(100_000_000_000_000_000_000u128),
         checkout_hash: agreement_leaf,
         salt: U256::from(42u64),
-        deadline: U256::from(2000u64),
+        commit_deadline: U256::from(2000u64),
     };
 
     let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
@@ -288,7 +288,7 @@ pub fn build_canonical_batch_input() -> BatchInput {
             },
             KernelOp::Resolve {
                 process_id,
-                cumulative_value: root.payment,
+                running_total: root.payment,
                 commitments: vec![root.clone()],
                 buyer_sig: resolve_sig,
             },
@@ -304,7 +304,7 @@ pub fn build_canonical_batch_input() -> BatchInput {
         // and the inclusion proof is empty.
         usage_claims: vec![UsageClaim {
             order: root,
-            clause_or_assembly: clause_key,
+            clause_or_process: clause_key,
             kind: UsageClaimKind::Clause {
                 clause_data_hash: re_assert_content_ref,
             },

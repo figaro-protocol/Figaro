@@ -62,11 +62,11 @@
 //! order    := the 0x01, 0x02 and 0x04 entries in the order applied, then
 //!             every 0x05, then every 0x03
 //! commitment := processId(32) buyer(20) seller(20) currency(20) payment(32)
-//!               expectedCumulativeValue(32) checkoutHash(32) salt(32) deadline(32)
+//!               runningTotal(32) checkoutHash(32) salt(32) deadline(32)
 //! sig      := r(32) s(32) v(1)
 //! kind     := 0x00 clauseDataHash(32)                        (USAGE_KIND_CLAUSE)
-//!           | 0x01 agreementHash(32) slotContentHash(32) proof (USAGE_KIND_ASSEMBLY)
-//!           | 0x02 assemblyHash(32)                          (USAGE_KIND_AGREEMENT)
+//!           | 0x01 agreementHash(32) agreementContentHash(32) proof (USAGE_KIND_PROCESS)
+//!           | 0x02 processDesignHash(32)                          (USAGE_KIND_AGREEMENT)
 //! The kind byte is `UsageClaimKind::code()`, the family code `UsageCounter`
 //! keys accruals by, so one byte means one thing across the guest and the chain.
 //! proof    := count(2) word(32)*
@@ -78,7 +78,7 @@ use alloy_primitives::{keccak256, Address, Bytes, B256, U256};
 
 use crate::types::{
     AttesterRole, Commitment, KernelOp, Signature, UsageClaim, UsageClaimKind,
-    USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY, USAGE_KIND_CLAUSE,
+    USAGE_KIND_AGREEMENT, USAGE_KIND_CLAUSE, USAGE_KIND_PROCESS,
 };
 
 const TAG_COMMIT: u8 = 0x01;
@@ -206,22 +206,24 @@ pub fn encode_stream_parts(
     for claim in claims {
         out.push(TAG_USAGE_CLAIM);
         put_commitment(&mut out, &claim.order);
-        out.extend_from_slice(claim.clause_or_assembly.as_slice());
+        out.extend_from_slice(claim.clause_or_process.as_slice());
         out.push(claim.kind.code());
         match &claim.kind {
             UsageClaimKind::Clause { clause_data_hash } => {
                 out.extend_from_slice(clause_data_hash.as_slice());
             }
-            UsageClaimKind::Agreement { assembly_hash } => {
-                out.extend_from_slice(assembly_hash.as_slice());
+            UsageClaimKind::Agreement {
+                process_design_hash,
+            } => {
+                out.extend_from_slice(process_design_hash.as_slice());
             }
-            UsageClaimKind::Assembly {
+            UsageClaimKind::Process {
                 agreement_hash,
-                slot_content_hash,
+                agreement_content_hash,
                 membership_proof,
             } => {
                 out.extend_from_slice(agreement_hash.as_slice());
-                out.extend_from_slice(slot_content_hash.as_slice());
+                out.extend_from_slice(agreement_content_hash.as_slice());
                 put_words(&mut out, membership_proof);
             }
         }
@@ -274,11 +276,11 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<DecodedStream, String> {
                 for _ in 0..count {
                     commitments.push(r.commitment()?);
                 }
-                let cumulative_value = resolved_cumulative_value(&commitments)
+                let running_total = resolved_running_total(&commitments)
                     .ok_or_else(|| "a resolve whose payments overflow".to_string())?;
                 operations.push(KernelOp::Resolve {
                     process_id,
-                    cumulative_value,
+                    running_total,
                     commitments,
                     buyer_sig,
                 });
@@ -295,11 +297,11 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<DecodedStream, String> {
                 for _ in 0..count {
                     commitments.push(r.commitment()?);
                 }
-                let cumulative_value = resolved_cumulative_value(&commitments)
+                let running_total = resolved_running_total(&commitments)
                     .ok_or_else(|| "a resolve whose payments overflow".to_string())?;
                 operations.push(KernelOp::ResolveByWalletCode {
                     process_id,
-                    cumulative_value,
+                    running_total,
                     commitments,
                     authorization,
                 });
@@ -328,17 +330,17 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<DecodedStream, String> {
             }
             TAG_USAGE_CLAIM => {
                 let order = r.commitment()?;
-                let clause_or_assembly = r.b256()?;
+                let clause_or_process = r.b256()?;
                 let kind = match r.u8()? {
                     USAGE_KIND_CLAUSE => UsageClaimKind::Clause {
                         clause_data_hash: r.b256()?,
                     },
                     USAGE_KIND_AGREEMENT => UsageClaimKind::Agreement {
-                        assembly_hash: r.b256()?,
+                        process_design_hash: r.b256()?,
                     },
-                    USAGE_KIND_ASSEMBLY => UsageClaimKind::Assembly {
+                    USAGE_KIND_PROCESS => UsageClaimKind::Process {
                         agreement_hash: r.b256()?,
-                        slot_content_hash: r.b256()?,
+                        agreement_content_hash: r.b256()?,
                         membership_proof: r.words()?,
                     },
                     k => return Err(format!("unknown usage claim kind 0x{k:02x}")),
@@ -346,7 +348,7 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<DecodedStream, String> {
                 let inclusion_proof = r.words()?;
                 claims.push(UsageClaim {
                     order,
-                    clause_or_assembly,
+                    clause_or_process,
                     kind,
                     inclusion_proof,
                 });
@@ -365,7 +367,7 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<DecodedStream, String> {
 /// The cumulative value a resolve listing `commitments` signs when it
 /// applies: the sum of their payments, which is the process's accumulator
 /// once every order of the process is listed. `None` on overflow.
-pub fn resolved_cumulative_value(commitments: &[Commitment]) -> Option<U256> {
+pub fn resolved_running_total(commitments: &[Commitment]) -> Option<U256> {
     commitments
         .iter()
         .try_fold(U256::ZERO, |sum, c| sum.checked_add(c.payment))
@@ -375,12 +377,12 @@ fn put_commitment(out: &mut Vec<u8>, c: &Commitment) {
     out.extend_from_slice(c.process_id.as_slice());
     out.extend_from_slice(c.buyer.as_slice());
     out.extend_from_slice(c.seller.as_slice());
-    out.extend_from_slice(c.currency.as_slice());
+    out.extend_from_slice(c.token.as_slice());
     out.extend_from_slice(&c.payment.to_be_bytes::<32>());
-    out.extend_from_slice(&c.expected_cumulative_value.to_be_bytes::<32>());
+    out.extend_from_slice(&c.running_total.to_be_bytes::<32>());
     out.extend_from_slice(c.checkout_hash.as_slice());
     out.extend_from_slice(&c.salt.to_be_bytes::<32>());
-    out.extend_from_slice(&c.deadline.to_be_bytes::<32>());
+    out.extend_from_slice(&c.commit_deadline.to_be_bytes::<32>());
 }
 
 fn put_signature(out: &mut Vec<u8>, s: &Signature) {
@@ -450,12 +452,12 @@ impl<'a> Reader<'a> {
             process_id: self.b256()?,
             buyer: self.address()?,
             seller: self.address()?,
-            currency: self.address()?,
+            token: self.address()?,
             payment: self.u256()?,
-            expected_cumulative_value: self.u256()?,
+            running_total: self.u256()?,
             checkout_hash: self.b256()?,
             salt: self.u256()?,
-            deadline: self.u256()?,
+            commit_deadline: self.u256()?,
         })
     }
     fn words(&mut self) -> Result<Vec<B256>, String> {

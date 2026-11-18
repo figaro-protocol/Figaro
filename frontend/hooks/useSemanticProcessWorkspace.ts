@@ -14,7 +14,7 @@ import { CONTRACTS } from "@/lib/core/contracts";
 import { OrderState, useOrderStore, type Order } from "@/lib/core/store";
 import { useFigaroActions } from "@/lib/core/useFigaroActions";
 import { useUsageRecorder } from "@/lib/protocol/useUsageRecorder";
-import { fetchAssemblyByHash } from "@/lib/protocol/useAssemblyRegistry";
+import { fetchAssemblyByHash } from "@/lib/protocol/useProcessRegistry";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";

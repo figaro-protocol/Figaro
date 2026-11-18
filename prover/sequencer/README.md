@@ -121,7 +121,7 @@ FIGARO_CORE_ADDRESS=0x... \
 BATCH_VERIFIER_ADDRESS=0x... \
 USAGE_COUNTER_ADDRESS=0x... \
 CLAUSE_REGISTRY_ADDRESS=0x... \
-ASSEMBLY_REGISTRY_ADDRESS=0x... \
+PROCESS_REGISTRY_ADDRESS=0x... \
 AGREEMENT_REGISTRY_ADDRESS=0x... \
 MEMBERS_REGISTRY_ADDRESS=0x... \
 cargo run -p figaro-sequencer --bin sequencer
@@ -155,7 +155,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `BATCH_VERIFIER_ADDRESS` | zero | `FigaroBatchVerifier`; zero = prove-only dry run |
 | `USAGE_COUNTER_ADDRESS` | zero | The designer-reward `UsageCounter`; zero = credit no usage |
 | `CLAUSE_REGISTRY_ADDRESS` | zero | `ClauseRegistry`, read by the usage-claim pre-filter for a clause claim (kind 0) |
-| `ASSEMBLY_REGISTRY_ADDRESS` | zero | `AssemblyRegistry`, read by the usage-claim pre-filter for an assembly claim (kind 1) |
+| `PROCESS_REGISTRY_ADDRESS` | zero | `ProcessRegistry`, read by the usage-claim pre-filter for an assembly claim (kind 1) |
 | `AGREEMENT_REGISTRY_ADDRESS` | zero | `AgreementRegistry`, read by the usage-claim pre-filter for an agreement claim (kind 2) |
 | `MEMBERS_REGISTRY_ADDRESS` | zero | `MembersRegistry`, read by the usage-claim pre-filter; with `USAGE_COUNTER_ADDRESS` set, a registry left zero drops every claim that reads it |
 | `SP1_PROVER` | `mock` | `mock` (devnet), `cpu`, `cuda` (local), `network` (the Succinct Prover Network; `NETWORK_PRIVATE_KEY` = the requester key that pays in PROVE — the relay operator's cost, never the protocol's or its users') — who proves, and who receives the batch input: under `network`, the plaintext of any attestation sent in the plaintext form |
@@ -193,14 +193,14 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   relay writes no attestation content to its logs, its state file, its
   journal or `/status`; a refused attestation is logged without
   its reason, which goes to the sender alone.
-  A resolve is `{"Resolve":{"process_id","cumulative_value","commitments","buyer_sig"}}`:
-  `buyer_sig` signs `ResolveProcess(bytes32 processId,uint256 cumulativeValue)`
+  A resolve is `{"Resolve":{"process_id","running_total","commitments","buyer_sig"}}`:
+  `buyer_sig` signs `ResolveProcess(bytes32 processId,uint256 runningTotal)`
   under the verifier's domain, and the proof refuses the resolve unless the
-  process holds `cumulative_value` when it applies (`StaleResolveAuthorization`;
+  process holds `running_total` when it applies (`StaleResolveAuthorization`;
   a value the process has passed is dead-lettered, one it has not reached
   waits as a deferral).
   A resolve authorized by the buyer's wallet code is
-  `{"ResolveByWalletCode":{"process_id","cumulative_value","commitments","authorization"}}`:
+  `{"ResolveByWalletCode":{"process_id","running_total","commitments","authorization"}}`:
   `authorization` (hex, at most `MAX_WALLET_AUTHORIZATION_BYTES`, 2,048) is
   bytes the buyer's own account code validates for the same digest through
   ERC-1271's `isValidSignature` — the form code installed on the buyer's

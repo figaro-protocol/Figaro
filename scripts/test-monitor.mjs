@@ -162,10 +162,10 @@ async function main() {
     }
     const domain = buildDomain(31337, base.figaroCore);
     const { commitment, typedData } = buildCommitment({
-        processId: `0x${"00".repeat(32)}`, buyer, seller, currency: rbs.address,
-        payment, expectedCumulativeValue: payment,
+        processId: `0x${"00".repeat(32)}`, buyer, seller, token: rbs.address,
+        payment, runningTotal: payment,
         checkoutHash: keccak256(toHex(`monitor-test-${stamp}`)),
-        deadline: computeDeadline(await readChainTimestamp(pub)),
+        commitDeadline: computeDeadline(await readChainTimestamp(pub)),
     }, domain);
     const buyerSig = await wallet(KEYS.buyer).signTypedData(typedData);
     const sellerSig = await wallet(KEYS.seller).signTypedData(typedData);

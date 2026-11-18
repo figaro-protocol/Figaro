@@ -16,7 +16,7 @@ import {MembersRegistry} from "src/registries/MembersRegistry.sol";
 import {FigaroCore} from "src/core/kernel/FigaroCore.sol";
 import {MockERC20NoReturn} from "src/mocks/MockERC20NoReturn.sol";
 import {MockERC20Blocklist} from "src/mocks/MockERC20Blocklist.sol";
-import {AssemblyRegistry} from "src/registries/AssemblyRegistry.sol";
+import {ProcessRegistry} from "src/registries/ProcessRegistry.sol";
 import {AgreementRegistry} from "src/registries/AgreementRegistry.sol";
 import {RpgfMinter} from "src/rewards/RpgfMinter.sol";
 import {FlorinToken} from "src/rewards/FlorinToken.sol";
@@ -130,7 +130,7 @@ contract FigaroBatchVerifierTest is Test {
 
     /// @dev `n` uses of one clause in the open period, each by `seller`, from
     ///      `n` distinct batch-path processes.
-    function _usageFor(bytes32 clauseOrAssembly, uint256 n)
+    function _usageFor(bytes32 clauseOrProcess, uint256 n)
         internal
         view
         returns (FigaroBatchVerifier.BatchUsageData memory u)
@@ -140,7 +140,7 @@ contract FigaroBatchVerifierTest is Test {
         u.uses = new IUsageCounter.BatchUse[](n);
         for (uint256 i = 0; i < n; i++) {
             u.uses[i] = IUsageCounter.BatchUse(
-                clauseOrAssembly, counter.KIND_CLAUSE(), keccak256(abi.encode("batch-process", i)), seller
+                clauseOrProcess, counter.KIND_CLAUSE(), keccak256(abi.encode("batch-process", i)), seller
             );
         }
     }
@@ -648,12 +648,12 @@ contract FigaroBatchVerifierTest is Test {
         c.processId = WALLET_PROCESS;
         c.buyer = buyer;
         c.seller = seller;
-        c.currency = address(token);
+        c.token = address(token);
         c.payment = WALLET_PAYMENT;
-        c.expectedCumulativeValue = WALLET_PAYMENT;
+        c.runningTotal = WALLET_PAYMENT;
         c.checkoutHash = keccak256("wallet-checkout");
         c.salt = 7;
-        c.deadline = 4_000_000_000;
+        c.commitDeadline = 4_000_000_000;
     }
 
     /// The guest's `0x04` entry: processId, len(2), authorization, count(2), commitment.
@@ -669,12 +669,12 @@ contract FigaroBatchVerifierTest is Test {
                 c.processId,
                 c.buyer,
                 c.seller,
-                c.currency,
+                c.token,
                 c.payment,
-                c.expectedCumulativeValue,
+                c.runningTotal,
                 c.checkoutHash,
                 c.salt,
-                c.deadline
+                c.commitDeadline
             )
         );
     }
@@ -693,7 +693,7 @@ contract FigaroBatchVerifierTest is Test {
         );
         bytes32 structHash = keccak256(
             abi.encode(
-                keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)"), WALLET_PROCESS, WALLET_PAYMENT
+                keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"), WALLET_PROCESS, WALLET_PAYMENT
             )
         );
         return keccak256(abi.encodePacked("\x19\x01", domain, structHash));
@@ -802,12 +802,12 @@ contract FigaroBatchVerifierTest is Test {
                 c.processId,
                 c.buyer,
                 c.seller,
-                c.currency,
+                c.token,
                 c.payment,
-                c.expectedCumulativeValue,
+                c.runningTotal,
                 c.checkoutHash,
                 c.salt,
-                c.deadline
+                c.commitDeadline
             ),
             ATT_CLAUSE,
             bytes1(ATT_STAGE),
@@ -1191,12 +1191,12 @@ contract FigaroBatchVerifierTest is Test {
                 c.processId,
                 c.buyer,
                 c.seller,
-                c.currency,
+                c.token,
                 c.payment,
-                c.expectedCumulativeValue,
+                c.runningTotal,
                 c.checkoutHash,
                 c.salt,
-                c.deadline
+                c.commitDeadline
             ),
             new bytes(130)
         );
@@ -1233,7 +1233,7 @@ contract FigaroBatchVerifierTest is Test {
     function test_settleBatch_refusesACommitPastItsDeadlineAtTheLandingBlock() public {
         CommitmentTypes.Commitment memory c = _walletOrder();
         c.processId = bytes32(0);
-        c.deadline = block.timestamp - 1;
+        c.commitDeadline = block.timestamp - 1;
         vm.expectRevert(abi.encodeWithSignature("DeadlineExpired()"));
         _landCommitProvenAMinuteAgo(c);
         assertEq(verifier.stateRoot(), GENESIS, "the root does not move");
@@ -1245,7 +1245,7 @@ contract FigaroBatchVerifierTest is Test {
     function test_settleBatch_landsACommitAtItsDeadline() public {
         CommitmentTypes.Commitment memory c = _walletOrder();
         c.processId = bytes32(0);
-        c.deadline = block.timestamp;
+        c.commitDeadline = block.timestamp;
         _landCommitProvenAMinuteAgo(c);
         assertEq(verifier.stateRoot(), keccak256("deadline-root"), "the live commitment lands");
     }
@@ -1949,16 +1949,16 @@ contract FigaroBatchVerifierTest is Test {
         members.register("ipfs://stranger");
         bytes32 asmKey = keccak256("an-assembly-credited-on-the-batch-path");
 
-        AssemblyRegistry assemblies = new AssemblyRegistry(0);
+        ProcessRegistry assemblies = new ProcessRegistry(0);
         vm.prank(designer);
-        assemblies.registerAssembly(asmKey, "ipfs://asm");
+        assemblies.registerProcess(asmKey, "ipfs://asm");
         vm.deal(stranger, DEPOSIT);
         vm.prank(stranger);
         registry.registerClause{value: DEPOSIT}(asmKey, "ipfs://a-stranger-stakes-an-assembly-key-as-a-clause");
 
         (RpgfMinter minter, FlorinToken florin) = _rewireOnRealRegistries(assemblies);
         uint8 kindClause = counter.KIND_CLAUSE();
-        uint8 kindAssembly = counter.KIND_ASSEMBLY();
+        uint8 kindAssembly = counter.KIND_PROCESS();
 
         FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(asmKey, 3);
         for (uint256 i = 0; i < usage.uses.length; i++) {
@@ -1971,13 +1971,13 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(counter.scoreOf(kindClause, asmKey, 0), 0, "and nothing under the clause kind");
 
         vm.warp(PERIOD_END + 1);
-        RpgfMinter.ClauseOrAssemblyKey[] memory entry = new RpgfMinter.ClauseOrAssemblyKey[](1);
-        entry[0] = RpgfMinter.ClauseOrAssemblyKey(kindClause, asmKey);
+        RpgfMinter.ClauseOrProcessKey[] memory entry = new RpgfMinter.ClauseOrProcessKey[](1);
+        entry[0] = RpgfMinter.ClauseOrProcessKey(kindClause, asmKey);
         vm.prank(stranger);
         vm.expectRevert(RpgfMinter.NothingToClaim.selector);
         minter.claim(0, entry);
 
-        entry[0] = RpgfMinter.ClauseOrAssemblyKey(kindAssembly, asmKey);
+        entry[0] = RpgfMinter.ClauseOrProcessKey(kindAssembly, asmKey);
         vm.prank(stranger);
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, kindAssembly, asmKey, stranger));
         minter.claim(0, entry);
@@ -1994,7 +1994,7 @@ contract FigaroBatchVerifierTest is Test {
     ///      live `registry`, `assemblies` and a fresh AgreementRegistry, wired
     ///      as setUp wires its pair, funds the new verifier's payout legs, and
     ///      deploys a minter and florin over that counter for one period.
-    function _rewireOnRealRegistries(AssemblyRegistry assemblies)
+    function _rewireOnRealRegistries(ProcessRegistry assemblies)
         internal
         returns (RpgfMinter minter, FlorinToken florin)
     {

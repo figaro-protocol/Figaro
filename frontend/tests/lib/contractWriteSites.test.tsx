@@ -33,7 +33,7 @@ const w = vi.hoisted(() => {
     process.env.NEXT_PUBLIC_FIGARO_CORE = "0x00000000000000000000000000000000000c0e01";
     process.env.NEXT_PUBLIC_CLAUSE_REGISTRY = "0x00000000000000000000000000000000000c1a01";
     process.env.NEXT_PUBLIC_MEMBERS_REGISTRY = "0x00000000000000000000000000000000000e3b01";
-    process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY = "0x00000000000000000000000000000000000a5501";
+    process.env.NEXT_PUBLIC_PROCESS_REGISTRY = "0x00000000000000000000000000000000000a5501";
     process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY = "0x00000000000000000000000000000000000a9e01";
     process.env.NEXT_PUBLIC_USAGE_COUNTER = "0x00000000000000000000000000000000000c0c01";
     return {
@@ -54,12 +54,12 @@ const COMMITMENT: Commitment = {
     processId: `0x${"00".repeat(32)}`,
     buyer: "0x1111111111111111111111111111111111111111",
     seller: "0x2222222222222222222222222222222222222222",
-    currency: "0x3333333333333333333333333333333333333333",
+    token: "0x3333333333333333333333333333333333333333",
     payment: 100n,
-    expectedCumulativeValue: 100n,
+    runningTotal: 100n,
     checkoutHash: `0x${"cc".repeat(32)}`,
     salt: 1n,
-    deadline: 9_999_999_999n,
+    commitDeadline: 9_999_999_999n,
 };
 
 vi.mock("wagmi", () => ({
@@ -81,7 +81,7 @@ vi.mock("@/lib/composition/contracts", () => ({
 vi.mock("@/lib/core/eventCache", () => ({
     cachedGetContractEvents: async (_client: unknown, _chainId: number, { eventName }: { eventName: string }) => {
         if (eventName === "ClauseRegistered") return [{ args: { registeredBy: w.address, clauseKey: w.key } }];
-        if (eventName === "UsageRecorded") return [{ args: { kind: 0, clauseOrAssembly: w.key, period: 0 } }];
+        if (eventName === "UsageRecorded") return [{ args: { kind: 0, clauseOrProcess: w.key, period: 0 } }];
         return [];
     },
 }));
@@ -94,7 +94,7 @@ vi.mock("@/lib/core/indexer", () => ({
             seller: "0x2222222222222222222222222222222222222222",
             currency: "0x3333333333333333333333333333333333333333",
             payment: 100n,
-            cumulativeValue: 100n,
+            runningTotal: 100n,
             checkoutHash: `0x${"cc".repeat(32)}`,
             salt: 1n,
             deadline: 9_999_999_999n,
@@ -104,7 +104,7 @@ vi.mock("@/lib/core/indexer", () => ({
 }));
 vi.mock("@/lib/core/signedCommitment", () => ({ restoreSignedProcessId: (c: unknown) => c }));
 vi.mock("@/lib/core/agreementFetch", () => ({
-    fetchAgreement: async () => ({ status: "present", value: { clauses: [], provenance: { agreementHash: w.key, assemblyHash: w.key } } }),
+    fetchAgreement: async () => ({ status: "present", value: { clauses: [], provenance: { agreementHash: w.key, processDesignHash: w.key } } }),
 }));
 vi.mock("@/lib/composition/witnessContent", () => ({
     publishWitnessContent: async () => undefined,
@@ -139,7 +139,7 @@ import { createCapabilityExecutors, type CapabilityExecutorDeps } from "@/lib/se
 const CORE = "0x00000000000000000000000000000000000c0e01";
 const CLAUSE_REGISTRY = "0x00000000000000000000000000000000000c1a01";
 const MEMBERS_REGISTRY = "0x00000000000000000000000000000000000e3b01";
-const ASSEMBLY_REGISTRY = "0x00000000000000000000000000000000000a5501";
+const PROCESS_REGISTRY = "0x00000000000000000000000000000000000a5501";
 const AGREEMENT_REGISTRY = "0x00000000000000000000000000000000000a9e01";
 const USAGE_COUNTER = "0x00000000000000000000000000000000000c0c01";
 const MULTISENDER = "0x00000000000000000000000000000000000d1501";
@@ -149,7 +149,7 @@ const RPGF_MINTER = "0x00000000000000000000000000000000000f1001";
 const PROBE_SPEC = { clauseId: "figaro-probe", version: 1, fields: [] };
 // The signed agreement the `fetchAgreement` mock serves: no clause, its
 // provenance leaf naming KEY as both the agreement and the assembly.
-const SERVED_AGREEMENT = { clauses: [], provenance: { agreementHash: KEY, assemblyHash: KEY } } as unknown as Agreement;
+const SERVED_AGREEMENT = { clauses: [], provenance: { agreementHash: KEY, processDesignHash: KEY } } as unknown as Agreement;
 const PROVENANCE_RECEIPT = provenanceLeafAttestation(SERVED_AGREEMENT);
 
 /** A decoded custom-error revert, as viem raises it from `simulateContract`. */
@@ -256,7 +256,7 @@ const SITES: Array<{
     {
         site: "useWithdrawAssembly",
         prepare: async () => { const h = rendered(() => useWithdrawAssembly()); return () => h.current.withdraw(KEY); },
-        writes: () => [{ address: ASSEMBLY_REGISTRY, functionName: "withdrawDeposit", args: [KEY] }],
+        writes: () => [{ address: PROCESS_REGISTRY, functionName: "withdrawDeposit", args: [KEY] }],
         errorName: "AlreadyWithdrawn",
         message: "This assembly's registration stake has already been reclaimed.",
     },
@@ -281,13 +281,13 @@ const SITES: Array<{
         site: "usePayoutRoutingActions",
         prepare: async () => {
             const h = rendered(() => usePayoutRoutingActions());
-            return () => h.current.routeTokenPayout(COMMITMENT.currency, [{ recipient: COMMITMENT.seller, amount: 5n }]);
+            return () => h.current.routeTokenPayout(COMMITMENT.token, [{ recipient: COMMITMENT.seller, amount: 5n }]);
         },
         // The allowance reads 0n, so the multisender is approved for the
         // batch total first, then the batch is dispersed.
         writes: () => [
-            { address: COMMITMENT.currency.toLowerCase(), functionName: "approve", args: [MULTISENDER, 5n] },
-            { address: MULTISENDER, functionName: "disperseToken", args: [COMMITMENT.currency, [COMMITMENT.seller], [5n]] },
+            { address: COMMITMENT.token.toLowerCase(), functionName: "approve", args: [MULTISENDER, 5n] },
+            { address: MULTISENDER, functionName: "disperseToken", args: [COMMITMENT.token, [COMMITMENT.seller], [5n]] },
         ],
         errorName: "BatchTooLarge",
         message: "BatchTooLarge",
@@ -331,7 +331,7 @@ const SITES: Array<{
     {
         site: "useUsageRecorder.recordUsage (agreement)",
         prepare: async () => {
-            const write: UsageWrite = { kind: "agreement", order: COMMITMENT, key: KEY, assemblyHash: ORDER_HASH, proof: [KEY] };
+            const write: UsageWrite = { kind: "agreement", order: COMMITMENT, key: KEY, processDesignHash: ORDER_HASH, proof: [KEY] };
             const h = rendered(() => useUsageRecorder());
             return () => h.current.recordUsage(write);
         },
@@ -343,13 +343,13 @@ const SITES: Array<{
         site: "useUsageRecorder.recordUsage (assembly)",
         prepare: async () => {
             const write: UsageWrite = {
-                kind: "assembly", order: COMMITMENT, key: KEY, agreementHash: ORDER_HASH, slotContentHash: TX,
+                kind: "assembly", order: COMMITMENT, key: KEY, agreementHash: ORDER_HASH, agreementContentHash: TX,
                 proof: [KEY], membershipProof: [ORDER_HASH],
             };
             const h = rendered(() => useUsageRecorder());
             return () => h.current.recordUsage(write);
         },
-        writes: () => [{ address: USAGE_COUNTER, functionName: "recordAssemblyUsage", args: [COMMITMENT, KEY, ORDER_HASH, TX, [KEY], [ORDER_HASH]] }],
+        writes: () => [{ address: USAGE_COUNTER, functionName: "recordProcessDesignUsage", args: [COMMITMENT, KEY, ORDER_HASH, TX, [KEY], [ORDER_HASH]] }],
         errorName: "AlreadyCounted",
         message: "This use of the clause, agreement or assembly was already counted for this process.",
     },
@@ -377,7 +377,7 @@ const SITES: Array<{
             const { executorCallbacks } = createCapabilityExecutors(deps as unknown as CapabilityExecutorDeps);
             return () => executorCallbacks.attestProvenanceLeaf({
                 executionType: "transaction", kind: "attest-provenance-leaf",
-                orderHash: ORDER_HASH, agreementHash: KEY, assemblyHash: KEY, party: "buyer",
+                orderHash: ORDER_HASH, agreementHash: KEY, processDesignHash: KEY, party: "buyer",
             });
         },
         // The buyer's attestation of the provenance leaf, stage 0, its content

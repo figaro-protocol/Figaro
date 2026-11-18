@@ -29,7 +29,7 @@
  *
  * What the model leaves out:
  *   - Who calls. `registerMinter` and `renounceDeployerMint` revert
- *     (`NotMinter`) for any caller but the deployer; the model's actions are
+ *     (`NotDeployer`) for any caller but the deployer; the model's actions are
  *     the deployer's. A mint's caller is the minter `m`.
  *   - The zero address as a minter (`ZeroAddress`): it is not in `Minters`.
  *   - A zero cap or a zero amount: each changes no balance, cap or supply

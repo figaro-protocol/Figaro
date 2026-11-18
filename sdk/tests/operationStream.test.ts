@@ -43,14 +43,14 @@ describe("the usage claims of an operation stream the Rust encoder wrote (test/f
         expect(usageClaimsOfOperationStream(streamNamed("claimsAfterOperations"))).toEqual([
             {
                 order: FIRST,
-                clause_or_assembly: rep("80", 32),
+                clause_or_process: rep("80", 32),
                 kind: { Clause: { clause_data_hash: rep("81", 32) } },
                 inclusion_proof: [rep("82", 32)],
             },
             {
                 order: SECOND,
-                clause_or_assembly: rep("90", 32),
-                kind: { Assembly: { agreement_hash: rep("91", 32), slot_content_hash: rep("92", 32), membership_proof: [rep("93", 32), rep("94", 32)] } },
+                clause_or_process: rep("90", 32),
+                kind: { Process: { agreement_hash: rep("91", 32), agreement_content_hash: rep("92", 32), membership_proof: [rep("93", 32), rep("94", 32)] } },
                 inclusion_proof: [],
             },
         ]);
@@ -78,8 +78,8 @@ describe("wallet-code attestations of both roles and an agreement claim, as the 
     const ROOT = vectorCommitment(1, rep("00", 32), 100n);
     const AGREEMENT_CLAIM: SequencerUsageClaim = {
         order: SECOND,
-        clause_or_assembly: rep("a1", 32),
-        kind: { Agreement: { assembly_hash: rep("a2", 32) } },
+        clause_or_process: rep("a1", 32),
+        kind: { Agreement: { process_design_hash: rep("a2", 32) } },
         inclusion_proof: [rep("a3", 32), rep("a4", 32)],
     };
     const SELLER_AUTHORIZATION = stringToHex("seller-guardian-1");
@@ -120,13 +120,13 @@ describe("wallet-code attestations of both roles and an agreement claim, as the 
 describe("a stream that mixes commits, resolves, wallet-code attestations and usage claims", () => {
     const AGREEMENT_CLAIM: SequencerUsageClaim = {
         order: SECOND,
-        clause_or_assembly: rep("a1", 32),
-        kind: { Agreement: { assembly_hash: rep("a2", 32) } },
+        clause_or_process: rep("a1", 32),
+        kind: { Agreement: { process_design_hash: rep("a2", 32) } },
         inclusion_proof: [rep("a3", 32), rep("a4", 32)],
     };
     const CLAUSE_CLAIM: SequencerUsageClaim = {
         order: FIRST,
-        clause_or_assembly: rep("80", 32),
+        clause_or_process: rep("80", 32),
         kind: { Clause: { clause_data_hash: rep("81", 32) } },
         inclusion_proof: [],
     };

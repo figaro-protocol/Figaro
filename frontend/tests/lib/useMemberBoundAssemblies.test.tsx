@@ -13,8 +13,8 @@ const fetchCappedContentMock = vi.hoisted(() => vi.fn());
 // Stable references: the hook's effect keys on the registry reads' identity.
 const reads = vi.hoisted(() => ({
     published: {
-        // The slug is derived from the assembly hash (`deriveAssemblySlug`).
-        read: { status: "present", value: [{ slug: "asm-0101010101010101", contentURI: "ipfs://QmAssembly", assemblyHash: "0x0101010101010101010101010101010101010101010101010101010101010101" }] },
+        // The slug is derived from the assembly hash (`deriveProcessDesignSlug`).
+        read: { status: "present", value: [{ slug: "asm-0101010101010101", contentURI: "ipfs://QmAssembly", processDesignHash: "0x0101010101010101010101010101010101010101010101010101010101010101" }] },
     },
     profile: { read: { status: "present", value: { registered: true, metadataURI: "", registeredBlock: 1n } } },
 }));
@@ -27,7 +27,7 @@ vi.mock("@/lib/member/useMembersRegistry", () => ({
         return reads.profile;
     },
 }));
-vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
+vi.mock("@/lib/protocol/useProcessRegistry", () => ({
     getAssemblyLoadError: () => undefined,
     useAllPublishedAssemblies: () => reads.published,
     fetchHydratedAssembly: async () => ({ assembly: { name: "Anchored", agreements: [] }, agreements: {} }),
@@ -41,7 +41,7 @@ import { useMemberBoundAssemblies } from "@/lib/member/useMemberBoundAssemblies"
 
 const PROFILE = {
     name: "Seller",
-    assemblyBindings: [{ bindingId: "b1", subjectAddress: SELLER, assemblyHash: `0x${"01".repeat(32)}`, coSellerBindings: [] }],
+    processBindings: [{ bindingId: "b1", subjectAddress: SELLER, processDesignHash: `0x${"01".repeat(32)}`, coSellerBindings: [] }],
 };
 
 describe("useMemberBoundAssemblies", () => {

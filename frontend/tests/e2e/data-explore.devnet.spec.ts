@@ -7,7 +7,7 @@
  * aerial-survey reference — discovered from chain + IPFS by SHAPE (single
  * order composing the credential clause, the geo clause, and the each-own
  * data-terms regime), integrity re-hashed — runs once as a bonded process
- * through the SDK's ONE assembly walk (`reconstructOrdersFromAssembly`):
+ * through the SDK's ONE assembly walk (`reconstructOrdersFromProcessDesign`):
  * sign → both bonds lock → commit → three attestations → resolve. The three
  * attestations set up BOTH substance postures in one run:
  *
@@ -29,7 +29,7 @@
  *   - market shape: the seeded assembly's row shows exactly the process /
  *     order / pair counts and the committed + resolved volume the chain
  *     reports for the processes whose PUBLISHED provenance decodes to its
- *     assemblyHash;
+ *     processDesignHash;
  *   - overlays: the expected row keys are the registrations' own keys (the
  *     hash of each pinned spec, verified on load); every rendered row's key exists on chain;
  *     the geo family shows its out-of-band decoded count, the data-terms
@@ -120,9 +120,9 @@ import {
     provenanceLeafAttestation,
     provenanceContentRef,
     provenanceLeafBytes,
-    reconstructOrdersFromAssembly,
+    reconstructOrdersFromProcessDesign,
     hashClauseData,
-    assemblyHashOf,
+    processDesignHashOf,
     type ReconstructedOrder,
 } from '@figaro-protocol/sdk';
 import { decodeContentFromSpec, encodeContentFromSpec, type ClauseSpec } from '@figaro-protocol/sdk/clauses';
@@ -238,9 +238,9 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         const token = config.tokenAddress as Hex;
         const coordinator = config.attestationCoordinator as Hex;
         const clauseRegistry = config.clauseRegistry as Hex;
-        const assemblyRegistry = config.assemblyRegistry as Hex;
+        const processRegistry = config.processRegistry as Hex;
         const batchVerifier = config.batchVerifier as Hex;
-        expect(core && token && coordinator && clauseRegistry && assemblyRegistry && batchVerifier,
+        expect(core && token && coordinator && clauseRegistry && processRegistry && batchVerifier,
             'full deployment record (run ./scripts/deploy-local.sh)').toBeTruthy();
 
         const publicClient = localPublicClient();
@@ -282,8 +282,8 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             && GEO in a.agreements[0].clauses
             && (a.agreements[0].clauses[DATA_TERMS] as { disclosure?: string } | undefined)?.disclosure === 'each-own');
         expect(aerial, 'the geo-bearing aerial-survey reference is anchored — run populate-test-data first').toBeTruthy();
-        expect(assemblyHashOf(aerial!.hydrated.assembly), 'the pinned assembly re-hashes to its anchored identity')
-            .toBe(aerial!.assemblyHash);
+        expect(processDesignHashOf(aerial!.hydrated.assembly), 'the pinned assembly re-hashes to its anchored identity')
+            .toBe(aerial!.processDesignHash);
         // CHAIN FACT: the agreement's agreement is a live registration, read by key.
         const aerialAgreementHash = aerial!.agreements[0].agreementHash;
         expect(await readAgreementBinding(aerialAgreementHash), 'the agreement binds a registered agreement').not.toBeNull();
@@ -308,7 +308,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         //    client (buyer) books the surveyor (seller); value legs asserted
         //    from the token contract (the e2e value-legs rule). ──
         const chainNow = (await publicClient.getBlock({ blockTag: 'latest' })).timestamp;
-        const orders = await reconstructOrdersFromAssembly(aerial!.hydrated, {
+        const orders = await reconstructOrdersFromProcessDesign(aerial!.hydrated, {
             buyer: client.address,
             currency: token,
             chainId: LOCAL_ANVIL.id,
@@ -342,11 +342,11 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         // Mechanical at checkout: the walk sets the agreement's provenance
         // leaf to the adopted assembly's own verified identity.
         expect(order.agreement.provenance, 'the agreement names its registered agreement and the adopted assembly')
-            .toEqual({ agreementHash: aerialAgreementHash, assemblyHash: aerial!.assemblyHash });
+            .toEqual({ agreementHash: aerialAgreementHash, processDesignHash: aerial!.processDesignHash });
 
         const buyerSig = await clientWallet.signTypedData(order.typedData);
         const sellerSig = await surveyorWallet.signTypedData(order.typedData);
-        const { buyerBond, sellerBond } = calculateBonds(order.cumulativeValue, order.payment);
+        const { buyerBond, sellerBond } = calculateBonds(order.runningTotal, order.payment);
         const [buyer0, seller0, core0] = await Promise.all([
             balanceOf(client.address), balanceOf(surveyor.address), balanceOf(core),
         ]);
@@ -424,7 +424,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         // the agreement format's leaf under its reserved key, its own bytes
         // published at their fingerprint, filed while the process is open.
         const prov = provenanceLeafAttestation(order.agreement);
-        const provBytes = provenanceLeafBytes(aerialAgreementHash, aerial!.assemblyHash);
+        const provBytes = provenanceLeafBytes(aerialAgreementHash, aerial!.processDesignHash);
         expect(keccak256(provBytes), "the leaf's content reference is its bytes' hash").toBe(prov.contentRef);
         await pinWitnessBytes(provBytes);
         expect(await fetchWitnessBytes(prov.contentRef), 'the published provenance resolves from its own fingerprint')
@@ -493,10 +493,10 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             if (!bytes) continue;
             const provenance = decodeProvenanceContent(bytes as Hex);
             if (provenance) {
-                attributionByProcess.set((ev.args.processId as string).toLowerCase(), provenance.assemblyHash.toLowerCase());
+                attributionByProcess.set((ev.args.processId as string).toLowerCase(), provenance.processDesignHash.toLowerCase());
             }
         }
-        const marketKey = aerial!.assemblyHash.toLowerCase();
+        const marketKey = aerial!.processDesignHash.toLowerCase();
         const marketProcessIds = new Set(
             [...attributionByProcess.entries()].filter(([, k]) => k === marketKey).map(([p]) => p),
         );
@@ -902,7 +902,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             for (const e of processOrders) {
                 const row = story.resolution.orders.find((o) => o.orderHash.toLowerCase() === (e.args.orderHash as string).toLowerCase());
                 expect(row).toBeTruthy();
-                const { buyerBond, sellerBond } = calculateBonds(e.args.cumulativeValue as bigint, e.args.payment as bigint);
+                const { buyerBond, sellerBond } = calculateBonds(e.args.runningTotal as bigint, e.args.payment as bigint);
                 expect(row!.payment).toBe((e.args.payment as bigint).toString());
                 expect(row!.lockedBuyerBond, 'the story reports FigaroCore\'s own 2× bond arithmetic').toBe(buyerBond.toString());
                 expect(row!.lockedSellerBond).toBe(sellerBond.toString());
@@ -946,8 +946,8 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 const bytes = await fetchWitnessBytes(ev.args.contentRef as string);
                 const pair = bytes ? decodeProvenanceContent(bytes as Hex) : null;
                 if (!pair) continue;
-                if (provenanceContentRef(pair.agreementHash, pair.assemblyHash).toLowerCase() !== (ev.args.contentRef as string).toLowerCase()) continue;
-                expectedAttribution.set(processId, pair.assemblyHash.toLowerCase());
+                if (provenanceContentRef(pair.agreementHash, pair.processDesignHash).toLowerCase() !== (ev.args.contentRef as string).toLowerCase()) continue;
+                expectedAttribution.set(processId, pair.processDesignHash.toLowerCase());
             }
             expect(expectedAttribution.size, 'the seed test published a buyer-attested provenance leaf').toBeGreaterThan(0);
             const expectedGroups = new Map<string, number>();
@@ -1042,7 +1042,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                         { name: 'period', type: 'uint8' }, { name: 'provenanceLeaf', type: 'bytes32' },
                         {
                             name: 'uses', type: 'tuple[]', components: [
-                                { name: 'clauseOrAssembly', type: 'bytes32' }, { name: 'kind', type: 'uint8' },
+                                { name: 'clauseOrProcess', type: 'bytes32' }, { name: 'kind', type: 'uint8' },
                                 { name: 'processId', type: 'bytes32' }, { name: 'seller', type: 'address' },
                             ],
                         },

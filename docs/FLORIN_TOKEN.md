@@ -157,7 +157,7 @@ supporters + DAO genesis allocation, then seals minting. `FOUNDER_ALLOC = 70M`,
 ```
 1. Deploy FlorinToken (deployer becomes the constructor deployer).
 2. Deploy UsageCounter, then RpgfMinter over it (florin + counter +
-   ClauseRegistry + AssemblyRegistry + AgreementRegistry). Periods, budgets, and the
+   ClauseRegistry + ProcessRegistry + AgreementRegistry). Periods, budgets, and the
    minimum-support floor are DESIGNER_REWARDS.md's.
 3. fig.registerMinter(rpgfMinter, 600M) — MUST precede renounce (irreversible).
 4. Register the deployer as a one-shot genesis minter with cap 400M (= FOUNDER_ALLOC + SUPPORTERS_ALLOC + DAO_ALLOC).

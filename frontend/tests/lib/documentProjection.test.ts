@@ -17,7 +17,7 @@ const ALL = [
 
 const mkOrder = (o: Partial<Order> & Pick<Order, "orderHash" | "seller">): Order => ({
     processId: "0xPROC", buyer: "0xBUYER", currency: "0xToKeN",
-    cumulativeValue: 0n, payment: 0n, state: OrderState.Active,
+    runningTotal: 0n, payment: 0n, state: OrderState.Active,
     sellerBond: 0n, buyerBond: 0n, salt: 0n, deadline: 0n, ...o,
 });
 
@@ -178,15 +178,15 @@ import { projectFinancialStatements, projectAllFinancialStatements } from "@/lib
 import { calculateBonds } from "@figaro-protocol/sdk";
 
 const withBonds = (o: Partial<Order> & Pick<Order, "orderHash" | "seller">): Order => {
-    const base = mkOrder({ payment: 100n, cumulativeValue: 100n, ...o });
-    const { buyerBond, sellerBond } = calculateBonds(base.cumulativeValue, base.payment);
+    const base = mkOrder({ payment: 100n, runningTotal: 100n, ...o });
+    const { buyerBond, sellerBond } = calculateBonds(base.runningTotal, base.payment);
     return { ...base, buyerBond, sellerBond };
 };
 
 describe("projectFinancialStatements — the 3 statements AS a document (no duplicate invoice)", () => {
     it("emits balance sheet + income statement clauses and a cash-flow table; identity holds", () => {
         const doc = projectFinancialStatements(
-            [withBonds({ orderHash: "0xA", seller: "0xS", payment: 100n, cumulativeValue: 100n })],
+            [withBonds({ orderHash: "0xA", seller: "0xS", payment: 100n, runningTotal: 100n })],
             "process", "0xPROC",
         );
         const c = "0xtoken";
@@ -204,8 +204,8 @@ describe("projectFinancialStatements — the 3 statements AS a document (no dupl
 
     it("projectAllFinancialStatements: one per seller + one consolidated", () => {
         const orders = [
-            withBonds({ orderHash: "0xA", seller: "0xS1", payment: 100n, cumulativeValue: 100n }),
-            withBonds({ orderHash: "0xB", seller: "0xS2", payment: 40n, cumulativeValue: 140n }),
+            withBonds({ orderHash: "0xA", seller: "0xS1", payment: 100n, runningTotal: 100n }),
+            withBonds({ orderHash: "0xB", seller: "0xS2", payment: 40n, runningTotal: 140n }),
         ];
         const docs = projectAllFinancialStatements(orders, "0xPROC");
         expect(docs.filter((d) => d.genre === "financial-statements-seller")).toHaveLength(2);
@@ -221,8 +221,8 @@ describe("financial statements legend — derived from the projection's own labe
     // One open order and one resolved order, so every row key AND every
     // cash-flow kind (commit and resolve) is emitted.
     const docs = projectAllFinancialStatements([
-        withBonds({ orderHash: "0xA", seller: "0xS1", payment: 100n, cumulativeValue: 100n }),
-        withBonds({ orderHash: "0xB", seller: "0xS2", payment: 40n, cumulativeValue: 140n, state: OrderState.Resolved }),
+        withBonds({ orderHash: "0xA", seller: "0xS1", payment: 100n, runningTotal: 100n }),
+        withBonds({ orderHash: "0xB", seller: "0xS2", payment: 40n, runningTotal: 140n, state: OrderState.Resolved }),
     ], "0xPROC");
 
     it("every emitted row key and cash-flow kind has a legend entry, on every statement", () => {

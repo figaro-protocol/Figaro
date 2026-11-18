@@ -11,13 +11,13 @@ import {
     anchorAttestationContent,
     anchorClauseSpec,
     anchorRegisteredAgreement,
-    anchorAssembly,
+    anchorProcessDesign,
     deriveAnchored,
-    hydrateAssembly,
+    hydrateProcessDesign,
 } from "../src/anchored.js";
 import { PROVENANCE_LEAF_KEY, canonicalContentHash, canonicalize, computeCheckoutHash, type Agreement } from "../src/agreement.js";
 import { computeClauseKey } from "../src/discovery.js";
-import { ASSEMBLY_TERMS_LEAF_KEY, agreementHashOf, assemblyHashOf, type Assembly } from "../src/assembly.js";
+import { PROCESS_TERMS_LEAF_KEY, agreementHashOf, processDesignHashOf, type ProcessDesign } from "../src/assembly.js";
 import { keyOf, rawSpecOf } from "./specFixtures.js";
 
 const OTHER = `0x${"11".repeat(32)}` as const;
@@ -26,7 +26,7 @@ const spec = { clauseId: "test-anchor", version: 1, title: "T", description: "D"
 
 const composed = { name: "Editorial", clauses: { [keyOf("figaro-commerce")]: {} } };
 
-const assembly: Assembly = {
+const assembly: ProcessDesign = {
     name: "Editorial",
     agreements: [{ id: "agreement-0", agreementHash: agreementHashOf(composed), clauses: {}, follows: [] }],
 };
@@ -88,26 +88,26 @@ describe("anchorClauseSpec", () => {
     });
 });
 
-describe("anchorAssembly", () => {
+describe("anchorProcessDesign", () => {
     it("returns the assembly its assembly hash names, editorial prose aside", () => {
-        const hash = assemblyHashOf(assembly);
-        expect(anchorAssembly(assembly, hash)).toBe(assembly);
+        const hash = processDesignHashOf(assembly);
+        expect(anchorProcessDesign(assembly, hash)).toBe(assembly);
         const renamed = { ...assembly, name: "Renamed" };
-        expect(anchorAssembly(renamed, hash)).toBe(renamed);
+        expect(anchorProcessDesign(renamed, hash)).toBe(renamed);
     });
     it("refuses a changed composition", () => {
         const changed = { ...assembly, agreements: [{ ...assembly.agreements[0], follows: ["agreement-1"] }] };
-        expect(anchorAssembly(changed, assemblyHashOf(assembly))).toBeNull();
+        expect(anchorProcessDesign(changed, processDesignHashOf(assembly))).toBeNull();
     });
     it("refuses an agreement whose key is malformed or reserved", () => {
-        for (const agreementHash of ["0x1234", PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
-            expect(anchorAssembly({ agreements: [{ id: "agreement-0", agreementHash, clauses: {} }] }, OTHER)).toBeNull();
+        for (const agreementHash of ["0x1234", PROVENANCE_LEAF_KEY, PROCESS_TERMS_LEAF_KEY]) {
+            expect(anchorProcessDesign({ agreements: [{ id: "agreement-0", agreementHash, clauses: {} }] }, OTHER)).toBeNull();
         }
     });
     it("refuses a document that is not a assembly", () => {
-        expect(anchorAssembly({ name: "no agreements" }, OTHER)).toBeNull();
-        expect(anchorAssembly("text", OTHER)).toBeNull();
-        expect(anchorAssembly(null, OTHER)).toBeNull();
+        expect(anchorProcessDesign({ name: "no agreements" }, OTHER)).toBeNull();
+        expect(anchorProcessDesign("text", OTHER)).toBeNull();
+        expect(anchorProcessDesign(null, OTHER)).toBeNull();
     });
 });
 
@@ -133,7 +133,7 @@ describe("anchorRegisteredAgreement", () => {
         }
         expect(anchorRegisteredAgreement(composed, "0x1234")).toBeNull();
         expect(anchorRegisteredAgreement(composed, PROVENANCE_LEAF_KEY)).toBeNull();
-        expect(anchorRegisteredAgreement(composed, ASSEMBLY_TERMS_LEAF_KEY)).toBeNull();
+        expect(anchorRegisteredAgreement(composed, PROCESS_TERMS_LEAF_KEY)).toBeNull();
     });
     it("strips prototype-pollution keys from what it parses", () => {
         const hostile = `{"__proto__":{"polluted":true},"clauses":${JSON.stringify(composed.clauses)}}`;
@@ -142,9 +142,9 @@ describe("anchorRegisteredAgreement", () => {
     });
 });
 
-describe("hydrateAssembly", () => {
+describe("hydrateProcessDesign", () => {
     const key = agreementHashOf(composed);
-    const two: Assembly = {
+    const two: ProcessDesign = {
         agreements: [
             assembly.agreements[0],
             { id: "agreement-1", agreementHash: key, clauses: {}, follows: ["agreement-0"] },
@@ -153,16 +153,16 @@ describe("hydrateAssembly", () => {
 
     it("reads each distinct agreement's agreement once and verifies it against its key", async () => {
         const reads: string[] = [];
-        const hydrated = await hydrateAssembly(two, async (k) => { reads.push(k); return JSON.stringify(composed); });
+        const hydrated = await hydrateProcessDesign(two, async (k) => { reads.push(k); return JSON.stringify(composed); });
         expect(reads).toEqual([key]);
         expect(hydrated?.assembly).toBe(two);
         expect(hydrated?.agreements[key.toLowerCase() as `0x${string}`]).toEqual(composed);
     });
 
     it("is absence when any agreement's document is unread, throws, or does not hash to its key", async () => {
-        expect(await hydrateAssembly(two, async () => null)).toBeNull();
-        expect(await hydrateAssembly(two, async () => { throw new Error("gateway down"); })).toBeNull();
-        expect(await hydrateAssembly(two, async () => ({ clauses: { [keyOf("figaro-handoff")]: {} } }))).toBeNull();
+        expect(await hydrateProcessDesign(two, async () => null)).toBeNull();
+        expect(await hydrateProcessDesign(two, async () => { throw new Error("gateway down"); })).toBeNull();
+        expect(await hydrateProcessDesign(two, async () => ({ clauses: { [keyOf("figaro-handoff")]: {} } }))).toBeNull();
     });
 });
 
@@ -181,16 +181,16 @@ describe("anchorAgreement", () => {
         expect(anchorAgreement(null, OTHER)).toBeNull();
     });
     it("accepts the provenance leaf as two 32-byte keys under the hash, and refuses anything else there", () => {
-        const P = { agreementHash: `0x${"33".repeat(32)}`, assemblyHash: `0x${"22".repeat(32)}` } as const;
+        const P = { agreementHash: `0x${"33".repeat(32)}`, processDesignHash: `0x${"22".repeat(32)}` } as const;
         const named = { ...agreement, provenance: P };
         const root = computeCheckoutHash(named);
         expect(anchorAgreement(named, root)).toBe(named);
         // Dropping or changing either key changes the root.
         expect(anchorAgreement(agreement, root)).toBeNull();
-        expect(anchorAgreement({ ...named, provenance: { ...P, assemblyHash: OTHER } }, root)).toBeNull();
+        expect(anchorAgreement({ ...named, provenance: { ...P, processDesignHash: OTHER } }, root)).toBeNull();
         expect(anchorAgreement({ ...named, provenance: { ...P, agreementHash: OTHER } }, root)).toBeNull();
         // A provenance that is not two 32-byte hex keys is not the agreement format.
-        for (const bad of [P.assemblyHash, "0x1234", 7, null, { assemblyHash: P.assemblyHash }, { ...P, agreementHash: "0x12" }]) {
+        for (const bad of [P.processDesignHash, "0x1234", 7, null, { processDesignHash: P.processDesignHash }, { ...P, agreementHash: "0x12" }]) {
             expect(anchorAgreement({ ...named, provenance: bad }, root)).toBeNull();
         }
     });

@@ -3,9 +3,9 @@
 /**
  * AssemblyIdentity — the canvas's live identity readout.
  *
- * The assembly's identity IS its composition: `assemblyHash` = the merkle
+ * The assembly's identity IS its composition: `processDesignHash` = the merkle
  * root over its agreements (each agreement's agreement hash and its own fills) and
- * its assembly terms, which is the AssemblyRegistry key (first-write-wins,
+ * its assembly terms, which is the ProcessRegistry key (first-write-wins,
  * immutable), and the published slug is a pure function of it. Editorial prose (name / summary / description) is excluded from the
  * subset, so renaming never forks identity.
  *
@@ -70,12 +70,12 @@ export function AssemblyIdentity({ snapshot }: { snapshot: DesignSnapshot | null
                     <p
                         className="font-mono text-[10px] text-ink-muted break-all"
                         data-testid="designer-assembly-hash"
-                        title={identity.assemblyHash}
+                        title={identity.processDesignHash}
                     >
-                        {truncateHex(identity.assemblyHash, { head: 10, tail: 6 })}
+                        {truncateHex(identity.processDesignHash, { head: 10, tail: 6 })}
                     </p>
                     <p className="text-[11px] text-ink-muted leading-relaxed">
-                        The AssemblyRegistry key, derived from the composed clauses and
+                        The ProcessRegistry key, derived from the composed clauses and
                         their design-time values. Change any of them — including a
                         clause&rsquo;s composed value — and this becomes a different
                         assembly, anchored beside the one you started from rather than

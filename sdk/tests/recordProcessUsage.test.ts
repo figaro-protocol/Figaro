@@ -10,7 +10,7 @@ import { recordProcessUsage } from "../src/agent/index.js";
 import { computeClauseKey } from "../src/discovery.js";
 import { PROVENANCE_LEAF_KEY, type Agreement } from "../src/agreement.js";
 import {
-    ASSEMBLY_LEAF_DOMAIN, ASSEMBLY_TERMS_LEAF_KEY, buildAgreementInclusionProof, assemblyHashOf, type Assembly } from "../src/assembly.js";
+    PROCESS_LEAF_DOMAIN, PROCESS_TERMS_LEAF_KEY, buildAgreementInclusionProof, processDesignHashOf, type ProcessDesign } from "../src/assembly.js";
 import type { Commitment } from "../src/types.js";
 import { keyOf } from "./specFixtures.js";
 
@@ -19,30 +19,30 @@ const CORE = "0x0000000000000000000000000000000000c0ffee" as Address;
 const COMMERCE = keyOf("figaro-commerce");
 const MODALITIES = keyOf("figaro-modalities");
 const AGREEMENT_HASH = keccak256(encodePacked(["string"], ["an-agreement"]));
-const ASSEMBLY: Assembly = { agreements: [{ id: "agreement-0", agreementHash: AGREEMENT_HASH, clauses: {} }] };
-const COMPOSITION = assemblyHashOf(ASSEMBLY);
+const ASSEMBLY: ProcessDesign = { agreements: [{ id: "agreement-0", agreementHash: AGREEMENT_HASH, clauses: {} }] };
+const COMPOSITION = processDesignHashOf(ASSEMBLY);
 
 function order(salt: bigint): Commitment {
     return {
         processId: `0x${"0".repeat(64)}` as Hex,
         buyer: "0x0000000000000000000000000000000000000b0b" as Address,
         seller: "0x0000000000000000000000000000000000005e11" as Address,
-        currency: "0x00000000000000000000000000000000000007ed" as Address,
+        token: "0x00000000000000000000000000000000000007ed" as Address,
         payment: 100n,
-        expectedCumulativeValue: 100n,
+        runningTotal: 100n,
         checkoutHash: `0x${"a".repeat(64)}` as Hex,
         salt,
-        deadline: 2n,
+        commitDeadline: 2n,
     };
 }
 
-function agreement(provenance: Agreement["provenance"] = { agreementHash: AGREEMENT_HASH, assemblyHash: COMPOSITION }): Agreement {
+function agreement(provenance: Agreement["provenance"] = { agreementHash: AGREEMENT_HASH, processDesignHash: COMPOSITION }): Agreement {
     const o = order(1n);
     return {
         version: "a1", buyer: o.buyer, seller: o.seller,
         clauses: [
             { clause: keyOf("figaro-modalities"), data: { modality: "pickup" } },
-            { clause: keyOf("figaro-commerce"), data: { payment: "100", currency: o.currency, lineItems: [] } },
+            { clause: keyOf("figaro-commerce"), data: { payment: "100", currency: o.token, lineItems: [] } },
         ],
         provenance,
     };
@@ -59,8 +59,8 @@ function clients(opts: { failOn?: Hex } = {}) {
         readContract: async ({ functionName, args }: { functionName: string; args?: readonly unknown[] }) => {
             if (functionName === "core") return CORE;
             if (functionName === "provenanceLeaf") return PROVENANCE_LEAF_KEY;
-            if (functionName === "assemblyTermsLeaf") return ASSEMBLY_TERMS_LEAF_KEY;
-            if (functionName === "assemblyLeafDomain") return ASSEMBLY_LEAF_DOMAIN;
+            if (functionName === "processTermsLeaf") return PROCESS_TERMS_LEAF_KEY;
+            if (functionName === "processLeafDomain") return PROCESS_LEAF_DOMAIN;
             throw new Error(`unexpected read ${functionName}(${(args ?? []).join(",")})`);
         },
         waitForTransactionReceipt: async () => ({ status: "success" }),
@@ -86,12 +86,12 @@ describe("recordProcessUsage", () => {
         expect(sent.filter((s) => s.functionName === "recordClauseUsage").map((s) => s.key.toLowerCase()).sort())
             .toEqual([COMMERCE.toLowerCase(), MODALITIES.toLowerCase()].sort());
         expect(sent.some((s) => s.key.toLowerCase() === PROVENANCE_LEAF_KEY.toLowerCase()), "the reserved leaf key is never a clause leg").toBe(false);
-        const assembly = sent.filter((s) => s.functionName === "recordAssemblyUsage");
+        const assembly = sent.filter((s) => s.functionName === "recordProcessDesignUsage");
         expect(assembly.map((s) => s.key)).toEqual([COMPOSITION]);
         const membership = buildAgreementInclusionProof(ASSEMBLY, 0);
-        // (order, assemblyHash, agreementHash, slotContentHash, leafProof, membershipProof)
+        // (order, processDesignHash, agreementHash, agreementContentHash, leafProof, membershipProof)
         expect(assembly[0].args[2]).toBe(AGREEMENT_HASH);
-        expect(assembly[0].args[3]).toBe(membership.slotContentHash);
+        expect(assembly[0].args[3]).toBe(membership.agreementContentHash);
         expect(assembly[0].args[5]).toEqual(membership.proof);
         const agreementLeg = sent.filter((s) => s.functionName === "recordAgreementUsage");
         expect(agreementLeg.map((s) => s.key)).toEqual([AGREEMENT_HASH]);
@@ -102,7 +102,7 @@ describe("recordProcessUsage", () => {
     it("an agreement whose provenance is malformed has no provable leg: nothing is sent and the report says so", async () => {
         const { publicClient, walletClient, sent } = clients();
         const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [
-            { commitment: order(1n), agreement: agreement({ agreementHash: AGREEMENT_HASH, assemblyHash: "0x12" }), assembly: ASSEMBLY },
+            { commitment: order(1n), agreement: agreement({ agreementHash: AGREEMENT_HASH, processDesignHash: "0x12" }), assembly: ASSEMBLY },
         ]);
 
         expect(sent).toHaveLength(0);
@@ -133,7 +133,7 @@ describe("recordProcessUsage", () => {
         expect(report.recorded).toBe(1);
         expect(report.assemblyRecorded).toBe(true);
         expect(report.failures).toEqual([`clause ${COMMERCE}: SellerNotStaked`]);
-        expect(sent.map((s) => s.functionName).sort()).toEqual(["recordAgreementUsage", "recordAssemblyUsage", "recordClauseUsage"]);
+        expect(sent.map((s) => s.functionName).sort()).toEqual(["recordAgreementUsage", "recordClauseUsage", "recordProcessDesignUsage"]);
     });
 
     it("an agreement naming a provenance without its assembly has no provable leg: the report says so", async () => {

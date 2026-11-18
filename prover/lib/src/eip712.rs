@@ -36,7 +36,7 @@ pub fn domain_separator(chain_id: u64, verifying_contract: Address) -> B256 {
 /// COMMITMENT_TYPEHASH matching `CommitmentTypes.sol`.
 fn commitment_typehash() -> B256 {
     keccak256(
-        b"Commitment(bytes32 processId,address buyer,address seller,address currency,uint256 payment,uint256 expectedCumulativeValue,bytes32 checkoutHash,uint256 salt,uint256 deadline)",
+        b"Commitment(bytes32 processId,address buyer,address seller,address token,uint256 payment,uint256 runningTotal,bytes32 checkoutHash,uint256 salt,uint256 commitDeadline)",
     )
 }
 
@@ -48,12 +48,12 @@ pub fn commitment_struct_hash(c: &Commitment) -> B256 {
     data.extend_from_slice(c.process_id.as_slice());
     data.extend_from_slice(&abi_encode_address(&c.buyer));
     data.extend_from_slice(&abi_encode_address(&c.seller));
-    data.extend_from_slice(&abi_encode_address(&c.currency));
+    data.extend_from_slice(&abi_encode_address(&c.token));
     data.extend_from_slice(&c.payment.to_be_bytes::<32>());
-    data.extend_from_slice(&c.expected_cumulative_value.to_be_bytes::<32>());
+    data.extend_from_slice(&c.running_total.to_be_bytes::<32>());
     data.extend_from_slice(c.checkout_hash.as_slice());
     data.extend_from_slice(&c.salt.to_be_bytes::<32>());
-    data.extend_from_slice(&c.deadline.to_be_bytes::<32>());
+    data.extend_from_slice(&c.commit_deadline.to_be_bytes::<32>());
     keccak256(&data)
 }
 
@@ -69,13 +69,13 @@ pub fn commitment_struct_hash(c: &Commitment) -> B256 {
 // resolved again, and the processId can never be reused.
 
 /// Compute the struct hash for a `ResolveProcess` authorization.
-/// `ResolveProcess(bytes32 processId,uint256 cumulativeValue)`
-pub fn resolve_struct_hash(process_id: &B256, cumulative_value: &U256) -> B256 {
-    let type_hash = keccak256(b"ResolveProcess(bytes32 processId,uint256 cumulativeValue)");
+/// `ResolveProcess(bytes32 processId,uint256 runningTotal)`
+pub fn resolve_struct_hash(process_id: &B256, running_total: &U256) -> B256 {
+    let type_hash = keccak256(b"ResolveProcess(bytes32 processId,uint256 runningTotal)");
     let mut data = Vec::with_capacity(96);
     data.extend_from_slice(type_hash.as_slice());
     data.extend_from_slice(process_id.as_slice());
-    data.extend_from_slice(&cumulative_value.to_be_bytes::<32>());
+    data.extend_from_slice(&running_total.to_be_bytes::<32>());
     keccak256(&data)
 }
 

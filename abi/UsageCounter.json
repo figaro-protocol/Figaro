@@ -18,7 +18,7 @@
         "internalType": "address"
       },
       {
-        "name": "_assemblies",
+        "name": "_processDesigns",
         "type": "address",
         "internalType": "address"
       },
@@ -60,7 +60,7 @@
   },
   {
     "type": "function",
-    "name": "KIND_ASSEMBLY",
+    "name": "KIND_CLAUSE",
     "inputs": [],
     "outputs": [
       {
@@ -73,7 +73,7 @@
   },
   {
     "type": "function",
-    "name": "KIND_CLAUSE",
+    "name": "KIND_PROCESS",
     "inputs": [],
     "outputs": [
       {
@@ -156,7 +156,7 @@
         "internalType": "struct UsageCounter.BatchUse[]",
         "components": [
           {
-            "name": "clauseOrAssembly",
+            "name": "clauseOrProcess",
             "type": "bytes32",
             "internalType": "bytes32"
           },
@@ -180,45 +180,6 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "assemblies",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IAssemblyStake"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "assemblyLeafDomain",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "assemblyTermsLeaf",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -399,6 +360,45 @@
   },
   {
     "type": "function",
+    "name": "processDesigns",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IProcessStake"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "processLeafDomain",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "processTermsLeaf",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "provenanceLeaf",
     "inputs": [],
     "outputs": [
@@ -435,7 +435,7 @@
             "internalType": "address"
           },
           {
-            "name": "currency",
+            "name": "token",
             "type": "address",
             "internalType": "address"
           },
@@ -445,7 +445,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "expectedCumulativeValue",
+            "name": "runningTotal",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -460,7 +460,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "deadline",
+            "name": "commitDeadline",
             "type": "uint256",
             "internalType": "uint256"
           }
@@ -472,97 +472,12 @@
         "internalType": "bytes32"
       },
       {
-        "name": "assemblyHash",
+        "name": "processDesignHash",
         "type": "bytes32",
         "internalType": "bytes32"
       },
       {
         "name": "proof",
-        "type": "bytes32[]",
-        "internalType": "bytes32[]"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "recordAssemblyUsage",
-    "inputs": [
-      {
-        "name": "order",
-        "type": "tuple",
-        "internalType": "struct CommitmentTypes.Commitment",
-        "components": [
-          {
-            "name": "processId",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "buyer",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "seller",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "currency",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "payment",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "expectedCumulativeValue",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "checkoutHash",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "salt",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "deadline",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      },
-      {
-        "name": "assemblyHash",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "agreementHash",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "slotContentHash",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "leafProof",
-        "type": "bytes32[]",
-        "internalType": "bytes32[]"
-      },
-      {
-        "name": "membershipProof",
         "type": "bytes32[]",
         "internalType": "bytes32[]"
       }
@@ -595,7 +510,7 @@
             "internalType": "address"
           },
           {
-            "name": "currency",
+            "name": "token",
             "type": "address",
             "internalType": "address"
           },
@@ -605,7 +520,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "expectedCumulativeValue",
+            "name": "runningTotal",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -620,14 +535,14 @@
             "internalType": "uint256"
           },
           {
-            "name": "deadline",
+            "name": "commitDeadline",
             "type": "uint256",
             "internalType": "uint256"
           }
         ]
       },
       {
-        "name": "clauseOrAssembly",
+        "name": "clauseOrProcess",
         "type": "bytes32",
         "internalType": "bytes32"
       },
@@ -647,6 +562,91 @@
   },
   {
     "type": "function",
+    "name": "recordProcessDesignUsage",
+    "inputs": [
+      {
+        "name": "order",
+        "type": "tuple",
+        "internalType": "struct CommitmentTypes.Commitment",
+        "components": [
+          {
+            "name": "processId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "buyer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "seller",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "token",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "payment",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "runningTotal",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "checkoutHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "salt",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "commitDeadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "processDesignHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "agreementHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "agreementContentHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "leafProof",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      },
+      {
+        "name": "membershipProof",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "scoreOf",
     "inputs": [
       {
@@ -655,7 +655,7 @@
         "internalType": "uint8"
       },
       {
-        "name": "clauseOrAssembly",
+        "name": "clauseOrProcess",
         "type": "bytes32",
         "internalType": "bytes32"
       },
@@ -738,7 +738,7 @@
         "internalType": "uint8"
       },
       {
-        "name": "clauseOrAssembly",
+        "name": "clauseOrProcess",
         "type": "bytes32",
         "indexed": true,
         "internalType": "bytes32"
@@ -794,10 +794,10 @@
   },
   {
     "type": "error",
-    "name": "ClauseAgreementOrAssemblyNotRegistered",
+    "name": "ClauseAgreementOrProcessNotRegistered",
     "inputs": [
       {
-        "name": "clauseOrAssembly",
+        "name": "clauseOrProcess",
         "type": "bytes32",
         "internalType": "bytes32"
       }

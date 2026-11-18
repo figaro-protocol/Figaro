@@ -11,7 +11,7 @@ import * as http from "node:http";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { keccak256, toBytes } from "viem";
-import { agreementHashOf, canonicalize, computeClauseKey, assemblyHashOf } from "@figaro-protocol/sdk";
+import { agreementHashOf, canonicalize, computeClauseKey, processDesignHashOf } from "@figaro-protocol/sdk";
 import { fetchAnchoredClauseSpec, fetchAnchoredRegisteredAgreement, fetchAnchoredAssembly } from "../anchoredContent.mjs";
 import { fetchIpfsBytes } from "../ipfsRead.mjs";
 
@@ -81,7 +81,7 @@ test("a assembly that hashes to its assembly hash is read; a substituted one is 
     const forged = { agreements: [{ ...ASSEMBLY.agreements[0], follows: ["agreement-9"] }] };
     const gw = await gateway({ t: JSON.stringify(ASSEMBLY), forged: JSON.stringify(forged), notAssembly: "{\"x\":1}" });
     try {
-        const assembly = { contentURI: "ipfs://t", assemblyHash: assemblyHashOf(ASSEMBLY) };
+        const assembly = { contentURI: "ipfs://t", processDesignHash: processDesignHashOf(ASSEMBLY) };
         const hit = await fetchAnchoredAssembly(assembly, { gateways: [gw.url] });
         assert.equal(hit.absent, undefined, hit.absent);
         assert.deepEqual(hit.assembly.agreements[0].id, "agreement-0");
@@ -125,7 +125,7 @@ test("the parse strips prototype keys from an anchored document", async () => {
     const gw = await gateway({ h: hostileText });
     try {
         const hit = await fetchAnchoredAssembly(
-            { contentURI: "ipfs://h", assemblyHash: assemblyHashOf(hostile) },
+            { contentURI: "ipfs://h", processDesignHash: processDesignHashOf(hostile) },
             { gateways: [gw.url] },
         );
         assert.equal(({}).polluted, undefined);

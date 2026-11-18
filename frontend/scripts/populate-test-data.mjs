@@ -2,7 +2,7 @@
 /**
  * populate-test-data.mjs — the ONE pre-population path FOR TESTING. Populates the
  * registries the e2e suite consumes from: clauses (ClauseRegistry + IPFS, reusing
- * populate-clauses), the seed assemblies (AssemblyRegistry + IPFS — the blank
+ * populate-clauses), the seed assemblies (ProcessRegistry + IPFS — the blank
  * commerce-only composition sellers bind, plus the multi-order delivery chain
  * the multi-order e2e runs), AND members (MembersRegistry + IPFS).
  * Run after deploy, before the test suite. The runtime specs then discover everything from chain → IPFS.
@@ -16,7 +16,7 @@
  * TESTING ONLY. For production clause population use populate-clauses.mjs.
  *
  * Env (frontend/.env.local): NEXT_PUBLIC_CLAUSE_REGISTRY, NEXT_PUBLIC_MEMBERS_REGISTRY,
- *   NEXT_PUBLIC_ASSEMBLY_REGISTRY, NEXT_PUBLIC_AGREEMENT_REGISTRY,
+ *   NEXT_PUBLIC_PROCESS_REGISTRY, NEXT_PUBLIC_AGREEMENT_REGISTRY,
  *   NEXT_PUBLIC_TOKEN_ADDRESS, NEXT_PUBLIC_IPFS_API_URL, RPC_URL.
  */
 import fs from 'node:fs';
@@ -25,14 +25,14 @@ import { createPublicClient, createWalletClient, http } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 // Protocol canonicals come from the SDK (@figaro-protocol/sdk, file:../sdk): the
 // registry + ERC-20 ABIs, the canonical-JSON convention, and the assembly
-// identity (assemblyHash). Nothing is re-implemented here.
+// identity (processDesignHash). Nothing is re-implemented here.
 import { MEMBERS_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import {
     AGREEMENTS_DIR, ASSEMBLIES_DIR, LOCAL_ANVIL, anchorBuiltAssembly, loadAuthoredSpecs, pinFile, pinJSON,
     loadAuthoredAgreements, readBuiltAssembly,
     populateClauses, populateReferenceAssemblies, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
-import { assemblyHashOf, resolveAuthoredClauseKeys, composeAuthoredAgreements, assembleAuthored, fillDeployTimeCurrency } from '@figaro-protocol/sdk';
+import { processDesignHashOf, resolveAuthoredClauseKeys, composeAuthoredAgreements, composeAuthoredProcessDesign, fillDeployTimeCurrency } from '@figaro-protocol/sdk';
 
 // The specs in clauses/, each with its key — the set every authored clause
 // NAME below resolves against at seed time (`resolveAuthoredClauseKeys`);
@@ -71,26 +71,26 @@ const SELLERS = [
  *  the assembly AFTER the deploy-time currency fill, the same hash
  *  populateReferenceAssemblies anchored, never the raw file's. A binding
  *  records it in full. */
-function referenceAssemblyHash(file, tokenAddress) {
+function referenceProcessDesignHash(file, tokenAddress) {
     const { assembly } = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), AUTHORED, AUTHORED_AGREEMENTS);
-    return assemblyHashOf(fillDeployTimeCurrency(assembly, tokenAddress, AUTHORED));
+    return processDesignHashOf(fillDeployTimeCurrency(assembly, tokenAddress, AUTHORED));
 }
 
 const slugifyId = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Error ? err.message : String(err));
 
 
-// ── Seed assembly (AssemblyRegistry) ─────────────────────────────────────────
+// ── Seed assembly (ProcessRegistry) ─────────────────────────────────────────
 // The suite's runtime specs need >=1 anchored assembly BEFORE any test runs
 // (the even-surfacing rule: a member surfaces only with an anchored binding,
-// so an empty AssemblyRegistry means zero surfaced members). Seeding is
+// so an empty ProcessRegistry means zero surfaced members). Seeding is
 // PRE-POPULATION, exactly like clauses and sellers above — never a test
 // (the scenario-era build-order coupling is the cautionary tale). Each seed is
 // authored like a reference: its agreements composed by clause name
 // (`composeAuthoredAgreements`),
 // then the assembly built over them by name
-// (`assembleAuthored`): its agreements register on AgreementRegistry, then
-// its assembly anchors — identity (agreement hashes, assemblyHash + slug)
+// (`composeAuthoredProcessDesign`): its agreements register on AgreementRegistry, then
+// its assembly anchors — identity (agreement hashes, processDesignHash + slug)
 // and canonical JSON come from the SDK.
 
 /** The seeds' authored agreements, composed once, by name. Design time is
@@ -119,7 +119,7 @@ const SEED_AGREEMENTS = Object.fromEntries(Object.entries(composeAuthoredAgreeme
 /** The blank single-agreement composition: the commerce clause only — the
  *  minimal bindable assembly the single-order specs run against. */
 function seedBlank() {
-    return assembleAuthored({
+    return composeAuthoredProcessDesign({
         name: 'Devnet seed',
         summary: 'Pre-populated bindable assembly for the e2e suite.',
         description: 'A blank single-agreement composition (the commerce clause only), anchored by populate-test-data so sellers can bind before any spec runs.',
@@ -135,7 +135,7 @@ function seedBlank() {
  *  Co-sellers are NOT seeded — the lead binds + designates them through
  *  the real UI flow. */
 function seedChain() {
-    return assembleAuthored({
+    return composeAuthoredProcessDesign({
         name: 'Devnet delivery chain',
         summary: 'Three-order value-added chain: merchant, courier, supplier.',
         description: 'A delivery chain for the multi-order e2e: the buyer sees the full decomposition at checkout, each contributor is bond-secured, and the single resolve pays every party.',
@@ -151,12 +151,12 @@ async function main() {
     const env = readEnvLocal();
     const clauseRegistry = env.NEXT_PUBLIC_CLAUSE_REGISTRY;
     const membersRegistry = env.NEXT_PUBLIC_MEMBERS_REGISTRY;
-    const assemblyRegistry = env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
+    const processRegistry = env.NEXT_PUBLIC_PROCESS_REGISTRY;
     const agreementRegistry = env.NEXT_PUBLIC_AGREEMENT_REGISTRY;
     const mockErc20 = env.NEXT_PUBLIC_TOKEN_ADDRESS;
     const ipfsApiUrl = env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
-    if (!clauseRegistry || !membersRegistry || !assemblyRegistry || !agreementRegistry || !mockErc20) {
-        throw new Error('NEXT_PUBLIC_CLAUSE_REGISTRY / NEXT_PUBLIC_MEMBERS_REGISTRY / NEXT_PUBLIC_ASSEMBLY_REGISTRY / NEXT_PUBLIC_AGREEMENT_REGISTRY / NEXT_PUBLIC_TOKEN_ADDRESS missing — deploy first.');
+    if (!clauseRegistry || !membersRegistry || !processRegistry || !agreementRegistry || !mockErc20) {
+        throw new Error('NEXT_PUBLIC_CLAUSE_REGISTRY / NEXT_PUBLIC_MEMBERS_REGISTRY / NEXT_PUBLIC_PROCESS_REGISTRY / NEXT_PUBLIC_AGREEMENT_REGISTRY / NEXT_PUBLIC_TOKEN_ADDRESS missing — deploy first.');
     }
 
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
@@ -173,7 +173,7 @@ async function main() {
     //  set, the sibling of `clauses/`) are the deploy's genesis
     //  (`scripts/deploy-local.sh` registers them through populate-clauses,
     //  with this same token), so the call below finds each one's agreements
-    //  and assembly already bound and skips them: assemblyHash and every
+    //  and assembly already bound and skips them: processDesignHash and every
     //  agreement hash are content-derived, the registries' `bindings` read is
     //  the already-registered test, and first write wins whoever the
     //  registrar. It still anchors them on a registry that lacks them. Their
@@ -183,7 +183,7 @@ async function main() {
     //  (`discoverSeedAssemblies` in tests/e2e/devnet-helpers.ts), never by
     //  registration order — the references are anchored before them.
     console.log('\nAssemblies:');
-    const anchorArgs = { publicClient, walletClient: registrarClient, account: registrar, registry: assemblyRegistry, agreementRegistry, ipfsApiUrl };
+    const anchorArgs = { publicClient, walletClient: registrarClient, account: registrar, registry: processRegistry, agreementRegistry, ipfsApiUrl };
     const documentsDir = path.join(ASSEMBLIES_DIR, 'documents');
     if (fs.existsSync(documentsDir)) {
         for (const file of fs.readdirSync(documentsDir).sort()) {
@@ -245,10 +245,10 @@ async function main() {
             location: { geohash: s.geohash },
             acceptedTokens: [{ address: mockErc20, symbol: tokenSymbol, name: tokenName }, ...permitTokenEntry],
             defaultTokenAddress: mockErc20,
-            assemblyBindings: [{
+            processBindings: [{
                 bindingId: `seed-${s.addressIndex}`,
                 subjectAddress: account.address,
-                assemblyHash: referenceAssemblyHash(s.binds, mockErc20),
+                processDesignHash: referenceProcessDesignHash(s.binds, mockErc20),
                 coSellerBindings: s.courierIndex == null
                     ? []
                     : [{ clauseId: COURIER_CLAUSE, addresses: [mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: s.courierIndex }).address] }],

@@ -78,7 +78,7 @@ contract ClauseRegistry {
     mapping(bytes32 => bool) public registered;
 
     /// @dev Stake accounting per clause key. `registeredBy` is the designer of record
-    ///      (the role AssemblyRegistry and AgreementRegistry store under the same
+    ///      (the role ProcessRegistry and AgreementRegistry store under the same
     ///      name); `withdrawn` marks the stake reclaimed (= de-surfaced).
     struct DepositState {
         address registeredBy;
@@ -96,7 +96,7 @@ contract ClauseRegistry {
     /// @param contentURI   Off-chain spec document URI (IPFS, etc.). The pointer that
     ///                     lets any reader FETCH the spec from chain state alone and
     ///                     verify it against `clauseKey` — the same role `contentURI`
-    ///                     plays in AssemblyRegistry and AgreementRegistry. (The pinned document IS the
+    ///                     plays in ProcessRegistry and AgreementRegistry. (The pinned document IS the
     ///                     content, hence not "metadataURI" — MembersRegistry keeps
     ///                     that name because its mutable profile genuinely is
     ///                     metadata about a wallet-keyed identity.)

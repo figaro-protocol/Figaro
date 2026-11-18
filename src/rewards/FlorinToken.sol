@@ -14,7 +14,7 @@ import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20P
 /// @dev Minter registry: deployer can register emission/vesting contracts as minters (one-shot, capped, non-upgradeable). No legacy emission logic remains.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 contract FlorinToken is ERC20Permit {
-    error NotMinter();
+    error NotDeployer();
     error DeployerMintRenounced();
     error ZeroAddress();
     error SupplyCapExceeded();
@@ -48,7 +48,7 @@ contract FlorinToken is ERC20Permit {
     /// @dev Each minter can only be registered once. The sum of all registered
     ///      caps cannot exceed MAX_SUPPLY. Cannot register after renouncing.
     function registerMinter(address minter, uint256 cap) external {
-        if (msg.sender != deployer) revert NotMinter();
+        if (msg.sender != deployer) revert NotDeployer();
         if (deployerMintRenounced) revert DeployerMintRenounced();
         if (minter == address(0)) revert ZeroAddress();
         if (minters[minter].cap != 0) revert MinterAlreadySet();
@@ -78,7 +78,7 @@ contract FlorinToken is ERC20Permit {
     /// @notice Permanently renounce the deployer's ability to register minters.
     /// @dev This action cannot be undone. After renouncing, no new minters can be registered.
     function renounceDeployerMint() external {
-        if (msg.sender != deployer) revert NotMinter();
+        if (msg.sender != deployer) revert NotDeployer();
         deployerMintRenounced = true;
     }
 }

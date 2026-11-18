@@ -6,8 +6,8 @@
  * a registered agreement by `agreementHashOf(composed)` — the root over one
  * leaf per composed clause (the clause key and the designer's fills), so
  * membership of a clause in a registered agreement is a merkle proof
- * (`buildRegisteredClauseInclusionProof`). `AssemblyRegistry` keys an assembly by
- * `assemblyHash` — the root over its agreements (each a registered
+ * (`buildRegisteredClauseInclusionProof`). `ProcessRegistry` keys an assembly by
+ * `processDesignHash` — the root over its agreements (each a registered
  * agreement hash and the agreement's own fills) and its assembly-scoped
  * terms, so membership of an agreement in an assembly is a merkle proof
  * (`buildAgreementInclusionProof`).
@@ -99,7 +99,7 @@ export function buildRegisteredClauseInclusionProof(
 
 /** One agreement of an assembly: the registered agreement it binds and the
  *  agreement's own fills over it. */
-export interface AssemblyAgreement {
+export interface ProcessDesignAgreement {
     /** Local label for the agreement — `agreement-<index>`, stable within the
      *  assembly; the reference target another entry's `follows` names. NOT a
      *  chain id, and NOT a party — the assembly is party-agnostic. */
@@ -120,12 +120,12 @@ export interface AssemblyAgreement {
 }
 
 /** One question a designer answers about their assembly, in plain words. */
-export interface AssemblyFaqEntry {
+export interface ProcessDesignFaqEntry {
     question: string;
     answer: string;
 }
 
-export interface Assembly {
+export interface ProcessDesign {
     /** EDITORIAL — the designer's own words, for legibility (the content-derived
      *  slug is opaque at scale). Free-form prose, NOT a taxonomy. Pinned in the
      *  document but EXCLUDED from the assembly hash — identity stays
@@ -139,33 +139,33 @@ export interface Assembly {
      *  assembly is offered to a user; the users' FAQ surfaces every published
      *  assembly's entries from the registry at runtime. Excluded from the
      *  assembly hash like the rest of the editorial prose. */
-    faq?: readonly AssemblyFaqEntry[];
+    faq?: readonly ProcessDesignFaqEntry[];
     /** ASSEMBLY-SCOPED clauses — clauses declaring
      *  `design.scope: "assembly"`, composed ONCE for the whole design
      *  (clauseKey → the designer's values, `design.fills` only — same
      *  value-free rule as agreements). At checkout every one of these folds
      *  into EVERY agreement, so every party signs the assembly-wide term in
      *  their own agreement. Sparse: absent when none composed; when present,
-     *  one leaf of the composition tree (`ASSEMBLY_TERMS_LEAF_KEY`). */
+     *  one leaf of the composition tree (`PROCESS_TERMS_LEAF_KEY`). */
     assemblyClauses?: Record<Hex, Record<string, unknown>>;
     /** The composition: one agreement per future FigaroCore order, in
      *  assembly order — each a registered agreement and its own fills. */
-    agreements: AssemblyAgreement[];
+    agreements: ProcessDesignAgreement[];
 }
 
 /** An assembly with every agreement's registered agreement
  *  beside it, keyed by lowercased `agreementHash` — what checkout plans from.
  *  Each document is read from the agreement registry's binding and verified
  *  against its key (`anchorRegisteredAgreement`) before it lands here. */
-export interface HydratedAssembly {
-    assembly: Assembly;
+export interface HydratedProcessDesign {
+    assembly: ProcessDesign;
     agreements: Record<Hex, RegisteredAgreement>;
 }
 
 /** The registered agreement an agreement binds. Throws when the hydrated
  *  map does not carry it — a checkout never plans an agreement it cannot
  *  read. */
-export function boundAgreement(hydrated: HydratedAssembly, entry: AssemblyAgreement): RegisteredAgreement {
+export function boundAgreement(hydrated: HydratedProcessDesign, entry: ProcessDesignAgreement): RegisteredAgreement {
     const doc = hydrated.agreements[entry.agreementHash.toLowerCase() as Hex]
         ?? hydrated.agreements[entry.agreementHash];
     if (!doc) {
@@ -179,7 +179,7 @@ export function boundAgreement(hydrated: HydratedAssembly, entry: AssemblyAgreem
  *  the agreement's values win for the fields it names). An agreement
  *  fills clauses its agreement composes and never adds one: a fill naming a
  *  clause the registered agreement does not carry throws. */
-export function agreementClauses(hydrated: HydratedAssembly, entry: AssemblyAgreement): Record<Hex, Record<string, unknown>> {
+export function agreementClauses(hydrated: HydratedProcessDesign, entry: ProcessDesignAgreement): Record<Hex, Record<string, unknown>> {
     const composed = boundAgreement(hydrated, entry).clauses;
     const out: Record<Hex, Record<string, unknown>> = { ...composed };
     const carried = new Map((Object.keys(composed) as Hex[]).map((k) => [k.toLowerCase(), k]));
@@ -196,7 +196,7 @@ export function agreementClauses(hydrated: HydratedAssembly, entry: AssemblyAgre
 /** The entries an entry follows — its own `follows`, the sibling
  *  `agreement-<i>` labels; empty for the root and for an entry that names
  *  none. */
-export function assemblyFollows(entry: Pick<AssemblyAgreement, "follows">): string[] {
+export function processDesignFollows(entry: Pick<ProcessDesignAgreement, "follows">): string[] {
     const ids = entry.follows;
     return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
 }
@@ -204,11 +204,11 @@ export function assemblyFollows(entry: Pick<AssemblyAgreement, "follows">): stri
 /** Every clause a hydrated assembly composes — the assembly-scoped clauses
  *  plus each agreement's — as one sorted, de-duplicated key list: each of these must be live on `ClauseRegistry` for the design to
  *  check out. */
-export function assemblyComposedClauseKeys(
-    assembly: Assembly,
+export function processDesignComposedClauseKeys(
+    assembly: ProcessDesign,
     agreements: Readonly<Record<Hex, RegisteredAgreement>>,
 ): Hex[] {
-    const hydrated: HydratedAssembly = { assembly, agreements: agreements as Record<Hex, RegisteredAgreement> };
+    const hydrated: HydratedProcessDesign = { assembly, agreements: agreements as Record<Hex, RegisteredAgreement> };
     const keys = new Set<Hex>(Object.keys(assembly.assemblyClauses ?? {}) as Hex[]);
     for (const entry of assembly.agreements) {
         for (const clauseKey of Object.keys(agreementClauses(hydrated, entry)) as Hex[]) keys.add(clauseKey);
@@ -220,15 +220,15 @@ export function assemblyComposedClauseKeys(
 
 /** The label the assembly-terms leaf's key is the hash of — a bare string no
  *  spec or agreement document serializes to. */
-export const ASSEMBLY_TERMS_LEAF_LABEL = "figaro-assembly-terms";
+export const PROCESS_TERMS_LEAF_LABEL = "figaro-assembly-terms";
 
 /** The reserved key of the composition tree's assembly-terms leaf, whose
  *  bytes are the canonical JSON of `assemblyClauses`. */
-export const ASSEMBLY_TERMS_LEAF_KEY: Hex = keccak256(toHex(ASSEMBLY_TERMS_LEAF_LABEL));
+export const PROCESS_TERMS_LEAF_KEY: Hex = keccak256(toHex(PROCESS_TERMS_LEAF_LABEL));
 
 /** The label the assembly tree's leaf domain is the hash of — a bare string
  *  no spec or agreement document serializes to. */
-export const ASSEMBLY_LEAF_DOMAIN_LABEL = "figaro-assembly-leaf";
+export const PROCESS_LEAF_DOMAIN_LABEL = "figaro-assembly-leaf";
 
 /** The domain mixed into every leaf of the assembly tree (the agreement
  *  leaves and the assembly-terms leaf), `keccak256("figaro-assembly-leaf")`:
@@ -236,24 +236,24 @@ export const ASSEMBLY_LEAF_DOMAIN_LABEL = "figaro-assembly-leaf";
  *  per leaf where the agreement format builds `keccak256(keccak256(key ‖
  *  dataHash))`, so a tree over agreements and a tree over clauses never share
  *  one shape and no agreement root can pass as an assembly root. The same
- *  constant is `UsageCounter.assemblyLeafDomain` on chain and
- *  `ASSEMBLY_LEAF_DOMAIN` in the guest. */
-export const ASSEMBLY_LEAF_DOMAIN: Hex = keccak256(toHex(ASSEMBLY_LEAF_DOMAIN_LABEL));
+ *  constant is `UsageCounter.processLeafDomain` on chain and
+ *  `PROCESS_LEAF_DOMAIN` in the guest. */
+export const PROCESS_LEAF_DOMAIN: Hex = keccak256(toHex(PROCESS_LEAF_DOMAIN_LABEL));
 
 /** A leaf of the assembly tree: the domain, the leaf's key (an agreement's
  *  `agreementHash`, or the assembly-terms key) and the keccak256 of its
  *  committed bytes, double-hashed as every leaf of the format is. */
-export function computeAssemblyLeaf(key: Hex, dataHash: Hex): Hex {
+export function computeProcessLeaf(key: Hex, dataHash: Hex): Hex {
     if (!isBytes32Hex(key) || !isBytes32Hex(dataHash)) throw new Error("an assembly leaf takes a 32-byte key and a 32-byte data hash");
-    return keccak256(keccak256(concat([ASSEMBLY_LEAF_DOMAIN, key, dataHash])));
+    return keccak256(keccak256(concat([PROCESS_LEAF_DOMAIN, key, dataHash])));
 }
 
 /** An agreement leaf's committed bytes — canonical JSON
- *  `{"clauses":{…},"follows":[…],"slot":i}` (`slot`, the wire name for the agreement's index) of the agreement's own fills
+ *  `{"agreement":i,"clauses":{…},"follows":[…]}` (`agreement`, the agreement's index) of the agreement's own fills
  *  and the labels of the entries it follows (`[]` on the root and when
  *  absent; object keys sorted, arrays in authored order). `i` is the
  *  agreement's 0-based position in the assembly. */
-export function agreementLeafBytes(entry: Pick<AssemblyAgreement, "clauses" | "follows">, i: number): Hex {
+export function agreementLeafBytes(entry: Pick<ProcessDesignAgreement, "clauses" | "follows">, i: number): Hex {
     if (!Number.isSafeInteger(i) || i < 0) throw new Error(`entry index is not a non-negative integer: ${i}`);
     const follows = entry.follows ?? [];
     if (!Array.isArray(follows) || follows.some((label) => typeof label !== "string")) {
@@ -267,14 +267,14 @@ export function agreementLeafBytes(entry: Pick<AssemblyAgreement, "clauses" | "f
         if (seen.has(label)) throw new Error(`entry ${i} follows names entry ${label} twice`);
         seen.add(label);
     }
-    return toHex(new TextEncoder().encode(canonicalize({ clauses: entry.clauses ?? {}, follows, slot: i })));
+    return toHex(new TextEncoder().encode(canonicalize({ agreement: i, clauses: entry.clauses ?? {}, follows })));
 }
 
 /** The two format keys an agreement hash may never be: the provenance leaf's
  *  and the assembly-terms leaf's. Throws for either. */
 export function assertNotReservedKey(agreementHash: Hex, where = "agreementHash"): void {
     const k = agreementHash.toLowerCase();
-    if (k === PROVENANCE_LEAF_KEY.toLowerCase() || k === ASSEMBLY_TERMS_LEAF_KEY.toLowerCase()) {
+    if (k === PROVENANCE_LEAF_KEY.toLowerCase() || k === PROCESS_TERMS_LEAF_KEY.toLowerCase()) {
         throw new Error(`${where} ${agreementHash} is a reserved format key, never a registered agreement`);
     }
 }
@@ -282,60 +282,60 @@ export function assertNotReservedKey(agreementHash: Hex, where = "agreementHash"
 /** An agreement's leaf in the assembly tree — the assembly leaf shape with
  *  the agreement's own `agreementHash` as the key and
  *  `keccak256(agreementLeafBytes)` as the data hash. Throws for a reserved key. */
-function agreementLeaf(entry: AssemblyAgreement, i: number): Hex {
+function agreementLeaf(entry: ProcessDesignAgreement, i: number): Hex {
     assertNotReservedKey(entry.agreementHash, `agreement ${i} agreementHash`);
-    return computeAssemblyLeaf(entry.agreementHash, keccak256(agreementLeafBytes(entry, i)));
+    return computeProcessLeaf(entry.agreementHash, keccak256(agreementLeafBytes(entry, i)));
 }
 
 /** Every leaf of the composition tree, sorted as the tree is built: one per
  *  agreement, plus the assembly-terms leaf when any assembly-scoped clause is
  *  composed. */
-export function assemblyLeaves(assembly: Assembly): Hex[] {
+export function processDesignLeaves(assembly: ProcessDesign): Hex[] {
     const leaves = assembly.agreements.map((entry, i) => agreementLeaf(entry, i));
     const terms = assembly.assemblyClauses;
     if (terms && Object.keys(terms).length > 0) {
-        leaves.push(computeAssemblyLeaf(ASSEMBLY_TERMS_LEAF_KEY, hashClauseData({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: terms })));
+        leaves.push(computeProcessLeaf(PROCESS_TERMS_LEAF_KEY, hashClauseData({ clause: PROCESS_TERMS_LEAF_KEY, data: terms })));
     }
     return sortLeaves(leaves);
 }
 
 /** The assembly's identity — the merkle root over its agreement leaves and its
- *  assembly-terms leaf (`assemblyLeaves`, each in the assembly tree's own
- *  leaf shape, `computeAssemblyLeaf`), built by the format's tree
+ *  assembly-terms leaf (`processDesignLeaves`, each in the assembly tree's own
+ *  leaf shape, `computeProcessLeaf`), built by the format's tree
  *  (`buildMerkleRoot`): a one-leaf tree's root is its leaf.
  *  Editorial prose is excluded, so renaming never forks identity. This is
- *  the hash `AssemblyRegistry` keys bindings on. Publishers anchor it;
+ *  the hash `ProcessRegistry` keys bindings on. Publishers anchor it;
  *  readers recompute it from a fetched document to verify integrity. */
-export function assemblyHashOf(
-    assembly: Assembly,
+export function processDesignHashOf(
+    assembly: ProcessDesign,
 ): Hex {
-    return buildMerkleRoot(assemblyLeaves(assembly));
+    return buildMerkleRoot(processDesignLeaves(assembly));
 }
 
-/** The membership proof of agreement `i` under `assemblyHashOf`:
- *  its leaf, its sorted-pair proof, and `slotContentHash` =
+/** The membership proof of agreement `i` under `processDesignHashOf`:
+ *  its leaf, its sorted-pair proof, and `agreementContentHash` =
  *  `keccak256(agreementLeafBytes(entry, i))` — what
- *  `UsageCounter.recordAssemblyUsage` and the batch path's assembly claim
+ *  `UsageCounter.recordProcessDesignUsage` and the batch path's assembly claim
  *  take beside the agreement's agreement hash. Throws for an index outside
  *  the assembly. */
 export function buildAgreementInclusionProof(
-    assembly: Assembly,
+    assembly: ProcessDesign,
     i: number,
-): { leaf: Hex; proof: Hex[]; slotContentHash: Hex } {
+): { leaf: Hex; proof: Hex[]; agreementContentHash: Hex } {
     const entry = assembly.agreements[i];
     if (!entry) throw new Error(`agreement ${i} is not in the assembly (${assembly.agreements.length} agreements)`);
-    const slotContentHash = keccak256(agreementLeafBytes(entry, i));
-    const { leaf, proof } = buildLeafInclusionProof(assemblyLeaves(assembly), agreementLeaf(entry, i));
-    return { leaf, proof, slotContentHash };
+    const agreementContentHash = keccak256(agreementLeafBytes(entry, i));
+    const { leaf, proof } = buildLeafInclusionProof(processDesignLeaves(assembly), agreementLeaf(entry, i));
+    return { leaf, proof, agreementContentHash };
 }
 
 /** The published slug — presentation only, a deterministic pure function of
  *  the assembly hash. Identical compositions → identical slug; distinct
  *  compositions → distinct slug. The slug exists nowhere on-chain: the
- *  registry keys bindings by `assemblyHash`, and every reader derives the
+ *  registry keys bindings by `processDesignHash`, and every reader derives the
  *  slug from the event's hash. */
-export function deriveAssemblySlug(assemblyHash: Hex): string {
-    return `asm-${assemblyHash.slice(2, 18)}`;
+export function deriveProcessDesignSlug(processDesignHash: Hex): string {
+    return `asm-${processDesignHash.slice(2, 18)}`;
 }
 
 // ── Authoring: clause names → clause keys ───────────────────────────────────
@@ -361,7 +361,7 @@ export interface AuthoredSpecSet {
  *
  * Rewritten in an authored agreement: the top-level `clauses` keys. In a
  * assembly: every `agreements[].clauses` and `assemblyClauses` key. In a
- * member profile: `assemblyBindings[].coSellerBindings[].clauseId` (becomes
+ * member profile: `processBindings[].coSellerBindings[].clauseId` (becomes
  * `clauseKey`), and the `profileClauseValues` keys. In a catalog: every
  * `items[].clauseValues` key.
  * Everything else is copied unchanged. The input is not mutated.
@@ -424,14 +424,14 @@ export function resolveAuthoredClauseKeys<T extends object>(doc: T, specs: Autho
     }
     if ("assemblyClauses" in src) out.assemblyClauses = rekey(src.assemblyClauses, "assemblyClauses");
     if ("profileClauseValues" in src) out.profileClauseValues = rekey(src.profileClauseValues, "profileClauseValues");
-    if ("assemblyBindings" in src) {
-        out.assemblyBindings = mapArray(src.assemblyBindings, (binding, i) => {
+    if ("processBindings" in src) {
+        out.processBindings = mapArray(src.processBindings, (binding, i) => {
             if (!isPlainRecord(binding)) return binding;
             return {
                 ...binding,
                 ...("coSellerBindings" in binding && {
                     coSellerBindings: mapArray(binding.coSellerBindings, (e, j) =>
-                        renameClauseId(e, `assemblyBindings[${i}].coSellerBindings[${j}]`)),
+                        renameClauseId(e, `processBindings[${i}].coSellerBindings[${j}]`)),
                 }),
             };
         });

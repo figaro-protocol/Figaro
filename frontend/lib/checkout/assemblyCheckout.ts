@@ -1,7 +1,7 @@
 /**
  * assemblyCheckout — the buyer-side commit sequencing for a bound assembly.
  *
- * The protocol algorithm lives in `@figaro-protocol/sdk`: `reconstructOrdersFromAssembly`
+ * The protocol algorithm lives in `@figaro-protocol/sdk`: `reconstructOrdersFromProcessDesign`
  * is the ONE assembly→orders walk (real parent hashes, running cumulative
  * value, root-derived processId), and the checkout planning vocabulary
  * (fill-where-composed clause writers, the sub-order seller plan, live
@@ -32,15 +32,15 @@ import {
     fillDerivedClauses,
     generateSalt,
     missingCatalogueMeasures,
-    planAssemblyOrders as planAssemblyNodes,
+    planProcessOrders as planAssemblyNodes,
     planSubOrderSellers,
-    reconstructOrdersFromAssembly,
+    reconstructOrdersFromProcessDesign,
     resolveSubOrderPricing,
     agreementClauses,
-    assemblyFollows,
-    type AssemblyCheckoutLineItem,
-    type HydratedAssembly,
-    type PlannedAssemblyOrder,
+    processDesignFollows,
+    type ProcessCheckoutLineItem,
+    type HydratedProcessDesign,
+    type PlannedProcessOrder,
     type ReconstructNodeSpec,
     type ReconstructedOrder,
     type SpecSource,
@@ -93,7 +93,7 @@ export interface AssemblyCheckoutDeps {
 /** Off-chain validation, early: surface an invalid agreement BEFORE the wallet opens. The
  *  sign step itself (`signAs`) runs the same gate — this call is the UX
  *  courtesy, not the enforcement. */
-function assertValidToSign(preview: OrderPreview, design: HydratedAssembly, label: string): void {
+function assertValidToSign(preview: OrderPreview, design: HydratedProcessDesign, label: string): void {
     assertAgreementSignable(preview.agreement, preview.checkoutHash, specSource(), preview.commitment, design, label);
 }
 
@@ -139,10 +139,10 @@ export function checkoutMeasureRefusals(params: Omit<AssemblyCheckoutParams, "bu
     const hydrated = params.assembly.hydratedAssembly;
     const assembly = hydrated.assembly;
     const rootId =
-        assembly.agreements.find((o) => assemblyFollows(o).length === 0)?.id ??
+        assembly.agreements.find((o) => processDesignFollows(o).length === 0)?.id ??
         assembly.agreements[0]?.id;
     if (rootId === undefined) return [];
-    let planned: PlannedAssemblyOrder[];
+    let planned: PlannedProcessOrder[];
     let boundSellerByNode: Map<string, { seller: `0x${string}` | null; itemId: string | null }>;
     try {
         planned = planAssemblyNodes(hydrated);
@@ -165,7 +165,7 @@ export function checkoutMeasureRefusals(params: Omit<AssemblyCheckoutParams, "bu
 }
 
 /** The buyer-side checkout inputs — ONE shape shared by the effectful walk
- *  (`executeAssemblyCheckout`) and the dry planner (`planAssemblyOrders`), so
+ *  (`executeAssemblyCheckout`) and the dry planner (`planProcessOrders`), so
  *  a race draft and its realized order are built from identical inputs. */
 export interface AssemblyCheckoutParams {
     buyer: `0x${string}`;
@@ -173,7 +173,7 @@ export interface AssemblyCheckoutParams {
     currency: `0x${string}`;
     /** The lead order's payment — the cart total. */
     payment: bigint;
-    lineItems: AssemblyCheckoutLineItem[];
+    lineItems: ProcessCheckoutLineItem[];
     assembly: BoundAssembly;
     /** Contributor pricing context (each sub-order is priced LIVE from its
      *  own seller's catalog). */
@@ -244,7 +244,7 @@ export async function executeAssemblyCheckout(
 
     // UTILITY-TOKEN PIN VERIFICATION: when the assembly pins
     // its denomination (an assembly-scoped term, part of the
-    // assemblyHash), the commitment currency MUST be that token — refuse
+    // processDesignHash), the commitment currency MUST be that token — refuse
     // before any signature rather than let the signed struct contradict the
     // signed term.
     const pin = readUtilityTokenPin(assembly.assemblyClauses ?? {}, specs);
@@ -276,7 +276,7 @@ export async function executeAssemblyCheckout(
     }
 
     const rootId =
-        assembly.agreements.find((o) => assemblyFollows(o).length === 0)?.id ??
+        assembly.agreements.find((o) => processDesignFollows(o).length === 0)?.id ??
         assembly.agreements[0]?.id;
     if (rootId === undefined) throw new Error("This assembly has no root order.");
 
@@ -303,7 +303,7 @@ export async function executeAssemblyCheckout(
         commitment: order.commitment,
     });
 
-    await reconstructOrdersFromAssembly(hydrated, {
+    await reconstructOrdersFromProcessDesign(hydrated, {
         buyer,
         currency,
         chainId: deps.chainId,
@@ -383,7 +383,7 @@ function checkoutNodes(
          *  (`checkoutMeasureRefusals`); absent on every signing walk. */
         onMissingMeasure?: (refusal: string) => void;
     },
-): (planned: PlannedAssemblyOrder) => ReconstructNodeSpec {
+): (planned: PlannedProcessOrder) => ReconstructNodeSpec {
     const { rootId, boundSellerByNode, compositionByNode, specs, onMissingMeasure } = ctx;
     const { leadSellerAddress, payment, lineItems, sellerCatalogs, tokenDecimals, subOrderSelections } = params;
     const hydrated = params.assembly.hydratedAssembly;
@@ -475,7 +475,7 @@ function checkoutNodes(
         // committed leaf alone. That replay holds only where such a clause is
         // composed: an agreement without one commits the payment in the
         // commitment and no line from which to replay it.
-        const subLineItems: AssemblyCheckoutLineItem[] | undefined = selection
+        const subLineItems: ProcessCheckoutLineItem[] | undefined = selection
             ? [{ itemId: selection.item.id, name: selection.item.name, quantity: 1, unitPrice: subPayment.toString() }]
             : pricing!.item
                 ? [{
@@ -518,7 +518,7 @@ function checkoutNodes(
  * the raced node's selection, fixed salts + deadline — and the raced node's
  * `ReconstructedOrder` is the unsigned draft the candidate countersigns.
  */
-export async function planAssemblyOrders(
+export async function planProcessOrders(
     params: AssemblyCheckoutParams & { salt: (nodeId: string) => bigint; deadline: bigint },
     opts: { chainId: number },
 ): Promise<ReconstructedOrder[]> {
@@ -528,14 +528,14 @@ export async function planAssemblyOrders(
     const hydrated = params.assembly.hydratedAssembly;
     const assembly = hydrated.assembly;
     const rootId =
-        assembly.agreements.find((o) => assemblyFollows(o).length === 0)?.id ??
+        assembly.agreements.find((o) => processDesignFollows(o).length === 0)?.id ??
         assembly.agreements[0]?.id;
     if (rootId === undefined) throw new Error("This assembly has no root order.");
     const boundSellerByNode = new Map(
         planSubOrderSellers(params.assembly).map(({ node, seller, itemId }) => [node.nodeId, { seller, itemId }]),
     );
     const specs = specSource();
-    return reconstructOrdersFromAssembly(hydrated, {
+    return reconstructOrdersFromProcessDesign(hydrated, {
         buyer: params.buyer,
         currency: params.currency,
         chainId: opts.chainId,

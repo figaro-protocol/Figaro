@@ -77,12 +77,12 @@ function commitmentMessage(payment: bigint, buyer: Address, seller: Address) {
     return {
         processId: "0x" + "00".repeat(32),
         buyer, seller,
-        currency: TOKEN,
+        token: TOKEN,
         payment: payment.toString(),
-        expectedCumulativeValue: payment.toString(),
+        runningTotal: payment.toString(),
         checkoutHash: "0x" + "11".repeat(32),
         salt: "1",
-        deadline: "9999999999",
+        commitDeadline: "9999999999",
     };
 }
 
@@ -166,8 +166,8 @@ describe("domain binding", () => {
         expect(d.reason).toMatch(/neither buyer nor seller/);
     });
 
-    it("refuses a Commitment in a foreign currency", () => {
-        const msg = { ...commitmentMessage(1000n, WALLET, OTHER), currency: OTHER };
+    it("refuses a Commitment in a foreign token", () => {
+        const msg = { ...commitmentMessage(1000n, WALLET, OTHER), token: OTHER };
         expect(evaluateTypedData(policy(), WALLET, typedReq(CORE, msg), NO_SPEND).allow).toBe(false);
     });
 });
@@ -213,7 +213,7 @@ describe("ceilings", () => {
         const processId = `0x${"ab".repeat(32)}`;
         const d = evaluateTypedData(
             policy(), WALLET,
-            typedReq(VERIFIER, { processId, cumulativeValue: "9000000" }, "ResolveProcess"),
+            typedReq(VERIFIER, { processId, runningTotal: "9000000" }, "ResolveProcess"),
             { token: 5_000_000n, native: 0n },
         );
         expect(d.allow, d.reason).toBe(true);
@@ -226,10 +226,10 @@ describe("ceilings", () => {
         const processId = `0x${"ab".repeat(32)}`;
         const noValue = evaluateTypedData(policy(), WALLET, typedReq(VERIFIER, { processId }, "ResolveProcess"), NO_SPEND);
         expect(noValue.allow).toBe(false);
-        expect(noValue.reason).toMatch(/cumulativeValue/);
+        expect(noValue.reason).toMatch(/runningTotal/);
         const noProcess = evaluateTypedData(
             policy(), WALLET,
-            typedReq(VERIFIER, { processId: "0x01", cumulativeValue: "1000" }, "ResolveProcess"),
+            typedReq(VERIFIER, { processId: "0x01", runningTotal: "1000" }, "ResolveProcess"),
             NO_SPEND,
         );
         expect(noProcess.allow).toBe(false);
@@ -540,10 +540,10 @@ describe("daemon and socket account", () => {
         const domain = buildDomain(p.chainId, CORE);
         const { typedData } = buildCommitment({
             processId: ("0x" + "00".repeat(32)) as Hex,
-            buyer: WALLET, seller: OTHER, currency: TOKEN,
-            payment: 500_000n, expectedCumulativeValue: 500_000n,
+            buyer: WALLET, seller: OTHER, token: TOKEN,
+            payment: 500_000n, runningTotal: 500_000n,
             checkoutHash: ("0x" + "11".repeat(32)) as Hex,
-            salt: 7n, deadline: 9_999_999_999n,
+            salt: 7n, commitDeadline: 9_999_999_999n,
         }, domain);
 
         // The agent layer takes a WalletClient; the socket account drops in.
@@ -624,10 +624,10 @@ describe("daemon rolling ceiling under pipelined requests", () => {
             const line = (id: number, salt: bigint) => {
                 const { typedData } = buildCommitment({
                     processId: ("0x" + "00".repeat(32)) as Hex,
-                    buyer: WALLET, seller: OTHER, currency: TOKEN,
-                    payment: 500_000n, expectedCumulativeValue: 500_000n,
+                    buyer: WALLET, seller: OTHER, token: TOKEN,
+                    payment: 500_000n, runningTotal: 500_000n,
                     checkoutHash: ("0x" + "11".repeat(32)) as Hex,
-                    salt, deadline: 9_999_999_999n,
+                    salt, commitDeadline: 9_999_999_999n,
                 }, domain);
                 return wireStringify({ id, op: "signTypedData", params: typedData });
             };

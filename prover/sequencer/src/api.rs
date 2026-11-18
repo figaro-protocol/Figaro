@@ -140,7 +140,7 @@ pub async fn record_dropped_claims(
     stage: &str,
 ) -> u64 {
     for (claim, reason) in dropped {
-        tracing::warn!(clause_or_assembly = ?claim.clause_or_assembly, %reason, "Usage claim dropped at {stage}");
+        tracing::warn!(clause_or_process = ?claim.clause_or_process, %reason, "Usage claim dropped at {stage}");
         failures
             .record_claims(1, format!("dropped at {stage}: {reason}"))
             .await;

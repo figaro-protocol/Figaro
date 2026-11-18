@@ -70,10 +70,10 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 //
 //    The id + title carry a per-run nonce (minted INSIDE the test, below) so each
 //    run certifies a genuinely never-seen clause AND the run's composition
-//    identity (assemblyHash → asm-<hash> slug) is unique. The test leaves its
+//    identity (processDesignHash → asm-<hash> slug) is unique. The test leaves its
 //    state on-chain (no revert — devnet is a mainnet rehearsal), so a FIXED
 //    id/content would collide with a prior run's first-write-wins registration
-//    on every re-run and every Playwright retry (registerAssembly reverts:
+//    on every re-run and every Playwright retry (registerProcess reverts:
 //    composition already anchored). ──
 const NOVEL_FIRST_STAGE_LABEL = 'Probe opened';
 
@@ -179,9 +179,9 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         const slug = await publishOrAdoptReviewed(page, handle!);
 
         // ── PUBLIC INVENTORY: the freshly-published assembly is discoverable on the
-        //    public /registries explorer (on-chain AssemblyRegistered → standalone
+        //    public /registries explorer (on-chain ProcessRegistered → standalone
         //    indexer → render), adoptable by any reader exactly as on mainnet. This
-        //    closes the author → IPFS pin → AssemblyRegistered → visible round-trip. ──
+        //    closes the author → IPFS pin → ProcessRegistered → visible round-trip. ──
         await page.goto('/registries?family=assemblies&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await expect(page.locator(`#assembly-${slug}`)).toBeVisible({ timeout: 30000 });
 
@@ -307,7 +307,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         // ── Funds actually moved (the real test): buyer↓ buyerBond, seller↓ sellerBond,
         //    FigaroCore escrow↑ both. Gas is paid in ETH, so the payment-token deltas
         //    are the bonds only — the asymmetric-bonding mechanism, on-chain. ──
-        const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, payment);
+        const { buyerBond, sellerBond } = calculateBonds(event.args.runningTotal!, payment);
         const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
         ]);

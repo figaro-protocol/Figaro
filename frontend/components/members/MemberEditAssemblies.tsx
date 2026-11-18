@@ -2,11 +2,11 @@
 
 /**
  * MemberEditAssemblies — re-uses the wizard's assemblies form to
- * edit the registered member's `assemblyBindings`. Routes from
+ * edit the registered member's `processBindings`. Routes from
  * the `/members` manage-list "Assemblies" row.
  *
  * One-pin save sequence: re-pin the profile JSON with the updated
- * assemblyBindings array, dispatch MembersRegistry.updateProfile.
+ * processBindings array, dispatch MembersRegistry.updateProfile.
  *
  * Removing an assembly (un-checking it in the multi-select) is
  * handled by the form's existing toggle. Whole-assemblies clearing
@@ -18,14 +18,14 @@
 
 import { MemberEditGate } from "@/components/members/MemberEditGate";
 import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
-import type { AssemblyBindingRecord } from "@/lib/member/memberProfileMetadata";
+import type { ProcessBindingRecord } from "@/lib/member/memberProfileMetadata";
 import { OnboardingAssembliesForm } from "@/components/members/OnboardingAssembliesForm";
 
 export function MemberEditAssemblies() {
     const editor = useMemberProfileEditor({
         seed: (existingProfile, update) => {
             update({
-                assemblies: existingProfile.assemblyBindings ?? [],
+                assemblies: existingProfile.processBindings ?? [],
             });
         },
     });
@@ -34,11 +34,11 @@ export function MemberEditAssemblies() {
         return <MemberEditGate gate={editor.gate} />;
     }
 
-    async function handleSave(bindings: AssemblyBindingRecord[]): Promise<void> {
+    async function handleSave(bindings: ProcessBindingRecord[]): Promise<void> {
         // Saving with an empty array is allowed — un-checking every assembly clears the
         // bindings array on the profile (the member stays registered, with no
         // assembly-scoped discovery). The hook's merge keeps the field present-but-empty.
-        await editor.updater.save({ assemblyBindings: bindings });
+        await editor.updater.save({ processBindings: bindings });
     }
 
     return (

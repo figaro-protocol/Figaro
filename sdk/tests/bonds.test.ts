@@ -16,7 +16,7 @@ describe("calculateBonds", () => {
         expect(result.totalLocked).toBe(3000n);
     });
 
-    it("handles root order where cumulativeValue === payment", () => {
+    it("handles root order where runningTotal === payment", () => {
         const result = calculateBonds(100n, 100n);
         expect(result.sellerBond).toBe(200n);
         expect(result.buyerBond).toBe(200n);
@@ -62,7 +62,7 @@ describe("calculateRootApproval", () => {
 
 describe("calculateSubOrderApproval", () => {
     it("returns full per-order bonds — FigaroCore offsets nothing", () => {
-        // FigaroCore pulls 2×payment from the buyer and 2×cumulativeValue
+        // FigaroCore pulls 2×payment from the buyer and 2×runningTotal
         // from the seller on EVERY commit (root bonds stay held in parallel).
         const result = calculateSubOrderApproval(5n, 27n);
         expect(result.buyerApproval).toBe(10n);
@@ -83,7 +83,7 @@ describe("assertApprovalCoversBond", () => {
     });
 
     it("catches the classic increment-only sub-order bug (seller side)", () => {
-        // A process at cumulativeValue 20 grows to 27 with a new order of payment 5.
+        // A process at runningTotal 20 grows to 27 with a new order of payment 5.
         // The classic bug approves 2×(27-20)=14 instead of the full 2×27=54.
         const previousCumulativeValue = 20n;
         const newCumulativeValue = 27n;
@@ -123,10 +123,10 @@ describe("validateBonds", () => {
         expect(result.reason).toContain("positive");
     });
 
-    it("rejects cumulativeValue < payment", () => {
+    it("rejects runningTotal < payment", () => {
         const result = validateBonds(200n, 100n, 200n, 400n);
         expect(result.valid).toBe(false);
-        expect(result.reason).toContain("cumulativeValue");
+        expect(result.reason).toContain("runningTotal");
     });
 
     it("rejects wrong seller bond", () => {

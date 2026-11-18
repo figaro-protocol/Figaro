@@ -4,7 +4,7 @@
  * The shared source every tier reads (the assembly-family mirror of
  * `clauseSpecSource.ts`): the assembly type, the one accessor for an agreement
  * own topology edges, the assembly root, and the content-derived slug.
- * AUTHORING lives in `@figaro-protocol/sdk` projection — `buildAssembly`
+ * AUTHORING lives in `@figaro-protocol/sdk` projection — `buildProcessDesign`
  * (designers build); this module is for everyone who READS published
  * assemblies — checkout instantiates, sellers bind, inventories list, view
  * pages inspect. SoC: design is design, checkout is checkout; both speak this
@@ -24,16 +24,18 @@
  */
 
 // The assembly SHAPE's single home is the SDK (`@figaro-protocol/sdk` — assembly.ts):
-// `Assembly` with its `AssemblyAgreement` agreements; an agreement's
+// `ProcessDesign` with its `ProcessDesignAgreement` agreements; an agreement's
 // `clauses` is the same per-order bag `ClauseFields` names
 // (`Record<string, Record<string, unknown>>`).
-export type { Assembly } from "@figaro-protocol/sdk";
+export type { ProcessDesign } from "@figaro-protocol/sdk";
 
 // The shape's accessor (topology parents), the
-// assembly's identity (the AssemblyRegistry key), and its derived slug —
+// assembly's identity (the ProcessRegistry key), and its derived slug —
 // single home is the SDK; re-exported here for the designer/registry surfaces.
 export {
-    assemblyFollows,
-    assemblyHashOf,
-    deriveAssemblySlug,
+    processDesignFollows,
+    processDesignHashOf,
+    deriveProcessDesignSlug,
+    // The name the frozen /communities page imports; it moves when that page is unfrozen.
+    deriveProcessDesignSlug as deriveAssemblySlug,
 } from "@figaro-protocol/sdk";

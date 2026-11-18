@@ -7,7 +7,7 @@ labels: assembly-proposal
 
 <!--
   An assembly is a composition of clauses + topology, not a code change —
-  registering it on AssemblyRegistry is permissionless and requires no
+  registering it on ProcessRegistry is permissionless and requires no
   maintainer approval. This issue is for discussion before you register, not
   a gate you need cleared to register. See assemblies/README.md for the
   reference-assembly model.
@@ -32,9 +32,9 @@ labels: assembly-proposal
 
 ## Staked-registration acknowledgment
 
-<!-- Registration on AssemblyRegistry requires a live ETH stake tied to the
+<!-- Registration on ProcessRegistry requires a live ETH stake tied to the
      registering wallet (see docs/CONTRACTS.md § RPGF and
      script/DeployMainnet.s.sol for current sizing) — confirm you understand
-     registration is permissionless, first-write-wins by assemblyHash, and
+     registration is permissionless, first-write-wins by processDesignHash, and
      immutable, and that usage/reward accrual requires the stake to stay
      live. -->

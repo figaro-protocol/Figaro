@@ -19,12 +19,12 @@ export function vectorCommitment(seed: number, processId: Hex, cumulative: bigin
         process_id: processId,
         buyer: getAddress(rep("b0", 20)),
         seller: getAddress(rep((0x50 + seed).toString(16), 20)),
-        currency: getAddress(rep("c0", 20)),
+        token: getAddress(rep("c0", 20)),
         payment: String(100 * seed),
-        expected_cumulative_value: cumulative.toString(),
+        running_total: cumulative.toString(),
         checkout_hash: rep((0x40 + seed).toString(16), 32),
         salt: String(seed),
-        deadline: "4000000000",
+        commit_deadline: "4000000000",
     };
 }
 
@@ -34,9 +34,9 @@ export const u16 = (n: number): Hex => numberToHex(n, { size: 2 });
 const word = (n: bigint): Hex => numberToHex(n, { size: 32 });
 export const packCommitment = (c: SequencerCommitment): Hex =>
     concatHex([
-        c.process_id, c.buyer, c.seller, c.currency,
-        word(BigInt(c.payment)), word(BigInt(c.expected_cumulative_value)),
-        c.checkout_hash, word(BigInt(c.salt)), word(BigInt(c.deadline)),
+        c.process_id, c.buyer, c.seller, c.token,
+        word(BigInt(c.payment)), word(BigInt(c.running_total)),
+        c.checkout_hash, word(BigInt(c.salt)), word(BigInt(c.commit_deadline)),
     ]);
 const sig = (seed: string): Hex => concatHex([rep(seed, 32), rep(seed, 32), "0x1b"]);
 const words = (ws: Hex[]): Hex => concatHex([u16(ws.length), ...ws]);
@@ -63,9 +63,9 @@ export function claimEntry(claim: SequencerUsageClaim): Hex {
     const k = claim.kind;
     const kindBytes: Hex =
         "Clause" in k ? concatHex(["0x00", k.Clause.clause_data_hash])
-        : "Agreement" in k ? concatHex(["0x02", k.Agreement.assembly_hash])
-        : concatHex(["0x01", k.Assembly.agreement_hash, k.Assembly.slot_content_hash, words(k.Assembly.membership_proof)]);
-    return concatHex(["0x03", packCommitment(claim.order), claim.clause_or_assembly, kindBytes, words(claim.inclusion_proof)]);
+        : "Agreement" in k ? concatHex(["0x02", k.Agreement.process_design_hash])
+        : concatHex(["0x01", k.Process.agreement_hash, k.Process.agreement_content_hash, words(k.Process.membership_proof)]);
+    return concatHex(["0x03", packCommitment(claim.order), claim.clause_or_process, kindBytes, words(claim.inclusion_proof)]);
 }
 
 export const PROCESS = rep("aa", 32);

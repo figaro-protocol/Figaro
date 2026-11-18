@@ -23,10 +23,10 @@ const commitment: Commitment = {
     processId: `0x${"00".repeat(32)}`,
     buyer: BUYER.address,
     seller: SELLER.address,
-    currency: "0x000000000000000000000000000000000000ca11" as Address,
+    token: "0x000000000000000000000000000000000000ca11" as Address,
     payment: 1000n,
-    expectedCumulativeValue: 1000n,
-    deadline: 9_999_999_999n,
+    runningTotal: 1000n,
+    commitDeadline: 9_999_999_999n,
     checkoutHash: `0x${"ab".repeat(32)}`,
     salt: 42n,
 };
@@ -76,13 +76,13 @@ describe("verifyResolveProcessSignature — the batch path's signed resolve", ()
     const VCTX = { chainId: CHAIN, core: VERIFIER };
     const PROCESS = `0x${"09".repeat(32)}` as const;
 
-    async function signResolve(processId: `0x${string}`, cumulativeValue: bigint) {
+    async function signResolve(processId: `0x${string}`, runningTotal: bigint) {
         return buyerW.signTypedData({
             account: BUYER,
             domain: buildDomain(CHAIN, VERIFIER),
             types: RESOLVE_PROCESS_TYPES,
             primaryType: "ResolveProcess",
-            message: { processId, cumulativeValue },
+            message: { processId, runningTotal },
         });
     }
 

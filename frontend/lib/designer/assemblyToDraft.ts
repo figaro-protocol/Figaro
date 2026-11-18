@@ -1,6 +1,6 @@
 /**
  * assemblyToDraft — hydrates a `DesignSnapshot` from a HYDRATED
- * assembly (the assembly pinned on AssemblyRegistry beside every agreement's
+ * assembly (the assembly pinned on ProcessRegistry beside every agreement's
  * registered agreement, each verified). Powers the "Fork" button: a published
  * assembly is read, this helper turns it into a localStorage draft under a
  * new slug, and the canvas opens at /assemblies/designer/edit?slug=<new-slug>.
@@ -18,16 +18,16 @@
 
 import {
     anchorRegisteredAgreement,
-    hydrateAssembly,
+    hydrateProcessDesign,
     isBytes32Hex,
-    planAssemblyOrders,
+    planProcessOrders,
     boundAgreement,
     type RegisteredAgreement,
     type Hex,
-    type HydratedAssembly,
+    type HydratedProcessDesign,
 } from "@figaro-protocol/sdk";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
-import { assemblyHashOf, type Assembly } from "@/lib/shared/assembly";
+import { processDesignHashOf, type ProcessDesign } from "@/lib/shared/assembly";
 import { fetchRegisteredAgreement } from "@/lib/protocol/useAgreementRegistry";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
@@ -46,14 +46,14 @@ const SYNTHETIC_PROCESS_ID = `0x${"00".repeat(32)}` as `0x${string}`;
  * so the canvas resolves it by hash. Used by the fork path and the read-only
  * `/view` resolver.
  */
-export function assemblyToOrders(hydrated: HydratedAssembly): Order[] {
+export function assemblyToOrders(hydrated: HydratedProcessDesign): Order[] {
     // The assembly is party-agnostic. For DISPLAY (fork / read-only /view) we
     // reconstruct synthetic parties — one shared synthetic buyer (rootBuyer) +
     // a distinct synthetic seller per order. Real parties bind at
     // adoption/checkout, never from the assembly. The nodes come from the ONE
-    // assembly walk (`planAssemblyOrders` — commit order, local parent edges);
+    // assembly walk (`planProcessOrders` — commit order, local parent edges);
     // per-order build→hash→save→assemble is the shared `buildSyntheticOrder`.
-    return planAssemblyOrders(hydrated).map((planned) =>
+    return planProcessOrders(hydrated).map((planned) =>
         buildSyntheticOrder({
             orderId: planned.nodeId as `0x${string}`,
             processId: SYNTHETIC_PROCESS_ID,
@@ -69,7 +69,7 @@ export function assemblyToOrders(hydrated: HydratedAssembly): Order[] {
 }
 
 export function assemblyToDraft(
-    hydrated: HydratedAssembly,
+    hydrated: HydratedProcessDesign,
     options: { slug: string; name?: string; composeKeys?: ReadonlySet<string> },
 ): DesignSnapshot {
     const { assembly } = hydrated;
@@ -102,17 +102,17 @@ export function assemblyToDraft(
 
 /** Result of reading pasted composition JSON (the composition-assist import). */
 export type ParsedAssemblyResult =
-    | { ok: true; assembly: Assembly; agreements: Record<string, unknown> }
+    | { ok: true; assembly: ProcessDesign; agreements: Record<string, unknown> }
     | { ok: false; error: string };
 
 /**
  * Parse text pasted as a composition — the composition-assist import
  * surface, where the JSON comes from the designer's own agent rather than a
- * chain-anchored URI (so there is no assemblyHash to check integrity
+ * chain-anchored URI (so there is no processDesignHash to check integrity
  * against; soundness is the bar). Accepts the handoff shape
  * `{ assembly, agreements }` (the assembly and the agreements newly composed
  * for it, keyed by agreement hash) or a bare assembly. Shape-checks the order
- * entries, then probes the composition through `assemblyHashOf` — the
+ * entries, then probes the composition through `processDesignHashOf` — the
  * same walk the registry key uses — so anything it cannot hash is rejected
  * here with a message instead of failing later at publish.
  */
@@ -150,9 +150,9 @@ export function parseAssemblyJson(text: string): ParsedAssemblyResult {
         || Object.keys(assemblyClauses).some((k) => !isBytes32Hex(k)))) {
         return { ok: false, error: "`assemblyClauses` maps clause keys (the 32-byte hash of each pinned spec) to the designer's values." };
     }
-    const assembly = candidate as Assembly;
+    const assembly = candidate as ProcessDesign;
     try {
-        assemblyHashOf(assembly);
+        processDesignHashOf(assembly);
     } catch (cause) {
         return { ok: false, error: `The composition does not hash: ${extractErrorMessage(cause, "malformed assembly")}` };
     }
@@ -170,7 +170,7 @@ export function parseAssemblyJson(text: string): ParsedAssemblyResult {
  */
 export async function hydrateImportedAssembly(
     parsed: Extract<ParsedAssemblyResult, { ok: true }>,
-): Promise<{ hydrated: HydratedAssembly; composeKeys: Set<string> } | { error: string }> {
+): Promise<{ hydrated: HydratedProcessDesign; composeKeys: Set<string> } | { error: string }> {
     const pasted = new Map<string, RegisteredAgreement>();
     for (const [key, raw] of Object.entries(parsed.agreements)) {
         if (!isBytes32Hex(key)) continue;
@@ -178,7 +178,7 @@ export async function hydrateImportedAssembly(
         if (doc) pasted.set(key.toLowerCase(), doc);
     }
     const composeKeys = new Set<string>();
-    const hydrated = await hydrateAssembly(parsed.assembly, async (agreementHash) => {
+    const hydrated = await hydrateProcessDesign(parsed.assembly, async (agreementHash) => {
         const key = agreementHash.toLowerCase();
         const local = pasted.get(key);
         if (local) {

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
     deriveInFlightOrders,
     deriveClauseWithdrawGate,
-    deriveAssemblyWithdrawGate,
+    deriveProcessWithdrawGate,
     deriveAgreementWithdrawGate,
     type InFlightAgreement,
 } from "../src/derive/withdraw.js";
@@ -35,7 +35,7 @@ function committed(overrides: Partial<OrderCommittedEvent> = {}): OrderCommitted
         seller: SELLER,
         currency: CURRENCY,
         payment: 1000n,
-        cumulativeValue: 1000n,
+        runningTotal: 1000n,
         checkoutHash: CHECKOUT_HASH,
         salt: 0n,
         deadline: 0n,
@@ -159,15 +159,15 @@ const OTHER_AGREEMENT_HASH = ("0x" + "a1".repeat(32)) as Hex;
 
 /** An agreement whose provenance leaf names the given registered agreement
  *  and assembly. */
-function instantiated(agreementHash: Hex, assemblyHash: Hex): Agreement {
-    return { ...agreementWith(["figaro-commerce"]), follows: [], provenance: { agreementHash, assemblyHash } };
+function instantiated(agreementHash: Hex, processDesignHash: Hex): Agreement {
+    return { ...agreementWith(["figaro-commerce"]), follows: [], provenance: { agreementHash, processDesignHash } };
 }
 
 for (const [label, derive, key, other] of [
-    ["deriveAssemblyWithdrawGate", deriveAssemblyWithdrawGate, COMPOSITION, OTHER_COMPOSITION],
+    ["deriveProcessWithdrawGate", deriveProcessWithdrawGate, COMPOSITION, OTHER_COMPOSITION],
     ["deriveAgreementWithdrawGate", deriveAgreementWithdrawGate, AGREEMENT_HASH, OTHER_AGREEMENT_HASH],
 ] as const) {
-    const named = (k: Hex) => label === "deriveAssemblyWithdrawGate"
+    const named = (k: Hex) => label === "deriveProcessWithdrawGate"
         ? instantiated(AGREEMENT_HASH, k)
         : instantiated(k, COMPOSITION);
 

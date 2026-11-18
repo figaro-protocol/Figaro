@@ -31,7 +31,7 @@ beforeEach(() => {
     m.push = vi.fn();
     // The member's saved draft: one assembly subscribed. One object across
     // renders, as the hook keeps it.
-    m.onboarding = { state: { buyerAssemblies: [{ assemblyHash: SUBSCRIBED }] }, loaded: true, subject: ADDRESS, update: vi.fn() };
+    m.onboarding = { state: { buyerAssemblies: [{ processDesignHash: SUBSCRIBED }] }, loaded: true, subject: ADDRESS, update: vi.fn() };
 });
 
 describe("OnboardingBuyerForm — the wizard chrome", () => {
@@ -58,7 +58,7 @@ describe("OnboardingBuyerForm — the wizard chrome", () => {
         const onSave = vi.fn(async () => undefined);
         render(<OnboardingBuyerForm onSave={onSave} submitLabel="Save changes" />);
         await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save changes" })); });
-        expect(onSave).toHaveBeenCalledWith([{ assemblyHash: SUBSCRIBED }]);
+        expect(onSave).toHaveBeenCalledWith([{ processDesignHash: SUBSCRIBED }]);
         expect(m.push).not.toHaveBeenCalled();
     });
 });

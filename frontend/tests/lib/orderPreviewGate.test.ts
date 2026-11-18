@@ -15,12 +15,12 @@ const COMMITMENT: Commitment = {
     processId: "0x" + "00".repeat(32) as `0x${string}`,
     buyer: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as `0x${string}`,
     seller: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" as `0x${string}`,
-    currency: "0x" + "ab".repeat(20) as `0x${string}`,
+    token: "0x" + "ab".repeat(20) as `0x${string}`,
     payment: 1000000000000000000n,
-    expectedCumulativeValue: 1000000000000000000n,
+    runningTotal: 1000000000000000000n,
     checkoutHash: "0x" + "cd".repeat(32) as `0x${string}`,
     salt: 1n,
-    deadline: 9999999999n,
+    commitDeadline: 9999999999n,
 };
 
 const AGREEMENT: Agreement = {
@@ -28,7 +28,7 @@ const AGREEMENT: Agreement = {
     buyer: COMMITMENT.buyer,
     seller: COMMITMENT.seller,
     clauses: [
-        { clause: `0x${"0c".repeat(32)}`, data: { currency: COMMITMENT.currency, payment: "1000000000000000000", lineItems: [] } },
+        { clause: `0x${"0c".repeat(32)}`, data: { currency: COMMITMENT.token, payment: "1000000000000000000", lineItems: [] } },
     ],
 };
 
@@ -59,7 +59,7 @@ describe("orderPreview confirm gate", () => {
     it("carries swap details into the pending preview (item 1)", async () => {
         const seen: unknown[] = [];
         const unsubscribe = subscribeToPendingSign((p) => seen.push(p?.swap ?? null));
-        const swap = { inputToken: "0x" + "11".repeat(20), currency: COMMITMENT.currency, maxInput: 4200n, slippageBps: 100, party: COMMITMENT.buyer };
+        const swap = { inputToken: "0x" + "11".repeat(20), currency: COMMITMENT.token, maxInput: 4200n, slippageBps: 100, party: COMMITMENT.buyer };
         const promise = requestSignConfirmation(COMMITMENT, AGREEMENT, swap);
         // The latest emitted pending preview carries the swap leg for the modal.
         expect(seen.at(-1)).toEqual(swap);

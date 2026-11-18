@@ -21,7 +21,7 @@ interface IClauseRegistryAnchor {
 ///         for the same reason the interface is.
 interface IUsageCounter {
     struct BatchUse {
-        bytes32 clauseOrAssembly;
+        bytes32 clauseOrProcess;
         uint8 kind;
         bytes32 processId;
         address seller;
@@ -98,7 +98,7 @@ interface IUsageCounter {
 ///         check: it applies the resolve on the process, the value and the
 ///         order list alone and publishes the bytes in the stream's `0x04`
 ///         entry. `settleBatch` reads the entry, derives the
-///         `ResolveProcess(processId, cumulativeValue)` digest under this
+///         `ResolveProcess(processId, runningTotal)` digest under this
 ///         contract's domain, requires the buyer's account to have code, and
 ///         calls its `isValidSignature`, before any token moves; any answer
 ///         but the magic value reverts the whole batch, because the proven
@@ -232,7 +232,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         address seller,
         address currency,
         uint256 payment,
-        uint256 cumulativeValue,
+        uint256 runningTotal,
         bytes32 checkoutHash,
         uint256 salt,
         uint256 deadline
@@ -643,7 +643,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     }
 
     /// @dev Pack: period(1) ++ provenanceLeaf(32)
-    ///            ++ len(uses)(8) ++ [clauseOrAssembly(32) ++ kind(1) ++ processId(32) ++ seller(20)]*
+    ///            ++ len(uses)(8) ++ [clauseOrProcess(32) ++ kind(1) ++ processId(32) ++ seller(20)]*
     ///      — span 41 + 85n bytes for n uses —
     ///      matching the Rust `compute_usage_accrual_hash`.
     ///
@@ -669,13 +669,13 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
         uint256 offset = 41;
         for (uint256 i = 0; i < useCount; i++) {
-            bytes32 clauseOrAssembly = usage.uses[i].clauseOrAssembly;
+            bytes32 clauseOrProcess = usage.uses[i].clauseOrProcess;
             uint8 kind = usage.uses[i].kind;
             bytes32 processId = usage.uses[i].processId;
             address seller = usage.uses[i].seller;
             assembly ("memory-safe") {
                 let dst := add(add(packed, 32), offset)
-                mstore(dst, clauseOrAssembly)
+                mstore(dst, clauseOrProcess)
                 mstore8(add(dst, 32), kind)
                 mstore(add(dst, 33), processId)
                 mstore(add(dst, 65), shl(96, seller))
@@ -772,7 +772,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     /// @dev The batch path's resolve authorization, the type the guest's
     ///      `resolve_struct_hash` hashes (`prover/lib/src/eip712.rs`).
     bytes32 private constant RESOLVE_PROCESS_TYPEHASH =
-        keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)");
+        keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)");
     /// @dev The coordinator's two attestation authorizations, the types the
     ///      guest's `attest_seller_struct_hash` / `attest_buyer_struct_hash`
     ///      hash (`prover/lib/src/eip712.rs`).
@@ -969,15 +969,15 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     }
 
     /// @dev Ask the buyer's account code whether `authorization` authorizes
-    ///      resolving `processId` at `cumulativeValue` (`_askCode`). An
+    ///      resolving `processId` at `runningTotal` (`_askCode`). An
     ///      account with no code is refused by name, and any answer but the
     ///      magic value refuses the batch.
-    function _checkWalletCode(bytes32 processId, address buyer, uint256 cumulativeValue, bytes calldata authorization)
+    function _checkWalletCode(bytes32 processId, address buyer, uint256 runningTotal, bytes calldata authorization)
         private
         view
     {
         if (buyer.code.length == 0) revert BuyerHasNoCode(processId, buyer);
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(RESOLVE_PROCESS_TYPEHASH, processId, cumulativeValue)));
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(RESOLVE_PROCESS_TYPEHASH, processId, runningTotal)));
         if (!_askCode(buyer, digest, authorization)) revert WalletCodeAuthorizationRefused(processId, buyer);
     }
 
@@ -1028,12 +1028,12 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         c.processId = _wordAt(s, p);
         c.buyer = address(bytes20(_wordAt(s, p + 32)));
         c.seller = address(bytes20(_wordAt(s, p + 52)));
-        c.currency = address(bytes20(_wordAt(s, p + 72)));
+        c.token = address(bytes20(_wordAt(s, p + 72)));
         c.payment = uint256(_wordAt(s, p + 92));
-        c.expectedCumulativeValue = uint256(_wordAt(s, p + 124));
+        c.runningTotal = uint256(_wordAt(s, p + 124));
         c.checkoutHash = _wordAt(s, p + 156);
         c.salt = uint256(_wordAt(s, p + 188));
-        c.deadline = uint256(_wordAt(s, p + COMMITMENT_DEADLINE_OFFSET));
+        c.commitDeadline = uint256(_wordAt(s, p + COMMITMENT_DEADLINE_OFFSET));
     }
 
     /// @dev The ids FigaroCore derives at commit, under this contract's domain:
@@ -1049,12 +1049,12 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             processId,
             c.buyer,
             c.seller,
-            c.currency,
+            c.token,
             c.payment,
-            c.expectedCumulativeValue,
+            c.runningTotal,
             c.checkoutHash,
             c.salt,
-            c.deadline
+            c.commitDeadline
         );
     }
 
@@ -1062,7 +1062,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///      and payment (2G + P), the buyer its bond less the payment (P).
     function _emitResolved(bytes32 processId, CommitmentTypes.Commitment memory c) private {
         bytes32 orderHash = keccak256(abi.encodePacked(processId, c.hashStruct()));
-        emit OrderResolved(orderHash, processId, c.expectedCumulativeValue * 2 + c.payment, c.payment);
+        emit OrderResolved(orderHash, processId, c.runningTotal * 2 + c.payment, c.payment);
     }
     // ── Event re-emission ─────────────────────────────────────────
 

@@ -45,7 +45,7 @@ the whole model first.
   `ClauseRegistry` registration under the user's wallet. No on-chain code.
 - **`figaro-assembly-designer`** — compose a new assembly, or **fork** an existing one, from
   registered agreements (registering a new `RegisteredAgreement` on `AgreementRegistry` only
-  when none fits): an `Assembly` → IPFS → a permissionless `AssemblyRegistry`
+  when none fits): an `ProcessDesign` → IPFS → a permissionless `ProcessRegistry`
   registration under the user's wallet.
 - **`figaro-analyst`** — *read and analyze* a market's public graphs (`@figaro-protocol/sdk/derive`):
   it holds no key and signs nothing; substance it was not given it BUYS as an ordinary
@@ -115,7 +115,7 @@ several separate voices — each prompt points back here instead of restating th
 
 `figaro-clause-author` and `figaro-assembly-designer` each close on a "Step 6 — Output"
 that prints a plain-text block naming what was produced and where it now lives
-(the clause key, or each `agreementHash` and the `assemblyHash`; `contentURI`, the transaction, the registering wallet).
+(the clause key, or each `agreementHash` and the `processDesignHash`; `contentURI`, the transaction, the registering wallet).
 The convention is the same for both even though the fields differ: the block belongs to
 the **user**, never to this repo — it is what they paste into their own notes, hand to
 a counterparty, or check against later. `figaro-operator` and `figaro-analyst` register

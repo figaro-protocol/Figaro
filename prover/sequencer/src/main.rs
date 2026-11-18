@@ -97,12 +97,12 @@ async fn main() {
     )
     .parse()
     .expect("invalid CLAUSE_REGISTRY_ADDRESS");
-    let assembly_registry_addr: Address = env_or(
-        "ASSEMBLY_REGISTRY_ADDRESS",
+    let process_registry_addr: Address = env_or(
+        "PROCESS_REGISTRY_ADDRESS",
         "0x0000000000000000000000000000000000000000",
     )
     .parse()
-    .expect("invalid ASSEMBLY_REGISTRY_ADDRESS");
+    .expect("invalid PROCESS_REGISTRY_ADDRESS");
     let agreement_registry_addr: Address = env_or(
         "AGREEMENT_REGISTRY_ADDRESS",
         "0x0000000000000000000000000000000000000000",
@@ -361,7 +361,7 @@ async fn main() {
         verifier_address: verifier_addr,
         usage_counter_address: usage_counter_addr,
         clause_registry_address: clause_registry_addr,
-        assembly_registry_address: assembly_registry_addr,
+        process_registry_address: process_registry_addr,
         agreement_registry_address: agreement_registry_addr,
         members_registry_address: members_registry_addr,
         private_key,

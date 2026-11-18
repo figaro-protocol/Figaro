@@ -41,7 +41,7 @@ import { expect, type Page } from "@playwright/test";
 import { test, gotoAsWallet } from "./devnet-multi-test";
 import { createPublicClient, defineChain, http, type Hex } from "viem";
 import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverMembers, discoverSeedAssemblies, isBindingOf, primeRegisteredClauseSpecs, readLocalDeploymentConfig, type DiscoveredAssembly } from "./devnet-helpers";
-import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI, readUtilityTokenPin } from '@figaro-protocol/sdk';
+import { PROCESS_REGISTRY_ABI, MEMBERS_REGISTRY_ABI, readUtilityTokenPin } from '@figaro-protocol/sdk';
 import { specSource } from '@/lib/shared/clauseSpecSource';
 // The one place the seller-page route is written — the spec follows the same
 // route the site links, never a second copy of the string.
@@ -192,7 +192,7 @@ async function onboardViaWizard(
     // The binding survives a reload: it is the seller's declaration, held in
     // this browser under this wallet until they publish it. The binding the
     // draft holds names the assembly by its full hash.
-    await draftCarries(page, assembly.assemblyHash);
+    await draftCarries(page, assembly.processDesignHash);
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(
         page.getByTestId(`seller-assembly-row-${slug}`).locator('input[type="checkbox"]').first(),
@@ -344,7 +344,7 @@ test.describe("member registration wizard (devnet)", () => {
         if (uriBefore) {
             const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
             const doc = await (await fetch(`${gateway}/ipfs/${uriBefore.slice("ipfs://".length)}`)).json();
-            const bindings = (doc.assemblyBindings ?? []) as Array<{ assemblyHash?: string }>;
+            const bindings = (doc.processBindings ?? []) as Array<{ processDesignHash?: string }>;
             // Premise: exactly the single-order binding AND both devnet tokens
             // accepted (the permit token is the swap-funded leg's input set —
             // an older single-token profile gets repaired in update mode).
@@ -352,8 +352,8 @@ test.describe("member registration wizard (devnet)", () => {
             const permitToken = (config.permitTokenAddress ?? "").toLowerCase();
             // The buyer half is part of the premise: at least one subscription.
             // An older seller-only profile gets repaired in update mode.
-            const buyerSubs = (doc.buyerAssemblies ?? []) as Array<{ assemblyHash: string }>;
-            conformant = bindings.length === 1 && isBindingOf(bindings[0], singleOrderAssembly!.assemblyHash)
+            const buyerSubs = (doc.buyerAssemblies ?? []) as Array<{ processDesignHash: string }>;
+            conformant = bindings.length === 1 && isBindingOf(bindings[0], singleOrderAssembly!.processDesignHash)
                 && !!permitToken
                 && acceptedTokens.some((t) => t.address?.toLowerCase() === permitToken)
                 && buyerSubs.length >= 1;
@@ -375,7 +375,7 @@ test.describe("member registration wizard (devnet)", () => {
         {
             const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
             const doc = await (await fetch(`${gateway}/ipfs/${profileURI!.slice("ipfs://".length)}`)).json();
-            const buyerSubs = (doc.buyerAssemblies ?? []) as Array<{ assemblyHash: string }>;
+            const buyerSubs = (doc.buyerAssemblies ?? []) as Array<{ processDesignHash: string }>;
             expect(buyerSubs.length, "the buyer's assembly subscription is in the pinned profile").toBeGreaterThanOrEqual(1);
             const tokens = (doc.acceptedTokens ?? []) as Array<{ address?: string }>;
             const permitToken = (readLocalDeploymentConfig().permitTokenAddress ?? "").toLowerCase();
@@ -384,7 +384,7 @@ test.describe("member registration wizard (devnet)", () => {
                 "the second accepted token is in the pinned profile",
             ).toBe(true);
             expect(
-                buyerSubs.some((s) => s.assemblyHash.toLowerCase() === singleOrderAssembly!.assemblyHash.toLowerCase()),
+                buyerSubs.some((s) => s.processDesignHash.toLowerCase() === singleOrderAssembly!.processDesignHash.toLowerCase()),
                 "the subscription is the assembly the buyer step subscribed",
             ).toBe(true);
         }
@@ -414,23 +414,23 @@ test.describe("member registration wizard (devnet)", () => {
         ).toBeVisible({ timeout: 15000 });
 
         // ── The cross-check filter: discover surfaces ONLY sellers whose
-        // profile binds an ANCHORED assembly (the AssemblyRegistry is the
+        // profile binds an ANCHORED assembly (the ProcessRegistry is the
         // authority). Computed from chain — never a name roster: every
         // registered member WITHOUT an anchored binding must be absent.
         const [published, allSellers] = await Promise.all([
             publicClient.getContractEvents({
-                address: (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? config.assemblyRegistry ?? "") as Hex,
+                address: (process.env.NEXT_PUBLIC_PROCESS_REGISTRY ?? config.processRegistry ?? "") as Hex,
                 // The REAL ABI — a hand-written event signature silently
                 // matches zero logs and judges every seller non-conformant.
-                abi: ASSEMBLY_REGISTRY_ABI,
-                eventName: "AssemblyRegistered",
+                abi: PROCESS_REGISTRY_ABI,
+                eventName: "ProcessRegistered",
                 fromBlock: 0n,
             }),
             discoverMembers(),
         ]);
-        const anchoredHashes = new Set(published.map((e) => (e.args.assemblyHash as string).toLowerCase()));
+        const anchoredHashes = new Set(published.map((e) => (e.args.processDesignHash as string).toLowerCase()));
         const nonConformant = allSellers.filter(
-            (s) => !s.assemblyBindings.some((b) => anchoredHashes.has(b.assemblyHash?.toLowerCase())),
+            (s) => !s.processBindings.some((b) => anchoredHashes.has(b.processDesignHash?.toLowerCase())),
         );
         for (const seller of nonConformant.slice(0, 5)) {
             await expect(

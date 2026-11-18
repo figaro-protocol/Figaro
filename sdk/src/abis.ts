@@ -9,15 +9,15 @@ import { parseAbi, parseAbiItem } from "viem";
 
 // ── Commitment struct type (shared across ABI strings) ──────────────────────
 // Matches CommitmentTypes.Commitment in Solidity:
-//   (bytes32 processId, address buyer, address seller, address currency,
-//    uint256 payment, uint256 expectedCumulativeValue, bytes32 checkoutHash,
-//    uint256 salt, uint256 deadline)
+//   (bytes32 processId, address buyer, address seller, address token,
+//    uint256 payment, uint256 runningTotal, bytes32 checkoutHash,
+//    uint256 salt, uint256 commitDeadline)
 
 /** The Core's `Commitment` struct as an ABI tuple string. A core primitive —
  *  exported so contracts the frontend composes with (which take a Commitment as
  *  a calldata arg) can build their ABIs without re-stating the FigaroCore struct. */
 export const COMMITMENT_TUPLE =
-    "(bytes32 processId, address buyer, address seller, address currency, uint256 payment, uint256 expectedCumulativeValue, bytes32 checkoutHash, uint256 salt, uint256 deadline)";
+    "(bytes32 processId, address buyer, address seller, address token, uint256 payment, uint256 runningTotal, bytes32 checkoutHash, uint256 salt, uint256 commitDeadline)";
 
 // ── FigaroCore ABI ──────────────────────────────────────────────────────────
 
@@ -29,11 +29,11 @@ export const CORE_ABI = parseAbi([
     `function resolveProcess(bytes32 processId, ${COMMITMENT_TUPLE}[] commitments) external`,
 
     // ── Process state views ─────────────────────────────────────────
-    "function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint256 activeOrderCount)",
+    "function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 runningTotal, uint256 activeOrderCount)",
     "function orderStatus(bytes32 orderHash) view returns (uint8)",
 
     // ── Events ──────────────────────────────────────────────────────
-    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
+    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 runningTotal, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
     "event OrderSeller(bytes32 indexed orderHash, address indexed seller)",
     "event OrderResolved(bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout)",
     "event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount)",
@@ -88,7 +88,7 @@ export const CORE_ABI = parseAbi([
 // ── Individual event ABIs (for log filtering) ───────────────────────────────
 
 export const EV_ORDER_COMMITTED = parseAbiItem(
-    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
+    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 runningTotal, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
 );
 
 export const EV_ORDER_SELLER = parseAbiItem(
@@ -129,7 +129,7 @@ export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     "error InvalidInclusionProof(bytes32 checkoutHash, bytes32 clauseId)",
     "error NotAuthorized()",
     "error UnknownOrder()",
-    "error OrderResolved()",
+    "error OrderAlreadyResolved()",
 ]);
 
 export const EV_ATTESTATION = parseAbiItem(
@@ -290,24 +290,24 @@ export const MEMBERS_REGISTRY_ABI = parseAbi([
     "event MemberWithdrawn(address indexed member, uint256 amount)",
     "error AlreadyRegistered()",
     "error NotRegistered()",
-    "error InsufficientDeposit()",
+    "error WrongStake()",
     "error NothingPending()",
     "error CooldownActive(uint256 releaseAt)",
     "error TransferFailed()",
 ]);
 
-// ── AssemblyRegistry ABI ──────────────────────────────────────────────────
+// ── ProcessRegistry ABI ──────────────────────────────────────────────────
 
-export const ASSEMBLY_REGISTRY_ABI = parseAbi([
-    "function registerAssembly(bytes32 assemblyHash, string contentURI) external payable",
-    "function withdrawDeposit(bytes32 assemblyHash) external",
-    "function bindings(bytes32 assemblyHash) view returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)",
+export const PROCESS_REGISTRY_ABI = parseAbi([
+    "function registerProcess(bytes32 processDesignHash, string contentURI) external payable",
+    "function withdrawDeposit(bytes32 processDesignHash) external",
+    "function bindings(bytes32 processDesignHash) view returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)",
     "function registrationDeposit() view returns (uint256)",
-    "event AssemblyRegistered(bytes32 indexed assemblyHash, address indexed registeredBy, string contentURI)",
-    "event DepositWithdrawn(bytes32 indexed assemblyHash, address indexed registeredBy, uint256 amount)",
+    "event ProcessRegistered(bytes32 indexed processDesignHash, address indexed registeredBy, string contentURI)",
+    "event DepositWithdrawn(bytes32 indexed processDesignHash, address indexed registeredBy, uint256 amount)",
     "error EmptyContentURI()",
-    "error ZeroAssemblyHash()",
-    "error AssemblyAlreadyRegistered(bytes32 assemblyHash)",
+    "error ZeroProcessDesignHash()",
+    "error ProcessAlreadyRegistered(bytes32 processDesignHash)",
     "error WrongDeposit(uint256 provided, uint256 required)",
     "error NotRegistered()",
     "error NotRegisteredBy(address caller, address registeredBy)",
@@ -316,10 +316,10 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
 ]);
 
 // ── AgreementRegistry ABI ─────────────────────────────────────────────────
-// AssemblyRegistry's shape, keyed by `agreementHash` (`agreementHashOf`, the
+// ProcessRegistry's shape, keyed by `agreementHash` (`agreementHashOf`, the
 // merkle root over one leaf per clause the agreement composes, with the
 // designer's fills). Parallel to the
-// clause and assembly registries: no edge to either.
+// clause and process registries: no edge to either.
 
 export const AGREEMENT_REGISTRY_ABI = parseAbi([
     "function registerAgreement(bytes32 agreementHash, string contentURI) external payable",
@@ -368,7 +368,7 @@ export const FLORIN_TOKEN_ABI = parseAbi([
     "error MinterAlreadySet()",
     "error MinterCapExceeded()",
     "error MinterNotRegistered()",
-    "error NotMinter()",
+    "error NotDeployer()",
     "error SupplyCapExceeded()",
     "error ZeroAddress()",
     // ERC-20 (ERC-6093) and ERC-2612 permit, as OpenZeppelin compiles them.
@@ -398,12 +398,12 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 // the same leaf shape `computeClauseLeaf` builds. It carries only the clause
 // FINGERPRINT `clauseDataHash` (`keccak256` of the committed bytes), never the
 // preimage, so a `private` clause's plaintext never touches public calldata.
-// `recordAgreementUsage` and `recordAssemblyUsage` take no clause at all —
+// `recordAgreementUsage` and `recordProcessDesignUsage` take no clause at all —
 // the content of the agreement format's reserved provenance leaf
 // (`provenanceLeaf`) is fully determined by the two keys it names
-// (`agreementHash`, `assemblyHash`), so the contract derives it; the
+// (`agreementHash`, `processDesignHash`), so the contract derives it; the
 // assembly claim adds the agreement's membership proof under
-// `assemblyHash`. Accrual
+// `processDesignHash`. Accrual
 // buckets into fixed periods; a period's counts are final once `periodClosed`.
 //
 // BATCH-RESOLVED trade never touches FigaroCore, so it can never travel that
@@ -415,9 +415,9 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 
 export const USAGE_COUNTER_ABI = parseAbi([
     // ── Recording (permissionless) ──────────────────────────────────
-    `function recordClauseUsage(${COMMITMENT_TUPLE} order, bytes32 clauseOrAssembly, bytes32 clauseDataHash, bytes32[] proof) external`,
-    `function recordAgreementUsage(${COMMITMENT_TUPLE} order, bytes32 agreementHash, bytes32 assemblyHash, bytes32[] proof) external`,
-    `function recordAssemblyUsage(${COMMITMENT_TUPLE} order, bytes32 assemblyHash, bytes32 agreementHash, bytes32 slotContentHash, bytes32[] leafProof, bytes32[] membershipProof) external`,
+    `function recordClauseUsage(${COMMITMENT_TUPLE} order, bytes32 clauseOrProcess, bytes32 clauseDataHash, bytes32[] proof) external`,
+    `function recordAgreementUsage(${COMMITMENT_TUPLE} order, bytes32 agreementHash, bytes32 processDesignHash, bytes32[] proof) external`,
+    `function recordProcessDesignUsage(${COMMITMENT_TUPLE} order, bytes32 processDesignHash, bytes32 agreementHash, bytes32 agreementContentHash, bytes32[] leafProof, bytes32[] membershipProof) external`,
 
     // ── Composition + schedule ──────────────────────────────────────
     "function core() view returns (address)",
@@ -425,8 +425,8 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "function agreements() view returns (address)",
     "function batchVerifier() view returns (address)",
     "function provenanceLeaf() view returns (bytes32)",
-    "function assemblyTermsLeaf() view returns (bytes32)",
-    "function assemblyLeafDomain() view returns (bytes32)",
+    "function processTermsLeaf() view returns (bytes32)",
+    "function processLeafDomain() view returns (bytes32)",
     "function periodEnd(uint256) view returns (uint64)",
     "function periodCount() view returns (uint256)",
     "function currentPeriod() view returns (uint8)",
@@ -435,20 +435,20 @@ export const USAGE_COUNTER_ABI = parseAbi([
     // ── Accrual ─────────────────────────────────────────────────────
     // Every accrual is keyed by (kind, key): kind 0 is a clause, 1 an assembly,
     // 2 a registered agreement; the families never share a entry
-    // (UsageCounter.KIND_CLAUSE / KIND_ASSEMBLY / KIND_AGREEMENT).
+    // (UsageCounter.KIND_CLAUSE / KIND_PROCESS / KIND_AGREEMENT).
     "function KIND_CLAUSE() view returns (uint8)",
-    "function KIND_ASSEMBLY() view returns (uint8)",
+    "function KIND_PROCESS() view returns (uint8)",
     "function KIND_AGREEMENT() view returns (uint8)",
-    "function accrualOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
-    "function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) view returns (uint256)",
+    "function accrualOf(uint8 kind, bytes32 clauseOrProcess, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
+    "function scoreOf(uint8 kind, bytes32 clauseOrProcess, uint8 period) view returns (uint256)",
     "function totalScoreIn(uint8 period) view returns (uint256)",
-    "function processCounted(uint8 kind, bytes32 clauseOrAssembly, bytes32 processId) view returns (bool)",
-    "function sellerSeen(uint8 kind, bytes32 clauseOrAssembly, uint8 period, address seller) view returns (bool)",
+    "function processCounted(uint8 kind, bytes32 clauseOrProcess, bytes32 processId) view returns (bool)",
+    "function sellerSeen(uint8 kind, bytes32 clauseOrProcess, uint8 period, address seller) view returns (bool)",
     "function minSellers() view returns (uint64)",
     "function icbrt(uint256 n) pure returns (uint256)",
 
     // ── Events ──────────────────────────────────────────────────────
-    "event UsageRecorded(uint8 kind, bytes32 indexed clauseOrAssembly, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
+    "event UsageRecorded(uint8 kind, bytes32 indexed clauseOrProcess, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
 
     // ── Errors ──────────────────────────────────────────────────────
     "error ZeroAddress()",
@@ -462,7 +462,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "error AlreadyCounted()",
     "error InvalidInclusionProof()",
     "error SellerNotStaked(address seller)",
-    "error ClauseAgreementOrAssemblyNotRegistered(bytes32 clauseOrAssembly)",
+    "error ClauseAgreementOrProcessNotRegistered(bytes32 clauseOrProcess)",
     "error NotBatchVerifier()",
     "error PeriodMismatch(uint8 open, uint8 claimed)",
     "error ProvenanceLeafMismatch(bytes32 expected, bytes32 claimed)",
@@ -471,7 +471,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
 ]);
 
 export const EV_USAGE_RECORDED = parseAbiItem(
-    "event UsageRecorded(uint8 kind, bytes32 indexed clauseOrAssembly, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
+    "event UsageRecorded(uint8 kind, bytes32 indexed clauseOrProcess, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
 );
 
 // ── RpgfMinter ABI ────────────────────────────────────────────────────────
@@ -488,10 +488,10 @@ export const EV_USAGE_RECORDED = parseAbiItem(
 export const RPGF_MINTER_ABI = parseAbi([
     // A claim names (kind, key) pairs; the minter reads only the registry each kind names.
     "function KIND_CLAUSE() view returns (uint8)",
-    "function KIND_ASSEMBLY() view returns (uint8)",
+    "function KIND_PROCESS() view returns (uint8)",
     "function KIND_AGREEMENT() view returns (uint8)",
-    "function claim(uint8 periodId, (uint8 kind, bytes32 key)[] clausesOrAssemblies) external",
-    "function claimable(uint8 periodId, address account, (uint8 kind, bytes32 key)[] clausesOrAssemblies) view returns (uint256)",
+    "function claim(uint8 periodId, (uint8 kind, bytes32 key)[] clausesOrProcesses) external",
+    "function claimable(uint8 periodId, address account, (uint8 kind, bytes32 key)[] clausesOrProcesses) view returns (uint256)",
     "function periodAmount(uint256) view returns (uint256)",
     "function periodCount() view returns (uint256)",
     "function minted(uint8 periodId) view returns (uint256)",
@@ -500,7 +500,7 @@ export const RPGF_MINTER_ABI = parseAbi([
     "function counter() view returns (address)",
     "function members() view returns (address)",
     "function clauses() view returns (address)",
-    "function assemblies() view returns (address)",
+    "function processDesigns() view returns (address)",
     "function agreements() view returns (address)",
     "event Claimed(uint8 indexed periodId, address indexed account, uint256 amount, uint256 score)",
     "error ZeroAddress()",
@@ -508,9 +508,9 @@ export const RPGF_MINTER_ABI = parseAbi([
     "error UnknownPeriod(uint8 periodId)",
     "error AmountsPeriodsMismatch(uint256 amounts, uint256 periods)",
     "error PeriodStillAccruing(uint8 periodId)",
-    "error NoClausesOrAssemblies()",
-    "error DuplicateClauseOrAssembly(uint8 kind, bytes32 clauseOrAssembly)",
-    "error NotAuthorOfRecord(uint8 kind, bytes32 clauseOrAssembly, address caller)",
+    "error NoClausesOrProcesses()",
+    "error DuplicateClauseOrProcess(uint8 kind, bytes32 clauseOrProcess)",
+    "error NotAuthorOfRecord(uint8 kind, bytes32 clauseOrProcess, address caller)",
     "error UnknownKind(uint8 kind)",
     "error NothingToClaim()",
     "error PeriodBudgetExceeded(uint8 periodId)",
@@ -533,12 +533,12 @@ export const RPGF_MINTER_ABI = parseAbi([
 
 export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch resolution ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId)[] specBindings) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrAssembly, uint8 kind, bytes32 processId, address seller)[] uses) usage, bytes operations) external",
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId)[] specBindings) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrProcess, uint8 kind, bytes32 processId, address seller)[] uses) usage, bytes operations) external",
 
     // ── The Core's own order and process events, emitted from the stream ──
     // Filter on the verifier's address beside FigaroCore's: the same events,
     // the same fields, ids derived under the verifier's EIP-712 domain.
-    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
+    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 runningTotal, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
     "event OrderSeller(bytes32 indexed orderHash, address indexed seller)",
     "event OrderResolved(bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout)",
     "event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount)",

@@ -9,33 +9,33 @@
                 "processId": "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "buyer": "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
                 "seller": "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
-                "currency": "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
+                "token": "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
                 "payment": "100000000000000000000",
-                "expectedCumulativeValue": "100000000000000000000",
+                "runningTotal": "100000000000000000000",
                 "checkoutHash": "0x4d38a284aebd2196b913b9bd71cee7e649123b53deb813d048a75dae79663cbd",
                 "salt": "42",
-                "deadline": "2000"
+                "commitDeadline": "2000"
             },
-            "structHash": "0xf0a481575b0324755dc3868de944a130b699c5b4b43fd819ca4effced3422592",
-            "processId": "0x15978cc271a0eb2eac3ddc12b12b97b0886636b6393f3e28865c9f4d91488cd8",
-            "orderHash": "0x5a5b2033a2abc24629050980883539557a8063c8748b7574950a73d4f30f90d0"
+            "structHash": "0x8976f3a0859106e964b297febf588d5a17bb6347c9c9b1a72e3f7b5edca52947",
+            "processId": "0xd5d802669f396604f455b6fa3803471bb87cb67a92ef20ce103df515e9123fbb",
+            "orderHash": "0xef4875c87ebe3c811fb44e5b9354b0ee66ba7f5304d50b73522a0d4a9b0003d2"
         },
         {
             "label": "sub",
             "commitment": {
-                "processId": "0xa809fe3f6ab3509a130c6cd20bf910767b4ccafce5d46f8ad99d0e62f367c83b",
+                "processId": "0x218b062c3f37a305b72333c552ba4b9533f40af565e315b35d7d48e47c3d033c",
                 "buyer": "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
                 "seller": "0xC22667C5926d1C9af6C0fa8Cedc4ea3e489F6F70",
-                "currency": "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
+                "token": "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
                 "payment": "50000000000000000000",
-                "expectedCumulativeValue": "150000000000000000000",
+                "runningTotal": "150000000000000000000",
                 "checkoutHash": "0xc246b902bc5d7588756d6d8cfc22e022a052b19175a4277456c96196877efc2b",
                 "salt": "43",
-                "deadline": "2000"
+                "commitDeadline": "2000"
             },
-            "structHash": "0xd9a5cb004387bfb22c64bf61d3d263df2689df6b51144cd3ad18f684af1c3231",
-            "processId": "0xa809fe3f6ab3509a130c6cd20bf910767b4ccafce5d46f8ad99d0e62f367c83b",
-            "orderHash": "0xda9af386b03e8c5787b58f31ae5a4f5556f1142f40e2a2508af62d3ba2637e59"
+            "structHash": "0x03ad150d953fa26be34b210e132d814e3c30f5c887a0ccd5ecdb321fde6e7b8a",
+            "processId": "0x218b062c3f37a305b72333c552ba4b9533f40af565e315b35d7d48e47c3d033c",
+            "orderHash": "0xe766eb795133192c5181d251fadc1786c3064e058473b36f3b770771643b5b02"
         }
     ],
     "batch": {
@@ -46,10 +46,10 @@
                 "type": "ResolveProcess",
                 "message": {
                     "processId": "0x2e7e31f99b635fa2bc1d7ecdba7d05d7b3c4e6175ac61694bc07d463a8974661",
-                    "cumulativeValue": "1361129467683753853853498429727072847324"
+                    "runningTotal": "1361129467683753853853498429727072847324"
                 },
-                "structHash": "0x377e8b2b3db45c34f66b7eff0bdaf8fe4a7eada2c5436eb9aa379e24074069ef",
-                "digest": "0x224143e9265254ccf9b157c53109202182e32e9cde9e6deb77d9fb733de0990c"
+                "structHash": "0x9b6765304ffccba60c3fda8c6653690fdc20cd5a32b74e6395a51d06f512a0c3",
+                "digest": "0x33914340c33557dfdc335659e114dbc9cc3ea805aa08116a7fa0145865e7373a"
             },
             {
                 "type": "AttestSeller",

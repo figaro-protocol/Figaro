@@ -70,8 +70,8 @@ export interface Agreement {
     clauses: AgreementClause[];
     /** Where this agreement came from at design time: the registered
      *  agreement (`agreementHash`, the `AgreementRegistry` key) the order's
-     *  entry binds, and the registered assembly (`assemblyHash`, the
-     *  `AssemblyRegistry` key) the entry sits in. Carried by the agreement
+     *  entry binds, and the registered assembly (`processDesignHash`, the
+     *  `ProcessRegistry` key) the entry sits in. Carried by the agreement
      *  FORMAT as one reserved leaf (`PROVENANCE_LEAF_KEY`), never by a
      *  clause. Checkout writes it from the entry the order instantiates; a
      *  design cannot carry it, since neither hash can appear inside the
@@ -84,7 +84,7 @@ export interface Agreement {
      *  order the design names them, empty for the process's root. Carried by
      *  the agreement FORMAT as one leaf of a shape of its own
      *  (`computeTopologyLeaf`), never by a clause. Checkout writes it from the
-     *  assembly entry the order instantiates (`AssemblyAgreement.follows`,
+     *  assembly entry the order instantiates (`ProcessDesignAgreement.follows`,
      *  local labels there, order hashes here), as it writes the provenance; a
      *  registered agreement carries none, since who follows whom is the
      *  assembly's. An agreement built from a design carries it, an empty list
@@ -98,7 +98,7 @@ export interface Agreement {
  *  agreement and the registered assembly an order instantiates. */
 export interface AgreementProvenance {
     agreementHash: Hex;
-    assemblyHash: Hex;
+    processDesignHash: Hex;
 }
 
 // ── The provenance leaf — the agreement format's own, not a clause ──────────
@@ -117,34 +117,34 @@ export const PROVENANCE_LEAF_KEY: Hex = keccak256(toHex(PROVENANCE_LEAF_LABEL));
 const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
 
 /** The provenance leaf's committed bytes — canonical JSON of the two keys,
- *  `{"agreementHash":"0x<64 lowercase hex>","assemblyHash":"0x<64 lowercase hex>"}` —
+ *  `{"agreementHash":"0x<64 lowercase hex>","processDesignHash":"0x<64 lowercase hex>"}` —
  *  exactly what the counter reproduces from the claimed keys
- *  (`UsageCounter.recordAgreementUsage` / `recordAssemblyUsage`) and the
+ *  (`UsageCounter.recordAgreementUsage` / `recordProcessDesignUsage`) and the
  *  guest reproduces for a batch claim. */
-export function provenanceLeafBytes(agreementHash: Hex, assemblyHash: Hex): Hex {
+export function provenanceLeafBytes(agreementHash: Hex, processDesignHash: Hex): Hex {
     if (!BYTES32_RE.test(agreementHash)) {
         throw new Error(`provenance agreementHash is not a 32-byte hex hash: ${agreementHash}`);
     }
-    if (!BYTES32_RE.test(assemblyHash)) {
-        throw new Error(`provenance assemblyHash is not a 32-byte hex hash: ${assemblyHash}`);
+    if (!BYTES32_RE.test(processDesignHash)) {
+        throw new Error(`provenance processDesignHash is not a 32-byte hex hash: ${processDesignHash}`);
     }
     return toHex(new TextEncoder().encode(canonicalize({
         agreementHash: agreementHash.toLowerCase(),
-        assemblyHash: assemblyHash.toLowerCase(),
+        processDesignHash: processDesignHash.toLowerCase(),
     })));
 }
 
 /** The provenance leaf: the clause-leaf convention over the reserved key. */
-export function computeProvenanceLeaf(agreementHash: Hex, assemblyHash: Hex): Hex {
-    return keccak256(keccak256(concat([PROVENANCE_LEAF_KEY, provenanceContentRef(agreementHash, assemblyHash)])));
+export function computeProvenanceLeaf(agreementHash: Hex, processDesignHash: Hex): Hex {
+    return keccak256(keccak256(concat([PROVENANCE_LEAF_KEY, provenanceContentRef(agreementHash, processDesignHash)])));
 }
 
 /** The provenance leaf's fingerprint — `keccak256(provenanceLeafBytes(…))`:
  *  the leaf's clause data hash, and the `contentRef` of an attestation that
  *  re-asserts it. A reader links a provenance attestation to its agreement
  *  and assembly by computing this for a registered pair and comparing. */
-export function provenanceContentRef(agreementHash: Hex, assemblyHash: Hex): Hex {
-    return keccak256(provenanceLeafBytes(agreementHash, assemblyHash));
+export function provenanceContentRef(agreementHash: Hex, processDesignHash: Hex): Hex {
+    return keccak256(provenanceLeafBytes(agreementHash, processDesignHash));
 }
 
 /** The two keys a provenance leaf's bytes name, or null when the bytes are
@@ -161,12 +161,12 @@ export function decodeProvenanceContent(content: Hex): AgreementProvenance | nul
     } catch {
         return null;
     }
-    const match = /^\{"agreementHash":"(0x[0-9a-f]{64})","assemblyHash":"(0x[0-9a-f]{64})"\}$/.exec(text);
+    const match = /^\{"agreementHash":"(0x[0-9a-f]{64})","processDesignHash":"(0x[0-9a-f]{64})"\}$/.exec(text);
     if (!match) return null;
     const agreementHash = match[1] as Hex;
-    const assemblyHash = match[2] as Hex;
-    return provenanceLeafBytes(agreementHash, assemblyHash).toLowerCase() === content.toLowerCase()
-        ? { agreementHash, assemblyHash }
+    const processDesignHash = match[2] as Hex;
+    return provenanceLeafBytes(agreementHash, processDesignHash).toLowerCase() === content.toLowerCase()
+        ? { agreementHash, processDesignHash }
         : null;
 }
 
@@ -181,7 +181,7 @@ export const TOPOLOGY_LEAF_LABEL = "figaro-agreement-topology";
  *  parties and the readers that rebuild the root, never attested and never
  *  counted. An assembly leaf's inner preimage is also 96 bytes (domain, key,
  *  data hash), and it is kept apart from the topology leaf by its first
- *  word, the domain: `ASSEMBLY_LEAF_DOMAIN` (`keccak256("figaro-assembly-leaf")`,
+ *  word, the domain: `PROCESS_LEAF_DOMAIN` (`keccak256("figaro-assembly-leaf")`,
  *  sdk/src/assembly.ts) against this one. */
 export const TOPOLOGY_LEAF_DOMAIN: Hex = keccak256(toHex(TOPOLOGY_LEAF_LABEL));
 
@@ -353,7 +353,7 @@ export function sortLeaves(leaves: readonly Hex[]): Hex[] {
 
 /** The sorted-pair merkle root over leaves already in `sortLeaves` order —
  *  the one tree builder: an agreement's root (`computeCheckoutHash`) and an
- *  assembly's (`assemblyHashOf`) are both this function. A one-leaf
+ *  assembly's (`processDesignHashOf`) are both this function. A one-leaf
  *  tree's root is its leaf; an empty tree's is bytes32(0). */
 export function buildMerkleRoot(leaves: readonly Hex[]): Hex {
     if (leaves.length === 0) return ZERO_BYTES32;
@@ -390,7 +390,7 @@ export function agreementLeaves(agreement: Agreement): Hex[] {
     }
     const leaves = agreement.clauses.map(computeClauseLeaf);
     if (agreement.provenance !== undefined) {
-        leaves.push(computeProvenanceLeaf(agreement.provenance.agreementHash, agreement.provenance.assemblyHash));
+        leaves.push(computeProvenanceLeaf(agreement.provenance.agreementHash, agreement.provenance.processDesignHash));
     }
     if (agreement.follows !== undefined) leaves.push(computeTopologyLeaf(agreement.follows));
     return sortLeaves(leaves);
@@ -418,7 +418,7 @@ export function buildSignedClauseInclusionProof(
 
 /**
  * Build the inclusion proof of the reserved provenance leaf — what
- * `UsageCounter.recordAgreementUsage` / `recordAssemblyUsage` and the batch
+ * `UsageCounter.recordAgreementUsage` / `recordProcessDesignUsage` and the batch
  * path's agreement and assembly claims verify against the signed root.
  * Throws if the agreement names no design.
  */
@@ -426,8 +426,8 @@ export function buildProvenanceInclusionProof(agreement: Agreement): { leaf: Hex
     if (agreement.provenance === undefined) {
         throw new Error("Agreement names no assembly: no provenance leaf to prove");
     }
-    const { agreementHash, assemblyHash } = agreement.provenance;
-    return buildLeafInclusionProof(agreementLeaves(agreement), computeProvenanceLeaf(agreementHash, assemblyHash));
+    const { agreementHash, processDesignHash } = agreement.provenance;
+    return buildLeafInclusionProof(agreementLeaves(agreement), computeProvenanceLeaf(agreementHash, processDesignHash));
 }
 
 /**
@@ -448,8 +448,8 @@ export function provenanceLeafAttestation(agreement: Agreement): {
     contentRef: Hex;
 } {
     const { proof } = buildProvenanceInclusionProof(agreement);
-    const { agreementHash, assemblyHash } = agreement.provenance as AgreementProvenance;
-    const clauseDataHash = provenanceContentRef(agreementHash, assemblyHash);
+    const { agreementHash, processDesignHash } = agreement.provenance as AgreementProvenance;
+    const clauseDataHash = provenanceContentRef(agreementHash, processDesignHash);
     return { clauseId: PROVENANCE_LEAF_KEY, stage: 0, clauseDataHash, proof, contentRef: clauseDataHash };
 }
 

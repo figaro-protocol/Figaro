@@ -76,7 +76,7 @@ describe("an agreement carries exactly the clauses its designer composed", () =>
         process.env.NEXT_PUBLIC_DAO_TREASURY = "0xFa648187d49B04fb093266DB0d49e57B3B2403A3";
         const named = projectSnapshotForReview(snapshot);
         if (!unnamed.ok || !named.ok) throw new Error("both compositions build");
-        expect(named.assemblyHash).toBe(unnamed.assemblyHash);
+        expect(named.processDesignHash).toBe(unnamed.processDesignHash);
     });
 });
 

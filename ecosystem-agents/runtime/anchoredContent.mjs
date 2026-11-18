@@ -5,10 +5,10 @@
  * from IPFS through whatever gateway the host configured, and the registries
  * anchor each one on chain: `ClauseRegistry` keys a clause by the hash of its
  * canonical spec without `block` (the clause key), `AgreementRegistry` keys a registered
- * agreement by `agreementHashOf` of its document, `AssemblyRegistry` keys the
+ * agreement by `agreementHashOf` of its document, `ProcessRegistry` keys the
  * assembly by its assembly hash. A gateway can serve any bytes, so the
  * bytes are checked against the anchor before anything reads them, by the
- * SDK's `anchorClauseSpec`, `anchorRegisteredAgreement` and `anchorAssembly` —
+ * SDK's `anchorClauseSpec`, `anchorRegisteredAgreement` and `anchorProcessDesign` —
  * the functions the frontend verifies with. A
  * document that does not hash to its anchor reads as absence, never as the
  * registry's content: the verification is what makes an untrusted gateway an
@@ -24,9 +24,9 @@ import {
     agreementHashOf,
     anchorClauseSpec,
     anchorRegisteredAgreement,
-    anchorAssembly,
+    anchorProcessDesign,
     strippingReviver,
-    assemblyHashOf,
+    processDesignHashOf,
 } from "@figaro-protocol/sdk";
 import { fetchUriBytes, fetchUriText } from "./ipfsRead.mjs";
 
@@ -94,8 +94,8 @@ export async function fetchAnchoredRegisteredAgreement(agreement, options = {}) 
 /**
  * A live assembly's pinned document, verified against its assembly hash.
  *
- * @param registered  a `RegisteredAssembly` from the discovery graph
- *                  (`contentURI`, `assemblyHash`)
+ * @param registered  a `RegisteredProcessDesign` from the discovery graph
+ *                  (`contentURI`, `processDesignHash`)
  * @returns `{ assembly, text }`, or `{ absent }` naming why. Throws only when
  *          every gateway failed to answer.
  */
@@ -106,14 +106,14 @@ export async function fetchAnchoredAssembly(registered, options = {}) {
     if (assembly === null || typeof assembly !== "object" || !Array.isArray(assembly.agreements)) {
         return { absent: "not an assembly" };
     }
-    if (anchorAssembly(assembly, registered.assemblyHash) === null) {
+    if (anchorProcessDesign(assembly, registered.processDesignHash) === null) {
         let recomputed;
         try {
-            recomputed = assemblyHashOf(assembly);
+            recomputed = processDesignHashOf(assembly);
         } catch {
             recomputed = "no root";
         }
-        return { absent: `hashes to ${recomputed}, the registry anchors ${registered.assemblyHash}` };
+        return { absent: `hashes to ${recomputed}, the registry anchors ${registered.processDesignHash}` };
     }
     return { assembly, text };
 }

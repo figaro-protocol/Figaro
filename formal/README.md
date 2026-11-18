@@ -27,7 +27,7 @@ resolution correctness) across all reachable states.
 | **TokenConservation** | Sum of all wallets + contract balance = initial supply. No tokens created or destroyed. |
 | **ContractSolvency** | Contract balance is always ≥ 0. |
 | **WalletNonNegative** | No participant balance goes below zero. |
-| **CumulativeIntegrity** | Process cumulativeValue = sum of all order payments in the process. |
+| **CumulativeIntegrity** | Process runningTotal = sum of all order payments in the process. |
 | **ActiveCountCorrect** | Process activeCount = number of committed (not yet resolved) orders. |
 | **ResolutionAlwaysPossible** | Contract always holds sufficient funds to resolve any active process. |
 | **DeterrentEscrowMagnitudes** | Everything the contract holds is the two bonds of the committed orders, at 2× on both sides — the deterrent magnitude the equilibrium argument reasons over, not merely "enough to pay out". |
@@ -165,9 +165,9 @@ single-resolution-per-process shape is a faithful mirror, not an abstraction.
 
 ```
 Root order:   buyerBond = payment × 2,  sellerBond = payment × 2
-Sub-order:    buyerBond = payment × 2,  sellerBond = cumulativeValue × 2
+Sub-order:    buyerBond = payment × 2,  sellerBond = runningTotal × 2
 
-Resolution:   sellerPayout = cumulativeValue × 2 + payment  (bond return + payment)
+Resolution:   sellerPayout = runningTotal × 2 + payment  (bond return + payment)
               buyerPayout  = payment                         (half bond return)
 ```
 

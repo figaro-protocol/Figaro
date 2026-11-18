@@ -17,7 +17,7 @@ there, never quote a remembered number.
 **Pattern**: `resolveProcess()` sets `ps.activeOrderCount = 0`. Any
 subsequent `commit()` targeting that same `processId` reverts with
 `ProcessAlreadyResolved`. The `ProcessState` struct is not deleted —
-`rootBuyer`, `currency`, and `cumulativeValue` persist — but the gate at
+`rootBuyer`, `currency`, and `runningTotal` persist — but the gate at
 the top of the sub-order branch refuses extension.
 
 **Why it looks like overhead**: A reviewer trained on permissionless
@@ -58,7 +58,7 @@ cumulative-bonding property for any new orders.
 where buyer and seller roles carry different privileges.
 
 **Why it is correct**: If buyer equals seller, the same address deposits both
-the buyer bond (`2 × payment`) and the seller bond (`2 × cumulativeValue`)
+the buyer bond (`2 × payment`) and the seller bond (`2 × runningTotal`)
 and receives both payouts at resolution. The bond math balances identically.
 No tokens are created, destroyed, or transferred to a third party.
 
@@ -71,7 +71,7 @@ is a choice, not an exploit.
 ## 3. No admin, no escape hatch — by design
 
 **Pattern**: FigaroCore, AttestationCoordinator, ClauseRegistry,
-MembersRegistry, AgreementRegistry, and AssemblyRegistry have no admin, no
+MembersRegistry, AgreementRegistry, and ProcessRegistry have no admin, no
 pause function, no upgrade path, and no admin recovery. FlorinToken has a one-shot
 deployer who registers minter contracts then renounces (`deployerMintRenounced`)
 — a bounded privileged actor, documented separately in `CONTRACTS.md`.
@@ -268,12 +268,12 @@ registration pins the spec to the designer's OWN node and registers in one atomi
 action, so nothing is publicly observable before the register tx hits the mempool.
 The residual — a mempool front-run of that tx — is the accepted,
 stake-priced cost; no registry has a guessable id to claim in advance,
-since a clause key, an `agreementHash` and an assembly's `assemblyHash` are all derived from
-content. The same holds on `AgreementRegistry` and `AssemblyRegistry`: anyone can
+since a clause key, an `agreementHash` and an assembly's `processDesignHash` are all derived from
+content. The same holds on `AgreementRegistry` and `ProcessRegistry`: anyone can
 compute a pinned agreement's hash or an assembly's root from the document, so a
 front-runner can become designer of record there too, at the same stake and
 under the same usage-only reward, and both contracts accept it as stated. Revisit only if reward-capture griefing is
-observed in the wild; the fallback is commit-reveal on `AssemblyRegistry` alone.
+observed in the wild; the fallback is commit-reveal on `ProcessRegistry` alone.
 
 ---
 
@@ -287,7 +287,7 @@ looks unfinished.
 
 **Why it is correct**: a mid-chain order whose
 price or counterparty is unknown at signing is structurally incompatible with
-`FigaroCore`'s exact-match cumulative accumulator (`expectedCumulativeValue`),
+`FigaroCore`'s exact-match cumulative accumulator (`runningTotal`),
 and the workaround (a market contract standing in as the seller
 `FigaroCore` sees, bonds borrowed from a float vault) is banned three ways:
 ECDSA-only parties, no bond lending, no intermediary holding. Pricing is a catalog
@@ -468,18 +468,18 @@ buyer commits upfront.
 
 ---
 
-## 12. `deadline` is not auction residue and not redundant with `salt`
+## 12. `commitDeadline` is not auction residue and not redundant with `salt`
 
-**Pattern**: The `Commitment` struct carries both a `salt` and a `deadline`;
+**Pattern**: The `Commitment` struct carries both a `salt` and a `commitDeadline`;
 `commit` rejects expired commitments (`DeadlineExpired`,
 `FigaroCore.sol:147`) and nothing else in `FigaroCore` reads the field.
 
 **Why it looks wrong**: `salt` already appears to "secure" the commitment,
-so `deadline` reads as leftover plumbing from an earlier design (it is not).
+so `commitDeadline` reads as leftover plumbing from an earlier design (it is not).
 
 **Why it is correct**: the two fields answer different attacks. `salt` is
 IDENTITY — it makes two otherwise-identical orders hash differently, and
-provides no time-bounding at all. `deadline` is EXPIRY of the
+provides no time-bounding at all. `commitDeadline` is EXPIRY of the
 UNCONSUMMATED dual-signature window: signing and committing are two steps
 with real latency between them (share → counter-sign → commit), a
 signature cannot be revoked (no cancel — revocation is escape-hatch
@@ -558,7 +558,7 @@ The ETH is not stuck, on any reading:
   member is never held on a surface they asked to leave, so discovery removal and
   erasure of the published declaration are unaffected.
 
-**Scope**: `MembersRegistry` only. `ClauseRegistry`, `AgreementRegistry` and `AssemblyRegistry` deliberately
+**Scope**: `MembersRegistry` only. `ClauseRegistry`, `AgreementRegistry` and `ProcessRegistry` deliberately
 have no cooldown and need none — their withdrawal is one-shot per key and the key's
 binding is permanent, so there is nothing to recycle.
 
@@ -675,7 +675,7 @@ are declined and the door is closed on the family.
 ## 18. Usage accrual requires the clause, agreement or assembly to hold a live registration stake — an unregistered key scores nothing
 
 **Looks wrong because:** `recordClauseUsage` proves a real, resolved order committed the
-clause or assembly and its seller is staked — yet still reverts `ClauseAgreementOrAssemblyNotRegistered` (direct path)
+clause or assembly and its seller is staked — yet still reverts `ClauseAgreementOrProcessNotRegistered` (direct path)
 or silently skips it (batch path) unless the clause or assembly ALSO holds a live stake in its own registry; the agreement leg is gated the same way by `AgreementRegistry`. A resolved, proven use that earns nothing reads like lost accrual.
 
 **Is correct because:** the clause-or-assembly key is otherwise just a
@@ -762,12 +762,12 @@ and a new arrow between the registries for every usage counted, to enforce a
 continuity the stake does not promise. The claim is the one moment the designer
 acts, so the gate reads there, stateless, as every other gate in the minter does.
 
-## 21. Batch-path resolve is a `ResolveProcess(processId, cumulativeValue)` authorization — no nonce, no deadline
+## 21. Batch-path resolve is a `ResolveProcess(processId, runningTotal)` authorization — no nonce, no deadline
 
 **Pattern**: `FigaroCore` authorizes resolution by presence — `resolveProcess`
 requires `msg.sender == ps.rootBuyer`, over the orders the process holds at
 that call. The batch path replaces presence with an EIP-712 authorization over
-`ResolveProcess(bytes32 processId,uint256 cumulativeValue)` in one of two
+`ResolveProcess(bytes32 processId,uint256 runningTotal)` in one of two
 forms: the buyer's ECDSA signature, which the guest (`prover/lib/src/kernel.rs`
 `apply_resolve`) recovers and requires to equal the root buyer; or bytes the
 buyer's own account code validates for the digest (ERC-1271), which
@@ -933,15 +933,15 @@ nothing.
 ## 23. The reward keys every accrual by (kind, key) — the registries have no edge between them
 
 **Pattern**: `UsageCounter` keys every accrual, count, counted process and
-score by `(kind, key)`, kind `KIND_CLAUSE = 0`, `KIND_ASSEMBLY = 1` or
+score by `(kind, key)`, kind `KIND_CLAUSE = 0`, `KIND_PROCESS = 1` or
 `KIND_AGREEMENT = 2` (`accrualOf[kind][key][period]`,
 `processCounted`, `scoreOf(kind, key, period)`). `recordClauseUsage` counts
 under the clause kind and checks `ClauseRegistry` only;
 `recordAgreementUsage` counts under the agreement kind and checks
-`AgreementRegistry` only; `recordAssemblyUsage` counts under the assembly kind
-and checks `AssemblyRegistry` only — it proves the agreement's membership
-under `assemblyHash` but never asks whether that agreement is
-registered; `applyBatchAccrual` gates each `BatchUse{clauseOrAssembly,
+`AgreementRegistry` only; `recordProcessDesignUsage` counts under the assembly kind
+and checks `ProcessRegistry` only — it proves the agreement's membership
+under `processDesignHash` but never asks whether that agreement is
+registered; `applyBatchAccrual` gates each `BatchUse{clauseOrProcess,
 kind, processId, seller}` by its own kind's registry and skips an unknown kind. `RpgfMinter.claim(period, (kind, key)[])` reads
 the counter's slot for each kind, and `_isAuthor(kind, key, account)` reads
 the one registry the kind names, reverting `UnknownKind` on a kind above 2.
@@ -955,9 +955,9 @@ across the boundary — and all three hash-keyed registries already key by
 content, so the bytes look like they should suffice.
 
 **Why it is correct**: Each registry takes any `bytes32` but its own reserved
-keys, so a stranger can register an existing assembly's `assemblyHash` as a
+keys, so a stranger can register an existing assembly's `processDesignHash` as a
 clause key or an agreement hash. Nothing on chain tells a clause key, an
-`agreementHash` and a `assemblyHash` apart by their bytes, and no registry
+`agreementHash` and a `processDesignHash` apart by their bytes, and no registry
 knows another exists, so the separation cannot live in a registry;
 it lives in the reward's own accounting. With one keyspace, the stranger's
 clause registration at the assembly's bytes would make them a designer of record
@@ -1000,31 +1000,31 @@ read from another kind's registry.
 
 ## 24. The assembly root is a merkle tree over registered agreement hashes — membership is proved, never looked up
 
-**Pattern**: An assembly's `assemblyHash` is a merkle root built with the
-assembly tree's own leaf convention, `keccak256(keccak256(assemblyLeafDomain ‖
-key ‖ dataHash))` with `assemblyLeafDomain = keccak256("figaro-assembly-leaf")`, over one
+**Pattern**: An assembly's `processDesignHash` is a merkle root built with the
+assembly tree's own leaf convention, `keccak256(keccak256(processLeafDomain ‖
+key ‖ dataHash))` with `processLeafDomain = keccak256("figaro-assembly-leaf")`, over one
 leaf per agreement — key the agreement's `agreementHash`, content the canonical
-`{"clauses":{…},"slot":i}` — plus, when any are composed, the assembly terms
+`{"agreement":i,"clauses":{…}}` — plus, when any are composed, the assembly terms
 leaf (`keccak256("figaro-assembly-terms")`). The agreement format's leaf carries
 no domain, so a tree over agreements and a tree over clauses never share one
-shape and no tree over agreement-format leaves opens an assembly leaf. `AssemblyRegistry` stores the root and
+shape and no tree over agreement-format leaves opens an assembly leaf. `ProcessRegistry` stores the root and
 a URI and checks nothing about the agreements inside it; `AgreementRegistry`
 knows no assembly. The counter's assembly leg takes the agreement's
-`agreementHash`, its `slotContentHash` and a membership proof, and proves the
-agreement leaf under `assemblyHash` after proving the order's provenance leaf
+`agreementHash`, its `agreementContentHash` and a membership proof, and proves the
+agreement leaf under `processDesignHash` after proving the order's provenance leaf
 under `checkoutHash`.
 
 **Why it looks wrong**: An assembly that composes registered agreements reads
-like it should hold an on-chain list of them, and the assembly registry like
+like it should hold an on-chain list of them, and the process registry like
 it should refuse an assembly naming an unregistered agreement. A proof
 supplied by the caller reads like trust handed to the caller.
 
-**Why it is correct**: A list stored in `AssemblyRegistry`, or a lookup into
+**Why it is correct**: A list stored in `ProcessRegistry`, or a lookup into
 `AgreementRegistry` at assembly registration, is an edge between two
 registry families, and the families are parallel (CLAUDE.md § "The six
 layers"): assemblies use agreements, agreements use clauses, and neither
 knows what uses it. The root carries the membership instead: an agreement leaf
-either hashes up to the registered `assemblyHash` or it does not, so the
+either hashes up to the registered `processDesignHash` or it does not, so the
 caller can supply nothing the root did not already commit, and a wrong
 `agreementHash` or agreement content derives a leaf that is not in the tree. An
 assembly that names an agreement nobody registered is published like any
@@ -1037,7 +1037,7 @@ assembly. The reserved assembly terms key is refused as an agreement's
 leaves, the terms leaf, the root and the membership proofs of
 `test/fixtures/assembly-vectors.json` (the parity legs, `TESTING.md` §
 "Assembly parity"); in `test/rewards/UsageCounterTest.t.sol`,
-`test_aSlotLeafUnderADifferentAssemblyHashFails` and
+`test_aSlotLeafUnderADifferentProcessDesignHashFails` and
 `test_aSlotLeafWithAnotherSlotsBytesFails` refuse a membership proof that the
 root did not commit, and `test_theTermsLeafNeverPassesAsAnAgreement` refuses
 the reserved terms key as an agreement's `agreementHash`; the guest's twins
@@ -1046,7 +1046,7 @@ are in `prover/lib/tests/usage.rs`.
 ## 25. An assembly's agreements are ordered — one registered agreement may hold two agreements
 
 **Pattern**: The agreements of an assembly are a sequence, and each agreement leaf
-carries its 0-based index in its content (`"slot":i`). Two agreements may
+carries its 0-based index in its content (`"agreement":i`). Two agreements may
 name the same `agreementHash`; their leaves differ by index and by the order
 agreement's own fills.
 
@@ -1166,7 +1166,7 @@ chain without trusting this project's software or documents.
 | Piece | What it gives a stranger | Who would read it |
 |---|---|---|
 | `FlorinToken.MinterRegistered(minter, cap)` | The list of every wallet that may mint florins and its cap; the `minters(address)` getter answers only for an address already known | Anyone checking the florin supply plan against the chain, from the token's logs alone |
-| `AgreementRegistry.PROVENANCE_LEAF_KEY()` and `ASSEMBLY_TERMS_LEAF_KEY()` | The two reserved keys the registry refuses to register (`ReservedKeyIsNotARegistration`); the registry reads the constants itself, and the getters publish them | A stranger's software that builds agreements and assemblies, to check its own reserved leaf keys against the deployed registry (the SDK checks the counter's copies, `UsageCounter.provenanceLeaf()` and `assemblyTermsLeaf()`) |
+| `AgreementRegistry.PROVENANCE_LEAF_KEY()` and `PROCESS_TERMS_LEAF_KEY()` | The two reserved keys the registry refuses to register (`ReservedKeyIsNotARegistration`); the registry reads the constants itself, and the getters publish them | A stranger's software that builds agreements and assemblies, to check its own reserved leaf keys against the deployed registry (the SDK checks the counter's copies, `UsageCounter.provenanceLeaf()` and `processTermsLeaf()`) |
 | `MembersRegistry.MemberWithdrawn(member, amount)` | The receipt of the release: the stake left the registry, to which wallet, and how much. De-surfacing is `MemberWithdrawalRequested`, which the readers fold | The member, or anyone auditing the registry's balance against its stakes |
 | `UsageCounter.sellerSeen(kind, key, period, seller)` | Whether a seller already counted toward a key's breadth `d` in a period; the counter reads it to count each seller once | Anyone recomputing a key's score from `UsageRecorded` events and checking it against the counter's state |
 
@@ -1200,7 +1200,7 @@ field in the struct that the Core neither reads nor checks adds calldata to
 every commit for a graph the Core does not use. The parties still sign the edges,
 since the agreement body hashes into the `checkoutHash` they sign. A wallet
 outside the trade reads the designed edges from the registered assembly
-(`planAssemblyOrders`, `sdk/src/reconstructOrders.ts`), never from an event.
+(`planProcessOrders`, `sdk/src/reconstructOrders.ts`), never from an event.
 
 **Tests**: `COMMITMENT_TYPEHASH equals FigaroCore's literal type string`
 (`sdk/tests/commitments.test.ts`) pins the struct's fields.
@@ -1236,7 +1236,7 @@ counted nowhere, with no contract and no verification key moved. The leaf
 stays double-hashed, so it never passes as an internal node. An assembly
 leaf's inner preimage is also 96 bytes (domain, key, data hash), and it is
 kept apart from the topology leaf by its first word, the domain:
-`ASSEMBLY_LEAF_DOMAIN` = `keccak256("figaro-assembly-leaf")` against
+`PROCESS_LEAF_DOMAIN` = `keccak256("figaro-assembly-leaf")` against
 `TOPOLOGY_LEAF_DOMAIN` = `keccak256("figaro-agreement-topology")`. The cost is
 that no attestation can name it, and none is lost: the edges are fixed at
 commit and have no later stage. A reader proves them by rebuilding the root
@@ -1258,7 +1258,7 @@ reader keeps them apart. Which order opened the process is the Core's fact:
 the opening order is committed with a zero `processId`, and its cumulative
 value is its own payment (`InvalidRootCumulativeValue`, `FigaroCore.commit`;
 the same refusal in the proof program, `prover/lib/src/kernel.rs`). Both
-paths carry `payment` and `cumulativeValue` in `OrderCommitted`, and
+paths carry `payment` and `runningTotal` in `OrderCommitted`, and
 `isProcessRoot` (`sdk/src/state.ts`) reads them. Which order follows which is
 the agreement's fact: the topology leaf, `Agreement.follows`
 (`sdk/src/agreement.ts`), off the chain. A reader takes the opening order
@@ -1268,7 +1268,7 @@ are unknown: the page shows none, and the order is never named the opening
 order on that ground.
 
 **Why it looks wrong**: Bonding and topology are separate layers (§ 30), so a
-test on `cumulativeValue` in a reader of the process's shape reads as the
+test on `runningTotal` in a reader of the process's shape reads as the
 Core's arithmetic deciding the graph. And an order with no known edges reads
 as an order that follows nothing.
 
@@ -1362,7 +1362,7 @@ checkout draft keeps its `checkoutHash`).
 ## 34. The sign gate refuses an agreement whose design it could not read
 
 **Pattern**: An agreement whose provenance leaf names a design (an
-`assemblyHash` and an `agreementHash`) is signed only against that design in
+`processDesignHash` and an `agreementHash`) is signed only against that design in
 hand. The gate (`validateCommitmentAgreement`, thrown by
 `assertAgreementSignable`, `sdk/src/projection.ts`) takes the design as a
 required argument, and `designIssues` refuses the agreement when the design is
@@ -1441,7 +1441,7 @@ registry anchors is refused on counter-sign and on broadcast, with no
 | 9 | Strict token compatibility rejection | Core-critical | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
 | 10 | Single currency per process | Core-critical | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
 | 11 | No `transferTitle` / `endorse` / `nominate` for BoLs | Core-critical | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |
-| 12 | `deadline` alongside `salt` | Core-critical | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel `FigaroCore` needs signatures to age out |
+| 12 | `commitDeadline` alongside `salt` | Core-critical | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel `FigaroCore` needs signatures to age out |
 | 13 | Committed `lineItems.name` / `cargo.marks` are public | privacy/evidence | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalog naming, coded marks) + wallet pseudonymity |
 | 14 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | registry/stake | Looks like stuck funds + a Core-forbidden time lock | PROTOCOL tier, not the Core — no bond or commitment involved; without it one stake is recycled across identities and prices nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |
 | 15 | `applyBatchAccrual` has one privileged caller | reward-path | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only hand over uses an immutable vkey committed; the counter enforces period, seller stake, live registration and once-ever counting itself |
@@ -1450,7 +1450,7 @@ registry anchors is refused on counter-sign and on broadcast, with no
 | 18 | Usage needs a live clause, agreement or assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |
 | 19 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a skipped use stays uncounted and may be proved again in a later batch (conservative under-pay); the sequencer pre-filters what the counter would skip; an accrual starved of gas reverts the batch, never skips |
 | 20 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal stops resolved-but-uncounted trades counting — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is read when a use is counted; counting at resolution closes the normal window; an uncounted use counts in whichever period is open once its seller stakes again, lost only after the last period closes; residual grief is self-limiting (griefer forfeits own eligibility while unstaked) |
-| 21 | Batch resolve: nonce-less, deadline-less `ResolveProcess(processId, cumulativeValue)` authorization, by the buyer's key or its wallet code | batch-path | The canonical EIP-712 replay shape | The authorization binds a cumulative value, so it pays exactly the prefix of the process that value names and a later commit invalidates it; resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; a wallet-code attestation's refusal reverts the batch by name, a call that ran out of gas included, so no gas limit lands a batch without it, and the relay dead-letters it alone |
+| 21 | Batch resolve: nonce-less, deadline-less `ResolveProcess(processId, runningTotal)` authorization, by the buyer's key or its wallet code | batch-path | The canonical EIP-712 replay shape | The authorization binds a cumulative value, so it pays exactly the prefix of the process that value names and a later commit invalidates it; resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; a wallet-code attestation's refusal reverts the batch by name, a call that ran out of gas included, so no gas limit lands a batch without it, and the relay dead-letters it alone |
 | 22 | No site pinning account; a browser with no node and no service publishes nothing | site/pinning | A visitor without a node cannot publish until it sets one | A bundled credential names its holder and makes one account a central dependency; each publishing wallet pins through its own node or a service it chose, on every chain; with neither, a publishing page shows one line and the setting, and nothing is sent |
 | 23 | Reward keyed by (kind, key), three kinds | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause or an agreement would take its reward; the kind keeps a stake in one family from earning another's, and no kind's gate reads another kind's registry |
 | 24 | The assembly root is a merkle tree over registered agreement hashes | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |
@@ -1461,6 +1461,6 @@ registry anchors is refused on counter-sign and on broadcast, with no
 | 29 | Public pieces no code of ours reads | registry/reward-path/token | Surface nothing reads is surface to audit for nothing | Each answers a stranger's question of the chain: who may mint, which keys are reserved, where a stake went, which sellers counted |
 | 30 | Topology is not in the commitment struct | Core-critical | The process's shape reads as part of what is bonded, and the events alone do not show the graph of orders | The bonds are sized by the running total alone; the parties sign the edges through the `checkoutHash`; a wallet outside the trade reads the designed edges from the registered assembly |
 | 31 | The topology leaf has a shape of its own | agreement format/reward-path | The provenance leaf takes the clause-leaf shape under a reserved key, and a leaf no contract rebuilds reads as unprovable | A reserved key in the clause-leaf shape could be registered by anyone and earn on every order; a 96-byte inner preimage opens under no clause key, with no contract or verification key moved, and the edges have no stage after commit to attest |
-| 32 | A reader names the opening order from the chain, and the edges from the agreement | reader/frontend | A test on `cumulativeValue` in a reader of the process's shape reads as bond arithmetic deciding the graph | It decides no edge: it answers which order opened the process, the Core's own fact at commit; the edges come only from the agreement's topology leaf, and unknown edges are shown as none |
+| 32 | A reader names the opening order from the chain, and the edges from the agreement | reader/frontend | A test on `runningTotal` in a reader of the process's shape reads as bond arithmetic deciding the graph | It decides no edge: it answers which order opened the process, the Core's own fact at commit; the edges come only from the agreement's topology leaf, and unknown edges are shown as none |
 | 33 | A private set carries its own blinding value | data/spec format | The commitment's `salt` looks like the same random value, a declared field looks like boilerplate, and a public clause carries none | The commitment's `salt` is emitted in `OrderCommitted` and blinds nothing; a declared field enters the hashed bytes with no hash, contract or proof change and is what a stranger's tool reads from the spec; public content is published, so a random value there hides nothing |
 | 34 | The sign gate refuses an agreement whose design it could not read | sign gate/SDK/frontend | A failed or empty read is absence elsewhere, and an agreement naming no design signs without the check | A signature binds the provenance leaf; only the design shows its clauses, designer values and edge count, and reading "not read" as "nothing to check" lets a party escape them by naming an assembly no registry anchors; the gate is the SDK's, never the Core's |

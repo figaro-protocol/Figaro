@@ -28,7 +28,7 @@ The list below is an **open category, not a menu you pick one item from**. A pro
 
 ## The cost model — one token per process, a swap is the on-ramp
 
-A process is denominated in exactly one ERC-20, named in `c.currency`, and `FigaroCore` refuses to compare across tokens — the 2:1 bond ratio is a same-unit comparison, so mixing currencies within one process would need an oracle or a DEX and reintroduce a trusted actor (this is a [sharp edge](/protocol/sharp-edges/), enforced by `CurrencyMismatch`).
+A process is denominated in exactly one ERC-20, named in `c.token`, and `FigaroCore` refuses to compare across tokens — the 2:1 bond ratio is a same-unit comparison, so mixing currencies within one process would need an oracle or a DEX and reintroduce a trusted actor (this is a [sharp edge](/protocol/sharp-edges/), enforced by `CurrencyMismatch`).
 
 Each token denominates an economy of its own — a community's, a designer's, a stablecoin's — and a swap is the route between them. A buyer holding one economy's token can bond in another's: `WitnessSwapAndCommitCoordinator` converts at commitment in one signed hop, sends the swapped denomination to the party's own address, and calls `FigaroCore.commit` — the process itself never sees a second unit. Value mobility, not enforcement, is what makes many small economies one network. The swap-funded route is direct-path only; on the [batch path](/protocol/scaling/) a party swaps in their own wallet before submitting the signed commitment. Either way `FigaroCore` sees a single-currency, bilaterally-signed commitment. The coordinator's surface is on [The contracts](/protocol/contracts/).
 

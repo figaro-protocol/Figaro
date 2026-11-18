@@ -14,7 +14,7 @@
  * speak one shape.
  */
 
-import { agreementHashOf, canonicalize, assemblyHashOf, computeClauseKey } from "@figaro-protocol/sdk";
+import { agreementHashOf, canonicalize, processDesignHashOf, computeClauseKey } from "@figaro-protocol/sdk";
 import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
 import { safeJsonParse, strippingReviver } from "@/lib/shared/safeJson";
 import { pick, queryParam } from "@/lib/shared/urlQuery";
@@ -106,7 +106,7 @@ export interface ExplorerRow {
     contentURI: string;
     /** The digest the CHAIN anchors for this row: the clause key (the hash of
      *  the spec without its `block`) for a clause, `AgreementRegistry`'s agreement
-     *  hash for an agreement, `AssemblyRegistry`'s `assemblyHash` for an
+     *  hash for an agreement, `ProcessRegistry`'s `processDesignHash` for an
      *  assembly.
      *  Empty where the family anchors none. */
     anchoredHash: string;
@@ -162,10 +162,10 @@ function compareRows(a: ExplorerRow, b: ExplorerRow, sort: RegistrySort): number
  *   (`agreementHashOf`); the designer's editorial fields ride in the same
  *   document outside the key.
  *
- *   `assembly-hash` — assemblies. `AssemblyRegistry`'s `assemblyHash` is
+ *   `assembly-hash` — assemblies. `ProcessRegistry`'s `processDesignHash` is
  *   the merkle root over the assembly's agreements (each agreement's agreement
  *   hash and its own fills) and, where composed, its assembly-scoped clauses
- *   (`assemblyHashOf`). The designer's editorial
+ *   (`processDesignHashOf`). The designer's editorial
  *   fields (name, summary, description) ride in the same document and are
  *   deliberately NOT covered: a differently-worded assembly is the same
  *   assembly, a differently-termed one is not.
@@ -278,7 +278,7 @@ export function storedDocument(fetched: Uint8Array | string, anchored: string, a
                 ? computeClauseKey(parsed)
                 : anchor === "agreement-hash"
                     ? agreementHashOf(parsed as unknown as Parameters<typeof agreementHashOf>[0])
-                    : assemblyHashOf(parsed as unknown as Parameters<typeof assemblyHashOf>[0]);
+                    : processDesignHashOf(parsed as unknown as Parameters<typeof processDesignHashOf>[0]);
     } catch {
         // A document that parses but carries no composition to hash cannot
         // reproduce the anchor. Absence of a recomputation, never a match.

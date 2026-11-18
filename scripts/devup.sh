@@ -93,7 +93,7 @@ if [[ "${DEPLOY_SKIPPED:-0}" == "1" ]]; then
     (cd frontend && \
         NEXT_PUBLIC_CLAUSE_REGISTRY="$(env_local NEXT_PUBLIC_CLAUSE_REGISTRY)" \
         NEXT_PUBLIC_AGREEMENT_REGISTRY="$(env_local NEXT_PUBLIC_AGREEMENT_REGISTRY)" \
-        NEXT_PUBLIC_ASSEMBLY_REGISTRY="$(env_local NEXT_PUBLIC_ASSEMBLY_REGISTRY)" \
+        NEXT_PUBLIC_PROCESS_REGISTRY="$(env_local NEXT_PUBLIC_PROCESS_REGISTRY)" \
         ASSEMBLY_TOKEN_ADDRESS="$(env_local NEXT_PUBLIC_TOKEN_ADDRESS)" \
         node scripts/populate-clauses.mjs)
 fi

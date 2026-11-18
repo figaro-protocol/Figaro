@@ -22,7 +22,7 @@ if (E2E_CHAIN === 'sepolia') {
         NEXT_PUBLIC_ATTESTATION_COORDINATOR: String(record.attestationCoordinator),
         NEXT_PUBLIC_CLAUSE_REGISTRY: String(record.clauseRegistry),
         NEXT_PUBLIC_MEMBERS_REGISTRY: String(record.membersRegistry),
-        NEXT_PUBLIC_ASSEMBLY_REGISTRY: String(record.assemblyRegistry),
+        NEXT_PUBLIC_PROCESS_REGISTRY: String(record.processRegistry),
         NEXT_PUBLIC_AGREEMENT_REGISTRY: String(record.agreementRegistry ?? ''),
         NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS: String(record.florinToken),
         NEXT_PUBLIC_USAGE_COUNTER: String(record.usageCounter),

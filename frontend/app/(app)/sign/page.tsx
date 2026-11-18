@@ -25,7 +25,7 @@ import {
 import { hexEqual } from "@/lib/shared/evm";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { validateCommitmentAgreement, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { validateCommitmentAgreement, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
 import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
@@ -207,7 +207,7 @@ function SignPageContent() {
     const processCapacity = useProcessResolveCapacity(commitment?.processId);
 
     // Token and bond amount for approval flow
-    const approvalCurrency = commitment?.currency as `0x${string}` | undefined;
+    const approvalCurrency = commitment?.token as `0x${string}` | undefined;
     const { decimals: tokenDecimals } = useTokenDecimals(approvalCurrency);
     const { data: currencySymbol } = useTokenSymbol(approvalCurrency ?? "");
 
@@ -277,7 +277,7 @@ function SignPageContent() {
     // never reported as unloaded.
     const publicClient = usePublicClient();
     const chainId = useChainId();
-    const [designRead, setDesignRead] = useState<{ agreement: unknown; design: HydratedAssembly | null } | null>(null);
+    const [designRead, setDesignRead] = useState<{ agreement: unknown; design: HydratedProcessDesign | null } | null>(null);
     useEffect(() => {
         const agreement = parsed?.agreement;
         if (!agreement) return;
@@ -297,13 +297,13 @@ function SignPageContent() {
         const check = validateCommitmentAgreement(parsed.agreement, commitment.checkoutHash, specSource(), commitment, designRead.design);
         // The design read resolved empty: the review says which design was
         // not read, apart from the other issues. With no design in hand, the
-        // validator's one `(provenance) assemblyHash` issue is that unread
+        // validator's one `(provenance) processDesignHash` issue is that unread
         // assembly (`designIssues`), so it is the heading and not an item; a
         // malformed provenance raises no such issue and is not called unread.
         const unreadIssue = designRead.design === null
-            ? check.issues.find((issue) => issue.clause === "(provenance)" && issue.path === "assemblyHash")
+            ? check.issues.find((issue) => issue.clause === "(provenance)" && issue.path === "processDesignHash")
             : undefined;
-        const unreadDesign = unreadIssue ? parsed.agreement.provenance?.assemblyHash ?? null : null;
+        const unreadDesign = unreadIssue ? parsed.agreement.provenance?.processDesignHash ?? null : null;
         const issues = check.issues.filter((issue) => issue !== unreadIssue);
         // The validator compares the merkle root only when no other issue
         // stands, so only a `(merkle)` issue says the terms do not match the
@@ -466,7 +466,7 @@ function SignPageContent() {
                     <div className="text-xs space-y-1.5 text-ink-body border-t border-default pt-3">
                         <div className="flex justify-between gap-2">
                             <span>Token</span>
-                            <span className="font-mono break-all text-right" data-testid="sign-token">{commitment.currency}</span>
+                            <span className="font-mono break-all text-right" data-testid="sign-token">{commitment.token}</span>
                         </div>
                         <div className="flex justify-between">
                             <span>Payment</span>
@@ -490,7 +490,7 @@ function SignPageContent() {
                         )}
                         {/* Resolve-ceiling position — the countersigner sees how
                             close the process is to the chain's atomic-resolve cap
-                            BEFORE bonding into it (commitment.expectedCumulativeValue
+                            BEFORE bonding into it (commitment.runningTotal
                             shows value; this shows depth). Absence = no read. */}
                         {!isRoot && processCapacity && (
                             <div className="flex justify-between" data-testid="sign-process-capacity">

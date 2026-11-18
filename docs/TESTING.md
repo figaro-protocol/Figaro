@@ -19,7 +19,7 @@ The test tree mirrors `src/` (`test/core/{kernel,attestation,verifier}/`, `test/
 `test/mocks/`); audit by `find test -name '*.t.sol'`,
 not by this paragraph. Current: `FigaroCoreTest`, `FigaroCore_RevertBranch`,
 `FigaroCore_EventEmission`, `AttestationCoordinatorTest`, `ClauseRegistryTest`,
-`AgreementRegistryTest`, `AssemblyRegistryTest`, `MembersRegistryTest`, `GasCeilingTest`,
+`AgreementRegistryTest`, `ProcessRegistryTest`, `MembersRegistryTest`, `GasCeilingTest`,
 `WitnessSwapAndCommitCoordinatorTest`, `WitnessSwapAndCommitCoordinatorForkTest`,
 `FigaroBatchVerifierTest`, `UsageCounterTest`, `RpgfMinterTest`, `RpgfIntegrationTest`,
 `TreasuryProcurementTest`, `MockDisperseTest`, `ReentrancyAdversarialTest`,
@@ -35,7 +35,7 @@ counts only trade new to it), the **member-stake gate on the seller of record** 
 not registered; a seller who leaves the registry stops counting), **uniform scoring across clauses, agreements and assemblies** (no
 category, tag, or weight), the agreement and assembly legs from one provenance leaf
 (`test_oneOrderCreditsItsAgreementAndItsAssembly`), the membership proof refused under
-another `assemblyHash` or with another agreement's bytes, the agreement kind gated by
+another `processDesignHash` or with another agreement's bytes, the agreement kind gated by
 `AgreementRegistry` on both paths (`test_revertsWhenAgreementNotRegistered`,
 `test_batchAccrualGatesTheAgreementKindByTheAgreementRegistry`), the three kinds never
 sharing a count, both reserved keys refused under the agreement kind and the terms leaf
@@ -150,7 +150,7 @@ allowance-pull composition end to end.
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
 | `HalmosMembersRegistry.t.sol` | 7 | The stake mechanics the designer-reward Sybil bound assumes: solvency, no stake recycling, de-surfacing at request, the counter reads that gate |
 | `HalmosUsageCounter.t.sol` | 9 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, `check_aUseCountsTheSameOnEitherRoute` — two uses, each brought by either route, leave the tally, the counted processes, the seller set and the period total exactly as two direct calls do, a repeated process or seller included — `check_scoreOfIsTheOneTally` (`scoreOf == accrualOf.score`), period bucketing ×2, isolation across keys, `check_theKindsNeverShareAKey` — a use counted under any one of the three kinds, on either route, leaves every other kind's accrual at the same key empty — `check_aKindNeverDisturbsAnotherKindsAccrual` — it leaves another kind's existing accrual at the key exactly as it was — and `check_anUnknownKindIsSkipped` — a batch use whose kind names no registry writes nothing under any kind and leaves the period total where it was. Mutation-checked against three counters: one whose batch path counts a process already counted fails `check_aUseCountsTheSameOnEitherRoute`; one whose batch path counts every use under the clause kind fails `check_aKindNeverDisturbsAnotherKindsAccrual`; one whose `scoreOf` reads more than the tally fails `check_scoreOfIsTheOneTally`. |
-| `HalmosClauseAgreementAndAssemblyRegistries.t.sol` | 18 (6 per contract) | `HalmosClauseRegistry` + `HalmosAssemblyRegistry` + `HalmosAgreementRegistry` — the stake machines `RpgfMinter._isAuthor` reads, one per kind: solvency under arbitrary interleavings by two registering wallets, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked: solvency + first-write-wins on the clause and assembly contracts, 4/4 counterexamples. |
+| `HalmosClauseAgreementAndAssemblyRegistries.t.sol` | 18 (6 per contract) | `HalmosClauseRegistry` + `HalmosProcessRegistry` + `HalmosAgreementRegistry` — the stake machines `RpgfMinter._isAuthor` reads, one per kind: solvency under arbitrary interleavings by two registering wallets, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked: solvency + first-write-wins on the clause and assembly contracts, 4/4 counterexamples. |
 
 Run with `scripts/test-halmos.sh` (seven passes). **Halmos does not model
 `expectRevert`** — assert on a low-level call's own success flag instead. It
@@ -197,7 +197,7 @@ FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
 `ResolutionAlwaysPossible`, `TypeOK`, and the two that tie the equilibrium
 proof's payoff table to the machine — `DeterrentEscrowMagnitudes` (the held deposits
-is exactly 2×payment from the buyer + 2×cumulativeValue from the seller of every
+is exactly 2×payment from the buyer + 2×runningTotal from the seller of every
 committed order) and `SettledNetPositions` (resolution moves exactly `payment`
 buyer → seller and returns both bonds whole).
 
@@ -449,7 +449,7 @@ usage bridge in
 same use (the counter's `processCounted` skips it), claims moving no state root, each
 use naming its process and seller, the agreement leg via the two-key provenance reproduction
 (`credits_an_agreement_through_the_provenance_leaf`, refused on a wrong
-`agreementHash` or `assemblyHash`, and under any key but the guest's own
+`agreementHash` or `processDesignHash`, and under any key but the guest's own
 constant, which the usage hash commits, since no batch input names one:
 `an_agreement_claim_opens_only_under_the_guest_s_provenance_key`,
 `the_usage_hash_commits_the_guest_s_provenance_key`, blind audit F-7), the assembly leg via the same leaf plus
@@ -629,7 +629,7 @@ the OpenZeppelin library they call; `prover/lib/tests/merkle_parity.rs` does
 the same through the guest's verifier. Three implementations, one fixture.
 Each clause in the fixture carries its `clauseKey`, the leaf's key, and its
 provenance entries carry the two-key bytes
-(`{"agreementHash":…,"assemblyHash":…}`).
+(`{"agreementHash":…,"processDesignHash":…}`).
 
 **Assembly parity — the three-way composition-tree lock.**
 `sdk/tests/assemblyParity.test.ts` freezes, for the three vector composed
@@ -929,7 +929,7 @@ select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
   order → accept/commit → resolve → audit), every step asserted out-of-band from
   Sepolia; the resolved order's committed agreement, fetched from IPFS and verified
   against its `checkoutHash`, carries a provenance leaf that decodes to
-  `{ agreementHash, assemblyHash }`, each bound on its own registry. `E2E_CHAIN=sepolia SMOKE_SELLER_KEY=… SMOKE_BUYER_KEY=… npx playwright
+  `{ agreementHash, processDesignHash }`, each bound on its own registry. `E2E_CHAIN=sepolia SMOKE_SELLER_KEY=… SMOKE_BUYER_KEY=… npx playwright
   test --project=sepolia` builds the site from the committed deployment record
   (`deployments/11155111.json`, publicnode RPC, test helpers on, dist
   `.next-e2e-sepolia`, port 3200) and drives it with the local-key signer bridge
@@ -1022,7 +1022,7 @@ correct throughout):
 
 | what was broken | what it looked like | the assertion that caught it |
 |---|---|---|
-| `recordAssemblyUsage` unreachable — sequenced after a call that always reverts, so the **assembly-designer half of the 600M counted nothing, on every deployment** | clause designers accrued normally; the reward looked fine | `assemblyHash` ∈ the `UsageRecorded` clauses and assemblies, read from chain |
+| `recordProcessDesignUsage` unreachable — sequenced after a call that always reverts, so the **assembly-designer half of the 600M counted nothing, on every deployment** | clause designers accrued normally; the reward looked fine | `processDesignHash` ∈ the `UsageRecorded` clauses and assemblies, read from chain |
 | the audit's witness decode read calldata for a preimage WS2 had removed; the throw landed in a swallowed `catch` | the page rendered, just with zero evidence rows | witness receipts `toHaveCount(3)` |
 | the claim button compared `Date.now()` to a **block** timestamp | button simply disabled; no error anywhere | drive the claim, assert the ETH moves |
 | `UsageCounter` itself | — | *correct throughout; that is the point* |

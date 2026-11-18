@@ -67,7 +67,7 @@ const ACCRUING: RpgfPeriodState = {
 /** The same closed period read for an address that accrued in it. */
 const CLOSED_FOR_ADDRESS: RpgfPeriodState = {
     ...CLOSED_NO_ADDRESS,
-    accruals: [{ clauseOrAssembly: CLAUSE, kind: 0, label: "clause 0xabab", family: "clause", c: 1n, d: 1n, score: 3n, claimed: false }],
+    accruals: [{ clauseOrProcess: CLAUSE, kind: 0, label: "clause 0xabab", family: "clause", c: 1n, d: 1n, score: 3n, claimed: false }],
     myScore: 3n, claimable: 5n * 10n ** 18n,
 };
 

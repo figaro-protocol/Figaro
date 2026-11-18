@@ -9,7 +9,7 @@
  *
  *   1. Take a partial draft of the fields the user just edited.
  *   2. Merge with the wallet's current on-chain profile so
- *      unchanged fields (catalogURI, assemblyBindings,
+ *      unchanged fields (catalogURI, processBindings,
  *      services, branding, etc.) survive the round-trip.
  *   3. Validate the merged document via `parseMemberProfileDocument`
  *      so a malformed update fails before it leaves the browser.

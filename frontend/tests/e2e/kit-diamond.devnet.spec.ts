@@ -74,7 +74,7 @@ import {
     memberProfileBindings,
     waitForConnected,
     publishOrAdoptReviewed,
-    anchoredAssemblyHash,
+    anchoredProcessDesignHash,
     isBindingOf,
     composeCommerceOn,
 } from './devnet-helpers';
@@ -226,7 +226,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             expect(kitSlug, 'the published diamond is discoverable by shape').toBe(receiptSlug);
         }
 
-        const kitHash = await anchoredAssemblyHash(kitSlug!);
+        const kitHash = await anchoredProcessDesignHash(kitSlug!);
 
         // ── BIND (idempotent): the lead registers through the wizard, binds the
         //    diamond, and designates the seeded co-sellers per clause. ──
@@ -380,7 +380,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
 
         const rootEvent = await acceptAs(LEAD.address, 'lead');
         const processId = rootEvent.args.processId!;
-        const rootBonds = calculateBonds(rootEvent.args.cumulativeValue!, rootEvent.args.payment!);
+        const rootBonds = calculateBonds(rootEvent.args.runningTotal!, rootEvent.args.payment!);
         {
             const [b, l, k] = await Promise.all([balanceOf(BUYER), balanceOf(LEAD.address), balanceOf(core)]);
             expect(buyer0 - b, 'after root: buyer down by its buyer bond').toBe(rootBonds.buyerBond);
@@ -390,18 +390,18 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
 
         const bEvent = await acceptAs(SUPPLIER_B, 'supplier B');
         expect(bEvent.args.processId, 'B extends the SAME process').toBe(processId);
-        const bBonds = calculateBonds(bEvent.args.cumulativeValue!, bEvent.args.payment!);
+        const bBonds = calculateBonds(bEvent.args.runningTotal!, bEvent.args.payment!);
 
         const cEvent = await acceptAs(SUPPLIER_C, 'supplier C');
         expect(cEvent.args.processId, 'C extends the SAME process').toBe(processId);
-        const cBonds = calculateBonds(cEvent.args.cumulativeValue!, cEvent.args.payment!);
+        const cBonds = calculateBonds(cEvent.args.runningTotal!, cEvent.args.payment!);
 
         // The LEAF: its seller bonds 2× the ENTIRE upstream value — the
         // cumulative accumulator is linear; the diamond never reaches FigaroCore.
         const dEvent = await acceptAs(SUPPLIER_D, 'supplier D (the leaf)');
         expect(dEvent.args.processId, 'D extends the SAME process').toBe(processId);
         const total = rootEvent.args.payment! + bEvent.args.payment! + cEvent.args.payment! + dEvent.args.payment!;
-        const dBonds = calculateBonds(dEvent.args.cumulativeValue!, dEvent.args.payment!);
+        const dBonds = calculateBonds(dEvent.args.runningTotal!, dEvent.args.payment!);
         {
             const [b, dd, k] = await Promise.all([balanceOf(BUYER), balanceOf(SUPPLIER_D), balanceOf(core)]);
             expect(buyer0 - b, 'after the leaf: buyer down by all four buyer bonds')

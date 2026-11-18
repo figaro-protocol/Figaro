@@ -87,7 +87,7 @@ contract AttestationCoordinator {
 
     error NotAuthorized();
     error UnknownOrder();
-    error OrderResolved();
+    error OrderAlreadyResolved();
     error InvalidInclusionProof(bytes32 checkoutHash, bytes32 clauseId);
 
     // ── Constructor ─────────────────────────────────────────────────
@@ -184,7 +184,7 @@ contract AttestationCoordinator {
 
         uint8 status = core.orderStatus(orderHash);
         if (status == 0) revert UnknownOrder();
-        if (status != 1) revert OrderResolved();
+        if (status != 1) revert OrderAlreadyResolved();
     }
 
     /// @dev Compute the EIP-712 digest for a root commitment (processId derivation).

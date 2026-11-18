@@ -32,7 +32,7 @@ import {
     usageClaimKindCode,
     usageKeyId,
     type Agreement,
-    type Assembly,
+    type ProcessDesign,
     type Commitment,
     type UsageClaimContext,
 } from "@figaro-protocol/sdk";
@@ -42,13 +42,13 @@ import type { UsageWrite } from "@/lib/protocol/useUsageRecorder";
 /** One resolved order's inputs: the SIGNED commitment the counter re-hashes,
  *  its hydrated agreement, the counter's facts, and — when the agreement
  *  names a provenance — the assembly of the assembly it instantiated (read
- *  from `AssemblyRegistry` by the assembly root). */
+ *  from `ProcessRegistry` by the assembly root). */
 export interface UsagePlanEntry {
     orderHash: string;
     commitment: Commitment;
     agreement: Agreement;
     context: UsageClaimContext;
-    assembly?: Assembly;
+    assembly?: ProcessDesign;
 }
 
 export type PlannedUsageWrite = UsageWrite & { orderHash: string };
@@ -69,7 +69,7 @@ export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan 
         if (provenance !== undefined && (
             provenance === null || typeof provenance !== "object"
             || !isBytes32Hex((provenance as { agreementHash?: unknown }).agreementHash)
-            || !isBytes32Hex((provenance as { assemblyHash?: unknown }).assemblyHash))) {
+            || !isBytes32Hex((provenance as { processDesignHash?: unknown }).processDesignHash))) {
             problems.push(`order ${orderHash}: provenance present but malformed: ${JSON.stringify(provenance)}`);
             continue;
         }
@@ -81,7 +81,7 @@ export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan 
             continue;
         }
         for (const claim of claims) {
-            const id = usageKeyId(usageClaimKindCode(claim), claim.clause_or_assembly);
+            const id = usageKeyId(usageClaimKindCode(claim), claim.clause_or_process);
             if (planned.has(id)) continue;
             planned.add(id);
             const kind = claim.kind;
@@ -90,7 +90,7 @@ export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan 
                     kind: "clause",
                     orderHash,
                     order: commitment,
-                    key: claim.clause_or_assembly,
+                    key: claim.clause_or_process,
                     clauseDataHash: kind.Clause.clause_data_hash,
                     proof: claim.inclusion_proof,
                 });
@@ -99,8 +99,8 @@ export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan 
                     kind: "agreement",
                     orderHash,
                     order: commitment,
-                    key: claim.clause_or_assembly,
-                    assemblyHash: kind.Agreement.assembly_hash,
+                    key: claim.clause_or_process,
+                    processDesignHash: kind.Agreement.process_design_hash,
                     proof: claim.inclusion_proof,
                 });
             } else {
@@ -108,11 +108,11 @@ export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan 
                     kind: "assembly",
                     orderHash,
                     order: commitment,
-                    key: claim.clause_or_assembly,
-                    agreementHash: kind.Assembly.agreement_hash,
-                    slotContentHash: kind.Assembly.slot_content_hash,
+                    key: claim.clause_or_process,
+                    agreementHash: kind.Process.agreement_hash,
+                    agreementContentHash: kind.Process.agreement_content_hash,
                     proof: claim.inclusion_proof,
-                    membershipProof: kind.Assembly.membership_proof,
+                    membershipProof: kind.Process.membership_proof,
                 });
             }
         }

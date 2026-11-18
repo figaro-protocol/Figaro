@@ -21,7 +21,7 @@
  *      canonical spec bytes vs the ClauseRegistry anchor, the seller's member
  *      stake, balances — name every gap and stop before spending.
  *   2. Approve bonds to FigaroBatchVerifier (buyer 2×payment, seller
- *      2×cumulativeValue).
+ *      2×runningTotal).
  *   3. Submit the Commit and each selected attestation form (EIP-712 over the
  *      VERIFIER's domain — the batch universe's domain, never FigaroCore's).
  *   4. Wait until the chain carries the order's OrderCommitted and every
@@ -76,7 +76,7 @@
  *     A live chain cannot hold a block, so the flag refuses to run there.
  *   - Signed resolve (the default): the buyer signs ResolveProcess.
  *   - Wallet-code resolve (RESOLVE_BY_WALLET_CODE): the buyer's code is told
- *     to validate `hashResolveProcess(processId, cumulativeValue)` with fresh
+ *     to validate `hashResolveProcess(processId, runningTotal)` with fresh
  *     random bytes, submitted with `submitResolveByWalletCode`. Check: the
  *     process resolves and the payouts are those of the signed form.
  *
@@ -551,12 +551,12 @@ const { commitment, typedData } = buildCommitment({
     processId: '0x0000000000000000000000000000000000000000000000000000000000000000',
     buyer: buyerAccount.address,
     seller: sellerAccount.address,
-    currency: TOKEN,
+    token: TOKEN,
     payment: PAYMENT,
-    expectedCumulativeValue: PAYMENT,
+    runningTotal: PAYMENT,
     checkoutHash,
     salt,
-    deadline: chainNow + 7200n,
+    commitDeadline: chainNow + 7200n,
 }, domain);
 
 const buyerSig = await buyerWallet.signTypedData(typedData);
@@ -778,13 +778,13 @@ try {
 
     // The process holds the one order: its cumulative value is that order's
     // expected cumulative value, and the buyer authorizes it.
-    const cumulativeValue = commitment.expectedCumulativeValue;
+    const runningTotal = commitment.runningTotal;
     if (FORMS.resolveByWalletCode) {
-        const digest = hashResolveProcess(processId, cumulativeValue, { chainId, core: verifier });
+        const digest = hashResolveProcess(processId, runningTotal, { chainId, core: verifier });
         const authorization = freshBytes();
         await approveDigest(buyerWallet, buyerAccount, digest, authorization);
-        saveRecord({ resolution: { form: 'wallet-code', processId, cumulativeValue: cumulativeValue.toString(), digest, authorization } });
-        const r = await sequencer.submitResolveByWalletCode(processId, cumulativeValue, [commitment], authorization);
+        saveRecord({ resolution: { form: 'wallet-code', processId, runningTotal: runningTotal.toString(), digest, authorization } });
+        const r = await sequencer.submitResolveByWalletCode(processId, runningTotal, [commitment], authorization);
         console.log(`\nsubmitted ResolveByWalletCode (op ${r.id})`);
     } else {
         const buyerResolveSig = await buyerWallet.signTypedData({
@@ -792,20 +792,20 @@ try {
             types: {
                 ResolveProcess: [
                     { name: 'processId', type: 'bytes32' },
-                    { name: 'cumulativeValue', type: 'uint256' },
+                    { name: 'runningTotal', type: 'uint256' },
                 ],
             },
             primaryType: 'ResolveProcess',
-            message: { processId, cumulativeValue },
+            message: { processId, runningTotal },
         });
-        saveRecord({ resolution: { form: 'signed', processId, cumulativeValue: cumulativeValue.toString(), buyerSig: buyerResolveSig } });
-        const r = await sequencer.submitResolve(processId, cumulativeValue, [commitment], buyerResolveSig);
+        saveRecord({ resolution: { form: 'signed', processId, runningTotal: runningTotal.toString(), buyerSig: buyerResolveSig } });
+        const r = await sequencer.submitResolve(processId, runningTotal, [commitment], buyerResolveSig);
         console.log(`\nsubmitted Resolve (op ${r.id})`);
     }
 
     const claimContext = await fetchUsageClaimContext(publicClient, record.usageCounter, agreement);
     const claims = buildUsageClaims(commitment, agreement, claimContext);
-    if (claims.length !== 1 || claims[0].clause_or_assembly !== clauseKey) {
+    if (claims.length !== 1 || claims[0].clause_or_process !== clauseKey) {
         throw new Error(`expected one usage claim for ${clauseKey}, got ${JSON.stringify(claims)}`);
     }
     const accrualKey = [USAGE_KIND_CLAUSE, clauseKey, currentPeriod];

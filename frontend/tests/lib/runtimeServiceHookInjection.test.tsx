@@ -32,10 +32,10 @@ vi.mock("wagmi", () => ({
     useAccount: () => ({ address: WALLET }),
 }));
 
-// The surfacing rule's AssemblyRegistry cross-check — resolved (empty) so the
+// The surfacing rule's ProcessRegistry cross-check — resolved (empty) so the
 // catalog read proceeds. One stable reference: the hook keys on its identity.
 const PUBLISHED = vi.hoisted(() => ({ read: { status: "present", value: [] as unknown[] } }));
-vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({ usePublishedAssemblies: () => PUBLISHED }));
+vi.mock("@/lib/protocol/useProcessRegistry", () => ({ usePublishedAssemblies: () => PUBLISHED }));
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 
 const injectedMember: MemberCatalog = {

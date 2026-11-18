@@ -29,7 +29,7 @@ export function orderCommittedLog(args: {
     buyer: `0x${string}`;
     seller: `0x${string}`;
     payment?: bigint;
-    cumulativeValue?: bigint;
+    runningTotal?: bigint;
     /** The agreement's merkle root the commitment signs; one shared value when omitted. */
     checkoutHash?: Hex;
 }): FixtureLog {
@@ -48,7 +48,7 @@ export function orderCommittedLog(args: {
             args.seller,
             "0x00000000000000000000000000000000000000c1",
             payment,
-            args.cumulativeValue ?? payment,
+            args.runningTotal ?? payment,
             args.checkoutHash ?? word(0xc4ec),
             1n,
             2_000_000_000n,

@@ -363,7 +363,7 @@ function ProcessList({ rows, corpus, testId }: { rows: readonly ProcessRow[]; co
                         {" · "}
                         {r.orderCount} order{r.orderCount === 1 ? "" : "s"}
                         {" · "}
-                        <Amount value={r.cumulativeValue} token={r.currency} corpus={corpus} /> cumulative
+                        <Amount value={r.runningTotal} token={r.currency} corpus={corpus} /> cumulative
                         {" · "}
                         {r.resolved ? "resolved" : "active"}
                         {r.firstBlock !== null ? ` · from block ${r.firstBlock}` : ""}

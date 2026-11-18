@@ -6,7 +6,7 @@ const client = {};
 vi.mock("wagmi", () => ({ usePublicClient: () => client, useChainId: () => 31337 }));
 vi.mock("@/lib/core/contracts", () => ({ CONTRACTS: { membersRegistry: `0x${"11".repeat(20)}` } }));
 const assembliesMock = vi.fn();
-vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({ usePublishedAssemblies: () => assembliesMock() }));
+vi.mock("@/lib/protocol/useProcessRegistry", () => ({ usePublishedAssemblies: () => assembliesMock() }));
 const activeMembersMock = vi.fn();
 vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({ getActiveMembers: () => activeMembersMock() }));
 const profileMock = vi.fn();
@@ -18,7 +18,7 @@ vi.mock("@/lib/member/memberListing", () => ({
 import { useMemberListings } from "@/lib/member/useMemberListings";
 
 const ASM = `0x${"aa".repeat(32)}`;
-const assemblies = { read: { status: "present", value: [{ assemblyHash: ASM }] } };
+const assemblies = { read: { status: "present", value: [{ processDesignHash: ASM }] } };
 
 describe("useMemberListings — a failed registry read is absent, never resolved-empty and never error text", () => {
     beforeEach(() => { vi.spyOn(console, "warn").mockImplementation(() => undefined); });
@@ -42,7 +42,7 @@ describe("useMemberListings — a failed registry read is absent, never resolved
         expect(result.current.read).toEqual({ status: "absent" });
     });
 
-    it("the AssemblyRegistry read failed: absent — the binding cross-check never rejects every member against an empty set", async () => {
+    it("the ProcessRegistry read failed: absent — the binding cross-check never rejects every member against an empty set", async () => {
         assembliesMock.mockReturnValue({ read: { status: "absent" } });
         activeMembersMock.mockResolvedValue([{ address: "0xabc", metadataURI: "ipfs://p" }]);
         profileMock.mockResolvedValue({});

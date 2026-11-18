@@ -69,7 +69,7 @@ export function MemberEditCatalog() {
                 // the assemblies surface), and the form needs them: the item
                 // properties it asks for are the catalog-filled fields of
                 // the clauses those bound assemblies compose.
-                assemblies: existingProfile.assemblyBindings ?? [],
+                assemblies: existingProfile.processBindings ?? [],
                 // Feed the data-for-sale select's options — the member's
                 // declared data offers; read-only here (the policy is
                 // edited on the assemblies / buyer surfaces).

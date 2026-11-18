@@ -12,10 +12,10 @@ const BUYER = "0x1111111111111111111111111111111111111111";
 const SELLER = "0x2222222222222222222222222222222222222222";
 const PARENT = `0x${"aa".repeat(32)}`;
 
-function order(payment: bigint, cumulativeValue: bigint): Order {
+function order(payment: bigint, runningTotal: bigint): Order {
     return {
         orderHash: `0x${"01".repeat(32)}`, processId: `0x${"02".repeat(32)}`, buyer: BUYER, seller: SELLER,
-        payment, cumulativeValue, state: OrderState.Active, sellerBond: 2n * cumulativeValue, buyerBond: 2n * payment,
+        payment, runningTotal, state: OrderState.Active, sellerBond: 2n * runningTotal, buyerBond: 2n * payment,
         salt: 1n, deadline: 1n,
     } as Order;
 }

@@ -16,12 +16,12 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import {
     agreementHashOf,
-    assemblyHashOf,
+    processDesignHashOf,
     buildOrderAgreement,
     computeCheckoutHash,
-    deriveAssemblySlug,
+    deriveProcessDesignSlug,
     type Agreement,
-    type Assembly,
+    type ProcessDesign,
     type Commitment,
     type Hex,
     type MemberProfileMetadata,
@@ -35,7 +35,7 @@ import { _setSignPreviewMode_TESTING_ONLY } from "@/lib/checkout/orderPreview";
 const BUYER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as Hex;
 const SELLER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" as Hex;
 const CURRENCY = `0x${"ab".repeat(20)}` as Hex;
-const ASSEMBLY_REGISTRY = `0x${"a5".repeat(20)}` as Hex;
+const PROCESS_REGISTRY = `0x${"a5".repeat(20)}` as Hex;
 const AGREEMENT_REGISTRY = `0x${"a6".repeat(20)}` as Hex;
 
 // The order of the accept path's acts: the sign (which follows the terms
@@ -57,7 +57,7 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
         CONTRACTS: {
             ...actual.CONTRACTS,
             core: "0x00000000000000000000000000000000000000c0",
-            assemblyRegistry: ASSEMBLY_REGISTRY,
+            processRegistry: PROCESS_REGISTRY,
             agreementRegistry: AGREEMENT_REGISTRY,
         },
     };
@@ -133,19 +133,19 @@ function design() {
     const documents = [{ documentHash: `0x${"d0".repeat(32)}`, documentVersion: "1.0.0", documentTitle: `Terms ${caseId}` }];
     const registered: RegisteredAgreement = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-consent")]: { documents } } };
     const agreementHash = agreementHashOf(registered);
-    const assembly: Assembly = { agreements: [{ id: "agreement-0", agreementHash, clauses: {} }] };
-    const assemblyHash = assemblyHashOf(assembly);
-    bindings.set(assemblyHash.toLowerCase(), `ipfs://bound-assembly-${caseId}`);
+    const assembly: ProcessDesign = { agreements: [{ id: "agreement-0", agreementHash, clauses: {} }] };
+    const processDesignHash = processDesignHashOf(assembly);
+    bindings.set(processDesignHash.toLowerCase(), `ipfs://bound-assembly-${caseId}`);
     bindings.set(agreementHash.toLowerCase(), `ipfs://bound-agreement-${caseId}`);
     pinned.set(`ipfs://bound-assembly-${caseId}`, JSON.stringify(assembly));
     pinned.set(`ipfs://bound-agreement-${caseId}`, JSON.stringify(registered));
-    return { agreementHash, assemblyHash, documents };
+    return { agreementHash, processDesignHash, documents };
 }
 
-function profileBinding(...assemblyHashes: Hex[]): MemberProfileMetadata {
+function profileBinding(...processDesignHashes: Hex[]): MemberProfileMetadata {
     return {
         name: "Seller",
-        assemblyBindings: assemblyHashes.map((assemblyHash, i) => ({ bindingId: `b-${i}`, subjectAddress: SELLER, assemblyHash })),
+        processBindings: processDesignHashes.map((processDesignHash, i) => ({ bindingId: `b-${i}`, subjectAddress: SELLER, processDesignHash })),
     };
 }
 
@@ -157,17 +157,17 @@ function payloadUnder(d: ReturnType<typeof design> | null, opts: { buyerSig?: bo
         },
         ...(d ? { [keyOf("figaro-consent")]: { documents: d.documents } } : {}),
     }, specSource());
-    const agreement: Agreement = d ? { ...built, follows: [], provenance: { agreementHash: d.agreementHash, assemblyHash: d.assemblyHash } } : built;
+    const agreement: Agreement = d ? { ...built, follows: [], provenance: { agreementHash: d.agreementHash, processDesignHash: d.processDesignHash } } : built;
     const commitment: Commitment = {
         processId: `0x${"00".repeat(32)}` as Hex,
         buyer: BUYER,
         seller: SELLER,
-        currency: CURRENCY,
+        token: CURRENCY,
         payment,
-        expectedCumulativeValue: payment,
+        runningTotal: payment,
         checkoutHash: computeCheckoutHash(agreement),
         salt: 1n,
-        deadline: 9_999_999_999n,
+        commitDeadline: 9_999_999_999n,
     };
     return opts.buyerSig === false
         ? { commitment, agreement }
@@ -181,7 +181,7 @@ function quoteRequestUnder(d: ReturnType<typeof design>): CommitmentPayload {
     };
 }
 
-const named = (h: Hex) => new RegExp(`has not bound assembly ${deriveAssemblySlug(h)} \\(${h}\\)`);
+const named = (h: Hex) => new RegExp(`has not bound assembly ${deriveProcessDesignSlug(h)} \\(${h}\\)`);
 
 describe("every seller accept path reads the seller's own bound assemblies", () => {
     beforeAll(async () => { await primeClauseSpecs(["figaro-commerce", "figaro-consent"]); });
@@ -194,7 +194,7 @@ describe("every seller accept path reads the seller's own bound assemblies", () 
 
     it("acceptOrder counter-signs and broadcasts an order under an assembly the seller binds, reading the seller's own profile", async () => {
         const d = design();
-        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.processDesignHash));
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await expect(result.current.acceptOrder(payloadUnder(d))).resolves.toMatch(/^0x/);
         expect(commitSignedOrder).toHaveBeenCalledTimes(1);
@@ -203,7 +203,7 @@ describe("every seller accept path reads the seller's own bound assemblies", () 
 
     it("acceptOrder runs the caller's beforeBroadcast after the sign and before the broadcast", async () => {
         const d = design();
-        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.processDesignHash));
         callOrder.length = 0;
         const beforeBroadcast = vi.fn(async () => { callOrder.push("approve"); });
         const { result } = renderHook(() => useOrderCommitmentFlow());
@@ -213,7 +213,7 @@ describe("every seller accept path reads the seller's own bound assemblies", () 
 
     it("acceptOrder broadcasts nothing when beforeBroadcast fails", async () => {
         const d = design();
-        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.processDesignHash));
         const beforeBroadcast = vi.fn(async () => { throw new Error("The bond approval was refused or failed."); });
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await expect(result.current.acceptOrder(payloadUnder(d), undefined, { beforeBroadcast })).rejects.toThrow(/bond approval/);
@@ -222,7 +222,7 @@ describe("every seller accept path reads the seller's own bound assemblies", () 
 
     it("acceptOrder never runs beforeBroadcast when the terms confirm is declined", async () => {
         const d = design();
-        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.processDesignHash));
         const beforeBroadcast = vi.fn(async () => undefined);
         const { result } = renderHook(() => useOrderCommitmentFlow());
         _setSignPreviewMode_TESTING_ONLY("auto-reject");
@@ -238,15 +238,15 @@ describe("every seller accept path reads the seller's own bound assemblies", () 
     it("acceptOrder refuses an order under an assembly the seller has not bound, naming it by slug and full hash", async () => {
         const d = design();
         const other = design();
-        profiles.set(SELLER.toLowerCase(), profileBinding(other.assemblyHash));
+        profiles.set(SELLER.toLowerCase(), profileBinding(other.processDesignHash));
         const { result } = renderHook(() => useOrderCommitmentFlow());
-        await expect(result.current.acceptOrder(payloadUnder(d))).rejects.toThrow(named(d.assemblyHash));
+        await expect(result.current.acceptOrder(payloadUnder(d))).rejects.toThrow(named(d.processDesignHash));
         expect(commitSignedOrder).not.toHaveBeenCalled();
     });
 
     it("acceptOrder refuses an order whose agreement carries no provenance leaf", async () => {
         const d = design();
-        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.processDesignHash));
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await expect(result.current.acceptOrder(payloadUnder(null))).rejects.toThrow(/names no assembly/);
         expect(commitSignedOrder).not.toHaveBeenCalled();
@@ -265,22 +265,22 @@ describe("every seller accept path reads the seller's own bound assemblies", () 
     it("counterSignAndReturn countersigns a race draft under a bound assembly and refuses one under an assembly the seller has not bound", async () => {
         const d = design();
         const other = design();
-        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.processDesignHash));
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await expect(result.current.counterSignAndReturn(payloadUnder(d, { buyerSig: false }))).resolves.toHaveProperty("sellerSig");
         expect(relayed).toHaveBeenCalledTimes(1);
-        await expect(result.current.counterSignAndReturn(payloadUnder(other, { buyerSig: false }))).rejects.toThrow(named(other.assemblyHash));
+        await expect(result.current.counterSignAndReturn(payloadUnder(other, { buyerSig: false }))).rejects.toThrow(named(other.processDesignHash));
         expect(relayed).toHaveBeenCalledTimes(1);
     });
 
     it("quoteAndReturn quotes a request under a bound assembly and refuses one under an assembly the seller has not bound", async () => {
         const d = design();
         const other = design();
-        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.processDesignHash));
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await expect(result.current.quoteAndReturn(quoteRequestUnder(d), 700n)).resolves.toHaveProperty("sellerSig");
         expect(relayed).toHaveBeenCalledTimes(1);
-        await expect(result.current.quoteAndReturn(quoteRequestUnder(other), 700n)).rejects.toThrow(named(other.assemblyHash));
+        await expect(result.current.quoteAndReturn(quoteRequestUnder(other), 700n)).rejects.toThrow(named(other.processDesignHash));
         expect(relayed).toHaveBeenCalledTimes(1);
     });
 });

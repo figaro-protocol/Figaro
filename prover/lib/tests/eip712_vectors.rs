@@ -54,12 +54,12 @@ fn the_guest_reproduces_every_commitment_vector() {
             process_id: b256(&c["processId"]),
             buyer: addr(&c["buyer"]),
             seller: addr(&c["seller"]),
-            currency: addr(&c["currency"]),
+            token: addr(&c["token"]),
             payment: u256(&c["payment"]),
-            expected_cumulative_value: u256(&c["expectedCumulativeValue"]),
+            running_total: u256(&c["runningTotal"]),
             checkout_hash: b256(&c["checkoutHash"]),
             salt: u256(&c["salt"]),
-            deadline: u256(&c["deadline"]),
+            commit_deadline: u256(&c["commitDeadline"]),
         };
         assert_eq!(
             commitment_struct_hash(&commitment),
@@ -90,7 +90,7 @@ fn the_guest_reproduces_every_batch_authorization() {
         let m = &a["message"];
         let struct_hash = match kind {
             "ResolveProcess" => {
-                resolve_struct_hash(&b256(&m["processId"]), &u256(&m["cumulativeValue"]))
+                resolve_struct_hash(&b256(&m["processId"]), &u256(&m["runningTotal"]))
             }
             "AttestSeller" => attest_seller_struct_hash(
                 &b256(&m["orderHash"]),

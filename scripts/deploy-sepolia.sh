@@ -143,7 +143,7 @@ if [ "${PAIR_ONLY:-}" = "1" ]; then
   export EXISTING_FIGARO_CORE=$(jq -r .figaroCore "$RECORD_PATH")
   export EXISTING_MEMBERS_REGISTRY=$(jq -r .membersRegistry "$RECORD_PATH")
   export EXISTING_CLAUSE_REGISTRY=$(jq -r .clauseRegistry "$RECORD_PATH")
-  export EXISTING_ASSEMBLY_REGISTRY=$(jq -r .assemblyRegistry "$RECORD_PATH")
+  export EXISTING_PROCESS_REGISTRY=$(jq -r .processRegistry "$RECORD_PATH")
   export EXISTING_AGREEMENT_REGISTRY=$(jq -r .agreementRegistry "$RECORD_PATH")
   OLD_COUNTER=$(jq -r .usageCounter "$RECORD_PATH")
   OLD_VERIFIER=$(jq -r .batchVerifier "$RECORD_PATH")
@@ -167,7 +167,7 @@ if [ "${PAIR_ONLY:-}" = "1" ]; then
   echo "   existing FigaroCore         = $EXISTING_FIGARO_CORE"
   echo "   existing MembersRegistry    = $EXISTING_MEMBERS_REGISTRY"
   echo "   existing ClauseRegistry     = $EXISTING_CLAUSE_REGISTRY"
-  echo "   existing AssemblyRegistry   = $EXISTING_ASSEMBLY_REGISTRY"
+  echo "   existing ProcessRegistry   = $EXISTING_PROCESS_REGISTRY"
   echo "   existing AgreementRegistry  = $EXISTING_AGREEMENT_REGISTRY"
   echo "   replacing UsageCounter      = $OLD_COUNTER"
   echo "   replacing FigaroBatchVerifier = $OLD_VERIFIER"
@@ -280,7 +280,7 @@ echo "$FORGE_OUT"
 CORE_ADDR=$(echo "$FORGE_OUT"            | grep 'NEXT_PUBLIC_FIGARO_CORE='             | grep -oE '0x[0-9a-fA-F]+')
 ATTESTATION_ADDR=$(echo "$FORGE_OUT"     | grep 'NEXT_PUBLIC_ATTESTATION_COORDINATOR=' | grep -oE '0x[0-9a-fA-F]+')
 CLAUSE_ADDR=$(echo "$FORGE_OUT"          | grep 'NEXT_PUBLIC_CLAUSE_REGISTRY='         | grep -oE '0x[0-9a-fA-F]+')
-ASSEMBLY_ADDR=$(echo "$FORGE_OUT"        | grep 'NEXT_PUBLIC_ASSEMBLY_REGISTRY='       | grep -oE '0x[0-9a-fA-F]+')
+ASSEMBLY_ADDR=$(echo "$FORGE_OUT"        | grep 'NEXT_PUBLIC_PROCESS_REGISTRY='       | grep -oE '0x[0-9a-fA-F]+')
 AGREEMENT_ADDR=$(echo "$FORGE_OUT"       | grep 'NEXT_PUBLIC_AGREEMENT_REGISTRY='      | grep -oE '0x[0-9a-fA-F]+')
 MEMBERS_ADDR=$(echo "$FORGE_OUT"         | grep 'NEXT_PUBLIC_MEMBERS_REGISTRY='        | grep -oE '0x[0-9a-fA-F]+')
 FLORIN_TOKEN_ADDR=$(echo "$FORGE_OUT"    | grep 'NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS='    | grep -oE '0x[0-9a-fA-F]+')
@@ -338,7 +338,7 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "attestationCoordinator": "$ATTESTATION_ADDR",
   "clauseRegistry": "$CLAUSE_ADDR",
   "membersRegistry": "$MEMBERS_ADDR",
-  "assemblyRegistry": "$ASSEMBLY_ADDR",
+  "processRegistry": "$ASSEMBLY_ADDR",
   "agreementRegistry": "$AGREEMENT_ADDR",
   "florinToken": "$FLORIN_TOKEN_ADDR",
   "usageCounter": "$USAGE_COUNTER_ADDR",
@@ -366,7 +366,7 @@ echo "   FigaroCore              = $CORE_ADDR"
 echo "   AttestationCoordinator  = $ATTESTATION_ADDR"
 echo "   ClauseRegistry          = $CLAUSE_ADDR"
 echo "   MembersRegistry         = $MEMBERS_ADDR"
-echo "   AssemblyRegistry        = $ASSEMBLY_ADDR"
+echo "   ProcessRegistry        = $ASSEMBLY_ADDR"
 echo "   AgreementRegistry       = $AGREEMENT_ADDR"
 echo "   FlorinToken             = $FLORIN_TOKEN_ADDR"
 echo "   UsageCounter            = $USAGE_COUNTER_ADDR"

@@ -85,12 +85,12 @@ contract AttestationVectorsTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller,
-            currency: address(token),
+            token: address(token),
             payment: 10 ether,
-            expectedCumulativeValue: 10 ether,
+            runningTotal: 10 ether,
             checkoutHash: root,
             salt: 7,
-            deadline: 2000
+            commitDeadline: 2000
         });
         vm.warp(1000);
         core.commit(c, _sign(c, BUYER_KEY), _sign(c, SELLER1_KEY));
@@ -100,11 +100,11 @@ contract AttestationVectorsTest is Test {
         vm.serializeAddress(top, "verifyingContract", address(core));
         vm.serializeAddress(top, "buyer", buyer);
         vm.serializeAddress(top, "seller", seller);
-        vm.serializeAddress(top, "currency", address(token));
+        vm.serializeAddress(top, "token", address(token));
         vm.serializeString(top, "payment", vm.toString(c.payment));
         vm.serializeBytes32(top, "checkoutHash", root);
         vm.serializeString(top, "salt", vm.toString(c.salt));
-        vm.serializeString(top, "deadline", vm.toString(c.deadline));
+        vm.serializeString(top, "commitDeadline", vm.toString(c.commitDeadline));
         vm.serializeString(top, "vectorCount", "3");
 
         bytes32[] memory proof0 = new bytes32[](2);

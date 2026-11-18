@@ -22,7 +22,7 @@
  * There is NO probe clause here — the probe (register an UNKNOWN clause at
  * test time) is permissionless-clause's instrument. These clauses are known,
  * so each rung's composition is FIXED, and assembly identity is the
- * composition (editorial names are excluded from the assemblyHash). On the
+ * composition (editorial names are excluded from the processDesignHash). On the
  * persistent devnet that means the first run against a deployment ANCHORS
  * each rung's assembly and every later run ADOPTS it — the protocol-correct
  * behavior (identical composition = one binding, first-write-wins). The
@@ -260,7 +260,7 @@ const RUNGS: ClauseRung[] = [
         // THE UTILITY-TOKEN PIN: the designer pins the one ERC-20 the whole
         // assembly's processes run in — an ASSEMBLY-SCOPED designer fill (like
         // the recourse clauses above), identity-bearing in the
-        // assemblyHash. Generic: the clause names no token and carries no
+        // processDesignHash. Generic: the clause names no token and carries no
         // economics. Checkout resolves the process currency from the pin,
         // ahead of the buyer's payment-token pick and the seller default; the
         // commerce clause restates neither the token nor the payment.
@@ -694,7 +694,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             //    read from the token contract, not the UI. (Rungs don't
             //    resolve — full-cycle resolution is permissionless-clause's
             //    assertion; the lock IS the commit's on-chain effect.) ──
-            const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+            const { buyerBond, sellerBond } = calculateBonds(event.args.runningTotal!, event.args.payment!);
             const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
                 balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
             ]);

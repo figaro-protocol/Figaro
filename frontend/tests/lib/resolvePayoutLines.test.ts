@@ -13,8 +13,8 @@ import { resolvePayoutLines } from "@/hooks/useSemanticProcessWorkspace";
 const S1 = "0x00000000000000000000000000000000000000a1";
 const S2 = "0x00000000000000000000000000000000000000a2";
 
-function order(seller: string, cumulativeValue: bigint, payment: bigint) {
-    const { sellerBond, buyerBond } = calculateBonds(cumulativeValue, payment);
+function order(seller: string, runningTotal: bigint, payment: bigint) {
+    const { sellerBond, buyerBond } = calculateBonds(runningTotal, payment);
     return { seller, payment, sellerBond, buyerBond };
 }
 

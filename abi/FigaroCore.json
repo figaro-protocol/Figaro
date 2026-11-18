@@ -42,7 +42,7 @@
             "internalType": "address"
           },
           {
-            "name": "currency",
+            "name": "token",
             "type": "address",
             "internalType": "address"
           },
@@ -52,7 +52,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "expectedCumulativeValue",
+            "name": "runningTotal",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -67,7 +67,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "deadline",
+            "name": "commitDeadline",
             "type": "uint256",
             "internalType": "uint256"
           }
@@ -182,7 +182,7 @@
         "internalType": "contract IERC20"
       },
       {
-        "name": "cumulativeValue",
+        "name": "runningTotal",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -224,7 +224,7 @@
             "internalType": "address"
           },
           {
-            "name": "currency",
+            "name": "token",
             "type": "address",
             "internalType": "address"
           },
@@ -234,7 +234,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "expectedCumulativeValue",
+            "name": "runningTotal",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -249,7 +249,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "deadline",
+            "name": "commitDeadline",
             "type": "uint256",
             "internalType": "uint256"
           }
@@ -306,7 +306,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "cumulativeValue",
+        "name": "runningTotal",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"

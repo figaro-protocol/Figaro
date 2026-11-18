@@ -34,7 +34,7 @@ function makeJsonResponse(body: unknown): Response {
     } as unknown as Response;
 }
 
-// The AssemblyRegistry's anchored assembly hashes the surfacing rule
+// The ProcessRegistry's anchored assembly hashes the surfacing rule
 // cross-checks against (applied evenly across every projection).
 const ANCHORED_HASH = `0x${'a1'.repeat(32)}`;
 const ANCHORED = new Set([ANCHORED_HASH]);
@@ -43,7 +43,7 @@ function anchoredBinding(subjectAddress: string) {
     return [{
         bindingId: 'binding-1',
         subjectAddress,
-        assemblyHash: ANCHORED_HASH,
+        processDesignHash: ANCHORED_HASH,
         coSellerBindings: [],
     }];
 }
@@ -94,7 +94,7 @@ describe('discoveryService', () => {
             ],
             acceptedTokens: [{ address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: "FLORIN" }],
             defaultTokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-            assemblyBindings: anchoredBinding('0x70997970C51812dc3A010C7d01b50e0d17dc79C8'),
+            processBindings: anchoredBinding('0x70997970C51812dc3A010C7d01b50e0d17dc79C8'),
             version: '1.0.0',
         }));
 
@@ -122,7 +122,7 @@ describe('discoveryService', () => {
                 { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'USDC' },
             ],
             defaultTokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-            assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
+            processBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
             catalogURI: 'ipfs://Qmopcatakogue111111111111111111111111111111111',
         }));
         // Second fetch: catalog document
@@ -152,7 +152,7 @@ describe('discoveryService', () => {
         ]);
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             name: 'Street Tacos',
-            assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
+            processBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
             catalogURI: 'ipfs://Qmopcatakogue111111111111111111111111111111111',
         }));
         // No subjectAddress or version, and an item with no price: not a member catalog.
@@ -175,7 +175,7 @@ describe('discoveryService', () => {
         ]);
         // No name: not a member profile.
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
-            assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
+            processBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
         }));
 
         const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
@@ -206,7 +206,7 @@ describe('discoveryService', () => {
         ]);
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             name: 'Street Tacos',
-            assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
+            processBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
             catalogURI: 'https://member-chosen.example/catalog.json',
         }));
 
@@ -227,7 +227,7 @@ describe('discoveryService', () => {
         ]);
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             name: 'Ghost Kitchen',
-            assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
+            processBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
         }));
 
         const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
@@ -253,14 +253,14 @@ describe('discoveryService', () => {
             },
         ]);
         // Parses fine as a profile — but binds nothing anchored in the
-        // AssemblyRegistry, so this frontend does not surface it anywhere.
+        // ProcessRegistry, so this frontend does not surface it anywhere.
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
             name: 'Unbound Seller',
-            assemblyBindings: [{
+            processBindings: [{
                 bindingId: 'binding-x',
                 subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-                assemblyHash: `0x${'b2'.repeat(32)}`,
+                processDesignHash: `0x${'b2'.repeat(32)}`,
                 coSellerBindings: [],
             }],
         }));
@@ -295,7 +295,7 @@ describe('discoveryService', () => {
                 subjectAddress: WALLET,
                 name: 'Logo Merchant',
                 branding: { logoURI },
-                assemblyBindings: anchoredBinding(WALLET),
+                processBindings: anchoredBinding(WALLET),
                 version: '1.0.0',
             }));
             const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);

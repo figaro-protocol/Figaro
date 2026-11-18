@@ -11,12 +11,12 @@
  *   Token conservation      — total supply is constant across all transitions
  *   Contract solvency       — contract balance is always non-negative
  *   Wallet non-negativity   — no participant goes below zero
- *   Bond formula            — buyer bond = 2×payment, seller bond = 2×cumulativeValue
- *   Cumulative integrity    — cumulativeValue = sum of all order payments in process
+ *   Bond formula            — buyer bond = 2×payment, seller bond = 2×runningTotal
+ *   Cumulative integrity    — runningTotal = sum of all order payments in process
  *   Active count            — activeCount matches count of committed orders
  *   Resolution possible     — contract always has sufficient funds to resolve
  *   Deterrent magnitudes    — held escrow is exactly 2×payment (buyer) +
- *                             2×cumulativeValue (seller) per committed order
+ *                             2×runningTotal (seller) per committed order
  *   Resolved net positions  — resolution moves exactly `payment` buyer →
  *                             seller; both bonds return whole
  *
@@ -83,14 +83,14 @@ vars ==
 
 \* ── Sentinel values ──────────────────────────────────────────
 NullProcess ==
-  [ rootBuyer |-> "null", cumulativeValue |-> 0, activeCount |-> 0 ]
+  [ rootBuyer |-> "null", runningTotal |-> 0, activeCount |-> 0 ]
 
 NullOrder ==
   [ processId |-> 0,
     buyer |-> "null",
     seller |-> "null",
     payment |-> 0,
-    cumulativeValue |-> 0
+    runningTotal |-> 0
   ]
 
 
@@ -119,7 +119,7 @@ TotalSupply == Cardinality(Participants) * InitialBalance
 
 \* ── Payout computation ───────────────────────────────────────
 \* Per-order payouts from the contract:
-\*   seller: cumulativeValue × 2 + payment   (bond return + payment)
+\*   seller: runningTotal × 2 + payment   (bond return + payment)
 \*   buyer:  payment                          (half bond return)
 \* Compute per-participant wallet deltas from resolving a process
 RECURSIVE PayoutDeltas(_,_,_)
@@ -127,7 +127,7 @@ PayoutDeltas(oids, idx, delta) ==
   IF idx > Len(oids)
   THEN delta
   ELSE LET o == orderRecords[oids[idx]]
-           sellerAmt == o.cumulativeValue * 2 + o.payment
+           sellerAmt == o.runningTotal * 2 + o.payment
            buyerAmt == o.payment
     IN PayoutDeltas(oids, idx + 1, [p \in Participants |->
             delta[p] + ( IF p = o.seller THEN sellerAmt ELSE 0 ) +
@@ -139,7 +139,7 @@ ProcessTotalPayout(pid) ==
   LET oids == processOrders[pid]
   IN SumSeq([i \in 1 .. Len(oids) |->
           LET o == orderRecords[oids[i]]
-          IN 2 * o.cumulativeValue + 2 * o.payment
+          IN 2 * o.runningTotal + 2 * o.payment
         ])
 
 
@@ -161,7 +161,7 @@ Init ==
 \*
 \* Bond deposits:
 \*   buyer:  payment × 2
-\*   seller: payment × 2   (root: expectedCumulativeValue = payment)
+\*   seller: payment × 2   (root: runningTotal = payment)
 CommitRoot(buyer, seller, payment) ==
   LET pid == nextProcId
       oid == nextOrdId
@@ -183,7 +183,7 @@ CommitRoot(buyer, seller, payment) ==
           [processes EXCEPT
           ![pid] =
           [ rootBuyer |-> buyer,
-            cumulativeValue |-> payment,
+            runningTotal |-> payment,
             activeCount |-> 1
           ]]
      /\ orderStatus' = [orderStatus EXCEPT ![oid] = "Committed"]
@@ -194,7 +194,7 @@ CommitRoot(buyer, seller, payment) ==
             buyer |-> buyer,
             seller |-> seller,
             payment |-> payment,
-            cumulativeValue |-> payment
+            runningTotal |-> payment
           ]]
      /\ processOrders' = [processOrders EXCEPT ![pid] = << oid >>]
      /\ contractBalance' = contractBalance + buyerBond + sellerBond
@@ -221,7 +221,7 @@ CommitSub(pid, seller, payment) ==
   LET ps == processes[pid]
       oid == nextOrdId
       buyer == ps.rootBuyer
-      newCumVal == ps.cumulativeValue + payment
+      newCumVal == ps.runningTotal + payment
       buyerBond == payment * 2
       sellerBond == newCumVal * 2
   IN \* Guards
@@ -239,7 +239,7 @@ CommitSub(pid, seller, payment) ==
      /\ processes' =
           [processes EXCEPT
           ![pid] =
-          [@ EXCEPT !.cumulativeValue = newCumVal, !.activeCount = @ + 1]]
+          [@ EXCEPT !.runningTotal = newCumVal, !.activeCount = @ + 1]]
      /\ orderStatus' = [orderStatus EXCEPT ![oid] = "Committed"]
      /\ orderRecords' =
           [orderRecords EXCEPT
@@ -248,7 +248,7 @@ CommitSub(pid, seller, payment) ==
             buyer |-> buyer,
             seller |-> seller,
             payment |-> payment,
-            cumulativeValue |-> newCumVal
+            runningTotal |-> newCumVal
           ]]
      /\ processOrders' = [processOrders EXCEPT ![pid] = Append(@, oid)]
      /\ contractBalance' = contractBalance + buyerBond + sellerBond
@@ -332,12 +332,12 @@ WalletNonNegative == \A p \in Participants: wallets[p] >= 0
 
 
 \* ── Cumulative value integrity ───────────────────────────────
-\* For every initialized process, cumulativeValue equals the sum
+\* For every initialized process, runningTotal equals the sum
 \* of all order payments in that process.
 CumulativeIntegrity ==
   \A pid \in 1 .. MaxProcesses:
     processes[pid].rootBuyer # "null" =>
-      processes[pid].cumulativeValue =
+      processes[pid].runningTotal =
         SumSeq([i \in 1 .. Len(processOrders[pid]) |->
             orderRecords[processOrders[pid][i]].payment
           ])
@@ -367,7 +367,7 @@ ResolutionAlwaysPossible ==
 \* ── The equilibrium proof's payoff table ─────────────────────
 \* `docs/THEORY.md` § "Nash Equilibrium Analysis" reasons over two
 \* numbers: while a process is unresolved each side stands to lose its
-\* whole bond (buyer 2×payment, seller 2×cumulativeValue), and resolving
+\* whole bond (buyer 2×payment, seller 2×runningTotal), and resolving
 \* moves exactly `payment` from buyer to seller with both bonds refunded
 \* whole. Conservation and solvency pin NEITHER — a contract that paid the
 \* seller 3× would satisfy every other invariant in this file while
@@ -382,7 +382,7 @@ LockedEscrow(p) ==
         THEN 2 * orderRecords[oid].payment
         ELSE 0 ) +
       ( IF p = orderRecords[oid].seller
-        THEN 2 * orderRecords[oid].cumulativeValue
+        THEN 2 * orderRecords[oid].runningTotal
         ELSE 0 )])
 
 \* Net value a participant has resolved through RESOLVED orders.

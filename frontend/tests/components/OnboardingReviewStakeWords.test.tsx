@@ -24,7 +24,7 @@ vi.mock("wagmi", () => ({ useAccount: () => m.account }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 const FILLED = {
     profile: { name: "Seller", defaultTokenAddress: "0x0000000000000000000000000000000000000001" },
-    assemblies: [{ assemblyHash: `0x${"ab".repeat(32)}` }],
+    assemblies: [{ processDesignHash: `0x${"ab".repeat(32)}` }],
     catalog: { items: [{ id: "i", name: "Item", description: "", price: "1", available: true }] },
 };
 vi.mock("@/lib/member/onboardingState", () => ({

@@ -95,12 +95,12 @@ contract WitnessSwapAndCommitCoordinatorForkTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller,
-            currency: address(bond),
+            token: address(bond),
             payment: P,
-            expectedCumulativeValue: P,
+            runningTotal: P,
             checkoutHash: keccak256("witness-fork-root"),
             salt: 1,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
     }
 
@@ -321,12 +321,12 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller,
-            currency: address(USDC),
+            token: address(USDC),
             payment: P,
-            expectedCumulativeValue: P,
+            runningTotal: P,
             checkoutHash: keccak256("sepolia-venue-fork-root"),
             salt: 1,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
     }
 

@@ -15,7 +15,7 @@ import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import { findListingByAddress } from "@/lib/member/memberListing";
 import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
 import type {
-    AssemblyBindingRecord,
+    ProcessBindingRecord,
     CoSellerBinding,
 } from "@/lib/member/memberProfileMetadata";
 import {
@@ -31,7 +31,7 @@ import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type Onboardin
 /**
  * The assemblies step of the onboarding wizard. The member picks which published
  * assemblies they participate in. Each selected assembly becomes an
- * `AssemblyBindingRecord` on `state.assemblies`.
+ * `ProcessBindingRecord` on `state.assemblies`.
  *
  * Per-binding co-seller editing: assemblies whose hydrated assembly contains
  * a non-root order with a per-role process clause (e.g. a courier
@@ -53,13 +53,13 @@ import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type Onboardin
 
 function buildBinding(
     wallet: `0x${string}`,
-    choice: Pick<AssemblyChoice, "assemblyHash">,
+    choice: Pick<AssemblyChoice, "processDesignHash">,
     coSellerBindings: CoSellerBinding[],
-): AssemblyBindingRecord {
+): ProcessBindingRecord {
     return {
-        bindingId: `binding:${wallet.toLowerCase()}:${choice.assemblyHash.toLowerCase()}`,
+        bindingId: `binding:${wallet.toLowerCase()}:${choice.processDesignHash.toLowerCase()}`,
         subjectAddress: wallet,
-        assemblyHash: choice.assemblyHash,
+        processDesignHash: choice.processDesignHash,
         coSellerBindings: coSellerBindings.length > 0 ? coSellerBindings : undefined,
     };
 }
@@ -77,16 +77,16 @@ function buildBindings(
     wallet: `0x${string}`,
     selected: Set<string>,
     coSellersByAssembly: Map<string, CoSellerBinding[]>,
-): AssemblyBindingRecord[] {
+): ProcessBindingRecord[] {
     // Built from the selection itself — the key IS the assembly hash — so a
     // binding never depends on whether its assembly's document was read.
     return Array.from(selected).map((key) =>
-        buildBinding(wallet, { assemblyHash: key as `0x${string}` }, coSellersByAssembly.get(key) ?? []));
+        buildBinding(wallet, { processDesignHash: key as `0x${string}` }, coSellersByAssembly.get(key) ?? []));
 }
 
 /** The key the selection is held under: the assembly's full assembly hash. */
-function assemblyKey(choice: { assemblyHash: string }): string {
-    return choice.assemblyHash.toLowerCase();
+function assemblyKey(choice: { processDesignHash: string }): string {
+    return choice.processDesignHash.toLowerCase();
 }
 
 export interface OnboardingAssembliesFormProps extends OnboardingStepChromeProps {
@@ -94,7 +94,7 @@ export interface OnboardingAssembliesFormProps extends OnboardingStepChromeProps
      * Edit-mode override. When provided, the submit handler calls
      * `onSave(bindings)` instead of routing to the next wizard step.
      */
-    onSave?: (bindings: AssemblyBindingRecord[]) => Promise<void>;
+    onSave?: (bindings: ProcessBindingRecord[]) => Promise<void>;
 }
 
 export function OnboardingAssembliesForm({
@@ -229,7 +229,7 @@ export function OnboardingAssembliesForm({
                     const coSellers = coSellersByAssembly.get(assemblyKey(choice)) ?? [];
                     return (
                         <AssemblyChoiceRow
-                            key={choice.assemblyHash}
+                            key={choice.processDesignHash}
                             choice={choice}
                             checked={isSelected}
                             onToggle={() => toggle(assemblyKey(choice))}

@@ -21,7 +21,7 @@
 import Link from "@/components/shared/Link";
 import { useMemo } from "react";
 import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
-import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
+import { usePublishedAssemblies } from "@/lib/protocol/useProcessRegistry";
 import { usePublishedAgreements } from "@/lib/protocol/useAgreementRegistry";
 import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
 import type { RegistryFamily } from "@/lib/registries/explorer";
@@ -48,7 +48,7 @@ const SCAFFOLDING: Record<
     // The reference agreements are derived from the reference assemblies'
     // files, one per distinct agreement composition.
     agreements: { registry: "AgreementRegistry", event: "AgreementRegistered", dir: "assemblies" },
-    assemblies: { registry: "AssemblyRegistry", event: "AssemblyRegistered", dir: "assemblies" },
+    assemblies: { registry: "ProcessRegistry", event: "ProcessRegistered", dir: "assemblies" },
     members: null,
 };
 

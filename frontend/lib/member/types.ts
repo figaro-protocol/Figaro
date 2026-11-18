@@ -1,6 +1,6 @@
 import type { CatalogItemMetadata, UnitSystem } from "@/lib/member/memberCatalogMetadata";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
-import type { AssemblyBindingRecord, MemberAgentServices } from "@/lib/member/memberProfileMetadata";
+import type { ProcessBindingRecord, MemberAgentServices } from "@/lib/member/memberProfileMetadata";
 
 /**
  * Buyer-side projection of a member's profile + catalog.
@@ -45,7 +45,7 @@ export interface MemberCatalog {
     /** The assemblies the member has bound as a seller, each by its full
      *  assembly hash — the set a buyer's checkout reads to offer only
      *  sellers that bound the order's assembly (`bindsAssembly`). */
-    assemblyBindings?: AssemblyBindingRecord[];
+    processBindings?: ProcessBindingRecord[];
     /** Member's preferred display unit system for mass / volume. Storage
      *  is always metric; this field only governs UI formatting. */
     unitSystem?: UnitSystem;

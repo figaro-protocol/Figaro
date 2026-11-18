@@ -17,12 +17,12 @@ const COMMITMENT: Commitment = {
     processId: `0x${"00".repeat(32)}`,
     buyer: `0x${"0b".repeat(20)}`,
     seller: `0x${"05".repeat(20)}`,
-    currency: `0x${"22".repeat(20)}`,
+    token: `0x${"22".repeat(20)}`,
     payment: 2500n,
-    expectedCumulativeValue: 2500n,
+    runningTotal: 2500n,
     checkoutHash: `0x${"c4".repeat(32)}`,
     salt: 1n,
-    deadline: 9_999_999_999n,
+    commitDeadline: 9_999_999_999n,
 };
 const BINDING = { commitment: COMMITMENT, role: "buyer" as const };
 

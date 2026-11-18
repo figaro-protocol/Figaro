@@ -10,12 +10,12 @@ pub struct Commitment {
     pub process_id: B256,
     pub buyer: Address,
     pub seller: Address,
-    pub currency: Address,
+    pub token: Address,
     pub payment: U256,
-    pub expected_cumulative_value: U256,
+    pub running_total: U256,
     pub checkout_hash: B256,
     pub salt: U256,
-    pub deadline: U256,
+    pub commit_deadline: U256,
 }
 
 // ── Process state (matches FigaroCore.ProcessState) ───────────────
@@ -24,7 +24,7 @@ pub struct Commitment {
 pub struct ProcessState {
     pub root_buyer: Address,
     pub currency: Address,
-    pub cumulative_value: U256,
+    pub running_total: U256,
     pub active_order_count: u64,
 }
 
@@ -123,7 +123,7 @@ pub enum AttestationWitness {
 /// The one key the gates do not run for is the agreement format's
 /// reserved provenance leaf (`kernel::PROVENANCE_LEAF_KEY`): it is not a
 /// clause, so S and C give way to the format's own rule — `clause_data`
-/// is the reproduction of the agreementHash and assemblyHash it carries, `content_ref` is
+/// is the reproduction of the agreementHash and processDesignHash it carries, `content_ref` is
 /// its keccak — and I runs as for any leaf; no spec binding is committed.
 ///
 /// JSON crosses the SP1 stdin boundary as pre-serialized `String`s —
@@ -177,13 +177,13 @@ pub enum KernelOp {
     /// yet reached pre-authorizes exactly the orders that bring it there.
     Resolve {
         process_id: B256,
-        cumulative_value: U256,
+        running_total: U256,
         commitments: Vec<Commitment>,
         buyer_sig: Signature,
     },
     /// Resolution authorized by the buyer's wallet code: `authorization`
     /// is bytes the buyer's own account code validates for the
-    /// `ResolveProcess(processId, cumulativeValue)` digest (ERC-1271
+    /// `ResolveProcess(processId, runningTotal)` digest (ERC-1271
     /// `isValidSignature`), the batched equivalent of a `resolveProcess`
     /// call that code installed on the buyer's wallet makes as
     /// `msg.sender == rootBuyer` — an EIP-7702 delegation carrying the
@@ -197,7 +197,7 @@ pub enum KernelOp {
     /// other answer: the proven root holds the resolve, so it never drops alone.
     ResolveByWalletCode {
         process_id: B256,
-        cumulative_value: U256,
+        running_total: U256,
         commitments: Vec<Commitment>,
         authorization: Bytes,
     },
@@ -305,7 +305,7 @@ impl AttesterRole {
 
 /// Which family — clause, agreement or assembly — a usage claim credits,
 /// and the witness each needs. Mirrors `UsageCounter.recordClauseUsage`,
-/// `recordAgreementUsage` and `recordAssemblyUsage` — the same leaf
+/// `recordAgreementUsage` and `recordProcessDesignUsage` — the same leaf
 /// convention and the same sorted-pair proof, differing in how the leaf is
 /// identified.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -317,21 +317,21 @@ pub enum UsageClaimKind {
     /// Agreement usage; the claim's key is the registered agreementHash.
     /// The leaf is the reserved PROVENANCE leaf, a constant of the
     /// agreement format, and its bytes are REPRODUCED from both keys rather
-    /// than supplied: `{"agreementHash":"0x…","assemblyHash":"0x…"}`, the
-    /// assemblyHash of the assembly whose agreement the order instantiates. A
+    /// than supplied: `{"agreementHash":"0x…","processDesignHash":"0x…"}`, the
+    /// processDesignHash of the assembly whose agreement the order instantiates. A
     /// wrong key on either side derives a leaf that is simply not in the
     /// tree.
-    Agreement { assembly_hash: B256 },
-    /// Assembly usage; the claim's key is the assemblyHash. The
+    Agreement { process_design_hash: B256 },
+    /// Assembly usage; the claim's key is the processDesignHash. The
     /// provenance leaf is proved exactly as for an agreement claim, from
-    /// `agreement_hash` and the assemblyHash; then the agreement's leaf
-    /// `keccak256(keccak256(ASSEMBLY_LEAF_DOMAIN ‖ agreement_hash ‖ slot_content_hash))` is proved
-    /// under the assemblyHash by `membership_proof`, with the same
+    /// `agreement_hash` and the processDesignHash; then the agreement's leaf
+    /// `keccak256(keccak256(PROCESS_LEAF_DOMAIN ‖ agreement_hash ‖ agreement_content_hash))` is proved
+    /// under the processDesignHash by `membership_proof`, with the same
     /// sorted-pair verifier — the assembly's root is a merkle tree over its
     /// order slots.
-    Assembly {
+    Process {
         agreement_hash: B256,
-        slot_content_hash: B256,
+        agreement_content_hash: B256,
         membership_proof: Vec<B256>,
     },
 }
@@ -339,13 +339,13 @@ pub enum UsageClaimKind {
 /// The reward family of a clause key, as the accrual carries it.
 pub const USAGE_KIND_CLAUSE: u8 = 0;
 /// The reward family of an assembly key, as the accrual carries it.
-pub const USAGE_KIND_ASSEMBLY: u8 = 1;
+pub const USAGE_KIND_PROCESS: u8 = 1;
 /// The reward family of an agreement hash, as the accrual carries it.
 pub const USAGE_KIND_AGREEMENT: u8 = 2;
 
 impl UsageClaimKind {
     /// The family this claim credits: `USAGE_KIND_CLAUSE`,
-    /// `USAGE_KIND_ASSEMBLY` or `USAGE_KIND_AGREEMENT`. A registry accepts
+    /// `USAGE_KIND_PROCESS` or `USAGE_KIND_AGREEMENT`. A registry accepts
     /// any bytes32, so keys of two families can be the same word; every
     /// count and accrual is keyed by (kind, key) and the families never
     /// merge.
@@ -353,7 +353,7 @@ impl UsageClaimKind {
         match self {
             Self::Clause { .. } => USAGE_KIND_CLAUSE,
             Self::Agreement { .. } => USAGE_KIND_AGREEMENT,
-            Self::Assembly { .. } => USAGE_KIND_ASSEMBLY,
+            Self::Process { .. } => USAGE_KIND_PROCESS,
         }
     }
 }
@@ -367,8 +367,8 @@ pub struct UsageClaim {
     pub order: Commitment,
     /// The key the claim credits, each family's own registry key: the
     /// clause key (keccak256 of the spec without `block`), the agreementHash,
-    /// or the assemblyHash — never a new identifier.
-    pub clause_or_assembly: B256,
+    /// or the processDesignHash — never a new identifier.
+    pub clause_or_process: B256,
     pub kind: UsageClaimKind,
     /// Sorted-pair Merkle proof of the clause leaf against the order's
     /// signed `checkout_hash`.
@@ -384,8 +384,8 @@ pub struct UsageClaim {
 /// (kind, key, process) once per batch.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct BatchUse {
-    pub clause_or_assembly: B256,
-    /// `USAGE_KIND_CLAUSE`, `USAGE_KIND_ASSEMBLY` or
+    pub clause_or_process: B256,
+    /// `USAGE_KIND_CLAUSE`, `USAGE_KIND_PROCESS` or
     /// `USAGE_KIND_AGREEMENT`, from the claim's own `UsageClaimKind`.
     pub kind: u8,
     /// The process, its id derived under the verifier's EIP-712 domain.
@@ -489,7 +489,7 @@ pub struct PublicValues {
     /// to `UsageCounter`, which counts each one that passes the gates a
     /// direct call meets: a live `MembersRegistry` stake for its seller, a
     /// live registration for its key in `ClauseRegistry`,
-    /// `AgreementRegistry` or `AssemblyRegistry`, and a process not yet
+    /// `AgreementRegistry` or `ProcessRegistry`, and a process not yet
     /// counted under that key.
     pub usage_accrual_hash: B256,
     /// The clock the guest checked every commitment deadline against
@@ -658,8 +658,8 @@ pub enum KernelError {
     NotAuthorized,
     UnknownOrder,
     /// Attestation against a resolved order — the evidence window closes
-    /// at resolution (coordinator's `OrderResolved` gate).
-    OrderResolved,
+    /// at resolution (coordinator's `OrderAlreadyResolved` gate).
+    OrderAlreadyResolved,
     /// Gate I: the sorted-pair Merkle `inclusion_proof` does not verify
     /// the clause leaf against the target order's signed
     /// `checkout_hash` — the attested clause was not part of the
@@ -687,12 +687,12 @@ pub enum KernelError {
     UsageOrderNotResolved(B256),
     /// The claimed clause is not a leaf of the order's signed
     /// agreement — for an agreement or assembly claim, the usual cause is
-    /// an agreementHash or assemblyHash that does not match the committed
+    /// an agreementHash or processDesignHash that does not match the committed
     /// provenance leaf — or, for an assembly claim, the agreement's leaf is not
-    /// a leaf of the assemblyHash.
+    /// a leaf of the processDesignHash.
     UsageInvalidInclusionProof,
     /// An attestation of the reserved provenance leaf whose bytes are not
-    /// `{"agreementHash":"0x<64 lowercase hex>","assemblyHash":"0x<64 lowercase hex>"}`
+    /// `{"agreementHash":"0x<64 lowercase hex>","processDesignHash":"0x<64 lowercase hex>"}`
     /// reproduced from the two keys they carry.
     ProvenanceLeafNotCanonical,
     /// A usage claim keyed on a reserved key of the format (the

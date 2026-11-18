@@ -1,6 +1,6 @@
 /**
  * The process model names the root the chain names: the order whose
- * `cumulativeValue` equals its `payment`. The sub-order's agreement may carry
+ * `runningTotal` equals its `payment`. The sub-order's agreement may carry
  * no topology leaf, may not have loaded, or may carry `[]`; in none of these
  * is the sub-order named the root, and it shows no edge. Edges that are
  * unknown stay unknown (`follows: null`), apart from an empty leaf (`[]`).

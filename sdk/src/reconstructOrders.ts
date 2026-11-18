@@ -10,10 +10,10 @@
  * process id from the root. This module is that walk's single home.
  *
  * Two layers:
- *   - `planAssemblyOrders` — the PURE STRUCTURE: commit-ordered nodes with
+ *   - `planProcessOrders` — the PURE STRUCTURE: commit-ordered nodes with
  *     their clause bags and local parent edges. No parties, no values, no
  *     signatures. Display paths consume this directly.
- *   - `reconstructOrdersFromAssembly` — the FULL REALIZATION: agreements,
+ *   - `reconstructOrdersFromProcessDesign` — the FULL REALIZATION: agreements,
  *     hashes, commitments, and typed data per node, against the running
  *     cumulative value. The SDK never fabricates signatures — the caller
  *     signs each node's `typedData` (and may do so per-node via `onOrder`).
@@ -24,8 +24,8 @@
  * leaf, `Agreement.follows`, written from the assembly entry's `follows`).
  */
 
-import { agreementClauses, assemblyFollows, assemblyHashOf } from "./assembly.js";
-import type { HydratedAssembly, AssemblyAgreement } from "./assembly.js";
+import { agreementClauses, processDesignFollows, processDesignHashOf } from "./assembly.js";
+import type { HydratedProcessDesign, ProcessDesignAgreement } from "./assembly.js";
 import {
     computeCheckoutHash,
     type Agreement,
@@ -49,7 +49,7 @@ import type { Address, Commitment, Hex } from "./types.js";
 // ── Layer 1: pure structure ─────────────────────────────────────────────────
 
 /** One agreement, in commit order. */
-export interface PlannedAssemblyOrder {
+export interface PlannedProcessOrder {
     /** Agreement id (matches `assembly.agreements[].id`). */
     nodeId: string;
     /** The registered agreement the agreement binds. */
@@ -71,12 +71,12 @@ export interface PlannedAssemblyOrder {
  * is not hydrated; a assembly whose first node has parents (a sub-order with
  * no root) is rejected by the realization layer.
  */
-export function planAssemblyOrders(hydrated: HydratedAssembly): PlannedAssemblyOrder[] {
+export function planProcessOrders(hydrated: HydratedProcessDesign): PlannedProcessOrder[] {
     const { assembly } = hydrated;
     const byId = new Map(assembly.agreements.map((a) => [a.id, a]));
     const orderedIds = topologicalOrder(
         assembly.agreements.map((a) => a.id),
-        (id) => [...assemblyFollows(byId.get(id) as AssemblyAgreement)],
+        (id) => [...processDesignFollows(byId.get(id) as ProcessDesignAgreement)],
         "throw",
     );
     // THE ASSEMBLY-SCOPE FOLD: the assembly's
@@ -86,12 +86,12 @@ export function planAssemblyOrders(hydrated: HydratedAssembly): PlannedAssemblyO
     // neither the designer nor any party repeats anything.
     const assemblyClauses = assembly.assemblyClauses ?? {};
     return orderedIds.map((id, index) => {
-        const entry = byId.get(id) as AssemblyAgreement;
+        const entry = byId.get(id) as ProcessDesignAgreement;
         return {
             nodeId: id,
             agreementHash: entry.agreementHash,
             clauses: { ...assemblyClauses, ...agreementClauses(hydrated, entry) },
-            parentLocalIds: [...assemblyFollows(entry)],
+            parentLocalIds: [...processDesignFollows(entry)],
             index,
         };
     });
@@ -136,7 +136,7 @@ export interface ReconstructParams {
     chainId: number;
     core: Address;
     /** One spec per assembly node id. */
-    nodes: (planned: PlannedAssemblyOrder) => ReconstructNodeSpec;
+    nodes: (planned: PlannedProcessOrder) => ReconstructNodeSpec;
     /**
      * When supplied, agreements build through the spec-default projection
      * (`buildOrderAgreement` — checkout semantics: registry-declared defaults
@@ -165,8 +165,8 @@ export interface ReconstructedOrder {
     seller: Address;
     payment: bigint;
     /** The process's running total AFTER this order — what the commitment's
-     *  `expectedCumulativeValue` names. */
-    cumulativeValue: bigint;
+     *  `runningTotal` names. */
+    runningTotal: bigint;
     agreement: Agreement;
     checkoutHash: Hex;
     commitment: Commitment;
@@ -186,11 +186,11 @@ export interface ReconstructedOrder {
  * be SUBMITTED in the returned order (root first) so FigaroCore sees a
  * consistent running total.
  */
-export async function reconstructOrdersFromAssembly(
-    hydrated: HydratedAssembly,
+export async function reconstructOrdersFromProcessDesign(
+    hydrated: HydratedProcessDesign,
     params: ReconstructParams,
 ): Promise<ReconstructedOrder[]> {
-    const planned = planAssemblyOrders(hydrated);
+    const planned = planProcessOrders(hydrated);
     const domain = buildDomain(params.chainId, params.core);
 
     const realHash = new Map<string, Hex>();
@@ -199,7 +199,7 @@ export async function reconstructOrdersFromAssembly(
     // The assembly's OWN assembly hash — every realized order carries it,
     // beside its agreement's agreement hash, as the agreement's provenance
     // leaf (see fillWalkProvenance).
-    const assemblyHash = assemblyHashOf(hydrated.assembly);
+    const processDesignHash = processDesignHashOf(hydrated.assembly);
     const out: ReconstructedOrder[] = [];
 
     for (const node of planned) {
@@ -228,7 +228,7 @@ export async function reconstructOrdersFromAssembly(
                   spec.overrides,
               );
         const agreement = fillWalkTopology(
-            fillWalkProvenance(built, { agreementHash: node.agreementHash, assemblyHash }, node.nodeId),
+            fillWalkProvenance(built, { agreementHash: node.agreementHash, processDesignHash }, node.nodeId),
             follows,
             node.nodeId,
         );
@@ -239,12 +239,12 @@ export async function reconstructOrdersFromAssembly(
                 processId: isRoot ? ZERO_PROCESS_ID : (rootProcessId as Hex),
                 buyer: params.buyer,
                 seller: spec.seller,
-                currency: params.currency,
+                token: params.currency,
                 payment: spec.payment,
-                expectedCumulativeValue: cumulative,
+                runningTotal: cumulative,
                 checkoutHash,
                 salt: params.salt?.(node.nodeId),
-                deadline: params.deadline,
+                commitDeadline: params.deadline,
             },
             domain,
         );
@@ -261,7 +261,7 @@ export async function reconstructOrdersFromAssembly(
             isRoot,
             seller: spec.seller,
             payment: spec.payment,
-            cumulativeValue: cumulative,
+            runningTotal: cumulative,
             agreement,
             checkoutHash,
             commitment,
@@ -277,7 +277,7 @@ export async function reconstructOrdersFromAssembly(
 
 /** A node's assembly-local parent ids, as the REAL order hashes built for
  *  those nodes. Empty for the root. */
-function realParents(node: PlannedAssemblyOrder, realHash: Map<string, Hex>): Hex[] {
+function realParents(node: PlannedProcessOrder, realHash: Map<string, Hex>): Hex[] {
     return node.parentLocalIds.map((localId) => {
         const h = realHash.get(localId);
         if (!h) throw new Error(`parent "${localId}" was not built before its child (bad topo order)`);
@@ -324,15 +324,15 @@ export function fillWalkProvenance(
     if (
         existing !== undefined &&
         (existing.agreementHash.toLowerCase() !== provenance.agreementHash.toLowerCase() ||
-            existing.assemblyHash.toLowerCase() !== provenance.assemblyHash.toLowerCase())
+            existing.processDesignHash.toLowerCase() !== provenance.processDesignHash.toLowerCase())
     ) {
         throw new Error(
-            `node "${nodeId}": the agreement names provenance ${existing.agreementHash} / ${existing.assemblyHash}, ` +
-            `which contradicts this agreement's ${provenance.agreementHash} / ${provenance.assemblyHash} — ` +
+            `node "${nodeId}": the agreement names provenance ${existing.agreementHash} / ${existing.processDesignHash}, ` +
+            `which contradicts this agreement's ${provenance.agreementHash} / ${provenance.processDesignHash} — ` +
             `refusing to claim a different provenance`,
         );
     }
-    return { ...agreement, provenance: { agreementHash: provenance.agreementHash, assemblyHash: provenance.assemblyHash } };
+    return { ...agreement, provenance: { agreementHash: provenance.agreementHash, processDesignHash: provenance.processDesignHash } };
 }
 
 /** The one clause-bag ∪ overrides merge (per-clause shallow spread) — shared

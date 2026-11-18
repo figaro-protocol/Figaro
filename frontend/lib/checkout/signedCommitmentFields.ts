@@ -15,15 +15,15 @@ type SignedFieldName = (typeof COMMITMENT_TYPES.Commitment)[number]["name"];
 export const SIGNED_FIELD_MEANING: Record<SignedFieldName, string> = {
     processId:
         "The process this order joins. All zeros means this order opens a new process.",
-    buyer: "The wallet that pays and closes the process.",
+    buyer: "The wallet that pays and resolves the process.",
     seller: "The wallet that adds value in this order.",
-    currency: "The token the payment and both bonds are in.",
-    payment: "The amount of that token the buyer pays this seller when the buyer closes the process.",
-    expectedCumulativeValue:
+    token: "The token the payment and both bonds are in.",
+    payment: "The amount of that token the buyer pays this seller when the buyer resolves the process.",
+    runningTotal:
         "The running total: the sum of the payments of every order committed in this process so far, this one included. A seller's bond is twice this running total. The buyer's bond is twice the payment.",
     checkoutHash: "The fingerprint of the agreement you reviewed above.",
     salt: "A number that makes this commitment unique. It carries no term of the trade.",
-    deadline:
+    commitDeadline:
         "The last moment this signed commitment can be submitted to the chain. It is not a deadline for the work.",
 };
 

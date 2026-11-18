@@ -304,7 +304,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         const payment = event.args.payment!;
 
         // Value leg (commit): the asymmetric bonds actually locked.
-        const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, payment);
+        const { buyerBond, sellerBond } = calculateBonds(event.args.runningTotal!, payment);
         const [buyerMid, sellerMid, coreMid] = await Promise.all([
             balanceOf(AUTHOR), balanceOf(SELLER), balanceOf(core),
         ]);

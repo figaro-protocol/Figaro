@@ -29,7 +29,7 @@ only the clause FINGERPRINT reaches calldata, never plaintext, so private
 clauses stay off-chain), and the agreement's provenance leaf
 (<code>Agreement.provenance</code>, the registered agreement and the assembly it
 instantiated) gets the INDEPENDENT AGREEMENT leg (<code>recordAgreementUsage</code>)
-and ASSEMBLY leg (<code>recordAssemblyUsage</code>, with the agreement's membership
+and ASSEMBLY leg (<code>recordProcessDesignUsage</code>, with the agreement's membership
 proof) — the counter reproduces the leaf from the two keys. A key is
 counted once per process, so a key two orders carry is sent once.
 Tolerate-the-revert per leg; the report says what landed.</p>

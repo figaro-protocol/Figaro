@@ -77,9 +77,9 @@ key built from the release guest, a gas figure read on that chain) are left to i
      writes it into an agreement. An agreement a designer composed with it is refused at the
      sign gate for its required `follows` field, since checkout fills `Agreement.follows`
      and never that field, unless a party fills it by hand.
-   - An assembly pinned in the entry bytes `{"clauses":{…},"slot":i}` does not hash to its
-     registered key: the key is computed over `{"clauses":{…},"follows":[…],"slot":i}`
-     (`agreementLeafBytes`, `sdk/src/assembly.ts`). `anchorAssembly` (`sdk/src/anchored.ts`)
+   - An assembly pinned in the entry bytes `{"agreement":i,"clauses":{…}}` does not hash to its
+     registered key: the key is computed over `{"agreement":i,"clauses":{…},"follows":[…]}`
+     (`agreementLeafBytes`, `sdk/src/assembly.ts`). `anchorProcessDesign` (`sdk/src/anchored.ts`)
      recomputes the key from the fetched document and refuses it.
    - An order whose edges sit in a `figaro-topology` clause shows no edges: every reader
      reads `Agreement.follows` only.
@@ -399,7 +399,7 @@ result to it (the code, the guest key, the gateway). The list below is the proce
   `figaro-commerce` key == `DAO_WALLET`. The treasury is
   receives designer rewards as designer of record only if this holds (`/dao`,
   `DAO.md`); nothing else enforces it.
-- `MembersRegistry.registrationDeposit` == 0.05 ETH and `.withdrawalCooldown` == 28 days; `ClauseRegistry`, `AgreementRegistry` and `AssemblyRegistry` `.registrationDeposit` == 0.05 ETH (NOT the devnet `0.001 ether` / `0` placeholders). Every one is immutable and cannot be corrected after deploy.
+- `MembersRegistry.registrationDeposit` == 0.05 ETH and `.withdrawalCooldown` == 28 days; `ClauseRegistry`, `AgreementRegistry` and `ProcessRegistry` `.registrationDeposit` == 0.05 ETH (NOT the devnet `0.001 ether` / `0` placeholders). Every one is immutable and cannot be corrected after deploy.
 - `UsageCounter.members` == the deployed `MembersRegistry` (the live-stake gate reads it), `UsageCounter.periodEnd(0..8)` == the nine annual boundaries derived from `RPGF_GENESIS`, and `UsageCounter.minSellers` == 3 — these are immutable and cannot be corrected after deploy. `RpgfMinter.counter` / `.clauses` / `.assemblies` point at the deployed instances, and `.periodAmount` (45M/45M · 60M×3 · 82.5M×4 — the 15/30/55 rising-tranche grouping) sums to 600M and its length is validated on-chain against `periodCount()`.
 - Every token a process can be denominated in is non-rebasing and non-fee-on-transfer.
 - **No test members on mainnet — ever.** The rehearsal

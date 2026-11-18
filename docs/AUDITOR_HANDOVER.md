@@ -59,7 +59,7 @@ processes under one SP1 proof, in four parts:
 | `src/core/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` | 164 (303), 36 (67) |
 | `src/core/attestation/` | `AttestationCoordinator.sol` | 77 (197) |
 | `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 557 (1,043), 7 (23) |
-| `src/registries/` | `ClauseRegistry.sol`, `AgreementRegistry.sol`, `AssemblyRegistry.sol`, `MembersRegistry.sol` | 49 (196), 53 (202), 47 (189), 60 (210) |
+| `src/registries/` | `ClauseRegistry.sol`, `AgreementRegistry.sol`, `ProcessRegistry.sol`, `MembersRegistry.sol` | 49 (196), 53 (202), 47 (189), 60 (210) |
 | `src/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol`, `FlorinToken.sol`, `IFlorinMinter.sol` | 296 (884), 147 (344), 51 (83), 4 (9) |
 | `src/composability/` | `WitnessSwapAndCommitCoordinator.sol` | 110 (239) |
 | `script/Deploy.s.sol` | The devnet deploy | 198 (432) |
@@ -161,7 +161,7 @@ and environment: `docs/LOCAL_DEV.md` § "Commands"; the harness inventory:
 | Command | Expected |
 |---|---|
 | `MAINNET_RPC_URL=<rpc> SEPOLIA_RPC_URL=<rpc> forge test --via-ir` | 0 failed, 0 skipped (without the URLs the three fork tests, against mainnet's Permit2 and Sepolia's SwapRouter02, skip) |
-| `./scripts/test-halmos.sh` | `✅ All 41 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 9 UsageCounter + 6 ClauseRegistry + 6 AssemblyRegistry + 6 AgreementRegistry).` |
+| `./scripts/test-halmos.sh` | `✅ All 41 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 9 UsageCounter + 6 ClauseRegistry + 6 ProcessRegistry + 6 AgreementRegistry).` |
 | `CERTORAKEY=<key> CERTORA_WAIT=1 ./scripts/test-certora.sh` | all 8 specs green; the results table is the authority (`Failed on rule_not_vacuous` alone is the vacuity heuristic). The script first checks `certora/token-ops.inventory` against every token-moving call site |
 | `./scripts/test-echidna.sh` | every property holds on both harnesses (Core, FlorinToken) |
 | `./scripts/test-tla.sh` | all five models verify every invariant, TLC exit 0 (`ResolutionUniverses.cfg`'s two named assumptions set FALSE is an experiment expected to fail) |
@@ -179,9 +179,9 @@ with no arbitrator, no timeout and no administrator. `docs/LEXICON.md` defines
 every noun; the ones this document uses:
 
 - A **process** is one buyer's run of a trade: its **orders**, resolved together. An order is one buyer–seller commitment, an EIP-712 struct (`CommitmentTypes.Commitment`) both parties sign off-chain and anyone may submit. The **buyer** (`rootBuyer`, the same wallet in every order of a process) pays and is the only party who can resolve; a **seller** adds value in one order.
-- **Payment** P_i is what order i moves from buyer to seller. **Cumulative value** G_i (`expectedCumulativeValue`) is the total payment through order i; each later order extends the process's accumulator by exactly its payment.
+- **Payment** P_i is what order i moves from buyer to seller. **Cumulative value** G_i (`runningTotal`) is the total payment through order i; each later order extends the process's accumulator by exactly its payment.
 - `commit` pulls the **bonds** into `FigaroCore` in the process's one ERC-20: the buyer 2·P_i, the seller 2·G_i. **Resolution** is one call by the buyer over every active order: each seller receives 2·G_i + P_i and the buyer P_i per order, every payment made and every bond refunded, atomically. Nothing else moves a bond.
-- A **clause** is a reusable term, registered in `ClauseRegistry` under the keccak256 of its spec's canonical bytes. An **agreement** is the clauses composed for one order, every field filled; its merkle root is the commitment's `checkoutHash`. A **registered agreement** (`AgreementRegistry`) and an **assembly** (`AssemblyRegistry`, a merkle root over registered agreements) are value-free designs. A **designer** registers any of the three under a stake.
+- A **clause** is a reusable term, registered in `ClauseRegistry` under the keccak256 of its spec's canonical bytes. An **agreement** is the clauses composed for one order, every field filled; its merkle root is the commitment's `checkoutHash`. A **registered agreement** (`AgreementRegistry`) and an **assembly** (`ProcessRegistry`, a merkle root over registered agreements) are value-free designs. A **designer** registers any of the three under a stake.
 - An **attestation** is a party's statement about a clause of its own open order, bound by merkle proof to the agreement: through `AttestationCoordinator` on the direct path, authorized by `msg.sender`; inside the proof on the batch path, authorized by the party's ECDSA signature or by bytes its own wallet code validates (ERC-1271, asked by the verifier, which reverts the batch on any other answer); hash-only by default or with the spec and content in plaintext at the party's choice.
 - A **member** is a wallet staked in `MembersRegistry`, with a withdrawal cooldown. **Designer rewards**: `UsageCounter` scores each clause, registered agreement and assembly by use alone (c distinct processes, d distinct staked sellers, `icbrt(c·d²·1e18)`) per annual period, in one tally both paths feed; `RpgfMinter` mints each closed period's budget of **florins** (`FlorinToken`, one billion cap) pro rata to the designers of record.
 - **The batch path.** The guest runs inside the zkVM over a stream of signed operations and commits ten public-value words. The relay collects operations, proves, and calls `settleBatch`, which is permissionless: it checks the proof, the public values (previous state root, chain id, its own address, a batch timestamp within `MAX_BATCH_STALENESS`) and five calldata hashes, anchors every witness spec to `ClauseRegistry`, asks a buyer's wallet code about a wallet-code resolve and an attesting party's wallet code about a wallet-code attestation (emitting it on the magic value), reverting on a refusal of either, moves the tokens (every pull before any payout), re-emits the Core's events, hands the uses to `UsageCounter` inside a try/catch, and advances the root. The two paths share no state: a process opened on one resolves on it, and `UsageCounter` is where they meet.
@@ -215,10 +215,10 @@ Every state-changing external function in scope, and who may call it:
 | `FigaroCore` | `resolveProcess` | the process's `rootBuyer`, over every active order |
 | `AttestationCoordinator` | `attestAsSeller`, `attestAsBuyer` | the order's seller, the order's buyer |
 | `FigaroBatchVerifier` | `settleBatch` | anyone, with a valid proof over the current state root |
-| `ClauseRegistry`, `AgreementRegistry`, `AssemblyRegistry` | `registerClause`, `registerAgreement`, `registerAssembly` | anyone, with the exact stake; first write wins; the zero key refused, and in `AgreementRegistry` the two reserved keys |
+| `ClauseRegistry`, `AgreementRegistry`, `ProcessRegistry` | `registerClause`, `registerAgreement`, `registerProcess` | anyone, with the exact stake; first write wins; the zero key refused, and in `AgreementRegistry` the two reserved keys |
 | the three registries | `withdrawDeposit` | the registrant, once |
 | `ClauseRegistry` | `setMechanismClause` | anyone, for a registered key; emits an event, writes nothing |
-| `UsageCounter` | `recordClauseUsage`, `recordAgreementUsage`, `recordAssemblyUsage` | anyone, with merkle proofs over a resolved direct-path order |
+| `UsageCounter` | `recordClauseUsage`, `recordAgreementUsage`, `recordProcessDesignUsage` | anyone, with merkle proofs over a resolved direct-path order |
 | `UsageCounter` | `applyBatchAccrual` | `FigaroBatchVerifier` only |
 | `RpgfMinter` | `claim` | a live member that registered every key it passes, once per closed period |
 | `FlorinToken` | `registerMinter`, `renounceDeployerMint` | the deployer, until the renounce |
@@ -306,7 +306,7 @@ have refused.
 5. Does the Permit2 witness in `swapAndCommit` bind every field a signer would want bound, so a relayer cannot substitute a route?
 6. Can any operation stream make the guest commit public values `settleBatch` accepts that `FigaroCore` would have refused?
 7. Does the state root bind everything the next batch depends on?
-8. Is the `ResolveProcess(processId, cumulativeValue)` authorization (`DESIGN_DECISIONS.md` #21) replayable, or applicable to orders the buyer did not accept? In its wallet-code form (`_resolveByWalletCode`, `_checkWalletCode`), and in the wallet-code attestation (`_attestByWalletCode`, `_askAttesterCode`, `_askCode`), can a stream make the verifier ask another code, about another digest than the guest applied, emit an `Attestation` for a party whose code did not validate it, land a batch without the `Attestation` of a `0x05` entry in its stream (any answer but the magic value is `WalletCodeAttestationRefused`, an account with no code `AttesterHasNoCode`), or reach state the batch then reads?
+8. Is the `ResolveProcess(processId, runningTotal)` authorization (`DESIGN_DECISIONS.md` #21) replayable, or applicable to orders the buyer did not accept? In its wallet-code form (`_resolveByWalletCode`, `_checkWalletCode`), and in the wallet-code attestation (`_attestByWalletCode`, `_askAttesterCode`, `_askCode`), can a stream make the verifier ask another code, about another digest than the guest applied, emit an `Attestation` for a party whose code did not validate it, land a batch without the `Attestation` of a `0x05` entry in its stream (any answer but the magic value is `WalletCodeAttestationRefused`, an account with no code `AttesterHasNoCode`), or reach state the batch then reads?
 9. Can one client stall the relay, or exhaust its re-queue, at a cost below its own rate-limit budget?
 
 **Intended behaviour.** `docs/DESIGN_DECISIONS.md` is the catalogue; the

@@ -105,7 +105,7 @@ function client() {
 function orderOf(orderHash: `0x${string}`): Order {
     return {
         orderHash, processId: PROCESS, buyer: BUYER, seller: SELLER, currency: TOKEN, checkoutHash: CHECKOUT[orderHash],
-        payment: PAYMENT[orderHash], cumulativeValue: PAYMENT[orderHash], state: OrderState.Resolved,
+        payment: PAYMENT[orderHash], runningTotal: PAYMENT[orderHash], state: OrderState.Resolved,
         sellerBond: 0n, buyerBond: 0n, salt: 1n, deadline: 1n,
     } as Order;
 }

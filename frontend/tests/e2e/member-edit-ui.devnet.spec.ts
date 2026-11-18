@@ -39,8 +39,8 @@ import {
     readLocalDeploymentConfig,
     seedRegisteredMember,
 } from './devnet-helpers';
-import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI, type MemberProfileMetadata } from '@figaro-protocol/sdk';
-import { deriveAssemblySlug } from '@/lib/shared/assembly';
+import { PROCESS_REGISTRY_ABI, MEMBERS_REGISTRY_ABI, type MemberProfileMetadata } from '@figaro-protocol/sdk';
+import { deriveProcessDesignSlug } from '@/lib/shared/assembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -64,9 +64,9 @@ function getMembersRegistry(): Hex {
     return (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY ?? config.membersRegistry ?? '') as Hex;
 }
 
-function getAssemblyRegistry(): Hex {
+function getProcessRegistry(): Hex {
     const config = readLocalDeploymentConfig();
-    return (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? config.assemblyRegistry ?? '') as Hex;
+    return (process.env.NEXT_PUBLIC_PROCESS_REGISTRY ?? config.processRegistry ?? '') as Hex;
 }
 
 /**
@@ -290,19 +290,19 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         //    a fresh slug per run burns a deposit and squats a permanent
         //    slug on the persisted devnet (mainnet rehearsal). The
         //    devnet-authoring project anchored the scenario assemblies
-        //    (assembly pinned to IPFS, AssemblyRegistered on-chain) before
+        //    (assembly pinned to IPFS, ProcessRegistered on-chain) before
         //    this project runs — exactly what `useAssemblyChoices` needs
         //    to render the row.
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const registered = await publicClient.getContractEvents({
-            address: getAssemblyRegistry(),
-            abi: ASSEMBLY_REGISTRY_ABI,
-            eventName: 'AssemblyRegistered',
+            address: getProcessRegistry(),
+            abi: PROCESS_REGISTRY_ABI,
+            eventName: 'ProcessRegistered',
             fromBlock: 0n,
         });
         expect(registered.length, 'no anchored assemblies on this devnet — run the devnet-authoring project first').toBeGreaterThan(0);
-        const assemblyHash = registered[registered.length - 1].args.assemblyHash as `0x${string}`;
-        const slug = deriveAssemblySlug(assemblyHash);
+        const processDesignHash = registered[registered.length - 1].args.processDesignHash as `0x${string}`;
+        const slug = deriveProcessDesignSlug(processDesignHash);
 
         // 2. Register the seller (separate from the assembly author —
         //    same key here, fine). Seller starts with no bindings.
@@ -328,8 +328,8 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         // Out-of-band: the pinned profile binds the assembly the spec toggled on.
         const profile = await anchoredProfile(seller, metadataURI);
         expect(
-            (profile.assemblyBindings ?? []).some((b) => isBindingOf(b, assemblyHash)),
-            `the pinned profile binds ${assemblyHash}`,
+            (profile.processBindings ?? []).some((b) => isBindingOf(b, processDesignHash)),
+            `the pinned profile binds ${processDesignHash}`,
         ).toBe(true);
         expect(profile.name).toBe('Assemblies Seller');
 

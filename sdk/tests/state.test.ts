@@ -34,7 +34,7 @@ function mkCommit(hash: Hex, processId: Hex, blockNumber: number): OrderCommitte
         seller: SELLER,
         currency: TOKEN,
         payment: 100n,
-        cumulativeValue: 100n,
+        runningTotal: 100n,
         checkoutHash: "0x" as Hex,
         salt: 1n,
         deadline: 999999999n,
@@ -167,7 +167,7 @@ describe("Topology", () => {
 describe("isProcessRoot — the root read from OrderCommitted alone", () => {
     it("names the order whose cumulative value is its own payment, on either path's event", () => {
         // The two paths emit the same OrderCommitted fields; the test reads only those.
-        expect(isProcessRoot({ payment: 100n, cumulativeValue: 100n })).toBe(true);
-        expect(isProcessRoot({ payment: 50n, cumulativeValue: 150n })).toBe(false);
+        expect(isProcessRoot({ payment: 100n, runningTotal: 100n })).toBe(true);
+        expect(isProcessRoot({ payment: 50n, runningTotal: 150n })).toBe(false);
     });
 });

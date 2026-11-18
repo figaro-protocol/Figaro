@@ -31,7 +31,7 @@ import {
     waitForConnected,
     keyOf,
     primeRegisteredClauseSpecs,
-    anchoredAssemblyHash,
+    anchoredProcessDesignHash,
     isBindingOf,
     expectRelayedOrder,
     composeCommerceOn,
@@ -219,14 +219,14 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
             expect(slug, 'the published rate assembly is discoverable by shape').toBe(published);
         }
 
-        const assemblyHash = await anchoredAssemblyHash(slug!);
+        const processDesignHash = await anchoredProcessDesignHash(slug!);
 
         // ── ONBOARD (idempotent): the lead (fixed price) binds + designates
         //    the hauler; the hauler (RATE item, entered through the wizard's
         //    pricing-policy fields) binds the assembly it hauls for. ──
         const leadConformant = async (): Promise<boolean> => {
             const bindings = await memberProfileBindings(LEAD);
-            const binding = bindings.find((b) => isBindingOf(b, assemblyHash));
+            const binding = bindings.find((b) => isBindingOf(b, processDesignHash));
             return !!binding && (binding.coSellerBindings ?? []).some(
                 (cb) => cb.clauseKey.toLowerCase() === PROCESS_CLAUSE
                     && cb.addresses.some((a) => a.toLowerCase() === HAULER.toLowerCase()),
@@ -246,7 +246,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
                 timeout: 60000, message: "the lead's pinned profile carries the binding + hauler designation",
             }).toBe(true);
         }
-        if (!(await memberProfileBindings(HAULER)).some((b) => isBindingOf(b, assemblyHash))) {
+        if (!(await memberProfileBindings(HAULER)).some((b) => isBindingOf(b, processDesignHash))) {
             await onboardSeller(page, {
                 wallet: HAULER,
                 name: 'Rate Test Haulage',
@@ -260,7 +260,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
                 },
             });
             await expect.poll(async () =>
-                (await memberProfileBindings(HAULER)).some((b) => isBindingOf(b, assemblyHash)), {
+                (await memberProfileBindings(HAULER)).some((b) => isBindingOf(b, processDesignHash)), {
                 timeout: 60000, message: "the hauler's pinned profile carries the binding",
             }).toBe(true);
         }

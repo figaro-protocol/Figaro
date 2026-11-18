@@ -32,7 +32,7 @@ function period(overrides: Partial<RpgfPeriodState> = {}): RpgfPeriodState {
     return {
         periodId: 3, amount: 1000n, minted: 0n, periodClosed: true, totalScore: 10n,
         periodEnd: { status: "present", value: 1_900_000_000n },
-        accruals: [{ clauseOrAssembly: CLAUSE, kind: 0, label: "clause 0xabab", family: "clause", c: 1n, d: 1n, score: 3n, claimed: false }],
+        accruals: [{ clauseOrProcess: CLAUSE, kind: 0, label: "clause 0xabab", family: "clause", c: 1n, d: 1n, score: 3n, claimed: false }],
         myScore: 3n, claimable: 5n * 10n ** 18n, claimed: false,
         ...overrides,
     };

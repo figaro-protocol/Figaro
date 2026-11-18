@@ -30,7 +30,7 @@ import { type PublicClient, type Log, decodeEventLog } from "viem";
 import {
     CLAUSE_REGISTRY_ABI,
     MEMBERS_REGISTRY_ABI,
-    ASSEMBLY_REGISTRY_ABI,
+    PROCESS_REGISTRY_ABI,
     AGREEMENT_REGISTRY_ABI,
 } from "./abis.js";
 import { fetchLogsChunked } from "./events.js";
@@ -42,13 +42,13 @@ import type {
     ClauseWithdrawnEvent,
     MemberRegisteredEvent,
     MemberWithdrawnEvent,
-    AssemblyRegisteredEvent,
-    AssemblyWithdrawnEvent,
+    ProcessRegisteredEvent,
+    ProcessWithdrawnEvent,
     AgreementRegisteredEvent,
     AgreementWithdrawnEvent,
     RegisteredClause,
     RegisteredMember,
-    RegisteredAssembly,
+    RegisteredProcessDesign,
     AgreementBinding,
 } from "./types.js";
 import { canonicalContentHash, canonicalize } from "./agreement.js";
@@ -166,21 +166,21 @@ export function parseMembersRegistryLogs(logs: Log[]): MembersRegistryEvents {
     return { registered, withdrawn };
 }
 
-export interface AssemblyRegistryEvents {
-    registered: AssemblyRegisteredEvent[];
-    withdrawn: AssemblyWithdrawnEvent[];
+export interface ProcessRegistryEvents {
+    registered: ProcessRegisteredEvent[];
+    withdrawn: ProcessWithdrawnEvent[];
 }
 
-export function parseAssemblyRegistryLogs(logs: Log[]): AssemblyRegistryEvents {
-    const registered: AssemblyRegisteredEvent[] = [];
-    const withdrawn: AssemblyWithdrawnEvent[] = [];
+export function parseProcessRegistryLogs(logs: Log[]): ProcessRegistryEvents {
+    const registered: ProcessRegisteredEvent[] = [];
+    const withdrawn: ProcessWithdrawnEvent[] = [];
     for (const log of logs) {
         try {
-            const decoded = decodeEventLog({ abi: ASSEMBLY_REGISTRY_ABI, data: log.data, topics: log.topics });
+            const decoded = decodeEventLog({ abi: PROCESS_REGISTRY_ABI, data: log.data, topics: log.topics });
             const a = decoded.args as Record<string, unknown>;
-            if (decoded.eventName === "AssemblyRegistered") {
+            if (decoded.eventName === "ProcessRegistered") {
                 registered.push({
-                    assemblyHash: a.assemblyHash as Hex,
+                    processDesignHash: a.processDesignHash as Hex,
                     registeredBy: a.registeredBy as Address,
                     contentURI: a.contentURI as string,
                     blockNumber: Number(log.blockNumber ?? 0),
@@ -189,7 +189,7 @@ export function parseAssemblyRegistryLogs(logs: Log[]): AssemblyRegistryEvents {
                 });
             } else if (decoded.eventName === "DepositWithdrawn") {
                 withdrawn.push({
-                    assemblyHash: a.assemblyHash as Hex,
+                    processDesignHash: a.processDesignHash as Hex,
                     registeredBy: a.registeredBy as Address,
                     blockNumber: Number(log.blockNumber ?? 0),
                     logIndex: Number(log.logIndex ?? 0),
@@ -245,8 +245,8 @@ export interface DiscoveryEvents {
     clauseWithdrawn: ClauseWithdrawnEvent[];
     memberRegistered: MemberRegisteredEvent[];
     memberWithdrawn: MemberWithdrawnEvent[];
-    assemblyRegistered: AssemblyRegisteredEvent[];
-    assemblyWithdrawn: AssemblyWithdrawnEvent[];
+    assemblyRegistered: ProcessRegisteredEvent[];
+    assemblyWithdrawn: ProcessWithdrawnEvent[];
     agreementRegistered: AgreementRegisteredEvent[];
     agreementWithdrawn: AgreementWithdrawnEvent[];
 }
@@ -274,9 +274,9 @@ export async function fetchDiscoveryEvents(
         addresses.membersRegistry
             ? fetchLogsChunked(client, { address: addresses.membersRegistry, fromBlock, toBlock, chunkSize }).then(parseMembersRegistryLogs)
             : Promise.resolve({ registered: [], withdrawn: [] } as MembersRegistryEvents),
-        addresses.assemblyRegistry
-            ? fetchLogsChunked(client, { address: addresses.assemblyRegistry, fromBlock, toBlock, chunkSize }).then(parseAssemblyRegistryLogs)
-            : Promise.resolve({ registered: [], withdrawn: [] } as AssemblyRegistryEvents),
+        addresses.processRegistry
+            ? fetchLogsChunked(client, { address: addresses.processRegistry, fromBlock, toBlock, chunkSize }).then(parseProcessRegistryLogs)
+            : Promise.resolve({ registered: [], withdrawn: [] } as ProcessRegistryEvents),
         addresses.agreementRegistry
             ? fetchLogsChunked(client, { address: addresses.agreementRegistry, fromBlock, toBlock, chunkSize }).then(parseAgreementRegistryLogs)
             : Promise.resolve({ registered: [], withdrawn: [] } as AgreementRegistryEvents),
@@ -322,7 +322,7 @@ interface AgreementEntry {
 }
 
 interface AssemblyEntry {
-    assembly: RegisteredAssembly;
+    assembly: RegisteredProcessDesign;
     withdrawn: boolean;
 }
 
@@ -341,7 +341,7 @@ interface MemberEntry {
  */
 export class DiscoveryGraph {
     private readonly clauses = new Map<string, ClauseEntry>(); // key: lowercased clause key
-    private readonly assemblies = new Map<Hex, AssemblyEntry>(); // key: assemblyHash
+    private readonly assemblies = new Map<Hex, AssemblyEntry>(); // key: processDesignHash
     private readonly agreements = new Map<string, AgreementEntry>(); // key: lowercased agreement hash
     private readonly members = new Map<string, MemberEntry>(); // key: lowercased address
 
@@ -361,7 +361,7 @@ export class DiscoveryGraph {
     }
 
     /** All live-staked assemblies. */
-    getAssemblies(): RegisteredAssembly[] {
+    getAssemblies(): RegisteredProcessDesign[] {
         return [...this.assemblies.values()].filter((e) => !e.withdrawn).map((e) => e.assembly);
     }
 
@@ -399,9 +399,9 @@ export class DiscoveryGraph {
         return e && !e.clause.stakeWithdrawn ? e.clause : undefined;
     }
 
-    /** A single assembly by assemblyHash; undefined if unknown or de-surfaced. */
-    getAssembly(assemblyHash: Hex): RegisteredAssembly | undefined {
-        const e = this.assemblies.get(assemblyHash);
+    /** A single assembly by processDesignHash; undefined if unknown or de-surfaced. */
+    getAssembly(processDesignHash: Hex): RegisteredProcessDesign | undefined {
+        const e = this.assemblies.get(processDesignHash);
         return e && !e.withdrawn ? e.assembly : undefined;
     }
 
@@ -435,13 +435,13 @@ export class DiscoveryGraph {
         }
     }
 
-    private applyAssemblyEvents(registered: AssemblyRegisteredEvent[], withdrawn: AssemblyWithdrawnEvent[]): void {
+    private applyAssemblyEvents(registered: ProcessRegisteredEvent[], withdrawn: ProcessWithdrawnEvent[]): void {
         for (const e of registered) {
-            // assemblyHash is first-write-wins and permanent — first-seen wins.
-            if (!this.assemblies.has(e.assemblyHash)) {
-                this.assemblies.set(e.assemblyHash, {
+            // processDesignHash is first-write-wins and permanent — first-seen wins.
+            if (!this.assemblies.has(e.processDesignHash)) {
+                this.assemblies.set(e.processDesignHash, {
                     assembly: {
-                        assemblyHash: e.assemblyHash,
+                        processDesignHash: e.processDesignHash,
                         registeredBy: e.registeredBy,
                         contentURI: e.contentURI,
                     },
@@ -450,7 +450,7 @@ export class DiscoveryGraph {
             }
         }
         for (const w of withdrawn) {
-            const entry = this.assemblies.get(w.assemblyHash);
+            const entry = this.assemblies.get(w.processDesignHash);
             if (entry) entry.withdrawn = true; // withdraw is terminal for a composition
         }
     }

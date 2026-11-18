@@ -108,7 +108,7 @@ export function buildSyntheticOrder(params: {
         follows: params.follows ?? [],
         // Value-free draft: zeros satisfy the shared Order shape; never rendered
         // (designer-mode nodes show no amounts), never published, never signed.
-        cumulativeValue: 0n,
+        runningTotal: 0n,
         payment: params.payment,
         state: OrderState.Active,
         sellerBond: 0n,

@@ -23,7 +23,7 @@ What the registries hold is read from the chain, never from a list: a clause, ag
 | `CommitmentTypes` | — | Foundry: the leaf function and the EIP-712 struct hashes | — |
 | `AttestationCoordinator` | Certora `AttestationCoordinator.spec` | Foundry; differential fuzz | — |
 | `FigaroBatchVerifier` | TLA+ `ResolutionUniverses`, the two resolution paths composed with `FigaroCore` and `UsageCounter`; Certora `BatchVerifierTokenOps.spec` (the token step, two positions of any token addresses, each a standard ERC-20) and `BatchVerifierStateRoot.spec` (the state root's chain), each rule mutation-checked | Foundry (public-value bindings, operation stream, wallet-code resolve, the Core's traces through both paths, batch gas); differential fuzz of its stream reader | — |
-| `ClauseRegistry`, `AgreementRegistry`, `AssemblyRegistry` | Halmos, the stake properties of each | Foundry | — |
+| `ClauseRegistry`, `AgreementRegistry`, `ProcessRegistry` | Halmos, the stake properties of each | Foundry | — |
 | `MembersRegistry` | Halmos `HalmosMembersRegistry` | Foundry | — |
 | `UsageCounter` | Halmos `HalmosUsageCounter`; TLA+ `ResolutionUniverses` | Foundry | — |
 | `RpgfMinter` | Certora `RpgfMinter.spec` (built without via-IR) and `RpgfMinterAuthor.spec` | Foundry, the claim path end to end | — |

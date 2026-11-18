@@ -51,12 +51,12 @@ contract Eip712ParityTest is Test {
         c.processId = vm.parseJsonBytes32(json, string.concat(base, ".processId"));
         c.buyer = vm.parseJsonAddress(json, string.concat(base, ".buyer"));
         c.seller = vm.parseJsonAddress(json, string.concat(base, ".seller"));
-        c.currency = vm.parseJsonAddress(json, string.concat(base, ".currency"));
+        c.token = vm.parseJsonAddress(json, string.concat(base, ".token"));
         c.payment = vm.parseJsonUint(json, string.concat(base, ".payment"));
-        c.expectedCumulativeValue = vm.parseJsonUint(json, string.concat(base, ".expectedCumulativeValue"));
+        c.runningTotal = vm.parseJsonUint(json, string.concat(base, ".runningTotal"));
         c.checkoutHash = vm.parseJsonBytes32(json, string.concat(base, ".checkoutHash"));
         c.salt = vm.parseJsonUint(json, string.concat(base, ".salt"));
-        c.deadline = vm.parseJsonUint(json, string.concat(base, ".deadline"));
+        c.commitDeadline = vm.parseJsonUint(json, string.concat(base, ".commitDeadline"));
     }
 
     // ── Domain separator ────────────────────────────────────────────

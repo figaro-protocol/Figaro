@@ -5,9 +5,9 @@
  * `checkoutHash`, and a new draft draws new values.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { agreementHashOf, validateCommitmentAgreement, type Hex, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { agreementHashOf, validateCommitmentAgreement, type Hex, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { loadClauseSpec, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
-import { planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
+import { planProcessOrders } from "@/lib/checkout/assemblyCheckout";
 import { freshBlindingStore, withCheckoutBlinding, type CheckoutFills } from "@/lib/checkout/checkoutBlinding";
 import { mergeAssemblyTermFills } from "@/lib/checkout/checkoutDerivations";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
@@ -34,7 +34,7 @@ const PRIVATE_SPEC = {
 };
 const PRIVATE = pinSpec(PRIVATE_SPEC);
 
-let hydrated: HydratedAssembly;
+let hydrated: HydratedProcessDesign;
 let commerceKey: Hex;
 
 beforeAll(async () => {
@@ -99,19 +99,19 @@ describe("a rebuild of a checkout draft keeps its checkoutHash", () => {
         const fills: CheckoutFills = { "agreement-0": { [PRIVATE.clauseKey]: { grade: "b" } } };
         const kept: CheckoutFills = {};
         const draft = withCheckoutBlinding(hydrated, fills, specSource(), kept);
-        const [first] = await planAssemblyOrders(params(draft), { chainId: 31337 });
-        const [rebuilt] = await planAssemblyOrders(params(withCheckoutBlinding(hydrated, fills, specSource(), kept)), { chainId: 31337 });
+        const [first] = await planProcessOrders(params(draft), { chainId: 31337 });
+        const [rebuilt] = await planProcessOrders(params(withCheckoutBlinding(hydrated, fills, specSource(), kept)), { chainId: 31337 });
         expect(rebuilt.checkoutHash).toBe(first.checkoutHash);
         const committed = first.agreement.clauses.find((c) => c.clause.toLowerCase() === PRIVATE.clauseKey.toLowerCase());
         expect(committed?.data?.blinding).toBe(draft["agreement-0"][PRIVATE.clauseKey].blinding);
-        const [another] = await planAssemblyOrders(params(withCheckoutBlinding(hydrated, fills, specSource(), {})), { chainId: 31337 });
+        const [another] = await planProcessOrders(params(withCheckoutBlinding(hydrated, fills, specSource(), {})), { chainId: 31337 });
         expect(another.checkoutHash).not.toBe(first.checkoutHash);
     });
 });
 
 describe("a design that carries a blinding value never gives the signed one", () => {
     const DESIGNED = `0x${"5d".repeat(32)}`;
-    const designWith = (where: "agreement" | "assembly"): HydratedAssembly => {
+    const designWith = (where: "agreement" | "assembly"): HydratedProcessDesign => {
         const clauses = where === "agreement"
             ? { [commerceKey]: {}, [PRIVATE.clauseKey]: { blinding: DESIGNED } }
             : { [commerceKey]: {} };
@@ -134,7 +134,7 @@ describe("a design that carries a blinding value never gives the signed one", ()
             "agreement-0": { [PRIVATE.clauseKey]: assemblyEntry ? mergeAssemblyTermFills(assemblyEntry, { grade: "b" }) : { grade: "b" } },
         };
         const draft = withCheckoutBlinding(design, fills, specSource(), {});
-        const [order] = await planAssemblyOrders({
+        const [order] = await planProcessOrders({
             buyer: BUYER, leadSellerAddress: SELLER, currency: TOKEN, payment: 1_000_000n,
             lineItems: [{ itemId: "i1", name: "Coffee", quantity: 1, unitPrice: "1000000" }],
             assembly: { slug: "asm-test", name: "Private grade", hydratedAssembly: design, coSellerBindings: [] } as BoundAssembly,
@@ -179,7 +179,7 @@ describe("without Web Crypto the checkout refuses in words and never throws", ()
         expect(out["agreement-0"]?.[PRIVATE.clauseKey]?.blinding).toBeUndefined();
         expect(refusals).toEqual([expect.stringMatching(/cannot be placed.*random value/)]);
         vi.unstubAllGlobals();
-        const [order] = await planAssemblyOrders({
+        const [order] = await planProcessOrders({
             buyer: BUYER, leadSellerAddress: SELLER, currency: TOKEN, payment: 1_000_000n,
             lineItems: [{ itemId: "i1", name: "Coffee", quantity: 1, unitPrice: "1000000" }],
             assembly: { slug: "asm-test", name: "Private grade", hydratedAssembly: hydrated, coSellerBindings: [] } as BoundAssembly,

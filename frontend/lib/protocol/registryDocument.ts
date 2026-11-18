@@ -1,6 +1,6 @@
 /**
  * registryDocument — the two reads the agreement family (`useAgreementRegistry`) and the
- * assembly family (`useAssemblyRegistry`) restated: a staked-intent registry's BINDING for
+ * assembly family (`useProcessRegistry`) restated: a staked-intent registry's BINDING for
  * one key, and the pinned document at the binding's `contentURI` verified against its
  * anchor. Each family keeps its own anchor, its own verifier and its own permanent failures
  * (parallel registries, never nested); this is the one shape of the read at the edge.

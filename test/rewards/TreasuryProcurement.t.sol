@@ -92,12 +92,12 @@ contract TreasuryProcurementTest is Test {
             processId: bytes32(0),
             buyer: operator,
             seller: seller,
-            currency: address(florin),
+            token: address(florin),
             payment: PAYMENT,
-            expectedCumulativeValue: PAYMENT,
+            runningTotal: PAYMENT,
             checkoutHash: keccak256("procurement-agreement"),
             salt: 1,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
     }
 

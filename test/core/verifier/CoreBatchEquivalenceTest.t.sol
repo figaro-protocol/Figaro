@@ -343,23 +343,23 @@ contract CoreBatchEquivalenceTest is Test {
         c.buyer = party[row[C_BUYER]];
         c.seller = party[row[C_SELLER]];
         c.payment = row[C_PAYMENT];
-        c.expectedCumulativeValue = row[C_CUMULATIVE];
+        c.runningTotal = row[C_CUMULATIVE];
         c.checkoutHash = checkout;
         c.salt = uint256(keccak256(abi.encode("salt", t, oid)));
-        c.deadline = block.timestamp + 1 days;
+        c.commitDeadline = block.timestamp + 1 days;
         bool root = row[C_ACTION] == 0;
 
-        c.currency = address(tokenD);
+        c.token = address(tokenD);
         c.processId = root ? bytes32(0) : processIdOf[pid][DIRECT];
         o.d = c;
         _commitDirect(oid, pid, row);
 
-        c.currency = address(tokenB);
+        c.token = address(tokenB);
         c.processId = root ? bytes32(0) : processIdOf[pid][BATCH];
         o.b = c;
         _commitBatch(oid, pid, row);
         processOrders[pid].push(oid);
-        openBonds += 2 * c.payment + 2 * c.expectedCumulativeValue;
+        openBonds += 2 * c.payment + 2 * c.runningTotal;
     }
 
     function _commitDirect(uint256 oid, uint256 pid, uint256[] memory row) internal {
@@ -396,7 +396,7 @@ contract CoreBatchEquivalenceTest is Test {
             _sign(keys[row[C_SELLER]], digest)
         );
         _deposit(o.b.buyer, 2 * o.b.payment);
-        _deposit(o.b.seller, 2 * o.b.expectedCumulativeValue);
+        _deposit(o.b.seller, 2 * o.b.runningTotal);
 
         bytes32 contentRef = keccak256(abi.encode("content", oid));
         pendingAttestations.push(
@@ -425,7 +425,7 @@ contract CoreBatchEquivalenceTest is Test {
         CommitmentTypes.Commitment[] memory listD = new CommitmentTypes.Commitment[](oids.length);
         for (uint256 i = 0; i < oids.length; i++) {
             listD[i] = orders[oids[i]].d;
-            openBonds -= 2 * listD[i].payment + 2 * listD[i].expectedCumulativeValue;
+            openBonds -= 2 * listD[i].payment + 2 * listD[i].runningTotal;
         }
         // The Core's one form: a call from the buyer's address, by its key or
         // by code its wallet installed (DESIGN_DECISIONS § 4); either is this.
@@ -450,7 +450,7 @@ contract CoreBatchEquivalenceTest is Test {
         for (uint256 i = 0; i < oids.length; i++) {
             CommitmentTypes.Commitment storage c = orders[oids[i]].b;
             listed = bytes.concat(listed, _packCommitment(c));
-            uint256 sellerPayout = 2 * c.expectedCumulativeValue + c.payment;
+            uint256 sellerPayout = 2 * c.runningTotal + c.payment;
             uint256 buyerPayout = c.payment;
             if (breakPayout) (sellerPayout, buyerPayout) = (sellerPayout + 1, buyerPayout - 1);
             _payout(c.seller, sellerPayout);
@@ -460,7 +460,7 @@ contract CoreBatchEquivalenceTest is Test {
             _verifierDomain(),
             keccak256(
                 abi.encode(
-                    keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)"), processId, row[C_CUMULATIVE]
+                    keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"), processId, row[C_CUMULATIVE]
                 )
             )
         );
@@ -680,7 +680,7 @@ contract CoreBatchEquivalenceTest is Test {
         view
         returns (bytes memory)
     {
-        bytes memory data = l.data; // seller, currency, payment, cumulativeValue, checkoutHash, salt, deadline
+        bytes memory data = l.data; // seller, currency, payment, runningTotal, checkoutHash, salt, deadline
         address currency;
         assembly ("memory-safe") {
             currency := mload(add(data, 64))
@@ -721,15 +721,7 @@ contract CoreBatchEquivalenceTest is Test {
     /// @dev The stream's 252-byte commitment (`operation_stream.rs`).
     function _packCommitment(CommitmentTypes.Commitment memory c) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            c.processId,
-            c.buyer,
-            c.seller,
-            c.currency,
-            c.payment,
-            c.expectedCumulativeValue,
-            c.checkoutHash,
-            c.salt,
-            c.deadline
+            c.processId, c.buyer, c.seller, c.token, c.payment, c.runningTotal, c.checkoutHash, c.salt, c.commitDeadline
         );
     }
 

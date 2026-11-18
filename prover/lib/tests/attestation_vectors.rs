@@ -102,12 +102,12 @@ fn a_hash_only_batched_attestation_emits_the_coordinator_s_event_bytes() {
         process_id: B256::ZERO,
         buyer: addr(&fx["buyer"]),
         seller: addr(&fx["seller"]),
-        currency: addr(&fx["currency"]),
+        token: addr(&fx["token"]),
         payment: u256(&fx["payment"]),
-        expected_cumulative_value: u256(&fx["payment"]),
+        running_total: u256(&fx["payment"]),
         checkout_hash: b256(&fx["checkoutHash"]),
         salt: u256(&fx["salt"]),
-        deadline: u256(&fx["deadline"]),
+        commit_deadline: u256(&fx["commitDeadline"]),
     };
     let struct_hash = commitment_struct_hash(&order);
     let process_id = typed_data_hash(&domain, &struct_hash);

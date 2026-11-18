@@ -671,7 +671,7 @@
   },
   {
     "type": "error",
-    "name": "NotMinter",
+    "name": "NotDeployer",
     "inputs": []
   },
   {

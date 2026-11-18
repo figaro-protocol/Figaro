@@ -137,7 +137,7 @@ rule noDoubleCommit(bytes32 orderHash) {
 // ═══════════════════════════════════════════════════════════════════
 // RULE 6: Cumulative Value Monotonicity
 //
-// The cumulativeValue of a process can only increase, never decrease.
+// The runningTotal of a process can only increase, never decrease.
 // ═══════════════════════════════════════════════════════════════════
 
 rule cumulativeValueMonotonic(bytes32 processId, method f) {

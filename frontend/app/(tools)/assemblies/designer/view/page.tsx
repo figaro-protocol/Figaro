@@ -7,7 +7,7 @@ import { ViewAssemblyClient } from "./ViewAssemblyClient";
  * /assemblies/designer/view?slug=<slug> — read-only inspect of an assembly.
  *
  * The slug resolves at the client to either a localStorage draft or an
- * on-chain published assembly (via AssemblyRegistered events + IPFS). It is
+ * on-chain published assembly (via ProcessRegistered events + IPFS). It is
  * an open-world id, so it rides in a query param (`QueryParamPage`); a
  * missing slug renders nothing.
  */

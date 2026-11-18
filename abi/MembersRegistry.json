@@ -257,11 +257,6 @@
   },
   {
     "type": "error",
-    "name": "InsufficientDeposit",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "NotRegistered",
     "inputs": []
   },
@@ -273,6 +268,11 @@
   {
     "type": "error",
     "name": "TransferFailed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WrongStake",
     "inputs": []
   }
 ]

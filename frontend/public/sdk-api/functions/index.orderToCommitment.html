@@ -19,8 +19,8 @@
 <div class="tsd-comment tsd-typography"><p>Rebuild the Commitment struct from an event-derived Order. <code>Order</code> carries
 every Commitment field (the OrderCommitted event emits all of them), so an
 agent can reconstruct what to pass to <code>resolveProcess</code> without having stored
-the original structs. <code>expectedCumulativeValue</code> is the order's committed
-<code>cumulativeValue</code>.</p>
+the original structs. <code>runningTotal</code> is the order's committed
+<code>runningTotal</code>.</p>
 <p>NOTE: a ROOT order's <code>processId</code> here is the DERIVED id (what the event
 carries), not the <code>0</code> the party signed. Pass the result through
 <code>restoreSignedProcessId</code> before hashing/submitting, or FigaroCore's recomputed

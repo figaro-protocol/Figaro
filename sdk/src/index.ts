@@ -18,7 +18,7 @@
  * const processes = reconstruct(events);
  *
  * // 3. Calculate bonds
- * const bonds = calculateBonds(cumulativeValue, payment);
+ * const bonds = calculateBonds(runningTotal, payment);
  *
  * // 4. Build commitment
  * const { typedData } = buildCommitment({ ... }, domain);
@@ -28,7 +28,7 @@
 // ABIs
 export {
     CORE_ABI, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI,
-    ERC20_ABI, MEMBERS_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI,
+    ERC20_ABI, MEMBERS_REGISTRY_ABI, PROCESS_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI,
     FLORIN_TOKEN_ABI,
     WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI, SWAP_FUNDING_TUPLE,
     USAGE_COUNTER_ABI, RPGF_MINTER_ABI,
@@ -81,13 +81,13 @@ export type {
     ClauseWithdrawnEvent,
     MemberRegisteredEvent,
     MemberWithdrawnEvent,
-    AssemblyRegisteredEvent,
-    AssemblyWithdrawnEvent,
+    ProcessRegisteredEvent,
+    ProcessWithdrawnEvent,
     AgreementRegisteredEvent,
     AgreementWithdrawnEvent,
     RegisteredClause,
     RegisteredMember,
-    RegisteredAssembly,
+    RegisteredProcessDesign,
     AgreementBinding,
 } from "./types.js";
 export {
@@ -140,7 +140,7 @@ export {
     computeClauseKey,
     parseClauseRegistryLogs,
     parseMembersRegistryLogs,
-    parseAssemblyRegistryLogs,
+    parseProcessRegistryLogs,
     parseAgreementRegistryLogs,
     fetchDiscoveryEvents,
     reconstructDiscovery,
@@ -150,7 +150,7 @@ export type {
     DiscoveryEvents,
     ClauseRegistryEvents,
     MembersRegistryEvents,
-    AssemblyRegistryEvents,
+    ProcessRegistryEvents,
     AgreementRegistryEvents,
 } from "./discovery.js";
 
@@ -237,9 +237,9 @@ export { readCappedBytes } from "./cappedRead.js";
 export {
     type Anchored,
     anchorClauseSpec,
-    anchorAssembly,
+    anchorProcessDesign,
     anchorRegisteredAgreement,
-    hydrateAssembly,
+    hydrateProcessDesign,
     anchorAgreement,
     anchorAttestationContent,
     deriveAnchored,
@@ -248,17 +248,17 @@ export {
 // Agreement + assembly projection (the reference tooling's rules for collecting the data a party signs)
 export {
     assertAgreementSignable,
-    buildAssembly,
+    buildProcessDesign,
     composeOrderAgreement,
     buildOrderAgreement,
     parseProjectionHints,
     publicForm,
     clauseByField,
     clausesByField,
-    serializeAssembly,
+    serializeProcessDesign,
     composeAuthoredAgreement,
     composeAuthoredAgreements,
-    assembleAuthored,
+    composeAuthoredProcessDesign,
     fillDeployTimeCurrency,
     specDeclaresField,
     specDeclaresContentField,
@@ -268,7 +268,7 @@ export {
     specCatalogueMeasures,
     specProfileFills,
     specIsProcessLog,
-    specIsAssemblyScoped,
+    specIsProcessScoped,
     specDesignFills,
     warnProcessLogFillsTrap,
     validateCommitmentAgreement,
@@ -283,19 +283,19 @@ export type {
     ProjectionHints,
     ProjectionSpecView,
     SpecSource,
-    AssemblyOrderNode,
-    BuiltAssembly,
+    ProcessOrderNode,
+    BuiltProcessDesign,
     AuthoredAgreement,
 } from "./projection.js";
 
 // The ONE assembly → orders walk (+ the generic topology math under it)
 export {
-    planAssemblyOrders,
-    reconstructOrdersFromAssembly,
+    planProcessOrders,
+    reconstructOrdersFromProcessDesign,
     agreementFromClauses,
 } from "./reconstructOrders.js";
 export type {
-    PlannedAssemblyOrder,
+    PlannedProcessOrder,
     ReconstructNodeSpec,
     ReconstructParams,
     ReconstructedOrder,
@@ -323,8 +323,8 @@ export {
     resolveSubOrderPricing,
 } from "./checkoutPlan.js";
 export type {
-    AssemblyCheckoutLineItem,
-    BoundAssemblyPlanInput,
+    ProcessCheckoutLineItem,
+    BoundProcessPlanInput,
     MissingCatalogueMeasure,
     PricingCatalog,
     RateQuantityContext,
@@ -332,36 +332,36 @@ export type {
     SubOrderPricing,
 } from "./checkoutPlan.js";
 
-// Assembly identity (the AssemblyRegistry key + derived slug) + the assembly
+// Assembly identity (the ProcessRegistry key + derived slug) + the assembly
 // shape and its accessors (topology parents, composed clause keys) + the
 // authoring resolver (clause names in a source document → clause keys)
 export {
-    assemblyHashOf,
-    deriveAssemblySlug,
-    assemblyFollows,
-    assemblyComposedClauseKeys,
+    processDesignHashOf,
+    deriveProcessDesignSlug,
+    processDesignFollows,
+    processDesignComposedClauseKeys,
     agreementHashOf,
     agreementClauseLeaves,
     buildRegisteredClauseInclusionProof,
     boundAgreement,
     agreementClauses,
     agreementLeafBytes,
-    assemblyLeaves,
-    ASSEMBLY_LEAF_DOMAIN,
-    ASSEMBLY_LEAF_DOMAIN_LABEL,
-    computeAssemblyLeaf,
+    processDesignLeaves,
+    PROCESS_LEAF_DOMAIN,
+    PROCESS_LEAF_DOMAIN_LABEL,
+    computeProcessLeaf,
     buildAgreementInclusionProof,
     assertNotReservedKey,
-    ASSEMBLY_TERMS_LEAF_KEY,
-    ASSEMBLY_TERMS_LEAF_LABEL,
+    PROCESS_TERMS_LEAF_KEY,
+    PROCESS_TERMS_LEAF_LABEL,
     resolveAuthoredClauseKeys,
 } from "./assembly.js";
 export type {
-    Assembly,
-    AssemblyFaqEntry,
-    AssemblyAgreement,
+    ProcessDesign,
+    ProcessDesignFaqEntry,
+    ProcessDesignAgreement,
     RegisteredAgreement,
-    HydratedAssembly,
+    HydratedProcessDesign,
     AuthoredSpecSet,
 } from "./assembly.js";
 
@@ -373,7 +373,7 @@ export {
     parseMemberProfileDocument,
     tryParseMemberProfileDocument,
     projectAgentServices,
-    checkSellerBindsAssembly,
+    checkSellerBindsProcess,
 } from "./memberProfile.js";
 export type {
     MemberProfileMetadata,
@@ -382,11 +382,11 @@ export type {
     MemberAgentServices,
     MemberAssetReferences,
     CoSellerBinding,
-    AssemblyBindingRecord,
-    BuyerAssemblySubscription,
+    ProcessBindingRecord,
+    BuyerProcessSubscription,
     AgentServiceInfo,
     MemberProfileReader,
-    AssemblyBindingCheck,
+    ProcessBindingCheck,
 } from "./memberProfile.js";
 
 // Member catalog document — the volatile item list pinned to
@@ -424,7 +424,7 @@ export {
     RPGF_PERIOD_COUNT,
     RPGF_MIN_SELLERS,
     USAGE_KIND_CLAUSE,
-    USAGE_KIND_ASSEMBLY,
+    USAGE_KIND_PROCESS,
     USAGE_KIND_AGREEMENT,
     usageKeyId,
     usageClaimKindCode,
@@ -439,7 +439,7 @@ export type {
     SkippedBatch,
     UsageAccrual,
     UsagePeriodAccrual,
-    ClauseOrAssemblyAccrual,
+    ClauseOrProcessAccrual,
     UsageClaimContext,
     UsageKind,
     UsageKey,

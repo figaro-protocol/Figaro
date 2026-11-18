@@ -26,12 +26,12 @@ const testCommitment: Commitment = {
     processId: ZERO_HASH,
     buyer: "0x0000000000000000000000000000000000000001",
     seller: "0x0000000000000000000000000000000000000002",
-    currency: "0x0000000000000000000000000000000000000003",
+    token: "0x0000000000000000000000000000000000000003",
     payment: 100n,
-    expectedCumulativeValue: 100n,
+    runningTotal: 100n,
     checkoutHash: ZERO_HASH,
     salt: 42n,
-    deadline: 9999n,
+    commitDeadline: 9999n,
 };
 
 const testProof: SequencerContentProof = {
@@ -75,7 +75,7 @@ describe("registering never enters a batch: the operations the SDK sends the rel
     const KERNEL_OPS = ["AttestAsBuyer", "AttestAsSeller", "AttestByWalletCode", "Commit", "Resolve", "ResolveByWalletCode"];
     const witness = { clauseDataHash: ZERO_HASH, inclusionProof: [] as `0x${string}`[] };
     const calls: Record<string, (c: SequencerClient) => Promise<unknown>> = {
-        submit: (c) => c.submit({ type: "Resolve", process_id: ZERO_HASH, cumulative_value: "100", commitments: [], buyer_sig: toSequencerSig(DUMMY_SIG) }),
+        submit: (c) => c.submit({ type: "Resolve", process_id: ZERO_HASH, running_total: "100", commitments: [], buyer_sig: toSequencerSig(DUMMY_SIG) }),
         submitCommit: (c) => c.submitCommit(testCommitment, DUMMY_SIG, DUMMY_SIG),
         submitResolve: (c) => c.submitResolve(ZERO_HASH, 100n, [testCommitment], DUMMY_SIG),
         submitResolveByWalletCode: (c) => c.submitResolveByWalletCode(ZERO_HASH, 100n, [testCommitment], "0x01"),
@@ -84,7 +84,7 @@ describe("registering never enters a batch: the operations the SDK sends the rel
         submitAttestByWalletCode: (c) => c.submitAttestByWalletCode({ role: "Seller", target: testCommitment, clauseId: ZERO_HASH, stage: 1, contentRef: ZERO_HASH, authorization: "0x01", ...witness }),
         submitUsageClaim: (c) => c.submitUsageClaim({
             order: toSequencerCommitment(testCommitment),
-            clause_or_assembly: ZERO_HASH,
+            clause_or_process: ZERO_HASH,
             kind: { Clause: { clause_data_hash: ZERO_HASH } },
             inclusion_proof: [],
         }),
@@ -130,9 +130,9 @@ describe("toSequencerCommitment", () => {
         expect(sc.process_id).toBe(ZERO_HASH);
         expect(sc.buyer).toBe("0x0000000000000000000000000000000000000001");
         expect(sc.payment).toBe("100");
-        expect(sc.expected_cumulative_value).toBe("100");
+        expect(sc.running_total).toBe("100");
         expect(sc.salt).toBe("42");
-        expect(sc.deadline).toBe("9999");
+        expect(sc.commit_deadline).toBe("9999");
     });
 });
 
@@ -169,14 +169,14 @@ describe("SequencerClient.toRustEnum", () => {
         const op: SequencerOp = {
             type: "Resolve",
             process_id: ZERO_HASH,
-            cumulative_value: testCommitment.expectedCumulativeValue.toString(),
+            running_total: testCommitment.runningTotal.toString(),
             commitments: [toSequencerCommitment(testCommitment)],
             buyer_sig: toSequencerSig(DUMMY_SIG),
         };
         const result = SequencerClient.toRustEnum(op);
         expect(result).toHaveProperty("Resolve");
         expect(result.Resolve).toHaveProperty("process_id");
-        expect(result.Resolve).toHaveProperty("cumulative_value", testCommitment.expectedCumulativeValue.toString());
+        expect(result.Resolve).toHaveProperty("running_total", testCommitment.runningTotal.toString());
         expect(result.Resolve).toHaveProperty("commitments");
     });
 
@@ -235,7 +235,7 @@ describe("SequencerClient", () => {
         expect(Object.keys(body.operation)).toEqual(["ResolveByWalletCode"]);
         expect(body.operation.ResolveByWalletCode).toEqual({
             process_id: ZERO_HASH,
-            cumulative_value: testCommitment.payment.toString(),
+            running_total: testCommitment.payment.toString(),
             commitments: [toSequencerCommitment(testCommitment)],
             authorization,
         });

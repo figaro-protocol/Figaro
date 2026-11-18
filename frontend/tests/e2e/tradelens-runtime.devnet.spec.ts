@@ -29,7 +29,7 @@
  *   audit     the new clauses' evidence surfaces in the audit bundle.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { ATTESTATION_COORDINATOR_ABI, PROVENANCE_LEAF_KEY, USAGE_COUNTER_ABI, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY, calculateBonds } from '@figaro-protocol/sdk';
+import { ATTESTATION_COORDINATOR_ABI, PROVENANCE_LEAF_KEY, USAGE_COUNTER_ABI, USAGE_KIND_AGREEMENT, USAGE_KIND_PROCESS, calculateBonds } from '@figaro-protocol/sdk';
 import { mnemonicToAccount } from 'viem/accounts';
 import { createPublicClient, createWalletClient, http, parseAbi, parseUnits, type Hex } from 'viem';
 import type { Page } from '@playwright/test';
@@ -171,9 +171,9 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
             const payment = parseUnits(PRICES[label], 18);
             expectedCumulative += payment;
             expect(event.args.payment, `${label}'s payment = its catalog price`).toBe(payment);
-            expect(event.args.cumulativeValue, `cumulative after ${label} = the running chain value`)
+            expect(event.args.runningTotal, `cumulative after ${label} = the running chain value`)
                 .toBe(expectedCumulative);
-            const bonds = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+            const bonds = calculateBonds(event.args.runningTotal!, event.args.payment!);
             buyerBondSoFar += bonds.buyerBond;
             escrowSoFar += bonds.buyerBond + bonds.sellerBond;
             const [b, s, c] = await Promise.all([balanceOf(BUYER), balanceOf(who.address), balanceOf(core)]);
@@ -316,7 +316,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         //    clause's, agreement's and assembly's use on the UsageCounter — one
         //    UsageRecorded per DISTINCT (kind, key) in the process (a key two
         //    orders carry is planned once), INCLUDING each agreement's
-        //    agreement hash and the assembly's assemblyHash via the
+        //    agreement hash and the assembly's processDesignHash via the
         //    agreement's provenance leaf, which the checkout walk sets. Verified out-of-band
         //    from the chain, never from the UI. ──
         const usageCounter = config.usageCounter as Hex;
@@ -329,18 +329,18 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
             timeout: 120000, message: 'the resolve capability records the process clauses and assemblies on the UsageCounter',
         }).toBeGreaterThanOrEqual(15);
         // The provenance leaf carries the adopted assembly's own
-        // assemblyHash, so the ASSEMBLY itself must be among the
+        // processDesignHash, so the ASSEMBLY itself must be among the
         // recorded clauses and assemblies — the assembly-designer credit leg.
         const adopted = (await discoverAnchoredAssemblies()).find((t) => t.slug === slug);
-        expect(adopted?.assemblyHash, 'the adopted assembly re-discovers from chain').toBeTruthy();
+        expect(adopted?.processDesignHash, 'the adopted assembly re-discovers from chain').toBeTruthy();
         const recorded = await usageEvents();
         const keysOfKind = (kind: number) => recorded
             .filter((e) => Number(e.args.kind) === kind)
-            .map((e) => (e.args.clauseOrAssembly as string).toLowerCase());
+            .map((e) => (e.args.clauseOrProcess as string).toLowerCase());
         expect(
-            keysOfKind(USAGE_KIND_ASSEMBLY),
-            "the assembly's assemblyHash is a recorded assembly (designer credit)",
-        ).toContain(adopted!.assemblyHash!.toLowerCase());
+            keysOfKind(USAGE_KIND_PROCESS),
+            "the assembly's processDesignHash is a recorded assembly (designer credit)",
+        ).toContain(adopted!.processDesignHash!.toLowerCase());
 
         // ── NO USAGE WRITE SENT THAT WAS SURE TO REVERT: the writes are
         //    planned (one per distinct key) and each is
@@ -355,7 +355,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         // beside the assembly's.
         const agreementHashes = (await usageEvents())
             .filter((e) => Number(e.args.kind) === USAGE_KIND_AGREEMENT)
-            .map((e) => (e.args.clauseOrAssembly as string).toLowerCase());
+            .map((e) => (e.args.clauseOrProcess as string).toLowerCase());
         for (const entry of adopted!.agreements) {
             expect(agreementHashes, `agreement ${entry.id}'s agreement is a recorded agreement`)
                 .toContain(entry.agreementHash.toLowerCase());
@@ -381,9 +381,9 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         }
         const recordedEvents = await usageEvents();
         for (const event of recordedEvents) {
-            const key = event.args.clauseOrAssembly as Hex;
+            const key = event.args.clauseOrProcess as Hex;
             // The reserved leaf key is the agreement format's, never a clause:
-            // the assembly is recorded under its assemblyHash, not under it.
+            // the assembly is recorded under its processDesignHash, not under it.
             expect(key.toLowerCase(), `the recorded key ${key} is not the provenance leaf's reserved key`)
                 .not.toBe(PROVENANCE_LEAF_KEY.toLowerCase());
         }

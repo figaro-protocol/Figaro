@@ -30,7 +30,7 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
 
 2. **The SET is the live registry, read at runtime.** Clauses/sellers/assemblies
    are an UNBOUNDED set defined by the network — read from ClauseRegistry /
-   AgreementRegistry / MembersRegistry / AssemblyRegistry via the indexer, fetched chain→IPFS; code
+   AgreementRegistry / MembersRegistry / ProcessRegistry via the indexer, fetched chain→IPFS; code
    operates on the spec it fetched, never on identity. *Test:* would this still hold
    if a never-seen clause dropped into the registry now? *Tell:* naming a fixed clause
    count ("the 17 clauses"), a fixed list treated as the world, or citing a fixture /
@@ -186,9 +186,9 @@ every composition.
   shipped-depth.
 
 - **Each registry family gets its own anchor** (clauses → ClauseRegistry; agreements →
-  AgreementRegistry; assemblies → AssemblyRegistry; members → MembersRegistry) — parallel,
+  AgreementRegistry; assemblies → ProcessRegistry; members → MembersRegistry) — parallel,
   never nested. Arrows point one way, off-chain: assemblies use agreements; agreements use
-  clauses; neither knows what uses it. An assembly's `assemblyHash` is a merkle root
+  clauses; neither knows what uses it. An assembly's `processDesignHash` is a merkle root
   over its agreements' `agreementHash`s, so membership is proved against the root, never
   looked up in another registry. (This is the
   open-world restatement of the Separation of Concerns — Registry Families discipline.)
@@ -326,7 +326,7 @@ metadata — not through bespoke app forks.)
 - **Assembly** — the structural declaration (roles, mechanisms, view definitions, module
   placement, narrative defaults): ordered agreements of registered agreements plus the
   assembly-scoped terms. Composed in `frontend/lib/designer/`, anchored on-chain via
-  `src/registries/AssemblyRegistry.sol` under the merkle root over its agreements.
+  `src/registries/ProcessRegistry.sol` under the merkle root over its agreements.
 - **Mechanism package** — the reusable unit the runtime composes: contract bindings/writes,
   semantic adapters, capability mappings, default inspector/action modules, guarantee +
   risk copy.

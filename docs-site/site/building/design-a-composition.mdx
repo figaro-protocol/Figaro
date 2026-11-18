@@ -30,7 +30,7 @@ The whole assembly also composes `figaro-applicable-law` and `figaro-arbitration
 
 ## 2. The bond arithmetic
 
-At each commit the passenger bonds `2P` and the provider bonds `2G`, where `G` is the process's running total through that provider's order, its own payment included (`FigaroCore.commit` pulls `c.payment * 2` from the buyer and `c.expectedCumulativeValue * 2` from the seller).
+At each commit the passenger bonds `2P` and the provider bonds `2G`, where `G` is the process's running total through that provider's order, its own payment included (`FigaroCore.commit` pulls `c.payment * 2` from the buyer and `c.runningTotal * 2` from the seller).
 
 | # | Provider | P | G after | Passenger `2P` | Provider `2G` |
 |---|---|---:|---:|---:|---:|
@@ -161,13 +161,13 @@ The clause is one of the network's: any designer composes it, and once a resolve
 
 ## 5. Compose the agreements and anchor the assembly
 
-`buildAssembly` is the composition the frontend's designer canvas runs. It takes the orders with their topology, the clauses selected for each order with the designer's fills, and the assembly terms. Each agreement carries exactly the clauses selected for its order: nothing is written in, so an order whose parties commit a list of line items composes `figaro-commerce` like any other clause, and this journey composes none. It keeps only design fills (the value-free rule), and returns the assembly beside each new agreement, keyed by its `agreementHash`. The script registers each agreement on `AgreementRegistry` that is not yet bound, then the assembly on `AssemblyRegistry` under its `assemblyHash` (`serializeAssembly`), each under its registry's stake, and reads the result back the way any seller or buyer will. The design names no register: a credentialed provider declares, on its profile, the register of the institution that issued its own credential, so one agreement accommodates every issuer. The register URIs in **sellers.mjs** below are placeholders on `example.org`.
+`buildProcessDesign` is the composition the frontend's designer canvas runs. It takes the orders with their topology, the clauses selected for each order with the designer's fills, and the assembly terms. Each agreement carries exactly the clauses selected for its order: nothing is written in, so an order whose parties commit a list of line items composes `figaro-commerce` like any other clause, and this journey composes none. It keeps only design fills (the value-free rule), and returns the assembly beside each new agreement, keyed by its `agreementHash`. The script registers each agreement on `AgreementRegistry` that is not yet bound, then the assembly on `ProcessRegistry` under its `processDesignHash` (`serializeProcessDesign`), each under its registry's stake, and reads the result back the way any seller or buyer will. The design names no register: a credentialed provider declares, on its profile, the register of the institution that issued its own credential, so one agreement accommodates every issuer. The register URIs in **sellers.mjs** below are placeholders on `example.org`.
 
 ```js title="compose.mjs"
 // compose.mjs — ten agreements, one assembly, registered and read back.
 import {
-    buildAssembly, serializeAssembly, canonicalize,
-    AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
+    buildProcessDesign, serializeProcessDesign, canonicalize,
+    AGREEMENT_REGISTRY_ABI, PROCESS_REGISTRY_ABI,
 } from "@figaro-protocol/sdk";
 import { addresses, ctx, pub, walletOf, specs, pin, account, hydrate } from "./figaro.mjs";
 
@@ -204,7 +204,7 @@ const ORDERS = [
 // Topology, the parties' own account: the aircraft order opens the process and
 // every other order follows it. The Core sees only the commit sequence.
 const orders = ORDERS.map(([id], i) => ({ orderHash: id, ...(i === 0 ? {} : { follows: ["aircraft"] }) }));
-const { assembly, agreements } = buildAssembly({
+const { assembly, agreements } = buildProcessDesign({
     name: "Domestic short-haul journey",
     summary: "Ten resource markets, each provider bonded directly to the passenger in one process.",
     description: "Aircraft-time, fuel, crew-hours, maintenance, catering, ground handling, two airport authorities, security screening and air navigation: each an order whose buyer is the passenger, who alone resolves the journey.",
@@ -226,14 +226,14 @@ for (const [agreementHash, composed] of Object.entries(agreements)) {
     const uri = await pin(canonicalize(composed), "agreement.json");
     console.log("agreement", agreementHash, await send(addresses.agreementRegistry, AGREEMENT_REGISTRY_ABI, "registerAgreement", [agreementHash, uri], agreementStake));
 }
-const { json, assemblyHash } = serializeAssembly(assembly);
-const assemblyStake = await pub.readContract({ address: addresses.assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, functionName: "registrationDeposit" });
+const { json, processDesignHash } = serializeProcessDesign(assembly);
+const assemblyStake = await pub.readContract({ address: addresses.processRegistry, abi: PROCESS_REGISTRY_ABI, functionName: "registrationDeposit" });
 const uri = await pin(json, "assembly.json");
-console.log("assembly", assemblyHash, await send(addresses.assemblyRegistry, ASSEMBLY_REGISTRY_ABI, "registerAssembly", [assemblyHash, uri], assemblyStake));
+console.log("assembly", processDesignHash, await send(addresses.processRegistry, PROCESS_REGISTRY_ABI, "registerProcess", [processDesignHash, uri], assemblyStake));
 
 // Read it back as any seller or buyer will: chain → IPFS, verified against its hash.
 await ctx.sync();
-const found = ctx.getAssemblies().find((a) => a.assemblyHash === assemblyHash);
+const found = ctx.getAssemblies().find((a) => a.processDesignHash === processDesignHash);
 const hydrated = found && await hydrate(found);
 console.log("hydrates:", Boolean(hydrated), `${hydrated?.assembly.agreements.length} agreements`);
 ```
@@ -242,7 +242,7 @@ console.log("hydrates:", Boolean(hydrated), `${hydrated?.assembly.agreements.len
 node compose.mjs
 ```
 
-Seven `agreement … success` lines, one `assembly … success` line and `hydrates: true 10 agreements`. Ten orders bind seven registrations because the four orders whose only term is the schedule compose identical agreements, and an agreement's key is its content: two orders composing the same clauses bind one registration. The `assemblyHash` is content-derived too, so the same design composed by anyone collapses onto the same binding.
+Seven `agreement … success` lines, one `assembly … success` line and `hydrates: true 10 agreements`. Ten orders bind seven registrations because the four orders whose only term is the schedule compose identical agreements, and an agreement's key is its content: two orders composing the same clauses bind one registration. The `processDesignHash` is content-derived too, so the same design composed by anyone collapses onto the same binding.
 
 ## 6. Bind sellers and run it
 

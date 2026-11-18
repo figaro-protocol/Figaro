@@ -1,6 +1,6 @@
 // Conformance corpus: the published agreement and assembly JSON Schemas
 // (`sdk/src/agreement.schema.json`, `sdk/src/assembly.schema.json`) and the
-// reference composer and builder (`composeAuthoredAgreement`, `assembleAuthored`)
+// reference composer and builder (`composeAuthoredAgreement`, `composeAuthoredProcessDesign`)
 // MUST agree, in both forms each document takes. If they drift, a designer who
 // validates a written file against the published schema could write one the
 // seeding refuses, or a reader could accept a pinned document the builder would
@@ -14,8 +14,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020";
-import { composeAuthoredAgreement, assembleAuthored } from "../../src/projection";
-import { agreementHashOf, assemblyHashOf, type RegisteredAgreement } from "../../src/assembly";
+import { composeAuthoredAgreement, composeAuthoredProcessDesign } from "../../src/projection";
+import { agreementHashOf, processDesignHashOf, type RegisteredAgreement } from "../../src/assembly";
 import { specSourceFromFixtures } from "../specFixtures";
 import agreementSchema from "../../src/agreement.schema.json";
 import assemblySchema from "../../src/assembly.schema.json";
@@ -65,7 +65,7 @@ describe("agreement.schema.json <-> composeAuthoredAgreement conformance", () =>
     });
 });
 
-describe("assembly.schema.json <-> assembleAuthored conformance", () => {
+describe("assembly.schema.json <-> composeAuthoredProcessDesign conformance", () => {
     it("the reference assemblies are present (floor guard, not a census)", () => {
         expect(assemblyFiles.length).toBeGreaterThanOrEqual(4);
     });
@@ -73,9 +73,9 @@ describe("assembly.schema.json <-> assembleAuthored conformance", () => {
     it.each(assemblyFiles)("%s passes the schema written, builds, and passes it pinned", (file) => {
         const written = readJson(join(ROOT, "assemblies", file));
         expect(validAssembly(written), `schema rejected the written ${file}: ${errorsOf(validAssembly)}`).toBe(true);
-        const built = assembleAuthored(written, agreementsByName, specs);
+        const built = composeAuthoredProcessDesign(written, agreementsByName, specs);
         expect(validAssembly(built.assembly), `schema rejected the pinned ${file}: ${errorsOf(validAssembly)}`).toBe(true);
-        expect(assemblyHashOf(built.assembly)).toMatch(/^0x[0-9a-f]{64}$/);
+        expect(processDesignHashOf(built.assembly)).toMatch(/^0x[0-9a-f]{64}$/);
         for (const entry of built.assembly.agreements) {
             expect(entry.agreementHash).toMatch(/^0x[0-9a-f]{64}$/);
             expect(agreementsByName[Object.keys(agreementsByName).find((n) => agreementHashOf(agreementsByName[n]) === entry.agreementHash) ?? ""]).toBeDefined();
@@ -90,7 +90,7 @@ describe("assembly.schema.json <-> assembleAuthored conformance", () => {
     ];
     it.each(negatives)("rejects (%s) in BOTH schema and builder", (_name, doc) => {
         expect(validAssembly(doc)).toBe(false);
-        expect(() => assembleAuthored(doc, agreementsByName, specs)).toThrow();
+        expect(() => composeAuthoredProcessDesign(doc, agreementsByName, specs)).toThrow();
     });
 
     // The designer's answers are presentation the builder passes through unread,
@@ -98,6 +98,6 @@ describe("assembly.schema.json <-> assembleAuthored conformance", () => {
     it("rejects a faq entry without its answer at the schema (the builder does not own faq)", () => {
         const doc = { agreements: [{ id: "agreement-0", agreement: "counter-sale" }], faq: [{ question: "Q?" }] };
         expect(validAssembly(doc)).toBe(false);
-        expect(() => assembleAuthored(doc, agreementsByName, specs)).not.toThrow();
+        expect(() => composeAuthoredProcessDesign(doc, agreementsByName, specs)).not.toThrow();
     });
 });

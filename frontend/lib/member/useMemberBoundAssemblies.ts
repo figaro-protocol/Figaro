@@ -3,40 +3,40 @@
  * into the buyer-facing choice set at checkout.
  *
  * Member-domain composition: reads the member's profile (MembersRegistry →
- * IPFS), intersects the profile's `assemblyBindings[].assemblyHash` with the
+ * IPFS), intersects the profile's `processBindings[].processDesignHash` with the
  * published assembly events, and reads each matched assembly hydrated — the
  * assembly and every agreement's registered agreement, each verified. The
- * on-chain reads come from `@/lib/protocol/useAssemblyRegistry` (a legal
+ * on-chain reads come from `@/lib/protocol/useProcessRegistry` (a legal
  * downward arrow); the member-profile parsing stays intra-seller.
  */
 
 import { useEffect, useState } from "react";
-import type { HydratedAssembly } from "@figaro-protocol/sdk";
+import type { HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { useMemberProfile } from "@/lib/member/useMembersRegistry";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import type { CoSellerBinding } from "@/lib/member/memberProfileMetadata";
-import { assemblyHashOf } from "@figaro-protocol/sdk";
+import { processDesignHashOf } from "@figaro-protocol/sdk";
 import { bindsAssembly, findListingByAddress } from "@/lib/member/memberListing";
 import {
     useAllPublishedAssemblies,
     fetchHydratedAssembly,
-} from "@/lib/protocol/useAssemblyRegistry";
+} from "@/lib/protocol/useProcessRegistry";
 import { hexEqual } from "@/lib/shared/evm";
 import { PENDING, present, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 
 /** A member's on-chain bound assembly, hydrated. */
 export interface BoundAssembly {
-    /** Derived from the assembly hash (`deriveAssemblySlug`) — display only. */
+    /** Derived from the assembly hash (`deriveProcessDesignSlug`) — display only. */
     slug: string;
     /** Display name from the assembly; falls back to the slug. */
     name: string;
     /** The assembly verified against its assembly hash, beside every
      *  agreement's registered agreement verified against its key. */
-    hydratedAssembly: HydratedAssembly;
+    hydratedAssembly: HydratedProcessDesign;
     /** The member's designated co-seller wallets for this assembly,
      *  keyed by sub-order process clause (the runtime ladder clause the
      *  sub-order carries). Sourced from the member profile's
-     *  AssemblyBindingRecord — checkout reads it to fill a delegated
+     *  ProcessBindingRecord — checkout reads it to fill a delegated
      *  order's seller. */
     coSellerBindings: CoSellerBinding[];
 }
@@ -45,7 +45,7 @@ export interface BoundAssembly {
  * Resolves a member's on-chain bound assemblies into the buyer-facing
  * choice set — the buyer picks one assembly at checkout. Reads the member's
  * profile (MembersRegistry → IPFS), intersects the profile's
- * `assemblyBindings[].assemblyHash` with the published assembly events, and
+ * `processBindings[].processDesignHash` with the published assembly events, and
  * reads each matched assembly hydrated.
  *
  * A `NetworkRead`: `present([])` when the chain and the profile say the
@@ -87,14 +87,14 @@ export function useMemberBoundAssemblies(
             // parsed. A profile that fails to read or parse is absent.
             const profile = await fetchMemberProfile(metadataURI);
             if (!profile) throw new Error("member profile unreadable");
-            if (!profile.assemblyBindings || profile.assemblyBindings.length === 0) return [];
+            if (!profile.processBindings || profile.processBindings.length === 0) return [];
 
-            const boundHashes = new Set(profile.assemblyBindings.map((b) => b.assemblyHash.toLowerCase()));
-            const matchedEvents = publishedEvents.filter((e) => boundHashes.has(e.assemblyHash.toLowerCase()));
+            const boundHashes = new Set(profile.processBindings.map((b) => b.processDesignHash.toLowerCase()));
+            const matchedEvents = publishedEvents.filter((e) => boundHashes.has(e.processDesignHash.toLowerCase()));
             if (matchedEvents.length === 0) return [];
 
             const hydratedAssemblies = await Promise.all(
-                matchedEvents.map((e) => fetchHydratedAssembly(e.contentURI, e.assemblyHash)),
+                matchedEvents.map((e) => fetchHydratedAssembly(e.contentURI, e.processDesignHash)),
             );
 
             // matchedEvents and hydratedAssemblies are index-aligned (Promise.all
@@ -103,9 +103,9 @@ export function useMemberBoundAssemblies(
             const assemblies: BoundAssembly[] = [];
             hydratedAssemblies.forEach((m, i) => {
                 if (!m) return;
-                const { slug, assemblyHash } = matchedEvents[i];
-                const binding = (profile.assemblyBindings ?? []).find(
-                    (b) => hexEqual(b.assemblyHash, assemblyHash),
+                const { slug, processDesignHash } = matchedEvents[i];
+                const binding = (profile.processBindings ?? []).find(
+                    (b) => hexEqual(b.processDesignHash, processDesignHash),
                 );
                 assemblies.push({
                     slug,
@@ -138,15 +138,15 @@ export function useMemberBoundAssemblies(
  */
 export function withBoundCoSellers(
     bound: BoundAssembly,
-    members: readonly { address: string; assemblyBindings?: readonly { assemblyHash: string }[] }[],
+    members: readonly { address: string; processBindings?: readonly { processDesignHash: string }[] }[],
 ): BoundAssembly {
-    const assemblyHash = assemblyHashOf(bound.hydratedAssembly.assembly);
+    const processDesignHash = processDesignHashOf(bound.hydratedAssembly.assembly);
     const coSellerBindings = bound.coSellerBindings
         .map((cb) => ({
             ...cb,
             addresses: cb.addresses.filter((a) => {
                 const member = findListingByAddress(members, a);
-                return !!member && bindsAssembly(member, assemblyHash);
+                return !!member && bindsAssembly(member, processDesignHash);
             }),
         }))
         .filter((cb) => cb.addresses.length > 0);

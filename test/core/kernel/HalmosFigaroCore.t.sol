@@ -71,12 +71,12 @@ contract HalmosFigaroCore is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: keccak256("test"),
             salt: 1,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
@@ -118,14 +118,14 @@ contract HalmosFigaroCore is Test {
         _commitRoot(payment);
 
         uint256 contractBalance = token.balanceOf(address(core));
-        // Root order: buyer bonds 2P, seller bonds 2*cumulativeValue = 2P
+        // Root order: buyer bonds 2P, seller bonds 2*runningTotal = 2P
         assert(contractBalance == payment * 4);
     }
 
     // ── INVARIANT 3: Correct Bond Amounts ────────────────────────
     //
     // After commit, buyer loses exactly 2*payment and seller loses
-    // exactly 2*cumulativeValue (= 2*payment for root).
+    // exactly 2*runningTotal (= 2*payment for root).
 
     function check_correctBondAmounts(uint256 payment) public {
         vm.assume(payment > 0 && payment <= type(uint128).max / 4);
@@ -160,12 +160,12 @@ contract HalmosFigaroCore is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: keccak256("test"),
             salt: 1,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
@@ -203,12 +203,12 @@ contract HalmosFigaroCore is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: keccak256("test"),
             salt: 1,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
@@ -242,12 +242,12 @@ contract HalmosFigaroCore is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: keccak256("test"),
             salt: 1,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
@@ -266,7 +266,7 @@ contract HalmosFigaroCore is Test {
 
     // ── INVARIANT 7: Cumulative Value Monotonic ──────────────────
     //
-    // After each sub-order commit, cumulativeValue strictly increases.
+    // After each sub-order commit, runningTotal strictly increases.
 
     function check_cumulativeValueMonotonic(uint256 payment1, uint256 payment2) public {
         vm.assume(payment1 > 0 && payment1 <= type(uint64).max);
@@ -288,12 +288,12 @@ contract HalmosFigaroCore is Test {
             processId: processId,
             buyer: buyer,
             seller: seller,
-            currency: address(token),
+            token: address(token),
             payment: payment2,
-            expectedCumulativeValue: cumAfterSub,
+            runningTotal: cumAfterSub,
             checkoutHash: keccak256("sub"),
             salt: 2,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         bytes memory buyerSig2 = _signCommitment(c2, BUYER_KEY);

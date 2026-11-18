@@ -12,7 +12,7 @@ import {FigaroCore} from "src/core/kernel/FigaroCore.sol";
 import {CommitmentTypes} from "src/core/kernel/CommitmentTypes.sol";
 import {ClauseRegistry} from "src/registries/ClauseRegistry.sol";
 import {AgreementRegistry} from "src/registries/AgreementRegistry.sol";
-import {AssemblyRegistry} from "src/registries/AssemblyRegistry.sol";
+import {ProcessRegistry} from "src/registries/ProcessRegistry.sol";
 import {MembersRegistry} from "src/registries/MembersRegistry.sol";
 import {MockSP1Verifier} from "src/mocks/MockSP1Verifier.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
@@ -48,7 +48,7 @@ contract BatchVerifierNeverRegistersTest is Test {
     FigaroBatchVerifier verifier;
     ClauseRegistry clauses;
     AgreementRegistry agreements;
-    AssemblyRegistry assemblies;
+    ProcessRegistry assemblies;
     MembersRegistry members;
     MockERC20 token;
 
@@ -60,7 +60,7 @@ contract BatchVerifierNeverRegistersTest is Test {
         MockSP1Verifier sp1 = new MockSP1Verifier();
         clauses = new ClauseRegistry(DEPOSIT);
         agreements = new AgreementRegistry(0);
-        assemblies = new AssemblyRegistry(0);
+        assemblies = new ProcessRegistry(0);
         members = new MembersRegistry(0, 0);
         FigaroCore core = new FigaroCore();
 
@@ -98,8 +98,8 @@ contract BatchVerifierNeverRegistersTest is Test {
             ClauseRegistry.withdrawDeposit.selector,
             AgreementRegistry.registerAgreement.selector,
             AgreementRegistry.withdrawDeposit.selector,
-            AssemblyRegistry.registerAssembly.selector,
-            AssemblyRegistry.withdrawDeposit.selector,
+            ProcessRegistry.registerProcess.selector,
+            ProcessRegistry.withdrawDeposit.selector,
             MembersRegistry.register.selector,
             MembersRegistry.updateProfile.selector,
             MembersRegistry.requestWithdrawal.selector,
@@ -169,12 +169,12 @@ contract BatchVerifierNeverRegistersTest is Test {
                 c.processId,
                 c.buyer,
                 c.seller,
-                c.currency,
+                c.token,
                 c.payment,
-                c.expectedCumulativeValue,
+                c.runningTotal,
                 c.checkoutHash,
                 c.salt,
-                c.deadline
+                c.commitDeadline
             )
         );
     }
@@ -190,7 +190,7 @@ contract BatchVerifierNeverRegistersTest is Test {
             )
         );
         bytes32 structHash = keccak256(
-            abi.encode(keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)"), PROCESS, PAYMENT)
+            abi.encode(keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"), PROCESS, PAYMENT)
         );
         return keccak256(abi.encodePacked("\x19\x01", domain, structHash));
     }
@@ -202,12 +202,12 @@ contract BatchVerifierNeverRegistersTest is Test {
         c.processId = PROCESS;
         c.buyer = buyer;
         c.seller = seller;
-        c.currency = address(token);
+        c.token = address(token);
         c.payment = PAYMENT;
-        c.expectedCumulativeValue = PAYMENT;
+        c.runningTotal = PAYMENT;
         c.checkoutHash = keccak256("never-registers-checkout");
         c.salt = 7;
-        c.deadline = 4_000_000_000;
+        c.commitDeadline = 4_000_000_000;
 
         bytes memory authorization = bytes("guardian-approval");
         vm.etch(buyer, type(MockERC1271Wallet).runtimeCode);
@@ -264,7 +264,7 @@ contract BatchVerifierNeverRegistersTest is Test {
             "the clause registry is called for nothing else"
         );
         assertEq(_count(log, v, address(agreements), bytes4(0)), 0, "no call to the agreement registry");
-        assertEq(_count(log, v, address(assemblies), bytes4(0)), 0, "no call to the assembly registry");
+        assertEq(_count(log, v, address(assemblies), bytes4(0)), 0, "no call to the process registry");
         assertEq(_count(log, v, address(members), bytes4(0)), 0, "no call to the members registry");
     }
 

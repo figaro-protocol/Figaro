@@ -68,12 +68,12 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller,
-            currency: address(bond),
+            token: address(bond),
             payment: P,
-            expectedCumulativeValue: P,
+            runningTotal: P,
             checkoutHash: keccak256("witness-swap-commit-root"),
             salt: salt,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
     }
 

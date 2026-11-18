@@ -35,7 +35,7 @@ export interface ProcessTopologyFigureProps extends BaseFigureProps {
  * value the process has reached at that seller's own commit.
  *
  * Bond arithmetic per `sdk/src/bonds.ts` `calculateBonds`: sellerBond =
- * 2 × cumulativeValue, buyerBond = 2 × payment, on every order.
+ * 2 × runningTotal, buyerBond = 2 × payment, on every order.
  */
 
 const ROW_H = 30;

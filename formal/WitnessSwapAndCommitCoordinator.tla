@@ -28,10 +28,10 @@
  *                        the FULL output forwarded to the party  (`_fund`, step 3)
  *                        the unconsumed input refunded to the party  (`_fund`, step 4)
  *   Commit            →  figaroCore.commit(): FigaroCore pulls 2*payment from the
- *                        buyer and 2*expectedCumulativeValue from the seller
+ *                        buyer and 2*runningTotal from the seller
  *                        (the two `_pullExact` calls of `FigaroCore.commit`),
  *                        after its root-order guard
- *                        `expectedCumulativeValue == payment`
+ *                        `runningTotal == payment`
  *                        (`InvalidRootCumulativeValue`)
  *   Revert            →  EVM revert from ANY mid-call step: the whole call frame
  *                        rolls back to the snapshot. Enabled everywhere in-flight,
@@ -57,7 +57,7 @@
  *                                        `c.currency`; the model's two tokens
  *                                        are distinct, so that case is outside
  *                                        the model.
- *   Sub-orders / process chains        — root orders only (`expectedCumulativeValue`
+ *   Sub-orders / process chains        — root orders only (`runningTotal`
  *                                        is a free parameter and FigaroCore's root
  *                                        guard rejects the mismatch, which is what
  *                                        exercises atomicity). Process-chain
@@ -71,7 +71,7 @@ EXTENDS Integers, FiniteSets, Sequences, TLC
 \* ── Constants ────────────────────────────────────────────────
 CONSTANTS
     MaxPayment,         \* c.payment ranges over 1..MaxPayment
-    MaxCumExcess,       \* c.expectedCumulativeValue ranges over payment..payment+MaxCumExcess
+    MaxCumExcess,       \* c.runningTotal ranges over payment..payment+MaxCumExcess
     MaxInput,           \* the Permit2 `maxInput` ceiling ranges over 1..MaxInput
     MaxSwapOutput,      \* the router may return 0..MaxSwapOutput of the bond currency
     PartyBond,          \* each party's starting bond-currency balance
@@ -175,7 +175,7 @@ Init ==
 StartTx(p, cv, be, se, bmi, smi, sub) ==
   /\ pc = "idle"
   /\ txCount < MaxTx
-  /\ cv >= p                       \* expectedCumulativeValue is never below payment
+  /\ cv >= p                       \* runningTotal is never below payment
   /\ ( be \/ se )                  \* the NothingToFund guard
   /\ tx' = [ payment |-> p, cumVal |-> cv, bEnabled |-> be, sEnabled |-> se,
              bMaxIn |-> bmi, sMaxIn |-> smi, substituted |-> sub ]
@@ -240,8 +240,8 @@ LegSwapSettle(party, maxIn, bondAmount, nxt, consumed, received) ==
 \* NAMED parties, not from msg.sender — which is why the coordinator funds the
 \* party in place and never becomes a counterparty.
 \*   _pullExact(currency, c.buyer,  c.payment * 2)                 FigaroCore.commit
-\*   _pullExact(currency, c.seller, c.expectedCumulativeValue * 2) FigaroCore.commit
-\* Root-order guard: expectedCumulativeValue must equal payment, else
+\*   _pullExact(currency, c.seller, c.runningTotal * 2) FigaroCore.commit
+\* Root-order guard: runningTotal must equal payment, else
 \* InvalidRootCumulativeValue reverts the whole call            FigaroCore.commit
 Commit ==
   /\ pc = "commit"
@@ -368,7 +368,7 @@ Inv_Atomicity ==
 
 \* ── Bonding arithmetic ───────────────────────────────────────
 \* Each landed order carries exactly FigaroCore's pulls: 2x payment from the
-\* buyer, 2x expectedCumulativeValue from the seller (the two `_pullExact` calls
+\* buyer, 2x runningTotal from the seller (the two `_pullExact` calls
 \* of `FigaroCore.commit`), which is what the coordinator funds each leg to (the
 \* two `_fund` calls of `swapAndCommit`). The swap is the
 \* on-ramp; the bond ratio is untouched by it.

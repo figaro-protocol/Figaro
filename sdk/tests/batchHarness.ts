@@ -2,7 +2,7 @@
  * The batch-path harness shared by the relay's chain-touching suites
  * (`batch-e2e.test.ts`, `batch-revoke-e2e.test.ts`): the chain probe, the
  * stack deployment (MockERC20, MockSP1Verifier, ClauseRegistry with the
- * witness clause anchored, FigaroCore, MembersRegistry, AssemblyRegistry,
+ * witness clause anchored, FigaroCore, MembersRegistry, ProcessRegistry,
  * UsageCounter, FigaroBatchVerifier), and the relay's process management.
  *
  * Requires Anvil at http://127.0.0.1:8545 (or at `ANVIL_URL`) and the release
@@ -209,13 +209,13 @@ export async function deployBatchStack(
     // above; assemblies and agreements play no part in this fixture, so an
     // empty zero-deposit registry of each satisfies the constructor's
     // nonzero check.
-    const assemblyRegistryHash = await deployerWallet.deployContract({
+    const processRegistryHash = await deployerWallet.deployContract({
         abi: parseAbi(["constructor(uint256 _registrationDeposit)"]),
-        bytecode: loadBytecode("AssemblyRegistry.sol/AssemblyRegistry.json"),
+        bytecode: loadBytecode("ProcessRegistry.sol/ProcessRegistry.json"),
         args: [0n],
     });
-    const assemblyRegistryAddress = (
-        await publicClient.waitForTransactionReceipt({ hash: assemblyRegistryHash })
+    const processRegistryAddress = (
+        await publicClient.waitForTransactionReceipt({ hash: processRegistryHash })
     ).contractAddress!;
     const agreementRegistryHash = await deployerWallet.deployContract({
         abi: parseAbi(["constructor(uint256 _registrationDeposit)"]),
@@ -243,7 +243,7 @@ export async function deployBatchStack(
             coreAddress,
             membersAddress,
             clauseRegistryAddress,
-            assemblyRegistryAddress,
+            processRegistryAddress,
             agreementRegistryAddress,
             predictedVerifier,
             // minSellers = 1: this fixture drives ONE seller end to end and
@@ -302,7 +302,7 @@ export async function deployBatchStack(
         membersAddress,
         registries: {
             clauses: clauseRegistryAddress,
-            assemblies: assemblyRegistryAddress,
+            assemblies: processRegistryAddress,
             agreements: agreementRegistryAddress,
             members: membersAddress,
         },
@@ -367,7 +367,7 @@ export function startSequencer(
             // dropped "conservatively" — the batch resolves with EMPTY accruals
             // and the counter credits nothing, silently (056365a6).
             CLAUSE_REGISTRY_ADDRESS: relay.registries.clauses,
-            ASSEMBLY_REGISTRY_ADDRESS: relay.registries.assemblies,
+            PROCESS_REGISTRY_ADDRESS: relay.registries.assemblies,
             AGREEMENT_REGISTRY_ADDRESS: relay.registries.agreements,
             MEMBERS_REGISTRY_ADDRESS: relay.registries.members,
             // FigaroCore uses this as the EIP-712 verifyingContract.

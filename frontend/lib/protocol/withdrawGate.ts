@@ -7,9 +7,9 @@
  * must not reclaim their registration stake while trades COMPOSED FROM it are
  * still in flight. The whole join lives in `@figaro-protocol/sdk/derive`
  * (`deriveInFlightOrders` + `deriveClauseWithdrawGate` /
- * `deriveAssemblyWithdrawGate` / `deriveAgreementWithdrawGate`, the last two
+ * `deriveProcessWithdrawGate` / `deriveAgreementWithdrawGate`, the last two
  * attributing an order by its verified agreement's decoded provenance
- * `{ agreementHash, assemblyHash }`) — this hook does
+ * `{ agreementHash, processDesignHash }`) — this hook does
  * ONLY the I/O the SDK deliberately does not: read the order events through
  * the indexer (`getCoreEvents`, every order emitter, cached and chunked), then
  * fetch each in-flight order's pinned agreement from IPFS. It never re-derives
@@ -36,7 +36,7 @@ import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead
 import {
     deriveInFlightOrders,
     deriveClauseWithdrawGate,
-    deriveAssemblyWithdrawGate,
+    deriveProcessWithdrawGate,
     deriveAgreementWithdrawGate,
     type InFlightAgreement,
     type WithdrawGate,
@@ -50,7 +50,7 @@ import { isValidAddress } from "@/lib/shared/evm";
 
 export type WithdrawClauseOrAssembly =
     | { kind: "clause"; clauseKey: `0x${string}` }
-    | { kind: "assembly"; assemblyHash: `0x${string}` }
+    | { kind: "assembly"; processDesignHash: `0x${string}` }
     | { kind: "agreement"; agreementHash: `0x${string}` };
 
 /** Read every in-flight order off-chain, then resolve each to its committed
@@ -87,7 +87,7 @@ async function resolveInFlightAgreements(): Promise<InFlightAgreement[]> {
  * in-flight trades block (`gate.canWithdraw === (gate.inFlightCount === 0)`);
  * `gate.unverifiedCount > 0` is a caveat via `withdrawUnverifiedCaveat`.
  */
-export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | null): {
+export function useWithdrawGate(clauseOrProcess: WithdrawClauseOrAssembly | null): {
     gate: NetworkRead<WithdrawGate>;
 } {
     const [gate, setGate] = useState<NetworkRead<WithdrawGate>>(PENDING);
@@ -95,27 +95,27 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
     // A stable identity for the clause or assembly so the effect re-runs only
     // when the target changes (an assembly is identified by its assembly hash).
     const clauseOrAssemblyKey = useMemo(() => {
-        if (!clauseOrAssembly) return null;
-        switch (clauseOrAssembly.kind) {
-            case "clause": return `clause:${clauseOrAssembly.clauseKey}`;
-            case "assembly": return `assembly:${clauseOrAssembly.assemblyHash}`;
-            case "agreement": return `agreement:${clauseOrAssembly.agreementHash}`;
+        if (!clauseOrProcess) return null;
+        switch (clauseOrProcess.kind) {
+            case "clause": return `clause:${clauseOrProcess.clauseKey}`;
+            case "assembly": return `assembly:${clauseOrProcess.processDesignHash}`;
+            case "agreement": return `agreement:${clauseOrProcess.agreementHash}`;
         }
-    }, [clauseOrAssembly]);
+    }, [clauseOrProcess]);
 
     useEffect(() => {
         const core = CONTRACTS.core;
         setGate(PENDING);
-        if (!clauseOrAssembly || !isValidAddress(core)) return;
+        if (!clauseOrProcess || !isValidAddress(core)) return;
         let canceled = false;
 
         void readNetwork("useWithdrawGate", async () => {
             const agreements = await resolveInFlightAgreements();
-            return clauseOrAssembly.kind === "clause"
-                ? deriveClauseWithdrawGate(clauseOrAssembly.clauseKey, agreements)
-                : clauseOrAssembly.kind === "assembly"
-                    ? deriveAssemblyWithdrawGate(clauseOrAssembly.assemblyHash, agreements)
-                    : deriveAgreementWithdrawGate(clauseOrAssembly.agreementHash, agreements);
+            return clauseOrProcess.kind === "clause"
+                ? deriveClauseWithdrawGate(clauseOrProcess.clauseKey, agreements)
+                : clauseOrProcess.kind === "assembly"
+                    ? deriveProcessWithdrawGate(clauseOrProcess.processDesignHash, agreements)
+                    : deriveAgreementWithdrawGate(clauseOrProcess.agreementHash, agreements);
         }).then((next) => {
             if (!canceled) setGate(next);
         });
@@ -123,7 +123,7 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
         return () => {
             canceled = true;
         };
-        // clauseOrAssemblyKey captures the meaningful identity; clauseOrAssembly
+        // clauseOrAssemblyKey captures the meaningful identity; clauseOrProcess
         // is read fresh in the closure from the same render that produced the key.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [clauseOrAssemblyKey]);

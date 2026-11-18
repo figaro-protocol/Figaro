@@ -76,12 +76,12 @@ contract FigaroCore_RevertBranch is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller1,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: keccak256("test"),
             salt: salt,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
     }
 
@@ -99,7 +99,7 @@ contract FigaroCore_RevertBranch is Test {
 
     function test_commit_deadlineExpired_reverts() public {
         CommitmentTypes.Commitment memory c = _rootCommitment(50 ether, 1);
-        c.deadline = block.timestamp - 1;
+        c.commitDeadline = block.timestamp - 1;
 
         vm.expectRevert(FigaroCore.DeadlineExpired.selector);
         core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
@@ -107,7 +107,7 @@ contract FigaroCore_RevertBranch is Test {
 
     function test_commit_zeroPayment_reverts() public {
         CommitmentTypes.Commitment memory c = _rootCommitment(0, 1);
-        c.expectedCumulativeValue = 0;
+        c.runningTotal = 0;
 
         vm.expectRevert(FigaroCore.ZeroPayment.selector);
         core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
@@ -137,7 +137,7 @@ contract FigaroCore_RevertBranch is Test {
 
     function test_commit_invalidRootCumulativeValue_reverts() public {
         CommitmentTypes.Commitment memory c = _rootCommitment(50 ether, 1);
-        c.expectedCumulativeValue = 99 ether;
+        c.runningTotal = 99 ether;
 
         vm.expectRevert(FigaroCore.InvalidRootCumulativeValue.selector);
         core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
@@ -148,12 +148,12 @@ contract FigaroCore_RevertBranch is Test {
             processId: keccak256("nonexistent"),
             buyer: buyer,
             seller: seller1,
-            currency: address(token),
+            token: address(token),
             payment: 10 ether,
-            expectedCumulativeValue: 10 ether,
+            runningTotal: 10 ether,
             checkoutHash: keccak256("test"),
             salt: 1,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         vm.expectRevert(FigaroCore.UnknownProcess.selector);
@@ -167,12 +167,12 @@ contract FigaroCore_RevertBranch is Test {
             processId: processId,
             buyer: outsider,
             seller: seller2,
-            currency: address(token),
+            token: address(token),
             payment: 10 ether,
-            expectedCumulativeValue: 60 ether,
+            runningTotal: 60 ether,
             checkoutHash: keccak256("test"),
             salt: 2,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         vm.expectRevert(FigaroCore.NotProcessBuyer.selector);
@@ -187,12 +187,12 @@ contract FigaroCore_RevertBranch is Test {
             processId: processId,
             buyer: buyer,
             seller: seller2,
-            currency: address(otherToken),
+            token: address(otherToken),
             payment: 10 ether,
-            expectedCumulativeValue: 60 ether,
+            runningTotal: 60 ether,
             checkoutHash: keccak256("test"),
             salt: 2,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         vm.expectRevert(FigaroCore.CurrencyMismatch.selector);
@@ -206,12 +206,12 @@ contract FigaroCore_RevertBranch is Test {
             processId: processId,
             buyer: buyer,
             seller: seller2,
-            currency: address(token),
+            token: address(token),
             payment: 10 ether,
-            expectedCumulativeValue: 999 ether,
+            runningTotal: 999 ether,
             checkoutHash: keccak256("test"),
             salt: 2,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         vm.expectRevert(abi.encodeWithSelector(FigaroCore.CumulativeValueMismatch.selector, 999 ether, 60 ether));
@@ -225,12 +225,12 @@ contract FigaroCore_RevertBranch is Test {
             processId: processId,
             buyer: buyer,
             seller: seller2,
-            currency: address(token),
+            token: address(token),
             payment: 10 ether,
-            expectedCumulativeValue: 60 ether,
+            runningTotal: 60 ether,
             checkoutHash: keccak256("test"),
             salt: 2,
-            deadline: block.timestamp - 1
+            commitDeadline: block.timestamp - 1
         });
 
         vm.expectRevert(FigaroCore.DeadlineExpired.selector);
@@ -253,12 +253,12 @@ contract FigaroCore_RevertBranch is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller1,
-            currency: address(feeToken),
+            token: address(feeToken),
             payment: 50 ether,
-            expectedCumulativeValue: 50 ether,
+            runningTotal: 50 ether,
             checkoutHash: keccak256("test"),
             salt: 1,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         vm.expectRevert(FigaroCore.FeeOnTransferDetected.selector);
@@ -308,12 +308,12 @@ contract FigaroCore_RevertBranch is Test {
             processId: processId,
             buyer: buyer,
             seller: seller2,
-            currency: address(token),
+            token: address(token),
             payment: 20 ether,
-            expectedCumulativeValue: 30 ether,
+            runningTotal: 30 ether,
             checkoutHash: keccak256("sub"),
             salt: 2,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
 
@@ -349,12 +349,12 @@ contract FigaroCore_RevertBranch is Test {
             processId: processId,
             buyer: buyer,
             seller: seller2,
-            currency: address(token),
+            token: address(token),
             payment: 20 ether,
-            expectedCumulativeValue: 30 ether,
+            runningTotal: 30 ether,
             checkoutHash: keccak256("sub"),
             salt: 2,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
 
@@ -390,17 +390,17 @@ contract FigaroCore_RevertBranch is Test {
             processId: processId,
             buyer: buyer,
             seller: seller2,
-            currency: address(token),
+            token: address(token),
             payment: 20 ether,
-            expectedCumulativeValue: 30 ether,
+            runningTotal: 30 ether,
             checkoutHash: keccak256("sub"),
             salt: 2,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
 
         // Identical struct: the accumulator has moved to 30, so the replay's
-        // expectedCumulativeValue (30) no longer matches 30 + 20 = 50.
+        // runningTotal (30) no longer matches 30 + 20 = 50.
         vm.expectRevert(abi.encodeWithSelector(FigaroCore.CumulativeValueMismatch.selector, 30 ether, 50 ether));
         core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
     }

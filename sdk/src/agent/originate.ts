@@ -27,21 +27,21 @@ import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
 import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
-import { agreementClauses, assemblyHashOf, assemblyFollows } from "../assembly.js";
-import type { Assembly, HydratedAssembly, AssemblyAgreement } from "../assembly.js";
-import { reconstructOrdersFromAssembly, agreementFromClauses, mergeOverrides, fillWalkProvenance, fillWalkTopology } from "../reconstructOrders.js";
-import { checkSellerBindsAssembly, type MemberProfileReader } from "../memberProfile.js";
+import { agreementClauses, processDesignHashOf, processDesignFollows } from "../assembly.js";
+import type { ProcessDesign, HydratedProcessDesign, ProcessDesignAgreement } from "../assembly.js";
+import { reconstructOrdersFromProcessDesign, agreementFromClauses, mergeOverrides, fillWalkProvenance, fillWalkTopology } from "../reconstructOrders.js";
+import { checkSellerBindsProcess, type MemberProfileReader } from "../memberProfile.js";
 
 // ── Assembly (the pinned document, hydrated off-SDK) ─────────────────
 // The shapes' single home is ../assembly.js; re-exported here so the /agent
 // subpath keeps offering them alongside instantiate/originate.
 
-export type { Assembly, HydratedAssembly, AssemblyAgreement };
+export type { ProcessDesign, HydratedProcessDesign, ProcessDesignAgreement };
 
 /** An entry is a ROOT if it follows no other entry (its own `follows` is
  *  empty or absent). */
-function isRootEntry(entry: AssemblyAgreement): boolean {
-    return assemblyFollows(entry).length === 0;
+function isRootEntry(entry: ProcessDesignAgreement): boolean {
+    return processDesignFollows(entry).length === 0;
 }
 
 export interface InstantiateParams {
@@ -59,7 +59,7 @@ export interface InstantiateParams {
  * (its registered agreement's clauses and its own fills); the resulting
  * merkle root becomes the commitment's `checkoutHash`.
  */
-export function instantiateRootAgreement(hydrated: HydratedAssembly, params: InstantiateParams): Agreement {
+export function instantiateRootAgreement(hydrated: HydratedProcessDesign, params: InstantiateParams): Agreement {
     const { assembly } = hydrated;
     if (assembly.agreements.length === 0) throw new Error("assembly has no agreements to instantiate");
     // A root follows no other entry, so it signs the empty topology. A design
@@ -85,7 +85,7 @@ export function instantiateRootAgreement(hydrated: HydratedAssembly, params: Ins
     return fillWalkTopology(
         fillWalkProvenance(
             agreementFromClauses(merged, params.buyer, params.seller),
-            { agreementHash: root.agreementHash, assemblyHash: assemblyHashOf(assembly) },
+            { agreementHash: root.agreementHash, processDesignHash: processDesignHashOf(assembly) },
             root.id ?? "root",
         ),
         [],
@@ -125,7 +125,7 @@ export function withAgreementBlinding(
 export interface BuildOfferParams extends InstantiateParams {
     /** The discovered assembly, each agreement's registered agreement
      *  hydrated beside its assembly. */
-    assembly: HydratedAssembly;
+    assembly: HydratedProcessDesign;
     currency: Address;
     /** The root order's payment (== the process's opening cumulative value). */
     payment: bigint;
@@ -159,9 +159,9 @@ export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferPa
     const checkoutHash = computeCheckoutHash(agreement);
     const domain = buildDomain(params.chainId, params.core);
     const { commitment, typedData } = buildCommitment({
-        processId: ZERO_PROCESS_ID, buyer, seller: params.seller, currency: params.currency,
-        payment: params.payment, expectedCumulativeValue: params.payment,
-        checkoutHash, salt: params.salt, deadline: params.deadline,
+        processId: ZERO_PROCESS_ID, buyer, seller: params.seller, token: params.currency,
+        payment: params.payment, runningTotal: params.payment,
+        checkoutHash, salt: params.salt, commitDeadline: params.deadline,
     }, domain);
     assertAgreementSignable(agreement, checkoutHash, specs, commitment, params.assembly, "This offer");
     const buyerSig = await wallet.signTypedData({ account, ...typedData });
@@ -176,7 +176,7 @@ export interface OfferCheck { ok: boolean; reason?: string }
  * The operator's economic floor for an inbound offer — the counterpart to the
  * `accept` refuse-all floor, for the offer's *economic fields* rather than its
  * business fit. A seller counter-signing bonds 2× the offer's
- * `expectedCumulativeValue` in the offer's `currency`, so a hostile offer can
+ * `runningTotal` in the offer's `currency`, so a hostile offer can
  * carry an absurd magnitude or an unexpected currency; this policy bounds both.
  * Everything here is OPERATOR-SUPPLIED — the allowlist is the operator's own set
  * of currencies, never a bundled token list. Passing a policy is opt-IN: with
@@ -185,7 +185,7 @@ export interface OfferCheck { ok: boolean; reason?: string }
  */
 export interface OfferPolicy {
     /** Require the offer to be a well-formed ROOT order: `processId` zero AND
-     *  `expectedCumulativeValue == payment` (a root order's cumulative value IS
+     *  `runningTotal == payment` (a root order's cumulative value IS
      *  its payment; the root signs processId=0 and the chain derives the real
      *  id). OMIT (or false) for a seller that serves sub-orders in a chain, where
      *  `processId` is the root's derived id and cumulative value exceeds payment. */
@@ -195,7 +195,7 @@ export interface OfferPolicy {
      *  absent allowlist vouches for no currency, so the offer is rejected. */
     currencyAllowlist?: Address[];
     /** The operator's magnitude cap — neither `payment` nor
-     *  `expectedCumulativeValue` may exceed it. REQUIRED when a policy is
+     *  `runningTotal` may exceed it. REQUIRED when a policy is
      *  supplied: an absent cap leaves magnitude unbounded, so the offer is
      *  rejected. */
     maxValue?: bigint;
@@ -246,7 +246,7 @@ export interface SellerSignCtx {
  * still run).
  *
  * ALWAYS checks that the seller has bound the assembly the offer instantiates
- * (`checkSellerBindsAssembly`): the agreement's provenance leaf names it, and
+ * (`checkSellerBindsProcess`): the agreement's provenance leaf names it, and
  * `readProfile` reads the seller's OWN profile (MembersRegistry → metadataURI
  * → IPFS) at acceptance time. An offer with no provenance leaf, no reader, an
  * unreadable profile, or an assembly the profile does not bind is refused.
@@ -263,7 +263,7 @@ export async function validateOffer(
     expectedSeller: Address,
     policy?: OfferPolicy,
     specs?: SpecSource,
-    design: HydratedAssembly | null = null,
+    design: HydratedProcessDesign | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<OfferCheck> {
     if (!offer.buyerSig) return { ok: false, reason: "offer is missing the buyer signature" };
@@ -285,7 +285,7 @@ export async function checkPayloadTerms(
     noun: "offer" | "draft",
     policy?: OfferPolicy,
     specs?: SpecSource,
-    design: HydratedAssembly | null = null,
+    design: HydratedProcessDesign | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<OfferCheck> {
     const c = payload.commitment;
@@ -297,7 +297,7 @@ export async function checkPayloadTerms(
         || payload.agreement.seller.toLowerCase() !== c.seller.toLowerCase()) {
         return { ok: false, reason: "agreement parties do not match the commitment" };
     }
-    const bound = await checkSellerBindsAssembly(payload.agreement, c.seller, readProfile);
+    const bound = await checkSellerBindsProcess(payload.agreement, c.seller, readProfile);
     if (!bound.ok) return bound;
     if (specs) {
         try {
@@ -394,20 +394,20 @@ export async function checkSellerSignature(
  *  has passed. */
 export function checkOfferPolicy(c: Commitment, policy: OfferPolicy): OfferCheck {
     if (policy.requireRootShape
-        && !(c.processId.toLowerCase() === ZERO_PROCESS_ID && c.expectedCumulativeValue === c.payment)) {
-        return { ok: false, reason: "offer is not a well-formed root order (processId 0 and cumulativeValue == payment)" };
+        && !(c.processId.toLowerCase() === ZERO_PROCESS_ID && c.runningTotal === c.payment)) {
+        return { ok: false, reason: "offer is not a well-formed root order (processId 0 and runningTotal == payment)" };
     }
     if (!policy.currencyAllowlist || policy.currencyAllowlist.length === 0) {
         return { ok: false, reason: "offer policy supplies no currency allowlist — no currency is vouched for" };
     }
-    if (!policy.currencyAllowlist.some((a) => a.toLowerCase() === c.currency.toLowerCase())) {
-        return { ok: false, reason: `offer currency ${c.currency} is not in the policy allowlist` };
+    if (!policy.currencyAllowlist.some((a) => a.toLowerCase() === c.token.toLowerCase())) {
+        return { ok: false, reason: `offer currency ${c.token} is not in the policy allowlist` };
     }
     if (policy.maxValue === undefined) {
         return { ok: false, reason: "offer policy supplies no magnitude cap — magnitude is unbounded" };
     }
-    if (c.payment > policy.maxValue || c.expectedCumulativeValue > policy.maxValue) {
-        return { ok: false, reason: `offer magnitude (payment ${c.payment}, cumulativeValue ${c.expectedCumulativeValue}) exceeds the policy cap ${policy.maxValue}` };
+    if (c.payment > policy.maxValue || c.runningTotal > policy.maxValue) {
+        return { ok: false, reason: `offer magnitude (payment ${c.payment}, runningTotal ${c.runningTotal}) exceeds the policy cap ${policy.maxValue}` };
     }
     return { ok: true };
 }
@@ -422,8 +422,8 @@ export function checkDeadlineCap(c: Commitment, policy: OfferPolicy, chainNow: b
         return { ok: false, reason: "no chain time given — the offer's deadline cannot be bounded" };
     }
     const cap = policy.maxDeadlineSeconds ?? DEFAULT_MAX_DEADLINE_SECONDS;
-    if (c.deadline > chainNow + cap) {
-        return { ok: false, reason: `offer deadline ${c.deadline} exceeds the policy's ${cap}-second cap past the chain's now ${chainNow}` };
+    if (c.commitDeadline > chainNow + cap) {
+        return { ok: false, reason: `offer deadline ${c.commitDeadline} exceeds the policy's ${cap}-second cap past the chain's now ${chainNow}` };
     }
     return { ok: true };
 }
@@ -445,7 +445,7 @@ export function checkDeadlineCap(c: Commitment, policy: OfferPolicy, chainNow: b
  *     against (root-shape, currency allowlist, magnitude cap) and the deadline
  *     until which the buyer can commit it (`checkDeadlineCap`, measured from
  *     `ctx.chainNow`; absent, the offer is declined). Counter-signing
- *     bonds the seller against attacker-chosen `expectedCumulativeValue` /
+ *     bonds the seller against attacker-chosen `runningTotal` /
  *     `currency`, so with NO policy the offer is declined — a bare integration
  *     never silently vouches for unbounded magnitudes or an unexpected currency.
  *
@@ -462,7 +462,7 @@ export async function counterSignOffer(
     specs: SpecSource,
     accept?: (offer: CommitmentPayload) => boolean,
     policy?: OfferPolicy,
-    design: HydratedAssembly | null = null,
+    design: HydratedProcessDesign | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
     // The gate: no specs, a malformed or tampered offer, or one under an
@@ -595,7 +595,7 @@ export interface SellerOfferHandlerOpts {
      *  verified against its key; null when it cannot be read. The gate checks
      *  the designer's values against it, and an offer whose design is not read
      *  is refused. */
-    readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>;
+    readDesign?: (provenance: AgreementProvenance) => Promise<HydratedProcessDesign | null>;
     /** Reads the seller's OWN member profile at acceptance time
      *  (MembersRegistry → metadataURI → IPFS, parsed): the gate accepts an
      *  offer only under an assembly that profile binds. OMIT it and the
@@ -612,8 +612,8 @@ export interface SellerOfferHandlerOpts {
  *  design. Shared by the offer and the race handlers. */
 export async function readOfferDesign(
     payload: CommitmentPayload,
-    readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>,
-): Promise<HydratedAssembly | null> {
+    readDesign?: (provenance: AgreementProvenance) => Promise<HydratedProcessDesign | null>,
+): Promise<HydratedProcessDesign | null> {
     const provenance = payload.agreement.provenance;
     if (!provenance || !readDesign) return null;
     try {
@@ -648,7 +648,7 @@ export function makeSellerOfferHandler(
         const signed = await counterSignOffer(wallet, offer, { chainId, core: addresses.core, chainNow }, opts.specs, opts.accept, opts.policy, design, opts.readProfile);
         if (!signed) return null;
         if (opts.approveBond !== false) {
-            await approveBond(wallet, publicClient, addresses.core, offer.commitment.currency, 2n * offer.commitment.expectedCumulativeValue);
+            await approveBond(wallet, publicClient, addresses.core, offer.commitment.token, 2n * offer.commitment.runningTotal);
         }
         return signed;
     };
@@ -666,8 +666,8 @@ export function makeSellerOfferHandler(
 //     payment, then + each sub's), which FigaroCore matches exactly — so commits
 //     are SUBMITTED in that same order (root first).
 //   - N counterparties: each order's own seller counter-signs its own order.
-// The walk's single home is `../reconstructOrders.js` (`planAssemblyOrders` +
-// `reconstructOrdersFromAssembly`); this module supplies the signing seam.
+// The walk's single home is `../reconstructOrders.js` (`planProcessOrders` +
+// `reconstructOrdersFromProcessDesign`); this module supplies the signing seam.
 
 export interface ChainNodeSpec {
     /** Assembly node id (matches `assembly.agreements[].id`). */
@@ -684,7 +684,7 @@ export interface ChainNodeSpec {
 export interface BuildChainParams {
     /** The discovered assembly, each agreement's registered agreement
      *  hydrated beside its assembly. */
-    assembly: HydratedAssembly;
+    assembly: HydratedProcessDesign;
     currency: Address;
     chainId: number;
     core: Address;
@@ -709,7 +709,7 @@ export interface ChainOffer {
 
 /**
  * Build the whole chain's buyer-signed offers, in commit order. Walks the
- * assembly through the ONE walk (`reconstructOrdersFromAssembly`): the root
+ * assembly through the ONE walk (`reconstructOrdersFromProcessDesign`): the root
  * signs `processId = 0`; sub-orders name the root's derived processId, carry
  * their parents' real order hashes, and commit against the running cumulative
  * value. Every order is signed by the buyer here (in the walk's `onOrder`
@@ -722,7 +722,7 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
     const specs = requireSpecs(params.specs, "buildChainOffers");
     const specByNode = new Map(params.nodes.map((n) => [n.nodeId, n]));
     const out: ChainOffer[] = [];
-    await reconstructOrdersFromAssembly(params.assembly, {
+    await reconstructOrdersFromProcessDesign(params.assembly, {
         buyer,
         currency: params.currency,
         chainId: params.chainId,

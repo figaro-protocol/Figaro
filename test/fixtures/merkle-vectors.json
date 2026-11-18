@@ -49,14 +49,14 @@
         },
         {
             "label": "one-clause-a-topology-and-a-design",
-            "checkoutHash": "0x43800b0990a9b86859d56b92844ffd788ac2235d0cf61bc1af521214630a65e0",
+            "checkoutHash": "0x981b8dd5d0faa2310b2326e6c673656cf3aa1748d32ddfd59d557c693c0e5675",
             "clauseCount": 1,
             "provenance": {
                 "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                 "agreementHash": "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c",
-                "assemblyHash": "0x30c078f23dd666fd96f4a6164b4d43499eec4d068e5ee399e19ce2d7bbb4a6d0",
-                "clauseData": "{\"agreementHash\":\"0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c\",\"assemblyHash\":\"0x30c078f23dd666fd96f4a6164b4d43499eec4d068e5ee399e19ce2d7bbb4a6d0\"}",
-                "leaf": "0xaf07b021c8efc33b38b92668645c582ce0da26235c4ea0860d50d80bec62b0fd",
+                "processDesignHash": "0x73072c5cdf8cc80a6315e362ff5633dc86aace073f6d2220b22f92beded16b78",
+                "clauseData": "{\"agreementHash\":\"0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c\",\"processDesignHash\":\"0x73072c5cdf8cc80a6315e362ff5633dc86aace073f6d2220b22f92beded16b78\"}",
+                "leaf": "0x9cef57d2e719227a27accb3b72879b098aff77de0ae5c172ed8761ab3ea56df6",
                 "proof": [
                     "0xa17e1e2abf5a5709c413cce584db7e38200a19361ad5e98542a85c44a06b8709",
                     "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c"
@@ -73,7 +73,7 @@
                     "clauseData": "{\"lineItems\":[{\"itemId\":\"i-7\",\"name\":\"Item\",\"quantity\":1,\"unitPrice\":\"7\"}]}",
                     "leaf": "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c",
                     "proof": [
-                        "0xe4a239e97347dbbe645be44939d1771aa199eafae2601b26d96ce462171248e2"
+                        "0xe38544361d51728e8fc719d482a6a7bc32002402142620757bdec577e6b53773"
                     ]
                 }
             ]

@@ -8,7 +8,7 @@
  * at all: no form (a blind save would overwrite what the read would have
  * shown), no error text. A read in flight shows the wait line.
  *
- * The wizard steps under /members/ that read the assembly registry show the
+ * The wizard steps under /members/ that read the process registry show the
  * registry's assemblies as rows; a failed or empty read shows no row and no
  * error text.
  */
@@ -192,7 +192,7 @@ describe("member wizard steps: a failed or empty assembly-registry read shows no
 
 /** One published assembly, as the registry read answers before its document loads. */
 const CHOICE = {
-    slug: "asm-point-of-sale", registeredBy: WALLET, assemblyHash: `0x${"ab".repeat(32)}`, contentURI: "ipfs://a",
+    slug: "asm-point-of-sale", registeredBy: WALLET, processDesignHash: `0x${"ab".repeat(32)}`, contentURI: "ipfs://a",
     blockNumber: 1n, networkTargets: [], state: "loading", name: "Point of sale", summary: null,
     agreementCount: null, clauses: null, hydratedAssembly: null, stakeWithdrawn: false,
 };

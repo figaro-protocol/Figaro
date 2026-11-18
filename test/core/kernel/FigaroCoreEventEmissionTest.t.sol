@@ -77,12 +77,12 @@ contract FigaroCore_EventEmission is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller1,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: keccak256("root-agreement"),
             salt: salt,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         (processId, orderHash) = core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
     }
@@ -99,12 +99,12 @@ contract FigaroCore_EventEmission is Test {
             processId: processId,
             buyer: buyer,
             seller: seller,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: expectedCum,
+            runningTotal: expectedCum,
             checkoutHash: keccak256(abi.encodePacked("sub-agreement-", salt)),
             salt: salt,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         (, orderHash) = core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, sellerKey));
     }
@@ -133,7 +133,7 @@ contract FigaroCore_EventEmission is Test {
         assertEq(seller_, expectedSeller, "seller");
         assertEq(currency_, expectedCurrency, "currency");
         assertEq(payment_, expectedPayment, "payment");
-        assertEq(cumValue_, expectedCumValue, "cumulativeValue");
+        assertEq(cumValue_, expectedCumValue, "runningTotal");
         assertEq(agreement_, expectedCheckoutHash, "checkoutHash");
     }
 
@@ -147,12 +147,12 @@ contract FigaroCore_EventEmission is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller1,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: keccak256("root-agreement"),
             salt: 1,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         vm.recordLogs();
@@ -292,12 +292,12 @@ contract FigaroCore_EventEmission is Test {
             processId: processId,
             buyer: buyer,
             seller: seller2,
-            currency: address(token),
+            token: address(token),
             payment: subPayment,
-            expectedCumulativeValue: expectedCum,
+            runningTotal: expectedCum,
             checkoutHash: keccak256("sub-agreement"),
             salt: 2,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         vm.recordLogs();
@@ -332,12 +332,12 @@ contract FigaroCore_EventEmission is Test {
             processId: processId,
             buyer: buyer,
             seller: seller2,
-            currency: address(token),
+            token: address(token),
             payment: 25 ether,
-            expectedCumulativeValue: 65 ether,
+            runningTotal: 65 ether,
             checkoutHash: keccak256("sub"),
             salt: 2,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
 

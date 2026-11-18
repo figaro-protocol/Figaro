@@ -95,7 +95,7 @@ contract AgreementRegistryTest is Test {
         bytes32 provenance = keccak256("figaro-agreement-provenance");
         bytes32 terms = keccak256("figaro-assembly-terms");
         assertEq(registry.PROVENANCE_LEAF_KEY(), provenance);
-        assertEq(registry.ASSEMBLY_TERMS_LEAF_KEY(), terms);
+        assertEq(registry.PROCESS_TERMS_LEAF_KEY(), terms);
 
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.ReservedKeyIsNotARegistration.selector, provenance));

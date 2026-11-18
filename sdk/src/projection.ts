@@ -3,7 +3,7 @@
  * a design's orders to the assembly. The deterministic projection
  * rules BOTH parties (and any second frontend) must reproduce byte-exactly,
  * because their outputs are hashed: `checkoutHash` (the merkle root the
- * commitment signs) and `assemblyHash` (assembly identity).
+ * commitment signs) and `processDesignHash` (assembly identity).
  *
  * The SDK holds NO clause-spec cache. Every function takes a `SpecSource` —
  * the consumer's window onto the live ClauseRegistry→IPFS spec set. A spec
@@ -25,7 +25,7 @@
  * catalog and member-profile folds write). `parseProjectionHints` extracts
  * exactly those from a raw spec document; everything else in `block` is
  * presentation the SDK never reads. No fingerprint function reads `block`:
- * `computeClauseKey` leaves it out, and `agreementHashOf`, `assemblyHashOf`
+ * `computeClauseKey` leaves it out, and `agreementHashOf`, `processDesignHashOf`
  * and `computeCheckoutHash` read clause keys and data only. Another frontend
  * may collect the data differently; both parties sign one `checkoutHash` over
  * one agreement, which either recomputes from the agreement alone. (A
@@ -46,14 +46,14 @@ import {
     agreementHashOf,
     assertNotReservedKey,
     resolveAuthoredClauseKeys,
-    assemblyHashOf,
+    processDesignHashOf,
     agreementClauses,
-    assemblyFollows,
-    deriveAssemblySlug,
-    type Assembly,
+    processDesignFollows,
+    deriveProcessDesignSlug,
+    type ProcessDesign,
     type RegisteredAgreement,
-    type AssemblyAgreement,
-    type HydratedAssembly,
+    type ProcessDesignAgreement,
+    type HydratedProcessDesign,
 } from "./assembly.js";
 import { fieldCarriesPrivate, fieldSetRuleErrors, validateContent, type ClauseSpec, type FieldSpec } from "./clauses/index.js";
 import { generateSalt } from "./commitments.js";
@@ -284,7 +284,7 @@ function isEmptyAnchor(data: Readonly<Record<string, unknown>>): boolean {
  *  composed ONCE for the whole design and folded into EVERY agreement at
  *  checkout so every party signs them. Every other clause is agreement-scoped:
  *  a term of one relationship, composed per-order. */
-export function specIsAssemblyScoped(spec: ProjectionSpecView): boolean {
+export function specIsProcessScoped(spec: ProjectionSpecView): boolean {
     return spec.hints?.scope === "assembly";
 }
 
@@ -521,10 +521,10 @@ interface DesignOrderBag {
  *  per assembly agreement binding the registered agreement the provenance
  *  names — the assembly-scoped clauses with that agreement's clauses (its
  *  registered agreement's, its own fills over them) beside them, as the
- *  assembly walk builds every order's bag (`planAssemblyOrders`), and the
+ *  assembly walk builds every order's bag (`planProcessOrders`), and the
  *  number of entries that entry follows. */
 function designClauseBags(
-    design: HydratedAssembly,
+    design: HydratedProcessDesign,
     agreementHash: Hex,
 ): DesignOrderBag[] {
     const assemblyClauses = design.assembly.assemblyClauses ?? {};
@@ -540,7 +540,7 @@ function designClauseBags(
             // the assembly-scoped clauses the walk folds into every order.
             const required = new Set(Object.keys(composed).map((key) => key.toLowerCase()));
             for (const key of Object.keys(assemblyClauses)) required.add(key.toLowerCase());
-            return { clauses, required: [...required], edges: assemblyFollows(entry).length };
+            return { clauses, required: [...required], edges: processDesignFollows(entry).length };
         });
 }
 
@@ -594,33 +594,33 @@ function designerValueIssues(
 function designIssues(
     agreement: Agreement,
     specs: SpecSource,
-    design: HydratedAssembly | null,
+    design: HydratedProcessDesign | null,
 ): CommitmentAgreementIssue[] {
     const provenance = agreement.provenance;
     // A provenance that is not two 32-byte keys does not encode: the merkle
     // check reports it.
-    if (provenance !== undefined && !(isBytes32Hex(provenance.agreementHash) && isBytes32Hex(provenance.assemblyHash))) return [];
+    if (provenance !== undefined && !(isBytes32Hex(provenance.agreementHash) && isBytes32Hex(provenance.processDesignHash))) return [];
     if (design == null) {
         return provenance === undefined ? [] : [{
             clause: "(provenance)",
-            path: "assemblyHash",
-            message: `the agreement instantiates assembly ${provenance.assemblyHash}, which was not read, so its designer values cannot be checked`,
+            path: "processDesignHash",
+            message: `the agreement instantiates assembly ${provenance.processDesignHash}, which was not read, so its designer values cannot be checked`,
         }];
     }
     if (provenance === undefined) {
-        return [{ clause: "(provenance)", path: "assemblyHash", message: `the agreement names no design, so its designer values cannot be checked` }];
+        return [{ clause: "(provenance)", path: "processDesignHash", message: `the agreement names no design, so its designer values cannot be checked` }];
     }
-    let assemblyHash: Hex;
+    let processDesignHash: Hex;
     try {
-        assemblyHash = assemblyHashOf(design.assembly);
+        processDesignHash = processDesignHashOf(design.assembly);
     } catch (cause) {
-        return [{ clause: "(provenance)", path: "assemblyHash", message: `the design does not hash: ${cause instanceof Error ? cause.message : String(cause)}` }];
+        return [{ clause: "(provenance)", path: "processDesignHash", message: `the design does not hash: ${cause instanceof Error ? cause.message : String(cause)}` }];
     }
-    if (assemblyHash.toLowerCase() !== provenance.assemblyHash.toLowerCase()) {
+    if (processDesignHash.toLowerCase() !== provenance.processDesignHash.toLowerCase()) {
         return [{
             clause: "(provenance)",
-            path: "assemblyHash",
-            message: `the agreement instantiates assembly ${provenance.assemblyHash}; the design read is ${assemblyHash}`,
+            path: "processDesignHash",
+            message: `the agreement instantiates assembly ${provenance.processDesignHash}; the design read is ${processDesignHash}`,
         }];
     }
     let bags: DesignOrderBag[];
@@ -633,7 +633,7 @@ function designIssues(
         return [{
             clause: "(provenance)",
             path: "agreementHash",
-            message: `assembly ${provenance.assemblyHash} binds no registered agreement ${provenance.agreementHash}`,
+            message: `assembly ${provenance.processDesignHash} binds no registered agreement ${provenance.agreementHash}`,
         }];
     }
     // The order matches one of the design's orders for that registered
@@ -651,7 +651,7 @@ function designIssues(
     // content or withheld — is a term the signer never selected, so it is
     // refused whatever it carries.
     const carried = new Set(agreement.clauses.map((s) => s.clause.toLowerCase()));
-    const named = `assembly ${deriveAssemblySlug(provenance.assemblyHash)} (${provenance.assemblyHash})`;
+    const named = `assembly ${deriveProcessDesignSlug(provenance.processDesignHash)} (${provenance.processDesignHash})`;
     let first: CommitmentAgreementIssue[] | undefined;
     for (const bag of bags) {
         const found: CommitmentAgreementIssue[] = bag.required
@@ -691,7 +691,7 @@ function designIssues(
  *  fills and each registered agreement's clauses. A design is public and the
  *  same in every order, so any such value blinds nothing. A clause whose spec
  *  is not loaded is passed over (the agreement's own check refuses it). */
-function designBlindingValues(design: HydratedAssembly, specs: SpecSource): Map<string, Map<string, unknown>> {
+function designBlindingValues(design: HydratedProcessDesign, specs: SpecSource): Map<string, Map<string, unknown>> {
     const found = new Map<string, Map<string, unknown>>();
     const scan = (bag: Readonly<Record<string, Record<string, unknown>>> | undefined) => {
         for (const [clauseKey, data] of Object.entries(bag ?? {})) {
@@ -718,7 +718,7 @@ function designBlindingValues(design: HydratedAssembly, specs: SpecSource): Map<
 function designBlindingIssues(
     agreement: Agreement,
     specs: SpecSource,
-    design: HydratedAssembly,
+    design: HydratedProcessDesign,
 ): CommitmentAgreementIssue[] {
     const issues: CommitmentAgreementIssue[] = [];
     const designed = designBlindingValues(design, specs);
@@ -883,7 +883,7 @@ export function validateCommitmentAgreement(
     expectedHash: `0x${string}`,
     specs: SpecSource,
     commitment: Commitment,
-    design: HydratedAssembly | null,
+    design: HydratedProcessDesign | null,
 ): { ok: boolean; issues: CommitmentAgreementIssue[] } {
     const issues: CommitmentAgreementIssue[] = [];
     // Each blinding value met so far in this agreement, lowercased → its clause.
@@ -949,11 +949,11 @@ export function validateCommitmentAgreement(
     // required by its spec), so only a pin that IS present is compared.
     const pinClause = currencyPinClause(agreement, specs);
     const pin = addressLeaf(pinClause, "currency");
-    if (pinClause && pin && pin.toLowerCase() !== commitment.currency.toLowerCase()) {
+    if (pinClause && pin && pin.toLowerCase() !== commitment.token.toLowerCase()) {
         issues.push({
             clause: pinClause.clause,
             path: "currency",
-            message: `this assembly is denominated by design (${pin}); the commitment currency ${commitment.currency} contradicts the pinned term`,
+            message: `this assembly is denominated by design (${pin}); the commitment currency ${commitment.token} contradicts the pinned term`,
         });
     }
 
@@ -1001,7 +1001,7 @@ export function assertAgreementSignable(
     expectedHash: `0x${string}`,
     specs: SpecSource,
     commitment: Commitment,
-    design: HydratedAssembly | null,
+    design: HydratedProcessDesign | null,
     label = "This order",
 ): void {
     const check = validateCommitmentAgreement(agreement, expectedHash, specs, commitment, design);
@@ -1046,7 +1046,7 @@ export function clauseByField(
 
 /** The DAG slice of a design-time order the assembly build reads:
  *  its (synthetic) hash and its parent edges. */
-export interface AssemblyOrderNode {
+export interface ProcessOrderNode {
     orderHash: string;
     follows?: readonly string[];
 }
@@ -1091,8 +1091,8 @@ function clauseLabel(clauseKey: string, spec: ProjectionSpecView | undefined): s
  *  agreements newly composed for it, keyed by `agreementHashOf` — the ones to
  *  pin and register on `AgreementRegistry` (one stake each; a key already
  *  registered is skipped) before the assembly is registered. */
-export interface BuiltAssembly {
-    assembly: Assembly;
+export interface BuiltProcessDesign {
+    assembly: ProcessDesign;
     agreements: Record<Hex, RegisteredAgreement>;
 }
 
@@ -1104,7 +1104,7 @@ export interface BuiltAssembly {
  *  The result is the registered agreement's
  *  document and its key — what `AgreementRegistry` takes, whether the
  *  designer registers it on its own or an assembly's publish registers it
- *  for an agreement. `buildAssembly` composes every new agreement through
+ *  for an agreement. `buildProcessDesign` composes every new agreement through
  *  this one function.
  *
  *  The agreement carries exactly the clauses the designer selected: nothing
@@ -1121,7 +1121,7 @@ export function composeOrderAgreement(args: {
         if (!spec) {
             throw new Error(`clause ${clauseKey} is composed on an order but its spec is not loaded`);
         }
-        if (specIsAssemblyScoped(spec)) {
+        if (specIsProcessScoped(spec)) {
             throw new Error(
                 `${clauseLabel(clauseKey, spec)} declares design.scope "assembly" — compose it once at the assembly level, not on an order`,
             );
@@ -1150,11 +1150,11 @@ export function composeOrderAgreement(args: {
  *  (composition time is the only place; checkout adds no clause). Each entry carries its own topology as `follows`, the local
  *  labels of the entries whose orders it follows (`[]` on the root); a
  *  registered agreement names none. */
-export function buildAssembly(args: {
+export function buildProcessDesign(args: {
     name?: string;
     summary?: string;
     description?: string;
-    orders: readonly AssemblyOrderNode[];
+    orders: readonly ProcessOrderNode[];
     /** orderId → clauseKey → the designer's composed values. */
     clausesByOrderId: Readonly<Record<string, Readonly<Record<Hex, Record<string, unknown>>>>>;
     /** orderId → the registered agreement (hydrated and verified against
@@ -1166,7 +1166,7 @@ export function buildAssembly(args: {
      *  (clauseKey → the designer's values). Optional; absent = none. */
     assemblyClauses?: Readonly<Record<Hex, Record<string, unknown>>>;
     specs: SpecSource;
-}): BuiltAssembly {
+}): BuiltProcessDesign {
     const { name, summary, description, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, specs } = args;
     // SCOPE VERIFICATION: a clause binds where its spec
     // declares — an assembly-scoped clause composed on an order (or an
@@ -1184,7 +1184,7 @@ export function buildAssembly(args: {
     for (const clauseMap of Object.values(clausesByOrderId)) {
         for (const clauseKey of Object.keys(clauseMap) as Hex[]) {
             const spec = composedSpec(clauseKey, "on an order");
-            if (specIsAssemblyScoped(spec)) {
+            if (specIsProcessScoped(spec)) {
                 throw new Error(
                     `${clauseLabel(clauseKey, spec)} declares design.scope "assembly" — compose it once at the assembly level, not on an order`,
                 );
@@ -1193,7 +1193,7 @@ export function buildAssembly(args: {
     }
     for (const clauseKey of Object.keys(assemblyClauses ?? {}) as Hex[]) {
         const spec = composedSpec(clauseKey, "at the assembly level");
-        if (!specIsAssemblyScoped(spec)) {
+        if (!specIsProcessScoped(spec)) {
             throw new Error(
                 `${clauseLabel(clauseKey, spec)} does not declare design.scope "assembly" — compose it on an order, not at the assembly level`,
             );
@@ -1210,7 +1210,7 @@ export function buildAssembly(args: {
         assemblySelection[clauseKey] = designFillValues(specs.get(clauseKey), values);
     }
     const agreements: Record<Hex, RegisteredAgreement> = {};
-    const entries: AssemblyAgreement[] = orders.map((order, i) => {
+    const entries: ProcessDesignAgreement[] = orders.map((order, i) => {
         const id = `agreement-${i}`;
         const parents = (order.follows ?? []).map((p) => idToLocal.get(p) ?? p);
         const bound = registeredByOrderId?.[order.orderHash];
@@ -1311,16 +1311,16 @@ export function composeAuthoredAgreements(
  * registers it — and carries the written `follows` (`[]` when absent). Returns the assembly and each DISTINCT agreement once, keyed.
  * Seed time only.
  */
-export function assembleAuthored(
+export function composeAuthoredProcessDesign(
     authored: object,
     agreementsByName: Readonly<Record<string, RegisteredAgreement>>,
     specs: SpecSource,
-): BuiltAssembly {
+): BuiltProcessDesign {
     const doc = resolveAuthoredClauseKeys(authored, specs) as {
         name?: string;
         summary?: string;
         description?: string;
-        faq?: Assembly["faq"];
+        faq?: ProcessDesign["faq"];
         assemblyClauses?: Record<Hex, Record<string, unknown>>;
         agreements?: { id?: string; agreement?: string; follows?: string[]; clauses?: unknown }[];
     };
@@ -1328,7 +1328,7 @@ export function assembleAuthored(
         throw new Error("the authored assembly has no agreements");
     }
     const agreements: Record<Hex, RegisteredAgreement> = {};
-    const entries: AssemblyAgreement[] = doc.agreements.map((entry, i) => {
+    const entries: ProcessDesignAgreement[] = doc.agreements.map((entry, i) => {
         const id = entry.id ?? `agreement-${i}`;
         if (typeof entry.agreement !== "string" || entry.agreement.length === 0) {
             throw new Error(`${id} names no agreement — write the authored agreement's name as "agreement"`);
@@ -1362,7 +1362,7 @@ export function assembleAuthored(
  * assembly is written once and anchored on every chain, but the token it is
  * denominated in exists only on a deployed chain (the devnet's deployment,
  * Sepolia's ruled token), so the written file leaves the pin unfilled and the
- * seeding fills it before anchoring: the anchored `assemblyHash` is over the
+ * seeding fills it before anchoring: the anchored `processDesignHash` is over the
  * filled assembly, never the written one. Unfilled, the pin is what the format
  * reads it as, a required field missing, so the written file signs nothing as
  * it stands. Read by the spec's shape, never by a clause or field name: every
@@ -1383,7 +1383,7 @@ export function fillDeployTimeCurrency<T extends { assemblyClauses?: Record<stri
     let filledAny = false;
     const filled = Object.fromEntries(Object.entries(entries).map(([clauseKey, values]) => {
         const spec = specs.get(clauseKey as Hex);
-        if (!spec || !specIsAssemblyScoped(spec) || spec.hints?.article !== "denomination") return [clauseKey, values];
+        if (!spec || !specIsProcessScoped(spec) || spec.hints?.article !== "denomination") return [clauseKey, values];
         const next: Record<string, unknown> = { ...(values ?? {}) };
         for (const field of spec.fields) {
             if (field.type !== "string" || field.format !== "address-hex") continue;
@@ -1398,9 +1398,9 @@ export function fillDeployTimeCurrency<T extends { assemblyClauses?: Record<stri
     return filledAny ? { ...assembly, assemblyClauses: filled } : assembly;
 }
 
-export function serializeAssembly(assembly: Assembly): {
+export function serializeProcessDesign(assembly: ProcessDesign): {
     json: string;
-    assemblyHash: `0x${string}`;
+    processDesignHash: `0x${string}`;
 } {
     // The pinned document carries everything — INCLUDING the editorial
     // name/summary/description. But the assembly hash (→ slug + on-chain
@@ -1408,6 +1408,6 @@ export function serializeAssembly(assembly: Assembly): {
     // fork identity: identical compositions collapse to one binding regardless
     // of their prose.
     const json = canonicalize(assembly);
-    const assemblyHash = assemblyHashOf(assembly);
-    return { json, assemblyHash };
+    const processDesignHash = processDesignHashOf(assembly);
+    return { json, processDesignHash };
 }

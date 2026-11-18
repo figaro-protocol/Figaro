@@ -4,11 +4,11 @@
  * `agreement-<j>` labels of the entries it follows). Each authored agreement
  * becomes a registered agreement over its clauses, and its entry carries the
  * `follows` labels, as the seeding derives a reference assembly
- * (`composeAuthoredAgreement`, `assembleAuthored`), so a test's clause set
+ * (`composeAuthoredAgreement`, `composeAuthoredProcessDesign`), so a test's clause set
  * is the one it wrote.
  */
 import type { Hex } from "viem";
-import { agreementHashOf, assemblyHashOf, type RegisteredAgreement, type HydratedAssembly, type AssemblyAgreement } from "../src/assembly.js";
+import { agreementHashOf, processDesignHashOf, type RegisteredAgreement, type HydratedProcessDesign, type ProcessDesignAgreement } from "../src/assembly.js";
 import type { MemberProfileReader } from "../src/memberProfile.js";
 
 export interface AuthoredAssembly {
@@ -20,9 +20,9 @@ export interface AuthoredAssembly {
     agreements: { id: string; clauses: Record<Hex, Record<string, unknown>>; follows?: string[] }[];
 }
 
-export function hydrateAuthored(authored: AuthoredAssembly): HydratedAssembly {
+export function hydrateAuthored(authored: AuthoredAssembly): HydratedProcessDesign {
     const agreements: Record<Hex, RegisteredAgreement> = {};
-    const entries: AssemblyAgreement[] = authored.agreements.map((entry) => {
+    const entries: ProcessDesignAgreement[] = authored.agreements.map((entry) => {
         const clauses = { ...entry.clauses };
         const agreementHash = agreementHashOf({ clauses });
         agreements[agreementHash.toLowerCase() as Hex] = { clauses };
@@ -36,13 +36,13 @@ export function hydrateAuthored(authored: AuthoredAssembly): HydratedAssembly {
  *  binds exactly the given assemblies — what a seller's own profile,
  *  MembersRegistry → metadataURI → IPFS, returns once the seller has bound
  *  them. */
-export function profileBinding(...hydrated: HydratedAssembly[]): MemberProfileReader {
+export function profileBinding(...hydrated: HydratedProcessDesign[]): MemberProfileReader {
     return async (member) => ({
         name: "Test member",
-        assemblyBindings: hydrated.map((h, i) => ({
+        processBindings: hydrated.map((h, i) => ({
             bindingId: `test-${i}`,
             subjectAddress: member,
-            assemblyHash: assemblyHashOf(h.assembly),
+            processDesignHash: processDesignHashOf(h.assembly),
         })),
     });
 }

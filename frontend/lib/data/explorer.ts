@@ -159,7 +159,7 @@ export interface MarketCadence {
 }
 
 export interface MarketRow {
-    /** The attribution key — the assemblyHash the parties declared. */
+    /** The attribution key — the processDesignHash the parties declared. */
     key: string;
     /** The registered assembly's name when the registry resolves the key,
      *  else the key itself: an unresolved attribution is never given a name
@@ -188,7 +188,7 @@ function medianGap(blocks: readonly number[]): number | null {
  * Project the SDK's market-shape answer into display rows.
  *
  * `nameOf` resolves an attribution key to a registered assembly's name (the
- * `AssemblyRegistry` read the page already does); returning undefined leaves
+ * `ProcessRegistry` read the page already does); returning undefined leaves
  * the row named by its key alone.
  */
 export function marketRows(shape: MarketShape, nameOf: (key: string) => string | undefined): MarketRow[] {
@@ -240,7 +240,7 @@ export interface ProcessRow {
     rootBuyer: string;
     currency: string;
     /** The accumulator at the process's last link. */
-    cumulativeValue: bigint;
+    runningTotal: bigint;
     orderCount: number;
     resolved: boolean;
     /** The block of the process's FIRST commit — CHAIN time, never a wall
@@ -256,7 +256,7 @@ function toProcessRow(process: Process): ProcessRow {
         processId: process.processId,
         rootBuyer: process.rootBuyer,
         currency: process.currency,
-        cumulativeValue: process.cumulativeValue,
+        runningTotal: process.runningTotal,
         orderCount: orders.length,
         resolved: process.resolved,
         firstBlock: blocks.length > 0 ? Math.min(...blocks) : null,
@@ -507,7 +507,7 @@ export interface WalletOrderRow {
     counterparty: string;
     currency: string;
     payment: bigint;
-    cumulativeValue: bigint;
+    runningTotal: bigint;
     resolved: boolean;
     blockNumber: number;
     text: string;
@@ -527,7 +527,7 @@ export function walletOrderRows(record: WalletRecord): WalletOrderRow[] {
                 counterparty: side === "buyer" ? o.seller : o.buyer,
                 currency: o.currency,
                 payment: o.payment,
-                cumulativeValue: o.cumulativeValue,
+                runningTotal: o.runningTotal,
                 resolved: o.state === OrderState.Resolved,
                 blockNumber: o.blockNumber,
                 text: [o.orderHash, o.processId, o.buyer, o.seller, o.currency].join(" "),

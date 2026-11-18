@@ -183,7 +183,7 @@ pub fn bonds_of(c: &Commitment) -> (U256, U256) {
     let two = U256::from(2u64);
     (
         c.payment.saturating_mul(two),
-        c.expected_cumulative_value.saturating_mul(two),
+        c.running_total.saturating_mul(two),
     )
 }
 
@@ -199,7 +199,7 @@ pub async fn check_commit_funding(
         .parse()
         .map_err(|e| format!("invalid RPC_URL: {e}"))?;
     let provider = ProviderBuilder::new().connect_http(url);
-    let token = IERC20Funding::new(c.currency, &provider);
+    let token = IERC20Funding::new(c.token, &provider);
     let (buyer_need, seller_need) = bonds_of(c);
     for (label, who, need) in [
         ("buyer", c.buyer, buyer_need),
@@ -263,14 +263,11 @@ pub fn allocate_funding(
         }
         let mut verdict = Ok(());
         for (label, who, bond) in &need {
-            let Some(&(balance, allowance)) = funds.get(&(c.currency, *who)) else {
+            let Some(&(balance, allowance)) = funds.get(&(c.token, *who)) else {
                 verdict = Err((format!("funding unverifiable, dropped conservatively: {label} {who}'s balance and allowance could not be read"), *who));
                 break;
             };
-            let before = committed
-                .get(&(c.currency, *who))
-                .copied()
-                .unwrap_or_default();
+            let before = committed.get(&(c.token, *who)).copied().unwrap_or_default();
             if !commit_funded(balance, allowance, before + bond) {
                 verdict = Err((format!(
                     "unfunded commitment: {label} {who} holds {balance} and allows {allowance} to the verifier; this batch already draws {before} and the bond needs {bond}"
@@ -281,7 +278,7 @@ pub fn allocate_funding(
         match verdict {
             Ok(()) => {
                 for (_, who, bond) in need {
-                    *committed.entry((c.currency, who)).or_default() += bond;
+                    *committed.entry((c.token, who)).or_default() += bond;
                 }
                 valid.push(op);
             }
@@ -309,8 +306,8 @@ pub async fn filter_funded_commits(
     for op in &pending {
         if let KernelOp::Commit { commitment: c, .. } = &op.op {
             for who in [c.buyer, c.seller] {
-                if !wallets.contains(&(c.currency, who)) {
-                    wallets.push((c.currency, who));
+                if !wallets.contains(&(c.token, who)) {
+                    wallets.push((c.token, who));
                 }
             }
         }
@@ -496,7 +493,7 @@ pub fn wallet_code_question(
         } => {
             let buyer = commitments.first()?.buyer;
             // The value the verifier derives: the listed payments' sum.
-            let value = figaro_kernel::operation_stream::resolved_cumulative_value(commitments)?;
+            let value = figaro_kernel::operation_stream::resolved_running_total(commitments)?;
             let digest = typed_data_hash(&domain, &resolve_struct_hash(process_id, &value));
             Some((buyer, digest, authorization.clone()))
         }
@@ -816,7 +813,7 @@ sol! {
         }
 
         struct BatchUseCall {
-            bytes32 clauseOrAssembly;
+            bytes32 clauseOrProcess;
             uint8 kind;
             bytes32 processId;
             address seller;
@@ -861,7 +858,7 @@ sol! {
     #[sol(rpc)]
     interface IUsageCounter {
         function currentPeriod() external view returns (uint8);
-        function processCounted(uint8 kind, bytes32 clauseOrAssembly, bytes32 processId) external view returns (bool);
+        function processCounted(uint8 kind, bytes32 clauseOrProcess, bytes32 processId) external view returns (bool);
     }
 }
 
@@ -880,8 +877,8 @@ sol! {
 
 sol! {
     #[sol(rpc)]
-    interface IAssemblyRegistry {
-        function bindings(bytes32 assemblyHash)
+    interface IProcessRegistry {
+        function bindings(bytes32 processDesignHash)
             external
             view
             returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI);
@@ -922,7 +919,7 @@ pub struct SubmitterConfig {
     /// one configured, a read against a registry left `Address::ZERO` fails
     /// and drops the claim (see `filter_usage_claims`).
     pub clause_registry_address: Address,
-    pub assembly_registry_address: Address,
+    pub process_registry_address: Address,
     pub agreement_registry_address: Address,
     pub members_registry_address: Address,
     pub private_key: String,
@@ -1003,7 +1000,7 @@ pub async fn filter_usage_claims(
         None => return (claims, dropped), // unparsable RPC — leave to the on-chain backstop
     };
     let clauses = IClauseRegistry::new(config.clause_registry_address, &provider);
-    let assemblies = IAssemblyRegistry::new(config.assembly_registry_address, &provider);
+    let assemblies = IProcessRegistry::new(config.process_registry_address, &provider);
     let agreements = IAgreementRegistry::new(config.agreement_registry_address, &provider);
     let members = IMembersRegistry::new(config.members_registry_address, &provider);
     let counter = IUsageCounter::new(config.usage_counter_address, &provider);
@@ -1022,7 +1019,7 @@ pub async fn filter_usage_claims(
             // key's own registry (clause, agreement or assembly, matching the kind).
             let live = match claim.kind {
                 UsageClaimKind::Clause { .. } => {
-                    match clauses.depositOf(claim.clause_or_assembly).call().await {
+                    match clauses.depositOf(claim.clause_or_process).call().await {
                         Ok(d) => d.registeredBy != Address::ZERO && !d.withdrawn,
                         Err(e) => {
                             return Err(format!(
@@ -1032,8 +1029,8 @@ pub async fn filter_usage_claims(
                         }
                     }
                 }
-                UsageClaimKind::Assembly { .. } => {
-                    match assemblies.bindings(claim.clause_or_assembly).call().await {
+                UsageClaimKind::Process { .. } => {
+                    match assemblies.bindings(claim.clause_or_process).call().await {
                         Ok(b) => {
                             b.registeredBy != Address::ZERO
                                 && b.registeredAt != 0
@@ -1048,7 +1045,7 @@ pub async fn filter_usage_claims(
                     }
                 }
                 UsageClaimKind::Agreement { .. } => {
-                    match agreements.bindings(claim.clause_or_assembly).call().await {
+                    match agreements.bindings(claim.clause_or_process).call().await {
                         Ok(b) => {
                             b.registeredBy != Address::ZERO
                                 && b.registeredAt != 0
@@ -1085,7 +1082,7 @@ pub async fn filter_usage_claims(
             let (_, process_id) =
                 figaro_kernel::kernel::derive_commitment_ids(&domain, &claim.order);
             match counter
-                .processCounted(claim.kind.code(), claim.clause_or_assembly, process_id)
+                .processCounted(claim.kind.code(), claim.clause_or_process, process_id)
                 .call()
                 .await
             {
@@ -1114,8 +1111,8 @@ pub async fn filter_usage_claims(
 /// agreement-position agreementHash.
 fn names_a_reserved_key(claim: &UsageClaim) -> bool {
     use figaro_kernel::kernel::is_reserved_key;
-    is_reserved_key(&claim.clause_or_assembly)
-        || matches!(&claim.kind, UsageClaimKind::Assembly { agreement_hash, .. } if is_reserved_key(agreement_hash))
+    is_reserved_key(&claim.clause_or_process)
+        || matches!(&claim.kind, UsageClaimKind::Process { agreement_hash, .. } if is_reserved_key(agreement_hash))
 }
 
 /// Submit a proved batch to the on-chain FigaroBatchVerifier, its gas limit
@@ -1282,7 +1279,7 @@ pub fn settle_call_args(
             .uses
             .iter()
             .map(|u| IFigaroBatchVerifier::BatchUseCall {
-                clauseOrAssembly: u.clause_or_assembly,
+                clauseOrProcess: u.clause_or_process,
                 kind: u.kind,
                 processId: u.process_id,
                 seller: u.seller,
@@ -1455,7 +1452,7 @@ mod tests {
     fn bonds_are_the_kernels_arithmetic() {
         let mut c = dummy_claim().order;
         c.payment = U256::from(100u64);
-        c.expected_cumulative_value = U256::from(150u64);
+        c.running_total = U256::from(150u64);
         assert_eq!(bonds_of(&c), (U256::from(200u64), U256::from(300u64)));
     }
 
@@ -1468,7 +1465,7 @@ mod tests {
             key: B256::repeat_byte(0x01),
             op: KernelOp::Resolve {
                 process_id: B256::ZERO,
-                cumulative_value: alloy::primitives::U256::ZERO,
+                running_total: alloy::primitives::U256::ZERO,
                 commitments: vec![],
                 buyer_sig: figaro_kernel::types::Signature {
                     v: 27,
@@ -1526,7 +1523,7 @@ mod tests {
                 key: B256::repeat_byte(0x02),
                 op: KernelOp::Resolve {
                     process_id: B256::ZERO,
-                    cumulative_value: alloy::primitives::U256::ZERO,
+                    running_total: alloy::primitives::U256::ZERO,
                     commitments: vec![],
                     buyer_sig: sig,
                 },
@@ -1599,7 +1596,7 @@ mod tests {
             verifier_address: Address::ZERO,
             usage_counter_address: Address::ZERO,
             clause_registry_address: clause,
-            assembly_registry_address: assembly,
+            process_registry_address: assembly,
             agreement_registry_address: Address::ZERO,
             members_registry_address: members,
             private_key: String::new(),
@@ -1612,14 +1609,14 @@ mod tests {
                 process_id: B256::ZERO,
                 buyer: Address::ZERO,
                 seller: Address::repeat_byte(0x11),
-                currency: Address::ZERO,
+                token: Address::ZERO,
                 payment: U256::from(1),
-                expected_cumulative_value: U256::from(1),
+                running_total: U256::from(1),
                 checkout_hash: B256::ZERO,
                 salt: U256::ZERO,
-                deadline: U256::ZERO,
+                commit_deadline: U256::ZERO,
             },
-            clause_or_assembly: B256::repeat_byte(0xAB),
+            clause_or_process: B256::repeat_byte(0xAB),
             kind: UsageClaimKind::Clause {
                 clause_data_hash: B256::ZERO,
             },
@@ -1649,12 +1646,12 @@ mod tests {
     async fn drops_a_claim_keyed_on_the_provenance_leaf_without_touching_the_chain() {
         let config = dummy_config(Address::ZERO, Address::ZERO, Address::ZERO);
         let mut reserved = dummy_claim();
-        reserved.clause_or_assembly = figaro_kernel::kernel::PROVENANCE_LEAF_KEY;
+        reserved.clause_or_process = figaro_kernel::kernel::PROVENANCE_LEAF_KEY;
         let (valid, dropped) = filter_usage_claims(&config, vec![reserved, dummy_claim()]).await;
         assert_eq!(valid.len(), 1, "the ordinary claim passes through");
         assert_eq!(dropped.len(), 1, "the reserved-key claim is dropped");
         assert_eq!(
-            dropped[0].0.clause_or_assembly,
+            dropped[0].0.clause_or_process,
             figaro_kernel::kernel::PROVENANCE_LEAF_KEY
         );
     }
@@ -1742,7 +1739,7 @@ mod tests {
             verifier_address: Address::ZERO,
             usage_counter_address: COUNTER,
             clause_registry_address: CLAUSES,
-            assembly_registry_address: ASSEMBLIES,
+            process_registry_address: ASSEMBLIES,
             agreement_registry_address: AGREEMENTS,
             members_registry_address: MEMBERS,
             private_key: String::new(),
@@ -1751,9 +1748,9 @@ mod tests {
 
     fn agreement_claim(key: B256) -> UsageClaim {
         let mut claim = dummy_claim();
-        claim.clause_or_assembly = key;
+        claim.clause_or_process = key;
         claim.kind = UsageClaimKind::Agreement {
-            assembly_hash: B256::repeat_byte(0xA5),
+            process_design_hash: B256::repeat_byte(0xA5),
         };
         claim
     }
@@ -1786,8 +1783,8 @@ mod tests {
         .await;
 
         assert_eq!(valid.len(), 1, "only the registered agreement passes");
-        assert_eq!(valid[0].clause_or_assembly, registered);
-        let mut refused: Vec<B256> = dropped.iter().map(|(c, _)| c.clause_or_assembly).collect();
+        assert_eq!(valid[0].clause_or_process, registered);
+        let mut refused: Vec<B256> = dropped.iter().map(|(c, _)| c.clause_or_process).collect();
         refused.sort();
         assert_eq!(refused, vec![unregistered, assembly_only]);
         for (_, why) in &dropped {
@@ -1817,9 +1814,9 @@ mod tests {
         .await;
 
         assert_eq!(valid.len(), 1);
-        assert_eq!(valid[0].clause_or_assembly, fresh);
+        assert_eq!(valid[0].clause_or_process, fresh);
         assert_eq!(dropped.len(), 1);
-        assert_eq!(dropped[0].0.clause_or_assembly, counted);
+        assert_eq!(dropped[0].0.clause_or_process, counted);
         assert!(dropped[0].1.contains("already counted"), "{}", dropped[0].1);
     }
 
@@ -1829,21 +1826,21 @@ mod tests {
     // Pure: the rpc here is unreachable.
     #[tokio::test]
     async fn drops_claims_naming_either_reserved_key_without_touching_the_chain() {
-        use figaro_kernel::kernel::{ASSEMBLY_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY};
+        use figaro_kernel::kernel::{PROCESS_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY};
         let config = dummy_config(Address::ZERO, Address::ZERO, Address::ZERO);
         let slot_naming = |agreement_hash: B256| {
             let mut claim = dummy_claim();
-            claim.kind = UsageClaimKind::Assembly {
+            claim.kind = UsageClaimKind::Process {
                 agreement_hash,
-                slot_content_hash: B256::repeat_byte(0x5C),
+                agreement_content_hash: B256::repeat_byte(0x5C),
                 membership_proof: vec![],
             };
             claim
         };
         let claims = vec![
-            agreement_claim(ASSEMBLY_TERMS_LEAF_KEY),
+            agreement_claim(PROCESS_TERMS_LEAF_KEY),
             agreement_claim(PROVENANCE_LEAF_KEY),
-            slot_naming(ASSEMBLY_TERMS_LEAF_KEY),
+            slot_naming(PROCESS_TERMS_LEAF_KEY),
             slot_naming(PROVENANCE_LEAF_KEY),
             dummy_claim(),
         ];
@@ -1946,7 +1943,7 @@ mod tests {
         order.buyer = buyer;
         KernelOp::ResolveByWalletCode {
             process_id: order.process_id,
-            cumulative_value: order.payment,
+            running_total: order.payment,
             commitments: vec![order],
             authorization: Bytes::from_static(b"guardian-approval"),
         }

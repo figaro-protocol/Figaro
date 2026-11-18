@@ -8,7 +8,7 @@
  * THE OBJECT UNDER TEST — three contracts and one off-chain guest:
  *
  *   FigaroCore            (src/core/kernel/FigaroCore.sol)
- *       commit()          → locks buyer 2×payment, seller 2×cumulativeValue
+ *       commit()          → locks buyer 2×payment, seller 2×runningTotal
  *       resolveProcess()  → buyer-triggered, ATOMIC over a process's orders,
  *                           flips orderStatus 1 → 2
  *
@@ -95,7 +95,7 @@
  *                             tally, and that the running total is maintained
  *                             as a delta
  *   registry liveness       — MembersRegistry / ClauseRegistry /
- *                             AssemblyRegistry / AgreementRegistry stakes are
+ *                             ProcessRegistry / AgreementRegistry stakes are
  *                             assumed LIVE; the
  *                             one gate whose failure has a permanent
  *                             consequence (the period race) is modeled
@@ -116,7 +116,7 @@ EXTENDS Integers, FiniteSets, TLC
 CONSTANTS
   Buyers,                    \* non-empty finite set of buyer addresses
   Sellers,                   \* non-empty finite set of seller addresses
-  Artifacts,                 \* (kind, key) pairs: clause keys / assembly assemblyHashes / agreementHashes
+  Artifacts,                 \* (kind, key) pairs: clause keys / assembly processDesignHashes / agreementHashes
   InitialBalance,            \* starting token balance per participant
   MaxPayment,                \* 1..MaxPayment are valid payments
   MaxProcesses,              \* upper bound on process identities
@@ -222,8 +222,8 @@ KOpenOrds(pid) == { o \in BlockOf(pid): kStatus[o] = "Committed" }
 GOpenOrds(pid) == { o \in BlockOf(pid): gStatus[o] = "Committed" }
 
 \* Total tokens an order releases at resolution: sellerPayout + buyerPayout
-\* = (2·cumulativeValue + payment) + payment. Equal to what commit deposited
-\* (2·payment + 2·cumulativeValue) — per-order conservation.
+\* = (2·runningTotal + payment) + payment. Equal to what commit deposited
+\* (2·payment + 2·runningTotal) — per-order conservation.
 KRelease == [o \in Orders |-> 2 * kRec[o].cum + 2 * kRec[o].pay]
 GRelease == [o \in Orders |-> 2 * gRec[o].cum + 2 * gRec[o].pay]
 

@@ -12,7 +12,7 @@
  * The agent (human or autonomous) decides which to execute.
  */
 
-import type { Hex, Address, Process, Commitment, ResolutionBreakdown, RegisteredAssembly } from "../types.js";
+import type { Hex, Address, Process, Commitment, ResolutionBreakdown, RegisteredProcessDesign } from "../types.js";
 import { OrderState } from "../types.js";
 import { calculateResolution } from "../bonds.js";
 import { orderToCommitment, ZERO_PROCESS_ID } from "../commitments.js";
@@ -38,7 +38,7 @@ export interface InitiateProcessAction extends BaseAction {
     /** The buyer that would originate — the agent's own address. */
     buyer: Address;
     /** The discovered assembly being instantiated. Identity IS the hash. */
-    assemblyHash: Hex;
+    processDesignHash: Hex;
     /** Pointer to the assembly document; the agent hydrates it (off-SDK) to
      *  build the agreement(s) the parties sign. */
     contentURI: string;
@@ -128,9 +128,9 @@ export function proposeActions(process: Process, myAddress: Address): ProposedAc
 
     if (isBuyer && activeOrders.length > 0 && !process.resolved) {
         // 1. Resolve process (highest priority buyer action)
-        // Bonds are derived: buyerBond = 2 × payment, sellerBond = 2 × cumulativeValue
+        // Bonds are derived: buyerBond = 2 × payment, sellerBond = 2 × runningTotal
         const settlements = activeOrders.map((o) => {
-            const sellerBond = o.cumulativeValue * 2n;
+            const sellerBond = o.runningTotal * 2n;
             const buyerBond = o.payment * 2n;
             const resolution = calculateResolution(o.payment, sellerBond, buyerBond);
             return { orderHash: o.orderHash, seller: o.seller, resolution };
@@ -209,18 +209,18 @@ export function proposeActions(process: Process, myAddress: Address): ProposedAc
  * @param myAddress  The prospective buyer — the agent's own address.
  */
 export function proposeInitiations(
-    assemblies: RegisteredAssembly[],
+    assemblies: RegisteredProcessDesign[],
     myAddress: Address,
 ): InitiateProcessAction[] {
     return assemblies.map((a) => ({
         type: "initiate-process",
         description:
-            `Initiate a new process from assembly ${a.assemblyHash}. ` +
+            `Initiate a new process from assembly ${a.processDesignHash}. ` +
             `You would be the root buyer; sellers co-sign from the assembly's roles.`,
         // No process exists yet — FigaroCore derives the id at root commit.
         processId: ZERO_PROCESS_ID,
         buyer: myAddress,
-        assemblyHash: a.assemblyHash,
+        processDesignHash: a.processDesignHash,
         contentURI: a.contentURI,
         registeredBy: a.registeredBy,
     }));

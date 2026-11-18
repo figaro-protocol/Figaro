@@ -41,7 +41,7 @@ export function reconstruct(events: CoreEvents): Map<Hex, Process> {
 
 /**
  * Whether a committed order is its process's root, read from the
- * `OrderCommitted` event alone: the root's `cumulativeValue` equals its own
+ * `OrderCommitted` event alone: the root's `runningTotal` equals its own
  * `payment`. Both paths emit the two fields (`FigaroCore._emitCommitted`,
  * `FigaroBatchVerifier._emitCommitted`), and both refuse a root whose declared
  * cumulative value is not its payment (`InvalidRootCumulativeValue`, in
@@ -50,8 +50,8 @@ export function reconstruct(events: CoreEvents): Map<Hex, Process> {
  * than its payment. The agreement's topology leaf is never read here: it is
  * off the chain, and it may be absent or unread.
  */
-export function isProcessRoot(order: { payment: bigint; cumulativeValue: bigint }): boolean {
-    return order.cumulativeValue === order.payment;
+export function isProcessRoot(order: { payment: bigint; runningTotal: bigint }): boolean {
+    return order.runningTotal === order.payment;
 }
 
 // ── Incremental process topology ───────────────────────────────────────────────
@@ -126,7 +126,7 @@ export class Topology {
             buyer: o.buyer,
             seller: o.seller,
             payment: o.payment,
-            cumulativeValue: o.cumulativeValue,
+            runningTotal: o.runningTotal,
             state: o.state === OS.Active ? "Active" : "Resolved",
         }));
 
@@ -134,7 +134,7 @@ export class Topology {
             processId,
             rootBuyer: process.rootBuyer,
             currency: process.currency,
-            cumulativeValue: process.cumulativeValue,
+            runningTotal: process.runningTotal,
             activeOrderCount: [...process.orders.values()].filter(
                 (o) => o.state === OS.Active,
             ).length,
@@ -153,7 +153,7 @@ export class Topology {
             seller: e.seller,
             currency: e.currency,
             payment: e.payment,
-            cumulativeValue: e.cumulativeValue,
+            runningTotal: e.runningTotal,
             checkoutHash: e.checkoutHash,
             salt: e.salt,
             deadline: e.deadline,
@@ -169,15 +169,15 @@ export class Topology {
                 processId: e.processId,
                 rootBuyer: e.buyer,
                 currency: e.currency,
-                cumulativeValue: e.cumulativeValue,
+                runningTotal: e.runningTotal,
                 orders: new Map(),
                 resolved: false,
             };
             this.processes.set(e.processId, process);
         } else {
             // Update cumulative value (monotonic — always grows)
-            if (e.cumulativeValue > process.cumulativeValue) {
-                process.cumulativeValue = e.cumulativeValue;
+            if (e.runningTotal > process.runningTotal) {
+                process.runningTotal = e.runningTotal;
             }
         }
 

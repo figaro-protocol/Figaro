@@ -21,8 +21,8 @@
  * (which anchors the reference assemblies and registers the seeded members).
  */
 import { test, expect } from '@playwright/test';
-import { AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, computeClauseKey } from '@figaro-protocol/sdk';
-import { deriveAssemblySlug } from '@/lib/shared/assembly';
+import { AGREEMENT_REGISTRY_ABI, PROCESS_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, computeClauseKey } from '@figaro-protocol/sdk';
+import { deriveProcessDesignSlug } from '@/lib/shared/assembly';
 import { discoverAnchoredAssemblies, localPublicClient, readAgreementBinding, readLocalDeploymentConfig, resolveIpfsURI } from './devnet-helpers';
 
 test.describe('Registry explorer (devnet) — the disclosures and facets over the chain\'s rows', () => {
@@ -119,12 +119,12 @@ test.describe('Registry explorer (devnet) — the disclosures and facets over th
 
     test('an assembly row links to its detail route', async ({ page }) => {
         const publicClient = localPublicClient();
-        const registry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? readLocalDeploymentConfig().assemblyRegistry) as `0x${string}`;
+        const registry = (process.env.NEXT_PUBLIC_PROCESS_REGISTRY ?? readLocalDeploymentConfig().processRegistry) as `0x${string}`;
         const events = await publicClient.getContractEvents({
-            address: registry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered', fromBlock: 0n,
+            address: registry, abi: PROCESS_REGISTRY_ABI, eventName: 'ProcessRegistered', fromBlock: 0n,
         });
         expect(events.length, 'no anchored assemblies on this devnet — run populate-test-data first').toBeGreaterThan(0);
-        const slug = deriveAssemblySlug(events[events.length - 1].args.assemblyHash as `0x${string}`);
+        const slug = deriveProcessDesignSlug(events[events.length - 1].args.processDesignHash as `0x${string}`);
 
         await page.goto('/registries?family=assemblies');
         const row = page.locator(`#assembly-${slug}`);

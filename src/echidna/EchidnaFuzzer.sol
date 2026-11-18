@@ -161,12 +161,12 @@ contract EchidnaFuzzer {
             processId: bytes32(0),
             buyer: buyer2,
             seller: seller,
-            currency: address(token),
+            token: address(token),
             payment: p,
-            expectedCumulativeValue: p,
+            runningTotal: p,
             checkoutHash: keccak256(abi.encodePacked("fuzz-b2", saltCounter)),
             salt: ++saltCounter,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         bytes32 structHash = c.hashStruct();
@@ -195,12 +195,12 @@ contract EchidnaFuzzer {
             processId: bytes32(0), // root order
             buyer: buyer,
             seller: seller,
-            currency: address(token),
+            token: address(token),
             payment: p,
-            expectedCumulativeValue: p, // root: cumVal == payment
+            runningTotal: p, // root: cumVal == payment
             checkoutHash: keccak256(abi.encodePacked("fuzz", saltCounter)),
             salt: ++saltCounter,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         bytes32 structHash = c.hashStruct();
@@ -234,12 +234,12 @@ contract EchidnaFuzzer {
             processId: processId, // sub-order: non-zero processId
             buyer: buyer,
             seller: seller,
-            currency: address(token),
+            token: address(token),
             payment: p,
-            expectedCumulativeValue: expectedCum,
+            runningTotal: expectedCum,
             checkoutHash: keccak256(abi.encodePacked("fuzz-sub", saltCounter)),
             salt: ++saltCounter,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         bytes32 structHash = c.hashStruct();
@@ -268,12 +268,12 @@ contract EchidnaFuzzer {
             processId: bytes32(0),
             buyer: buyer,
             seller: sellers[0],
-            currency: address(token),
+            token: address(token),
             payment: p1,
-            expectedCumulativeValue: p1,
+            runningTotal: p1,
             checkoutHash: keccak256(abi.encodePacked("fuzz-multi", saltCounter)),
             salt: ++saltCounter,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         bytes32 rootStructHash = root.hashStruct();
@@ -301,12 +301,12 @@ contract EchidnaFuzzer {
             processId: processId,
             buyer: buyer,
             seller: sellers[1],
-            currency: address(token),
+            token: address(token),
             payment: p2,
-            expectedCumulativeValue: expectedCum,
+            runningTotal: expectedCum,
             checkoutHash: keccak256(abi.encodePacked("fuzz-multi-sub", saltCounter)),
             salt: ++saltCounter,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         bytes32 subStructHash = sub.hashStruct();
@@ -406,7 +406,7 @@ contract EchidnaFuzzer {
                 // committed (active)
                 CommitmentTypes.Commitment memory c = trackedOrders[i].commitment;
                 expectedBonds += 2 * c.payment; // buyer bond
-                expectedBonds += 2 * c.expectedCumulativeValue; // seller bond
+                expectedBonds += 2 * c.runningTotal; // seller bond
             }
         }
         return token.balanceOf(address(core)) >= expectedBonds;

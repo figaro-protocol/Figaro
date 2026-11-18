@@ -192,12 +192,12 @@ fn commitment(o: &serde_json::Value) -> Commitment {
         process_id: b256(&o["commitmentProcessId"]),
         buyer: addr(&o["buyer"]),
         seller: addr(&o["seller"]),
-        currency: addr(&o["currency"]),
+        token: addr(&o["token"]),
         payment: u256(&o["payment"]),
-        expected_cumulative_value: u256(&o["expectedCumulativeValue"]),
+        running_total: u256(&o["runningTotal"]),
         checkout_hash: b256(&o["checkoutHash"]),
         salt: u256(&o["salt"]),
-        deadline: u256(&o["deadline"]),
+        commit_deadline: u256(&o["commitDeadline"]),
     }
 }
 
@@ -232,12 +232,12 @@ fn sentinel_attestation() -> KernelOp {
             process_id: sentinel_process_id(),
             buyer: Address::from_str("0x000000000000000000000000000000000000b0b5").unwrap(),
             seller: Address::from_str("0x0000000000000000000000000000000000005e57").unwrap(),
-            currency: Address::ZERO,
+            token: Address::ZERO,
             payment: U256::ZERO,
-            expected_cumulative_value: U256::ZERO,
+            running_total: U256::ZERO,
             checkout_hash: B256::ZERO,
             salt: U256::ZERO,
-            deadline: U256::ZERO,
+            commit_deadline: U256::ZERO,
         },
         clause_id: keccak256(b"figaro-fuzz-sentinel-clause"),
         stage: 0,
@@ -335,13 +335,13 @@ fn check_wallet_code_codec(
     let ops = vec![
         KernelOp::ResolveByWalletCode {
             process_id: *process_id,
-            cumulative_value: U256::ZERO,
+            running_total: U256::ZERO,
             commitments: commitments.to_vec(),
             authorization: authorization.to_vec().into(),
         },
         KernelOp::Resolve {
             process_id: sentinel_process_id(),
-            cumulative_value: U256::ZERO,
+            running_total: U256::ZERO,
             commitments: vec![],
             buyer_sig: zero_sig,
         },
@@ -376,7 +376,7 @@ fn check_wallet_code_codec(
     match decoded.as_slice() {
         [KernelOp::ResolveByWalletCode {
             process_id: p,
-            cumulative_value,
+            running_total,
             commitments: cs,
             authorization: a,
         }, KernelOp::Resolve {
@@ -389,9 +389,9 @@ fn check_wallet_code_codec(
                     "step {i}: the guest's decoder read another entry than was written"
                 ));
             }
-            if *cumulative_value != sum {
+            if *running_total != sum {
                 divergences.push(format!(
-                    "step {i}: the guest's decoder derives {cumulative_value}, the verifier summed {sum}"
+                    "step {i}: the guest's decoder derives {running_total}, the verifier summed {sum}"
                 ));
             }
             if *sentinel != sentinel_process_id() || !none.is_empty() {
@@ -399,7 +399,7 @@ fn check_wallet_code_codec(
                     "step {i}: the guest's decoder did not stop where the sentinel starts"
                 ));
             }
-            decoded_value = Some(*cumulative_value);
+            decoded_value = Some(*running_total);
         }
         other => divergences.push(format!(
             "step {i}: the guest's decoder read {} entries, not the entry and its sentinel",
@@ -450,7 +450,7 @@ fn kernel_name(e: &KernelError) -> &'static str {
         KernelError::Overflow => "Panic",
         KernelError::InvalidSignature => "ECDSAInvalidSignature",
         KernelError::UnknownOrder => "UnknownOrder",
-        KernelError::OrderResolved => "OrderResolved",
+        KernelError::OrderAlreadyResolved => "OrderAlreadyResolved",
         KernelError::NotAuthorized => "NotAuthorized",
         KernelError::InvalidInclusionProof => "InvalidInclusionProof",
         _ => "outside the kernel",
@@ -528,13 +528,13 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                 // The buyer signs over the process as it stands: its
                 // cumulative value in the mirror's state (zero for a
                 // process the mirror never saw).
-                let cumulative_value = state
+                let running_total = state
                     .full_processes()
                     .unwrap()
                     .get(&process_id)
-                    .map(|p| p.cumulative_value)
+                    .map(|p| p.running_total)
                     .unwrap_or(U256::ZERO);
-                applied_value = cumulative_value;
+                applied_value = running_total;
                 if wallet_code {
                     let authorization = authorization(step);
                     wallet_code_value = check_wallet_code_codec(
@@ -547,18 +547,16 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                     );
                     KernelOp::ResolveByWalletCode {
                         process_id,
-                        cumulative_value,
+                        running_total,
                         commitments,
                         authorization: authorization.into(),
                     }
                 } else {
-                    let digest = typed_data_hash(
-                        &domain,
-                        &resolve_struct_hash(&process_id, &cumulative_value),
-                    );
+                    let digest =
+                        typed_data_hash(&domain, &resolve_struct_hash(&process_id, &running_total));
                     KernelOp::Resolve {
                         process_id,
-                        cumulative_value,
+                        running_total,
                         commitments,
                         buyer_sig: sign_digest(&keys[&caller], &digest),
                     }
@@ -766,7 +764,7 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
         match state.full_processes().unwrap().get(&pid) {
             None => divergences.push(format!("process {pid}: missing from the mirror")),
             Some(ps) => {
-                if ps.cumulative_value != u256(&process["cumulativeValue"]) {
+                if ps.running_total != u256(&process["runningTotal"]) {
                     divergences.push(format!("process {pid}: cumulative value differs"));
                 }
                 if ps.active_order_count != s(&process["activeOrderCount"]).parse::<u64>().unwrap()

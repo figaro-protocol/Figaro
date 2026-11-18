@@ -186,12 +186,12 @@ contract KernelDifferentialFuzzTest is Test {
             processId: bytes32(0),
             buyer: wallets[b],
             seller: wallets[s],
-            currency: _next() % 4 == 0 ? address(tokenB) : address(tokenA),
+            token: _next() % 4 == 0 ? address(tokenB) : address(tokenA),
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: bytes32(_next()),
             salt: ++saltCounter,
-            deadline: timestamp + _next() % 1000
+            commitDeadline: timestamp + _next() % 1000
         });
         d.c.checkoutHash = _agreementRoot(d.c.salt);
         d.buyerSignerKey = keys[b];
@@ -208,12 +208,12 @@ contract KernelDifferentialFuzzTest is Test {
             processId: p.id,
             buyer: p.buyer,
             seller: wallets[s],
-            currency: p.currency,
+            token: p.currency,
             payment: payment,
-            expectedCumulativeValue: p.cumulative + payment,
+            runningTotal: p.cumulative + payment,
             checkoutHash: bytes32(_next()),
             salt: ++saltCounter,
-            deadline: timestamp + _next() % 1000
+            commitDeadline: timestamp + _next() % 1000
         });
         d.c.checkoutHash = _agreementRoot(d.c.salt);
         d.buyerSignerKey = p.buyerKey;
@@ -224,7 +224,7 @@ contract KernelDifferentialFuzzTest is Test {
         uint256 variant = _next() % 15;
         d = _next() % 2 == 0 ? _validRoot(timestamp) : _validExtension(timestamp);
         if (variant == 0) {
-            d.c.deadline = timestamp - 1 - _next() % 500;
+            d.c.commitDeadline = timestamp - 1 - _next() % 500;
         } else if (variant == 1) {
             d.c.payment = 0;
         } else if (variant == 2) {
@@ -232,9 +232,9 @@ contract KernelDifferentialFuzzTest is Test {
         } else if (variant == 3) {
             d.sellerSignerKey = keys[_next() % KEY_COUNT];
         } else if (variant == 4) {
-            d.c.expectedCumulativeValue += 1;
+            d.c.runningTotal += 1;
         } else if (variant == 5) {
-            d.c.expectedCumulativeValue = d.c.expectedCumulativeValue > 1 ? d.c.expectedCumulativeValue - 1 : 0;
+            d.c.runningTotal = d.c.runningTotal > 1 ? d.c.runningTotal - 1 : 0;
         } else if (variant == 6) {
             d.c.processId = bytes32(_next()); // a process nobody opened
         } else if (variant == 7) {
@@ -243,15 +243,15 @@ contract KernelDifferentialFuzzTest is Test {
                 d.c.processId = procs[pi].id;
                 d.c.buyer = procs[pi].buyer;
                 d.buyerSignerKey = procs[pi].buyerKey;
-                d.c.currency = procs[pi].currency;
-                d.c.expectedCumulativeValue = procs[pi].cumulative + d.c.payment;
+                d.c.token = procs[pi].currency;
+                d.c.runningTotal = procs[pi].cumulative + d.c.payment;
             }
         } else if (variant == 8) {
             uint256 b = _next() % KEY_COUNT; // another wallet extends as buyer
             d.c.buyer = wallets[b];
             d.buyerSignerKey = keys[b];
         } else if (variant == 9) {
-            d.c.currency = d.c.currency == address(tokenA) ? address(tokenB) : address(tokenA);
+            d.c.token = d.c.token == address(tokenA) ? address(tokenB) : address(tokenA);
         } else if (variant == 10) {
             if (committedSteps.length > 0) {
                 uint256 at = committedSteps[_next() % committedSteps.length]; // a replay
@@ -262,7 +262,7 @@ contract KernelDifferentialFuzzTest is Test {
         } else if (variant == 11) {
             // the overflow window: a payment whose bond cannot be represented
             d.c.payment = (1 << 255) + _next() % (1 << 64);
-            d.c.expectedCumulativeValue = d.c.payment;
+            d.c.runningTotal = d.c.payment;
         } else {
             d.sigForm = variant - 11; // 1 high-s, 2 v as 0/1, 3 zeroed
         }
@@ -277,12 +277,12 @@ contract KernelDifferentialFuzzTest is Test {
         vm.serializeBytes32(key, "commitmentProcessId", d.c.processId);
         vm.serializeAddress(key, "buyer", d.c.buyer);
         vm.serializeAddress(key, "seller", d.c.seller);
-        vm.serializeAddress(key, "currency", d.c.currency);
+        vm.serializeAddress(key, "token", d.c.token);
         vm.serializeString(key, "payment", vm.toString(d.c.payment));
-        vm.serializeString(key, "expectedCumulativeValue", vm.toString(d.c.expectedCumulativeValue));
+        vm.serializeString(key, "runningTotal", vm.toString(d.c.runningTotal));
         vm.serializeBytes32(key, "checkoutHash", d.c.checkoutHash);
         vm.serializeString(key, "salt", vm.toString(d.c.salt));
-        vm.serializeString(key, "deadline", vm.toString(d.c.deadline));
+        vm.serializeString(key, "commitDeadline", vm.toString(d.c.commitDeadline));
         bytes memory buyerSig = _reform(_sign(d.c, d.buyerSignerKey), d.sigForm);
         bytes memory sellerSig = _sign(d.c, d.sellerSignerKey);
         vm.serializeBytes(key, "buyerSig", buyerSig);
@@ -308,14 +308,14 @@ contract KernelDifferentialFuzzTest is Test {
             p.id = processId;
             p.buyer = c.buyer;
             p.buyerKey = _keyOf(c.buyer);
-            p.currency = c.currency;
+            p.currency = c.token;
             p.cumulative = c.payment;
             p.steps.push(i);
             return;
         }
         for (uint256 k = 0; k < procs.length; k++) {
             if (procs[k].id == processId) {
-                procs[k].cumulative = c.expectedCumulativeValue;
+                procs[k].cumulative = c.runningTotal;
                 procs[k].steps.push(i);
                 return;
             }
@@ -405,12 +405,12 @@ contract KernelDifferentialFuzzTest is Test {
                     c.processId,
                     c.buyer,
                     c.seller,
-                    c.currency,
+                    c.token,
                     c.payment,
-                    c.expectedCumulativeValue,
+                    c.runningTotal,
                     c.checkoutHash,
                     c.salt,
-                    c.deadline
+                    c.commitDeadline
                 )
             );
         }
@@ -505,12 +505,12 @@ contract KernelDifferentialFuzzTest is Test {
                 c.processId,
                 c.buyer,
                 c.seller,
-                c.currency,
+                c.token,
                 c.payment,
-                c.expectedCumulativeValue,
+                c.runningTotal,
                 c.checkoutHash,
                 c.salt,
-                c.deadline
+                c.commitDeadline
             ),
             clauseId,
             bytes1(stage),
@@ -709,12 +709,12 @@ contract KernelDifferentialFuzzTest is Test {
         vm.serializeBytes32(key, "commitmentProcessId", a.target.processId);
         vm.serializeAddress(key, "buyer", a.target.buyer);
         vm.serializeAddress(key, "seller", a.target.seller);
-        vm.serializeAddress(key, "currency", a.target.currency);
+        vm.serializeAddress(key, "token", a.target.token);
         vm.serializeString(key, "payment", vm.toString(a.target.payment));
-        vm.serializeString(key, "expectedCumulativeValue", vm.toString(a.target.expectedCumulativeValue));
+        vm.serializeString(key, "runningTotal", vm.toString(a.target.runningTotal));
         vm.serializeBytes32(key, "checkoutHash", a.target.checkoutHash);
         vm.serializeString(key, "salt", vm.toString(a.target.salt));
-        vm.serializeString(key, "deadline", vm.toString(a.target.deadline));
+        vm.serializeString(key, "commitDeadline", vm.toString(a.target.commitDeadline));
         vm.serializeAddress(key, "caller", a.caller);
         vm.serializeBytes32(key, "clauseId", a.clauseId);
         vm.serializeString(key, "stage", vm.toString(a.stage));
@@ -773,11 +773,11 @@ contract KernelDifferentialFuzzTest is Test {
 
     function _writeProcesses() internal {
         for (uint256 k = 0; k < procs.length; k++) {
-            (,, uint256 cumulativeValue, uint256 activeOrderCount) = core.processes(procs[k].id);
+            (,, uint256 runningTotal, uint256 activeOrderCount) = core.processes(procs[k].id);
             string memory rk = string.concat("process", vm.toString(k));
             vm.serializeString(rk, "type", "process");
             vm.serializeBytes32(rk, "processId", procs[k].id);
-            vm.serializeString(rk, "cumulativeValue", vm.toString(cumulativeValue));
+            vm.serializeString(rk, "runningTotal", vm.toString(runningTotal));
             vm.writeLine(STREAM, vm.serializeString(rk, "activeOrderCount", vm.toString(activeOrderCount)));
         }
     }
@@ -867,7 +867,7 @@ contract KernelDifferentialFuzzTest is Test {
         if (sel == FigaroCore.InvalidRootCumulativeValue.selector) return "InvalidRootCumulativeValue";
         if (sel == FigaroCore.ProcessAlreadyResolved.selector) return "ProcessAlreadyResolved";
         if (sel == AttestationCoordinator.UnknownOrder.selector) return "UnknownOrder";
-        if (sel == AttestationCoordinator.OrderResolved.selector) return "OrderResolved";
+        if (sel == AttestationCoordinator.OrderAlreadyResolved.selector) return "OrderAlreadyResolved";
         if (sel == AttestationCoordinator.NotAuthorized.selector) return "NotAuthorized";
         if (sel == AttestationCoordinator.InvalidInclusionProof.selector) return "InvalidInclusionProof";
         if (sel == bytes4(keccak256("Panic(uint256)"))) return "Panic";
@@ -960,12 +960,10 @@ contract StreamReader is FigaroBatchVerifier {
         );
     }
 
-    function resolveDigest(bytes32 processId, uint256 cumulativeValue) external view returns (bytes32) {
+    function resolveDigest(bytes32 processId, uint256 runningTotal) external view returns (bytes32) {
         return _hashTypedDataV4(
             keccak256(
-                abi.encode(
-                    keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)"), processId, cumulativeValue
-                )
+                abi.encode(keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"), processId, runningTotal)
             )
         );
     }

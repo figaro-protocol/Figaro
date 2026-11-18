@@ -55,7 +55,7 @@ function mkOrder(overrides: Partial<Order> = {}): Order {
         seller: SELLER,
         currency: TOKEN,
         payment: 100n,
-        cumulativeValue: 250n,
+        runningTotal: 250n,
         checkoutHash: AGREEMENT,
         salt: 7n,
         deadline: 999n,
@@ -66,14 +66,14 @@ function mkOrder(overrides: Partial<Order> = {}): Order {
 }
 
 describe("orderToCommitment", () => {
-    it("maps every Commitment field, with expectedCumulativeValue = cumulativeValue", () => {
+    it("maps every Commitment field, with the order's runningTotal as the commitment's", () => {
         const c = orderToCommitment(mkOrder());
         expect(c.buyer).toBe(BUYER);
         expect(c.seller).toBe(SELLER);
         expect(c.payment).toBe(100n);
-        expect(c.expectedCumulativeValue).toBe(250n);
+        expect(c.runningTotal).toBe(250n);
         expect(c.salt).toBe(7n);
-        expect(c.deadline).toBe(999n);
+        expect(c.commitDeadline).toBe(999n);
     });
 });
 
@@ -102,7 +102,7 @@ describe("executeAction — honest input gates (never fabricate)", () => {
     });
 
     it("throws on initiate-process without a counterparty signature", async () => {
-        const action = { type: "initiate-process", processId: ZERO_PROCESS_ID, buyer: BUYER, assemblyHash: "0xab" as Hex, contentURI: "ipfs://x", registeredBy: SELLER } as InitiateProcessAction;
+        const action = { type: "initiate-process", processId: ZERO_PROCESS_ID, buyer: BUYER, processDesignHash: "0xab" as Hex, contentURI: "ipfs://x", registeredBy: SELLER } as InitiateProcessAction;
         await expect(executeAction(wallet, pub, addresses, action)).rejects.toThrow(/two-party handshake|counterparty/i);
     });
 
@@ -244,7 +244,7 @@ describe("executeAction — the success paths reach the writes", () => {
     });
 
     it("initiate-process writes commit with the given commitment and both signatures", async () => {
-        const action = { type: "initiate-process", processId: ZERO_PROCESS_ID, buyer: BUYER, assemblyHash: "0xab" as Hex, contentURI: "ipfs://x", registeredBy: SELLER } as InitiateProcessAction;
+        const action = { type: "initiate-process", processId: ZERO_PROCESS_ID, buyer: BUYER, processDesignHash: "0xab" as Hex, contentURI: "ipfs://x", registeredBy: SELLER } as InitiateProcessAction;
         const root = orderToCommitment(mkOrder({ processId: ZERO_PROCESS_ID }));
         const { wallet: buyerWallet, calls } = recordingWallet({ address: BUYER });
         await executeAction(buyerWallet, pub, addresses, action, { commitment: root, buyerSig: BUYER_SIG, sellerSig: SELLER_SIG });

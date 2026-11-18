@@ -15,7 +15,7 @@ type MockStoredOrder = {
     processId: string;
     buyer: string;
     seller: string;
-    cumulativeValue: string;
+    runningTotal: string;
     payment: string;
     state: number;
     sellerBond: string;
@@ -137,7 +137,7 @@ export default function ClientInit() {
                         processId,
                         buyer: '',
                         seller: opts?.counterparty || '',
-                        cumulativeValue: paymentWei.toString(),
+                        runningTotal: paymentWei.toString(),
                         payment: paymentWei.toString(),
                         state: 0,
                         sellerBond: calculateBonds(paymentWei, paymentWei).sellerBond.toString(),
@@ -195,7 +195,7 @@ export default function ClientInit() {
                         processId,
                         buyer: '',
                         seller: opts?.seller || '',
-                        cumulativeValue: paymentWei.toString(),
+                        runningTotal: paymentWei.toString(),
                         payment: paymentWei.toString(),
                         state: 0,
                         sellerBond: calculateBonds(paymentWei, paymentWei).sellerBond.toString(),

@@ -252,13 +252,13 @@ contract HalmosMembersRegistry is Test {
         }
 
         UsageCounter.BatchUse[] memory uses = new UsageCounter.BatchUse[](1);
-        uses[0] = UsageCounter.BatchUse(keccak256("clauseOrAssembly"), 0, keccak256("a-process"), ALICE); // kind 0: a clause
+        uses[0] = UsageCounter.BatchUse(keccak256("clauseOrProcess"), 0, keccak256("a-process"), ALICE); // kind 0: a clause
 
         counter.applyBatchAccrual(0, keccak256("figaro-agreement-provenance"), uses);
 
         // THE LINKAGE, in both directions: the counter counts the use if and
         // only if the registry still reports a live stake.
-        (uint64 c,, uint256 score) = counter.accrualOf(0, keccak256("clauseOrAssembly"), 0);
+        (uint64 c,, uint256 score) = counter.accrualOf(0, keccak256("clauseOrProcess"), 0);
         bool counted = c == 1;
         assertEq(counted, members.registered(ALICE), "counting tracks `registered` exactly");
         assertEq(counted, !leaves, "and leaving is what turns it off");

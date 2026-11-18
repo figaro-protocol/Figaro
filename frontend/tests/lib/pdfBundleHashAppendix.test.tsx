@@ -27,7 +27,7 @@ const AGREEMENT: Agreement = { version: "a1", buyer: BUYER, seller: SELLER, clau
 const ORDER: Order = {
     orderHash: `0x${"cd".repeat(32)}`, processId: `0x${"ab".repeat(32)}`,
     buyer: BUYER, seller: SELLER, currency: `0x${"33".repeat(20)}`,
-    cumulativeValue: 1n, payment: 1n, state: OrderState.Active,
+    runningTotal: 1n, payment: 1n, state: OrderState.Active,
     sellerBond: 2n, buyerBond: 2n, salt: 1n, deadline: 0n,
     checkoutHash: computeCheckoutHash(AGREEMENT),
 };

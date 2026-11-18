@@ -2,11 +2,11 @@
  * Property-based checkout conservation (fast-check) — the payment figures the
  * commitments sign always add up:
  *
- *   - `reconstructOrdersFromAssembly` (the ONE assembly → orders walk): for
+ *   - `reconstructOrdersFromProcessDesign` (the ONE assembly → orders walk): for
  *     any acyclic assembly and any per-node payments, each order's
- *     `cumulativeValue` is the exact prefix sum in commit order, the final
+ *     `runningTotal` is the exact prefix sum in commit order, the final
  *     order's equals the sum of ALL node payments (what FigaroCore's
- *     `expectedCumulativeValue` check enforces), and every sub-order's
+ *     `runningTotal` check enforces), and every sub-order's
  *     topology leaf carries its parents' REAL order hashes.
  *   - `resolveSubOrderPricing` (live contributor pricing): the replay
  *     invariant the module promises — `payment = unitPrice × billedQuantity`,
@@ -18,9 +18,9 @@
 import fc from "fast-check";
 import { parseUnits } from "viem";
 import { describe, expect, it } from "vitest";
-import { reconstructOrdersFromAssembly } from "../src/reconstructOrders.js";
+import { reconstructOrdersFromProcessDesign } from "../src/reconstructOrders.js";
 import { resolveSubOrderPricing, type PricingCatalog } from "../src/checkoutPlan.js";
-import type { HydratedAssembly } from "../src/assembly.js";
+import type { HydratedProcessDesign } from "../src/assembly.js";
 import { hydrateAuthored } from "./hydrate.js";
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { addressArb } from "./propertyArbs.js";
@@ -55,7 +55,7 @@ const chainArb = fc.integer({ min: 1, max: 6 }).chain((n) =>
     }),
 );
 
-function assemblyFrom(parents: readonly number[][]): HydratedAssembly {
+function assemblyFrom(parents: readonly number[][]): HydratedProcessDesign {
     return hydrateAuthored({
         agreements: parents.map((ps, i) => ({
             id: `n${i}`,
@@ -83,13 +83,13 @@ const priceArb = fc
 
 // ── Properties ──────────────────────────────────────────────────────────────
 
-describe("reconstructOrdersFromAssembly — payment conservation", () => {
-    it("cumulativeValue is the exact prefix sum; the final order carries the total of all node payments", async () => {
+describe("reconstructOrdersFromProcessDesign — payment conservation", () => {
+    it("runningTotal is the exact prefix sum; the final order carries the total of all node payments", async () => {
         await fc.assert(
             fc.asyncProperty(chainArb, async ({ payments, parents }) => {
                 const assembly = assemblyFrom(parents);
                 const paymentOf = new Map(payments.map((p, i) => [`n${i}`, p]));
-                const orders = await reconstructOrdersFromAssembly(assembly, {
+                const orders = await reconstructOrdersFromProcessDesign(assembly, {
                     buyer: BUYER,
                     currency: CURRENCY,
                     chainId: 31337,
@@ -104,13 +104,13 @@ describe("reconstructOrdersFromAssembly — payment conservation", () => {
                 let running = 0n;
                 for (const order of orders) {
                     running += order.payment;
-                    expect(order.cumulativeValue).toBe(running);
+                    expect(order.runningTotal).toBe(running);
                     // …and it is exactly what the signed struct names.
-                    expect(order.commitment.expectedCumulativeValue).toBe(order.cumulativeValue);
+                    expect(order.commitment.runningTotal).toBe(order.runningTotal);
                     expect(order.commitment.payment).toBe(order.payment);
                     // The commitment alone carries the token and the payment:
                     // no clause of any order restates either.
-                    expect(order.commitment.currency).toBe(CURRENCY);
+                    expect(order.commitment.token).toBe(CURRENCY);
                     for (const clause of order.agreement.clauses) {
                         expect(clause.data).not.toHaveProperty("currency");
                         expect(clause.data).not.toHaveProperty("payment");
@@ -118,7 +118,7 @@ describe("reconstructOrdersFromAssembly — payment conservation", () => {
                 }
                 // The final order's total is the sum of ALL node payments.
                 const total = payments.reduce((s, p) => s + p, 0n);
-                expect(orders[orders.length - 1].cumulativeValue).toBe(total);
+                expect(orders[orders.length - 1].runningTotal).toBe(total);
             }),
         );
     });
@@ -128,7 +128,7 @@ describe("reconstructOrdersFromAssembly — payment conservation", () => {
             fc.asyncProperty(chainArb, async ({ payments, parents }) => {
                 const assembly = assemblyFrom(parents);
                 const paymentOf = new Map(payments.map((p, i) => [`n${i}`, p]));
-                const orders = await reconstructOrdersFromAssembly(assembly, {
+                const orders = await reconstructOrdersFromProcessDesign(assembly, {
                     buyer: BUYER,
                     currency: CURRENCY,
                     chainId: 31337,

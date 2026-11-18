@@ -19,7 +19,7 @@ import {
     missingCatalogueMeasures,
     readUtilityTokenPin,
     resolveSubOrderPricing,
-    type AssemblyCheckoutLineItem,
+    type ProcessCheckoutLineItem,
 } from "../src/checkoutPlan.js";
 import { fillWalkProvenance } from "../src/reconstructOrders.js";
 import type { Agreement } from "../src/agreement.js";
@@ -28,7 +28,7 @@ import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceWithRegistrations, 
 
 type ClauseFields = Record<string, Record<string, unknown>>;
 
-const line = (over: Partial<AssemblyCheckoutLineItem>): AssemblyCheckoutLineItem => ({
+const line = (over: Partial<ProcessCheckoutLineItem>): ProcessCheckoutLineItem => ({
     itemId: "i", name: "Item", quantity: 1, unitPrice: "1", ...over,
 });
 
@@ -287,14 +287,14 @@ describe("the profile fill and the mechanical field set read the spec each key n
         const fakeGeo = viewOf({
             ...rawGeo,
             title: "a stranger's registration",
-            fields: [...(rawGeo.fields as object[]), { ...(rawGeo.fields as object[])[0], name: "billedMassGrams" }, { ...(rawGeo.fields as object[])[0], name: "assemblyHash" }],
+            fields: [...(rawGeo.fields as object[]), { ...(rawGeo.fields as object[])[0], name: "billedMassGrams" }, { ...(rawGeo.fields as object[])[0], name: "processDesignHash" }],
         });
         const specs = specSourceWithRegistrations(specSourceFromFixtures(["figaro-geolocation"]), [fakeGeo]);
         expect(mechanicallyFilledFieldNames({ [keyOf("figaro-geolocation")]: {} }, specs).has("billedMassGrams")).toBe(false);
         expect(mechanicallyFilledFieldNames({ [fakeGeo.clauseKey]: {} }, specs).has("billedMassGrams")).toBe(true);
-        // assemblyHash is no mechanical fill: the provenance leaf is the
+        // processDesignHash is no mechanical fill: the provenance leaf is the
         // agreement format's, never a clause field.
-        expect(mechanicallyFilledFieldNames({ [fakeGeo.clauseKey]: {} }, specs).has("assemblyHash")).toBe(false);
+        expect(mechanicallyFilledFieldNames({ [fakeGeo.clauseKey]: {} }, specs).has("processDesignHash")).toBe(false);
     });
 });
 
@@ -401,16 +401,16 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
     it("the walk's guarded fillWalkProvenance writes agreement.provenance, never a clause", () => {
         const agreement: Agreement = { version: "a1", buyer: "0x01", seller: "0x02", clauses: [{ clause: REAL, data: {} }] };
         const KEY = `0x${"ef".repeat(32)}` as `0x${string}`;
-        const P = { agreementHash: KEY, assemblyHash: HASH };
+        const P = { agreementHash: KEY, processDesignHash: HASH };
         const filled = fillWalkProvenance(agreement, P, "n");
         expect(filled.provenance).toEqual(P);
         expect(filled.clauses).toEqual(agreement.clauses);
         // An identical claim passes (case-insensitive); a different key or hash is a forgery.
         const upper = HASH.toUpperCase().replace("0X", "0x") as `0x${string}`;
-        expect(fillWalkProvenance({ ...agreement, provenance: { agreementHash: KEY, assemblyHash: upper } }, P, "n").provenance).toEqual(P);
-        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementHash: KEY, assemblyHash: `0x${"cd".repeat(32)}` } }, P, "n"))
+        expect(fillWalkProvenance({ ...agreement, provenance: { agreementHash: KEY, processDesignHash: upper } }, P, "n").provenance).toEqual(P);
+        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementHash: KEY, processDesignHash: `0x${"cd".repeat(32)}` } }, P, "n"))
             .toThrow(/refusing to claim a different provenance/);
-        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementHash: `0x${"cd".repeat(32)}`, assemblyHash: HASH } }, P, "n"))
+        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementHash: `0x${"cd".repeat(32)}`, processDesignHash: HASH } }, P, "n"))
             .toThrow(/refusing to claim a different provenance/);
     });
 

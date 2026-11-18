@@ -36,19 +36,19 @@ import { chromium, expect, test, type BrowserContext, type Page } from '@playwri
 import { createPublicClient, createWalletClient, formatUnits, http, parseAbi, parseUnits, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-    ASSEMBLY_REGISTRY_ABI,
+    PROCESS_REGISTRY_ABI,
     agreementLeaves,
     anchorAgreement,
     calculateBonds,
     computeProvenanceLeaf,
     decodeProvenanceContent,
-    deriveAssemblySlug,
+    deriveProcessDesignSlug,
     MEMBERS_REGISTRY_ABI,
     provenanceLeafBytes,
 } from '@figaro-protocol/sdk';
 import { CORE_ABI, ERC20_ABI } from '@/lib/core/contracts';
 import {
-    E2E_CHAIN, LOCAL_ANVIL, RPC_URL, assertPinnedInIpfs, readAgreementBinding, readLocalDeploymentConfig, referenceAssemblySlug, referenceAssemblyHash, isBindingOf, resolveIpfsURI, scanContractEvents, waitForConnected,
+    E2E_CHAIN, LOCAL_ANVIL, RPC_URL, assertPinnedInIpfs, readAgreementBinding, readLocalDeploymentConfig, referenceAssemblySlug, referenceProcessDesignHash, isBindingOf, resolveIpfsURI, scanContractEvents, waitForConnected,
     keyOf,
     primeRegisteredClauseSpecs,
 } from './devnet-helpers';
@@ -140,7 +140,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
 
             // ═══ 1. MEMBER — the wizard ═══════════════════════════════════════
             const posSlug = referenceAssemblySlug('pos.json');
-            const posHash = referenceAssemblyHash('pos.json');
+            const posHash = referenceProcessDesignHash('pos.json');
             const sellerName = `Smoke counter ${seller.address.slice(2, 8)}`;
             const gateway = (process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080').replace(/\/$/, '');
             const latestUri = async () => {
@@ -162,9 +162,9 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             if (alreadyRegistered) {
                 const uri = await latestUri();
                 const doc = uri.startsWith('ipfs://')
-                    ? await fetch(`${gateway}/ipfs/${uri.slice('ipfs://'.length)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null) as { name?: string; assemblyBindings?: Array<{ assemblyHash?: string }> } | null
+                    ? await fetch(`${gateway}/ipfs/${uri.slice('ipfs://'.length)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null) as { name?: string; processBindings?: Array<{ processDesignHash?: string }> } | null
                     : null;
-                alreadyBound = !!doc && doc.name === sellerName && (doc.assemblyBindings ?? []).some((b) => isBindingOf(b, posHash));
+                alreadyBound = !!doc && doc.name === sellerName && (doc.processBindings ?? []).some((b) => isBindingOf(b, posHash));
             }
             if (alreadyBound) {
                 testInfo.annotations.push({ type: 'wizard', description: 'skipped — member already registered and bound to pos (idempotent rerun)' });
@@ -288,7 +288,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             expect(receipt.status).toBe('success');
             testInfo.annotations.push({ type: 'OrderCommitted', description: `process=${processId} order=${event.args.orderHash} payment=${event.args.payment} tx=${receipt.transactionHash} block=${receipt.blockNumber}` });
             const [buyerT1, sellerT1, coreT1] = await Promise.all([balanceOf(buyer.address), balanceOf(seller.address), balanceOf(core)]);
-            const bonds = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+            const bonds = calculateBonds(event.args.runningTotal!, event.args.payment!);
             expect(buyerT0 - buyerT1, 'buyer locked exactly the buyer bond').toBe(bonds.buyerBond);
             expect(sellerT0 - sellerT1, 'seller locked exactly the seller bond').toBe(bonds.sellerBond);
             expect(coreT1 - coreT0, 'FigaroCore escrow holds both bonds').toBe(bonds.buyerBond + bonds.sellerBond);
@@ -321,15 +321,15 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             const provenance = committedAgreement!.provenance;
             expect(provenance, 'the order names the assembly it instantiates').toBeTruthy();
             expect(agreementLeaves(committedAgreement!), 'the provenance leaf is a leaf of the committed tree')
-                .toContain(computeProvenanceLeaf(provenance!.agreementHash, provenance!.assemblyHash));
-            const decoded = decodeProvenanceContent(provenanceLeafBytes(provenance!.agreementHash, provenance!.assemblyHash));
+                .toContain(computeProvenanceLeaf(provenance!.agreementHash, provenance!.processDesignHash));
+            const decoded = decodeProvenanceContent(provenanceLeafBytes(provenance!.agreementHash, provenance!.processDesignHash));
             expect(decoded, 'the provenance leaf decodes to both keys').toEqual(provenance);
-            expect(deriveAssemblySlug(decoded!.assemblyHash), 'the assembly is the bound pos reference').toBe(posSlug);
+            expect(deriveProcessDesignSlug(decoded!.processDesignHash), 'the assembly is the bound pos reference').toBe(posSlug);
             expect(await readAgreementBinding(decoded!.agreementHash), 'the agreement hash is registered on the AgreementRegistry').not.toBeNull();
             const [, assemblyRegisteredAt] = await publicClient.readContract({
-                address: config.assemblyRegistry as Hex, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'bindings', args: [decoded!.assemblyHash],
+                address: config.processRegistry as Hex, abi: PROCESS_REGISTRY_ABI, functionName: 'bindings', args: [decoded!.processDesignHash],
             }) as readonly [Hex, bigint, boolean, string];
-            expect(assemblyRegisteredAt, 'the assembly root is registered on the AssemblyRegistry').toBeGreaterThan(0n);
+            expect(assemblyRegisteredAt, 'the assembly root is registered on the ProcessRegistry').toBeGreaterThan(0n);
 
             // ═══ 6. AUDIT — the record renders ════════════════════════════════
             await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });

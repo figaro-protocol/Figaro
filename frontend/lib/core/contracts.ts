@@ -18,7 +18,7 @@ export {
     CORE_ABI,
     CLAUSE_REGISTRY_ABI,
     MEMBERS_REGISTRY_ABI,
-    ASSEMBLY_REGISTRY_ABI,
+    PROCESS_REGISTRY_ABI,
     // Generic ERC-20 standard — the core contracts are ERC-20-agnostic, so the
     // token interface lives here too. Not a Figaro contract.
     ERC20_ABI,
@@ -31,8 +31,8 @@ export interface ChainConfig {
     clauseRegistry: `0x${string}`;
     /** MembersRegistry. */
     membersRegistry: `0x${string}`;
-    /** AssemblyRegistry. */
-    assemblyRegistry: `0x${string}`;
+    /** ProcessRegistry. */
+    processRegistry: `0x${string}`;
     /** AgreementRegistry. */
     agreementRegistry: `0x${string}`;
     /** The florin — the protocol's own token. */
@@ -52,7 +52,7 @@ export const CONTRACTS: ChainConfig = {
     core: addressOf(record?.figaroCore),
     clauseRegistry: addressOf(record?.clauseRegistry),
     membersRegistry: addressOf(record?.membersRegistry),
-    assemblyRegistry: addressOf(record?.assemblyRegistry),
+    processRegistry: addressOf(record?.processRegistry),
     agreementRegistry: addressOf(record?.agreementRegistry),
     florinToken: addressOf(record?.florinToken),
     usageCounter: addressOf(record?.usageCounter),

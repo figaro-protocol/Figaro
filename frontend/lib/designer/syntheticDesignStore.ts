@@ -59,11 +59,11 @@ interface SerializedOrder {
 }
 
 function serializeOrder(o: Order): SerializedOrder {
-    // Drafts are value-free: cumulativeValue/sellerBond/buyerBond are always
+    // Drafts are value-free: runningTotal/sellerBond/buyerBond are always
     // 0n on a synthetic Order and are NOT persisted. Destructured OUT (not
     // spread through) so the persisted draft carries no value field at all —
     // writeJsonStorage would otherwise write each bigint as its decimal string.
-    const { cumulativeValue: _cv, sellerBond: _sb, buyerBond: _bb, ...rest } = o;
+    const { runningTotal: _cv, sellerBond: _sb, buyerBond: _bb, ...rest } = o;
     return {
         ...rest,
         payment: o.payment.toString(),
@@ -80,7 +80,7 @@ function deserializeOrder(s: SerializedOrder): Order {
         deadline: BigInt(s.deadline),
         // Value-free draft: the shared Order shape requires the fields. Also
         // overwrites the persisted strings in pre-cleanup drafts.
-        cumulativeValue: 0n,
+        runningTotal: 0n,
         sellerBond: 0n,
         buyerBond: 0n,
     };
@@ -97,7 +97,7 @@ function deserializeOrder(s: SerializedOrder): Order {
  *    under its owner's key: the new design, or the named draft it opened.
  *  - **named draft** — a snapshot the user explicitly "Save"d, stored by
  *    slug via `saveNamedDraft`.
- *  - **published `Assembly`** (`lib/protocol/useAssemblyRegistry`)
+ *  - **published `ProcessDesign`** (`lib/protocol/useProcessRegistry`)
  *    — the IPFS-pinned, published version: one agreement per order, each
  *    binding a registered agreement by key. `assemblyToDraft`
  *    re-hydrates it (with its agreements) back into a `DesignSnapshot` for

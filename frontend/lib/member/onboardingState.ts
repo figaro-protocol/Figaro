@@ -21,8 +21,8 @@ import { activeChain } from "@/lib/shared/chains";
 import { useCallback, useEffect, useState } from "react";
 import { readJsonStorage, removeStorage, writeJsonStorage } from "@/lib/shared/storage";
 import type {
-    AssemblyBindingRecord,
-    BuyerAssemblySubscription,
+    ProcessBindingRecord,
+    BuyerProcessSubscription,
     MemberAgentServices,
     MemberAssetReferences,
 } from "@/lib/member/memberProfileMetadata";
@@ -67,11 +67,11 @@ interface OnboardingState {
     profile?: OnboardingProfileDraft;
     catalog?: OnboardingCatalogDraft;
     /** Per-assembly bindings declared on the assemblies step. */
-    assemblies?: AssemblyBindingRecord[];
+    assemblies?: ProcessBindingRecord[];
     /** The buyer's assembly subscriptions, declared on the buyer step —
      *  which assemblies this wallet buys through and monetizes data
      *  from. Independent of `assemblies` (the bindings the member sells through). */
-    buyerAssemblies?: BuyerAssemblySubscription[];
+    buyerAssemblies?: BuyerProcessSubscription[];
     /** Agent endpoints declared on screen 6 (advanced; optional). */
     services?: MemberAgentServices;
     /** True when the on-chain register/updateProfile transaction has confirmed. */

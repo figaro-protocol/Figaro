@@ -11,14 +11,14 @@ import type { BondBreakdown, ResolutionBreakdown } from "./types.js";
  * Calculate the required bonds for an order.
  *
  * Invariants (FigaroCore):
- *   sellerBond = 2 × cumulativeValue
+ *   sellerBond = 2 × runningTotal
  *   buyerBond  = 2 × payment
  */
-export function calculateBonds(cumulativeValue: bigint, payment: bigint): BondBreakdown {
+export function calculateBonds(runningTotal: bigint, payment: bigint): BondBreakdown {
     return {
-        sellerBond: cumulativeValue * 2n,
+        sellerBond: runningTotal * 2n,
         buyerBond: payment * 2n,
-        totalLocked: cumulativeValue * 2n + payment * 2n,
+        totalLocked: runningTotal * 2n + payment * 2n,
     };
 }
 
@@ -52,7 +52,7 @@ export function calculateResolution(
  *
  * FigaroCore pulls the FULL bonds on every commit (FigaroCore `_pullExact`):
  *   Buyer:  2 × payment
- *   Seller: 2 × cumulativeValue  (== 2 × payment on a root order)
+ *   Seller: 2 × runningTotal  (== 2 × payment on a root order)
  *
  * There is no incremental approval anywhere in FigaroCore — sub-orders
  * pull full per-order bonds too; use `calculateSubOrderApproval`.
@@ -100,7 +100,7 @@ export function calculateSubOrderApproval(
  * Guard against the classic sub-order approval bug: approving only the
  * INCREMENT since the previous order's cumulative value instead of the
  * full per-order bond FigaroCore pulls. `_pullExact` pulls 2× the order's
- * OWN `cumulativeValue`/`payment` on every commit — root or sub — never an
+ * OWN `runningTotal`/`payment` on every commit — root or sub — never an
  * offset against bonds a prior order already left held (see
  * `calculateSubOrderApproval`).
  *
@@ -124,8 +124,8 @@ export function assertApprovalCoversBond(
     if (approval.sellerApproval < calc.sellerApproval) {
         throw new Error(
             `Seller approval ${approval.sellerApproval} is below the required ${calc.sellerApproval} ` +
-            `(2× cumulativeValue for THIS order). FigaroCore pulls the full per-order bond on every ` +
-            `commit — never approve only the increment over a prior order's cumulativeValue.`,
+            `(2× runningTotal for THIS order). FigaroCore pulls the full per-order bond on every ` +
+            `commit — never approve only the increment over a prior order's runningTotal.`,
         );
     }
 }
@@ -136,18 +136,18 @@ export function assertApprovalCoversBond(
  */
 export function validateBonds(
     payment: bigint,
-    cumulativeValue: bigint,
+    runningTotal: bigint,
     sellerBond: bigint,
     buyerBond: bigint,
 ): { valid: boolean; reason?: string } {
     if (payment <= 0n) {
         return { valid: false, reason: "payment must be positive" };
     }
-    if (cumulativeValue < payment) {
-        return { valid: false, reason: "cumulativeValue must be >= payment" };
+    if (runningTotal < payment) {
+        return { valid: false, reason: "runningTotal must be >= payment" };
     }
-    if (sellerBond !== cumulativeValue * 2n) {
-        return { valid: false, reason: `sellerBond must be 2 × cumulativeValue (expected ${cumulativeValue * 2n}, got ${sellerBond})` };
+    if (sellerBond !== runningTotal * 2n) {
+        return { valid: false, reason: `sellerBond must be 2 × runningTotal (expected ${runningTotal * 2n}, got ${sellerBond})` };
     }
     if (buyerBond !== payment * 2n) {
         return { valid: false, reason: `buyerBond must be 2 × payment (expected ${payment * 2n}, got ${buyerBond})` };

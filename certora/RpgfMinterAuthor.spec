@@ -36,8 +36,8 @@ methods {
 // ═══════════════════════════════════════════════════════════════════
 // RULE 1: Each kind reads its own registry, and only its own
 //
-// KIND_CLAUSE (0) reads ClauseRegistry's depositOf, KIND_ASSEMBLY (1)
-// AssemblyRegistry's bindings, KIND_AGREEMENT (2) AgreementRegistry's
+// KIND_CLAUSE (0) reads ClauseRegistry's depositOf, KIND_PROCESS (1)
+// ProcessRegistry's bindings, KIND_AGREEMENT (2) AgreementRegistry's
 // bindings. Each right-hand side below reads one registry alone, so the
 // equality is also the independence: whatever the other two registries hold
 // at the same key, the answer does not move.
@@ -58,7 +58,7 @@ rule isAuthorReadsOnlyItsKindsRegistry(uint8 kind, bytes32 key, address account)
     assert kind == 0 => (result <=> (clauseBy != 0 && clauseBy == account && !clauseWithdrawn)),
         "the clause kind answers from ClauseRegistry alone";
     assert kind == 1 => (result <=> (assemblyBy != 0 && assemblyBy == account && !assemblyWithdrawn)),
-        "the assembly kind answers from AssemblyRegistry alone";
+        "the assembly kind answers from ProcessRegistry alone";
     assert kind == 2 => (result <=> (agreementBy != 0 && agreementBy == account && !agreementWithdrawn)),
         "the agreement kind answers from AgreementRegistry alone";
 }

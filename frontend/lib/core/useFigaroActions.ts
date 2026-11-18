@@ -31,8 +31,8 @@ export const useFigaroActions = () => {
     };
 
     // Unified commit: root and sub-orders use the same function.
-    // Root orders: processId = 0x00...00, expectedCumulativeValue = payment
-    // Sub-orders: processId = existing process, expectedCumulativeValue = prev + payment
+    // Root orders: processId = 0x00...00, runningTotal = payment
+    // Sub-orders: processId = existing process, runningTotal = prev + payment
     const commit = async (
         commitment: Commitment,
         buyerSig: `0x${string}`,

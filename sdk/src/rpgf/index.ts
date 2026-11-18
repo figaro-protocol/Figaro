@@ -23,12 +23,12 @@ import { BATCH_VERIFIER_ABI, USAGE_COUNTER_ABI } from "../abis.js";
 import type { Agreement } from "../agreement.js";
 import { PROVENANCE_LEAF_KEY, buildProvenanceInclusionProof, buildSignedClauseInclusionProof, hashClauseData } from "../agreement.js";
 import {
-    ASSEMBLY_LEAF_DOMAIN,
-    ASSEMBLY_TERMS_LEAF_KEY,
+    PROCESS_LEAF_DOMAIN,
+    PROCESS_TERMS_LEAF_KEY,
     assertNotReservedKey,
     buildAgreementInclusionProof,
-    assemblyHashOf,
-    type Assembly,
+    processDesignHashOf,
+    type ProcessDesign,
 } from "../assembly.js";
 import { fetchLogsChunked } from "../events.js";
 import { computeCommitmentProcessId } from "../commitments.js";
@@ -103,12 +103,12 @@ export function usageScore(c: bigint, d: bigint, minSellers: bigint): bigint {
  *  the minter reads only the registry the kind names. Mirrors the counter's
  *  `uint8 kind`. */
 export const USAGE_KIND_CLAUSE = 0 as const;
-export const USAGE_KIND_ASSEMBLY = 1 as const;
+export const USAGE_KIND_PROCESS = 1 as const;
 export const USAGE_KIND_AGREEMENT = 2 as const;
-export type UsageKind = typeof USAGE_KIND_CLAUSE | typeof USAGE_KIND_ASSEMBLY | typeof USAGE_KIND_AGREEMENT;
+export type UsageKind = typeof USAGE_KIND_CLAUSE | typeof USAGE_KIND_PROCESS | typeof USAGE_KIND_AGREEMENT;
 
 /** One `(kind, key)` pair — the unit the counter accrues and the minter's
- *  claim names; the shape of `RpgfMinter.ClauseOrAssemblyKey`, so a list of
+ *  claim names; the shape of `RpgfMinter.ClauseOrProcessKey`, so a list of
  *  these is `claim`'s argument as it stands. */
 export interface UsageKey {
     kind: UsageKind;
@@ -120,13 +120,13 @@ export interface UsageKey {
 
 /** The map key this mirror files a `(kind, key)` pair under —
  *  `"<kind>:<lowercased key>"`. */
-export function usageKeyId(kind: UsageKind, clauseOrAssembly: Hex): string {
-    return `${kind}:${clauseOrAssembly.toLowerCase()}`;
+export function usageKeyId(kind: UsageKind, clauseOrProcess: Hex): string {
+    return `${kind}:${clauseOrProcess.toLowerCase()}`;
 }
 
 function asUsageKind(value: unknown): UsageKind {
     const kind = Number(value);
-    if (kind !== USAGE_KIND_CLAUSE && kind !== USAGE_KIND_ASSEMBLY && kind !== USAGE_KIND_AGREEMENT) {
+    if (kind !== USAGE_KIND_CLAUSE && kind !== USAGE_KIND_PROCESS && kind !== USAGE_KIND_AGREEMENT) {
         throw new Error(`usage kind ${String(value)} is none of clause (0), assembly (1), agreement (2)`);
     }
     return kind;
@@ -143,8 +143,8 @@ export interface UsageRecord {
     blockNumber: bigint;
     logIndex: number;
     kind: UsageKind;
-    /** Clause key, assembly assemblyHash or agreement hash, by `kind`. */
-    clauseOrAssembly: Hex;
+    /** Clause key, assembly processDesignHash or agreement hash, by `kind`. */
+    clauseOrProcess: Hex;
     period: number;
     processId: Hex;
     /** The seller of the order the use was proved through (live-staked when counted). */
@@ -168,20 +168,20 @@ export interface UsageAccrual {
  *  stream gives the tally `UsageCounter.accrualOf` holds. `score` is what
  *  `UsageCounter.scoreOf` returns — the only figure a reward calculation may
  *  divide by. */
-export interface ClauseOrAssemblyAccrual extends UsageAccrual {
+export interface ClauseOrProcessAccrual extends UsageAccrual {
     kind: UsageKind;
-    clauseOrAssembly: Hex;
+    clauseOrProcess: Hex;
 }
 
 /** One period's accrual state — every `(kind, key)`'s tally (filed under
  *  `usageKeyId`) plus the period total, mirroring `totalScoreIn`. */
 export interface UsagePeriodAccrual {
-    byClauseOrAssembly: Map<string, ClauseOrAssemblyAccrual>;
+    byClauseOrProcess: Map<string, ClauseOrProcessAccrual>;
     totalScore: bigint;
 }
 
-function emptyEntry(kind: UsageKind, clauseOrAssembly: Hex): ClauseOrAssemblyAccrual {
-    return { kind, clauseOrAssembly, c: 0n, d: 0n, score: 0n };
+function emptyEntry(kind: UsageKind, clauseOrProcess: Hex): ClauseOrProcessAccrual {
+    return { kind, clauseOrProcess, c: 0n, d: 0n, score: 0n };
 }
 
 /** Replay the counter's counting rules over a record stream: idempotence per
@@ -205,8 +205,8 @@ export function computeUsageAccruals(
     const sellersSeen = new Map<string, Set<string>>(); // (kind, key)|period → sellers
 
     for (const record of sorted) {
-        const clauseOrAssembly = record.clauseOrAssembly.toLowerCase() as Hex;
-        const id = usageKeyId(record.kind, clauseOrAssembly);
+        const clauseOrProcess = record.clauseOrProcess.toLowerCase() as Hex;
+        const id = usageKeyId(record.kind, clauseOrProcess);
         const scopeKey = `${id}|${record.period}`;
 
         const seenProcesses = countedProcesses.get(id) ?? new Set<string>();
@@ -220,14 +220,14 @@ export function computeUsageAccruals(
         sellers.add(seller);
         sellersSeen.set(scopeKey, sellers);
 
-        const period = periods.get(record.period) ?? { byClauseOrAssembly: new Map<string, ClauseOrAssemblyAccrual>(), totalScore: 0n };
-        const entry = period.byClauseOrAssembly.get(id) ?? emptyEntry(record.kind, clauseOrAssembly);
+        const period = periods.get(record.period) ?? { byClauseOrProcess: new Map<string, ClauseOrProcessAccrual>(), totalScore: 0n };
+        const entry = period.byClauseOrProcess.get(id) ?? emptyEntry(record.kind, clauseOrProcess);
         entry.c += 1n;
         if (firstSeller) entry.d += 1n;
         const updated = usageScore(entry.c, entry.d, minSellers);
         period.totalScore = period.totalScore + updated - entry.score;
         entry.score = updated;
-        period.byClauseOrAssembly.set(id, entry);
+        period.byClauseOrProcess.set(id, entry);
         periods.set(record.period, period);
     }
     return periods;
@@ -264,18 +264,18 @@ export function computeRpgfAllocations(
     if (period.totalScore === 0n) return [];
 
     const walletScores = new Map<Address, { score: bigint; claims: UsageKey[] }>();
-    for (const [id, accrual] of period.byClauseOrAssembly) {
+    for (const [id, accrual] of period.byClauseOrProcess) {
         const author = authorOf.get(id);
         if (!author || accrual.score === 0n) continue;
         const key = author.toLowerCase() as Address;
         const wallet = walletScores.get(key) ?? { score: 0n, claims: [] };
         wallet.score += accrual.score;
-        wallet.claims.push({ kind: accrual.kind, key: accrual.clauseOrAssembly });
+        wallet.claims.push({ kind: accrual.kind, key: accrual.clauseOrProcess });
         walletScores.set(key, wallet);
     }
 
     // No clamp to `totalScore`: scores are summed per author over DISTINCT
-    // (kind, key) pairs (`byClauseOrAssembly` is keyed by the pair), so `score <= totalScore`
+    // (kind, key) pairs (`byClauseOrProcess` is keyed by the pair), so `score <= totalScore`
     // holds structurally. The chain dropped its equivalent clamp —
     // there it was reachable via a duplicate-stuffed clause-or-assembly list, and clamping
     // silently rounded such a claim UP to the entire period budget instead of
@@ -313,7 +313,7 @@ export async function fetchUsageRecords(
                 blockNumber: log.blockNumber ?? 0n,
                 logIndex: log.logIndex ?? 0,
                 kind: asUsageKind(a.kind),
-                clauseOrAssembly: a.clauseOrAssembly as Hex,
+                clauseOrProcess: a.clauseOrProcess as Hex,
                 period: Number(a.period),
                 processId: a.processId as Hex,
                 seller: a.seller as Address,
@@ -335,7 +335,7 @@ export async function fetchUsageRecords(
 /** One use a batch handed to the counter: the verifier's `settleBatch`
  *  argument `usage.uses[i]`, as `UsageCounter.BatchUse` holds it. */
 export interface BatchUse {
-    clauseOrAssembly: Hex;
+    clauseOrProcess: Hex;
     kind: UsageKind;
     processId: Hex;
     seller: Address;
@@ -473,21 +473,21 @@ function batchUsesOf(claims: SequencerUsageClaim[], chainId: number, batchVerifi
                 processId: o.process_id,
                 buyer: o.buyer,
                 seller: o.seller,
-                currency: o.currency,
+                token: o.token,
                 payment: BigInt(o.payment),
-                expectedCumulativeValue: BigInt(o.expected_cumulative_value),
+                runningTotal: BigInt(o.running_total),
                 checkoutHash: o.checkout_hash,
                 salt: BigInt(o.salt),
-                deadline: BigInt(o.deadline),
+                commitDeadline: BigInt(o.commit_deadline),
             },
             chainId,
             batchVerifier,
         );
         const kind = usageClaimKindCode(claim);
-        const id = `${usageKeyId(kind, claim.clause_or_assembly)}|${processId.toLowerCase()}`;
+        const id = `${usageKeyId(kind, claim.clause_or_process)}|${processId.toLowerCase()}`;
         if (seen.has(id)) continue;
         seen.add(id);
-        uses.push({ clauseOrAssembly: claim.clause_or_assembly, kind, processId, seller: o.seller });
+        uses.push({ clauseOrProcess: claim.clause_or_process, kind, processId, seller: o.seller });
     }
     return uses;
 }
@@ -502,13 +502,13 @@ export interface UsageClaimContext {
      *  called so a counter that disagrees is refused before anything is
      *  sent. */
     provenanceLeaf: Hex;
-    /** `UsageCounter.assemblyTermsLeaf()` — the composition tree's reserved
-     *  terms key (`ASSEMBLY_TERMS_LEAF_KEY`), checked the same way. */
-    assemblyTermsLeaf: Hex;
-    /** `UsageCounter.assemblyLeafDomain()` — the assembly tree's leaf domain
-     *  (`ASSEMBLY_LEAF_DOMAIN`), checked the same way: a counter in the old leaf
+    /** `UsageCounter.processTermsLeaf()` — the composition tree's reserved
+     *  terms key (`PROCESS_TERMS_LEAF_KEY`), checked the same way. */
+    processTermsLeaf: Hex;
+    /** `UsageCounter.processLeafDomain()` — the assembly tree's leaf domain
+     *  (`PROCESS_LEAF_DOMAIN`), checked the same way: a counter in the old leaf
      *  shape would refuse every assembly claim's membership proof. */
-    assemblyLeafDomain: Hex;
+    processLeafDomain: Hex;
 }
 
 /**
@@ -523,12 +523,12 @@ export interface UsageClaimContext {
  *    clause earns.
  *  - the AGREEMENT leg credits the registered agreement's designer from the
  *    agreement's provenance leaf (`Agreement.provenance`), proved with
- *    `buildProvenanceInclusionProof`: kind `{ Agreement: { assembly_hash } }`
+ *    `buildProvenanceInclusionProof`: kind `{ Agreement: { process_design_hash } }`
  *    keyed by the agreement hash.
  *  - the ASSEMBLY leg credits the assembly's designer from the same leaf
  *    plus the agreement's membership proof under the assembly hash
  *    (`buildAgreementInclusionProof` over `assembly`, the instantiated assembly):
- *    kind `{ Assembly: { agreement_hash, slot_content_hash, membership_proof } }`
+ *    kind `{ Process: { agreement_hash, agreement_content_hash, membership_proof } }`
  *    keyed by the assembly hash. The agreement proved is the first whose
  *    `agreementHash` is the provenance's (every such agreement proves the
  *    same membership).
@@ -549,7 +549,7 @@ export function buildUsageClaims(
     order: Commitment,
     agreement: Agreement,
     context: UsageClaimContext,
-    assembly?: Assembly,
+    assembly?: ProcessDesign,
 ): SequencerUsageClaim[] {
     if (context.provenanceLeaf.toLowerCase() !== PROVENANCE_LEAF_KEY.toLowerCase()) {
         throw new Error(
@@ -557,16 +557,16 @@ export function buildUsageClaims(
             `${PROVENANCE_LEAF_KEY}: every agreement and assembly claim against it would revert`,
         );
     }
-    if (context.assemblyTermsLeaf.toLowerCase() !== ASSEMBLY_TERMS_LEAF_KEY.toLowerCase()) {
+    if (context.processTermsLeaf.toLowerCase() !== PROCESS_TERMS_LEAF_KEY.toLowerCase()) {
         throw new Error(
-            `the counter's assembly-terms leaf ${context.assemblyTermsLeaf} is not the composition format's ` +
-            `${ASSEMBLY_TERMS_LEAF_KEY}: every assembly claim against it would revert`,
+            `the counter's assembly-terms leaf ${context.processTermsLeaf} is not the composition format's ` +
+            `${PROCESS_TERMS_LEAF_KEY}: every assembly claim against it would revert`,
         );
     }
-    if (context.assemblyLeafDomain.toLowerCase() !== ASSEMBLY_LEAF_DOMAIN.toLowerCase()) {
+    if (context.processLeafDomain.toLowerCase() !== PROCESS_LEAF_DOMAIN.toLowerCase()) {
         throw new Error(
-            `the counter's assembly leaf domain ${context.assemblyLeafDomain} is not the assembly tree's ` +
-            `${ASSEMBLY_LEAF_DOMAIN}: every assembly claim against it would revert`,
+            `the counter's assembly leaf domain ${context.processLeafDomain} is not the assembly tree's ` +
+            `${PROCESS_LEAF_DOMAIN}: every assembly claim against it would revert`,
         );
     }
     const wireOrder = toSequencerCommitment(order);
@@ -576,7 +576,7 @@ export function buildUsageClaims(
     for (const clauseEntry of agreement.clauses) {
         claims.push({
             order: wireOrder,
-            clause_or_assembly: clauseEntry.clause,
+            clause_or_process: clauseEntry.clause,
             kind: { Clause: { clause_data_hash: hashClauseData(clauseEntry) } },
             inclusion_proof: buildSignedClauseInclusionProof(agreement, clauseEntry.clause).proof,
         });
@@ -584,33 +584,33 @@ export function buildUsageClaims(
 
     // ── Agreement and assembly legs — the agreement's provenance leaf ──
     if (agreement.provenance !== undefined) {
-        const { agreementHash, assemblyHash } = agreement.provenance;
+        const { agreementHash, processDesignHash } = agreement.provenance;
         assertNotReservedKey(agreementHash, "provenance agreementHash");
         if (!assembly) {
             throw new Error("the agreement names a provenance: its instantiated assembly is needed for the assembly leg's membership proof");
         }
-        if (assemblyHashOf(assembly).toLowerCase() !== assemblyHash.toLowerCase()) {
-            throw new Error(`the assembly given does not hash to the provenance's assembly hash ${assemblyHash}`);
+        if (processDesignHashOf(assembly).toLowerCase() !== processDesignHash.toLowerCase()) {
+            throw new Error(`the assembly given does not hash to the provenance's assembly hash ${processDesignHash}`);
         }
         const agreementIndex = assembly.agreements.findIndex((entry) => entry.agreementHash.toLowerCase() === agreementHash.toLowerCase());
         if (agreementIndex < 0) {
-            throw new Error(`no agreement of ${assemblyHash} binds the provenance's agreement ${agreementHash}`);
+            throw new Error(`no agreement of ${processDesignHash} binds the provenance's agreement ${agreementHash}`);
         }
         const leafProof = buildProvenanceInclusionProof(agreement).proof;
         claims.push({
             order: wireOrder,
-            clause_or_assembly: agreementHash,
-            kind: { Agreement: { assembly_hash: assemblyHash } },
+            clause_or_process: agreementHash,
+            kind: { Agreement: { process_design_hash: processDesignHash } },
             inclusion_proof: leafProof,
         });
         const membership = buildAgreementInclusionProof(assembly, agreementIndex);
         claims.push({
             order: wireOrder,
-            clause_or_assembly: assemblyHash,
+            clause_or_process: processDesignHash,
             kind: {
-                Assembly: {
+                Process: {
                     agreement_hash: agreementHash,
-                    slot_content_hash: membership.slotContentHash,
+                    agreement_content_hash: membership.agreementContentHash,
                     membership_proof: membership.proof,
                 },
             },
@@ -622,12 +622,12 @@ export function buildUsageClaims(
 }
 
 /** The family a wire claim credits — `USAGE_KIND_CLAUSE`,
- *  `USAGE_KIND_ASSEMBLY` or `USAGE_KIND_AGREEMENT` — mirroring the guest's
+ *  `USAGE_KIND_PROCESS` or `USAGE_KIND_AGREEMENT` — mirroring the guest's
  *  `UsageClaimKind::code()`. */
 export function usageClaimKindCode(claim: Pick<SequencerUsageClaim, "kind">): UsageKind {
     if ("Clause" in claim.kind) return USAGE_KIND_CLAUSE;
     if ("Agreement" in claim.kind) return USAGE_KIND_AGREEMENT;
-    return USAGE_KIND_ASSEMBLY;
+    return USAGE_KIND_PROCESS;
 }
 
 /**
@@ -638,10 +638,10 @@ export async function fetchUsageClaimContext(
     client: PublicClient,
     usageCounter: Address,
 ): Promise<UsageClaimContext> {
-    const [provenanceLeaf, assemblyTermsLeaf, assemblyLeafDomain] = await Promise.all([
+    const [provenanceLeaf, processTermsLeaf, processLeafDomain] = await Promise.all([
         client.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "provenanceLeaf" }) as Promise<Hex>,
-        client.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "assemblyTermsLeaf" }) as Promise<Hex>,
-        client.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "assemblyLeafDomain" }) as Promise<Hex>,
+        client.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "processTermsLeaf" }) as Promise<Hex>,
+        client.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "processLeafDomain" }) as Promise<Hex>,
     ]);
-    return { provenanceLeaf, assemblyTermsLeaf, assemblyLeafDomain };
+    return { provenanceLeaf, processTermsLeaf, processLeafDomain };
 }

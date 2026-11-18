@@ -60,7 +60,7 @@ const reads = vi.hoisted(() => {
         clauses: presentFor((by) => ({ clauseKey: key, contentURI: "ipfs://QmClause", registeredBy: by, blockNumber: 7n, transactionHash: tx, stakeWithdrawn: false })),
         agreements: presentFor((by) => ({ agreementHash: key, contentURI: "ipfs://QmAgreement", registeredBy: by, blockNumber: 7n, transactionHash: tx, stakeWithdrawn: false })),
         assemblies: presentFor((by) => ({
-            assemblyHash: key, slug: "point-of-sale", name: "Point of sale", contentURI: "ipfs://QmAssembly",
+            processDesignHash: key, slug: "point-of-sale", name: "Point of sale", contentURI: "ipfs://QmAssembly",
             registeredBy: by, blockNumber: 7n, state: "loaded", hydratedAssembly: null,
         })),
     };

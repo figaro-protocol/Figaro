@@ -103,7 +103,7 @@ export interface QuoteFundingLegArgs {
     /** The process denomination the swap must yield. */
     currency: Hex;
     /** The signing party's bond for this order (FigaroCore pull: 2·payment
-     *  for the buyer, 2·expectedCumulativeValue for the seller). */
+     *  for the buyer, 2·runningTotal for the seller). */
     bondAmount: bigint;
     /** Signature window — the order's own deadline. */
     deadline: bigint;

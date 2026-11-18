@@ -19,10 +19,10 @@
  * Each authored agreement (`agreements/*.json`) is composed over the specs
  * (`composeAuthoredAgreements`, keyed); each
  * reference assembly is built over the agreements its agreements name
- * (`assembleAuthored`: the entry binds the named agreement's hash and carries
+ * (`composeAuthoredProcessDesign`: the entry binds the named agreement's hash and carries
  * its own topology parents); every DISTINCT agreement is pinned and
  * registered once on AgreementRegistry (a key the registry already binds is
- * skipped), then the assembly is registered on AssemblyRegistry.
+ * skipped), then the assembly is registered on ProcessRegistry.
  *
  * No deploy script anchors a placeholder hash, and no clause spec ships bundled
  * in the frontend: `clauses/*.json` pinned to IPFS and anchored here is the only
@@ -68,7 +68,7 @@
  * stranger's — is registrar of its own artifacts through the same registries.
  *
  * REFERENCE ASSEMBLIES ride the same invocation when all three are set:
- *   NEXT_PUBLIC_ASSEMBLY_REGISTRY — the AssemblyRegistry address
+ *   NEXT_PUBLIC_PROCESS_REGISTRY — the ProcessRegistry address
  *   NEXT_PUBLIC_AGREEMENT_REGISTRY — the AgreementRegistry address (each
  *                                   reference assembly's agreements register
  *                                   there first)
@@ -80,7 +80,7 @@
  *   SEED_ASSEMBLIES       — comma-separated reference-assembly names (the
  *                           `assemblies/<name>.json` basenames): anchor ONLY
  *                           these, and register ONLY the clauses they compose
- *                           (`assemblyComposedClauseKeys`) — a nudge is a
+ *                           (`processDesignComposedClauseKeys`) — a nudge is a
  *                           usable assembly plus its prerequisites, not an
  *                           alphabetical prefix of the clause set. Unset =
  *                           everything.
@@ -118,9 +118,9 @@ import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 // compiled dist resolves from plain node ESM): the registry ABI, the clause
 // key, and the canonical-JSON convention. Nothing is re-implemented here.
 import {
-    CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, computeClauseKey, canonicalize,
-    assemblyHashOf, deriveAssemblySlug, parseProjectionHints,
-    assemblyComposedClauseKeys, resolveAuthoredClauseKeys, composeAuthoredAgreements, assembleAuthored,
+    CLAUSE_REGISTRY_ABI, PROCESS_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, computeClauseKey, canonicalize,
+    processDesignHashOf, deriveProcessDesignSlug, parseProjectionHints,
+    processDesignComposedClauseKeys, resolveAuthoredClauseKeys, composeAuthoredAgreements, composeAuthoredProcessDesign,
     agreementHashOf, fillDeployTimeCurrency,
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
@@ -135,7 +135,7 @@ export const AGREEMENTS_DIR = path.resolve(__dirname, '../../agreements');
 
 /** The reference assemblies — the user-onboarding set, `clauses/`' sibling:
  *  authored assemblies whose agreements' agreements register on
- *  AgreementRegistry and whose assemblies anchor on AssemblyRegistry at
+ *  AgreementRegistry and whose assemblies anchor on ProcessRegistry at
  *  populate time (affixed documents in `assemblies/documents/`). */
 export const ASSEMBLIES_DIR = path.resolve(__dirname, '../../assemblies');
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
@@ -434,9 +434,9 @@ export function loadAuthoredAgreements(authored = loadAuthoredSpecs()) {
 /** An authored reference assembly (`assemblies/<file>`) built over the
  *  authored agreements its agreements name: `{ assembly, agreements }` —
  *  the assembly seeding anchors and the agreements its agreements bind,
- *  keyed (`assembleAuthored`). Seed time only. */
+ *  keyed (`composeAuthoredProcessDesign`). Seed time only. */
 export function readBuiltAssembly(file, authored = loadAuthoredSpecs(), agreementsByName = loadAuthoredAgreements(authored)) {
-    return assembleAuthored(JSON.parse(fs.readFileSync(file, 'utf8')), agreementsByName, authored);
+    return composeAuthoredProcessDesign(JSON.parse(fs.readFileSync(file, 'utf8')), agreementsByName, authored);
 }
 
 /**
@@ -622,25 +622,25 @@ export async function anchorBuiltAssembly({ built, agreementRegistry, ...args })
                 : { ...(assembly.name ? { name: `${assembly.name} · ${entry.id}` } : {}), clauses: doc.clauses },
         });
     }
-    return anchorAssembly({ ...args, assembly });
+    return anchorProcessDesign({ ...args, assembly });
 }
 
-/** Anchor one Assembly (idempotent — assemblyHash is content-derived,
+/** Anchor one Assembly (idempotent — processDesignHash is content-derived,
  *  first-write-wins). In vault mode the multisig is msg.sender, so the DAO
  *  becomes the assembly's designer of record. */
-export async function anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, assembly, vault, ownerClients, log = console.log }) {
+export async function anchorProcessDesign({ publicClient, walletClient, account, registry, ipfsApiUrl, assembly, vault, ownerClients, log = console.log }) {
     // Assembly hash over the COMPOSITION ONLY (editorial excluded); the slug
     // is presentation, derived off-chain. Both from the SDK single home — the
-    // registry keys bindings by assemblyHash.
-    const assemblyHash = assemblyHashOf(assembly);
-    const slug = deriveAssemblySlug(assemblyHash);
+    // registry keys bindings by processDesignHash.
+    const processDesignHash = processDesignHashOf(assembly);
+    const slug = deriveProcessDesignSlug(processDesignHash);
 
     // Idempotency via STATE, not an event scan: `bindings[hash].registeredAt`
     // is the contract's own already-registered test. A fromBlock:0 log scan
     // works on devnet's short chain but exceeds every public provider's
     // getLogs range cap on a real network (as the Sepolia fork shows).
     const [, registeredAt] = await publicClient.readContract({
-        address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'bindings', args: [assemblyHash],
+        address: registry, abi: PROCESS_REGISTRY_ABI, functionName: 'bindings', args: [processDesignHash],
     });
     if (registeredAt !== 0n && registeredAt !== 0) {
         log(`  · ${slug} — already anchored, skipped`);
@@ -649,31 +649,31 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
 
     const contentURI = await pinJSON(ipfsApiUrl, canonicalize(assembly));
     const deposit = await publicClient.readContract({
-        address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registrationDeposit',
+        address: registry, abi: PROCESS_REGISTRY_ABI, functionName: 'registrationDeposit',
     });
     if (vault) {
-        // Nonce = the assemblyHash itself: unique per assembly,
+        // Nonce = the processDesignHash itself: unique per assembly,
         // deterministic across re-runs.
         await vaultExecute({
             publicClient, vault, ownerClients,
             to: registry,
             value: deposit,
             data: encodeFunctionData({
-                abi: ASSEMBLY_REGISTRY_ABI,
-                functionName: 'registerAssembly',
-                args: [assemblyHash, contentURI],
+                abi: PROCESS_REGISTRY_ABI,
+                functionName: 'registerProcess',
+                args: [processDesignHash, contentURI],
             }),
-            nonce: BigInt(assemblyHash),
+            nonce: BigInt(processDesignHash),
             log,
         });
     } else {
         await publicClient.simulateContract({
-            account: account.address, address: registry, abi: ASSEMBLY_REGISTRY_ABI,
-            functionName: 'registerAssembly', args: [assemblyHash, contentURI], value: deposit,
+            account: account.address, address: registry, abi: PROCESS_REGISTRY_ABI,
+            functionName: 'registerProcess', args: [processDesignHash, contentURI], value: deposit,
         });
         const hash = await walletClient.writeContract({
-            address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registerAssembly',
-            args: [assemblyHash, contentURI], value: deposit,
+            address: registry, abi: PROCESS_REGISTRY_ABI, functionName: 'registerProcess',
+            args: [processDesignHash, contentURI], value: deposit,
         });
         await publicClient.waitForTransactionReceipt({ hash });
     }
@@ -770,7 +770,7 @@ async function main() {
             const file = path.join(ASSEMBLIES_DIR, `${name}.json`);
             if (!fs.existsSync(file)) throw new Error(`SEED_ASSEMBLIES names "${name}" but ${file} does not exist`);
             const built = readBuiltAssembly(file, authoredSpecs, agreementsByName);
-            for (const key of assemblyComposedClauseKeys(built.assembly, built.agreements)) onlyClauses.add(key);
+            for (const key of processDesignComposedClauseKeys(built.assembly, built.agreements)) onlyClauses.add(key);
         }
         console.log(`SEED_ASSEMBLIES ${[...onlyAssemblies].join(', ')} → clause set ${[...onlyClauses].sort().join(', ')}`);
     }
@@ -826,20 +826,20 @@ async function main() {
     // denomination fill are both provided (testnet/mainnet: Sepolia USDC;
     // devnet's populate-test-data passes its mock instead). An assembly's
     // agreements register on AgreementRegistry before the assembly anchors.
-    const assemblyRegistry = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
+    const processRegistry = process.env.NEXT_PUBLIC_PROCESS_REGISTRY ?? env.NEXT_PUBLIC_PROCESS_REGISTRY;
     const agreementRegistry = process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? env.NEXT_PUBLIC_AGREEMENT_REGISTRY;
     const assemblyToken = process.env.ASSEMBLY_TOKEN_ADDRESS;
-    if (assemblyRegistry && assemblyToken && !agreementRegistry) {
-        throw new Error('NEXT_PUBLIC_ASSEMBLY_REGISTRY is set but NEXT_PUBLIC_AGREEMENT_REGISTRY is not — a reference assembly\'s agreements register before it');
+    if (processRegistry && assemblyToken && !agreementRegistry) {
+        throw new Error('NEXT_PUBLIC_PROCESS_REGISTRY is set but NEXT_PUBLIC_AGREEMENT_REGISTRY is not — a reference assembly\'s agreements register before it');
     }
-    if (assemblyRegistry && assemblyToken) {
+    if (processRegistry && assemblyToken) {
         const remaining = seedLimit === undefined ? undefined : Math.max(0, seedLimit - n);
         if (remaining === 0) {
             console.log(`\nSEED_LIMIT ${seedLimit} exhausted by clauses — reference assemblies deferred to a later run.`);
         } else {
-            console.log(`\nPopulating reference assemblies → AssemblyRegistry ${assemblyRegistry} (token ${assemblyToken})`);
+            console.log(`\nPopulating reference assemblies → ProcessRegistry ${processRegistry} (token ${assemblyToken})`);
             const a = await populateReferenceAssemblies({
-                publicClient, walletClient, account, registry: assemblyRegistry, agreementRegistry, ipfsApiUrl,
+                publicClient, walletClient, account, registry: processRegistry, agreementRegistry, ipfsApiUrl,
                 tokenAddress: assemblyToken, vault, ownerClients, limit: remaining, only: onlyAssemblies,
             });
             console.log(`Done — ${a} reference assembly(ies) newly anchored.`);

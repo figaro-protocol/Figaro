@@ -1,17 +1,17 @@
 /**
  * reconstructOrders — the ONE assembly → orders walk. Structure via
- * `planAssemblyOrders` (commit order, clause bags, local parents)
- * and realization via `reconstructOrdersFromAssembly` (real parent hashes,
+ * `planProcessOrders` (commit order, clause bags, local parents)
+ * and realization via `reconstructOrdersFromProcessDesign` (real parent hashes,
  * running cumulative value, root-derived processId, onOrder seam ordering).
  * The behavioral reference is the untouched originate-chain suite, which now
  * runs THROUGH this walk.
  */
 import { describe, expect, it } from "vitest";
 import {
-    planAssemblyOrders,
-    reconstructOrdersFromAssembly,
+    planProcessOrders,
+    reconstructOrdersFromProcessDesign,
 } from "../src/reconstructOrders.js";
-import { assemblyHashOf } from "../src/assembly.js";
+import { processDesignHashOf } from "../src/assembly.js";
 import { computeCheckoutHash, buildProvenanceInclusionProof, verifyInclusionProof } from "../src/agreement.js";
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { hydrateAuthored } from "./hydrate.js";
@@ -40,9 +40,9 @@ const assembly = hydrateAuthored({
     ],
 });
 
-describe("planAssemblyOrders — pure structure", () => {
+describe("planProcessOrders — pure structure", () => {
     it("orders nodes root-first with local parents and the assembly's clause bags", () => {
-        const planned = planAssemblyOrders(assembly);
+        const planned = planProcessOrders(assembly);
         expect(planned.map((p) => p.nodeId)).toEqual(["merchant", "courier"]);
         expect(planned[0].parentLocalIds).toEqual([]);
         expect(planned[1].parentLocalIds).toEqual(["merchant"]);
@@ -58,14 +58,14 @@ describe("planAssemblyOrders — pure structure", () => {
                 { id: "b", clauses: {}, follows: ["a"] },
             ],
         });
-        expect(() => planAssemblyOrders(cyclic)).toThrow(/cycle/);
+        expect(() => planProcessOrders(cyclic)).toThrow(/cycle/);
     });
 });
 
-describe("reconstructOrdersFromAssembly — realization", () => {
+describe("reconstructOrdersFromProcessDesign — realization", () => {
     it("realizes the chain: real parent hashes, running cumulative, root-derived processId", async () => {
         const seen: string[] = [];
-        const orders = await reconstructOrdersFromAssembly(assembly, {
+        const orders = await reconstructOrdersFromProcessDesign(assembly, {
             buyer: BUYER,
             currency: CURRENCY,
             chainId: 31337,
@@ -86,9 +86,9 @@ describe("reconstructOrdersFromAssembly — realization", () => {
         const [root, sub] = orders;
         expect(root.isRoot).toBe(true);
         expect(root.commitment.processId).toBe(`0x${"00".repeat(32)}`);
-        expect(root.cumulativeValue).toBe(100n);
+        expect(root.runningTotal).toBe(100n);
         expect(sub.isRoot).toBe(false);
-        expect(sub.cumulativeValue).toBe(140n);
+        expect(sub.runningTotal).toBe(140n);
         // The sub-order's signed struct names the ROOT's derived process id.
         expect(sub.commitment.processId).toBe(root.processId);
         expect(sub.processId).toBe(root.processId);
@@ -100,7 +100,7 @@ describe("reconstructOrdersFromAssembly — realization", () => {
         // The token and the payment live in the commitment only: no
         // realized order's clause carries either, root and sub alike.
         for (const order of orders) {
-            expect(order.commitment.currency).toBe(CURRENCY);
+            expect(order.commitment.token).toBe(CURRENCY);
             for (const clause of order.agreement.clauses) {
                 expect(clause.data).not.toHaveProperty("currency");
                 expect(clause.data).not.toHaveProperty("payment");
@@ -110,7 +110,7 @@ describe("reconstructOrdersFromAssembly — realization", () => {
 
     it("every realized order carries the assembly's own assembly hash as agreement.provenance, under its signed root", async () => {
         for (const specs of [SPECS, undefined]) {
-            const orders = await reconstructOrdersFromAssembly(assembly, {
+            const orders = await reconstructOrdersFromProcessDesign(assembly, {
                 buyer: BUYER,
                 currency: CURRENCY,
                 chainId: 31337,
@@ -127,7 +127,7 @@ describe("reconstructOrdersFromAssembly — realization", () => {
                 const entry = assembly.assembly.agreements.find((a) => a.id === order.nodeId)!;
                 expect(order.agreement.provenance).toEqual({
                     agreementHash: entry.agreementHash,
-                    assemblyHash: assemblyHashOf(assembly.assembly),
+                    processDesignHash: processDesignHashOf(assembly.assembly),
                 });
                 expect(order.checkoutHash).toBe(computeCheckoutHash(order.agreement));
                 expect(order.commitment.checkoutHash).toBe(order.checkoutHash);
@@ -144,7 +144,7 @@ describe("reconstructOrdersFromAssembly — realization", () => {
             ],
         });
         await expect(
-            reconstructOrdersFromAssembly(dangling, {
+            reconstructOrdersFromProcessDesign(dangling, {
                 buyer: BUYER,
                 currency: CURRENCY,
                 chainId: 31337,

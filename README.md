@@ -75,7 +75,7 @@ src/                        Solidity contracts (0.8.26, Foundry)
   core/kernel/              FigaroCore, CommitmentTypes
   core/attestation/         AttestationCoordinator
   core/verifier/            FigaroBatchVerifier, ISP1Verifier
-  build/registries/         ClauseRegistry, AssemblyRegistry
+  build/registries/         ClauseRegistry, ProcessRegistry
   build/rewards/            UsageCounter, RpgfMinter
   build/florin/             FlorinToken, IFlorinMinter
   app/                      MembersRegistry, WitnessSwapAndCommitCoordinator

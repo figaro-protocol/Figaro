@@ -18,7 +18,7 @@ export type MarketFormationSwimlaneFigureProps = BaseFigureProps;
  *  - Step 1: drafts carry NO signatures (`validateDraft` rejects a payload
  *    with either `buyerSig` or `sellerSig`), one per candidate, each naming
  *    that candidate as `seller`; the bond the commitment will require is the
- *    struct's own `expectedCumulativeValue`, doubled by the mechanism at commit.
+ *    struct's own `runningTotal`, doubled by the mechanism at commit.
  *  - Step 2 (race leg): `counterSignDraft` — the candidate signs the drafted
  *    struct unchanged; it refuses a payload carrying `quoteRequest`.
  *  - Step 3 (quote leg): `quoteDraft` — the candidate re-prices through

@@ -72,7 +72,7 @@ describe("readFundingLegs — devnet receipts", () => {
         expect(lower(leg.venue)).toBe(lower(fixture.venue));
         expect(lower(leg.payload.party)).toBe(lower(commit.seller));
         expect(lower(leg.payload.tokenOut)).toBe(lower(commit.currency));
-        expect(leg.payload.amountOut).toBe(commit.cumulativeValue * 2n);
+        expect(leg.payload.amountOut).toBe(commit.runningTotal * 2n);
     });
 
     it("the legs feed projectValueFlow as an edge between two denominations", () => {

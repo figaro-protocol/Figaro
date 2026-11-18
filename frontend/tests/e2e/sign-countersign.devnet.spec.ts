@@ -141,7 +141,7 @@ test.describe('/sign counter-sign — shared review before commit (devnet)', () 
         expect(receipt.status, 'the commit transaction succeeded').toBe('success');
         test.info().annotations.push({
             type: 'OrderCommitted',
-            description: `order=${event.args.orderHash} payment=${event.args.payment} cumulativeValue=${event.args.cumulativeValue} tx=${receipt.transactionHash} block=${receipt.blockNumber} gasUsed=${receipt.gasUsed}`,
+            description: `order=${event.args.orderHash} payment=${event.args.payment} runningTotal=${event.args.runningTotal} tx=${receipt.transactionHash} block=${receipt.blockNumber} gasUsed=${receipt.gasUsed}`,
         });
 
         // ── UI reaction on the SAME page: /sign reaches its success state ──
@@ -151,7 +151,7 @@ test.describe('/sign counter-sign — shared review before commit (devnet)', () 
         // ── Value legs (the real test): buyer↓ buyerBond, seller↓ sellerBond,
         //    FigaroCore escrow↑ both. Exact deltas — gas is ETH, so the
         //    payment-token deltas are the bonds only. ──
-        const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+        const { buyerBond, sellerBond } = calculateBonds(event.args.runningTotal!, event.args.payment!);
         const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
         ]);

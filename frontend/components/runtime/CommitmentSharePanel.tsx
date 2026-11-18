@@ -211,7 +211,7 @@ export function CommitmentSharePanel({
                 )}
                 <div className="flex justify-between">
                     <span>Deadline</span>
-                    <span>{new Date(Number(commitment.deadline) * 1000).toLocaleTimeString()}</span>
+                    <span>{new Date(Number(commitment.commitDeadline) * 1000).toLocaleTimeString()}</span>
                 </div>
             </div>
 

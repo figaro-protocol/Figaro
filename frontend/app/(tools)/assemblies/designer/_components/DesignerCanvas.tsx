@@ -67,7 +67,7 @@ import { AssemblyTermsPanel } from "./AssemblyTermsPanel";
 import { CompositionAssist } from "./CompositionAssist";
 import { AssemblyIdentity } from "./AssemblyIdentity";
 import { assemblyToDraft } from "@/lib/designer/assemblyToDraft";
-import type { HydratedAssembly } from "@figaro-protocol/sdk";
+import type { HydratedProcessDesign } from "@figaro-protocol/sdk";
 import {
     fetchRegisteredAgreement,
     getRegisteredAgreement,
@@ -505,7 +505,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
      *  stay the designer's act. Throws on a assembly the chain-loaded specs
      *  can't project — the assist panel surfaces it before state is touched.
      *  Returns false when the designer declines the replace-confirmation. */
-    const handleImportAssembly = useCallback((hydratedImport: HydratedAssembly, composeKeys: ReadonlySet<string>): boolean => {
+    const handleImportAssembly = useCallback((hydratedImport: HydratedProcessDesign, composeKeys: ReadonlySet<string>): boolean => {
         const assembly = hydratedImport.assembly;
         // Hydrate FIRST — a throw here (unregistered clause, bad topology)
         // must leave the canvas untouched.
@@ -550,7 +550,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         // The draft gets a stable local handle (assigned once, reused on every
         // save) that keys the local draft + its /edit and /view routes. The
         // PUBLISHED slug is derived from the composition's content at publish
-        // time (deriveAssemblySlug) — independent of the editorial `name`, which
+        // time (deriveProcessDesignSlug) — independent of the editorial `name`, which
         // is the designer's own words and may be blank.
         const handle = slug ?? `asm-draft-${crypto.randomUUID().slice(0, 8)}`;
         return {
@@ -606,7 +606,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     }, [buildSnapshot, router, searchParams, slug]);
 
     // The designer "Review" button only NAVIGATES to the review page; the
-    // actual publish (IPFS pin + wallet deposit + registerAssembly) happens
+    // actual publish (IPFS pin + wallet deposit + registerProcess) happens
     // there via `review-confirm-publish`. No publish state lives here.
     const handleReview = useCallback(() => {
         // Pre-review validation: the review page resolves by slug, so the

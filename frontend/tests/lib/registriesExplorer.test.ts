@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { agreementHashOf, canonicalContentHash, canonicalize, computeClauseKey, assemblyHashOf } from "@figaro-protocol/sdk";
+import { agreementHashOf, canonicalContentHash, canonicalize, computeClauseKey, processDesignHashOf } from "@figaro-protocol/sdk";
 import { keccak256, stringToBytes } from "viem";
 import {
     parseExplorerQuery, serializeExplorerQuery, selectRows, facetValues, explorerBreadcrumb,
@@ -149,15 +149,15 @@ describe("the document as stored — the reader re-derives the anchor themselves
         expect(v.matches).toBe(false);
     });
 
-    it("an assembly's served bytes reproduce the registry's assemblyHash", () => {
-        const anchored = assemblyHashOf(ASSEMBLY as Parameters<typeof assemblyHashOf>[0]);
+    it("an assembly's served bytes reproduce the registry's processDesignHash", () => {
+        const anchored = processDesignHashOf(ASSEMBLY as Parameters<typeof processDesignHashOf>[0]);
         const v = storedDocument(JSON.stringify(ASSEMBLY), anchored, "assembly-hash");
         expect(v.matches).toBe(true);
         expect(v.anchor).toBe("assembly-hash");
     });
 
     it("an assembly's editorial wording is OUTSIDE its anchor — reword it and the hash holds", () => {
-        const anchored = assemblyHashOf(ASSEMBLY as Parameters<typeof assemblyHashOf>[0]);
+        const anchored = processDesignHashOf(ASSEMBLY as Parameters<typeof processDesignHashOf>[0]);
         const reworded = JSON.stringify({ ...ASSEMBLY, name: "Kit hire", summary: "Different words entirely." });
         expect(storedDocument(reworded, anchored, "assembly-hash").matches).toBe(true);
         // Changing the COMPOSITION does break it — the anchor is the terms.

@@ -23,11 +23,11 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
     buildCommitment,
     buildDomain,
-    deriveAssemblySlug,
+    deriveProcessDesignSlug,
     fillCommerceClause,
-    planAssemblyOrders,
+    planProcessOrders,
     readUtilityTokenPin,
-    reconstructOrdersFromAssembly,
+    reconstructOrdersFromProcessDesign,
 } from '@figaro-protocol/sdk';
 import { serializeCommitmentPayload } from '@figaro-protocol/sdk/agent';
 import { specSource } from '@/lib/shared/clauseSpecSource';
@@ -73,11 +73,11 @@ test.describe('a seller refuses an order under an assembly it has not bound (dev
         const anvil = new Set(ANVIL_ACCOUNTS.map((a) => a.toLowerCase()));
         const members = (await discoverMembers()).filter((m) =>
             anvil.has(m.address.toLowerCase()) && m.address.toLowerCase() !== BUYER.address.toLowerCase()
-            && m.assemblyBindings.some((b) => anchored.some((a) => isBindingOf(b, a.assemblyHash))));
+            && m.processBindings.some((b) => anchored.some((a) => isBindingOf(b, a.processDesignHash))));
         let pair: { seller: Hex; notBound: (typeof anchored)[number] } | undefined;
         for (const m of members) {
             const notBound = anchored.find((a) => a.agreements.length === 1
-                && !m.assemblyBindings.some((b) => isBindingOf(b, a.assemblyHash)));
+                && !m.processBindings.some((b) => isBindingOf(b, a.processDesignHash)));
             if (notBound) { pair = { seller: m.address, notBound }; break; }
         }
         expect(pair, 'a registered seller and an anchored single-order assembly its profile does not bind').toBeDefined();
@@ -87,19 +87,19 @@ test.describe('a seller refuses an order under an assembly it has not bound (dev
         // The buyer's order under that assembly, built through the SDK's
         // assembly walk with its line items filled, signed out of band.
         const specs = specSource();
-        const [root] = planAssemblyOrders(notBound.hydrated);
+        const [root] = planProcessOrders(notBound.hydrated);
         const currency = (readUtilityTokenPin(root.clauses, specs) ?? token) as Hex;
         const payment = 1_000_000n;
         const filled = fillCommerceClause(root.clauses, specs, [
             { itemId: 'seller-binding', name: 'Under an assembly the seller has not bound', quantity: 1, unitPrice: payment.toString() },
         ]);
         const chainNow = (await publicClient.getBlock({ blockTag: 'latest' })).timestamp;
-        const [order] = await reconstructOrdersFromAssembly(notBound.hydrated, {
+        const [order] = await reconstructOrdersFromProcessDesign(notBound.hydrated, {
             buyer: BUYER.address, currency, chainId: 31337, core, specs, deadline: chainNow + 3600n,
             nodes: (planned) => ({ seller: SELLER, payment, overrides: planned.index === 0 ? filled : undefined }),
         });
-        expect(order.agreement.provenance?.assemblyHash, 'the order names the assembly in its provenance leaf')
-            .toBe(notBound.assemblyHash);
+        expect(order.agreement.provenance?.processDesignHash, 'the order names the assembly in its provenance leaf')
+            .toBe(notBound.processDesignHash);
         const { typedData } = buildCommitment({ ...order.commitment }, buildDomain(31337, core));
         const buyerSig = await BUYER.signTypedData(typedData as unknown as Parameters<typeof BUYER.signTypedData>[0]);
         const payload = serializeCommitmentPayload({ commitment: order.commitment, agreement: order.agreement, buyerSig });
@@ -124,8 +124,8 @@ test.describe('a seller refuses an order under an assembly it has not bound (dev
         // ── The reaction: the refusal names the assembly by slug and hash. ──
         const refusal = page.getByTestId('sign-error');
         await expect(refusal, 'the seller refuses the order').toContainText('has not bound assembly', { timeout: 60000 });
-        await expect(refusal).toContainText(deriveAssemblySlug(notBound.assemblyHash));
-        await expect(refusal).toContainText(notBound.assemblyHash);
+        await expect(refusal).toContainText(deriveProcessDesignSlug(notBound.processDesignHash));
+        await expect(refusal).toContainText(notBound.processDesignHash);
         await expect(page.getByTestId('agreement-preview-modal'), 'no confirm opens: nothing reaches a signature').toHaveCount(0);
 
         // ── Out of band: no order committed, no token moved. ──

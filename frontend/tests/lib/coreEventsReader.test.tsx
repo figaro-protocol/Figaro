@@ -66,7 +66,7 @@ const COMMITTED: OrderCommittedEvent = {
     seller: SELLER,
     currency: "0x00000000000000000000000000000000000000c1",
     payment: 10n,
-    cumulativeValue: 10n,
+    runningTotal: 10n,
     checkoutHash: word(0xc4ec),
     salt: 1n,
     deadline: 2_000_000_000n,

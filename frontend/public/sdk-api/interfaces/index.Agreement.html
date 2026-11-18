@@ -52,7 +52,7 @@ by clause key, and sign the merkle root of the leaves.</p>
 order the design names them, empty for the process's root. Carried by
 the agreement FORMAT as one leaf of a shape of its own
 (<code>computeTopologyLeaf</code>), never by a clause. Checkout writes it from the
-assembly entry the order instantiates (<code>AssemblyAgreement.follows</code>,
+assembly entry the order instantiates (<code>ProcessDesignAgreement.follows</code>,
 local labels there, order hashes here), as it writes the provenance; a
 registered agreement carries none, since who follows whom is the
 assembly's. An agreement built from a design carries it, an empty list
@@ -67,8 +67,8 @@ no topology leaf.</p>
 <div class="tsd-signature"><span class="tsd-kind-property">provenance</span><span class="tsd-signature-symbol">?:</span> <a href="index.AgreementProvenance.html" class="tsd-signature-type tsd-kind-interface">AgreementProvenance</a></div>
 <div class="tsd-comment tsd-typography"><p>Where this agreement came from at design time: the registered
 agreement (<code>agreementHash</code>, the <code>AgreementRegistry</code> key) the order's
-entry binds, and the registered assembly (<code>assemblyHash</code>, the
-<code>AssemblyRegistry</code> key) the entry sits in. Carried by the agreement
+entry binds, and the registered assembly (<code>processDesignHash</code>, the
+<code>ProcessRegistry</code> key) the entry sits in. Carried by the agreement
 FORMAT as one reserved leaf (<code>PROVENANCE_LEAF_KEY</code>), never by a
 clause. Checkout writes it from the entry the order instantiates; a
 design cannot carry it, since neither hash can appear inside the

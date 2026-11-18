@@ -41,7 +41,7 @@ export interface CatalogItemMetadata {
      *  180 wei. Checkout converts it with `parseUnits(price, tokenDecimals)`.
      *
      *  Do not confuse it with its two siblings, which use the OPPOSITE
-     *  convention: `AssemblyCheckoutLineItem.unitPrice` and the commerce
+     *  convention: `ProcessCheckoutLineItem.unitPrice` and the commerce
      *  clause's `payment` are both in the currency's SMALLEST unit. Writing a
      *  smallest-unit value here silently overprices the item by 10^decimals on
      *  a real bonded order. */

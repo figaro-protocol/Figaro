@@ -34,12 +34,12 @@
  *   - Both members hold LIVE MembersRegistry stakes (registered if absent,
  *     idempotent — the rpgf-rewards pattern).
  *   - The open-record sibling (disclosure `open`) is anchored under a
- *     DISTINCT assemblyHash — regime variants are sibling assemblies.
+ *     DISTINCT processDesignHash — regime variants are sibling assemblies.
  *
- * Everything consumed is DISCOVERED from chain + IPFS (AssemblyRegistered
+ * Everything consumed is DISCOVERED from chain + IPFS (ProcessRegistered
  * events → pinned assembly docs, selected by SHAPE; integrity re-hashed via
- * assemblyHashOf) and realized through the SDK's ONE assembly walk
- * (reconstructOrdersFromAssembly) — never a hand-coded composition.
+ * processDesignHashOf) and realized through the SDK's ONE assembly walk
+ * (reconstructOrdersFromProcessDesign) — never a hand-coded composition.
  *
  * Wallets: DEDICATED anvil indices 36 (member A) and 37 (member B), inside
  * the anvil account count (one number, owned by
@@ -61,9 +61,9 @@ import {
     calculateBonds,
     fillProfileClauses,
     generateSalt,
-    reconstructOrdersFromAssembly,
+    reconstructOrdersFromProcessDesign,
     hashClauseData,
-    assemblyHashOf,
+    processDesignHashOf,
     verifyInclusionProof,
     type ReconstructedOrder,
 } from '@figaro-protocol/sdk';
@@ -112,7 +112,7 @@ const CREDENTIAL_BYTES = Buffer.from(JSON.stringify({
 const CREDENTIAL_HASH = keccak256(new Uint8Array(CREDENTIAL_BYTES));
 
 /** One anchored assembly, hydrated: the assembly (assemblyClauses included,
- *  which `reconstructOrdersFromAssembly` needs) and every agreement's
+ *  which `reconstructOrdersFromProcessDesign` needs) and every agreement's
  *  registered agreement, each verified. */
 type AnchoredAssembly = DiscoveredAssembly;
 
@@ -126,8 +126,8 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         const coordinator = config.attestationCoordinator as Hex;
         const clauseRegistry = config.clauseRegistry as Hex;
         const membersRegistry = config.membersRegistry as Hex;
-        const assemblyRegistry = config.assemblyRegistry as Hex;
-        expect(core && token && coordinator && clauseRegistry && membersRegistry && assemblyRegistry,
+        const processRegistry = config.processRegistry as Hex;
+        expect(core && token && coordinator && clauseRegistry && membersRegistry && processRegistry,
             'full deployment record (run ./scripts/deploy-local.sh)').toBeTruthy();
 
         const publicClient = localPublicClient();
@@ -235,13 +235,13 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         // mismatch FAILS instead of being skipped as unresolvable): the
         // adopted documents re-hash to their anchored identities.
         for (const adopted of [aerialSurvey!, aerialOpen!, dataStream!]) {
-            expect(assemblyHashOf(adopted.hydrated.assembly), 'the pinned assembly re-hashes to its anchored identity')
-                .toBe(adopted.assemblyHash);
+            expect(processDesignHashOf(adopted.hydrated.assembly), 'the pinned assembly re-hashes to its anchored identity')
+                .toBe(adopted.processDesignHash);
         }
         expect(
-            aerialOpen!.assemblyHash,
+            aerialOpen!.processDesignHash,
             'one changed design fill = a DIFFERENT assembly: regime variants are siblings, not versions',
-        ).not.toBe(aerialSurvey!.assemblyHash);
+        ).not.toBe(aerialSurvey!.processDesignHash);
 
         // ── One bonded single-order process, chain-driven end to end:
         //    reconstruct through the SDK's ONE assembly walk, both parties
@@ -258,7 +258,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             label: string;
         }) => {
             const chainNow = (await publicClient.getBlock({ blockTag: 'latest' })).timestamp;
-            const orders = await reconstructOrdersFromAssembly(opts.adopted.hydrated, {
+            const orders = await reconstructOrdersFromProcessDesign(opts.adopted.hydrated, {
                 buyer: opts.buyer.address,
                 currency: token,
                 chainId,
@@ -277,11 +277,11 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             // the agreement's provenance to its agreement's agreement hash and
             // the adopted assembly's own root.
             expect(order.agreement.provenance, `${opts.label}: the agreement names its registered agreement and the adopted assembly`)
-                .toEqual({ agreementHash: opts.adopted.agreements[0].agreementHash, assemblyHash: opts.adopted.assemblyHash });
+                .toEqual({ agreementHash: opts.adopted.agreements[0].agreementHash, processDesignHash: opts.adopted.processDesignHash });
 
             const buyerSig = await opts.buyerWallet.signTypedData(order.typedData);
             const sellerSig = await opts.sellerWallet.signTypedData(order.typedData);
-            const { buyerBond, sellerBond } = calculateBonds(order.cumulativeValue, order.payment);
+            const { buyerBond, sellerBond } = calculateBonds(order.runningTotal, order.payment);
 
             const [buyer0, seller0, core0] = await Promise.all([
                 balanceOf(opts.buyer.address), balanceOf(opts.seller.address), balanceOf(core),

@@ -13,7 +13,7 @@ import { agreementHashOf } from "@figaro-protocol/sdk";
 
 const publishedMock = vi.fn();
 const fetchHydratedAssemblyMock = vi.fn();
-vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
+vi.mock("@/lib/protocol/useProcessRegistry", () => ({
     getAssemblyLoadError: () => undefined,
     usePublishedAssemblies: () => publishedMock(),
     fetchHydratedAssembly: (...args: unknown[]) => fetchHydratedAssemblyMock(...args),
@@ -24,7 +24,7 @@ import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 const EVENT = {
     slug: "asm-9ffb1eb79755a9ab",
     registeredBy: "0xA",
-    assemblyHash: "0x1",
+    processDesignHash: "0x1",
     contentURI: "ipfs://tmpl",
     blockNumber: 2n,
     stakeWithdrawn: false,

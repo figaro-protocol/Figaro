@@ -14,7 +14,7 @@
  *      price the node (`resolveSubOrderPricing` — the ruled first-available-
  *      item rule, rate items included): `pricedRaceCandidates`. A registry
  *      read, never a roster; resolved-empty = nothing to race.
- *   2. One dry walk per candidate (`planAssemblyOrders`, fixed per-node salts
+ *   2. One dry walk per candidate (`planProcessOrders`, fixed per-node salts
  *      + one deadline) produces that candidate's EXACT commitment struct at
  *      their own posted price. The raced node's order is the draft — relayed
  *      UNSIGNED. Nothing about a draft binds anyone, and it cannot be
@@ -46,7 +46,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useChainId, useWalletClient } from "wagmi";
 import {
-    assemblyHashOf,
+    processDesignHashOf,
     derivePricedFields,
     hashCommitmentStruct,
     resolveSubOrderPricing,
@@ -64,7 +64,7 @@ import {
 } from "@figaro-protocol/sdk/agent";
 import type { MemberAgentServices } from "@/lib/member/memberProfileMetadata";
 import { generateSalt } from "@figaro-protocol/sdk";
-import { planAssemblyOrders, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
+import { planProcessOrders, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { redrawNodeBlinding } from "@/lib/checkout/checkoutBlinding";
 import { chainDeadline } from "@/lib/checkout/orderPreview";
 import { commitmentOrderHash } from "@/lib/core/signedCommitment";
@@ -146,10 +146,10 @@ export function pricedRaceCandidates(args: {
     const node = hydrated.assembly.agreements.find((a) => a.id === racedNodeId);
     if (!node) throw new Error(`Assembly node "${racedNodeId}" not found.`);
     const specs = specSource();
-    const assemblyHash = assemblyHashOf(hydrated.assembly);
+    const processDesignHash = processDesignHashOf(hydrated.assembly);
     const nodeClauses = { ...agreementClauses(hydrated, node), ...(checkout.clauseFills?.[racedNodeId] ?? {}) };
     return checkout.sellerCatalogs
-        .filter((cat) => !hexEqual(cat.address, checkout.buyer) && bindsAssembly(cat, assemblyHash))
+        .filter((cat) => !hexEqual(cat.address, checkout.buyer) && bindsAssembly(cat, processDesignHash))
         .map((cat) => ({
             address: cat.address as Hex,
             services: cat.agentServices,
@@ -196,7 +196,7 @@ export async function draftRaceCandidates(args: {
         const item = { id: pricing.item!.id, name: pricing.item!.name };
         const price = formatToken(args.quote?.ceiling ?? pricing.payment, checkout.tokenDecimals);
         const redrawn = redrawNodeBlinding(hydrated, checkout.clauseFills ?? {}, racedNodeId, specs);
-        const orders = await planAssemblyOrders({
+        const orders = await planProcessOrders({
             ...checkout,
             clauseFills: redrawn.fills,
             subOrderSelections: {

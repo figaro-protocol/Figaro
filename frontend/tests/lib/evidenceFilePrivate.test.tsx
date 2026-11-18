@@ -59,7 +59,7 @@ beforeAll(async () => {
     agreement = built.agreement;
     order = {
         orderHash: `0x${"0a".repeat(32)}`, processId: `0x${"ab".repeat(32)}`, buyer: BUYER, seller: SELLER,
-        checkoutHash: built.checkoutHash, cumulativeValue: 1n, payment: 1n, state: OrderState.Active,
+        checkoutHash: built.checkoutHash, runningTotal: 1n, payment: 1n, state: OrderState.Active,
         sellerBond: 2n, buyerBond: 2n, salt: 1n, deadline: 1n,
     } as Order;
     witnessValues = { reading: "41.2", blinding: `0x${"c7".repeat(32)}` };

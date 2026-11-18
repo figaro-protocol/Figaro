@@ -217,7 +217,7 @@ describe("overlayRows — the open graph class", () => {
 
     it("the agreement format's provenance leaf is a row named as such, decodable with no spec", () => {
         const [row] = overlayRows([
-            graph({ clauseKey: PROVENANCE_LEAF_KEY, provenanceLeaf: true, entries: [entry({ decoded: { assemblyHash: KEY_B } })] }),
+            graph({ clauseKey: PROVENANCE_LEAF_KEY, provenanceLeaf: true, entries: [entry({ decoded: { processDesignHash: KEY_B } })] }),
         ]);
         expect(row.provenanceLeaf).toBe(true);
         expect(row.clauseId).toBeNull();
@@ -310,7 +310,7 @@ describe("wallet record", () => {
         seller: OTHER,
         currency: TOKEN_A,
         payment: 7n,
-        cumulativeValue: 7n,
+        runningTotal: 7n,
         state: OrderState.Active,
         sellerBond: 14n,
         buyerBond: 14n,
@@ -381,7 +381,7 @@ describe("processRows — the id a reader carries into the audit view", () => {
         seller: OTHER,
         currency: TOKEN_A,
         payment: 5n,
-        cumulativeValue: 5n,
+        runningTotal: 5n,
         checkoutHash: `0x${"99".repeat(32)}`,
         salt: 0n,
         deadline: 0n,
@@ -395,7 +395,7 @@ describe("processRows — the id a reader carries into the audit view", () => {
             processId,
             rootBuyer: WALLET,
             currency: TOKEN_A,
-            cumulativeValue: 5n,
+            runningTotal: 5n,
             orders: new Map([[`0x${"11".repeat(32)}`, order({ processId })]]),
             resolved: false,
             ...over,
@@ -414,7 +414,7 @@ describe("processRows — the id a reader carries into the audit view", () => {
                 PROCESS_B,
                 process(PROCESS_B, {
                     resolved: true,
-                    cumulativeValue: 12n,
+                    runningTotal: 12n,
                     orders: new Map([
                         ["o2", order({ processId: PROCESS_B, blockNumber: 9 })],
                         ["o3", order({ processId: PROCESS_B, blockNumber: 11 })],
@@ -428,7 +428,7 @@ describe("processRows — the id a reader carries into the audit view", () => {
         expect(rows[0].orderCount).toBe(2);
         expect(rows[0].firstBlock).toBe(9);
         expect(rows[0].resolved).toBe(true);
-        expect(rows[0].cumulativeValue).toBe(12n);
+        expect(rows[0].runningTotal).toBe(12n);
         expect(rows[1].resolved).toBe(false);
     });
 

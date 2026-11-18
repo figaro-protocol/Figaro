@@ -17,7 +17,7 @@
  * `quoteAndReturn` — first reads the seller's OWN profile (MembersRegistry →
  * metadataURI → IPFS, at accept time) and refuses an order under an
  * assembly that profile does not bind, or one naming no assembly
- * (`checkSellerBindsAssembly`).
+ * (`checkSellerBindsProcess`).
  *
  * It owns the EIP-712 domain and the confirm gate — before every sign, and
  * before the standalone commit broadcast (`commitOrder`). It does NOT approve
@@ -35,7 +35,7 @@ import {
     COMMITMENT_TYPES,
     buildDomain,
     calculateBonds,
-    checkSellerBindsAssembly,
+    checkSellerBindsProcess,
     hashCommitmentStruct,
     verifyCommitmentSignature,
     type Agreement,
@@ -45,9 +45,9 @@ import {
 } from "@figaro-protocol/sdk";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
 import { cachedGetContractEvents } from "@/lib/core/eventCache";
-import { assertAgreementSignable, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { assertAgreementSignable, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { specSource, getClauseSpec, loadClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { fetchHydratedAssemblyByHash } from "@/lib/protocol/useAssemblyRegistry";
+import { fetchHydratedAssemblyByHash } from "@/lib/protocol/useProcessRegistry";
 import { useFigaroActions } from "@/lib/core/useFigaroActions";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { hexEqual, isValidAddress, ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -139,13 +139,13 @@ function swapDetails(
 function carriedSwapDetails(payload: CommitmentPayload): SwapConfirmationDetails[] {
     const leg = payload.buyerFunding;
     if (!leg?.enabled) return [];
-    return [{ inputToken: leg.inputToken, currency: payload.commitment.currency, maxInput: leg.maxInput, party: payload.commitment.buyer }];
+    return [{ inputToken: leg.inputToken, currency: payload.commitment.token, maxInput: leg.maxInput, party: payload.commitment.buyer }];
 }
 
 /** Quote one party's swap-funded bond leg for `commitment`: the venue quote
  *  and exact route for the party's FigaroCore pull, no signature yet.
- *  calculateBonds(cumulativeValue, payment) — the buyer bond is 2×payment,
- *  the seller bond 2×expectedCumulativeValue; on a SUB-ORDER ecv ≠ payment,
+ *  calculateBonds(runningTotal, payment) — the buyer bond is 2×payment,
+ *  the seller bond 2×runningTotal; on a SUB-ORDER ecv ≠ payment,
  *  so the arg order is load-bearing (a swap here mis-quotes the FigaroCore's
  *  pull and swapAndCommit reverts at simulate). */
 function quoteBondFundingLeg(
@@ -156,14 +156,14 @@ function quoteBondFundingLeg(
     party: PartyRole,
 ): Promise<FundingQuote> {
     if (!publicClient) throw new Error("No chain connection — cannot quote the funding swap.");
-    const bonds = calculateBonds(commitment.expectedCumulativeValue, commitment.payment);
+    const bonds = calculateBonds(commitment.runningTotal, commitment.payment);
     return quoteFundingLeg({
         publicClient,
         chainId,
         inputToken: funding.inputToken,
-        currency: commitment.currency as Hex,
+        currency: commitment.token as Hex,
         bondAmount: party === "buyer" ? bonds.buyerBond : bonds.sellerBond,
-        deadline: commitment.deadline,
+        deadline: commitment.commitDeadline,
         slippageBps: funding.slippageBps,
     }).then((quote) => {
         if (funding.approvedInput !== undefined && quote.maxInput > funding.approvedInput) {
@@ -200,11 +200,11 @@ function assertSigningDomain(core: string | undefined, chainId: number): asserts
  *  designer's values against. Null when the agreement names none or the read
  *  fails; the gate then refuses an agreement naming a design (fail-closed:
  *  an agreement it cannot fetch or verify is never signed or broadcast). */
-async function readSigningDesign(agreement: Agreement): Promise<HydratedAssembly | null> {
+async function readSigningDesign(agreement: Agreement): Promise<HydratedProcessDesign | null> {
     const provenance = agreement.provenance;
     if (!provenance) return null;
     try {
-        return await fetchHydratedAssemblyByHash(provenance.assemblyHash);
+        return await fetchHydratedAssemblyByHash(provenance.processDesignHash);
     } catch {
         return null;
     }
@@ -248,7 +248,7 @@ export async function readSigningInputs(
     agreement: Agreement,
     client: { getBlockNumber?: unknown } | undefined,
     chainId: number,
-): Promise<HydratedAssembly | null> {
+): Promise<HydratedProcessDesign | null> {
     await readSigningSpecs(agreement, client, chainId);
     return readSigningDesign(agreement);
 }
@@ -334,12 +334,12 @@ export function useOrderCommitmentFlow() {
                 processId: commitment.processId,
                 buyer: commitment.buyer,
                 seller: commitment.seller,
-                currency: commitment.currency,
+                token: commitment.token,
                 payment: commitment.payment,
-                expectedCumulativeValue: commitment.expectedCumulativeValue,
+                runningTotal: commitment.runningTotal,
                 checkoutHash: commitment.checkoutHash,
                 salt: commitment.salt,
-                deadline: commitment.deadline,
+                commitDeadline: commitment.commitDeadline,
             },
         });
         return sig as Hex;
@@ -495,7 +495,7 @@ export function useOrderCommitmentFlow() {
         // profile binds — read now, from the registry, never from the
         // payload.
         if (role === "seller") {
-            const bound = await checkSellerBindsAssembly(
+            const bound = await checkSellerBindsProcess(
                 incoming.agreement, incoming.commitment.seller as Hex, profileReaderForChain(publicClient, chainId),
             );
             if (!bound.ok) throw new Error(`Refusing this order — ${bound.reason}`);
@@ -504,7 +504,7 @@ export function useOrderCommitmentFlow() {
         setStep("signing");
         // The seller's optional on-ramp is quoted before the sign so its
         // maxInput shows in the same confirm as the agreement.
-        // 2·expectedCumulativeValue is FigaroCore's seller pull.
+        // 2·runningTotal is FigaroCore's seller pull.
         const sellerQuote = funding && role === "seller"
             ? await quoteBondFundingLeg(publicClient, chainId, funding, incoming.commitment, "seller")
             : null;

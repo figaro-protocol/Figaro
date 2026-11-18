@@ -51,17 +51,17 @@ export type UsageWrite =
           /** The registered agreement's hash (`AgreementRegistry`). */
           key: Hex;
           /** The assembly root the provenance leaf names beside it. */
-          assemblyHash: Hex;
+          processDesignHash: Hex;
           proof: readonly Hex[];
       }
     | {
           kind: "assembly";
           order: Commitment;
-          /** The assembly's assemblyHash. */
+          /** The assembly's processDesignHash. */
           key: Hex;
           /** The agreement's agreement hash and the hash of its entry bytes. */
           agreementHash: Hex;
-          slotContentHash: Hex;
+          agreementContentHash: Hex;
           proof: readonly Hex[];
           /** The agreement leaf's proof under `key`. */
           membershipProof: readonly Hex[];
@@ -97,12 +97,12 @@ export function useUsageRecorder() {
             case "clause":
                 return { ...base, functionName: "recordClauseUsage", args: [write.order, write.key, write.clauseDataHash, [...write.proof]] };
             case "agreement":
-                return { ...base, functionName: "recordAgreementUsage", args: [write.order, write.key, write.assemblyHash, [...write.proof]] };
+                return { ...base, functionName: "recordAgreementUsage", args: [write.order, write.key, write.processDesignHash, [...write.proof]] };
             case "assembly":
                 return {
                     ...base,
-                    functionName: "recordAssemblyUsage",
-                    args: [write.order, write.key, write.agreementHash, write.slotContentHash, [...write.proof], [...write.membershipProof]],
+                    functionName: "recordProcessDesignUsage",
+                    args: [write.order, write.key, write.agreementHash, write.agreementContentHash, [...write.proof], [...write.membershipProof]],
                 };
         }
     };

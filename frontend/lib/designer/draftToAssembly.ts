@@ -3,7 +3,7 @@
  * draft ↔ assembly bridge; the mirror of `assemblyToDraft.ts`.
  *
  * ONE walk from a `DesignSnapshot` (what the canvas holds) to the canonical
- * `Assembly` (what gets pinned + anchored). Publish, the composition
+ * `ProcessDesign` (what gets pinned + anchored). Publish, the composition
  * hand-off panel, the canvas's identity readout, and the REVIEW screen all go
  * through it, so the hash a designer SEES while composing is by construction
  * the hash publish anchors — a readout derived by a second, near-identical
@@ -14,7 +14,7 @@
  * irreversible anchor are the terms in the bytes, not a parallel reading of
  * the draft that can silently fall out of step with them.
  *
- * The walk itself is `buildAssembly` (`@figaro-protocol/sdk`), fed by the
+ * The walk itself is `buildProcessDesign` (`@figaro-protocol/sdk`), fed by the
  * live-cache `specSource()` adapter and by the registered agreements the designer bound to agreements, read from `AgreementRegistry`
  * and verified against their keys (`getRegisteredAgreement`). It VERIFIES
  * scope placement, refuses an agreement that both binds and composes,
@@ -25,18 +25,18 @@
  */
 
 import {
-    buildAssembly,
-    serializeAssembly,
+    buildProcessDesign,
+    serializeProcessDesign,
     agreementClauses,
-    type BuiltAssembly,
+    type BuiltProcessDesign,
     type RegisteredAgreement,
     type Hex,
-    type HydratedAssembly,
+    type HydratedProcessDesign,
 } from "@figaro-protocol/sdk";
 import { getRegisteredAgreement } from "@/lib/protocol/useAgreementRegistry";
 import { clauseDesignFills, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { isFilledValue } from "@/lib/checkout/checkoutDerivations";
-import { deriveAssemblySlug, type Assembly } from "@/lib/shared/assembly";
+import { deriveProcessDesignSlug, type ProcessDesign } from "@/lib/shared/assembly";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { truncateHex } from "@/lib/shared/formatHex";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
@@ -63,8 +63,8 @@ function readAgreements(byOrderId: Record<string, `0x${string}`> | undefined, us
  *  or is composed at the wrong scope, an agreement both binds and composes, a
  *  bound agreement is unread, or an agreement composes no clause — the
  *  SDK's own refusals, and this file's one. */
-export function snapshotToAssembly(snapshot: DesignSnapshot): BuiltAssembly {
-    return buildAssembly({
+export function snapshotToAssembly(snapshot: DesignSnapshot): BuiltProcessDesign {
+    return buildProcessDesign({
         name: snapshot.name.trim() || undefined,
         summary: snapshot.summary?.trim() || undefined,
         description: snapshot.description?.trim() || undefined,
@@ -79,7 +79,7 @@ export function snapshotToAssembly(snapshot: DesignSnapshot): BuiltAssembly {
 /** A built assembly beside every agreement its agreements bind — the newly
  *  composed ones and the registered ones the designer bound — keyed by
  *  lowercased key, as checkout reads a hydrated assembly. */
-function builtToHydrated(built: BuiltAssembly): HydratedAssembly {
+function builtToHydrated(built: BuiltProcessDesign): HydratedProcessDesign {
     const agreements: Record<Hex, RegisteredAgreement> = {};
     for (const [key, doc] of Object.entries(built.agreements)) agreements[key.toLowerCase() as Hex] = doc;
     for (const entry of built.assembly.agreements) {
@@ -100,7 +100,7 @@ function builtToHydrated(built: BuiltAssembly): HydratedAssembly {
  *  over the draft — that divergence is the defect this exists to make
  *  impossible. */
 export function assemblyComposedByAgreement(
-    hydrated: HydratedAssembly,
+    hydrated: HydratedProcessDesign,
 ): Record<string, Record<string, Record<string, unknown>>> {
     return Object.fromEntries(
         hydrated.assembly.agreements.map((entry) => [entry.id, agreementClauses(hydrated, entry)]),
@@ -137,7 +137,7 @@ export function composedClauseLabel(clause: Pick<ComposedClause, "clauseKey" | "
  *  `assemblyComposedByAgreement`, keyed the same way. Any spec is anyone's
  *  registration and two specs may share a name, so a review shows the
  *  spec's version beside its name, read from the spec the key names. */
-export function assemblyComposedClauses(hydrated: HydratedAssembly): Record<string, ComposedClause[]> {
+export function assemblyComposedClauses(hydrated: HydratedProcessDesign): Record<string, ComposedClause[]> {
     const byAgreement = assemblyComposedByAgreement(hydrated);
     return Object.fromEntries(
         hydrated.assembly.agreements.map((agreement) => [
@@ -157,9 +157,9 @@ export function assemblyComposedClauses(hydrated: HydratedAssembly): Record<stri
 export type SnapshotReview =
     | {
         ok: true;
-        assembly: Assembly;
+        assembly: ProcessDesign;
         /** The assembly beside every agreement its agreements bind. */
-        hydrated: HydratedAssembly;
+        hydrated: HydratedProcessDesign;
         /** The agreements newly composed for this assembly, by key — the
          *  ones publish registers (one stake each, a key already bound is
          *  skipped) before the assembly. */
@@ -168,7 +168,7 @@ export type SnapshotReview =
          *  agreement hash it binds, and whether that agreement was bound as
          *  registered or composed here. */
         entries: { orderId: string; agreementHash: Hex; bound: boolean }[];
-        assemblyHash: `0x${string}`;
+        processDesignHash: `0x${string}`;
         slug: string;
         /** canvas order id → clause key → composed values. */
         composedByOrderId: Record<string, Record<string, Record<string, unknown>>>;
@@ -189,7 +189,7 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
         const built = snapshotToAssembly(snapshot);
         const { assembly } = built;
         const hydrated = builtToHydrated(built);
-        const { assemblyHash } = serializeAssembly(assembly);
+        const { processDesignHash } = serializeProcessDesign(assembly);
         const byAgreement = assemblyComposedByAgreement(hydrated);
         const clausesByAgreement = assemblyComposedClauses(hydrated);
         const boundIds = new Set(Object.keys(snapshot.registeredByOrderId ?? {}));
@@ -211,8 +211,8 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
                 agreementHash: assembly.agreements[index].agreementHash,
                 bound: boundIds.has(order.orderHash),
             })),
-            assemblyHash,
-            slug: deriveAssemblySlug(assemblyHash),
+            processDesignHash,
+            slug: deriveProcessDesignSlug(processDesignHash),
             composedByOrderId,
             composedClausesByOrderId,
             assemblyClauses: assembly.assemblyClauses ?? {},
@@ -226,9 +226,9 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
 }
 
 /** The composition's IDENTITY, derived from the draft exactly as publish
- *  derives it: `assemblyHash` = the merkle root over the agreements (each
+ *  derives it: `processDesignHash` = the merkle root over the agreements (each
  *  agreement's agreement hash and its own fills) and the assembly terms (the
- *  AssemblyRegistry key), and the slug that is a pure function of it. The
+ *  ProcessRegistry key), and the slug that is a pure function of it. The
  *  editorial prose is excluded, so renaming never forks identity; any change
  *  to the composed clauses — a design fill's value included, which moves the
  *  agreement's agreement hash — does.
@@ -239,12 +239,12 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
  *  `{ error }` for the caller to render. */
 export function snapshotAssemblyIdentity(
     snapshot: DesignSnapshot,
-): { assemblyHash: `0x${string}`; slug: string; error: null }
-    | { assemblyHash: null; slug: null; error: string } {
+): { processDesignHash: `0x${string}`; slug: string; error: null }
+    | { processDesignHash: null; slug: null; error: string } {
     const review = projectSnapshotForReview(snapshot);
     return review.ok
-        ? { assemblyHash: review.assemblyHash, slug: review.slug, error: null }
-        : { assemblyHash: null, slug: null, error: review.error };
+        ? { processDesignHash: review.processDesignHash, slug: review.slug, error: null }
+        : { processDesignHash: null, slug: null, error: review.error };
 }
 
 /** A required assembly term the designer has not filled: the clause and the

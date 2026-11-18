@@ -7,13 +7,13 @@ use alloy_primitives::{keccak256, Address, B256, U256};
 use figaro_kernel::kernel::apply_batch;
 use figaro_kernel::operation_stream::{
     compute_operations_hash, decode_operation_stream, encode_operation_stream, encode_stream_parts,
-    resolved_cumulative_value, wallet_code_attestations, COMMITMENT_BYTES, SIGNATURE_BYTES,
+    resolved_running_total, wallet_code_attestations, COMMITMENT_BYTES, SIGNATURE_BYTES,
 };
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::{
     AttestationContentProof, AttestationWitness, AttesterRole, BatchInput, Commitment, ContentKind,
-    KernelOp, Signature, UsageClaim, UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY,
-    USAGE_KIND_CLAUSE,
+    KernelOp, Signature, UsageClaim, UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_CLAUSE,
+    USAGE_KIND_PROCESS,
 };
 
 fn commitment(seed: u8) -> Commitment {
@@ -21,12 +21,12 @@ fn commitment(seed: u8) -> Commitment {
         process_id: B256::repeat_byte(seed),
         buyer: Address::repeat_byte(0x10 + seed),
         seller: Address::repeat_byte(0x20 + seed),
-        currency: Address::repeat_byte(0x30 + seed),
+        token: Address::repeat_byte(0x30 + seed),
         payment: U256::from(100u64 * seed as u64),
-        expected_cumulative_value: U256::from(300u64 * seed as u64),
+        running_total: U256::from(300u64 * seed as u64),
         checkout_hash: B256::repeat_byte(0x40 + seed),
         salt: U256::from(seed),
-        deadline: U256::from(1_700_000_000u64 + seed as u64),
+        commit_deadline: U256::from(1_700_000_000u64 + seed as u64),
     }
 }
 
@@ -71,7 +71,7 @@ fn sample() -> (Vec<KernelOp>, Vec<UsageClaim>) {
         KernelOp::Resolve {
             process_id: B256::repeat_byte(0x01),
             // The sum of the listed payments, 100 + 200.
-            cumulative_value: U256::from(300u64),
+            running_total: U256::from(300u64),
             commitments: vec![commitment(1), commitment(2)],
             buyer_sig: signature(5),
         },
@@ -79,7 +79,7 @@ fn sample() -> (Vec<KernelOp>, Vec<UsageClaim>) {
     let claims = vec![
         UsageClaim {
             order: commitment(1),
-            clause_or_assembly: B256::repeat_byte(0x80),
+            clause_or_process: B256::repeat_byte(0x80),
             kind: UsageClaimKind::Clause {
                 clause_data_hash: B256::repeat_byte(0x81),
             },
@@ -87,18 +87,18 @@ fn sample() -> (Vec<KernelOp>, Vec<UsageClaim>) {
         },
         UsageClaim {
             order: commitment(2),
-            clause_or_assembly: B256::repeat_byte(0x90),
+            clause_or_process: B256::repeat_byte(0x90),
             kind: UsageClaimKind::Agreement {
-                assembly_hash: B256::repeat_byte(0x91),
+                process_design_hash: B256::repeat_byte(0x91),
             },
             inclusion_proof: vec![],
         },
         UsageClaim {
             order: commitment(2),
-            clause_or_assembly: B256::repeat_byte(0xa0),
-            kind: UsageClaimKind::Assembly {
+            clause_or_process: B256::repeat_byte(0xa0),
+            kind: UsageClaimKind::Process {
                 agreement_hash: B256::repeat_byte(0xa1),
-                slot_content_hash: B256::repeat_byte(0xa2),
+                agreement_content_hash: B256::repeat_byte(0xa2),
                 membership_proof: vec![B256::repeat_byte(0xa3)],
             },
             inclusion_proof: vec![B256::repeat_byte(0xa4)],
@@ -133,13 +133,13 @@ fn the_stream_round_trips_and_skips_attestations() {
     match &ops2[2] {
         KernelOp::Resolve {
             process_id,
-            cumulative_value,
+            running_total,
             commitments,
             buyer_sig,
         } => {
             assert_eq!(*process_id, B256::repeat_byte(0x01));
             assert_eq!(
-                *cumulative_value,
+                *running_total,
                 U256::from(300u64),
                 "the decoder derives the signed value from the listed payments"
             );
@@ -150,7 +150,7 @@ fn the_stream_round_trips_and_skips_attestations() {
         other => panic!("expected a resolve, got {other:?}"),
     }
     match &claims2[2].kind {
-        UsageClaimKind::Assembly {
+        UsageClaimKind::Process {
             membership_proof, ..
         } => assert_eq!(membership_proof, &vec![B256::repeat_byte(0xa3)]),
         other => panic!("expected an assembly claim, got {other:?}"),
@@ -168,7 +168,7 @@ fn the_stream_round_trips_and_skips_attestations() {
     );
     assert_eq!(
         bytes[claim_offset + claim_clause + claim_agreement + 1 + COMMITMENT_BYTES + 32],
-        USAGE_KIND_ASSEMBLY
+        USAGE_KIND_PROCESS
     );
 }
 
@@ -237,7 +237,7 @@ fn a_batch_of_nothing_commits_the_empty_stream_hash_as_word_nine() {
 fn a_wallet_code_resolve_round_trips_with_its_authorization() {
     let ops = vec![KernelOp::ResolveByWalletCode {
         process_id: B256::repeat_byte(0x01),
-        cumulative_value: U256::from(300u64),
+        running_total: U256::from(300u64),
         commitments: vec![commitment(1), commitment(2)],
         authorization: alloy_primitives::Bytes::from(vec![0xab; 97]),
     }];
@@ -252,12 +252,12 @@ fn a_wallet_code_resolve_round_trips_with_its_authorization() {
     );
     match &ops2[0] {
         KernelOp::ResolveByWalletCode {
-            cumulative_value,
+            running_total,
             authorization,
             ..
         } => {
             assert_eq!(
-                *cumulative_value,
+                *running_total,
                 U256::from(300u64),
                 "derived from the listed payments"
             );
@@ -416,12 +416,12 @@ impl Gen {
             },
             buyer: self.address(),
             seller: self.address(),
-            currency: self.address(),
+            token: self.address(),
             payment,
-            expected_cumulative_value: self.u256(),
+            running_total: self.u256(),
             checkout_hash: self.b256(),
             salt: self.u256(),
-            deadline: self.u256(),
+            commit_deadline: self.u256(),
         }
     }
     fn signature(&mut self) -> Signature {
@@ -462,7 +462,7 @@ impl Gen {
                 let commitments = self.listed();
                 KernelOp::Resolve {
                     process_id: self.b256(),
-                    cumulative_value: resolved_cumulative_value(&commitments)
+                    running_total: resolved_running_total(&commitments)
                         .expect("bounded payments sum"),
                     commitments,
                     buyer_sig: self.signature(),
@@ -473,7 +473,7 @@ impl Gen {
                 let len = [0, 1, 17, 65, 300][self.below(5) as usize];
                 KernelOp::ResolveByWalletCode {
                     process_id: self.b256(),
-                    cumulative_value: resolved_cumulative_value(&commitments)
+                    running_total: resolved_running_total(&commitments)
                         .expect("bounded payments sum"),
                     commitments,
                     authorization: self.bytes(len).into(),
@@ -516,18 +516,18 @@ impl Gen {
             0 => UsageClaimKind::Clause {
                 clause_data_hash: self.b256(),
             },
-            1 => UsageClaimKind::Assembly {
+            1 => UsageClaimKind::Process {
                 agreement_hash: self.b256(),
-                slot_content_hash: self.b256(),
+                agreement_content_hash: self.b256(),
                 membership_proof: self.words(4),
             },
             _ => UsageClaimKind::Agreement {
-                assembly_hash: self.b256(),
+                process_design_hash: self.b256(),
             },
         };
         UsageClaim {
             order: self.commitment(false),
-            clause_or_assembly: self.b256(),
+            clause_or_process: self.b256(),
             kind,
             inclusion_proof: self.words(4),
         }
@@ -613,13 +613,13 @@ fn every_generated_stream_decodes_to_what_was_encoded() {
         for c in &claims {
             seen[match c.kind {
                 UsageClaimKind::Clause { .. } => 5,
-                UsageClaimKind::Assembly { .. } => 6,
+                UsageClaimKind::Process { .. } => 6,
                 UsageClaimKind::Agreement { .. } => 7,
             }] += 1;
             if !c.inclusion_proof.is_empty() {
                 seen[8] += 1;
             }
-            if matches!(&c.kind, UsageClaimKind::Assembly { membership_proof, .. } if !membership_proof.is_empty())
+            if matches!(&c.kind, UsageClaimKind::Process { membership_proof, .. } if !membership_proof.is_empty())
             {
                 seen[9] += 1;
             }

@@ -32,7 +32,7 @@ import { CheckoutSigningNote } from "@/components/runtime/CheckoutSigningNote";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
-import { assemblyHashOf, planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses } from "@figaro-protocol/sdk";
+import { processDesignHashOf, planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses } from "@figaro-protocol/sdk";
 import { checkoutMeasureRefusals, executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import {
     deriveAgreementGroups,
@@ -43,7 +43,7 @@ import {
 } from "@/lib/checkout/checkoutDerivations";
 import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/DispatchRacePanel";
-import { assemblyFollows } from "@/lib/shared/assembly";
+import { processDesignFollows } from "@/lib/shared/assembly";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
@@ -569,7 +569,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // order; the final per-order sign confirmation is the shared agreement-preview
     // gate (the same one the seller's accept uses).
     const pickedRoot = pickedAssembly
-        ? (pickedAssembly.hydratedAssembly.assembly.agreements.find((o) => assemblyFollows(o).length === 0)
+        ? (pickedAssembly.hydratedAssembly.assembly.agreements.find((o) => processDesignFollows(o).length === 0)
             ?? pickedAssembly.hydratedAssembly.assembly.agreements[0])
         : undefined;
     // A line's amount, or null while its translated price is unknown (no
@@ -1297,7 +1297,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 {!raceOutcome && pickedAssembly && (
                                     <SellerCatalogPicker
                                         tokenSymbol={tokenSymbol}
-                                        assemblyHash={assemblyHashOf(pickedAssembly.hydratedAssembly.assembly)}
+                                        processDesignHash={processDesignHashOf(pickedAssembly.hydratedAssembly.assembly)}
                                         onSelect={setSellerSelection}
                                     />
                                 )}

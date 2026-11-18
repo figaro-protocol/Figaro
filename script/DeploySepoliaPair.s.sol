@@ -38,7 +38,7 @@ import "../src/core/verifier/FigaroBatchVerifier.sol";
 ///   EXISTING_FIGARO_CORE        — the record's figaroCore
 ///   EXISTING_MEMBERS_REGISTRY   — the record's membersRegistry
 ///   EXISTING_CLAUSE_REGISTRY    — the record's clauseRegistry
-///   EXISTING_ASSEMBLY_REGISTRY  — the record's assemblyRegistry
+///   EXISTING_PROCESS_REGISTRY  — the record's processRegistry
 ///   EXISTING_AGREEMENT_REGISTRY — the record's agreementRegistry
 contract DeploySepoliaPair is Script {
     /// @dev The REAL accrual period — DeploySepolia.s.sol's value.
@@ -53,7 +53,7 @@ contract DeploySepoliaPair is Script {
             vm.envAddress("EXISTING_FIGARO_CORE"),
             vm.envAddress("EXISTING_MEMBERS_REGISTRY"),
             vm.envAddress("EXISTING_CLAUSE_REGISTRY"),
-            vm.envAddress("EXISTING_ASSEMBLY_REGISTRY"),
+            vm.envAddress("EXISTING_PROCESS_REGISTRY"),
             vm.envAddress("EXISTING_AGREEMENT_REGISTRY"),
             vm.envAddress("SP1_VERIFIER"),
             vm.envBytes32("SP1_PROGRAM_VKEY"),
@@ -83,7 +83,7 @@ contract DeploySepoliaPair is Script {
         require(core_.code.length != 0, "EXISTING_FIGARO_CORE has no code on this chain");
         require(members_.code.length != 0, "EXISTING_MEMBERS_REGISTRY has no code on this chain");
         require(clauses_.code.length != 0, "EXISTING_CLAUSE_REGISTRY has no code on this chain");
-        require(assemblies_.code.length != 0, "EXISTING_ASSEMBLY_REGISTRY has no code on this chain");
+        require(assemblies_.code.length != 0, "EXISTING_PROCESS_REGISTRY has no code on this chain");
         require(agreements_.code.length != 0, "EXISTING_AGREEMENT_REGISTRY has no code on this chain");
         require(gateway_ != address(0), "SP1_VERIFIER_GATEWAY not set");
         require(vkey_ != bytes32(0), "SP1_PROGRAM_VKEY not set");

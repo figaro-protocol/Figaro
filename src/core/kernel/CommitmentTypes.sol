@@ -10,27 +10,27 @@ library CommitmentTypes {
     ///
     /// @dev Root orders:
     ///      - processId = bytes32(0)
-    ///      - expectedCumulativeValue = payment
+    ///      - runningTotal = payment
     ///      FigaroCore derives processId as the EIP-712 digest.
     ///
     /// @dev Sub-orders:
     ///      - processId = target process
-    ///      - expectedCumulativeValue = previousCumulative + payment
+    ///      - runningTotal = previousCumulative + payment
     ///        (contract-verified against the live accumulator)
     struct Commitment {
         bytes32 processId;
         address buyer;
         address seller;
-        address currency;
+        address token;
         uint256 payment;
-        uint256 expectedCumulativeValue;
+        uint256 runningTotal;
         bytes32 checkoutHash;
         uint256 salt;
-        uint256 deadline;
+        uint256 commitDeadline;
     }
 
     bytes32 internal constant COMMITMENT_TYPEHASH = keccak256(
-        "Commitment(bytes32 processId,address buyer,address seller,address currency,uint256 payment,uint256 expectedCumulativeValue,bytes32 checkoutHash,uint256 salt,uint256 deadline)"
+        "Commitment(bytes32 processId,address buyer,address seller,address token,uint256 payment,uint256 runningTotal,bytes32 checkoutHash,uint256 salt,uint256 commitDeadline)"
     );
 
     /// @notice The agreement format's leaf — one clause of the agreement a
@@ -55,12 +55,12 @@ library CommitmentTypes {
                 c.processId,
                 c.buyer,
                 c.seller,
-                c.currency,
+                c.token,
                 c.payment,
-                c.expectedCumulativeValue,
+                c.runningTotal,
                 c.checkoutHash,
                 c.salt,
-                c.deadline
+                c.commitDeadline
             )
         );
     }

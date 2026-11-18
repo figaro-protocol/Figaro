@@ -80,7 +80,7 @@ loses, moves or retypes a field and this table does not move with it.
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 3 | `seller` | `address` | The same readers (`sdk/src/derive/graphs.ts:118`, `sdk/src/derive/queries.ts:165`); a co-seller sees the other sellers of its process | The wallet's address |
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 4 | `currency` | `address` | A forum's evidence file names the token the chain moved (`frontend/lib/audit/contractExtract.ts:153`); the resolution graph's denomination (`sdk/src/derive/graphs.ts:131`) | The token's address |
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 5 | `payment` | `uint256` | Any reader: the volume per denomination (`sdk/src/derive/queries.ts:166`) and the bonds locked (`sdk/src/derive/graphs.ts:114`) | The exact amount, in the token's smallest unit |
-| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 6 | `cumulativeValue` | `uint256` | Any reader derives each seller's bond from it (`sdk/src/derive/graphs.ts:114`); a software agent of a party reads it to know a seller's bond (`sdk/src/agent/proposer.ts:133`) | The exact amount |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 6 | `runningTotal` | `uint256` | Any reader derives each seller's bond from it (`sdk/src/derive/graphs.ts:114`); a software agent of a party reads it to know a seller's bond (`sdk/src/agent/proposer.ts:133`) | The exact amount |
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 7 | `checkoutHash` | `bytes32` | A forum checks the agreement body against it (`frontend/lib/audit/hashAppendix.ts:87`) and looks the agreement up by it (`frontend/lib/audit/auditBundlePdf.ts:111`) | A fingerprint: the agreement's merkle root |
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 8 | `salt` | `uint256` | Whoever rebuilds the signed commitment from events alone: the buyer's resolution (`sdk/src/commitments.ts:279`, called by `sdk/src/agent/proposer.ts:154`) and a forum's evidence file (`frontend/lib/audit/contractExtract.ts:156`) | A random 256-bit number (`sdk/src/commitments.ts:308`), no party's data |
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 9 | `deadline` | `uint256` | The same readers (`sdk/src/commitments.ts:280`, `frontend/lib/audit/contractExtract.ts:157`) | A time in seconds |
@@ -112,7 +112,7 @@ loses, moves or retypes a field and this table does not move with it.
 | `FigaroBatchVerifier` | `BatchAccrualSkipped` | 0 | `batchId` | `uint64 indexed` | A party finding the uses a batch left uncounted, to send them again, reads the claims and uses from the `BatchOperations` log of the same transaction and batch id, on every call route (`fetchSkippedBatchUses`, `sdk/src/rpgf/index.ts:447`); the Sepolia monitor (`scripts/monitor-sepolia.mjs:145`) | A counter |
 | `FigaroBatchVerifier` | `BatchAccrualSkipped` | 1 | `reason` | `bytes` | The same reader passes it on unread (`sdk/src/rpgf/index.ts:434`); the Sepolia monitor reports it (`scripts/monitor-sepolia.mjs:149`) | The counter's revert data |
 | `UsageCounter` | `UsageRecorded` | 0 | `kind` | `uint8` | A designer's reward accrual keys each use by kind and key (`sdk/src/rpgf/index.ts:207`) | A small number |
-| `UsageCounter` | `UsageRecorded` | 1 | `clauseOrAssembly` | `bytes32 indexed` | The same accrual (`sdk/src/rpgf/index.ts:206`) | A fingerprint: a clause key, an `agreementHash` or an `assemblyHash` |
+| `UsageCounter` | `UsageRecorded` | 1 | `clauseOrProcess` | `bytes32 indexed` | The same accrual (`sdk/src/rpgf/index.ts:206`) | A fingerprint: a clause key, an `agreementHash` or an `processDesignHash` |
 | `UsageCounter` | `UsageRecorded` | 2 | `period` | `uint8 indexed` | The same accrual (`sdk/src/rpgf/index.ts:208`) | A period number |
 | `UsageCounter` | `UsageRecorded` | 3 | `processId` | `bytes32 indexed` | The same accrual counts a process once (`sdk/src/rpgf/index.ts:211`) | A fingerprint |
 | `UsageCounter` | `UsageRecorded` | 4 | `seller` | `address` | The same accrual counts distinct sellers (`sdk/src/rpgf/index.ts:213`) | The wallet's address |
@@ -489,7 +489,7 @@ reference to it (`AttestationCoordinator._verifyInclusion`), so on the direct
 path only the SDK's `provenanceLeafAttestation` (`sdk/src/agreement.ts`) makes
 the content reference equal to the leaf's fingerprint. A reader checks the
 declaration: the content reference decodes to an `agreementHash` and an
-`assemblyHash` (`decodeProvenanceContent`) or equals the `provenanceContentRef`
+`processDesignHash` (`decodeProvenanceContent`) or equals the `provenanceContentRef`
 of a registered pair it loaded (`frontend/lib/data/graphCorpus.ts`, header); the
 agreement's membership in the assembly is a merkle proof against the assembly's
 root; and a reader who holds the agreement body that hashes to the order's

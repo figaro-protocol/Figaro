@@ -5,7 +5,7 @@
  * - A failed clause-registry read makes the corpus absent, not pending for
  *   ever: a surface renders nothing for it instead of a loading state for a
  *   read that is not in flight.
- * - Each sub-read of a pass resolving empty — the assembly registry (no
+ * - Each sub-read of a pass resolving empty — the process registry (no
  *   assembly), an attestation's content (not recovered), a commit receipt (no
  *   funding leg), a token's symbol (an empty string) — leaves the corpus
  *   present, and every layer of `/data/explore` shows no loading line, no

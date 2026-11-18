@@ -8,13 +8,13 @@
           "commitment": {
             "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
             "checkoutHash": "0x4141414141414141414141414141414141414141414141414141414141414141",
-            "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-            "deadline": "4000000000",
-            "expectedCumulativeValue": "100",
+            "commitDeadline": "4000000000",
             "payment": "100",
             "processId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "runningTotal": "100",
             "salt": "1",
-            "seller": "0x5151515151515151515151515151515151515151"
+            "seller": "0x5151515151515151515151515151515151515151",
+            "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
           },
           "kind": "commit"
         }
@@ -30,13 +30,13 @@
           "commitment": {
             "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
             "checkoutHash": "0x4242424242424242424242424242424242424242424242424242424242424242",
-            "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-            "deadline": "4000000000",
-            "expectedCumulativeValue": "200",
+            "commitDeadline": "4000000000",
             "payment": "200",
             "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "runningTotal": "200",
             "salt": "2",
-            "seller": "0x5252525252525252525252525252525252525252"
+            "seller": "0x5252525252525252525252525252525252525252",
+            "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
           },
           "kind": "commit"
         },
@@ -44,13 +44,13 @@
           "commitment": {
             "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
             "checkoutHash": "0x4343434343434343434343434343434343434343434343434343434343434343",
-            "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-            "deadline": "4000000000",
-            "expectedCumulativeValue": "500",
+            "commitDeadline": "4000000000",
             "payment": "300",
             "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "runningTotal": "500",
             "salt": "3",
-            "seller": "0x5353535353535353535353535353535353535353"
+            "seller": "0x5353535353535353535353535353535353535353",
+            "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
           },
           "kind": "commit"
         },
@@ -59,24 +59,24 @@
             {
               "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
               "checkoutHash": "0x4242424242424242424242424242424242424242424242424242424242424242",
-              "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-              "deadline": "4000000000",
-              "expectedCumulativeValue": "200",
+              "commitDeadline": "4000000000",
               "payment": "200",
               "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "runningTotal": "200",
               "salt": "2",
-              "seller": "0x5252525252525252525252525252525252525252"
+              "seller": "0x5252525252525252525252525252525252525252",
+              "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
             },
             {
               "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
               "checkoutHash": "0x4343434343434343434343434343434343434343434343434343434343434343",
-              "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-              "deadline": "4000000000",
-              "expectedCumulativeValue": "500",
+              "commitDeadline": "4000000000",
               "payment": "300",
               "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "runningTotal": "500",
               "salt": "3",
-              "seller": "0x5353535353535353535353535353535353535353"
+              "seller": "0x5353535353535353535353535353535353535353",
+              "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
             }
           ],
           "kind": "resolve",
@@ -94,13 +94,13 @@
           "commitment": {
             "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
             "checkoutHash": "0x4242424242424242424242424242424242424242424242424242424242424242",
-            "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-            "deadline": "4000000000",
-            "expectedCumulativeValue": "200",
+            "commitDeadline": "4000000000",
             "payment": "200",
             "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "runningTotal": "200",
             "salt": "2",
-            "seller": "0x5252525252525252525252525252525252525252"
+            "seller": "0x5252525252525252525252525252525252525252",
+            "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
           },
           "kind": "commit"
         },
@@ -108,13 +108,13 @@
           "commitment": {
             "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
             "checkoutHash": "0x4343434343434343434343434343434343434343434343434343434343434343",
-            "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-            "deadline": "4000000000",
-            "expectedCumulativeValue": "500",
+            "commitDeadline": "4000000000",
             "payment": "300",
             "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "runningTotal": "500",
             "salt": "3",
-            "seller": "0x5353535353535353535353535353535353535353"
+            "seller": "0x5353535353535353535353535353535353535353",
+            "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
           },
           "kind": "commit"
         },
@@ -124,24 +124,24 @@
             {
               "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
               "checkoutHash": "0x4242424242424242424242424242424242424242424242424242424242424242",
-              "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-              "deadline": "4000000000",
-              "expectedCumulativeValue": "200",
+              "commitDeadline": "4000000000",
               "payment": "200",
               "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "runningTotal": "200",
               "salt": "2",
-              "seller": "0x5252525252525252525252525252525252525252"
+              "seller": "0x5252525252525252525252525252525252525252",
+              "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
             },
             {
               "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
               "checkoutHash": "0x4343434343434343434343434343434343434343434343434343434343434343",
-              "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-              "deadline": "4000000000",
-              "expectedCumulativeValue": "500",
+              "commitDeadline": "4000000000",
               "payment": "300",
               "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "runningTotal": "500",
               "salt": "3",
-              "seller": "0x5353535353535353535353535353535353535353"
+              "seller": "0x5353535353535353535353535353535353535353",
+              "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
             }
           ],
           "kind": "resolveByWalletCode",
@@ -161,24 +161,24 @@
             {
               "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
               "checkoutHash": "0x4242424242424242424242424242424242424242424242424242424242424242",
-              "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-              "deadline": "4000000000",
-              "expectedCumulativeValue": "200",
+              "commitDeadline": "4000000000",
               "payment": "200",
               "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "runningTotal": "200",
               "salt": "2",
-              "seller": "0x5252525252525252525252525252525252525252"
+              "seller": "0x5252525252525252525252525252525252525252",
+              "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
             },
             {
               "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
               "checkoutHash": "0x4343434343434343434343434343434343434343434343434343434343434343",
-              "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-              "deadline": "4000000000",
-              "expectedCumulativeValue": "500",
+              "commitDeadline": "4000000000",
               "payment": "300",
               "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "runningTotal": "500",
               "salt": "3",
-              "seller": "0x5353535353535353535353535353535353535353"
+              "seller": "0x5353535353535353535353535353535353535353",
+              "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
             }
           ],
           "kind": "resolveByWalletCode",
@@ -198,24 +198,24 @@
             {
               "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
               "checkoutHash": "0x4242424242424242424242424242424242424242424242424242424242424242",
-              "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-              "deadline": "4000000000",
-              "expectedCumulativeValue": "200",
+              "commitDeadline": "4000000000",
               "payment": "200",
               "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "runningTotal": "200",
               "salt": "2",
-              "seller": "0x5252525252525252525252525252525252525252"
+              "seller": "0x5252525252525252525252525252525252525252",
+              "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
             },
             {
               "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
               "checkoutHash": "0x4343434343434343434343434343434343434343434343434343434343434343",
-              "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-              "deadline": "4000000000",
-              "expectedCumulativeValue": "500",
+              "commitDeadline": "4000000000",
               "payment": "300",
               "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "runningTotal": "500",
               "salt": "3",
-              "seller": "0x5353535353535353535353535353535353535353"
+              "seller": "0x5353535353535353535353535353535353535353",
+              "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
             }
           ],
           "kind": "resolveByWalletCode",
@@ -233,13 +233,13 @@
           "commitment": {
             "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
             "checkoutHash": "0x4242424242424242424242424242424242424242424242424242424242424242",
-            "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-            "deadline": "4000000000",
-            "expectedCumulativeValue": "200",
+            "commitDeadline": "4000000000",
             "payment": "200",
             "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "runningTotal": "200",
             "salt": "2",
-            "seller": "0x5252525252525252525252525252525252525252"
+            "seller": "0x5252525252525252525252525252525252525252",
+            "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
           },
           "kind": "commit"
         }
@@ -255,13 +255,13 @@
           "commitment": {
             "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
             "checkoutHash": "0x4141414141414141414141414141414141414141414141414141414141414141",
-            "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-            "deadline": "4000000000",
-            "expectedCumulativeValue": "100",
+            "commitDeadline": "4000000000",
             "payment": "100",
             "processId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "runningTotal": "100",
             "salt": "1",
-            "seller": "0x5151515151515151515151515151515151515151"
+            "seller": "0x5151515151515151515151515151515151515151",
+            "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
           },
           "kind": "commit"
         },
@@ -275,13 +275,13 @@
           "target": {
             "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
             "checkoutHash": "0x4242424242424242424242424242424242424242424242424242424242424242",
-            "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-            "deadline": "4000000000",
-            "expectedCumulativeValue": "200",
+            "commitDeadline": "4000000000",
             "payment": "200",
             "processId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "runningTotal": "200",
             "salt": "2",
-            "seller": "0x5252525252525252525252525252525252525252"
+            "seller": "0x5252525252525252525252525252525252525252",
+            "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
           }
         },
         {
@@ -294,13 +294,13 @@
           "target": {
             "buyer": "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0",
             "checkoutHash": "0x4141414141414141414141414141414141414141414141414141414141414141",
-            "currency": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
-            "deadline": "4000000000",
-            "expectedCumulativeValue": "100",
+            "commitDeadline": "4000000000",
             "payment": "100",
             "processId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "runningTotal": "100",
             "salt": "1",
-            "seller": "0x5151515151515151515151515151515151515151"
+            "seller": "0x5151515151515151515151515151515151515151",
+            "token": "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
           }
         }
       ],

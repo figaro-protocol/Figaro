@@ -332,7 +332,7 @@ function ContractPage({ contract, decimals }: { contract: AuditBundle["contract"
                 <MetaRow k="seller" v={contract.parties.seller} mono />
                 <MetaRow k="currency" v={contract.currency} mono />
                 <MetaRow k="payment (P)" v={fmt(contract.payment, decimals)} />
-                <MetaRow k="cumulativeValue (G)" v={fmt(contract.cumulativeValue, decimals)} />
+                <MetaRow k="runningTotal (G)" v={fmt(contract.runningTotal, decimals)} />
                 {contract.committedAtBlock !== undefined && (
                     <MetaRow k="committedAtBlock" v={contract.committedAtBlock} />
                 )}
@@ -716,7 +716,7 @@ function HashAppendixPage({ appendix }: { appendix: AuditBundle["hashAppendix"] 
                 verifies against chain. checkoutHash = merkle root over clause
                 leaves, the provenance leaf and the topology leaf. Each clause
                 leaf = computeClauseLeaf(clause); the provenance leaf =
-                computeProvenanceLeaf(agreementHash, assemblyHash); the
+                computeProvenanceLeaf(agreementHash, processDesignHash); the
                 topology leaf = computeTopologyLeaf(follows). Each
                 attestation contentRef = keccak256(content); the chain holds
                 only this hash, and the content is held off chain by the

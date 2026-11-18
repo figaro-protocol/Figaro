@@ -7,13 +7,13 @@
  *   FigaroCore domain on the connected chain, the commitment's nine fields as
  *   the message, after the confirm; with a funding token it first quotes the
  *   buyer's bond leg (`quoteBondFundingLeg`: 2 × payment, the FigaroCore's
- *   buyer pull — on a sub-order expectedCumulativeValue ≠ payment, so the
+ *   buyer pull — on a sub-order runningTotal ≠ payment, so the
  *   argument order is load-bearing), shows that quote's swap summary in the
  *   SAME confirm (`swapDetails`: input token, denomination, maxInput), and
  *   then witness-signs exactly that quote.
  * - `signAndShare` relays the signed payload to the seller (with the race
  *   winner's countersignature when one is passed).
- * - `acceptOrder` quotes the seller's leg at 2 × expectedCumulativeValue and
+ * - `acceptOrder` quotes the seller's leg at 2 × runningTotal and
  *   broadcasts the funded order through the coordinator's `swapAndCommit`.
  * - Each act moves the step (signing → awaiting-seller, sharing →
  *   awaiting-seller, committing → done) and a failure records its message
@@ -79,7 +79,7 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
 vi.mock("@figaro-protocol/sdk", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@figaro-protocol/sdk")>()),
     verifyCommitmentSignature: async () => true,
-    checkSellerBindsAssembly: async () => ({ ok: true }),
+    checkSellerBindsProcess: async () => ({ ok: true }),
 }));
 const confirm = vi.fn(async (..._args: unknown[]) => { s.acts.push("confirm"); return true; });
 const commitConfirm = vi.fn(async (..._args: unknown[]) => { s.acts.push("confirm-commit"); return true; });
@@ -114,9 +114,9 @@ vi.mock("@/lib/shared/runtimeServicesContext", () => ({ useRuntimeServices: () =
 
 const { useOrderCommitmentFlow } = await import("@/lib/checkout/orderCommitmentFlow");
 
-/** A sub-order's preview: expectedCumulativeValue (300) ≠ payment (100), so a
+/** A sub-order's preview: runningTotal (300) ≠ payment (100), so a
  *  bond computed from the wrong one of the two is a different figure. */
-function preview(payment = 100n, expectedCumulativeValue = 300n) {
+function preview(payment = 100n, runningTotal = 300n) {
     const { agreement } = buildOrderAgreement(BUYER, SELLER, {
         [keyOf("figaro-commerce")]: {
             lineItems: [{ itemId: "item-1", name: "Item", quantity: 1, unitPrice: payment.toString() }],
@@ -125,8 +125,8 @@ function preview(payment = 100n, expectedCumulativeValue = 300n) {
     const checkoutHash = computeCheckoutHash(agreement);
     const commitment: Commitment = {
         processId: `0x${"0f".repeat(32)}` as Hex,
-        buyer: BUYER, seller: SELLER, currency: CURRENCY,
-        payment, expectedCumulativeValue, checkoutHash, salt: 9n, deadline: 9_999_999_999n,
+        buyer: BUYER, seller: SELLER, token: CURRENCY,
+        payment, runningTotal, checkoutHash, salt: 9n, commitDeadline: 9_999_999_999n,
     };
     return { agreement, checkoutHash, commitment };
 }
@@ -166,8 +166,8 @@ describe("signCommitment — the buyer's signature", () => {
             types: COMMITMENT_TYPES,
             primaryType: "Commitment",
             message: {
-                processId: p.commitment.processId, buyer: BUYER, seller: SELLER, currency: CURRENCY,
-                payment: 100n, expectedCumulativeValue: 300n, checkoutHash: p.checkoutHash, salt: 9n, deadline: 9_999_999_999n,
+                processId: p.commitment.processId, buyer: BUYER, seller: SELLER, token: CURRENCY,
+                payment: 100n, runningTotal: 300n, checkoutHash: p.checkoutHash, salt: 9n, commitDeadline: 9_999_999_999n,
             },
         }]);
         expect(s.acts).toEqual(["confirm", "sign:Commitment"]);
@@ -318,7 +318,7 @@ describe("signAndShare — the signed order relayed to the seller", () => {
 });
 
 describe("acceptOrder — the seller's funded counter-signature", () => {
-    it("quotes the seller's bond (2 × expectedCumulativeValue), confirms its swap summary, and broadcasts through swapAndCommit with the seller's leg", async () => {
+    it("quotes the seller's bond (2 × runningTotal), confirms its swap summary, and broadcasts through swapAndCommit with the seller's leg", async () => {
         s.address = SELLER;
         const p = preview();
         const incoming: CommitmentPayload = { commitment: p.commitment, agreement: p.agreement, buyerSig: BUYER_SIG };

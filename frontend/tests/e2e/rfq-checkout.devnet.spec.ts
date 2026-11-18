@@ -36,7 +36,7 @@ import {
     seedRegisteredMember,
     memberProfileBindings,
     waitForConnected,
-    anchoredAssemblyHash,
+    anchoredProcessDesignHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
@@ -83,7 +83,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
         // ── GATES shared with dispatch-race (all idempotent): the assembly,
         //    Aurora's undesignated binding, the two couriers, funding. ──
         const deliverySlug = await ensureDeliveryAssembly(page);
-        const deliveryHash = await anchoredAssemblyHash(deliverySlug);
+        const deliveryHash = await anchoredProcessDesignHash(deliverySlug);
         if (!(await memberProfileBindings(MERCHANT)).some((b) => isBindingOf(b, deliveryHash))) {
             await gotoAsWallet(page, MERCHANT, '/members/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
@@ -118,10 +118,10 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
                     catalogURI,
                     acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
                     defaultTokenAddress: token,
-                    assemblyBindings: [{
+                    processBindings: [{
                         bindingId: `race-binding-${address.slice(2, 8).toLowerCase()}`,
                         subjectAddress: address,
-                        assemblyHash: deliveryHash,
+                        processDesignHash: deliveryHash,
                         coSellerBindings: [],
                     }],
                 },
@@ -240,7 +240,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
         }).toBe(committedBefore + 1);
         const rootEvent = (await queryCommitted())[committedBefore];
         const processId = rootEvent.args.processId!;
-        const rootBonds = calculateBonds(rootEvent.args.cumulativeValue!, rootEvent.args.payment!);
+        const rootBonds = calculateBonds(rootEvent.args.runningTotal!, rootEvent.args.payment!);
 
         await gotoAsWallet(cheapTab, COURIER_CHEAP, '/orders?e2e=devnet');
         await cheapTab.getByTestId('orders-list').waitFor({ timeout: 30000 });
@@ -261,7 +261,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
             .toBe(COURIER_CHEAP.toLowerCase());
         expect(courierEvent.args.payment, 'committed at the QUOTED 2.5 — the candidate authored the price')
             .toBe(parseUnits(CHEAP_QUOTE, 18));
-        const courierBonds = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
+        const courierBonds = calculateBonds(courierEvent.args.runningTotal!, courierEvent.args.payment!);
         {
             const [b, cc, c] = await Promise.all([balanceOf(BUYER), balanceOf(COURIER_CHEAP), balanceOf(core)]);
             expect(buyer0 - b, 'buyer bonded 2× the quoted totals, not the ceiling')

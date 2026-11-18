@@ -15,7 +15,7 @@
  * signatures may commit either order until its `deadline`: the unfunded
  * winner's stays committable should its seller fund it. At a sub-order
  * position FigaroCore admits at most one of the two (each names an
- * `expectedCumulativeValue` built on the process as it stood before either);
+ * `runningTotal` built on the process as it stood before either);
  * at a root position it may admit both.
  *
  * This is the SELLER-SIGNS-FIRST leg — deliberately the inverse of the
@@ -40,7 +40,7 @@ import { checkDeadlineCap, checkOfferPolicy, checkPayloadTerms, checkSellerSigna
 // One owner for the reply check: the offer loops and the race both use it.
 export { verifyRaceReply };
 import { assertAgreementSignable, type SpecSource } from "../projection.js";
-import type { HydratedAssembly } from "../assembly.js";
+import type { HydratedProcessDesign } from "../assembly.js";
 import type { MemberProfileReader } from "../memberProfile.js";
 
 /**
@@ -60,7 +60,7 @@ import type { MemberProfileReader } from "../memberProfile.js";
  * denomination pin contradicts the token the candidate would bond against, is
  * refused before any signature. ALWAYS checks,
  * as `validateOffer` does, that the candidate has bound the assembly the draft
- * instantiates (`checkSellerBindsAssembly`, the candidate's OWN profile read
+ * instantiates (`checkSellerBindsProcess`, the candidate's OWN profile read
  * through `readProfile` at acceptance time); a draft with no provenance leaf,
  * no reader, or an unreadable or unbinding profile is refused. With a
  * `policy`, ALSO applies the operator's economic floor (root-shape, currency
@@ -72,7 +72,7 @@ export async function validateDraft(
     expectedSeller: Address,
     policy?: OfferPolicy,
     specs?: SpecSource,
-    design: HydratedAssembly | null = null,
+    design: HydratedProcessDesign | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<OfferCheck> {
     if (draft.buyerSig) return { ok: false, reason: "payload carries a buyer signature — an offer, not a race draft" };
@@ -85,7 +85,7 @@ export async function validateDraft(
  * `wallet` is the candidate. Mirrors `counterSignOffer`'s two operator-supplied
  * opt-IN floors — autonomy is never the default:
  *   - ECONOMIC FLOOR: countersigning exposes the candidate to being committed
- *     at the draft's `payment`/`expectedCumulativeValue` in its `currency`
+ *     at the draft's `payment`/`runningTotal` in its `currency`
  *     until `deadline`, so with NO `policy` the draft is declined, and a
  *     deadline past the policy's cap from `ctx.chainNow` (absent → every
  *     draft) is declined (`checkDeadlineCap`).
@@ -108,7 +108,7 @@ export async function counterSignDraft(
     specs: SpecSource,
     accept?: (draft: CommitmentPayload) => boolean,
     policy?: OfferPolicy,
-    design: HydratedAssembly | null = null,
+    design: HydratedProcessDesign | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
     const gateSpecs = requireSpecs(specs, "counterSignDraft");
@@ -209,7 +209,7 @@ function setAtPath(node: unknown, path: readonly string[], value: string): Recor
 export interface BuildQuoteRequestParams {
     /** The assembly, each agreement's registered agreement hydrated beside
      *  its assembly. */
-    assembly: HydratedAssembly;
+    assembly: HydratedProcessDesign;
     buyer: Address;
     /** The candidate this request drafts against — one request per candidate,
      *  each naming its exact counterparty (no counterparty deferral). */
@@ -254,12 +254,12 @@ export function buildQuoteRequest(params: BuildQuoteRequestParams): CommitmentPa
         processId: ZERO_PROCESS_ID,
         buyer: params.buyer,
         seller: params.seller,
-        currency: params.currency,
+        token: params.currency,
         payment: params.ceiling,
-        expectedCumulativeValue: params.ceiling,
+        runningTotal: params.ceiling,
         checkoutHash: computeCheckoutHash(agreement),
         salt: params.salt,
-        deadline: params.deadline,
+        commitDeadline: params.deadline,
     }, domain);
     return { commitment, agreement, quoteRequest: { pricedFields: params.pricedFields } };
 }
@@ -292,7 +292,7 @@ export async function quoteDraft(
     specs: SpecSource,
     quote?: (draft: CommitmentPayload) => bigint | null,
     policy?: OfferPolicy,
-    design: HydratedAssembly | null = null,
+    design: HydratedProcessDesign | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
     const gateSpecs = requireSpecs(specs, "quoteDraft");
@@ -320,7 +320,7 @@ export async function quoteDraft(
 /** The counter-draft at price `q` — the ONE build shared by the candidate's
  *  quote and the buyer's reconstruction, so the two are equal by construction
  *  or the quote is dishonest. Only the priced fields, `payment`, the
- *  re-derived `expectedCumulativeValue` (same upstream base), and
+ *  re-derived `runningTotal` (same upstream base), and
  *  `checkoutHash` move; salt, deadline, parties, currency, processId are the
  *  draft's. Exported for human-driven quote surfaces (a person entering the
  *  figure IS the pricing function; the confirm gate replaces the autonomous
@@ -331,12 +331,12 @@ export function buildCounterDraft(
     q: bigint,
 ): { commitment: CommitmentPayload["commitment"]; agreement: Agreement } {
     const agreement = substitutePricedValue(draft.agreement, terms.pricedFields, q);
-    const base = draft.commitment.expectedCumulativeValue - draft.commitment.payment;
+    const base = draft.commitment.runningTotal - draft.commitment.payment;
     return {
         commitment: {
             ...draft.commitment,
             payment: q,
-            expectedCumulativeValue: base + q,
+            runningTotal: base + q,
             checkoutHash: computeCheckoutHash(agreement),
         },
         agreement,
@@ -542,7 +542,7 @@ export function makeSellerRaceHandler(
         /** The clause-spec source for the merkle-leaf seam, required — see `counterSignDraft`. */
         specs: SpecSource;
         /** Reads the design a draft's agreement names — see `makeSellerOfferHandler`. */
-        readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>;
+        readDesign?: (provenance: AgreementProvenance) => Promise<HydratedProcessDesign | null>;
         /** Reads the candidate's OWN member profile at acceptance time — see
          *  `makeSellerOfferHandler`. OMIT it and every draft is refused. */
         readProfile?: MemberProfileReader;
@@ -570,7 +570,7 @@ export function makeSellerQuoteHandler(
         /** The clause-spec source for the merkle-leaf seam, required — see `quoteDraft`. */
         specs: SpecSource;
         /** Reads the design a draft's agreement names — see `makeSellerOfferHandler`. */
-        readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>;
+        readDesign?: (provenance: AgreementProvenance) => Promise<HydratedProcessDesign | null>;
         /** Reads the candidate's OWN member profile at acceptance time — see
          *  `makeSellerOfferHandler`. OMIT it and every quote request is refused. */
         readProfile?: MemberProfileReader;

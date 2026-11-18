@@ -4,7 +4,7 @@
  * Each authored agreement is written by clause name and composed at seed
  * time (`composeAuthoredAgreement` over `clauses/`: names resolved to keys,
  * keyed); each reference assembly names the
- * agreements its agreements bind and is built over them (`assembleAuthored`:
+ * agreements its agreements bind and is built over them (`composeAuthoredProcessDesign`:
  * the entry binds the agreement's hash and carries its own parents). Built, it
  * must parse, hash, resolve its topology, compose only clauses that exist,
  * carry on every order exactly the clauses its authored agreement names, and
@@ -17,7 +17,7 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { keccak256 } from "viem";
-import { canonicalize, planAssemblyOrders, agreementClauses, assemblyHashOf, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { canonicalize, planProcessOrders, agreementClauses, processDesignHashOf, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { parseAssemblyJson } from "@/lib/designer/assemblyToDraft";
 import { authoredAgreements, authoredSpecSet, primeClauseSpecs, referenceAssembly, resolveAuthored } from "./primeClauseSpecs";
 
@@ -63,18 +63,18 @@ describe("reference assemblies — the onboarding set", () => {
     for (const file of referenceFiles) {
         describe(file, () => {
             // The seeding's build: the authored agreements composed by name over clauses/, the agreements keyed.
-            const hydrated = (): HydratedAssembly => referenceAssembly(file);
+            const hydrated = (): HydratedProcessDesign => referenceAssembly(file);
 
             it("parses as a sound Assembly and its assembly hashes", () => {
                 const { assembly, agreements } = hydrated();
                 const parsed = parseAssemblyJson(canonicalize({ assembly, agreements }));
                 expect(parsed.ok, !parsed.ok ? (parsed as { error: string }).error : "").toBe(true);
-                expect(assemblyHashOf(assembly)).toMatch(/^0x[0-9a-f]{64}$/);
+                expect(processDesignHashOf(assembly)).toMatch(/^0x[0-9a-f]{64}$/);
             });
 
             it("resolves its topology in commit order", () => {
                 const assembly = hydrated();
-                expect(planAssemblyOrders(assembly).length).toBe(assembly.assembly.agreements.length);
+                expect(planProcessOrders(assembly).length).toBe(assembly.assembly.agreements.length);
             });
 
             it("composes only clauses that exist, each order exactly the clauses its authored agreement names", () => {

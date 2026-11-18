@@ -3,19 +3,19 @@ pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
 import {ClauseRegistry} from "src/registries/ClauseRegistry.sol";
-import {AssemblyRegistry} from "src/registries/AssemblyRegistry.sol";
+import {ProcessRegistry} from "src/registries/ProcessRegistry.sol";
 import {AgreementRegistry} from "src/registries/AgreementRegistry.sol";
 
-/// @title HalmosClauseRegistry / HalmosAssemblyRegistry / HalmosAgreementRegistry
+/// @title HalmosClauseRegistry / HalmosProcessRegistry / HalmosAgreementRegistry
 ///        — the key-bound stake machines designer-of-record eligibility rests on
 ///
-/// @notice `ClauseRegistry`, `AssemblyRegistry` and `AgreementRegistry` are
+/// @notice `ClauseRegistry`, `ProcessRegistry` and `AgreementRegistry` are
 ///         `MembersRegistry`'s siblings minus the cooldown: each key (the
 ///         clause key, keccak256 of the spec's pinned bytes / the
-///         assemblyHash / the agreementHash) is bound FIRST-WRITE-WINS and
+///         processDesignHash / the agreementHash) is bound FIRST-WRITE-WINS and
 ///         PERMANENTLY — there is no `requestWithdrawal` two-step and nothing
 ///         to recycle, because a withdrawn key can never be re-registered by
-///         anyone (`AlreadyRegistered` / `AssemblyAlreadyRegistered` /
+///         anyone (`AlreadyRegistered` / `ProcessAlreadyRegistered` /
 ///         `AgreementAlreadyRegistered` guard the key forever, not just the
 ///         wallet that staked it). `RpgfMinter._isAuthor` reads this machine
 ///         directly at CLAIM time — `depositOf[key].withdrawn == false` for a
@@ -281,10 +281,10 @@ contract HalmosClauseRegistry is Test {
     }
 }
 
-/// @notice Same five properties, restated for `AssemblyRegistry`'s shape:
-///         the key is the caller-supplied `assemblyHash`, and both keys
+/// @notice Same five properties, restated for `ProcessRegistry`'s shape:
+///         the key is the caller-supplied `processDesignHash`, and both keys
 ///         are left fully symbolic, as for the clause registry above.
-contract HalmosAssemblyRegistry is Test {
+contract HalmosProcessRegistry is Test {
     address internal constant ALICE = address(0xA11CE);
     address internal constant BOB = address(0xB0B);
 
@@ -301,14 +301,14 @@ contract HalmosAssemblyRegistry is Test {
         vm.assume(hashB != bytes32(0));
         vm.assume(hashA != hashB);
 
-        AssemblyRegistry r = new AssemblyRegistry(deposit);
+        ProcessRegistry r = new ProcessRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) + 1 ether);
         vm.deal(BOB, uint256(deposit) + 1 ether);
 
         vm.prank(ALICE);
-        r.registerAssembly{value: deposit}(hashA, "ipfs://a");
+        r.registerProcess{value: deposit}(hashA, "ipfs://a");
         vm.prank(BOB);
-        r.registerAssembly{value: deposit}(hashB, "ipfs://b");
+        r.registerProcess{value: deposit}(hashB, "ipfs://b");
 
         if (aliceWithdraws) {
             vm.prank(ALICE);
@@ -335,7 +335,7 @@ contract HalmosAssemblyRegistry is Test {
         // once), so recomputing "still owed" from them is not a weaker
         // statement, just one that avoids the decoder boundary. The
         // getter's own correctness after withdraw is covered concretely in
-        // `AssemblyRegistryTest.t.sol` (`test_withdrawDeposit_happy`).
+        // `ProcessRegistryTest.t.sol` (`test_withdrawDeposit_happy`).
         uint256 owed = (aliceWithdraws ? 0 : uint256(deposit)) + (bobWithdraws ? 0 : uint256(deposit));
 
         assertGe(address(r).balance, owed, "the registry must hold every live deposit");
@@ -344,11 +344,11 @@ contract HalmosAssemblyRegistry is Test {
     function check_liveDepositIsAlwaysWithdrawableInFull(uint96 deposit, bytes32 hashA) public {
         vm.assume(hashA != bytes32(0));
 
-        AssemblyRegistry r = new AssemblyRegistry(deposit);
+        ProcessRegistry r = new ProcessRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) + 1 ether);
 
         vm.prank(ALICE);
-        r.registerAssembly{value: deposit}(hashA, "ipfs://a");
+        r.registerProcess{value: deposit}(hashA, "ipfs://a");
 
         uint256 before = ALICE.balance;
         vm.prank(ALICE);
@@ -368,12 +368,12 @@ contract HalmosAssemblyRegistry is Test {
     ) public {
         vm.assume(hashA != bytes32(0));
 
-        AssemblyRegistry r = new AssemblyRegistry(deposit);
+        ProcessRegistry r = new ProcessRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) * 2 + 1 ether);
         vm.deal(BOB, uint256(deposit) * 2 + 1 ether);
 
         vm.prank(ALICE);
-        r.registerAssembly{value: deposit}(hashA, "ipfs://original");
+        r.registerProcess{value: deposit}(hashA, "ipfs://original");
 
         if (aliceWithdrawsFirst) {
             vm.prank(ALICE);
@@ -383,9 +383,9 @@ contract HalmosAssemblyRegistry is Test {
         address secondCaller = secondCallerIsAlice ? ALICE : BOB;
         vm.prank(secondCaller);
         (bool ok,) =
-            address(r).call{value: deposit}(abi.encodeCall(AssemblyRegistry.registerAssembly, (hashA, "ipfs://hijack")));
+            address(r).call{value: deposit}(abi.encodeCall(ProcessRegistry.registerProcess, (hashA, "ipfs://hijack")));
 
-        assertFalse(ok, "no second registration for this assemblyHash ever succeeds, withdrawn or not");
+        assertFalse(ok, "no second registration for this processDesignHash ever succeeds, withdrawn or not");
         (address registeredBy, uint64 registeredAt,, string memory uri) = r.bindings(hashA);
         assertEq(registeredBy, ALICE, "the registeredBy of record is permanent");
         assertEq(uri, "ipfs://original", "contentURI never changes on a failed hijack");
@@ -397,11 +397,11 @@ contract HalmosAssemblyRegistry is Test {
     function check_withdrawalIsOneShot_secondWithdrawCannotMoveEth(uint96 deposit, bytes32 hashA) public {
         vm.assume(hashA != bytes32(0));
 
-        AssemblyRegistry r = new AssemblyRegistry(deposit);
+        ProcessRegistry r = new ProcessRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) + 1 ether);
 
         vm.prank(ALICE);
-        r.registerAssembly{value: deposit}(hashA, "ipfs://a");
+        r.registerProcess{value: deposit}(hashA, "ipfs://a");
         vm.prank(ALICE);
         r.withdrawDeposit(hashA);
 
@@ -409,9 +409,9 @@ contract HalmosAssemblyRegistry is Test {
         uint256 contractBalAfterFirst = address(r).balance;
 
         vm.prank(ALICE);
-        (bool ok,) = address(r).call(abi.encodeCall(AssemblyRegistry.withdrawDeposit, (hashA)));
+        (bool ok,) = address(r).call(abi.encodeCall(ProcessRegistry.withdrawDeposit, (hashA)));
 
-        assertFalse(ok, "a second withdraw for this assemblyHash cannot succeed");
+        assertFalse(ok, "a second withdraw for this processDesignHash cannot succeed");
         assertEq(ALICE.balance, balAfterFirst, "no ETH moves on the second attempt");
         assertEq(address(r).balance, contractBalAfterFirst, "contract balance is unchanged");
     }
@@ -426,12 +426,12 @@ contract HalmosAssemblyRegistry is Test {
     ) public {
         vm.assume(hashA != bytes32(0));
 
-        AssemblyRegistry r = new AssemblyRegistry(deposit);
+        ProcessRegistry r = new ProcessRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) * 2 + 1 ether);
         vm.deal(BOB, uint256(deposit) + 1 ether);
 
         vm.prank(ALICE);
-        r.registerAssembly{value: deposit}(hashA, "ipfs://a");
+        r.registerProcess{value: deposit}(hashA, "ipfs://a");
 
         (,, bool withdrawnBefore,) = r.bindings(hashA);
         assertFalse(withdrawnBefore, "deposit starts live");
@@ -444,11 +444,11 @@ contract HalmosAssemblyRegistry is Test {
 
         if (attemptReRegister) {
             vm.prank(BOB);
-            address(r).call{value: deposit}(abi.encodeCall(AssemblyRegistry.registerAssembly, (hashA, "ipfs://hijack")));
+            address(r).call{value: deposit}(abi.encodeCall(ProcessRegistry.registerProcess, (hashA, "ipfs://hijack")));
         }
         if (attemptSecondWithdraw) {
             vm.prank(ALICE);
-            address(r).call(abi.encodeCall(AssemblyRegistry.withdrawDeposit, (hashA)));
+            address(r).call(abi.encodeCall(ProcessRegistry.withdrawDeposit, (hashA)));
         }
 
         (,, bool withdrawnFinal,) = r.bindings(hashA);
@@ -469,7 +469,7 @@ contract HalmosAssemblyRegistry is Test {
         string uri;
     }
 
-    function _binding(AssemblyRegistry r, bytes32 hash) internal view returns (Binding memory b) {
+    function _binding(ProcessRegistry r, bytes32 hash) internal view returns (Binding memory b) {
         (b.registeredBy, b.registeredAt, b.withdrawn, b.uri) = r.bindings(hash);
     }
 
@@ -484,25 +484,23 @@ contract HalmosAssemblyRegistry is Test {
         vm.assume(hashB != bytes32(0));
         vm.assume(hashA != hashB);
 
-        AssemblyRegistry r = new AssemblyRegistry(deposit);
+        ProcessRegistry r = new ProcessRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) * 2 + 1 ether);
         vm.deal(BOB, uint256(deposit) + 1 ether);
 
         vm.prank(BOB);
-        r.registerAssembly{value: deposit}(hashB, "ipfs://b");
+        r.registerProcess{value: deposit}(hashB, "ipfs://b");
         Binding memory before = _binding(r, hashB);
 
         vm.prank(ALICE);
-        r.registerAssembly{value: deposit}(hashA, "ipfs://a");
+        r.registerProcess{value: deposit}(hashA, "ipfs://a");
         if (aliceWithdraws) {
             vm.prank(ALICE);
             r.withdrawDeposit(hashA);
         }
         if (attemptHijackA) {
             vm.prank(BOB);
-            address(r).call{value: deposit}(
-                abi.encodeCall(AssemblyRegistry.registerAssembly, (hashA, "ipfs://hijack-a"))
-            );
+            address(r).call{value: deposit}(abi.encodeCall(ProcessRegistry.registerProcess, (hashA, "ipfs://hijack-a")));
         }
 
         Binding memory afterOps = _binding(r, hashB);

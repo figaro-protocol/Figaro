@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { FigaroContext, originateChain, makeSellerOfferHandler, InProcessChannel } from "@figaro-protocol/sdk/agent";
 import {
-    anchorAssembly, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, agreementClauses, assemblyFollows,
+    anchorProcessDesign, computeDeadline, hydrateProcessDesign, parseProjectionHints, readChainTimestamp, agreementClauses, processDesignFollows,
 } from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 import { bindAssemblyAsSeller, designReader, memberProfileReader } from "./devnet-seller.mjs";
@@ -34,7 +34,7 @@ const GATEWAY = "http://127.0.0.1:8080/ipfs/";
 const IPFS_API = env.NEXT_PUBLIC_IPFS_API_URL || "http://127.0.0.1:5001";
 const addresses = {
     core: env.NEXT_PUBLIC_FIGARO_CORE, clauseRegistry: env.NEXT_PUBLIC_CLAUSE_REGISTRY,
-    membersRegistry: env.NEXT_PUBLIC_MEMBERS_REGISTRY, assemblyRegistry: env.NEXT_PUBLIC_ASSEMBLY_REGISTRY,
+    membersRegistry: env.NEXT_PUBLIC_MEMBERS_REGISTRY, processRegistry: env.NEXT_PUBLIC_PROCESS_REGISTRY,
     agreementRegistry: env.NEXT_PUBLIC_AGREEMENT_REGISTRY,
 };
 const TOKEN = env.NEXT_PUBLIC_TOKEN_ADDRESS;
@@ -80,9 +80,9 @@ const specs = {
 // hash and every one of its registered agreements hydrates and verifies
 // against its key — read from the binding whatever its stake.
 const hydrate = async (a) => {
-    const t = anchorAssembly(await tryHydrate(a.contentURI), a.assemblyHash);
+    const t = anchorProcessDesign(await tryHydrate(a.contentURI), a.processDesignHash);
     if (!t) return null;
-    return hydrateAssembly(t, async (key) => {
+    return hydrateProcessDesign(t, async (key) => {
         const binding = ctx.getAgreementBinding(key);
         return binding ? tryHydrate(binding.contentURI) : null;
     });
@@ -119,11 +119,11 @@ const readProfile = memberProfileReader(ctx, tryHydrate);
 const readDesign = designReader(ctx, hydrate);
 for (const [i, s] of [SELLERS[0], SELLERS[1]].entries()) {
     await bindAssemblyAsSeller({
-        pub, wallet: sellerW[i], membersRegistry: addresses.membersRegistry, assemblyHash: chosen.assemblyHash,
+        pub, wallet: sellerW[i], membersRegistry: addresses.membersRegistry, processDesignHash: chosen.processDesignHash,
         ipfsApiUrl: IPFS_API, readProfile, name: `Origination proof seller ${i}`,
     });
-    check(`seller ${i}'s own profile binds the assembly`, (await readProfile(s.address))?.assemblyBindings
-        ?.some((b) => b.assemblyHash.toLowerCase() === chosen.assemblyHash.toLowerCase()) === true);
+    check(`seller ${i}'s own profile binds the assembly`, (await readProfile(s.address))?.processBindings
+        ?.some((b) => b.processDesignHash.toLowerCase() === chosen.processDesignHash.toLowerCase()) === true);
 }
 
 // ── One seller LOOP per DISTINCT seller, registered on the channel ────────────
@@ -142,7 +142,7 @@ channel.register(SELLERS[1].address, makeSellerOfferHandler(sellerW[1], pub, add
 
 // ── Buyer LOOP: originate the whole chain ─────────────────────────────────────
 // Each entry's own `follows`: the entries it follows, empty on the root.
-const parentsOf = (id) => assemblyFollows(assembly.assembly.agreements.find((a) => a.id === id) ?? {});
+const parentsOf = (id) => processDesignFollows(assembly.assembly.agreements.find((a) => a.id === id) ?? {});
 const orderedIds = [
     ...assembly.assembly.agreements.filter((a) => parentsOf(a.id).length === 0),
     ...assembly.assembly.agreements.filter((a) => parentsOf(a.id).length > 0),
@@ -183,14 +183,14 @@ check("originateChain committed all three orders (3 tx hashes)", result?.hashes?
 //    from any earlier distinct-seller run lingering on the devnet). ────────────
 await ctx.sync();
 const proc = ctx.getProcessesAsBuyer(BUYER.address).find((p) => {
-    if (p.cumulativeValue !== 1800n || p.orders.size < 3) return false;
+    if (p.runningTotal !== 1800n || p.orders.size < 3) return false;
     const orders = [...p.orders.values()];
     const s0 = orders.some((o) => o.seller.toLowerCase() === SELLERS[0].address.toLowerCase());
     const s1 = orders.filter((o) => o.seller.toLowerCase() === SELLERS[1].address.toLowerCase()).length;
     return s0 && s1 === 2;
 });
 check("a process holds all three orders: root seller + one seller on BOTH subs (additive bond)", !!proc);
-check("the process cumulative value is the chain total (1800)", proc?.cumulativeValue === 1800n);
+check("the process cumulative value is the chain total (1800)", proc?.runningTotal === 1800n);
 
 console.log(`\n${fail === 0 ? "AUTONOMOUS MULTI-ORDER ORIGINATION PROVEN — no human in the loop" : fail + " CHECK(S) FAILED"}`);
 process.exit(fail === 0 ? 0 : 1);

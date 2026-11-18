@@ -22,7 +22,7 @@ CONTRACTS=(
     AttestationCoordinator
     ClauseRegistry
     MembersRegistry
-    AssemblyRegistry
+    ProcessRegistry
     AgreementRegistry
     FlorinToken
     UsageCounter

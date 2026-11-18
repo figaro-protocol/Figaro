@@ -238,7 +238,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
         const receipt = await publicClient.getTransactionReceipt({ hash: event.transactionHash });
         expect(receipt.status, 'the commit transaction succeeded').toBe('success');
         const payment = event.args.payment!;
-        const bonds = calculateBonds(event.args.cumulativeValue!, payment);
+        const bonds = calculateBonds(event.args.runningTotal!, payment);
         return { event, receipt, payment, ...bonds };
     }
 
@@ -323,7 +323,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
         const listed = await pinnedCatalogPrice(itemId);
         expect(payment, 'the committed payment is the listed price, read from IPFS').toBe(listed.amount);
         expect(buyerBond, 'the buyer bonds twice the payment').toBe(2n * payment);
-        expect(sellerBond, 'the seller bonds twice the cumulative value').toBe(2n * event.args.cumulativeValue!);
+        expect(sellerBond, 'the seller bonds twice the cumulative value').toBe(2n * event.args.runningTotal!);
 
         const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
             balanceOf(defaultToken, BUYER), balanceOf(defaultToken, SELLER), balanceOf(defaultToken, core),
@@ -359,7 +359,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
         expect((event.args.currency as string).toLowerCase(), 'the denomination is the pick').toBe(pickedToken.toLowerCase());
         expect(formatToken(payment, 18), 'the payment is the amount the buyer signed').toBe(signed);
         expect(buyerBond, 'the buyer bonds twice the payment').toBe(2n * payment);
-        expect(sellerBond, 'the seller bonds twice the cumulative value').toBe(2n * event.args.cumulativeValue!);
+        expect(sellerBond, 'the seller bonds twice the cumulative value').toBe(2n * event.args.runningTotal!);
 
         const [buyerDefaultAfter, buyerPickedAfter, corePickedAfter, coordPicked, coordDefault] = await Promise.all([
             balanceOf(defaultToken, BUYER), balanceOf(pickedToken, BUYER),
@@ -411,7 +411,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
         expect((event.args.currency as string).toLowerCase(), 'the denomination is the pick').toBe(pickedToken.toLowerCase());
         expect(formatToken(payment, 18), 'the payment is the amount both parties signed').toBe(signed);
         expect(buyerBond, 'the buyer bonds twice the payment').toBe(2n * payment);
-        expect(sellerBond, 'the seller bonds twice the cumulative value').toBe(2n * event.args.cumulativeValue!);
+        expect(sellerBond, 'the seller bonds twice the cumulative value').toBe(2n * event.args.runningTotal!);
 
         const [sellerDefaultAfter, sellerPickedAfter, corePickedAfter] = await Promise.all([
             balanceOf(defaultToken, SELLER), balanceOf(pickedToken, SELLER), balanceOf(pickedToken, core),
@@ -471,7 +471,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
             expect((event.args.currency as string).toLowerCase(), 'the denomination is the pick').toBe(pickedToken.toLowerCase());
             expect(payment, 'the chain carries the amount the buyer signed').toBe(expectedQuote);
             expect(buyerBond, 'the buyer bonds twice the payment').toBe(2n * payment);
-            expect(sellerBond, 'the seller bonds twice the cumulative value').toBe(2n * event.args.cumulativeValue!);
+            expect(sellerBond, 'the seller bonds twice the cumulative value').toBe(2n * event.args.runningTotal!);
             const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
                 balanceOf(pickedToken, BUYER), balanceOf(pickedToken, SELLER), balanceOf(pickedToken, core),
             ]);

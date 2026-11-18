@@ -3,7 +3,7 @@
  *
  * Designer-tier only. Builds the off-chain assembly from a design
  * snapshot, registers each newly agreement on `AgreementRegistry`,
- * pins the assembly to IPFS, and registers it on `AssemblyRegistry`.
+ * pins the assembly to IPFS, and registers it on `ProcessRegistry`.
  * READING published assemblies (the `AssemblyChoice` enrichment) lives in
  * `@/lib/protocol/assemblyChoices` — design is design; reading is everyone's.
  *
@@ -15,12 +15,12 @@
  *   2. Compute the assembly root (the merkle root over the agreements
  *      and the assembly terms — the assembly's identity).
  *   3. Pin the assembly to IPFS and simulate
- *      AssemblyRegistry.registerAssembly(assemblyHash, contentURI); pin
+ *      ProcessRegistry.registerProcess(processDesignHash, contentURI); pin
  *      each newly agreement no registry binds yet and simulate its
  *      AgreementRegistry.registerAgreement(key, uri). Every check passes
  *      before any write is sent.
  *   4. Send each agreement registration with its stake — one transaction,
- *      one receipt each — then registerAssembly.
+ *      one receipt each — then registerProcess.
  *      Before the call, a CLIENT-SIDE publish guard checks
  *      that the agreement count fits the per-process gas
  *      ceiling, derived at runtime from the active chain's block gas limit
@@ -37,23 +37,23 @@ import type { Abi } from "viem";
 import { simulateWrite, simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { AGREEMENT_REGISTRY_ABI, canonicalize, composeOrderAgreement, serializeAssembly, type RegisteredAgreement } from "@figaro-protocol/sdk";
+import { AGREEMENT_REGISTRY_ABI, canonicalize, composeOrderAgreement, serializeProcessDesign, type RegisteredAgreement } from "@figaro-protocol/sdk";
 import { snapshotToAssembly } from "@/lib/designer/draftToAssembly";
 import { specSource } from "@/lib/shared/clauseSpecSource";
-import { deriveAssemblySlug } from "@/lib/shared/assembly";
+import { deriveProcessDesignSlug } from "@/lib/shared/assembly";
 import { hexEqual } from "@/lib/shared/evm";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
-import { ASSEMBLY_REGISTRY_ABI } from "@/lib/core/contracts";
+import { PROCESS_REGISTRY_ABI } from "@/lib/core/contracts";
 import {
     getAgreementRegistry,
     readAgreementBinding,
     agreementRegisterRevertMessage,
 } from "@/lib/protocol/useAgreementRegistry";
 import {
-    getAssemblyRegistry,
+    getProcessRegistry,
     assemblyRegisterRevertMessage,
     type PublishOutcome,
-} from "@/lib/protocol/useAssemblyRegistry";
+} from "@/lib/protocol/useProcessRegistry";
 
 /** The client a registration needs: the stake read, the simulation and the receipt. */
 type RegistrationClient = Parameters<typeof simulateWriteVerify>[0]["client"] & {
@@ -166,19 +166,19 @@ export function usePublishAssembly() {
      *  registered. Throws on any failure — no wallet, IPFS down,
      *  insufficient ETH, composition collision, on-chain revert, etc.
      *
-     *  `reviewedAssemblyHash` is the BYTE-EQUALITY GATE: the identity the
+     *  `reviewedProcessDesignHash` is the BYTE-EQUALITY GATE: the identity the
      *  caller last showed a human. The anchor is permanent, so the bytes that
      *  go out must be the bytes that were seen — if the build no longer hashes
      *  to what was reviewed, this refuses before anything is pinned or signed
      *  rather than anchoring a composition nobody read. */
     async function publish(
         snapshot: DesignSnapshot,
-        reviewedAssemblyHash?: `0x${string}`,
+        reviewedProcessDesignHash?: `0x${string}`,
     ): Promise<PublishOutcome> {
-        const registry = getAssemblyRegistry();
+        const registry = getProcessRegistry();
         if (!registry) {
             throw new Error(
-                "AssemblyRegistry address not configured (NEXT_PUBLIC_ASSEMBLY_REGISTRY).",
+                "ProcessRegistry address not configured (NEXT_PUBLIC_PROCESS_REGISTRY).",
             );
         }
         if (!client) {
@@ -200,7 +200,7 @@ export function usePublishAssembly() {
         }
         const deposit = await client.readContract({
             address: registry,
-            abi: ASSEMBLY_REGISTRY_ABI,
+            abi: PROCESS_REGISTRY_ABI,
             functionName: "registrationDeposit",
         });
         // Publish the no-hash assembly: per order, who's bound, its
@@ -213,20 +213,20 @@ export function usePublishAssembly() {
         // refuses, never a silent no-op.
         const built = snapshotToAssembly(snapshot);
         const { assembly } = built;
-        const { json, assemblyHash } = serializeAssembly(assembly);
+        const { json, processDesignHash } = serializeProcessDesign(assembly);
         // One assembly, one hash: refuse before the pin and before the wallet
         // when this build is not the composition the caller reviewed.
-        if (reviewedAssemblyHash && !hexEqual(assemblyHash, reviewedAssemblyHash)) {
+        if (reviewedProcessDesignHash && !hexEqual(processDesignHash, reviewedProcessDesignHash)) {
             throw new Error(
                 `This draft now builds a different composition than the one reviewed `
-                + `(reviewed ${reviewedAssemblyHash}, builds ${assemblyHash}). `
+                + `(reviewed ${reviewedProcessDesignHash}, builds ${processDesignHash}). `
                 + `Nothing was published — reopen it in the editor and review again.`,
             );
         }
         // The slug is presentation, derived from the assembly hash —
         // identical compositions collapse to one on-chain binding (the
         // registry's first-write-wins dedups them); the user never names it.
-        const slug = deriveAssemblySlug(assemblyHash);
+        const slug = deriveProcessDesignSlug(processDesignHash);
 
         // EVERY CHECK BEFORE ANY WRITE. The pins are content addressing, not
         // chain writes; the simulations surface a typed revert before the
@@ -237,9 +237,9 @@ export function usePublishAssembly() {
         const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(json));
         const assemblyCall = {
             address: registry,
-            abi: ASSEMBLY_REGISTRY_ABI as Abi,
-            functionName: "registerAssembly",
-            args: [assemblyHash, ipfs.uri],
+            abi: PROCESS_REGISTRY_ABI as Abi,
+            functionName: "registerProcess",
+            args: [processDesignHash, ipfs.uri],
             value: deposit,
             account: address,
             revertMessage: assemblyRegisterRevertMessage(slug),

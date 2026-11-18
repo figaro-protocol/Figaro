@@ -4,7 +4,7 @@
  * Five kinds of document live off chain and are anchored on it by a digest:
  * a clause spec (its clause key, the digest of the spec without `block`), a
  * registered agreement (`AgreementRegistry`'s `agreementHash`), an assembly
- * assembly (`AssemblyRegistry`'s `assemblyHash`), an agreement (the commitment's
+ * assembly (`ProcessRegistry`'s `processDesignHash`), an agreement (the commitment's
  * `checkoutHash`) and attestation content (the `contentRef` an
  * `Attestation` event carries). A gateway can serve any bytes, so a reader
  * recomputes the digest before reading the document.
@@ -30,10 +30,10 @@ import { strippingReviver } from "./safeJson.js";
 import {
     agreementHashOf,
     assertNotReservedKey,
-    assemblyHashOf,
-    type Assembly,
+    processDesignHashOf,
+    type ProcessDesign,
     type RegisteredAgreement,
-    type HydratedAssembly,
+    type HydratedProcessDesign,
 } from "./assembly.js";
 import { isBytes32Hex } from "./types.js";
 
@@ -76,7 +76,7 @@ export function anchorClauseSpec(fetched: Uint8Array | string, clauseKey: Hex | 
 /** A registered agreement's pinned document, verified against its
  *  `AgreementRegistry` key: `agreementHashOf` of the parsed document (the root
  *  over its composed clauses — the editorial fields are outside the key) equals
- *  the key, exactly as `anchorAssembly` recomputes the assembly root.
+ *  the key, exactly as `anchorProcessDesign` recomputes the assembly root.
  *  Takes the fetched bytes or text (parsed with prototype-pollution keys
  *  stripped) or an already-parsed value. A failed parse, a document with no
  *  `clauses` object, a reserved key or a mismatch returns null — ABSENCE:
@@ -122,10 +122,10 @@ export function anchorRegisteredAgreement(
  * is unread or does not verify makes the whole assembly ABSENT (null): an
  * assembly is offered only when every agreement can be read.
  */
-export async function hydrateAssembly(
-    assembly: Anchored<Assembly> | Assembly,
+export async function hydrateProcessDesign(
+    assembly: Anchored<ProcessDesign> | ProcessDesign,
     readAgreement: (agreementHash: Hex) => Promise<Uint8Array | string | unknown | null>,
-): Promise<HydratedAssembly | null> {
+): Promise<HydratedProcessDesign | null> {
     const agreements: Record<Hex, RegisteredAgreement> = {};
     for (const entry of assembly.agreements) {
         const key = entry.agreementHash.toLowerCase() as Hex;
@@ -144,20 +144,20 @@ export async function hydrateAssembly(
     return { assembly, agreements };
 }
 
-/** An assembly, verified against `AssemblyRegistry`'s
- *  `assemblyHash`: the merkle root over its agreement leaves and its
+/** An assembly, verified against `ProcessRegistry`'s
+ *  `processDesignHash`: the merkle root over its agreement leaves and its
  *  assembly-terms leaf is the hash. A document with no `agreements` array
  *  carries no composition and is not a assembly; an agreement whose key is
  *  malformed or reserved does not hash. */
-export function anchorAssembly(raw: unknown, assemblyHash: Hex | string): Anchored<Assembly> | null {
+export function anchorProcessDesign(raw: unknown, processDesignHash: Hex | string): Anchored<ProcessDesign> | null {
     if (raw === null || typeof raw !== "object" || !Array.isArray((raw as { agreements?: unknown }).agreements)) return null;
     let recomputed: Hex;
     try {
-        recomputed = assemblyHashOf(raw as Assembly);
+        recomputed = processDesignHashOf(raw as ProcessDesign);
     } catch {
         return null;
     }
-    return sameHex(recomputed, assemblyHash) ? (raw as Anchored<Assembly>) : null;
+    return sameHex(recomputed, processDesignHash) ? (raw as Anchored<ProcessDesign>) : null;
 }
 
 /** An agreement, verified against the commitment's `checkoutHash`: the
@@ -173,8 +173,8 @@ export function anchorAgreement(raw: unknown, checkoutHash: Hex | string): Ancho
     const provenance = (raw as { provenance?: unknown }).provenance;
     if (provenance !== undefined) {
         if (provenance === null || typeof provenance !== "object") return null;
-        const { agreementHash, assemblyHash } = provenance as { agreementHash?: unknown; assemblyHash?: unknown };
-        if (!isBytes32Hex(agreementHash) || !isBytes32Hex(assemblyHash)) return null;
+        const { agreementHash, processDesignHash } = provenance as { agreementHash?: unknown; processDesignHash?: unknown };
+        if (!isBytes32Hex(agreementHash) || !isBytes32Hex(processDesignHash)) return null;
     }
     let recomputed: Hex;
     try {

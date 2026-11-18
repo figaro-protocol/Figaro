@@ -28,12 +28,12 @@ fn commitment(seed: u8, process_id: B256, cumulative: u64) -> Commitment {
         process_id,
         buyer: Address::repeat_byte(0xB0),
         seller: Address::repeat_byte(0x50 + seed),
-        currency: Address::repeat_byte(0xC0),
+        token: Address::repeat_byte(0xC0),
         payment: U256::from(100u64 * seed as u64),
-        expected_cumulative_value: U256::from(cumulative),
+        running_total: U256::from(cumulative),
         checkout_hash: B256::repeat_byte(0x40 + seed),
         salt: U256::from(seed),
-        deadline: U256::from(4_000_000_000u64),
+        commit_deadline: U256::from(4_000_000_000u64),
     }
 }
 
@@ -50,12 +50,12 @@ fn commitment_json(c: &Commitment) -> Value {
         "processId": format!("{:#x}", c.process_id),
         "buyer": format!("{:#x}", c.buyer),
         "seller": format!("{:#x}", c.seller),
-        "currency": format!("{:#x}", c.currency),
+        "token": format!("{:#x}", c.token),
         "payment": c.payment.to_string(),
-        "expectedCumulativeValue": c.expected_cumulative_value.to_string(),
+        "runningTotal": c.running_total.to_string(),
         "checkoutHash": format!("{:#x}", c.checkout_hash),
         "salt": c.salt.to_string(),
-        "deadline": c.deadline.to_string(),
+        "commitDeadline": c.commit_deadline.to_string(),
     })
 }
 
@@ -76,7 +76,7 @@ fn vectors() -> Value {
     let second = commitment(3, process, 500);
     let claim = UsageClaim {
         order: first.clone(),
-        clause_or_assembly: B256::repeat_byte(0x80),
+        clause_or_process: B256::repeat_byte(0x80),
         kind: UsageClaimKind::Clause {
             clause_data_hash: B256::repeat_byte(0x81),
         },
@@ -84,19 +84,19 @@ fn vectors() -> Value {
     };
     let assembly_claim = UsageClaim {
         order: second.clone(),
-        clause_or_assembly: B256::repeat_byte(0x90),
-        kind: UsageClaimKind::Assembly {
+        clause_or_process: B256::repeat_byte(0x90),
+        kind: UsageClaimKind::Process {
             agreement_hash: B256::repeat_byte(0x91),
-            slot_content_hash: B256::repeat_byte(0x92),
+            agreement_content_hash: B256::repeat_byte(0x92),
             membership_proof: vec![B256::repeat_byte(0x93), B256::repeat_byte(0x94)],
         },
         inclusion_proof: vec![],
     };
     let agreement_claim = UsageClaim {
         order: second.clone(),
-        clause_or_assembly: B256::repeat_byte(0xA1),
+        clause_or_process: B256::repeat_byte(0xA1),
         kind: UsageClaimKind::Agreement {
-            assembly_hash: B256::repeat_byte(0xA2),
+            process_design_hash: B256::repeat_byte(0xA2),
         },
         inclusion_proof: vec![B256::repeat_byte(0xA3), B256::repeat_byte(0xA4)],
     };
@@ -141,7 +141,7 @@ fn vectors() -> Value {
                 },
                 KernelOp::Resolve {
                     process_id: process,
-                    cumulative_value: second.expected_cumulative_value,
+                    running_total: second.running_total,
                     commitments: vec![first.clone(), second.clone()],
                     buyer_sig: signature(7),
                 },
@@ -163,7 +163,7 @@ fn vectors() -> Value {
                 },
                 KernelOp::ResolveByWalletCode {
                     process_id: process,
-                    cumulative_value: second.expected_cumulative_value,
+                    running_total: second.running_total,
                     commitments: vec![first.clone(), second.clone()],
                     authorization: alloy_primitives::Bytes::from(b"guardian-approval".to_vec()),
                 },
@@ -174,7 +174,7 @@ fn vectors() -> Value {
             "walletCodeResolveWithAnEmptyAuthorization",
             vec![KernelOp::ResolveByWalletCode {
                 process_id: process,
-                cumulative_value: second.expected_cumulative_value,
+                running_total: second.running_total,
                 commitments: vec![first.clone(), second.clone()],
                 authorization: alloy_primitives::Bytes::new(),
             }],
@@ -184,7 +184,7 @@ fn vectors() -> Value {
             "walletCodeResolveWithA300ByteAuthorization",
             vec![KernelOp::ResolveByWalletCode {
                 process_id: process,
-                cumulative_value: second.expected_cumulative_value,
+                running_total: second.running_total,
                 commitments: vec![first.clone(), second.clone()],
                 authorization: alloy_primitives::Bytes::from(
                     (0..300u16).map(|i| i as u8).collect::<Vec<u8>>(),

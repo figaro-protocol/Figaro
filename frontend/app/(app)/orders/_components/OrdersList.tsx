@@ -110,15 +110,15 @@ export function YourTurnCard({ act, payload, onAct, onDismiss, isActing, listing
     const words = TURN_WORDS[act];
     const { commitment } = payload;
     const { address } = useAccount();
-    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(commitment.token as `0x${string}` | undefined);
     // The bond is the acting party's own: a buyer counter-signing a
     // seller-initiated order locks 2 × payment, a seller 2 × cumulative value.
     const role = hexEqual(address, commitment.buyer) ? "buyer" : "seller";
-    const bonds = calculateBonds(commitment.expectedCumulativeValue, commitment.payment);
+    const bonds = calculateBonds(commitment.runningTotal, commitment.payment);
     const myBond = role === "buyer" ? bonds.buyerBond : bonds.sellerBond;
     const core = CONTRACTS.core as `0x${string}` | undefined;
     const { needsApproval, approve, isApprovePending, isApproveConfirming, isApproveSuccess, isApproveError } = useTokenApproval({
-        tokenAddress: commitment.currency as `0x${string}`,
+        tokenAddress: commitment.token as `0x${string}`,
         owner: address,
         spender: (core ?? ZERO_ADDRESS) as `0x${string}`,
     });
@@ -186,7 +186,7 @@ export function SignedUnsentRow({
     error: string | null;
 }) {
     const { commitment } = entry.payload;
-    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(commitment.token as `0x${string}` | undefined);
     const counterpartyName = displayNameForAddress(listings, outboundCounterparty(commitment, address));
     return (
         <Card className="block rounded-lg p-4" data-testid="order-unsent-row">
@@ -232,7 +232,7 @@ export function SignedUnsentRow({
 // ── Outbound pending row: I signed and relayed, awaiting the counterparty ──
 export function AwaitingAcceptanceRow({ payload, address, listings, onDismiss }: { payload: CommitmentPayload; address: string | undefined; listings: ReadonlyArray<Listing>; onDismiss: () => void }) {
     const { commitment } = payload;
-    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(commitment.token as `0x${string}` | undefined);
     const counterpartyName = displayNameForAddress(listings, outboundCounterparty(commitment, address));
     return (
         <Card className="block rounded-lg p-4" data-testid="order-pending-row">
@@ -251,7 +251,7 @@ export function AwaitingAcceptanceRow({ payload, address, listings, onDismiss }:
                         Waiting for {counterpartyName} to counter-sign. Nothing has moved: no bond is locked until the order is committed.
                     </p>
                     <p className="mt-1 text-xs text-ink-muted" data-testid="order-pending-deadline">
-                        After its deadline, {formatBlockTimestamp(commitment.deadline)}, it can no longer be committed.
+                        After its deadline, {formatBlockTimestamp(commitment.commitDeadline)}, it can no longer be committed.
                     </p>
                 </div>
                 <div className="text-right shrink-0">

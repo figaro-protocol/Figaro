@@ -5,8 +5,8 @@
  * assembly's own assembly root; no clause carries it.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { agreementLeaves, computeProvenanceLeaf, assemblyHashOf } from "@figaro-protocol/sdk";
-import { executeAssemblyCheckout, planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
+import { agreementLeaves, computeProvenanceLeaf, processDesignHashOf } from "@figaro-protocol/sdk";
+import { executeAssemblyCheckout, planProcessOrders } from "@/lib/checkout/assemblyCheckout";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
 import { referenceAssembly, primeClauseSpecs } from "./primeClauseSpecs";
 
@@ -35,7 +35,7 @@ describe("assembly checkout — the provenance leaf", () => {
             hydratedAssembly,
             coSellerBindings: [],
         };
-        const orders = await planAssemblyOrders(
+        const orders = await planProcessOrders(
             {
                 buyer: BUYER,
                 leadSellerAddress: SELLER,
@@ -50,14 +50,14 @@ describe("assembly checkout — the provenance leaf", () => {
             },
             { chainId: 31337 },
         );
-        const assemblyHash = assemblyHashOf(assembly);
+        const processDesignHash = processDesignHashOf(assembly);
         expect(orders.length).toBe(assembly.agreements.length);
         for (const order of orders) {
             const entry = assembly.agreements.find((s) => s.id === order.nodeId)!;
-            expect(order.agreement.provenance).toEqual({ agreementHash: entry.agreementHash, assemblyHash });
-            expect(agreementLeaves(order.agreement)).toContain(computeProvenanceLeaf(entry.agreementHash, assemblyHash));
+            expect(order.agreement.provenance).toEqual({ agreementHash: entry.agreementHash, processDesignHash });
+            expect(agreementLeaves(order.agreement)).toContain(computeProvenanceLeaf(entry.agreementHash, processDesignHash));
             for (const clauseEntry of order.agreement.clauses) {
-                expect(JSON.stringify(clauseEntry.data)).not.toContain(assemblyHash.slice(2));
+                expect(JSON.stringify(clauseEntry.data)).not.toContain(processDesignHash.slice(2));
             }
         }
     });

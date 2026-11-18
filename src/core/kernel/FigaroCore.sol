@@ -17,7 +17,7 @@ import "./CommitmentTypes.sol";
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 ///
 ///         Invariants enforced on-chain:
-///         - Asymmetric bonding (buyer: 2× payment, seller: 2× cumulativeValue)
+///         - Asymmetric bonding (buyer: 2× payment, seller: 2× runningTotal)
 ///         - Monotonic cumulative-value accumulator per process
 ///         - Buyer identity (root buyer address in every sub-order, verified via signature)
 ///         - Buyer dominance (only root buyer can resolve — msg.sender enforced)
@@ -40,7 +40,7 @@ contract FigaroCore is EIP712, ReentrancyGuard {
         address seller,
         address currency,
         uint256 payment,
-        uint256 cumulativeValue,
+        uint256 runningTotal,
         bytes32 checkoutHash,
         uint256 salt,
         uint256 deadline
@@ -81,7 +81,7 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     struct ProcessState {
         address rootBuyer;
         IERC20 currency;
-        uint256 cumulativeValue;
+        uint256 runningTotal;
         uint256 activeOrderCount;
     }
 
@@ -144,7 +144,7 @@ contract FigaroCore is EIP712, ReentrancyGuard {
         nonReentrant
         returns (bytes32 processId, bytes32 orderHash)
     {
-        if (c.deadline < block.timestamp) revert DeadlineExpired();
+        if (c.commitDeadline < block.timestamp) revert DeadlineExpired();
         if (c.payment == 0) revert ZeroPayment();
 
         bytes32 structHash;
@@ -169,12 +169,12 @@ contract FigaroCore is EIP712, ReentrancyGuard {
             if (processes[processId].rootBuyer != address(0)) {
                 revert ProcessAlreadyExists();
             }
-            if (c.expectedCumulativeValue != c.payment) {
+            if (c.runningTotal != c.payment) {
                 revert InvalidRootCumulativeValue();
             }
 
             processes[processId] = ProcessState({
-                rootBuyer: c.buyer, currency: IERC20(c.currency), cumulativeValue: c.payment, activeOrderCount: 1
+                rootBuyer: c.buyer, currency: IERC20(c.token), runningTotal: c.payment, activeOrderCount: 1
             });
         } else {
             // ── Sub-order: extend existing process ────────────────
@@ -182,14 +182,14 @@ contract FigaroCore is EIP712, ReentrancyGuard {
             if (ps.rootBuyer == address(0)) revert UnknownProcess();
             if (ps.activeOrderCount == 0) revert ProcessAlreadyResolved();
             if (c.buyer != ps.rootBuyer) revert NotProcessBuyer();
-            if (c.currency != address(ps.currency)) revert CurrencyMismatch();
+            if (c.token != address(ps.currency)) revert CurrencyMismatch();
 
-            uint256 actualCumulative = ps.cumulativeValue + c.payment;
-            if (c.expectedCumulativeValue != actualCumulative) {
-                revert CumulativeValueMismatch(c.expectedCumulativeValue, actualCumulative);
+            uint256 actualCumulative = ps.runningTotal + c.payment;
+            if (c.runningTotal != actualCumulative) {
+                revert CumulativeValueMismatch(c.runningTotal, actualCumulative);
             }
 
-            ps.cumulativeValue = actualCumulative;
+            ps.runningTotal = actualCumulative;
             ps.activeOrderCount += 1;
         }
 
@@ -198,8 +198,8 @@ contract FigaroCore is EIP712, ReentrancyGuard {
         if (orderStatus[orderHash] != 0) revert DuplicateCommitment();
         orderStatus[orderHash] = 1;
 
-        _pullExact(IERC20(c.currency), c.buyer, c.payment * 2);
-        _pullExact(IERC20(c.currency), c.seller, c.expectedCumulativeValue * 2);
+        _pullExact(IERC20(c.token), c.buyer, c.payment * 2);
+        _pullExact(IERC20(c.token), c.seller, c.runningTotal * 2);
 
         _emitCommitted(orderHash, processId, c);
         emit OrderSeller(orderHash, c.seller);
@@ -214,12 +214,12 @@ contract FigaroCore is EIP712, ReentrancyGuard {
             processId,
             c.buyer,
             c.seller,
-            c.currency,
+            c.token,
             c.payment,
-            c.expectedCumulativeValue,
+            c.runningTotal,
             c.checkoutHash,
             c.salt,
-            c.deadline
+            c.commitDeadline
         );
     }
 
@@ -237,7 +237,7 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     ///         block gas limit, which clients read live and take as the cap, never a
     ///         fixed order count. The ceiling is a property of the resolveProcess path;
     ///         it cannot be enforced on-chain at assembly registration because assembly
-    ///         documents live off-chain (AssemblyRegistry only stores their
+    ///         documents live off-chain (ProcessRegistry only stores their
     ///         hash + URI). Publish-side clients refuse to anchor an
     ///         assembly that would exceed the network's ceiling; buyer-side
     ///         clients verify the assembly document's order count before
@@ -272,10 +272,10 @@ contract FigaroCore is EIP712, ReentrancyGuard {
             }
 
             // Overflow guard for the payout below; unreachable while the token keeps the Core's balance, which holds at least 4x this value
-            if (c.expectedCumulativeValue > type(uint256).max / 3) {
+            if (c.runningTotal > type(uint256).max / 3) {
                 revert("CumulativeValueOverflow");
             }
-            uint256 sellerPayout = c.expectedCumulativeValue * 2 + c.payment;
+            uint256 sellerPayout = c.runningTotal * 2 + c.payment;
             uint256 buyerPayout = c.payment;
 
             currency.safeTransfer(c.seller, sellerPayout);

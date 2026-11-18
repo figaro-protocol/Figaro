@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {RpgfMinter} from "src/rewards/RpgfMinter.sol";
 import {FlorinToken} from "src/rewards/FlorinToken.sol";
 import {ClauseRegistry} from "src/registries/ClauseRegistry.sol";
-import {AssemblyRegistry} from "src/registries/AssemblyRegistry.sol";
+import {ProcessRegistry} from "src/registries/ProcessRegistry.sol";
 import {AgreementRegistry} from "src/registries/AgreementRegistry.sol";
 import {MembersRegistry} from "src/registries/MembersRegistry.sol";
 
@@ -27,9 +27,9 @@ contract StubCounter {
         closed[period] = v;
     }
 
-    function setScore(uint8 kind, bytes32 clauseOrAssembly, uint8 period, uint256 s) external {
-        totalScoreIn[period] = totalScoreIn[period] + s - _score[kind][clauseOrAssembly][period];
-        _score[kind][clauseOrAssembly][period] = s;
+    function setScore(uint8 kind, bytes32 clauseOrProcess, uint8 period, uint256 s) external {
+        totalScoreIn[period] = totalScoreIn[period] + s - _score[kind][clauseOrProcess][period];
+        _score[kind][clauseOrProcess][period] = s;
     }
 
     function periodClosed(uint8 period) external view returns (bool) {
@@ -39,8 +39,8 @@ contract StubCounter {
     /// @dev `scoreOf`, not `accrualOf`: the minter reads the sum of the direct
     ///      and batch paths, so a stub exposing only the direct accrual would
     ///      let a regression to the old read slip through silently.
-    function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external view returns (uint256) {
-        return _score[kind][clauseOrAssembly][period];
+    function scoreOf(uint8 kind, bytes32 clauseOrProcess, uint8 period) external view returns (uint256) {
+        return _score[kind][clauseOrProcess][period];
     }
 
     /// @dev HOSTILE override: force `totalScoreIn` out of sync with the
@@ -58,7 +58,7 @@ contract RpgfMinterTest is Test {
     StubCounter counter;
     FlorinToken florin;
     ClauseRegistry clauses;
-    AssemblyRegistry assemblies;
+    ProcessRegistry assemblies;
     AgreementRegistry agreements;
     MembersRegistry members;
 
@@ -94,7 +94,7 @@ contract RpgfMinterTest is Test {
         florin = new FlorinToken();
         counter = new StubCounter();
         clauses = new ClauseRegistry(0);
-        assemblies = new AssemblyRegistry(0);
+        assemblies = new ProcessRegistry(0);
         agreements = new AgreementRegistry(0);
 
         vm.prank(alice);
@@ -102,7 +102,7 @@ contract RpgfMinterTest is Test {
         vm.prank(bob);
         clauses.registerClause(B_KEY, "ipfs://b");
         vm.prank(carol);
-        assemblies.registerAssembly(ASM, "ipfs://asm");
+        assemblies.registerProcess(ASM, "ipfs://asm");
         vm.prank(dave);
         agreements.registerAgreement(AGR, "ipfs://agr");
         vm.prank(eve);
@@ -131,25 +131,25 @@ contract RpgfMinterTest is Test {
     }
 
     uint8 constant KIND_CLAUSE = 0;
-    uint8 constant KIND_ASSEMBLY = 1;
+    uint8 constant KIND_PROCESS = 1;
     uint8 constant KIND_AGREEMENT = 2;
 
-    function _entry(uint8 kind, bytes32 k) internal pure returns (RpgfMinter.ClauseOrAssemblyKey memory) {
-        return RpgfMinter.ClauseOrAssemblyKey(kind, k);
+    function _entry(uint8 kind, bytes32 k) internal pure returns (RpgfMinter.ClauseOrProcessKey memory) {
+        return RpgfMinter.ClauseOrProcessKey(kind, k);
     }
 
-    function _clause(bytes32 k) internal pure returns (RpgfMinter.ClauseOrAssemblyKey[] memory a) {
-        a = new RpgfMinter.ClauseOrAssemblyKey[](1);
+    function _clause(bytes32 k) internal pure returns (RpgfMinter.ClauseOrProcessKey[] memory a) {
+        a = new RpgfMinter.ClauseOrProcessKey[](1);
         a[0] = _entry(KIND_CLAUSE, k);
     }
 
-    function _assembly(bytes32 k) internal pure returns (RpgfMinter.ClauseOrAssemblyKey[] memory a) {
-        a = new RpgfMinter.ClauseOrAssemblyKey[](1);
-        a[0] = _entry(KIND_ASSEMBLY, k);
+    function _assembly(bytes32 k) internal pure returns (RpgfMinter.ClauseOrProcessKey[] memory a) {
+        a = new RpgfMinter.ClauseOrProcessKey[](1);
+        a[0] = _entry(KIND_PROCESS, k);
     }
 
-    function _agreement(bytes32 k) internal pure returns (RpgfMinter.ClauseOrAssemblyKey[] memory a) {
-        a = new RpgfMinter.ClauseOrAssemblyKey[](1);
+    function _agreement(bytes32 k) internal pure returns (RpgfMinter.ClauseOrProcessKey[] memory a) {
+        a = new RpgfMinter.ClauseOrProcessKey[](1);
         a[0] = _entry(KIND_AGREEMENT, k);
     }
 
@@ -159,7 +159,7 @@ contract RpgfMinterTest is Test {
         // Straight pro-rata of the closed period's total — no cap.
         counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
         counter.setScore(KIND_CLAUSE, B_KEY, 0, 50);
-        counter.setScore(KIND_ASSEMBLY, ASM, 0, 850);
+        counter.setScore(KIND_PROCESS, ASM, 0, 850);
         counter.setClosed(0, true);
 
         vm.prank(alice);
@@ -172,7 +172,7 @@ contract RpgfMinterTest is Test {
     }
 
     function test_assemblyDesignerIsPaidToo() public {
-        counter.setScore(KIND_ASSEMBLY, ASM, 0, 500);
+        counter.setScore(KIND_PROCESS, ASM, 0, 500);
         counter.setClosed(0, true);
         vm.prank(carol);
         minter.claim(0, _assembly(ASM));
@@ -190,7 +190,7 @@ contract RpgfMinterTest is Test {
         counter.setScore(KIND_CLAUSE, B_KEY, 0, 900);
         counter.setClosed(0, true);
 
-        RpgfMinter.ClauseOrAssemblyKey[] memory mine = new RpgfMinter.ClauseOrAssemblyKey[](2);
+        RpgfMinter.ClauseOrProcessKey[] memory mine = new RpgfMinter.ClauseOrProcessKey[](2);
         mine[0] = _entry(KIND_CLAUSE, A_KEY);
         mine[1] = _entry(KIND_CLAUSE, cKey);
         vm.prank(alice);
@@ -222,11 +222,11 @@ contract RpgfMinterTest is Test {
     /// A registry takes any bytes32, so bob can stake carol's assembly hash
     /// as a CLAUSE. The kind names the one registry that decides authorship:
     /// bob's clause-kind entry reads the clause entry (empty), his assembly-kind
-    /// entry reads `AssemblyRegistry` (carol's), and carol is paid.
+    /// entry reads `ProcessRegistry` (carol's), and carol is paid.
     function test_eachKindReadsOnlyItsOwnRegistry() public {
         vm.prank(bob);
         clauses.registerClause(ASM, "ipfs://bob-stakes-carols-assembly-key-as-a-clause");
-        counter.setScore(KIND_ASSEMBLY, ASM, 0, 500);
+        counter.setScore(KIND_PROCESS, ASM, 0, 500);
         counter.setClosed(0, true);
 
         vm.prank(bob);
@@ -234,7 +234,7 @@ contract RpgfMinterTest is Test {
         minter.claim(0, _clause(ASM));
 
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_ASSEMBLY, ASM, bob));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_PROCESS, ASM, bob));
         minter.claim(0, _assembly(ASM));
 
         vm.prank(carol);
@@ -248,7 +248,7 @@ contract RpgfMinterTest is Test {
     function test_revertsOnUnknownKind() public {
         counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
         counter.setClosed(0, true);
-        RpgfMinter.ClauseOrAssemblyKey[] memory list = new RpgfMinter.ClauseOrAssemblyKey[](1);
+        RpgfMinter.ClauseOrProcessKey[] memory list = new RpgfMinter.ClauseOrProcessKey[](1);
         list[0] = _entry(3, A_KEY);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.UnknownKind.selector, uint8(3)));
@@ -288,7 +288,7 @@ contract RpgfMinterTest is Test {
         vm.prank(bob);
         clauses.registerClause(AGR, "ipfs://bob-stakes-daves-agreement-hash-as-a-clause");
         vm.prank(carol);
-        assemblies.registerAssembly(AGR, "ipfs://carol-stakes-daves-agreement-hash-as-an-assembly");
+        assemblies.registerProcess(AGR, "ipfs://carol-stakes-daves-agreement-hash-as-an-assembly");
         counter.setScore(KIND_AGREEMENT, AGR, 0, 500);
         counter.setClosed(0, true);
 
@@ -343,13 +343,13 @@ contract RpgfMinterTest is Test {
         // terms. Testing only the clause arm is the same asymmetry that let the
         // assembly-credit leg sit dead end-to-end; the arms
         // get covered together or the next reader learns the wrong lesson.
-        counter.setScore(KIND_ASSEMBLY, ASM, 0, 100);
+        counter.setScore(KIND_PROCESS, ASM, 0, 100);
         counter.setClosed(0, true);
         vm.prank(carol);
         assemblies.withdrawDeposit(ASM);
 
         vm.prank(carol);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_ASSEMBLY, ASM, carol));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_PROCESS, ASM, carol));
         minter.claim(0, _assembly(ASM));
     }
 
@@ -396,17 +396,17 @@ contract RpgfMinterTest is Test {
         vm.prank(alice);
         clauses.registerClause(shared, "ipfs://shared-clause");
         vm.prank(carol);
-        assemblies.registerAssembly(shared, "ipfs://shared-assembly");
+        assemblies.registerProcess(shared, "ipfs://shared-assembly");
 
         counter.setScore(KIND_CLAUSE, shared, 0, 100);
-        counter.setScore(KIND_ASSEMBLY, shared, 0, 300);
+        counter.setScore(KIND_PROCESS, shared, 0, 300);
         counter.setScore(KIND_CLAUSE, B_KEY, 0, 600);
         counter.setClosed(0, true);
 
         vm.prank(alice);
         minter.claim(0, _clause(shared));
         assertEq(florin.balanceOf(alice), (T0 * 100) / 1000);
-        assertFalse(minter.claimed(0, KIND_ASSEMBLY, shared));
+        assertFalse(minter.claimed(0, KIND_PROCESS, shared));
 
         assertEq(minter.claimable(0, carol, _assembly(shared)), (T0 * 300) / 1000);
         vm.prank(carol);
@@ -427,7 +427,7 @@ contract RpgfMinterTest is Test {
         counter.setScore(KIND_CLAUSE, B_KEY, 0, 900);
         counter.setClosed(0, true);
 
-        RpgfMinter.ClauseOrAssemblyKey[] memory both = new RpgfMinter.ClauseOrAssemblyKey[](2);
+        RpgfMinter.ClauseOrProcessKey[] memory both = new RpgfMinter.ClauseOrProcessKey[](2);
         both[0] = _entry(KIND_CLAUSE, A_KEY);
         both[1] = _entry(KIND_CLAUSE, cKey);
 
@@ -482,13 +482,13 @@ contract RpgfMinterTest is Test {
         counter.setScore(KIND_CLAUSE, B_KEY, 0, 900);
         counter.setClosed(0, true);
 
-        RpgfMinter.ClauseOrAssemblyKey[] memory dupes = new RpgfMinter.ClauseOrAssemblyKey[](10);
+        RpgfMinter.ClauseOrProcessKey[] memory dupes = new RpgfMinter.ClauseOrProcessKey[](10);
         for (uint256 i = 0; i < 10; ++i) {
             dupes[i] = _entry(KIND_CLAUSE, A_KEY);
         }
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateClauseOrAssembly.selector, KIND_CLAUSE, A_KEY));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateClauseOrProcess.selector, KIND_CLAUSE, A_KEY));
         minter.claim(0, dupes);
 
         // And the honest claim still pays exactly the minority share.
@@ -504,10 +504,10 @@ contract RpgfMinterTest is Test {
         counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
         counter.setScore(KIND_CLAUSE, B_KEY, 0, 900);
         counter.setClosed(0, true);
-        RpgfMinter.ClauseOrAssemblyKey[] memory dupes = new RpgfMinter.ClauseOrAssemblyKey[](2);
+        RpgfMinter.ClauseOrProcessKey[] memory dupes = new RpgfMinter.ClauseOrProcessKey[](2);
         dupes[0] = _entry(KIND_CLAUSE, A_KEY);
         dupes[1] = _entry(KIND_CLAUSE, A_KEY);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateClauseOrAssembly.selector, KIND_CLAUSE, A_KEY));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateClauseOrProcess.selector, KIND_CLAUSE, A_KEY));
         minter.claimable(0, alice, dupes);
     }
 
@@ -539,8 +539,8 @@ contract RpgfMinterTest is Test {
     function test_revertsOnEmptyClauseOrAssemblyList() public {
         counter.setClosed(0, true);
         vm.prank(alice);
-        vm.expectRevert(RpgfMinter.NoClausesOrAssemblies.selector);
-        minter.claim(0, new RpgfMinter.ClauseOrAssemblyKey[](0));
+        vm.expectRevert(RpgfMinter.NoClausesOrProcesses.selector);
+        minter.claim(0, new RpgfMinter.ClauseOrProcessKey[](0));
     }
 
     function test_revertsOnUnknownPeriod() public {
@@ -609,7 +609,7 @@ contract RpgfMinterTest is Test {
     /// the backstop must refuse to over-mint rather than pay it.
     function test_budgetBackstopRefusesOverMintOnInconsistentCounterData() public {
         counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
-        counter.forceTotal(0, 10); // hostile: total below the clauseOrAssembly's own score
+        counter.forceTotal(0, 10); // hostile: total below the clauseOrProcess's own score
         counter.setClosed(0, true);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.PeriodBudgetExceeded.selector, 0));
@@ -702,7 +702,7 @@ contract RpgfMinterTest is Test {
         minter.claim(0, _clause(E_KEY));
 
         counter.setClosed(0, true);
-        RpgfMinter.ClauseOrAssemblyKey[] memory twice = new RpgfMinter.ClauseOrAssemblyKey[](2);
+        RpgfMinter.ClauseOrProcessKey[] memory twice = new RpgfMinter.ClauseOrProcessKey[](2);
         twice[0] = _entry(KIND_CLAUSE, E_KEY);
         twice[1] = _entry(KIND_CLAUSE, E_KEY);
         vm.prank(eve);

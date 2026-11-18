@@ -117,7 +117,7 @@ protocol keeps no score, no reviews and no blacklist.
 At resolution every order pays out directly:
 
 ```solidity
-sellerPayout = c.expectedCumulativeValue * 2 + c.payment;  // bond refunded + payment
+sellerPayout = c.runningTotal * 2 + c.payment;  // bond refunded + payment
 buyerPayout  = c.payment;                                  // bond refunded, less the payment
 ```
 
@@ -159,7 +159,7 @@ nothing.
 
 ## Topology is not in the Core
 
-`FigaroCore` sees a flat process: a `processId`, a monotonic `cumulativeValue`,
+`FigaroCore` sees a flat process: a `processId`, a monotonic `runningTotal`,
 and an `activeOrderCount`. It stores no parent or child; there is no on-chain
 graph of orders. The topology of a process — who comes before whom, fan-out,
 fan-in — lives in the signed agreement (its topology leaf, `follows`) and is
