@@ -98,12 +98,12 @@ key built from the release guest, a gas figure read on that chain) are left to i
    no reference agreement composing `figaro-topology`.
 5. **The flip.** Robots' `Disallow` and the noindex meta are lifted, a sitemap of the
    canonical public pages is published, and the deployed headers are checked on the
-   live host (Task 12). Before it, the testnet pinning key the bundle ships is reissued
-   from a separate pinning account registered with an address that names no one, the
-   old key is revoked, and the build is refused if any shipped token carries a personal
-   field: a pinning service writes its account owner's email into every key it issues.
-   - [maintainer] the pinning key reissued and the old one revoked — check: the new key's
-     account names no one, read at the pinning service;
+   live host (Task 12). The bundle ships no pinning key: each publishing wallet pins
+   through its own node or a pinning service it chose (Task 6). The build is refused if
+   any shipped token carries a personal field: a pinning service writes its account
+   owner's email into every key it issues.
+   - [maintainer] the pinning key an earlier testnet build shipped is revoked — check:
+     read at the pinning service;
    - [agent] no shipped token carries a personal field — check:
      `node scripts/check-export-no-personal-info.mjs` exits 0 on the build;
    - [agent] the sitemap and the lifted robots and noindex — check: `npm run estate:crawl`
@@ -224,11 +224,12 @@ where the release facts are kept.
 - **Sovereign per-party pinning (Option 3).** Shift durability to the parties: each
   publishing wallet's client pins what it publishes, so no single operator holds
   availability — no central pinning dependency in the trust
-  model. (The testnet tier rides the site's managed pinning account through the
-  `ipfsService` deploy-build adapter — env vars in `docs/LOCAL_DEV.md` — so a
-  visitor with no IPFS node of their own can publish on the testnet. That is
-  testnet only, by ruling: `frontend/next.config.mjs` refuses the token in a
-  build for any chain but Sepolia.)
+  model. (The same on every chain, testnet included: no build carries a pinning
+  account. A browser publishes through the wallet's own IPFS node, or a pinning
+  service the user chose with its own token, both set in this browser at
+  `/members/edit/endpoints` (`readUserEndpoints`, `activePublishTarget` in
+  `frontend/lib/shared/ipfsService.ts`); with neither set, a publishing page
+  says so in one line, offers the setting, and pins nothing.)
 - **Retrieval-availability floor: 6 years, user-extensible.** An agreement must stay
   fetchable by its CID for the longest plausible dispute/audit window, anchored to
   the tax-audit horizon (~5 audit years + 1 declaration year). The window varies by
@@ -409,7 +410,7 @@ result to it (the code, the guest key, the gateway). The list below is the proce
   Verify after any mainnet verification run: a MembersRegistry read shows no
   test-flavored member surfaced.
 - Kleros subcourt IDs in the deployed dispute config match the target chain on klerosboard.com (Gnosis subcourt IDs differ from Ethereum mainnet) — verify before the deployment is treated as live.
-- Agreement / assembly / profile content is pinned for durable retrieval per Task 6 — via sovereign per-party pinning (Option 3), never only a single Kubo node; the site's pinning account on Sepolia is the exception Task 6 states — and is fetchable by CID across the 6-year (5 + 1) retrieval-availability floor.
+- Agreement / assembly / profile content is pinned for durable retrieval per Task 6 — via sovereign per-party pinning (Option 3), never only a single Kubo node, on every chain — and is fetchable by CID across the 6-year (5 + 1) retrieval-availability floor.
 - Test-helper flags unset in the deploy build: `NEXT_PUBLIC_ENABLE_TEST_HELPERS`, `NEXT_PUBLIC_USE_TEST_SIGNER`, `NEXT_PUBLIC_TEST_PRIVATE_KEY`, `NEXT_PUBLIC_DEV_ADDRESS` must all be unset (else `?e2e=mock` / the injected test signer inline into the bundle). This is enforced at build time: `frontend/next.config.mjs` ABORTS a `NODE_ENV=production` build with any of these set unless `FIGARO_ALLOW_TEST_HELPERS=1` (the escape only the Playwright e2e build sets). Confirm the CDN build runs without that escape.
 - `public/_headers` CSP/HSTS set is applied at the CDN — verify at the hosting layer (cannot be checked from the repo tree). The header CSP carries `'unsafe-inline'` for scripts (a static export cannot do per-request nonces), and every exported page narrows it with its own Content-Security-Policy `<meta>` listing the sha256 of each inline script it ships (`frontend/scripts/csp-inline-hashes.mjs`), so an injected inline script does not run. XSS safety also rests on React auto-escaping, held by an ESLint error on `dangerouslySetInnerHTML` outside `components/papers/Math.tsx` (`frontend/.eslintrc.json`, run by `frontend-ci` on every push).
 - `next` npm advisories are static-export-INAPPLICABLE (this deploy ships no Next server: `output:'export'`, no middleware/rewrites/RSC-server/Server-Actions). They are build-host hygiene, NOT runtime blockers — do not conflate with runtime-reachable advisories in browser-shipped dependencies (wagmi/viem tree). A patched 14.2.x bump is advisable for the build host.

@@ -22,7 +22,8 @@
  * component knows no clause and no field name.
  */
 import { useState } from "react";
-import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, NO_PUBLISH_TARGET_LINE } from "@/lib/shared/ipfsService";
+import { PublishTargetNotice } from "@/components/shared/PublishTargetNotice";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -113,7 +114,9 @@ export function EvidenceCaptureInput({ value, onChange, testId }: FieldFormatInp
                     Unpin + purge this capture
                 </Button>
             )}
-            {error && (
+            {error === NO_PUBLISH_TARGET_LINE ? (
+                <PublishTargetNotice className="text-[11px]" />
+            ) : error && (
                 <p className="text-[11px] text-error-fg" data-testid={`${testId}-capture-error`}>
                     {error}
                 </p>

@@ -40,19 +40,13 @@ if (E2E_CHAIN === 'sepolia') {
         NEXT_PUBLIC_SWAP_ROUTER: String(record.swapRouter ?? ''),
         NEXT_PUBLIC_SWAP_QUOTER: String(record.swapQuoter ?? ''),
         NEXT_PUBLIC_MULTISENDER: String(record.multisender ?? ''),
-        // The read chain of the deployed site: a dedicated gateway on the
-        // site's pin service first when the deploy env names one, the public
+        // The read chain of the deployed site: a dedicated gateway first
+        // when the deploy env names one, the public
         // gateway as fallback — so the smoke exercises the same chain visitors get.
         NEXT_PUBLIC_IPFS_GATEWAY_URL: process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL || 'https://ipfs.io',
         NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL: process.env.NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL || '',
         // Testnet coordinates over XMTP's production network — the one mainnet uses.
         NEXT_PUBLIC_XMTP_ENV: 'production',
-        NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT: process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT ?? process.env.IPFS_PIN_SERVICE_JWT ?? '',
-        // `next build` reads frontend/.env.local on its own; its devnet EMPTY
-        // values would otherwise inline as "" (`??` keeps an empty string) —
-        // the pin-service base then posts to a relative URL and 404s. Set the
-        // public-network values explicitly.
-        NEXT_PUBLIC_IPFS_PIN_SERVICE_API: 'https://api.pinata.cloud',
         NEXT_PUBLIC_IPFS_API_URL: 'http://127.0.0.1:5001',
         NEXT_PUBLIC_ENABLE_TEST_HELPERS: 'true',
         NEXT_PUBLIC_SITE_URL: 'http://127.0.0.1',

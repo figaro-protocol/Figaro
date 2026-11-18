@@ -75,7 +75,7 @@ node scripts/check-licence.mjs           # fails unless every LICENSE is the MIT
 # After the upload, the private probe reads the new deployment's own address
 # (https://<id>.figaro-protocol.pages.dev, never the domain, which the edge cache can hide behind)
 # and passes only when its pages match frontend/out byte for byte.
-cd frontend && env -u NEXT_DISTDIR -u FIGARO_ALLOW_TEST_HELPERS npm run build   # the site's static export → frontend/out/ (NEXT_DISTDIR unset, so the export lands in out/); its postbuild writes each paper's PDF beside its page and fails without Tectonic (§ "Paper PDFs"); a public-network build also sets NEXT_PUBLIC_CHAIN, the record's addresses and the pin key (§ Environment variables)
+cd frontend && env -u NEXT_DISTDIR -u FIGARO_ALLOW_TEST_HELPERS npm run build   # the site's static export → frontend/out/ (NEXT_DISTDIR unset, so the export lands in out/); its postbuild writes each paper's PDF beside its page and fails without Tectonic (§ "Paper PDFs"); a public-network build also sets NEXT_PUBLIC_CHAIN and the record's addresses, and no pinning key (§ Environment variables)
 cd docs-site && npm run build            # the docs-site's static export → docs-site/out/ (basePath /docs; prebuild assembles the content)
 rm -rf frontend/out/docs && cp -R docs-site/out frontend/out/docs   # the docs-site under the site's /docs: docs-site/out/index.html is served at /docs/
 node scripts/check-export-no-personal-info.mjs frontend/out   # refuses the upload if the export carries an email, a private-list name outside a citation, or a token whose decoded JSON holds a personal field; the testnet pinning key passes only while robots.txt disallows every crawler (RELEASE_READINESS § "Public on testnet", item 5)
@@ -229,7 +229,12 @@ NEXT_PUBLIC_ENABLE_TEST_HELPERS=true   # devnet only
 NEXT_PUBLIC_RPC_URL=
 NEXT_PUBLIC_DEPLOYMENT_BLOCK=
 
-# IPFS — used by ipfsService.ts + memberBranding.ts. Defaults target local Kubo; any IPFS-API/gateway endpoint works (Pinata, web3.storage, self-hosted).
+# IPFS — used by ipfsService.ts + memberBranding.ts. NEXT_PUBLIC_IPFS_API_URL is the
+# node a browser pins through when its user set neither a node nor a pinning
+# service of its own (`activePublishTarget`); the devnet names its local Kubo
+# (scripts/deploy-local.sh). A public build names none: each publishing wallet
+# pins through its own node or a pinning service it chose, set in the browser
+# at /members/edit/endpoints. Unset or empty, a browser with neither publishes nothing.
 NEXT_PUBLIC_IPFS_API_URL=http://127.0.0.1:5001
 NEXT_PUBLIC_IPFS_GATEWAY_URL=http://127.0.0.1:8080
 # Optional second gateway for READS: tried when the primary fails a read (non-OK
@@ -247,14 +252,6 @@ NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL=
 # FIGARO_ALLOW_TEST_HELPERS=1 builds excepted). Anything else is refused at first
 # use. The dev-only installation housekeeping runs only on `dev`.
 NEXT_PUBLIC_XMTP_ENV=
-
-# Managed pinning service — DEPLOY BUILDS ONLY (testnet tier, RELEASE_READINESS
-# Task 6). Presence of the JWT switches ipfsService add/unpin to a
-# Pinata-style pinning API; a user's own endpoint override still wins; dev and
-# e2e builds carry no JWT and stay on Kubo. NEVER in a checked-in env file —
-# pass via the deploy command:  set -a; source ~/.figaro-deploy.env; set +a; npm run build
-# NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT=<scoped pin-only JWT>
-# NEXT_PUBLIC_IPFS_PIN_SERVICE_API=https://api.pinata.cloud   (default)
 ```
 
 The `/evidence-display` forum iframing allowlist is a **hosting/CDN-layer**

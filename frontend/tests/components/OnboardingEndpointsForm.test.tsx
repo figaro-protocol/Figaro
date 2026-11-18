@@ -43,7 +43,7 @@ describe("OnboardingEndpointsForm", () => {
         fireEvent.change(screen.getByTestId("endpoints-rpcUrl"), { target: { value: "http://my-rpc" } });
         fireEvent.click(screen.getByTestId("endpoints-save"));
         expect(m.written).toEqual([{
-            customKey: "kept", rpcUrl: "http://my-rpc", ipfsApiUrl: "", ipfsGatewayUrl: "", analystUrl: "", analystToken: "",
+            customKey: "kept", rpcUrl: "http://my-rpc", ipfsApiUrl: "", pinServiceUrl: "", pinServiceToken: "", ipfsGatewayUrl: "", analystUrl: "", analystToken: "",
         }]);
         expect(m.push).toHaveBeenCalledWith("/members/next");
     });

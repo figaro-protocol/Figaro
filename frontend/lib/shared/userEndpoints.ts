@@ -22,6 +22,14 @@ export interface UserEndpointOverrides {
     rpcUrl?: string;
     /** Kubo API endpoint pins land on (the user's own node — they pay, they erase). */
     ipfsApiUrl?: string;
+    /** A pinning service the user chose, in place of a node of its own: the base
+     *  URL of an API that takes uploads at `/pinning/pinFileToIPFS` and erasures
+     *  at `/pinning/unpin/<cid>` under a bearer token. Used only with
+     *  `pinServiceToken`; `ipfsApiUrl` wins when both are set. */
+    pinServiceUrl?: string;
+    /** The user's own token for `pinServiceUrl`: sent only to that URL, never
+     *  shipped in a build, never pinned or published. */
+    pinServiceToken?: string;
     /** IPFS gateway content is read through. */
     ipfsGatewayUrl?: string;
     /** Nominatim-compatible search endpoint typed addresses resolve
@@ -77,6 +85,8 @@ export function readUserEndpoints(chainId: number = activeChain.id): UserEndpoin
     return {
         rpcUrl: sanitizeEndpointUrl(raw.rpcUrls?.[String(chainId)]),
         ipfsApiUrl: sanitizeEndpointUrl(raw.ipfsApiUrl),
+        pinServiceUrl: sanitizeEndpointUrl(raw.pinServiceUrl),
+        pinServiceToken: sanitizeBearerToken(raw.pinServiceToken),
         ipfsGatewayUrl: sanitizeEndpointUrl(raw.ipfsGatewayUrl),
         geocodeUrl: sanitizeEndpointUrl(raw.geocodeUrl),
         analystUrl: sanitizeEndpointUrl(raw.analystUrl),
@@ -97,6 +107,8 @@ export function writeUserEndpoints(next: UserEndpointOverrides, chainId: number 
     writeJsonStorage(STORAGE_KEY, {
         rpcUrls,
         ipfsApiUrl: sanitizeEndpointUrl(next.ipfsApiUrl),
+        pinServiceUrl: sanitizeEndpointUrl(next.pinServiceUrl),
+        pinServiceToken: sanitizeBearerToken(next.pinServiceToken),
         ipfsGatewayUrl: sanitizeEndpointUrl(next.ipfsGatewayUrl),
         geocodeUrl: sanitizeEndpointUrl(next.geocodeUrl),
         analystUrl: sanitizeEndpointUrl(next.analystUrl),

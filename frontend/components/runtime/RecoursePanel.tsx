@@ -27,6 +27,8 @@ import { Button } from "@/components/ui/Button";
 import { useMounted } from "@/hooks/useMounted";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { NO_PUBLISH_TARGET_LINE } from "@/lib/shared/ipfsService";
+import { PublishTargetNotice } from "@/components/shared/PublishTargetNotice";
 import type { Order } from "@/lib/core/store";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
@@ -242,7 +244,9 @@ export function RecoursePanel({
                 </div>
             )}
 
-            {error && <p className="mt-2 text-xs text-error-fg">{error}</p>}
+            {error === NO_PUBLISH_TARGET_LINE ? (
+                <PublishTargetNotice className="mt-2 text-xs" />
+            ) : error && <p className="mt-2 text-xs text-error-fg">{error}</p>}
         </Card>
     );
 }

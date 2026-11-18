@@ -1,46 +1,95 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { witnessContentCid, witnessContentCidBase32 } from "@figaro-protocol/sdk/derive";
-import { DEFAULT_IPFS_SERVICE, MAX_IPFS_DOCUMENT_BYTES, contentRetryDelayMs, extractIpfsCid, fetchCappedContent, ipfsTimeoutForBytes, resolveContentUri, resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, MAX_IPFS_DOCUMENT_BYTES, NO_PUBLISH_TARGET_LINE, NoPublishTargetError, activePublishTarget, contentRetryDelayMs, extractIpfsCid, fetchCappedContent, ipfsTimeoutForBytes, resolveContentUri, resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
+
+/** Every source file a build compiles or configures from: the app's own tree
+ *  and the two configs. A test or a seeding script is not a build. */
+function buildSources(): string[] {
+    const root = resolve(__dirname, "../..");
+    const out: string[] = [];
+    const walk = (dir: string) => {
+        for (const name of readdirSync(dir)) {
+            const p = join(dir, name);
+            if (statSync(p).isDirectory()) walk(p);
+            else if (/\.(ts|tsx|mjs|js)$/.test(name)) out.push(p);
+        }
+    };
+    for (const dir of ["app", "components", "hooks", "lib"]) walk(join(root, dir));
+    out.push(join(root, "next.config.mjs"), join(root, "playwright.config.ts"));
+    return out;
+}
 
 describe("ipfsService", () => {
-    describe("managed pin service (deploy-build JWT)", () => {
-        afterEach(() => {
-            vi.unstubAllEnvs();
-            localStorage.removeItem("figaro.user-endpoints");
-        });
+    // The node the build names, as the devnet and e2e builds name their local
+    // Kubo; a test of the publish target below sets its own.
+    beforeEach(() => {
+        vi.stubEnv("NEXT_PUBLIC_IPFS_API_URL", "http://127.0.0.1:5001");
+    });
+    afterEach(() => {
+        vi.unstubAllEnvs();
+        localStorage.removeItem("figaro.user-endpoints");
+    });
 
-        it("routes add to the pinning API with the bearer JWT and maps IpfsHash", async () => {
-            vi.stubEnv("NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT", "test-jwt");
-            const fetchMock = vi.fn().mockResolvedValue({
+    describe("the publish target: the wallet's own node or a pinning service it chose, never a site account", () => {
+        const okService = (key: "Hash" | "IpfsHash", cid: string) =>
+            vi.fn().mockResolvedValue({
                 ok: true,
                 status: 200,
                 statusText: "OK",
-                json: async () => ({ IpfsHash: "QmService1111111111111111111111111111111111111" }),
-                text: async () => JSON.stringify({ IpfsHash: "QmService1111111111111111111111111111111111111" }),
+                json: async () => ({ [key]: cid }),
+                text: async () => JSON.stringify({ [key]: cid }),
             });
+
+        it("no build reads a site pinning token", () => {
+            const readers = buildSources().filter((f) => readFileSync(f, "utf8").includes("IPFS_PIN_SERVICE"));
+            expect(readers).toEqual([]);
+        });
+
+        it("with no node and no service set, a publish shows the line and pins nothing, whatever token the build env holds", async () => {
+            vi.stubEnv("NEXT_PUBLIC_IPFS_API_URL", "");
+            vi.stubEnv("NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT", "site-jwt");
+            const fetchMock = okService("IpfsHash", "QmService1111111111111111111111111111111111111");
+            globalThis.fetch = fetchMock;
+
+            expect(activePublishTarget()).toBeNull();
+            await expect(DEFAULT_IPFS_SERVICE.publishJSON({ hello: "world" })).rejects.toThrow(NO_PUBLISH_TARGET_LINE);
+            await expect(DEFAULT_IPFS_SERVICE.pinBlob(new Blob(["x"]))).rejects.toBeInstanceOf(NoPublishTargetError);
+            await expect(DEFAULT_IPFS_SERVICE.pinKeccakRawBlock(new Uint8Array([1]))).rejects.toBeInstanceOf(NoPublishTargetError);
+            await expect(DEFAULT_IPFS_SERVICE.unpin("QmGone1111111111111111111111111111111111111111")).rejects.toBeInstanceOf(NoPublishTargetError);
+            expect(fetchMock).not.toHaveBeenCalled();
+        });
+
+        it("routes add to the user's own pinning service with the user's own token and maps IpfsHash", async () => {
+            vi.stubEnv("NEXT_PUBLIC_IPFS_API_URL", "");
+            localStorage.setItem(
+                "figaro.user-endpoints",
+                JSON.stringify({ pinServiceUrl: "https://pins.example.com/", pinServiceToken: "user-token" }),
+            );
+            const fetchMock = okService("IpfsHash", "QmService1111111111111111111111111111111111111");
             globalThis.fetch = fetchMock;
 
             const result = await DEFAULT_IPFS_SERVICE.publishJSON({ hello: "world" });
 
             expect(result.cid).toBe("QmService1111111111111111111111111111111111111");
             const [url, init] = fetchMock.mock.calls[0];
-            expect(url).toBe("https://api.pinata.cloud/pinning/pinFileToIPFS");
-            expect(init.headers).toEqual({ Authorization: "Bearer test-jwt" });
+            expect(url).toBe("https://pins.example.com/pinning/pinFileToIPFS");
+            expect(init.headers).toEqual({ Authorization: "Bearer user-token" });
         });
 
-        it("a user's own node override beats the baked service", async () => {
-            vi.stubEnv("NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT", "test-jwt");
+        it("a service with no token is not a target", () => {
+            vi.stubEnv("NEXT_PUBLIC_IPFS_API_URL", "");
+            localStorage.setItem("figaro.user-endpoints", JSON.stringify({ pinServiceUrl: "https://pins.example.com" }));
+            expect(activePublishTarget()).toBeNull();
+        });
+
+        it("a user's own node beats the user's service and the build's node", async () => {
             localStorage.setItem(
                 "figaro.user-endpoints",
-                JSON.stringify({ ipfsApiUrl: "http://my-node:5001" }),
+                JSON.stringify({ ipfsApiUrl: "http://my-node:5001", pinServiceUrl: "https://pins.example.com", pinServiceToken: "user-token" }),
             );
-            const fetchMock = vi.fn().mockResolvedValue({
-                ok: true,
-                status: 200,
-                statusText: "OK",
-                json: async () => ({ Hash: "QmMyNode11111111111111111111111111111111111111" }),
-                text: async () => JSON.stringify({ Hash: "QmMyNode11111111111111111111111111111111111111" }),
-            });
+            const fetchMock = okService("Hash", "QmMyNode11111111111111111111111111111111111111");
             globalThis.fetch = fetchMock;
 
             const result = await DEFAULT_IPFS_SERVICE.publishJSON({ hello: "world" });
@@ -49,8 +98,19 @@ describe("ipfsService", () => {
             expect(String(fetchMock.mock.calls[0][0])).toBe("http://my-node:5001/api/v0/add?pin=true");
         });
 
-        it("reports a scoped-key 403 on unpin as a refusal carrying the service's answer", async () => {
-            vi.stubEnv("NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT", "test-jwt");
+        it("the user's service beats the node the build names", () => {
+            localStorage.setItem(
+                "figaro.user-endpoints",
+                JSON.stringify({ pinServiceUrl: "https://pins.example.com", pinServiceToken: "user-token" }),
+            );
+            expect(activePublishTarget()).toEqual({ kind: "service", api: "https://pins.example.com", token: "user-token" });
+        });
+
+        it("reports a 403 on unpin as a refusal carrying the service's answer", async () => {
+            localStorage.setItem(
+                "figaro.user-endpoints",
+                JSON.stringify({ pinServiceUrl: "https://pins.example.com", pinServiceToken: "user-token" }),
+            );
             globalThis.fetch = vi.fn().mockResolvedValue({
                 ok: false,
                 status: 403,
@@ -64,7 +124,10 @@ describe("ipfsService", () => {
         });
 
         it("a 404 on unpin is absence — the state unpin exists to reach", async () => {
-            vi.stubEnv("NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT", "test-jwt");
+            localStorage.setItem(
+                "figaro.user-endpoints",
+                JSON.stringify({ pinServiceUrl: "https://pins.example.com", pinServiceToken: "user-token" }),
+            );
             globalThis.fetch = vi.fn().mockResolvedValue({
                 ok: false,
                 status: 404,

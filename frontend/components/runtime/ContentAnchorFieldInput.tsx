@@ -21,7 +21,8 @@
  */
 import { useRef, useState } from "react";
 import { keccak256 } from "viem";
-import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, NO_PUBLISH_TARGET_LINE } from "@/lib/shared/ipfsService";
+import { PublishTargetNotice } from "@/components/shared/PublishTargetNotice";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { Button } from "@/components/ui/Button";
 import type { FieldFormatInputProps } from "@/components/runtime/fieldFormatInputs";
@@ -98,7 +99,9 @@ export function ContentAnchorFieldInput({ value, onChange, testId, onCompanion }
                     {fileName ? `${fileName} · ` : ""}{value}
                 </p>
             )}
-            {error && (
+            {error === NO_PUBLISH_TARGET_LINE ? (
+                <PublishTargetNotice className="text-[11px]" />
+            ) : error && (
                 <p className="text-[11px] text-error-fg" data-testid={`${testId}-affix-error`}>
                     {error}
                 </p>

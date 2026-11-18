@@ -17,6 +17,7 @@
  */
 
 import Link from "@/components/shared/Link";
+import { PublishTargetNotice } from "@/components/shared/PublishTargetNotice";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
@@ -908,6 +909,8 @@ export function CheckoutView({ sellerAddress }: Props) {
                 <p className="text-xs font-semibold text-ink-muted">Checkout</p>
                 <h1 className="text-2xl font-bold text-ink-primary">Order from {memberCatalog.name}</h1>
             </header>
+
+            <PublishTargetNotice />
 
             <section
                 className="rounded-lg border border-default bg-paper p-5 space-y-4"

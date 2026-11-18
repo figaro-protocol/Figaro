@@ -21,19 +21,27 @@ import {
  * BROWSER only (device configuration, `userEndpoints`): never pinned,
  * never published, not part of the profile — which is why the review step
  * does not list them. Leave a field empty to use this deployment's default
- * (on devnet: the local stand-ins).
+ * (on devnet: the local stand-ins). Publishing has no deployment default on a
+ * public build: the IPFS node, or a pinning service with the user's own token,
+ * is where this browser pins, and with neither set it publishes nothing.
  *
  * Used by the onboarding wizard step (`/members/endpoints`, save & continue)
  * and the manage-tier edit page (`/members/edit/endpoints`, save in place).
  */
 const FIELDS: HintedFieldDef<
-    "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "analystUrl"
+    "ipfsApiUrl" | "pinServiceUrl" | "ipfsGatewayUrl" | "rpcUrl" | "analystUrl"
 >[] = [
     {
         key: "ipfsApiUrl",
         label: "IPFS node (API)",
         placeholder: "https://ipfs.example.com:5001",
         hint: "Your own node. Everything you publish — profile, catalog, clauses, assemblies, evidence — pins here: you pay for it, you can erase it.",
+    },
+    {
+        key: "pinServiceUrl",
+        label: "Pinning service (API)",
+        placeholder: "https://pinning.example.com",
+        hint: "A pinning service you chose, used when no node is set above. It takes uploads at /pinning/pinFileToIPFS with your token below; you pay for it, you can erase through it.",
     },
     {
         key: "ipfsGatewayUrl",
@@ -55,8 +63,14 @@ const FIELDS: HintedFieldDef<
     },
 ];
 
-/** The analyst's token sits beside its endpoint; a secret, so it renders as one. */
-const TOKEN_FIELDS: HintedFieldDef<"analystToken">[] = [
+/** Each token sits beside its endpoint; a secret, so it renders as one. */
+const TOKEN_FIELDS: HintedFieldDef<"pinServiceToken" | "analystToken">[] = [
+    {
+        key: "pinServiceToken",
+        label: "Pinning service token",
+        placeholder: "your own token for the pinning service",
+        hint: "Your account's token at the pinning service above. Sent only to that service, from this browser.",
+    },
     {
         key: "analystToken",
         label: "Analyst token",
@@ -68,8 +82,10 @@ const TOKEN_FIELDS: HintedFieldDef<"analystToken">[] = [
 export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
     const mounted = useMounted();
     const router = useRouter();
-    const [form, setForm] = useState<Required<Pick<UserEndpointOverrides, "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "analystUrl" | "analystToken">>>({
+    const [form, setForm] = useState<Required<Pick<UserEndpointOverrides, "ipfsApiUrl" | "pinServiceUrl" | "pinServiceToken" | "ipfsGatewayUrl" | "rpcUrl" | "analystUrl" | "analystToken">>>({
         ipfsApiUrl: "",
+        pinServiceUrl: "",
+        pinServiceToken: "",
         ipfsGatewayUrl: "",
         rpcUrl: "",
         analystUrl: "",
@@ -81,6 +97,8 @@ export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
         const current = readUserEndpoints();
         setForm({
             ipfsApiUrl: current.ipfsApiUrl ?? "",
+            pinServiceUrl: current.pinServiceUrl ?? "",
+            pinServiceToken: current.pinServiceToken ?? "",
             ipfsGatewayUrl: current.ipfsGatewayUrl ?? "",
             rpcUrl: current.rpcUrl ?? "",
             analystUrl: current.analystUrl ?? "",
