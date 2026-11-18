@@ -1,7 +1,7 @@
 # Release Readiness
 
-Status: the open work between here and the public releases — the testnet line
-(live, rehearsing mainnet) and the Ethereum mainnet release. TODO tasks only:
+Status: the open work before the stack goes public, on Sepolia first and then on
+mainnet and the other chains, which run the same code. TODO tasks only:
 closed work is deleted in the session that closes it, and `git log` is the history.
 Results are recorded in `docs/VERIFICATION_MAP.md` § 14, and accepted risks in
 `docs/DESIGN_DECISIONS.md`. `docs/AUDITOR_HANDOVER.md` is left as it stands and
@@ -17,16 +17,19 @@ Kleros courts are live on Ethereum mainnet.
 
 ## Current Verdict
 
-There are two finish lines, in order. **Public on testnet** is the launch flip: the site
-leaves noindex, and strangers read it and trade on Sepolia; it is blocked on the seven
-items below. The seventh is every security matter: the in-house security program's pass
-over the audit scope (Task 2), which stands in place of an external audit, the frontend's
-delivery integrity (Task 11) and the hardening (Task 14). Security comes before the
-testnet because the contracts and the guest cannot be changed once deployed: what the
-testnet shows wrong is fixed on the testnet, and nothing is left to fix on mainnet.
-**Mainnet** is the deploy and the work that changes no deployed code; no security task
-stands behind it. Everything else under Open Tasks is deploy-day work. Work that blocks
-neither line does not delay either.
+There is one line of work, and it ends before the first public deploy. A test network
+and mainnet run the same code, on the same kind of chain, under the same rules; they
+differ only in what their tokens are worth. A deployed contract and the guest cannot be
+changed, so every task below is done before the stack goes public on any chain, and none
+waits for a later network. **Public on testnet** is the launch flip: the site leaves
+noindex, and strangers read it and trade on Sepolia; it is blocked on the seven items
+below. The seventh is every security matter: the in-house security program's pass over
+the audit scope (Task 2), which stands in place of an external audit, the frontend's
+delivery integrity (Task 11) and the hardening (Task 14). **A deploy** to mainnet, or to
+any other chain, is the same act repeated: the same broadcast, the same registrations and
+the same checks of § "Deployment verification, on every chain", on a chain whose tokens
+have value. Only the act and the values that exist only at it (a wallet's address, the
+key built from the release guest, a gas figure read on that chain) are left to it.
 
 ## Public on testnet
 
@@ -201,26 +204,26 @@ read from a search summary, never the firm's own page):
   this stack; 20squares' open-game engine addresses the equilibrium the Lean
   proof already covers.
 
-### Task 14: Mainnet hardening
+### Task 14: Hardening
 
 - The domain's DNS carries CAA, naming the one certificate authority that may issue for it.
 - A status page for the relay and the services it depends on.
 - The bug bounty listed on a platform, and event-driven alerting on the contracts beside the
   daily scan (`SECURITY.md` § Monitoring).
 
-### Task 3 (residue): state the mainnet γ-curve point
+### Task 3 (residue): state each deployment's γ-curve point
 
 The registry parameters are hardcoded in `script/DeployMainnet.s.sol` (reasoning
-inline; derivation in `/papers/substrate-broadening-rpgf` §7). Before the mainnet
+inline; derivation in `/papers/substrate-broadening-rpgf` §7). Before each public
 broadcast: re-measure `g` — the marginal cost of one fabricated resolved process,
 batch path — on the target chain, and state the deployment's point on the γ curve
 where the release facts are kept.
 
-### Task 6: Mainnet content durability
+### Task 6: Content durability
 
 - **Sovereign per-party pinning (Option 3).** Shift durability to the parties: each
   publishing wallet's client pins what it publishes, so no single operator holds
-  availability — no central pinning dependency in the mainnet trust
+  availability — no central pinning dependency in the trust
   model. (The testnet tier rides the site's managed pinning account through the
   `ipfsService` deploy-build adapter — env vars in `docs/LOCAL_DEV.md` — so a
   visitor with no IPFS node of their own can publish on the testnet. That is
@@ -246,9 +249,11 @@ Sepolia is live and rehearsed. Remaining:
 
 ### Task 9: Florin treasury tail
 
-At/after mainnet: stand up the real DAO treasury — a canonical Safe at `DAO_WALLET`
-with real keys, and the threshold-ECDSA signing ceremony rehearsed on testnet first.
-Devnet uses a `MockTreasuryMultisig` placeholder; mainnet is config, never code.
+Before the stack goes public: stand up the real DAO treasury on each chain it is
+deployed to — a canonical Safe at `DAO_WALLET` with real keys — and rehearse the
+threshold-ECDSA signing ceremony on Sepolia. It protects keys, so it waits for no later
+network. Devnet uses a `MockTreasuryMultisig` placeholder; the treasury's address is
+config, never code.
 Who holds the treasury, and the discipline on spending it: `docs/DAO.md`.
 
 The implementation as rehearsed, which the design in `DAO.md` never states and which
@@ -323,7 +328,7 @@ Disallow-all is its sibling) — both flip at launch, not before.
 back to `figaro.example` and every og:image/sitemap URL is dead — verify it in the
 deploy environment before the export is uploaded.
 
-### Task 13: Genesis Registration Ownership — the mainnet gate
+### Task 13: Genesis Registration Ownership
 
 The rule: the DAO treasury vault is the designer of record for
 `figaro-commerce` only (`deployments/<chainId>.expected.json`
@@ -338,7 +343,7 @@ for the clause kind, and `claim` reads the claimant's live member stake); first-
 `keccak256` of the canonical spec without its `block`, so a registration is
 one exact spec. The procedure is rehearsed end to end on the testnet.
 
-Before mainnet genesis seeding:
+Before any public genesis seeding, on any chain:
 
 1. The seeding run is a WRITTEN registration plan — each clause key (with the
    spec name and version it was resolved from) and its registrar — that the
@@ -347,19 +352,22 @@ Before mainnet genesis seeding:
    `name` or `name@version`, which `populate-clauses.mjs` resolves to keys over the specs
    it loads from `clauses/`, and every other run uses the founder's Ledger as
    direct registrar.
-2. Rehearse the plan on an Anvil fork with the real devices before mainnet.
+2. Rehearse the plan on an Anvil fork of the target chain with the real devices before its broadcast.
 3. Keep `CONTRACTS.md` § "Designer rewards", `DESIGNER_REWARDS.md`, and `DAO.md` in
    sync if the rule moves.
 
-## Pre-Mainnet Deployment Verification
+## Deployment verification, on every chain
 
-Deploy-time checks to run against the mainnet deployment before it is treated as
-live. These are separate from the external-audit gate above. The ones the chain
-can answer are stated ahead in `deployments/1.expected.json` and read by
+Deploy-time checks to run against each public deployment before it is treated as
+live, the same on every chain. The ones the chain can answer are stated ahead in
+`deployments/<chainId>.expected.json` (Sepolia's `11155111`, mainnet's `1`) and read by
 `scripts/check-deployment.mjs` (run with `--artifacts` from a
 `forge build --via-ir` at the release commit): it must report nothing that does not
-hold before the record is published. Its `null`s — the deposits (Task 3), the
-cooldown, the wallets — are the decisions still owed. The broadcast itself runs
+hold before the deployment record is published. The registry stakes and the members' waiting
+time are decided: `script/DeployMainnet.s.sol` deploys 0.05 ETH for each of the four
+registries and 28 days, the values Sepolia runs. A deployment record's remaining `null`s are values
+that exist only at the deploy: the wallets' addresses and the key built from the
+release guest. The broadcast itself runs
 from a clean checkout of the release commit, so the wrapper compiles the tree
 the release commit names; the check, at the same commit, is what binds the
 result to it (the code, the guest key, the gateway). The list below is the procedure around it:
@@ -390,8 +398,7 @@ result to it (the code, the guest key, the gateway). The list below is the proce
   `figaro-commerce` key == `DAO_WALLET`. The treasury is
   receives designer rewards as designer of record only if this holds (`/dao`,
   `DAO.md`); nothing else enforces it.
-- `MembersRegistry.registrationDeposit` / `.withdrawalCooldown` and `ClauseRegistry.registrationDeposit` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` / `0` placeholders). Both MembersRegistry values are immutable and cannot be corrected after deploy.
-- `AssemblyRegistry.registrationDeposit` == the mainnet value picked per Task 3 (NOT the devnet `0.001 ether` placeholder).
+- `MembersRegistry.registrationDeposit` == 0.05 ETH and `.withdrawalCooldown` == 28 days; `ClauseRegistry`, `AgreementRegistry` and `AssemblyRegistry` `.registrationDeposit` == 0.05 ETH (NOT the devnet `0.001 ether` / `0` placeholders). Every one is immutable and cannot be corrected after deploy.
 - `UsageCounter.members` == the deployed `MembersRegistry` (the live-stake gate reads it), `UsageCounter.periodEnd(0..8)` == the nine annual boundaries derived from `RPGF_GENESIS`, and `UsageCounter.minSellers` == 3 — these are immutable and cannot be corrected after deploy. `RpgfMinter.counter` / `.clauses` / `.assemblies` point at the deployed instances, and `.periodAmount` (45M/45M · 60M×3 · 82.5M×4 — the 15/30/55 rising-tranche grouping) sums to 600M and its length is validated on-chain against `periodCount()`.
 - Every token a process can be denominated in is non-rebasing and non-fee-on-transfer.
 - **No test members on mainnet — ever.** The rehearsal
@@ -402,7 +409,7 @@ result to it (the code, the guest key, the gateway). The list below is the proce
   Verify after any mainnet verification run: a MembersRegistry read shows no
   test-flavored member surfaced.
 - Kleros subcourt IDs in the deployed dispute config match the target chain on klerosboard.com (Gnosis subcourt IDs differ from Ethereum mainnet) — verify before the deployment is treated as live.
-- Agreement / assembly / profile content is pinned for durable retrieval per Task 6 — on mainnet via sovereign per-party pinning (Option 3), never only a single Kubo node — and is fetchable by CID across the 6-year (5 + 1) retrieval-availability floor.
+- Agreement / assembly / profile content is pinned for durable retrieval per Task 6 — via sovereign per-party pinning (Option 3), never only a single Kubo node; the site's pinning account on Sepolia is the exception Task 6 states — and is fetchable by CID across the 6-year (5 + 1) retrieval-availability floor.
 - Test-helper flags unset in the deploy build: `NEXT_PUBLIC_ENABLE_TEST_HELPERS`, `NEXT_PUBLIC_USE_TEST_SIGNER`, `NEXT_PUBLIC_TEST_PRIVATE_KEY`, `NEXT_PUBLIC_DEV_ADDRESS` must all be unset (else `?e2e=mock` / the injected test signer inline into the bundle). This is enforced at build time: `frontend/next.config.mjs` ABORTS a `NODE_ENV=production` build with any of these set unless `FIGARO_ALLOW_TEST_HELPERS=1` (the escape only the Playwright e2e build sets). Confirm the CDN build runs without that escape.
 - `public/_headers` CSP/HSTS set is applied at the CDN — verify at the hosting layer (cannot be checked from the repo tree). The header CSP carries `'unsafe-inline'` for scripts (a static export cannot do per-request nonces), and every exported page narrows it with its own Content-Security-Policy `<meta>` listing the sha256 of each inline script it ships (`frontend/scripts/csp-inline-hashes.mjs`), so an injected inline script does not run. XSS safety also rests on React auto-escaping, held by an ESLint error on `dangerouslySetInnerHTML` outside `components/papers/Math.tsx` (`frontend/.eslintrc.json`, run by `frontend-ci` on every push).
 - `next` npm advisories are static-export-INAPPLICABLE (this deploy ships no Next server: `output:'export'`, no middleware/rewrites/RSC-server/Server-Actions). They are build-host hygiene, NOT runtime blockers — do not conflate with runtime-reachable advisories in browser-shipped dependencies (wagmi/viem tree). A patched 14.2.x bump is advisable for the build host.

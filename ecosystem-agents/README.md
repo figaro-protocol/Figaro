@@ -31,7 +31,7 @@ the whole model first.
 > the F1–F6 requirements are structural; run any piece bare and that piece
 > falls back to BEHAVIORAL, the prompt asking where nothing outside it makes
 > it. The runtime is the NAMED release gate on this tier
-> (`docs/RELEASE_READINESS.md` § "Pre-Mainnet Deployment Verification");
+> (`docs/RELEASE_READINESS.md` § "Deployment verification, on every chain");
 > until real-stakes operation has soaked, keep keys sized to what you can
 > afford to lose and leave `figaro-operator`'s human-in-the-loop default on.
 
