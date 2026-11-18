@@ -15,7 +15,7 @@
  *   const events = parseOrderCommittedLogs(logs);
  */
 
-import { type PublicClient, type Log, decodeEventLog } from "viem";
+import { type AbiEvent, type PublicClient, type Log, decodeEventLog } from "viem";
 import { CORE_ABI, ATTESTATION_COORDINATOR_ABI } from "./abis.js";
 import type {
     Hex,
@@ -292,6 +292,10 @@ export async function fetchLogsChunked(
         fromBlock: bigint;
         toBlock: bigint | "latest";
         chunkSize?: bigint;
+        /** The events to ask for: each query then filters by their topic,
+         *  so the node returns no other log of the contract. Omitted, every
+         *  log of the contract is returned. */
+        events?: readonly AbiEvent[];
         /** The pause before the next ask of a sub-range answered with pruned
          *  history or a rate limit, by attempt (default: `logReadRetry`'s). */
         retryDelayMs?: (attempt: number) => number;
@@ -309,7 +313,9 @@ export async function fetchLogsChunked(
         const to = from + chunkSize - 1n < resolvedToBlock ? from + chunkSize - 1n : resolvedToBlock;
         let chunk: Log[];
         try {
-            chunk = await client.getLogs({ address: params.address, fromBlock: from, toBlock: to });
+            chunk = params.events
+                ? await client.getLogs({ address: params.address, events: params.events, fromBlock: from, toBlock: to })
+                : await client.getLogs({ address: params.address, fromBlock: from, toBlock: to });
         } catch (err) {
             const retry = logReadRetry(err);
             if (!retry) throw err;

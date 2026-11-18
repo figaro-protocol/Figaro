@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { encodeAbiParameters, encodeEventTopics, encodeFunctionData, encodePacked, getAddress, keccak256, type Address, type Hex, type Log, type PublicClient } from "viem";
+import { concatHex, encodeAbiParameters, encodeEventTopics, encodePacked, getAddress, keccak256, type Address, type Hex, type Log, type PublicClient } from "viem";
 import {
     computeRpgfAllocations,
     computeUsageAccruals,
@@ -31,6 +31,9 @@ import {
     type Agreement,
 } from "../src/agreement.js";
 import type { Commitment } from "../src/types.js";
+import type { SequencerUsageClaim } from "../src/agent/sequencer.js";
+import { computeCommitmentProcessId } from "../src/commitments.js";
+import { FIRST, PROCESS, SECOND, attestEntry, claimEntry, commitEntry, rep, resolveEntry } from "./operationStreamWriter.js";
 import {
     ASSEMBLY_LEAF_DOMAIN,
     computeAssemblyLeaf,
@@ -661,82 +664,146 @@ describe("fetchUsageRecords — chunked getLogs", () => {
 });
 
 describe("fetchSkippedBatchUses — the uses a batch carried and the counter counted none of", () => {
-    const VERIFIER = "0x000000000000000000000000000000000000b47c" as Address;
-    const OTHER = "0x00000000000000000000000000000000000ca11e" as Address;
+    const VERIFIER = getAddress("0x000000000000000000000000000000000000b47c");
+    const CHAIN_ID = 11155111;
     const SKIP_TX = `0x${"11".repeat(32)}` as Hex;
     const ROUTED_TX = `0x${"22".repeat(32)}` as Hex;
     const LANDED_TX = `0x${"33".repeat(32)}` as Hex;
     /** Revert data as the verifier catches it; the reader passes it through unread. */
     const REASON = `0x5f5b1b0c${"00".repeat(31)}01${"00".repeat(32)}` as Hex;
-    const USES = [
-        { clauseOrAssembly: `0x${"ab".repeat(32)}` as Hex, kind: USAGE_KIND_CLAUSE, processId: `0x${"01".repeat(32)}` as Hex, seller: getAddress("0x00000000000000000000000000000000000000a1") },
-        { clauseOrAssembly: `0x${"cd".repeat(32)}` as Hex, kind: USAGE_KIND_ASSEMBLY, processId: `0x${"01".repeat(32)}` as Hex, seller: getAddress("0x00000000000000000000000000000000000000a1") },
-    ];
-    const BATCH_INPUT = encodeFunctionData({
-        abi: BATCH_VERIFIER_ABI,
-        functionName: "settleBatch",
-        args: ["0x", "0x", [], { attestations: [], specBindings: [] }, { period: 0, provenanceLeaf: PROVENANCE_LEAF_KEY, uses: USES }, "0x"],
-    });
+    const CLAUSE_CLAIM: SequencerUsageClaim = {
+        order: FIRST,
+        clause_or_assembly: rep("80", 32),
+        kind: { Clause: { clause_data_hash: rep("81", 32) } },
+        inclusion_proof: [rep("82", 32)],
+    };
+    const ASSEMBLY_CLAIM: SequencerUsageClaim = {
+        order: SECOND,
+        clause_or_assembly: rep("90", 32),
+        kind: { Assembly: { agreement_hash: rep("91", 32), slot_content_hash: rep("92", 32), membership_proof: [rep("93", 32)] } },
+        inclusion_proof: [],
+    };
+    /** Commits, a resolve, a wallet-code attestation, then the claims: the
+     *  order the guest writes them in (operation_stream.rs:62). */
+    const STREAM = concatHex([
+        commitEntry(FIRST), commitEntry(SECOND), resolveEntry(PROCESS, [FIRST, SECOND]),
+        attestEntry(0, FIRST, "0x"), claimEntry(CLAUSE_CLAIM), claimEntry(ASSEMBLY_CLAIM),
+    ]);
 
-    function skippedLog(batchId: bigint, tx: Hex, block: bigint): Log {
+    function skippedLog(batchId: bigint, tx: Hex, block: bigint, logIndex = 0): Log {
         return {
             address: VERIFIER,
             topics: encodeEventTopics({ abi: BATCH_VERIFIER_ABI, eventName: "BatchAccrualSkipped", args: { batchId } }),
             data: encodeAbiParameters([{ type: "bytes" }], [REASON]),
             blockNumber: block,
             transactionHash: tx,
-            logIndex: 0,
+            logIndex,
         } as unknown as Log;
     }
-    function landedLog(batchId: bigint, tx: Hex, block: bigint): Log {
+    function operationsLog(batchId: bigint, tx: Hex, block: bigint, operations: Hex, period = 3, logIndex = 1): Log {
         return {
             address: VERIFIER,
-            topics: encodeEventTopics({
-                abi: BATCH_VERIFIER_ABI,
-                eventName: "BatchSettled",
-                args: { batchId, prevStateRoot: `0x${"00".repeat(32)}`, newStateRoot: `0x${"01".repeat(32)}` },
-            }),
-            data: encodeAbiParameters([{ type: "uint256" }], [0n]),
+            topics: encodeEventTopics({ abi: BATCH_VERIFIER_ABI, eventName: "BatchOperations", args: { batchId } }),
+            data: encodeAbiParameters(
+                [{ type: "uint64" }, { type: "uint8" }, { type: "bytes32" }, { type: "bytes" }],
+                [1_700_000_000n, period, PROVENANCE_LEAF_KEY, operations],
+            ),
             blockNumber: block,
             transactionHash: tx,
-            logIndex: 1,
+            logIndex,
         } as unknown as Log;
     }
-    function stubClient(logs: Log[], txs: Record<string, { to: Address; input: Hex }>): PublicClient {
+    /** A node that answers every log query with `logs`, and fails any
+     *  transaction read: the reader needs none. */
+    function stubClient(logs: Log[]): PublicClient {
         return {
             getLogs: vi.fn(async () => logs),
-            getTransaction: vi.fn(async ({ hash }: { hash: Hex }) => txs[hash]),
+            getChainId: vi.fn(async () => CHAIN_ID),
+            getTransaction: vi.fn(async () => { throw new Error("no transaction read is expected"); }),
         } as unknown as PublicClient;
     }
+    const usesOf = (claims: SequencerUsageClaim[], processIds: Hex[]) =>
+        claims.map((c, i) => ({ clauseOrAssembly: c.clause_or_assembly, kind: usageClaimKindCode(c), processId: processIds[i], seller: c.order.seller }));
 
-    it("reads each skipped batch's period and uses from its settleBatch calldata, and only the skipped batches", async () => {
-        const client = stubClient(
-            [landedLog(1n, LANDED_TX, 5n), skippedLog(2n, SKIP_TX, 7n), landedLog(2n, SKIP_TX, 7n)],
-            { [SKIP_TX]: { to: VERIFIER, input: BATCH_INPUT }, [LANDED_TX]: { to: VERIFIER, input: BATCH_INPUT } },
-        );
-        const skipped = await fetchSkippedBatchUses(client, VERIFIER, { toBlock: 10n });
+    it("a direct call: reads each skipped batch's period, claims and uses from the BatchOperations log of its transaction, and only the skipped batches", async () => {
+        const client = stubClient([
+            operationsLog(1n, LANDED_TX, 5n, STREAM, 2),
+            skippedLog(2n, SKIP_TX, 7n, 0),
+            operationsLog(2n, SKIP_TX, 7n, STREAM, 3, 1),
+        ]);
+        const skipped = await fetchSkippedBatchUses(client, VERIFIER, { fromBlock: 0n, toBlock: 10n });
         expect(skipped).toHaveLength(1);
         expect(skipped[0].batchId).toBe(2n);
         expect(skipped[0].transactionHash).toBe(SKIP_TX);
         expect(skipped[0].blockNumber).toBe(7n);
         expect(skipped[0].reason).toBe(REASON);
-        expect(skipped[0].carried).toEqual({ period: 0, uses: USES });
-        // The one transaction read is the skipped batch's.
-        expect(client.getTransaction).toHaveBeenCalledTimes(1);
-        expect(client.getTransaction).toHaveBeenCalledWith({ hash: SKIP_TX });
+        expect(skipped[0].carried).toEqual({
+            period: 3,
+            provenanceLeaf: PROVENANCE_LEAF_KEY,
+            claims: [CLAUSE_CLAIM, ASSEMBLY_CLAIM],
+            uses: usesOf([CLAUSE_CLAIM, ASSEMBLY_CLAIM], [PROCESS, PROCESS]),
+        });
+        expect(client.getTransaction).not.toHaveBeenCalled();
     });
 
-    it("a settleBatch call made through another contract names the batch and leaves its uses unread", async () => {
-        const client = stubClient([skippedLog(3n, ROUTED_TX, 9n)], { [ROUTED_TX]: { to: OTHER, input: BATCH_INPUT } });
-        const [skip] = await fetchSkippedBatchUses(client, VERIFIER, { toBlock: 10n });
+    it("a call through another contract: the batch's log is the verifier's on every route, so its uses are read the same way", async () => {
+        // The transaction's `to` is a router; the reader never asks for it.
+        const client = stubClient([skippedLog(3n, ROUTED_TX, 9n, 4), operationsLog(3n, ROUTED_TX, 9n, STREAM, 3, 6)]);
+        const [skip] = await fetchSkippedBatchUses(client, VERIFIER, { fromBlock: 0n, toBlock: 10n });
         expect(skip.batchId).toBe(3n);
-        expect(skip.carried).toBeNull();
+        expect(skip.carried.claims).toEqual([CLAUSE_CLAIM, ASSEMBLY_CLAIM]);
+        expect(client.getTransaction).not.toHaveBeenCalled();
     });
 
-    it("reads the verifier's logs from the block it is given, in chunks", async () => {
-        const client = stubClient([], {});
+    it("a skipped batch that carried no usage claim gives an empty list, never an absent one", async () => {
+        const client = stubClient([skippedLog(4n, SKIP_TX, 7n), operationsLog(4n, SKIP_TX, 7n, concatHex([commitEntry(FIRST)]))]);
+        const [skip] = await fetchSkippedBatchUses(client, VERIFIER, { fromBlock: 0n, toBlock: 10n });
+        expect(skip.carried).toEqual({ period: 3, provenanceLeaf: PROVENANCE_LEAF_KEY, claims: [], uses: [] });
+    });
+
+    it("derives one use per (kind, key, process), the first claim naming the seller, a root order's process under the verifier's domain", async () => {
+        const root = { ...FIRST, process_id: `0x${"00".repeat(32)}` as Hex };
+        const onRoot: SequencerUsageClaim = { ...CLAUSE_CLAIM, order: root };
+        const again: SequencerUsageClaim = { ...CLAUSE_CLAIM, order: SECOND };
+        const client = stubClient([
+            skippedLog(5n, SKIP_TX, 7n),
+            operationsLog(5n, SKIP_TX, 7n, concatHex([claimEntry(onRoot), claimEntry(CLAUSE_CLAIM), claimEntry(again)])),
+        ]);
+        const [skip] = await fetchSkippedBatchUses(client, VERIFIER, { fromBlock: 0n, toBlock: 10n });
+        const rootProcess = computeCommitmentProcessId(
+            {
+                processId: root.process_id, buyer: root.buyer, seller: root.seller, currency: root.currency,
+                payment: BigInt(root.payment), expectedCumulativeValue: BigInt(root.expected_cumulative_value),
+                checkoutHash: root.checkout_hash, salt: BigInt(root.salt), deadline: BigInt(root.deadline),
+            },
+            CHAIN_ID,
+            VERIFIER,
+        );
+        expect(skip.carried.claims).toHaveLength(3);
+        expect(skip.carried.uses).toEqual(usesOf([onRoot, CLAUSE_CLAIM], [rootProcess, PROCESS]));
+    });
+
+    it("refuses a skipped batch whose stream does not decode, and one whose BatchOperations log the node did not return", async () => {
+        await expect(
+            fetchSkippedBatchUses(stubClient([skippedLog(6n, SKIP_TX, 7n), operationsLog(6n, SKIP_TX, 7n, "0x06")]), VERIFIER, { fromBlock: 0n, toBlock: 10n }),
+        ).rejects.toThrow(/unknown stream tag 0x06/);
+        await expect(
+            fetchSkippedBatchUses(stubClient([skippedLog(7n, SKIP_TX, 7n), operationsLog(7n, LANDED_TX, 7n, STREAM)]), VERIFIER, { fromBlock: 0n, toBlock: 10n }),
+        ).rejects.toThrow(/no BatchOperations log/);
+    });
+
+    it("asks the node for the two events only, from the block it is given, in chunks", async () => {
+        const client = stubClient([]);
         await fetchSkippedBatchUses(client, VERIFIER, { fromBlock: 100n, toBlock: 125n, chunkSize: 10n });
         expect(client.getLogs).toHaveBeenCalledTimes(3);
-        expect(client.getLogs).toHaveBeenNthCalledWith(1, { address: VERIFIER, fromBlock: 100n, toBlock: 109n });
+        const first = (client.getLogs as ReturnType<typeof vi.fn>).mock.calls[0][0] as { address: Address; fromBlock: bigint; toBlock: bigint; events: { name: string }[] };
+        expect(first.address).toBe(VERIFIER);
+        expect([first.fromBlock, first.toBlock]).toEqual([100n, 109n]);
+        expect(first.events.map((e) => e.name).sort()).toEqual(["BatchAccrualSkipped", "BatchOperations"]);
+    });
+
+    it("requires a start block", async () => {
+        const params = { toBlock: 10n } as unknown as Parameters<typeof fetchSkippedBatchUses>[2];
+        await expect(fetchSkippedBatchUses(stubClient([]), VERIFIER, params)).rejects.toThrow(/fromBlock/);
     });
 });

@@ -18,7 +18,7 @@
  */
 
 import type { Address, Hex, PublicClient } from "viem";
-import { decodeEventLog, decodeFunctionData } from "viem";
+import { decodeEventLog } from "viem";
 import { BATCH_VERIFIER_ABI, USAGE_COUNTER_ABI } from "../abis.js";
 import type { Agreement } from "../agreement.js";
 import { PROVENANCE_LEAF_KEY, buildProvenanceInclusionProof, buildSignedClauseInclusionProof, hashClauseData } from "../agreement.js";
@@ -31,6 +31,8 @@ import {
     type Assembly,
 } from "../assembly.js";
 import { fetchLogsChunked } from "../events.js";
+import { computeCommitmentProcessId } from "../commitments.js";
+import { usageClaimsOfOperationStream } from "../operationStream.js";
 import type { SequencerUsageClaim } from "../agent/sequencer.js";
 import { toSequencerCommitment } from "../agent/sequencer.js";
 import type { Commitment } from "../types.js";
@@ -347,45 +349,78 @@ export interface SkippedBatch {
     blockNumber: bigint;
     /** The counter's revert data, as the verifier caught it. */
     reason: Hex;
-    /** The period the batch named and the uses it carried, read from the
-     *  transaction's calldata. `null` when the transaction is not a direct
-     *  `settleBatch` call to the verifier (a `settleBatch` call made through
-     *  another contract), whose calldata this reader does not decode, and
-     *  when a direct call's calldata does not decode under this ABI. */
-    carried: { period: number; uses: BatchUse[] } | null;
+    /** What the batch carried, read from the `BatchOperations` log of the
+     *  same transaction and batch id: the period and provenance leaf the
+     *  claims were applied under, every usage claim whole, in the wire form
+     *  `SequencerClient.submitUsageClaim` sends, and the uses the guest
+     *  derived from them. Always present: a batch with no claim carries
+     *  empty lists. */
+    carried: { period: number; provenanceLeaf: Hex; claims: SequencerUsageClaim[]; uses: BatchUse[] };
 }
 
+const BATCH_ACCRUAL_SKIPPED_EVENT = BATCH_VERIFIER_ABI.find(
+    (i): i is Extract<(typeof BATCH_VERIFIER_ABI)[number], { type: "event"; name: "BatchAccrualSkipped" }> =>
+        i.type === "event" && i.name === "BatchAccrualSkipped",
+)!;
+const BATCH_OPERATIONS_EVENT = BATCH_VERIFIER_ABI.find(
+    (i): i is Extract<(typeof BATCH_VERIFIER_ABI)[number], { type: "event"; name: "BatchOperations" }> =>
+        i.type === "event" && i.name === "BatchOperations",
+)!;
+
 /**
- * Find every batch the verifier landed with no use counted, and the uses it
- * carried. The verifier resolves a batch whose call to `UsageCounter` reverts
- * whole (a period boundary crossed in flight, the last period closed
- * (`AccrualClosed`), a provenance mismatch, an accrual starved of gas) and emits `BatchAccrualSkipped(batchId, reason)`
- * (`docs/DESIGN_DECISIONS.md` § 19). The event names the batch; its uses are
- * in the `settleBatch` calldata of the same transaction.
+ * Find every batch the verifier landed with no use counted, and the claims
+ * and uses it carried. The verifier resolves a batch whose call to
+ * `UsageCounter` reverts whole (a period boundary crossed in flight, the last
+ * period closed (`AccrualClosed`), a provenance mismatch, an accrual starved
+ * of gas) and emits `BatchAccrualSkipped(batchId, reason)`
+ * (`docs/DESIGN_DECISIONS.md` § 19). In the same transaction it logs the
+ * batch's operation stream in `BatchOperations(batchId, …)`, however the call
+ * reached it, and the stream carries each usage claim whole
+ * (`usageClaimsOfOperationStream`). So the answer is read from the
+ * verifier's logs alone: no transaction is read, and a `settleBatch` call
+ * made through another contract is read as a direct one is.
  *
- * Each use stays uncounted and a later batch may prove it again while a period
- * is open; `reason` tells the caller whether sending again can work
- * (`AccrualClosed` is final). Whoever holds the order and its agreement
- * rebuilds the claims with `buildUsageClaims` and sends them to a relay
- * (`SequencerClient.submitUsageClaim`). The batch's `BatchOperations` event
- * also carries each usage claim whole, on every call route; this reader does
- * not decode that stream. A use the counter
- * skips one by one inside a call that does not revert (an unstaked seller, a
- * key without a live registration, a process already counted) emits no event,
- * and this reader does not see it; `UsageCounter.processCounted` answers for it.
+ * Each use stays uncounted and a later batch may prove it again while a
+ * period is open; `reason` tells the caller whether sending again can work
+ * (`AccrualClosed` is final). Anyone can send each claim in `carried.claims`
+ * again with `SequencerClient.submitUsageClaim`, without the agreement.
+ * `carried.uses` are the uses the guest derives from those claims
+ * (`apply_usage_claims`, prover/lib/src/kernel.rs:788-882): one per
+ * (kind, key, process), the first claim naming the seller, a root order's
+ * process id derived under the verifier's EIP-712 domain (the client's chain
+ * id and `batchVerifier`); the proof binds them to the `settleBatch`
+ * argument. A use the counter skips one by one inside a call that does not
+ * revert (an unstaked seller, a key without a live registration, a process
+ * already counted) emits no event, and this reader does not see it;
+ * `UsageCounter.processCounted` answers for it.
+ *
+ * `fromBlock` is required: a scan of a deployment starts at its
+ * `FigaroDeploymentRecord.deploymentBlock`. The node is asked for the two
+ * events only. A failed read throws, as every bulk reader of this SDK does
+ * (`fetchLogsChunked`): a partial scan would answer "nothing skipped" for
+ * the blocks it lost. A skipped batch whose `BatchOperations` log is absent
+ * from the node's answer, or whose stream does not decode, also throws: the
+ * verifier emits both in one transaction, so either is the node's error or a
+ * stream layout this SDK does not read, never a batch that carried nothing.
  */
 export async function fetchSkippedBatchUses(
     client: PublicClient,
     batchVerifier: Address,
-    params: { fromBlock?: bigint; toBlock: bigint | "latest"; chunkSize?: bigint },
+    params: { fromBlock: bigint; toBlock: bigint | "latest"; chunkSize?: bigint },
 ): Promise<SkippedBatch[]> {
+    if (typeof params.fromBlock !== "bigint") {
+        throw new Error("fetchSkippedBatchUses: fromBlock is required; start at the deployment's deploymentBlock");
+    }
     const logs = await fetchLogsChunked(client, {
         address: batchVerifier,
-        fromBlock: params.fromBlock ?? 0n,
+        events: [BATCH_ACCRUAL_SKIPPED_EVENT, BATCH_OPERATIONS_EVENT],
+        fromBlock: params.fromBlock,
         toBlock: params.toBlock,
         chunkSize: params.chunkSize,
     });
-    const skipped: SkippedBatch[] = [];
+    const skips: Omit<SkippedBatch, "carried">[] = [];
+    const operations = new Map<string, { period: number; provenanceLeaf: Hex; operations: Hex }>();
+    const pairKey = (tx: Hex, batchId: bigint) => `${tx.toLowerCase()}:${batchId}`;
     for (const log of logs) {
         let decoded;
         try {
@@ -393,39 +428,68 @@ export async function fetchSkippedBatchUses(
         } catch {
             continue; // an event of the verifier's this ABI does not list
         }
-        if (decoded.eventName !== "BatchAccrualSkipped" || !log.transactionHash) continue;
-        const { batchId, reason } = decoded.args as { batchId: bigint; reason: Hex };
-        const tx = await client.getTransaction({ hash: log.transactionHash });
-        skipped.push({
-            batchId,
-            transactionHash: log.transactionHash,
-            blockNumber: log.blockNumber ?? 0n,
-            reason,
-            carried: tx.to && tx.to.toLowerCase() === batchVerifier.toLowerCase() ? batchUsesOf(tx.input) : null,
-        });
+        if (!log.transactionHash) continue;
+        if (decoded.eventName === "BatchAccrualSkipped") {
+            const { batchId, reason } = decoded.args;
+            skips.push({ batchId, transactionHash: log.transactionHash, blockNumber: log.blockNumber ?? 0n, reason });
+        } else if (decoded.eventName === "BatchOperations") {
+            const a = decoded.args;
+            operations.set(pairKey(log.transactionHash, a.batchId), {
+                period: a.usagePeriod,
+                provenanceLeaf: a.provenanceLeaf,
+                operations: a.operations,
+            });
+        }
     }
-    return skipped;
+    if (skips.length === 0) return [];
+    const chainId = await client.getChainId();
+    return skips.map((skip) => {
+        const ops = operations.get(pairKey(skip.transactionHash, skip.batchId));
+        if (!ops) {
+            throw new Error(
+                `batch ${skip.batchId} skipped its accrual in ${skip.transactionHash}, and the node returned no BatchOperations log ` +
+                    "of that batch in that transaction",
+            );
+        }
+        const claims = usageClaimsOfOperationStream(ops.operations);
+        return {
+            ...skip,
+            carried: { period: ops.period, provenanceLeaf: ops.provenanceLeaf, claims, uses: batchUsesOf(claims, chainId, batchVerifier) },
+        };
+    });
 }
 
-/** The usage argument of a `settleBatch` call; `null` for any other calldata. */
-function batchUsesOf(input: Hex): SkippedBatch["carried"] {
-    try {
-        const { functionName, args } = decodeFunctionData({ abi: BATCH_VERIFIER_ABI, data: input });
-        if (functionName !== "settleBatch") return null;
-        const usage = args[4];
-        return {
-            period: usage.period,
-            // A kind none of the three names no registry, and the counter
-            // skips it on any batch: it is no use to prove again.
-            uses: usage.uses.flatMap((u) =>
-                u.kind === USAGE_KIND_CLAUSE || u.kind === USAGE_KIND_ASSEMBLY || u.kind === USAGE_KIND_AGREEMENT
-                    ? [{ clauseOrAssembly: u.clauseOrAssembly, kind: u.kind, processId: u.processId, seller: u.seller }]
-                    : [],
-            ),
-        };
-    } catch {
-        return null;
+/** The uses the guest derives from `claims` (prover/lib/src/kernel.rs:792-882):
+ *  one per (kind, key, process) in claim order, the first claim naming the
+ *  seller; a root order's process id is its EIP-712 digest under the
+ *  verifier's domain (kernel.rs:312-322). */
+function batchUsesOf(claims: SequencerUsageClaim[], chainId: number, batchVerifier: Address): BatchUse[] {
+    const seen = new Set<string>();
+    const uses: BatchUse[] = [];
+    for (const claim of claims) {
+        const o = claim.order;
+        const processId = computeCommitmentProcessId(
+            {
+                processId: o.process_id,
+                buyer: o.buyer,
+                seller: o.seller,
+                currency: o.currency,
+                payment: BigInt(o.payment),
+                expectedCumulativeValue: BigInt(o.expected_cumulative_value),
+                checkoutHash: o.checkout_hash,
+                salt: BigInt(o.salt),
+                deadline: BigInt(o.deadline),
+            },
+            chainId,
+            batchVerifier,
+        );
+        const kind = usageClaimKindCode(claim);
+        const id = `${usageKeyId(kind, claim.clause_or_assembly)}|${processId.toLowerCase()}`;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        uses.push({ clauseOrAssembly: claim.clause_or_assembly, kind, processId, seller: o.seller });
     }
+    return uses;
 }
 
 // ── Usage claims (the batch path's input) ────────────────────────────

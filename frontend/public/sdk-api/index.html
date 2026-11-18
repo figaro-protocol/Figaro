@@ -665,7 +665,7 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <tr>
 <td><code>fetchSkippedBatchUses</code></td>
 <td>root</td>
-<td>Each batch whose call to the counter reverted whole (<code>BatchAccrualSkipped</code>), with the period and the uses its <code>settleBatch</code> calldata carried: uses a later batch may prove again, rebuilt with <code>buildUsageClaims</code> and sent with <code>SequencerClient.submitUsageClaim</code>.</td>
+<td>Each batch whose call to the counter reverted whole (<code>BatchAccrualSkipped</code>), with the period, the usage claims and the uses read from the <code>BatchOperations</code> log of the same transaction, on every call route. <code>fromBlock</code> is required (the deployment's <code>deploymentBlock</code>); a failed read throws. Each claim can be sent again with <code>SequencerClient.submitUsageClaim</code>, without the agreement, and a later batch may prove it while a period is open.</td>
 </tr>
 <tr>
 <td><code>fetchUsageRecords</code></td>
@@ -1101,6 +1101,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td><code>unwrapWithSharedSecret</code></td>
 <td><code>/handoff</code></td>
 <td>Decrypt what <code>wrapWithSharedSecret</code> produced.</td>
+</tr>
+<tr>
+<td><code>usageClaimsOfOperationStream</code></td>
+<td>root</td>
+<td>Every usage claim a batch's operation stream (the <code>operations</code> of <code>BatchOperations</code>) carries, whole and in order, in the wire form <code>SequencerClient.submitUsageClaim</code> sends. Walks every other entry by its own length and throws on a malformed stream, as the guest's <code>decode_operation_stream</code> refuses it.</td>
 </tr>
 <tr>
 <td><code>validateCommitmentAgreement</code></td>

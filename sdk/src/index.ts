@@ -428,6 +428,9 @@ export {
     usageKeyId,
     usageClaimKindCode,
 } from "./rpgf/index.js";
+// The usage claims of a batch's operation stream, the `operations` of
+// `FigaroBatchVerifier.BatchOperations` (prover/lib/src/operation_stream.rs).
+export { usageClaimsOfOperationStream } from "./operationStream.js";
 export type {
     RpgfAllocation,
     UsageRecord,
