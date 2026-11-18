@@ -162,3 +162,6 @@ mewt.sqlite
 
 # the Sepolia watcher's per-run output (scripts/monitor-sepolia.mjs)
 monitor-alerts.json
+
+# Next 16 writes this on every dev run; it is the framework's, not the project's.
+frontend/AGENTS.md

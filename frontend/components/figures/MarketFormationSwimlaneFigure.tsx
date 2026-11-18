@@ -157,12 +157,7 @@ export function MarketFormationSwimlaneFigure({
             svgProps={svgProps}
             viewBox={`0 0 400 ${viewHeight}`}
             frameClassName="w-full max-w-2xl mx-auto"
-            title={
-                <>
-                    Commitment formation by dispatch race and by request for quotes, and where
-                    the mechanism enters
-                </>
-            }
+            title="Commitment formation by dispatch race and by request for quotes, and where the mechanism enters"
             desc={
                 <>
                     Two lanes above a band. The left lane is the buyer, the right lane the

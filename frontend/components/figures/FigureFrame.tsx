@@ -13,8 +13,10 @@ import { cn } from "@/lib/shared/utils";
 export interface FigureFrameProps {
     /** Base id for the accessible <title>/<desc> pair. */
     idPrefix: string;
-    /** Accessible <title> text. */
-    title: ReactNode;
+    /** Accessible <title> text. A plain string: React 19 renders a <title>'s
+     *  child only as one string, and the server prints any element there as
+     *  "[object Object]", which the client then fails to hydrate (React #418). */
+    title: string;
     /** Accessible <desc> text. */
     desc: ReactNode;
     viewBox: string;

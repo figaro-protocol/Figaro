@@ -14,8 +14,10 @@ DEV_PID=$!
 
 echo "Dev server started with PID ${DEV_PID}. Waiting for readiness (timeout ${WAIT_TIMEOUT}ms)..."
 
-# Use wait-on via npx to wait for a Next static chunk indicating readiness
-npx wait-on "http://localhost:${PORT}/_next/static/chunks/app-pages-internals.js" --timeout ${WAIT_TIMEOUT}
+# Ready means the home page answers 200 to a GET. The dev server compiles a
+# route on its first request, so this also waits for that compile. (Next 14's
+# app-pages-internals.js chunk, waited on before, is not served by Next 16.)
+npx wait-on "http-get://localhost:${PORT}/" --timeout ${WAIT_TIMEOUT}
 
 echo "Dev server ready on port ${PORT} (PID ${DEV_PID})."
 
