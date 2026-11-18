@@ -46,7 +46,7 @@ export function RpgfValueLoopFigure({
             viewBox="0 0 560 251"
             frameClassName="w-full max-w-xl mx-auto mt-8"
             svgClassName="text-ink-body"
-            title={<>The registration stake&apos;s value loop</>}
+            title="The registration stake's value loop"
             desc={
                 <>
                     Four steps in a closed loop: stake ETH to register, real trade
