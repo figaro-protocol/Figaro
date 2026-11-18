@@ -1,6 +1,10 @@
 import type { MetadataRoute } from "next";
 import { PAPER_GROUPS, tagIndex } from "@/app/(marketing)/_lib/paperGroups";
 
+// Static export: the sitemap is written once at build time (Next 15 and later
+// no longer treat a metadata route as static unless it says so).
+export const dynamic = "force-static";
+
 // Set NEXT_PUBLIC_SITE_URL in deployment env (e.g. https://figaro.org).
 // Falls back to a placeholder so build does not fail in dev.
 const SITE_URL =

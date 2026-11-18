@@ -1,6 +1,6 @@
 # Frontend — Structure
 
-Next.js 14 (App Router), TypeScript, Tailwind CSS. **`frontend/` is the only frontend.** A frontend change ships in `frontend/` only.
+Next.js 16 (App Router), TypeScript, Tailwind CSS. **`frontend/` is the only frontend.** A frontend change ships in `frontend/` only.
 
 This file owns the per-route catalog, lib map, designer surface, and wallet-provider scope.
 
