@@ -526,9 +526,26 @@ fn blinding_shape_holds(
     errors.len() == before
 }
 
+/// Whether a field declares a private value — the SDK's
+/// `fieldCarriesPrivate`: its own disposition is `private`, or a field
+/// nested in it (an object's `fields`, an array's `items`, at any depth)
+/// is. A set is withheld as a whole, so the set rules count the top-level
+/// field that holds a nested private field as private.
+fn field_carries_private(field: &FieldSpec) -> bool {
+    if field.base().is_private() {
+        return true;
+    }
+    match field {
+        FieldSpec::Object(o) => o.fields.iter().any(field_carries_private),
+        FieldSpec::Array(a) => field_carries_private(&a.items),
+        _ => false,
+    }
+}
+
 /// The rules of one field set (the top-level `fields`, or one `stages[N]`)
 /// — the SDK's `fieldSetRulesHold`: the set does not mix public and private
-/// fields, a set that declares a private field declares exactly one
+/// fields (a field counts as private when it or a field nested in it is,
+/// `field_carries_private`), a set that declares a private field declares exactly one
 /// blinding field, and a set with no other private field declares none.
 /// The leaf model withholds a whole set, never one field, and a private
 /// set's fingerprint without a fresh random value can be confirmed by
@@ -540,7 +557,7 @@ fn field_set_rules_hold(fields: &[FieldSpec], path: &str, errors: &mut Vec<SpecP
     let blinding_count = fields.iter().filter(|f| f.base().blinding).count();
     let private_values = fields
         .iter()
-        .filter(|f| f.base().is_private() && !f.base().blinding)
+        .filter(|f| field_carries_private(f) && !f.base().blinding)
         .count();
     let any_public = fields.iter().any(|f| !f.base().is_private());
     if any_public && (private_values > 0 || blinding_count > 0) {

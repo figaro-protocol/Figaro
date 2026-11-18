@@ -176,7 +176,11 @@ fields, and the blinding field").
   to a forum or sells to a buyer. The evidence file a party builds lists each
   private clause's blinding value and the private witness content it holds,
   its own or received from the counterparty, says which, and names as missing
-  each piece it does not hold. Whoever holds the content reproduces the
+  each piece it does not hold. The evidence file a party pins in public for a
+  forum (`RecoursePanel`, `forPublicPin` in
+  `frontend/lib/audit/auditBundlePdf.ts`) carries each private clause and
+  each private witness by its fingerprint only, and names the content as
+  kept by its holder. Whoever holds the content reproduces the
   fingerprint from the content alone; a data buyer checks a disclosed leaf
   against the source process's `checkoutHash` as before, and before the sale
   cannot confirm a guess.
@@ -221,7 +225,8 @@ Four limits, stated plainly:
    seals it in the encrypted delivery beside the artifact
    (`prepareCompletionEvidence` in `frontend/lib/handoff/contentDelivery.ts`),
    so the receiver rebuilds the content, recomputes the anchor and shows its
-   verdict (`completionEvidenceAnchor`); a public stage-1 set's delivery
+   verdict (`completionEvidenceAnchor`) once an `Attestation` by the sender
+   holds that order, clause, stage and reference; a public stage-1 set's delivery
    carries no blinding value.
 
    The counterparty receives the private filings of an order by its own

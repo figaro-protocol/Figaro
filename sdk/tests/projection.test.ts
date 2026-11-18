@@ -422,6 +422,33 @@ describe("publicForm — the public/private disposition seam", () => {
         expect(specHasPrivateField(specView("x", ["public", undefined]))).toBe(false);
         expect(specHasPrivateField(specView("x", ["public", "private"]))).toBe(true);
     });
+
+    it("withholds a clause whose private field is nested in an object or an array", () => {
+        const secret = { name: "s", required: true, type: "string" as const, disposition: "private" as const };
+        const nestedKey = `0x${"a5".repeat(32)}` as const;
+        const itemKey = `0x${"a6".repeat(32)}` as const;
+        const nested: ProjectionSpecView = {
+            clauseId: "nested", clauseKey: nestedKey, version: 1,
+            fields: [{ name: "o", required: true, type: "object", fields: [{ name: "p", required: true, type: "object", fields: [secret] }] }],
+        };
+        const item: ProjectionSpecView = {
+            clauseId: "item", clauseKey: itemKey, version: 1,
+            fields: [{ name: "a", required: true, type: "array", items: { ...secret, name: "item" } }],
+        };
+        expect(specHasPrivateField(nested)).toBe(true);
+        expect(specHasPrivateField(item)).toBe(true);
+        const nestedAgreement = {
+            ...agreement,
+            clauses: [
+                { clause: nestedKey, data: { o: { p: { s: "nested-secret" } } } },
+                { clause: itemKey, data: { a: ["item-secret"] } },
+            ],
+        };
+        const pinned = publicForm(nestedAgreement, specSourceOf([nested, item]));
+        expect(pinned.clauses.every((c) => c.data === undefined)).toBe(true);
+        expect(JSON.stringify(pinned)).not.toMatch(/nested-secret|item-secret/);
+        expect(computeCheckoutHash(pinned)).toBe(computeCheckoutHash(nestedAgreement));
+    });
 });
 
 describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap", () => {
@@ -462,7 +489,7 @@ describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap",
         expect(warnings[0]).toContain("trap-clause");
         expect(warnings[0]).toContain("attestations");
         expect(warnings[0]).toContain("design.fills");
-        expect(warnings[0]).toContain("never be validated");
+        expect(warnings[0]).toContain("empty anchor");
     });
 
     it("warns when article is 'attestations' AND checkout.catalogueFills is declared", () => {
@@ -967,6 +994,19 @@ describe("the sign gate and the blinding value of a private clause", () => {
     it("passes a private clause whose blinding value is fresh", () => {
         const check = gate(specSourceOf([ONE]), { [ONE.clauseKey]: { grade: "b", blinding: value("3c") } });
         expect(check.issues).toEqual([]);
+    });
+
+    it("checks the content of a clause whose block says article attestations: block is presentation, so it skips only the empty anchor", () => {
+        const LOG = viewOf(privateRaw("test-private-log", { design: { article: "attestations" } }));
+        const specs = specSourceOf([LOG]);
+        // Content with no blinding value is refused, and so is a zero one.
+        const missing = gate(specs, { [LOG.clauseKey]: { grade: "b" } });
+        expect(missing.ok).toBe(false);
+        expect(missing.issues).toEqual([expect.objectContaining({ clause: LOG.clauseKey, path: "$.blinding" })]);
+        const zero = gate(specs, { [LOG.clauseKey]: { grade: "b", blinding: value("00") } });
+        expect(zero.issues).toEqual([expect.objectContaining({ clause: LOG.clauseKey, path: "blinding", message: expect.stringMatching(/zero/) })]);
+        // The empty anchor carries nothing to check or blind.
+        expect(gate(specs, { [LOG.clauseKey]: {} }).issues).toEqual([]);
     });
 
     it.each([

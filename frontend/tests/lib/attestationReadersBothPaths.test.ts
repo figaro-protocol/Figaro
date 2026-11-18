@@ -44,6 +44,7 @@ const CLAUSE = word(0xc1a);
 const ATTESTER = "0x00000000000000000000000000000000000000a1" as const;
 const DIRECT_REF = word(0xd1);
 const BATCH_REF = word(0xba);
+const BATCH_PLACE = { contentRef: BATCH_REF, clauseId: CLAUSE, stage: 2, attester: ATTESTER };
 
 const direct = attestationLog({ address: COORD, blockNumber: 7n, orderHash: ORDER, processId: PROCESS, attester: ATTESTER, clauseId: CLAUSE, contentRef: DIRECT_REF });
 const batched = attestationLog({ address: VERIFIER, blockNumber: 5n, orderHash: ORDER, processId: PROCESS, attester: ATTESTER, clauseId: CLAUSE, stage: 2, contentRef: BATCH_REF });
@@ -75,14 +76,14 @@ describe("the attestation readers fold both paths", () => {
     });
 
     it("attestationAnchorMatches finds an anchor that only the batch verifier emitted", async () => {
-        expect(await attestationAnchorMatches(CLIENT, 31337, ORDER, BATCH_REF)).toBe(true);
-        expect(await attestationAnchorMatches(CLIENT, 31337, ORDER, word(0x404))).toBe(false);
+        expect(await attestationAnchorMatches(CLIENT, 31337, ORDER, BATCH_PLACE)).toBe(true);
+        expect(await attestationAnchorMatches(CLIENT, 31337, ORDER, { ...BATCH_PLACE, contentRef: word(0x404) })).toBe(false);
     });
 
     it("with no verifier configured the readers read the coordinator alone", async () => {
         state.verifier = null;
         const rows = await getAttestationsByOrder(CLIENT, 31337, ORDER);
         expect(rows.map((r) => r.universe)).toEqual(["direct"]);
-        expect(await attestationAnchorMatches(CLIENT, 31337, ORDER, BATCH_REF)).toBe(false);
+        expect(await attestationAnchorMatches(CLIENT, 31337, ORDER, BATCH_PLACE)).toBe(false);
     });
 });

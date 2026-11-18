@@ -39,6 +39,9 @@ import { useCeremonyPanel } from "@/lib/handoff/useCeremonyChannel";
 import { CeremonyPanelFrame, CeremonyRequestButton } from "@/components/runtime/CeremonyPanelFrame";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
 
+/** The stage the address detail's anchor is filed at, and read back at. */
+const ADDRESS_DETAIL_STAGE = 0;
+
 export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: InteractionSurfaceProps) {
     const [sent, setSent] = useState(false);
     const [form, setForm] = useState<AddresseeBlock>({
@@ -47,10 +50,12 @@ export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: Inte
     });
 
     // The anchor is keccak of the anchored blob hash — hash-only, the
-    // chain never carries the ciphertext.
+    // chain never carries the ciphertext — filed by the sender under this
+    // clause at stage 0, where `handleSend` files it.
     const expectedAnchor = useCallback(
-        (_decrypted: AddresseeBlock, blobB64: string) => addressDetailAnchorRef(blobB64),
-        [],
+        (_decrypted: AddresseeBlock, blobB64: string, sender: string) =>
+            ({ contentRef: addressDetailAnchorRef(blobB64), clauseId: clauseKey, stage: ADDRESS_DETAIL_STAGE, attester: sender }),
+        [clauseKey],
     );
 
     // Both parties send ECDH pubkeys on the order id itself.
@@ -85,7 +90,7 @@ export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: Inte
             return {
                 attestation: {
                     clauseId: clauseKey,
-                    stage: 0,
+                    stage: ADDRESS_DETAIL_STAGE,
                     content: addressDetailBlobHash(blobB64),
                     anchorFailureMessage: "Anchoring the address detail failed",
                 },

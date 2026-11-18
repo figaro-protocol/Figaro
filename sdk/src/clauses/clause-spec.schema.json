@@ -85,11 +85,19 @@
             "description": "A field nested in an object field. A blinding field is a top-level field of its set, so it is never nested.",
             "allOf": [{ "$ref": "#/$defs/field" }, { "not": { "required": ["blinding"] } }]
         },
+        "carriesPrivate": {
+            "description": "A field that declares a private value: its own disposition is \"private\", or a field nested in it (an object's `fields`, an array's `items`, at any depth) is.",
+            "anyOf": [
+                { "required": ["disposition"], "properties": { "disposition": { "const": "private" } } },
+                { "required": ["fields"], "properties": { "fields": { "type": "array", "contains": { "$ref": "#/$defs/carriesPrivate" } } } },
+                { "required": ["items"], "properties": { "items": { "$ref": "#/$defs/carriesPrivate" } } }
+            ]
+        },
         "fieldSet": {
             "type": "array",
             "items": { "$ref": "#/$defs/field" },
-            "description": "One field set: the top-level `fields`, or one `stages` entry. The leaf model withholds a whole set, never one field, so a set does not mix public and private fields. A set that declares a private field declares exactly one blinding field; a set with no other private field declares none.",
-            "if": { "contains": { "required": ["disposition"], "properties": { "disposition": { "const": "private" } }, "not": { "required": ["blinding"] } } },
+            "description": "One field set: the top-level `fields`, or one `stages` entry. The leaf model withholds a whole set, never one field, so a set does not mix public and private fields; a field counts as private when it or a field nested in it is. A set that declares a private field declares exactly one blinding field; a set with no other private field declares none.",
+            "if": { "contains": { "$ref": "#/$defs/carriesPrivate", "not": { "required": ["blinding"] } } },
             "then": {
                 "items": { "required": ["disposition"], "properties": { "disposition": { "const": "private" } } },
                 "contains": { "required": ["blinding"] },

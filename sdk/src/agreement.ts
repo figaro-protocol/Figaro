@@ -223,12 +223,21 @@ export function computeTopologyLeaf(follows: readonly Hex[]): Hex {
 
 // ── Canonical serialization ─────────────────────────────────────────────────
 
+/** Each key is written as an own property (`Object.defineProperty`): an
+ *  assignment to `__proto__` on a plain object sets its prototype instead,
+ *  and the key would drop out of the bytes, so two contents differing only
+ *  there would share one hash. The guest reads the key as any other. */
 function sortedReplacer(_key: string, value: unknown): unknown {
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
         return Object.keys(value as Record<string, unknown>)
             .sort()
             .reduce<Record<string, unknown>>((acc, k) => {
-                acc[k] = (value as Record<string, unknown>)[k];
+                Object.defineProperty(acc, k, {
+                    value: (value as Record<string, unknown>)[k],
+                    enumerable: true,
+                    writable: true,
+                    configurable: true,
+                });
                 return acc;
             }, {});
     }

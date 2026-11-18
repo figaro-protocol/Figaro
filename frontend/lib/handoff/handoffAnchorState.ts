@@ -14,21 +14,22 @@ export type AnchorVerificationState = "unknown" | "verified" | "missing";
 
 /** The whole place an attestation must hold: its content reference, the
  *  clause and stage it was filed under, and the wallet that filed it. */
-interface AnchorPlace {
+export interface AnchorPlace {
     contentRef: `0x${string}`;
     clauseId: string;
     stage: number;
     attester: string;
 }
 
-/** What a ceremony expects on the chain for a decrypted payload: a content
- *  reference alone (any attestation on the order carrying it), or a whole
- *  place (`AnchorPlace`). */
-export type AnchorExpectation = `0x${string}` | AnchorPlace;
+/** What a ceremony expects on the chain for a decrypted payload: the whole
+ *  place (`AnchorPlace`). A content reference alone would match an
+ *  attestation anyone on the order filed, under any clause or stage, so a
+ *  payload the sender never anchored could read as anchored. */
+export type AnchorExpectation = AnchorPlace;
 
-/** True iff some attestation on `orderHash` matches `expected` — the
- *  on-chain anchor check every handoff ceremony panel polls with, each
- *  against its own ceremony's expectation. */
+/** True iff some attestation on `orderHash` holds the place `expected`
+ *  names — the on-chain anchor check every handoff ceremony panel polls
+ *  with, each against its own ceremony's expectation. */
 export async function attestationAnchorMatches(
     publicClient: PublicClient,
     chainId: number,
@@ -38,10 +39,8 @@ export async function attestationAnchorMatches(
     // Either path: the signer and the content reference are bound the same way
     // on the coordinator's and on the batch verifier's `Attestation`.
     const records = await getAttestationsByOrder(publicClient, chainId, orderHash);
-    return records.some((record) => typeof expected === "string"
-        ? hexEqual(record.contentRef, expected)
-        : hexEqual(record.contentRef, expected.contentRef)
-            && hexEqual(record.clauseId, expected.clauseId)
-            && record.stage === expected.stage
-            && hexEqual(record.attester, expected.attester));
+    return records.some((record) => hexEqual(record.contentRef, expected.contentRef)
+        && hexEqual(record.clauseId, expected.clauseId)
+        && record.stage === expected.stage
+        && hexEqual(record.attester, expected.attester));
 }

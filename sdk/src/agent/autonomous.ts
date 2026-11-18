@@ -17,13 +17,13 @@ import type { WalletClient, PublicClient } from "viem";
 import { keccak256 } from "viem";
 import { CORE_ABI, ATTESTATION_COORDINATOR_ABI, USAGE_COUNTER_ABI } from "../abis.js";
 import { validateContent, encodeContentFromSpec, contentFieldsFor, fieldSetRuleErrors, type ClauseSpec } from "../clauses/index.js";
-import { withFreshBlinding } from "../projection.js";
+import { isZeroBlindingValue, withFreshBlinding } from "../projection.js";
 import { assertOrderFitsResolveCap } from "../gasCeilings.js";
 import { restoreSignedProcessId } from "../commitments.js";
 import type { Agreement } from "../agreement.js";
 import type { Assembly } from "../assembly.js";
 import { buildUsageClaims, fetchUsageClaimContext, usageClaimKindCode, usageKeyId } from "../rpgf/index.js";
-import type { Hex, Address, FigaroAddresses, Commitment } from "../types.js";
+import { isBytes32Hex, type Hex, type Address, type FigaroAddresses, type Commitment } from "../types.js";
 import type { ProposedAction, ResolveProcessAction } from "./proposer.js";
 
 // ── Transaction result ──────────────────────────────────────────────────────
@@ -259,11 +259,16 @@ export async function recordProcessUsage(
  * the party keeps it to show the content later. The set's rules
  * (`fieldSetRuleErrors`) are re-checked on the spec view handed in, so a
  * hand-built view with a private set and no blinding field throws.
+ *
+ * A blinding value that blinds nothing throws: a zero value, and a value
+ * equal to the blinding value of the clause's committed set, which
+ * `opts.committed` carries when the party passes the clause's committed
+ * data (one guess would then confirm both fingerprints).
  */
 export function prepareAttestationContent(
     spec: ClauseSpec,
     values: Record<string, unknown>,
-    opts?: { stage?: number },
+    opts?: { stage?: number; committed?: Readonly<Record<string, unknown>> },
 ): { content: Hex; contentRef: Hex; values: Record<string, unknown> } {
     const options = opts?.stage !== undefined ? { stage: opts.stage } : {};
     const fields = contentFieldsFor(spec, options);
@@ -278,6 +283,23 @@ export function prepareAttestationContent(
     const validation = validateContent(filled, spec, options);
     if (!validation.ok) {
         throw new Error(validation.errors.map((e) => `${e.path}: ${e.message}`).join("; "));
+    }
+    const committed = opts?.committed;
+    const committedBlinding = committed === undefined ? [] : spec.fields
+        .filter((f) => f.blinding === true)
+        .map((f) => committed[f.name])
+        .filter(isBytes32Hex)
+        .map((v) => v.toLowerCase());
+    for (const field of fields) {
+        if (field.blinding !== true) continue;
+        const value = filled[field.name];
+        if (!isBytes32Hex(value)) continue;
+        if (isZeroBlindingValue(value)) {
+            throw new Error(`$.${field.name}: the blinding value is zero, which blinds nothing; leave it absent and a fresh one is drawn`);
+        }
+        if (committedBlinding.includes(value.toLowerCase())) {
+            throw new Error(`$.${field.name}: the blinding value is the committed set's, so one guess would confirm both; leave it absent and a fresh one is drawn`);
+        }
     }
     const content = encodeContentFromSpec(spec, filled, options);
     return { content, contentRef: keccak256(content), values: filled };

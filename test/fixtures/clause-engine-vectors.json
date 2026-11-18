@@ -47114,40 +47114,6 @@
    "ok": false
   },
   {
-   "group": "geohash items marked private in a public array",
-   "field": {
-    "name": "v",
-    "type": "array",
-    "required": true,
-    "items": {
-     "type": "string",
-     "format": "geohash",
-     "disposition": "private"
-    }
-   },
-   "value": [
-    "dr5reg"
-   ],
-   "ok": true
-  },
-  {
-   "group": "geohash items marked private in a public array",
-   "field": {
-    "name": "v",
-    "type": "array",
-    "required": true,
-    "items": {
-     "type": "string",
-     "format": "geohash",
-     "disposition": "private"
-    }
-   },
-   "value": [
-    "dr5regw"
-   ],
-   "ok": false
-  },
-  {
    "group": "geohash in a nested object, public",
    "field": {
     "name": "v",
@@ -47184,69 +47150,6 @@
    },
    "value": {
     "g": "dr5regw"
-   },
-   "ok": false
-  },
-  {
-   "group": "geohash in a nested object, private",
-   "field": {
-    "name": "v",
-    "type": "object",
-    "required": true,
-    "fields": [
-     {
-      "name": "g",
-      "type": "string",
-      "required": true,
-      "format": "geohash",
-      "disposition": "private"
-     }
-    ]
-   },
-   "value": {
-    "g": "dr5regw"
-   },
-   "ok": true
-  },
-  {
-   "group": "geohash in a nested object, private",
-   "field": {
-    "name": "v",
-    "type": "object",
-    "required": true,
-    "fields": [
-     {
-      "name": "g",
-      "type": "string",
-      "required": true,
-      "format": "geohash",
-      "disposition": "private"
-     }
-    ]
-   },
-   "value": {
-    "g": "dr5regw3pg6s"
-   },
-   "ok": true
-  },
-  {
-   "group": "geohash in a nested object, private",
-   "field": {
-    "name": "v",
-    "type": "object",
-    "required": true,
-    "fields": [
-     {
-      "name": "g",
-      "type": "string",
-      "required": true,
-      "format": "geohash",
-      "disposition": "private"
-     }
-    ]
-   },
-   "value": {
-    "g": "dr5regw3pg6st"
    },
    "ok": false
   },
@@ -47472,6 +47375,173 @@
    "content": {
     "g": "dr5reg",
     "b": "0xab"
+   },
+   "ok": false
+  },
+  {
+   "label": "geohash in a nested object, private, in a private set {\"v\":{\"g\":\"dr5regw\"},\"b\":\"0xabababababababababababababababababababababababababababababababab\"}",
+   "fields": [
+    {
+     "name": "v",
+     "type": "object",
+     "required": true,
+     "disposition": "private",
+     "fields": [
+      {
+       "name": "g",
+       "type": "string",
+       "required": true,
+       "format": "geohash",
+       "disposition": "private"
+      }
+     ]
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "v": {
+     "g": "dr5regw"
+    },
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": true
+  },
+  {
+   "label": "geohash in a nested object, private, in a private set {\"v\":{\"g\":\"dr5regw3pg6s\"},\"b\":\"0xabababababababababababababababababababababababababababababababab\"}",
+   "fields": [
+    {
+     "name": "v",
+     "type": "object",
+     "required": true,
+     "disposition": "private",
+     "fields": [
+      {
+       "name": "g",
+       "type": "string",
+       "required": true,
+       "format": "geohash",
+       "disposition": "private"
+      }
+     ]
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "v": {
+     "g": "dr5regw3pg6s"
+    },
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": true
+  },
+  {
+   "label": "geohash in a nested object, private, in a private set {\"v\":{\"g\":\"dr5regw3pg6st\"},\"b\":\"0xabababababababababababababababababababababababababababababababab\"}",
+   "fields": [
+    {
+     "name": "v",
+     "type": "object",
+     "required": true,
+     "disposition": "private",
+     "fields": [
+      {
+       "name": "g",
+       "type": "string",
+       "required": true,
+       "format": "geohash",
+       "disposition": "private"
+      }
+     ]
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "v": {
+     "g": "dr5regw3pg6st"
+    },
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": false
+  },
+  {
+   "label": "geohash items marked private in a private array {\"v\":[\"dr5regw3pg6s\"],\"b\":\"0xabababababababababababababababababababababababababababababababab\"}",
+   "fields": [
+    {
+     "name": "v",
+     "type": "array",
+     "required": true,
+     "disposition": "private",
+     "items": {
+      "type": "string",
+      "format": "geohash",
+      "disposition": "private"
+     }
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "v": [
+     "dr5regw3pg6s"
+    ],
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": true
+  },
+  {
+   "label": "geohash items marked private in a private array {\"v\":[\"dr5regw3pg6st\"],\"b\":\"0xabababababababababababababababababababababababababababababababab\"}",
+   "fields": [
+    {
+     "name": "v",
+     "type": "array",
+     "required": true,
+     "disposition": "private",
+     "items": {
+      "type": "string",
+      "format": "geohash",
+      "disposition": "private"
+     }
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "v": [
+     "dr5regw3pg6st"
+    ],
+    "b": "0xabababababababababababababababababababababababababababababababab"
    },
    "ok": false
   },
@@ -53205,6 +53275,230 @@
    "ok": false
   },
   {
+   "label": "a private field nested in a public object",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "o",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "v",
+        "type": "boolean",
+        "required": true,
+        "disposition": "private"
+       }
+      ]
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a private field nested in a public object, with a blinding field",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "o",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "v",
+        "type": "boolean",
+        "required": true,
+        "disposition": "private"
+       }
+      ]
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a private field two objects deep in a public object, with a blinding field",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "o",
+      "type": "object",
+      "required": true,
+      "fields": [
+       {
+        "name": "p",
+        "type": "object",
+        "required": true,
+        "fields": [
+         {
+          "name": "v",
+          "type": "boolean",
+          "required": true,
+          "disposition": "private"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a private item in a public array",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "a",
+      "type": "array",
+      "required": true,
+      "items": {
+       "type": "boolean",
+       "disposition": "private"
+      }
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a private item in a public array, with a blinding field",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "a",
+      "type": "array",
+      "required": true,
+      "items": {
+       "type": "boolean",
+       "disposition": "private"
+      }
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a private field nested in a private object, with a blinding field",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "o",
+      "type": "object",
+      "required": true,
+      "disposition": "private",
+      "fields": [
+       {
+        "name": "v",
+        "type": "boolean",
+        "required": true,
+        "disposition": "private"
+       }
+      ]
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "a private field nested in a public stage object",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "1": [
+      {
+       "name": "o",
+       "type": "object",
+       "required": true,
+       "fields": [
+        {
+         "name": "v",
+         "type": "boolean",
+         "required": true,
+         "disposition": "private"
+        }
+       ]
+      },
+      {
+       "name": "b",
+       "type": "string",
+       "format": "bytes32-hex",
+       "required": true,
+       "disposition": "private",
+       "blinding": true
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
    "label": "blinding false",
    "spec": {
     "clauseId": "t",
@@ -53598,7 +53892,7 @@
      }
     ]
    },
-   "ok": true
+   "ok": false
   },
   {
    "label": "a private stage with its blinding field",
@@ -53990,6 +54284,53 @@
     "v": "é🚚"
    },
    "encoded": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000006c3a9f09f9a9a0000000000000000000000000000000000000000000000000000"
+  }
+ ],
+ "dataBytes": [
+  {
+   "label": "a key named __proto__, value A",
+   "content": {
+    "x": 1,
+    "__proto__": "A"
+   },
+   "bytes": "{\"__proto__\":\"A\",\"x\":1}"
+  },
+  {
+   "label": "a key named __proto__, value B",
+   "content": {
+    "x": 1,
+    "__proto__": "B"
+   },
+   "bytes": "{\"__proto__\":\"B\",\"x\":1}"
+  },
+  {
+   "label": "a key named __proto__ holding an object",
+   "content": {
+    "__proto__": {
+     "y": 2
+    },
+    "x": 1
+   },
+   "bytes": "{\"__proto__\":{\"y\":2},\"x\":1}"
+  },
+  {
+   "label": "a nested key named __proto__",
+   "content": {
+    "o": {
+     "z": 1,
+     "__proto__": "A"
+    }
+   },
+   "bytes": "{\"o\":{\"__proto__\":\"A\",\"z\":1}}"
+  },
+  {
+   "label": "keys named constructor, toString and prototype",
+   "content": {
+    "toString": "t",
+    "prototype": "p",
+    "constructor": "c"
+   },
+   "bytes": "{\"constructor\":\"c\",\"prototype\":\"p\",\"toString\":\"t\"}"
   }
  ]
 }

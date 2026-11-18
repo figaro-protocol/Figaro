@@ -17,6 +17,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { canonicalize } from "../../src/agreement.js";
 import { encodeContentFromSpec, parseClauseSpec, validateContent } from "../../src/clauses/index.js";
 
 const FIXTURE_PATH = path.resolve(__dirname, "../../../test/fixtures/clause-engine-vectors.json");
@@ -432,21 +433,9 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
         values: [[], ["dr5reg"], ["dr5regw"], ["dr5reg", "dr5regw3"], [7]],
     },
     {
-        // The array field's disposition governs its items, never the item's own.
-        group: "geohash items marked private in a public array",
-        field: { name: "v", type: "array", required: true, items: { type: "string", format: "geohash", disposition: "private" } },
-        values: [["dr5reg"], ["dr5regw"]],
-    },
-    {
         group: "geohash in a nested object, public",
         field: { name: "v", type: "object", required: true, fields: [{ name: "g", type: "string", required: true, format: "geohash" }] },
         values: [{ g: "dr5reg" }, { g: "dr5regw" }],
-    },
-    {
-        // The set rules bind a top-level set; a nested field keeps its own disposition.
-        group: "geohash in a nested object, private",
-        field: { name: "v", type: "object", required: true, fields: [{ name: "g", type: "string", required: true, format: "geohash", disposition: "private" }] },
-        values: [{ g: "dr5regw" }, { g: "dr5regw3pg6s" }, { g: "dr5regw3pg6st" }],
     },
     {
         group: "formatFromField with no sibling, a static geohash format",
@@ -478,6 +467,21 @@ const CONTENT_CASES: { label: string; fields: Field[]; content: unknown }[] = [
     ].map((content) => ({
         label: `private geohash ${JSON.stringify(content)}`,
         fields: [{ name: "g", type: "string", required: true, format: "geohash", disposition: "private" }, BLINDING],
+        content,
+    })),
+    // A nested field keeps its own disposition for the grain; a private one makes its set private (the set rules).
+    ...[{ v: { g: "dr5regw" }, b: B32 }, { v: { g: "dr5regw3pg6s" }, b: B32 }, { v: { g: "dr5regw3pg6st" }, b: B32 }].map((content) => ({
+        label: `geohash in a nested object, private, in a private set ${JSON.stringify(content)}`,
+        fields: [
+            { name: "v", type: "object", required: true, disposition: "private", fields: [{ name: "g", type: "string", required: true, format: "geohash", disposition: "private" }] },
+            BLINDING,
+        ],
+        content,
+    })),
+    // The array field's disposition governs its items, never the item's own.
+    ...[{ v: ["dr5regw3pg6s"], b: B32 }, { v: ["dr5regw3pg6st"], b: B32 }].map((content) => ({
+        label: `geohash items marked private in a private array ${JSON.stringify(content)}`,
+        fields: [{ name: "v", type: "array", required: true, disposition: "private", items: { type: "string", format: "geohash", disposition: "private" } }, BLINDING],
         content,
     })),
     ...[{ a: ["dr5regw3pg6s"], b: B32 }, { a: ["dr5regw3pg6st"], b: B32 }].map((content) => ({
@@ -664,6 +668,14 @@ const SPEC_CASES: { label: string; spec: unknown }[] = [
     { label: "a mixed set", spec: specOf([{ name: "v", type: "boolean", required: true }, { name: "w", type: "boolean", required: true, disposition: "private" }, BLINDING]) },
     { label: "a mixed set, public written out", spec: specOf([{ name: "v", type: "boolean", required: true, disposition: "public" }, { name: "w", type: "boolean", required: true, disposition: "private" }, BLINDING]) },
     { label: "a public field beside a private object", spec: specOf([{ name: "v", type: "boolean", required: true }, { name: "o", type: "object", required: true, disposition: "private", fields: [] }, BLINDING]) },
+    // A private field nested in a public one makes its top-level field private for the set rules.
+    { label: "a private field nested in a public object", spec: specOf([{ name: "o", type: "object", required: true, fields: [{ name: "v", type: "boolean", required: true, disposition: "private" }] }]) },
+    { label: "a private field nested in a public object, with a blinding field", spec: specOf([{ name: "o", type: "object", required: true, fields: [{ name: "v", type: "boolean", required: true, disposition: "private" }] }, BLINDING]) },
+    { label: "a private field two objects deep in a public object, with a blinding field", spec: specOf([{ name: "o", type: "object", required: true, fields: [{ name: "p", type: "object", required: true, fields: [{ name: "v", type: "boolean", required: true, disposition: "private" }] }] }, BLINDING]) },
+    { label: "a private item in a public array", spec: specOf([{ name: "a", type: "array", required: true, items: { type: "boolean", disposition: "private" } }]) },
+    { label: "a private item in a public array, with a blinding field", spec: specOf([{ name: "a", type: "array", required: true, items: { type: "boolean", disposition: "private" } }, BLINDING]) },
+    { label: "a private field nested in a private object, with a blinding field", spec: specOf([{ name: "o", type: "object", required: true, disposition: "private", fields: [{ name: "v", type: "boolean", required: true, disposition: "private" }] }, BLINDING]) },
+    { label: "a private field nested in a public stage object", spec: specOf(f({ type: "boolean" }), { "1": [{ name: "o", type: "object", required: true, fields: [{ name: "v", type: "boolean", required: true, disposition: "private" }] }, BLINDING] }) },
     { label: "blinding false", spec: specOf(f({ type: "string", blinding: false })) },
     { label: "blinding as a string", spec: specOf([{ name: "v", type: "boolean", required: true, disposition: "private" }, { ...BLINDING, blinding: "true" }]) },
     { label: "blinding null", spec: specOf(f({ type: "string", blinding: null })) },
@@ -751,6 +763,21 @@ function verdict(fields: unknown, content: unknown): boolean | null {
     return validateContent(content, parsed.spec).ok;
 }
 
+// ── Canonical bytes ─────────────────────────────────────────────────────────
+
+/** Contents whose canonical JSON (`canonicalize`, the bytes a clause's data
+ *  hash covers and a re-assertion carries to the guest) keeps every key,
+ *  those named as a property every object inherits among them. The guest
+ *  hashes the bytes it is handed and reads the content from them, so a key
+ *  the SDK's form dropped would leave two contents under one data hash. */
+const DATA_CASES: { label: string; content: unknown }[] = [
+    { label: "a key named __proto__, value A", content: JSON.parse('{"x":1,"__proto__":"A"}') as unknown },
+    { label: "a key named __proto__, value B", content: JSON.parse('{"x":1,"__proto__":"B"}') as unknown },
+    { label: "a key named __proto__ holding an object", content: JSON.parse('{"__proto__":{"y":2},"x":1}') as unknown },
+    { label: "a nested key named __proto__", content: JSON.parse('{"o":{"z":1,"__proto__":"A"}}') as unknown },
+    { label: "keys named constructor, toString and prototype", content: JSON.parse('{"toString":"t","prototype":"p","constructor":"c"}') as unknown },
+];
+
 function build() {
     return {
         values: VALUE_CASES.flatMap(({ group, field, values }) =>
@@ -765,6 +792,7 @@ function build() {
             if (!validateContent(content, parsed.spec, options).ok) throw new Error(`encode case ${label}: the content does not validate`);
             return { label, fields, stages, stage, content, encoded: encodeContentFromSpec(parsed.spec, content, options) };
         }),
+        dataBytes: DATA_CASES.map(({ label, content }) => ({ label, content, bytes: canonicalize(content) })),
     };
 }
 
@@ -795,6 +823,15 @@ describe("Clause-engine vectors — the hand-written leg of the clause-engine lo
         ).toBe(true);
         expect(built.specs.some((c) => c.ok)).toBe(true);
         expect(built.specs.some((c) => !c.ok)).toBe(true);
+    });
+
+    it("the canonical bytes keep a key named __proto__, so two contents that differ there differ in their bytes", () => {
+        const [a, b, nested, deep] = build().dataBytes;
+        expect(a.bytes).toBe('{"__proto__":"A","x":1}');
+        expect(b.bytes).toBe('{"__proto__":"B","x":1}');
+        expect(nested.bytes).toBe('{"__proto__":{"y":2},"x":1}');
+        expect(deep.bytes).toBe('{"o":{"__proto__":"A","z":1}}');
+        expect(Object.prototype).not.toHaveProperty("y");
     });
 
     it("a stage key parses only as the decimal of an integer 0..255, and a refusal names the key", () => {

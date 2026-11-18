@@ -335,8 +335,24 @@ function blindingShapeHolds(spec: FieldSpec, path: string, errors: SpecParseErro
 }
 
 /**
+ * Whether a field declares a private value: its own disposition is
+ * `private`, or a field nested in it (an object's `fields`, an array's
+ * `items`, at any depth) is. A set is withheld as a whole, so a private
+ * field nested in a public one would publish in plaintext; the set rules
+ * count the top-level field that holds it as private, so the set it stands
+ * in is private as a whole and carries its blinding field.
+ */
+export function fieldCarriesPrivate(field: FieldSpec): boolean {
+    if (field.disposition === "private") return true;
+    if (field.type === "object") return field.fields.some(fieldCarriesPrivate);
+    if (field.type === "array") return fieldCarriesPrivate(field.items);
+    return false;
+}
+
+/**
  * The rules of one field set (the top-level `fields`, or one `stages[N]`):
- * it does not mix public and private fields, and a set that declares a
+ * it does not mix public and private fields (a field counts as private when
+ * it or a field nested in it is, `fieldCarriesPrivate`), and a set that declares a
  * private field declares exactly one blinding field, while a set with no
  * other private field declares none. The leaf model withholds a whole set,
  * never one field (`agreement.ts`), so a mixed set either over-redacts its
@@ -346,7 +362,7 @@ function blindingShapeHolds(spec: FieldSpec, path: string, errors: SpecParseErro
 function fieldSetRulesHold(fields: readonly FieldSpec[], path: string, errors: SpecParseError[]): void {
     if (fields.length === 0) return;
     const blindingCount = fields.filter((f) => f.blinding === true).length;
-    const privateValues = fields.filter((f) => f.disposition === "private" && f.blinding !== true).length;
+    const privateValues = fields.filter((f) => fieldCarriesPrivate(f) && f.blinding !== true).length;
     const anyPublic = fields.some((f) => f.disposition !== "private");
     if (anyPublic && (privateValues > 0 || blindingCount > 0)) {
         errors.push({

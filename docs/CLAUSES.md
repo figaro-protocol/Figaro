@@ -510,7 +510,11 @@ format (`sdk/src/clauses/clause-spec.schema.json`):
    spec designer's; readers key on `"blinding": true`.
 2. A set with no other private field declares none.
 3. No set mixes public and private fields; each stage's set is held to the
-   rule as the top-level set is.
+   rule as the top-level set is. A field counts as private when it or a field
+   nested in it (an object's `fields`, an array's `items`, at any depth) is,
+   so a private field nested in a public one makes the set mixed
+   (`fieldCarriesPrivate` in `sdk/src/clauses/spec.ts`,
+   `field_carries_private` in `prover/clause/src/spec.rs`).
 4. The sign gate (`validateCommitmentAgreement`) refuses an agreement whose
    clause spec names the blinding field in `block.design.fills`,
    `block.checkout.catalogueFills`, `block.checkout.profileFills` or
