@@ -175,8 +175,8 @@ NEXT_PUBLIC_SWAP_QUOTER=
 # so a public build without it shows no fingerprint
 NEXT_PUBLIC_MULTISENDER=0x...
 
-# The florin + the RPGF distribution. UsageCounter records verified usage of
-# each clause, agreement or assembly as it happens; the minter (registered at genesis) pays each tranche pro
+# The florin + the RPGF distribution. UsageCounter counts each use of a
+# clause, agreement or assembly once its process resolves, on either path; the minter (registered at genesis) pays each tranche pro
 # rata from a closed accrual period. Nothing is posted, bonded, or challenged,
 # so there is no arbitrator address.
 NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=0x...

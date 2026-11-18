@@ -146,6 +146,11 @@ finding), `VERIFICATION_MAP.md`, `AUDITOR_HANDOVER.md`, `RELEASE_READINESS.md`.
 
 ## License
 
-[MIT](LICENSE) covers the code. See [TRADEMARK.md](TRADEMARK.md) for the
+[MIT](LICENSE) covers the code. Every release of this code stays under the
+MIT license, and the project will not change that license for a later release.
+A release already published stays MIT for everyone who holds it, whatever the
+project does afterwards. The Ethereum Foundation's mandate asks a supported
+project to pledge that it will not change its open source license in the
+future; this is that pledge. See [TRADEMARK.md](TRADEMARK.md) for the
 "Figaro" name and branding; [SECURITY.md](SECURITY.md) for reporting a
 vulnerability; [CONTRIBUTING.md](CONTRIBUTING.md) for contributing.
