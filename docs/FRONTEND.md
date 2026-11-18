@@ -160,8 +160,10 @@ on `/evidence-display`.
 chain (`lib/shared/userEndpoints.ts`), the cart per deployment
 (`lib/checkout/cartStore.ts`), the onboarding draft per chain and wallet
 (`lib/member/onboardingState.ts`), the signed-and-unsent orders per wallet and
-chain, the event cache per chain and contract. The site's pin-service token
-serves the build's own deployment only (`lib/shared/ipfsService.ts`).
+chain, the event cache per chain and contract. The IPFS node or pinning
+service a browser publishes through is the user's own, stored in that browser
+(`lib/shared/userEndpoints.ts`, `activePublishTarget` in
+`lib/shared/ipfsService.ts`); no build carries a pinning account.
 
 ## Key Library Areas (`lib/`)
 

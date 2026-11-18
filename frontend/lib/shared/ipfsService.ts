@@ -6,20 +6,53 @@
  */
 
 import { safeJsonFromResponse, safeJsonParse, type SafeJsonResponse } from "@/lib/shared/safeJson";
-import { readUserEndpoints } from "@/lib/shared/userEndpoints";
-import { pageDeployment } from "@/lib/shared/chains";
+import { readUserEndpoints, sanitizeEndpointUrl } from "@/lib/shared/userEndpoints";
 import { readCappedBytes } from "@figaro-protocol/sdk";
 
-// Build-baked DEFAULTS only — a user's runtime endpoint override (their own
-// node: they pay, they erase) wins at call time via the accessors below.
-const IPFS_API_URL =
-    process.env.NEXT_PUBLIC_IPFS_API_URL ?? "http://127.0.0.1:5001";
-
+// Build-baked DEFAULT for reads only — a user's runtime gateway override wins
+// at call time via the accessors below.
 const IPFS_GATEWAY_URL =
     process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
 
-function activeIpfsApiUrl(): string {
-    return readUserEndpoints().ipfsApiUrl ?? IPFS_API_URL;
+/**
+ * Where a publish from this browser pins, at call time: the wallet's own node,
+ * else a pinning service the user chose with its own token, else the node the
+ * build names (`NEXT_PUBLIC_IPFS_API_URL` — the devnet's local Kubo; a public
+ * build names none), else nowhere. No build carries a pinning account: each
+ * publishing wallet pins through a node or a service of its own
+ * (`docs/RELEASE_READINESS.md` Task 6), so with none set the publish is refused
+ * with `NO_PUBLISH_TARGET_LINE` and nothing is sent anywhere.
+ */
+export type PublishTarget =
+    | { kind: "node"; api: string }
+    | { kind: "service"; api: string; token: string };
+
+export function activePublishTarget(): PublishTarget | null {
+    const own = readUserEndpoints();
+    if (own.ipfsApiUrl) return { kind: "node", api: own.ipfsApiUrl };
+    if (own.pinServiceUrl && own.pinServiceToken) {
+        return { kind: "service", api: own.pinServiceUrl, token: own.pinServiceToken };
+    }
+    const built = sanitizeEndpointUrl(process.env.NEXT_PUBLIC_IPFS_API_URL);
+    return built ? { kind: "node", api: built } : null;
+}
+
+/** The one line a publishing page shows when this browser has nowhere to pin. */
+export const NO_PUBLISH_TARGET_LINE =
+    "This browser has no IPFS node or pinning service set, so it cannot publish.";
+
+/** The refusal of a publish or an erasure with no node and no service set. */
+export class NoPublishTargetError extends Error {
+    constructor() {
+        super(NO_PUBLISH_TARGET_LINE);
+        this.name = "NoPublishTargetError";
+    }
+}
+
+function requirePublishTarget(): PublishTarget {
+    const target = activePublishTarget();
+    if (!target) throw new NoPublishTargetError();
+    return target;
 }
 
 /** Canonical Kubo gateway base URL at call time — the single source for
@@ -32,11 +65,11 @@ function activeIpfsGatewayUrl(): string {
  * The gateway CHAIN a read walks: the primary first, then the build's fallback
  * gateway when the primary fails the read. The split exists because no single
  * gateway serves both halves of an open registry well — a dedicated gateway on
- * the site's own pin service answers instantly for everything that service
+ * a pin service answers instantly for everything that service
  * pinned but knows nothing else, while a public gateway reaches content anyone
  * pinned anywhere yet can take many minutes to find a fresh pin. A user's own
  * node override is the whole chain (their node, their choice — no read leaks
- * past it). Read at call time, like the pin-service JWT. `||`, not `??`: an
+ * past it). Read at call time. `||`, not `??`: an
  * EMPTY env value (a devnet .env.local read by `next build`) means "no fallback".
  */
 function activeIpfsGatewayUrls(): string[] {
@@ -79,33 +112,6 @@ function gatewayAlternates(url: string): string[] {
     if (!owner) return [];
     const path = url.slice(owner.length);
     return chain.filter((g) => g !== owner).map((g) => `${g}${path}`);
-}
-
-/**
- * Managed pinning service (testnet tier — `RELEASE_READINESS.md` Task 6).
- * When a JWT is baked into the deploy build, `add`/`unpin` target a service
- * speaking the Pinata-style pinning API instead of a Kubo node; gateway reads
- * are unaffected. A user's own runtime endpoint override still WINS — their
- * node, they pay. The service serves the build's own deployment only: a page
- * that shows another deployment the build lists never uses it. Dev and e2e builds carry no JWT and stay on Kubo (the JWT
- * rides the deploy command only, never a checked-in env file —
- * `docs/LOCAL_DEV.md`). `pinKeccakRawBlock` has no service equivalent (Kubo
- * `block/put` with a keccak multihash); in service mode without a user node
- * that publish stays best-effort-absent by its caller's own design
- * (`witnessContent.ts` — the on-chain fingerprint stays verifiable).
- */
-function activePinService(): { api: string; jwt: string } | null {
-    if (readUserEndpoints().ipfsApiUrl) return null;
-    // The token is the build's own deployment's courtesy (`next.config.mjs`
-    // admits it in a build for Sepolia only). A page showing another listed
-    // deployment pins through the reader's own node, never the site's account.
-    if (pageDeployment.kind !== "build") return null;
-    const jwt = process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT ?? "";
-    if (!jwt) return null;
-    // `||`, not `??`: an EMPTY env value (a devnet .env.local read by
-    // `next build`) must mean the default, never a relative "/pinning/…".
-    const api = process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_API || "https://api.pinata.cloud";
-    return { api: api.replace(/\/$/, ""), jwt };
 }
 
 /** Best-effort gateway warm after a pin-service pin: up to three reads,
@@ -433,10 +439,6 @@ function validateUploadableFile(file: File): void {
 class DefaultIpfsService implements IpfsService {
     // Resolved per call, not at construction — a runtime endpoint override
     // must apply without a rebuild or reload.
-    private get apiUrl(): string {
-        return activeIpfsApiUrl();
-    }
-
     private get gatewayUrl(): string {
         return activeIpfsGatewayUrl().replace(/\/$/, "");
     }
@@ -455,6 +457,11 @@ class DefaultIpfsService implements IpfsService {
     }
 
     async pinKeccakRawBlock(bytes: Uint8Array): Promise<string> {
+        const target = requirePublishTarget();
+        // A pinning service takes uploads, not keccak raw blocks (Kubo
+        // `block/put`); the caller's publish stays absent by its own design
+        // (`witnessContent.ts` — the on-chain fingerprint stays verifiable).
+        if (target.kind !== "node") throw new Error("A pinning service does not take keccak raw blocks; set an IPFS node to publish this content.");
         const form = new FormData();
         form.append("file", new Blob([bytes as BlobPart]));
         const controller = new AbortController();
@@ -462,7 +469,7 @@ class DefaultIpfsService implements IpfsService {
         let res: Response;
         try {
             res = await fetch(
-                `${this.apiUrl}/api/v0/block/put?cid-codec=raw&mhtype=keccak-256&mhlen=-1&pin=true`,
+                `${target.api}/api/v0/block/put?cid-codec=raw&mhtype=keccak-256&mhlen=-1&pin=true`,
                 { method: "POST", body: form, signal: controller.signal },
             );
         } finally {
@@ -494,22 +501,22 @@ class DefaultIpfsService implements IpfsService {
     }
 
     async unpin(cid: string): Promise<void> {
-        const service = activePinService();
-        if (service) {
+        const target = requirePublishTarget();
+        if (target.kind === "service") {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), IPFS_REQUEST_TIMEOUT_MS);
             let res: Response;
             try {
-                res = await fetch(`${service.api}/pinning/unpin/${encodeURIComponent(cid)}`, {
+                res = await fetch(`${target.api}/pinning/unpin/${encodeURIComponent(cid)}`, {
                     method: "DELETE",
-                    headers: { Authorization: `Bearer ${service.jwt}` },
+                    headers: { Authorization: `Bearer ${target.token}` },
                     signal: controller.signal,
                 });
             } finally {
                 clearTimeout(timer);
             }
             // 404: already absent — the state unpin exists to reach. Any other
-            // answer — 403 included, a scoped pin-only key — leaves the content
+            // answer — 403 included, a token scoped to pinning — leaves the content
             // pinned, so it is a refusal carrying the service's own answer;
             // callers that erase best-effort catch it, a party's erase control
             // shows it.
@@ -523,7 +530,7 @@ class DefaultIpfsService implements IpfsService {
         const timer = setTimeout(() => controller.abort(), IPFS_REQUEST_TIMEOUT_MS);
         let res: Response;
         try {
-            res = await fetch(`${this.apiUrl}/api/v0/pin/rm?arg=${encodeURIComponent(cid)}`, {
+            res = await fetch(`${target.api}/api/v0/pin/rm?arg=${encodeURIComponent(cid)}`, {
                 method: "POST",
                 signal: controller.signal,
             });
@@ -564,7 +571,8 @@ class DefaultIpfsService implements IpfsService {
         emptyCidMessage: string,
         timeoutMs: number,
     ): Promise<string> {
-        const service = activePinService();
+        const target = requirePublishTarget();
+        const service = target.kind === "service" ? target : null;
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
         let res: Response;
@@ -572,11 +580,11 @@ class DefaultIpfsService implements IpfsService {
             res = service
                 ? await fetch(`${service.api}/pinning/pinFileToIPFS`, {
                       method: "POST",
-                      headers: { Authorization: `Bearer ${service.jwt}` },
+                      headers: { Authorization: `Bearer ${service.token}` },
                       body,
                       signal: controller.signal,
                   })
-                : await fetch(`${this.apiUrl}/api/v0/add?pin=true`, {
+                : await fetch(`${target.api}/api/v0/add?pin=true`, {
                       method: "POST",
                       body,
                       signal: controller.signal,

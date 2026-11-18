@@ -32,6 +32,7 @@
 
 import { assemblyClauseDefaults, toggleClauseByKey } from "@/lib/designer/draftToAssembly";
 import Link from "@/components/shared/Link";
+import { PublishTargetNotice } from "@/components/shared/PublishTargetNotice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";
@@ -795,6 +796,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         connections, then click one to compose its terms. Keep each assembly
                         specific — offer variety with more assemblies, not more options.
                     </p>
+                    <PublishTargetNotice className="mb-4" />
                     <div data-testid="designer-editorial" className="space-y-2">
                     <label className="block">
                         <div className="flex items-baseline justify-between">

@@ -4,6 +4,7 @@ import Link from "@/components/shared/Link";
 import { RegisterClauseForm } from "./_components/RegisterClauseForm";
 import { RegisteredClausesReclaim } from "./_components/RegisteredClausesReclaim";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
+import { PublishTargetNotice } from "@/components/shared/PublishTargetNotice";
 
 export const metadata: Metadata = withOg({
     title: "Register a clause — Figaro",
@@ -56,6 +57,7 @@ export default function ClauseAuthoring() {
                     &mdash; which part of a spec reaches which hash, and what a reserved <code>article</code> value silently changes. Read that before you register: registration is permanent. The traps that bite <em>after</em> registration &mdash; when a trade built on your clause is committed, resolved, and read back &mdash; are indexed on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
                 </p>
                 <div className="mt-8">
+                    <PublishTargetNotice className="mb-4" />
                     <RegisterClauseForm />
                 </div>
             </section>

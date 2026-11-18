@@ -900,30 +900,33 @@ then answers yes lands the batch at a cost up to the budget.
 
 ---
 
-## 22. The public site bundle ships a Pinata pin key — a disposable courtesy, testnet only
+## 22. The site has no pinning account — a browser with no node and no service publishes nothing
 
-**Pattern**: `frontend/lib/shared/ipfsService.ts` inlines
-`NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT` — a scoped Pinata key — into the public
-site bundle, where anyone can extract it. Nothing in the codebase checks the
-key's scope.
+**Pattern**: no build carries a pinning credential, on any chain.
+`activePublishTarget` (`frontend/lib/shared/ipfsService.ts`) pins through the
+wallet's own IPFS node, else a pinning service the user chose with its own
+token, both stored in that browser only (`frontend/lib/shared/userEndpoints.ts`,
+set at `/members/edit/endpoints`), else the node the build names (the devnet's
+local Kubo; a public build names none). With none, every publish and erasure
+is refused with one line, `NO_PUBLISH_TARGET_LINE`, before any request is
+sent, and a publishing page shows that line with a link to the setting
+(`frontend/components/shared/PublishTargetNotice.tsx`).
 
-**Why it looks wrong**: A credential in a public bundle reads as a leaked
-secret: anyone can pin arbitrary content to the project's Pinata account or
-spend its quota, and a broader key would let a stranger unpin the account's
-content or enumerate its pins.
+**Why it looks wrong**: A visitor with no node of its own cannot publish a
+profile, a clause, an assembly or the agreement checkout pins until it sets
+one; a site account would let it publish at once.
 
-**Why it is correct**: The key is one of three scoped keys the account keeps
-apart by role — testnet, founder, dao — and only the testnet key ships. Its
-scope, confirmed in the Pinata dashboard, is pinning alone: `pinFileToIPFS`
-and `pinJSONToIPFS` active; unpin, pinList, every other permission, every
-pinning service, every data permission, and every V3 resource inactive. The
-worst a holder can do is pin junk and spend quota on a testnet account.
-Content integrity never rests on the pinning account: every registry read is
-digest-checked against the on-chain anchor (`Anchored<T>` — a read that skips
-the check does not compile), so a hostile pin can serve nothing that
-verifies. The arrangement is testnet-only by ruling: at mainnet, pinning is
-per-party (RELEASE_READINESS Task 6), the account splits by role, and these
-keys are revoked.
+**Why it is correct**: A credential compiled into a public bundle belongs to
+whoever holds the account: its payload names the holder, and the account is a
+central dependency that can withhold or unpin what is published through it.
+Content stays with its party (`docs/DATA_LAYER.md`), so durability is the
+publishing wallet's: it pins, it pays, it erases (RELEASE_READINESS Task 6). A
+test network runs the same code as mainnet, so the rule is one for every
+chain. Content integrity never rested on the account: every registry read is
+digest-checked against the on-chain anchor (`Anchored<T>`).
+`frontend/tests/lib/ipfsService.test.ts` holds that no build source reads a
+site pinning token and that, with no node and no service set, a publish sends
+nothing.
 
 ---
 
@@ -1448,7 +1451,7 @@ registry anchors is refused on counter-sign and on broadcast, with no
 | 19 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a skipped use stays uncounted and may be proved again in a later batch (conservative under-pay); the sequencer pre-filters what the counter would skip; an accrual starved of gas reverts the batch, never skips |
 | 20 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal stops resolved-but-uncounted trades counting — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is read when a use is counted; counting at resolution closes the normal window; an uncounted use counts in whichever period is open once its seller stakes again, lost only after the last period closes; residual grief is self-limiting (griefer forfeits own eligibility while unstaked) |
 | 21 | Batch resolve: nonce-less, deadline-less `ResolveProcess(processId, cumulativeValue)` authorization, by the buyer's key or its wallet code | batch-path | The canonical EIP-712 replay shape | The authorization binds a cumulative value, so it pays exactly the prefix of the process that value names and a later commit invalidates it; resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; a wallet-code attestation's refusal reverts the batch by name, a call that ran out of gas included, so no gas limit lands a batch without it, and the relay dead-letters it alone |
-| 22 | Pinata pin key in the public site bundle | site/pinning | A credential in a public bundle reads as a leaked secret | The testnet key is pin-only (dashboard-confirmed: unpin, list, data and every V3 resource inactive) and disposable; every registry read is digest-checked against the on-chain anchor, so a hostile pin never verifies; testnet only — per-party pinning at mainnet, the keys revoked at the account split |
+| 22 | No site pinning account; a browser with no node and no service publishes nothing | site/pinning | A visitor without a node cannot publish until it sets one | A bundled credential names its holder and makes one account a central dependency; each publishing wallet pins through its own node or a service it chose, on every chain; with neither, a publishing page shows one line and the setting, and nothing is sent |
 | 23 | Reward keyed by (kind, key), three kinds | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause or an agreement would take its reward; the kind keeps a stake in one family from earning another's, and no kind's gate reads another kind's registry |
 | 24 | The assembly root is a merkle tree over registered agreement hashes | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |
 | 25 | Ordered agreements; one agreement may hold two | registry | A repeated key looks like a duplicate leaf | Designs repeat terms; the index makes each leaf distinct and the root commits the multiplicity; usage counts once per process per (kind, key) |

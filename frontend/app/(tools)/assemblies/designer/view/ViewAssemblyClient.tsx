@@ -38,6 +38,7 @@
  */
 
 import Link from "@/components/shared/Link";
+import { PublishTargetNotice } from "@/components/shared/PublishTargetNotice";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -786,6 +787,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     )}
                 </div>
             )}
+            {isPublishReview && <PublishTargetNotice className="px-6 py-3 border-b border-default bg-subtle" />}
             {publishError && (
                 <div className="px-6 py-3 border-b border-default bg-subtle">
                     <p className="text-sm text-error-fg" role="alert" data-testid="publish-error">

@@ -13,16 +13,9 @@
 //     personal field name anywhere in its JSON;
 //   - the maintainer's private token list (.claude/personal-identity.tokens), when present.
 //
-// One known exception: the testnet pinning key, whose payload carries the account's email.
-// It is reissued from a non-personal account before the flip (docs/RELEASE_READINESS.md
-// § "Public on testnet", item 5). It passes only while the export's robots.txt disallows
-// every crawler, so the build that lifts the Disallow fails until the key is reissued. Its
-// SHA-256 is pinned below; delete the constant when the key is reissued.
-//
 // Usage: node scripts/check-export-no-personal-info.mjs <dir>...   (exit 0 clean, 1 on a hit)
 //        node scripts/check-export-no-personal-info.mjs --self-test
 
-import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, resolve } from 'node:path';
@@ -30,8 +23,6 @@ import { fileURLToPath } from 'node:url';
 import { pdfPages } from './pdf-text.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-
-const KNOWN_PRE_FLIP_KEY_SHA256 = 'd9ab25501dc9d395add79a630d58e08575f82dc61f50ba233cccde5812f4197b';
 
 const TEXT_EXT = new Set(['.html', '.js', '.mjs', '.json', '.txt', '.xml', '.css', '.map', '.md', '.svg', '.webmanifest', '']);
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
@@ -70,8 +61,6 @@ function personalInJson(value, path = '') {
     return out;
 }
 
-const sha256 = (s) => createHash('sha256').update(s).digest('hex');
-
 // A private-list token stands legitimately in a citation of a published work, the same places
 // scripts/lint-no-personal-identity.sh allows in the tree: an author-year citation
 // ("X and Token 2023", "Token 2023"), a bibliography entry ("A. Token. 2023.") or another
@@ -87,15 +76,14 @@ function isCitation(text, at, len) {
     );
 }
 
-// The findings in one text. `preFlip` is true while the export still disallows every crawler.
-export function scanText(text, { tokens = [], preFlip = false, knownKey = KNOWN_PRE_FLIP_KEY_SHA256 } = {}) {
+// The findings in one text.
+export function scanText(text, { tokens = [] } = {}) {
     const findings = [];
     for (const m of text.matchAll(EMAIL)) findings.push(`an email in the text (${m[0].length} characters)`);
     for (const m of text.matchAll(JWT)) {
         const [h, p] = m[0].split('.');
         const inside = [...personalInJson(decodeSegment(h) ?? {}, 'header'), ...personalInJson(decodeSegment(p) ?? {}, 'payload')];
         if (inside.length === 0) continue;
-        if (preFlip && knownKey && sha256(m[0]) === knownKey) continue;
         findings.push(`a token carrying ${inside.join(', ')}`);
     }
     const lower = text.toLowerCase();
@@ -121,13 +109,12 @@ function* walk(dir) {
 
 // Every finding under `dir`, as `<file>: <finding>` lines.
 function scanDir(dir, tokens) {
-    const preFlip = preFlipOf(dir);
     const files = [...walk(dir)];
     const pdfs = pdfPages(files.filter((f) => extname(f).toLowerCase() === '.pdf'));
     const out = [];
     for (const file of files) {
         const text = pdfs[file] ? pdfs[file].join('\n') : readFileSync(file, 'utf8');
-        for (const f of scanText(text, { tokens, preFlip })) out.push(`${file}: ${f}`);
+        for (const f of scanText(text, { tokens })) out.push(`${file}: ${f}`);
     }
     return out;
 }
@@ -154,11 +141,6 @@ function minimalPdf(text) {
     return pdf;
 }
 
-function preFlipOf(dir) {
-    const robots = join(dir, 'robots.txt');
-    return existsSync(robots) && /^Disallow: \/\s*$/m.test(readFileSync(robots, 'utf8'));
-}
-
 function selfTest() {
     const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
     const jwt = (payload) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64(payload)}.c2lnbmF0dXJlLXBhcnQ`;
@@ -168,10 +150,8 @@ function selfTest() {
         ['fires: an email in the text', 'contact someone@example.org now', {}, true],
         ['fires: a token whose payload carries an email', `let e="${personalKey}"`, {}, true],
         ['fires: a token with a personal field name', `x=${jwt({ name: 'Ann' })}`, {}, true],
-        ['fires: the known key once the crawlers are let in', personalKey, { preFlip: false, knownKey: sha256(personalKey) }, true],
         ['fires: a private-list token', 'by Jane Example', { tokens: ['jane example'] }, true],
         ['quiet: a token without personal fields', `let e="${cleanKey}"`, {}, false],
-        ['quiet: the known key before the flip', personalKey, { preFlip: true, knownKey: sha256(personalKey) }, false],
         ['fires: a byline', 'written by Jane Example for the site', { tokens: ['example'] }, true],
         ['quiet: an address-free text', 'the wallet 0xabc signs', {}, false],
         ['quiet: an author-year citation', '(Genovese and Example 2023)', { tokens: ['example'] }, false],
