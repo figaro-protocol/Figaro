@@ -202,7 +202,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
     });
 
     it("a key the parse DROPS is named, and the hashed value carries none of it", () => {
-        const text = JSON.stringify(SPEC).replace("{", '{"__proto__":{"admin":true},');
+        const text = '{"__proto__":{"admin":true},' + JSON.stringify(SPEC).slice(1);
         const v = storedDocument(text, computeClauseKey(SPEC), "content-hash");
         expect(v.matches).toBe(true);
         expect(v.differences).toEqual(["dropped-key"]);

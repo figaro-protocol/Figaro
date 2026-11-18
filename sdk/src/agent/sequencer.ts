@@ -309,7 +309,9 @@ export class SequencerClient {
     private readonly _fetch: typeof globalThis.fetch;
 
     constructor(config: SequencerClientConfig) {
-        this.url = config.url.replace(/\/+$/, "");
+        let url = config.url;
+        while (url.endsWith("/")) url = url.slice(0, -1);
+        this.url = url;
         this._fetch = config.fetch ?? globalThis.fetch.bind(globalThis);
     }
 
