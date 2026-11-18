@@ -1,6 +1,6 @@
 {
     "chainId": 1,
-    "about": "What must hold on Ethereum mainnet after scripts/deploy-mainnet.sh and the genesis registration, written before either. Read by scripts/check-deployment.mjs with --artifacts from a `forge build --via-ir` at the audit tag. A null is a value not yet decided: the check fails on it until it is written here.",
+    "about": "What must hold on Ethereum mainnet after scripts/deploy-mainnet.sh and the genesis registration, written before either. Read by scripts/check-deployment.mjs with --artifacts from a `forge build --via-ir` at the audit tag. The registry stakes and the members' waiting time are the values script/DeployMainnet.s.sol deploys, the same as on Sepolia. A null is a value that exists only at the deploy, a wallet's address or the key built from the release guest: the check fails on it until it is written here.",
     "wallets": {
         "founder": null,
         "supporters": null,
@@ -12,11 +12,11 @@
         "gateway": "0x397A5f7f3dBd538f23DE225B51f532c34448dA9B"
     },
     "registries": {
-        "membersRegistrationDeposit": null,
-        "membersWithdrawalCooldown": null,
-        "clauseRegistrationDeposit": null,
-        "assemblyRegistrationDeposit": null,
-        "agreementRegistrationDeposit": null
+        "membersRegistrationDeposit": "50000000000000000",
+        "membersWithdrawalCooldown": "2419200",
+        "clauseRegistrationDeposit": "50000000000000000",
+        "assemblyRegistrationDeposit": "50000000000000000",
+        "agreementRegistrationDeposit": "50000000000000000"
     },
     "usageCounter": {
         "minSellers": "3",
