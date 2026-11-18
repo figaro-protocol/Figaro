@@ -3362,7 +3362,7 @@ async fn a_recorded_failure_carries_no_url() {
     let (_, last) = log.snapshot().await;
     let (_, claim) = log.claims_snapshot().await;
     for recorded in [last.unwrap(), claim.unwrap()] {
-        for secret in [
+        for forbidden in [
             "SECRETKEY",
             "127.0.0.1",
             "http://",
@@ -3370,7 +3370,7 @@ async fn a_recorded_failure_carries_no_url() {
             "ABC",
             "rpc.example",
         ] {
-            assert!(!recorded.contains(secret), "{secret} in {recorded}");
+            assert!(!recorded.contains(forbidden), "{forbidden} in {recorded}");
         }
         assert!(recorded.contains("failed"), "the reason stays: {recorded}");
     }
