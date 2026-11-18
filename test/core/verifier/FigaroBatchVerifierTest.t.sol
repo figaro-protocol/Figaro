@@ -1180,6 +1180,76 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(verifier.batchCount(), 1);
     }
 
+    // ── The deadline, against the landing block ──────────────────────
+
+    /// The guest's `0x01` entry: the commitment, 252 packed bytes, and two
+    /// signatures the verifier does not read (the proof recovered them).
+    function _commitEntry(CommitmentTypes.Commitment memory c) internal pure returns (bytes memory) {
+        return bytes.concat(
+            hex"01",
+            abi.encodePacked(
+                c.processId,
+                c.buyer,
+                c.seller,
+                c.currency,
+                c.payment,
+                c.expectedCumulativeValue,
+                c.checkoutHash,
+                c.salt,
+                c.deadline
+            ),
+            new bytes(130)
+        );
+    }
+
+    /// Land a batch whose stream is one commit of `c`, proven at a clock one
+    /// minute behind the landing block: inside `MAX_BATCH_STALENESS`, so the
+    /// clock check passes and only the deadline decides.
+    function _landCommitProvenAMinuteAgo(CommitmentTypes.Commitment memory c) internal {
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes memory operations = _commitEntry(c);
+        bytes memory pv = abi.encode(
+            GENESIS,
+            keccak256("deadline-root"),
+            uint64(block.chainid),
+            address(verifier),
+            _hashPositions(positions),
+            _hashAttestations(events.attestations),
+            _hashBindings(events.specBindings),
+            _hashUsageEmpty(),
+            uint64(block.timestamp - 60),
+            keccak256(operations)
+        );
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), operations);
+    }
+
+    /// A commitment whose deadline passed one second before the landing
+    /// block, proven at a clock before its deadline: the proof holds, and
+    /// the verifier refuses the batch as `FigaroCore.commit` refuses the
+    /// commitment, by the same error, before any token moves.
+    function test_settleBatch_refusesACommitPastItsDeadlineAtTheLandingBlock() public {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        c.processId = bytes32(0);
+        c.deadline = block.timestamp - 1;
+        vm.expectRevert(abi.encodeWithSignature("DeadlineExpired()"));
+        _landCommitProvenAMinuteAgo(c);
+        assertEq(verifier.stateRoot(), GENESIS, "the root does not move");
+        assertEq(verifier.batchCount(), 0, "no batch lands");
+    }
+
+    /// At its deadline a commitment is live, on the Core (`deadline <
+    /// block.timestamp` refuses) and here alike.
+    function test_settleBatch_landsACommitAtItsDeadline() public {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        c.processId = bytes32(0);
+        c.deadline = block.timestamp;
+        _landCommitProvenAMinuteAgo(c);
+        assertEq(verifier.stateRoot(), keccak256("deadline-root"), "the live commitment lands");
+    }
+
     // ── Sequential batches: root chains, counter increments, and the
     //    stage-255 boundary packs identically to abi.encodePacked ────
 
@@ -1579,20 +1649,19 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(c, 0, "nothing counted");
     }
 
-    /// DESIGN_DECISIONS § 19, the gas leg: a submitter can starve the accrual
-    /// call. The verifier forwards at most 63/64 of what remains (EIP-150), so
-    /// the accrual can run out of gas while the outer call keeps 1/64, and
-    /// that 1/64 finishes the batch only when it covers the tail after the
-    /// call (the root write, the batch id, the three events). The probe walks
-    /// the gas limit down from a full run at one, sixteen and sixty-four uses
-    /// and records, per limit, whether the batch landed with its uses
-    /// counted, landed with `BatchAccrualSkipped`, or reverted whole. It
-    /// asserts the invariant every outcome shares, a batch never lands
-    /// part-way, and the shape § 19 states: at one use no gas limit lands the
-    /// batch with the accrual starved (the call reverts whole instead), and at
-    /// sixty-four uses a band of limits does, because the accrual then costs
-    /// more than sixty-three times the tail. The figures in § 19 are read
-    /// from this probe's log; a repricing that moves them moves § 19.
+    /// DESIGN_DECISIONS § 19, the gas leg: a submitter could starve the
+    /// accrual call. The verifier forwards at most 63/64 of what remains
+    /// (EIP-150), so the accrual can run out of gas while the outer call
+    /// keeps 1/64; at sixty-four uses that 1/64 covers the tail after the
+    /// call, so before the gas check a band of limits landed the batch with
+    /// `BatchAccrualSkipped`. The verifier now reads the gas left after a
+    /// failed accrual and reverts the batch (`AccrualStarvedOfGas`) when the
+    /// call consumed what it was handed. The probe walks the gas limit down
+    /// from a full run at one, sixteen and sixty-four uses and records, per
+    /// limit, whether the batch landed with its uses counted, landed with
+    /// `BatchAccrualSkipped`, or reverted whole. It asserts the invariant
+    /// every outcome shares, a batch never lands part-way, and that at no
+    /// size does any limit land the batch with the accrual starved.
     function test_settleBatch_gasStarvationProbe() public {
         _gasStarvationProbe(1);
         _gasStarvationProbe(16);
@@ -1653,16 +1722,8 @@ contract FigaroBatchVerifierTest is Test {
         emit log_named_uint("least gas landing with the accrual skipped", pr.skippedLo);
         emit log_named_uint("most gas at which the whole call reverted", pr.revertedHi);
         assertTrue(pr.revertedHi != 0, "the walk reached the gas at which the call reverts whole");
-        if (uses == 1) {
-            assertEq(pr.skippedHi, 0, "at one use no limit lands the batch with the accrual starved");
-        }
-        if (uses == 64) {
-            assertTrue(
-                pr.skippedHi != 0, "at sixty-four uses a band of limits lands the batch with the accrual starved"
-            );
-            assertTrue(pr.skippedLo > pr.revertedHi, "the band sits above the gas at which the call reverts whole");
-            assertTrue(pr.counted > pr.skippedHi, "and below the gas at which the accrual completes");
-        }
+        assertEq(pr.skippedHi, 0, "no limit lands the batch with the accrual starved");
+        assertTrue(pr.counted != 0, "the walk started at a limit that lands the batch with its uses counted");
     }
 
     /// One probe at gas limit `g`: the batch lands whole, lands with the accrual
@@ -1711,6 +1772,34 @@ contract FigaroBatchVerifierTest is Test {
             if (logs[i].topics.length > 0 && logs[i].topics[0] == topic) return true;
         }
         return false;
+    }
+
+    /// A limit tuned to starve the accrual: 95% of a full run at sixty-four
+    /// uses, inside the band the probe above walks under both builds (about
+    /// 63% to 99% of a full run without via-IR, 90% to 99% with it).
+    function test_settleBatch_aStarvedAccrualRevertsTheBatch() public {
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 64);
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _batchWithUsage(usage);
+        uint256 snap = vm.snapshotState();
+        uint256 g0 = gasleft();
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
+        uint256 full = g0 - gasleft();
+        vm.revertToState(snap);
+
+        vm.expectRevert(abi.encodeWithSignature("AccrualStarvedOfGas()"));
+        this.landWith(full * 95 / 100, pv, positions, events, usage);
+        assertEq(verifier.stateRoot(), GENESIS, "the root does not move");
+
+        // With the gas a full run takes, the same batch lands with its uses counted.
+        this.landWith(full, pv, positions, events, usage);
+        assertEq(verifier.stateRoot(), newRoot, "the batch lands");
+        (uint64 c,,) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
+        assertEq(c, 64, "every use counted");
     }
 
     /// A counter bound to another verifier would refuse every accrual this

@@ -338,14 +338,14 @@ ceiling several-fold and negates the batch path's gas advantage entirely.
    against the landing block. Whoever builds and proves the batch chooses that
    clock; `settleBatch` accepts it when it is no later than the landing
    block's `block.timestamp` and at most `MAX_BATCH_STALENESS`, one hour,
-   behind it (`src/core/verifier/FigaroBatchVerifier.sol:154`,
-   `src/core/verifier/FigaroBatchVerifier.sol:440`). A commitment signed
-   under the verifier's domain can therefore be bonded on the batch path up to
-   one hour after its signed deadline; `FigaroCore.commit` refuses a
-   commitment once the block passes its deadline
-   (`src/core/kernel/FigaroCore.sol:147`). A party that signed a batch-path
-   commitment loses the last hour of the lapse it signed for: until then,
-   anyone who holds both signatures can prove a batch that bonds it.
+   behind it (`src/core/verifier/FigaroBatchVerifier.sol:157`,
+   `src/core/verifier/FigaroBatchVerifier.sol:451`). `settleBatch` then reads
+   each commit's deadline in the operation stream's `0x01` entry and refuses
+   the batch (`DeadlineExpired`, `src/core/verifier/FigaroBatchVerifier.sol:810`) when it is before the landing block's
+   `block.timestamp`, as `FigaroCore.commit` refuses the commitment
+   (`src/core/kernel/FigaroCore.sol:147`). A commitment therefore bonds on
+   either path only while its deadline has not passed at the block that bonds
+   it; a batch proven before a deadline and landed after it reverts whole.
 
 ### What is not `FigaroCore` scaling
 

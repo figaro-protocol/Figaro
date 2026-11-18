@@ -591,6 +591,12 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     // batch's timestamp window, the published operation stream.
     "error PublicValuesLengthMismatch(uint256 expected, uint256 actual)",
     "error BatchTimestampOutOfRange(uint64 committed, uint64 current)",
+    // A commit in the stream whose deadline is before the landing block:
+    // FigaroCore.commit's own refusal, by its name.
+    "error DeadlineExpired()",
+    // The usage counter's call ran out of the gas the submitter left it; the
+    // batch reverts rather than land with its uses uncounted.
+    "error AccrualStarvedOfGas()",
     "error OperationsHashMismatch()",
     "error MalformedOperationStream()",
     // Constructor guards: a deployment refused names its cause.
