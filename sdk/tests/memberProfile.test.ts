@@ -203,6 +203,20 @@ describe("member profile metadata parser", () => {
         });
     });
 
+    describe("the public geohash grain cap", () => {
+        it("refuses a location finer than six characters, as an object or a legacy string", () => {
+            expect(() => parseMemberProfileDocument({ name: "Bob", location: { geohash: "dr5regw" } })).toThrow(/grain cap/);
+            expect(() => parseMemberProfileDocument({ name: "Bob", location: "dr5regw" })).toThrow(/grain cap/);
+        });
+
+        it("keeps a location of exactly six characters", () => {
+            expect(parseMemberProfileDocument({ name: "Bob", location: { geohash: "dr5reg" } }).location).toEqual({
+                geohash: "dr5reg",
+                addressText: undefined,
+            });
+        });
+    });
+
     describe("legacy location strings", () => {
         it("a legacy string that is not a geohash yields no location", () => {
             const result = parseMemberProfileDocument({ name: "Bob", location: "Manhattan, NY" });

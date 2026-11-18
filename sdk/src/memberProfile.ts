@@ -38,6 +38,7 @@ import {
 } from "./documentParse.js";
 import { isBytes32Hex } from "./types.js";
 import { isGeohash } from "./derive/geo.js";
+import { PUBLIC_GEOHASH_MAX_PRECISION } from "./clauses/grain.js";
 import type { Address } from "./types.js";
 import type { Agreement } from "./agreement.js";
 import { deriveAssemblySlug } from "./assembly.js";
@@ -340,16 +341,25 @@ function parseAcceptedTokens(value: unknown, path: string): AcceptedTokenMetadat
     });
 }
 
+/** A profile is a public artifact, so its geohash is neighborhood grade. */
+function asPublicGeohash(geohash: string, path: string): string {
+    if (geohash.length > PUBLIC_GEOHASH_MAX_PRECISION) {
+        throw new Error(`${path}.geohash is finer than ${PUBLIC_GEOHASH_MAX_PRECISION} characters, the public grain cap.`);
+    }
+    return geohash;
+}
+
 function parseLocation(value: unknown, path: string): MemberLocation | undefined {
     if (value === undefined) return undefined;
     // A legacy profile wrote its location as a bare string: a geohash is kept
     // as one; any other string carries no location.
     if (typeof value === "string") {
-        return isGeohash(value) ? { geohash: value } : undefined;
+        if (!isGeohash(value)) return undefined;
+        return { geohash: asPublicGeohash(value, path) };
     }
     const record = asRecord(value, path);
     return {
-        geohash: asString(record.geohash, `${path}.geohash`),
+        geohash: asPublicGeohash(asString(record.geohash, `${path}.geohash`), path),
         addressText: asOptionalString(record.addressText, `${path}.addressText`),
     };
 }

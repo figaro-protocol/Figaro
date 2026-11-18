@@ -7,9 +7,7 @@
  * Disperse deployment; devnet rehearses against MockDisperse,
  * which mirrors its verified interface). Wallet-side and post-resolution by
  * design: FigaroCore has already paid out, so this is a wallet spending its
- * own balance — no batch-path work, no process state, no new contract. The
- * self-sovereign fiscal trail (which address got which share of which
- * receipt) falls out of the chain's data as a byproduct.
+ * own balance — no batch-path work, no process state, no new contract..
  *
  * This module is the PURE half: the composed contract's ABI and the leg
  * vocabulary + validation. The broadcast lives in
