@@ -285,7 +285,7 @@ jobs:
                       "High arbitrary-send-erc20 src/core/kernel/FigaroCore.sol:FigaroCore._pullExact :: token.safeTransferFrom(from,address(this),amount)",
                       "High arbitrary-send-erc20 src/core/verifier/FigaroBatchVerifier.sol:FigaroBatchVerifier._pullExact :: token.safeTransferFrom(from,address(this),amount)",
                       "Medium incorrect-equality src/registries/MembersRegistry.sol:MembersRegistry.withdraw :: unlockAt == 0",
-                      "Medium reentrancy-no-eth src/core/verifier/FigaroBatchVerifier.sol:FigaroBatchVerifier.settleBatch :: usageCounter.applyBatchAccrual(usage.period,usage.provenanceLeaf,usage.uses) ; stateRoot = pv.newRoot",
+                      "Medium reentrancy-no-eth src/core/verifier/FigaroBatchVerifier.sol:FigaroBatchVerifier.settleBatch :: _applyAccrual(usage) ; usageCounter.applyBatchAccrual(usage.period,usage.provenanceLeaf,usage.uses) ; newBatchId = ++ batchCount ; stateRoot = pv.newRoot",
                       "Medium unused-return src/rewards/RpgfMinter.sol:RpgfMinter._isAuthor :: (agreementRegisteredBy,None,agreementWithdrawn,None) = agreements.bindings(clauseOrAssembly)",
                       "Medium unused-return src/rewards/RpgfMinter.sol:RpgfMinter._isAuthor :: (assemblyRegisteredBy,None,depositWithdrawn,None) = assemblies.bindings(clauseOrAssembly)",
                       "Medium unused-return src/rewards/UsageCounter.sol:UsageCounter._agreementLive :: (registeredBy,registeredAt,depositWithdrawn,None) = agreements.bindings(agreementHash)",
