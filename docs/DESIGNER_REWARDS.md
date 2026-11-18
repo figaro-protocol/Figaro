@@ -100,14 +100,15 @@ registry and whether the process is already counted, as it does for a direct
 call (`CONTRACTS.md` § "Usage accounting" owns the two routes). A batch whose
 call to the counter reverts whole still lands, with no use counted, and the
 verifier emits `BatchAccrualSkipped` (`DESIGN_DECISIONS.md` § 19). The relay
-keeps no claim once its batch lands; whoever holds the order and its agreement
-finds the batch's uses with the SDK's `fetchSkippedBatchUses`, rebuilds the
-claims with `buildUsageClaims` and sends them again with
+keeps no claim once its batch lands. The verifier logs the batch's operation
+stream in `BatchOperations` in the same transaction, on every call route, and
+the stream carries each usage claim whole. So anyone, with the chain alone and
+without the agreement, finds the batch's claims and uses with the SDK's
+`fetchSkippedBatchUses` (which reads them with
+`usageClaimsOfOperationStream`), sends the claims again with
 `SequencerClient.submitUsageClaim`, and a later batch may prove them while a
 period is open: once the last period has closed (`AccrualClosed`), no batch
-counts them. The batch's own `BatchOperations` event also carries each usage
-claim whole, on every call route, so a reader of the chain alone can send the
-same claims again; the SDK has no decoder of that stream. Nothing is
+counts them. Nothing is
 posted, bonded, challenged, or adjudicated, and there is no recurring cost to
 anyone.
 

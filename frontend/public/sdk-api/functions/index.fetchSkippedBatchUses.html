@@ -14,34 +14,50 @@
 <section class="tsd-panel">
 <ul class="tsd-signatures">
 <li class="">
-<div class="tsd-signature tsd-anchor-link" id="fetchskippedbatchuses"><span class="tsd-kind-call-signature">fetchSkippedBatchUses</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">client</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">batchVerifier</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">params</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span><br/>        <span class="tsd-kind-property">chunkSize</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">fromBlock</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">toBlock</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;latest&quot;</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.SkippedBatch.html" class="tsd-signature-type tsd-kind-interface">SkippedBatch</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span><a href="#fetchskippedbatchuses" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-signature tsd-anchor-link" id="fetchskippedbatchuses"><span class="tsd-kind-call-signature">fetchSkippedBatchUses</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">client</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">batchVerifier</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">params</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span><br/>        <span class="tsd-kind-property">chunkSize</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">fromBlock</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">toBlock</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;latest&quot;</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.SkippedBatch.html" class="tsd-signature-type tsd-kind-interface">SkippedBatch</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span><a href="#fetchskippedbatchuses" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Find every batch the verifier landed with no use counted, and the uses it
-carried. The verifier resolves a batch whose call to <code>UsageCounter</code> reverts
-whole (a period boundary crossed in flight, the last period closed
-(<code>AccrualClosed</code>), a provenance mismatch, an accrual starved of gas) and emits <code>BatchAccrualSkipped(batchId, reason)</code>
-(<code>docs/DESIGN_DECISIONS.md</code> § 19). The event names the batch; its uses are
-in the <code>settleBatch</code> calldata of the same transaction.</p>
-<p>Each use stays uncounted and a later batch may prove it again while a period
-is open; <code>reason</code> tells the caller whether sending again can work
-(<code>AccrualClosed</code> is final). Whoever holds the order and its agreement
-rebuilds the claims with <code>buildUsageClaims</code> and sends them to a relay
-(<code>SequencerClient.submitUsageClaim</code>). The batch's <code>BatchOperations</code> event
-also carries each usage claim whole, on every call route; this reader does
-not decode that stream. A use the counter
-skips one by one inside a call that does not revert (an unstaked seller, a
-key without a live registration, a process already counted) emits no event,
-and this reader does not see it; <code>UsageCounter.processCounted</code> answers for it.</p>
+<div class="tsd-comment tsd-typography"><p>Find every batch the verifier landed with no use counted, and the claims
+and uses it carried. The verifier resolves a batch whose call to
+<code>UsageCounter</code> reverts whole (a period boundary crossed in flight, the last
+period closed (<code>AccrualClosed</code>), a provenance mismatch, an accrual starved
+of gas) and emits <code>BatchAccrualSkipped(batchId, reason)</code>
+(<code>docs/DESIGN_DECISIONS.md</code> § 19). In the same transaction it logs the
+batch's operation stream in <code>BatchOperations(batchId, …)</code>, however the call
+reached it, and the stream carries each usage claim whole
+(<code>usageClaimsOfOperationStream</code>). So the answer is read from the
+verifier's logs alone: no transaction is read, and a <code>settleBatch</code> call
+made through another contract is read as a direct one is.</p>
+<p>Each use stays uncounted and a later batch may prove it again while a
+period is open; <code>reason</code> tells the caller whether sending again can work
+(<code>AccrualClosed</code> is final). Anyone can send each claim in <code>carried.claims</code>
+again with <code>SequencerClient.submitUsageClaim</code>, without the agreement.
+<code>carried.uses</code> are the uses the guest derives from those claims
+(<code>apply_usage_claims</code>, prover/lib/src/kernel.rs:788-882): one per
+(kind, key, process), the first claim naming the seller, a root order's
+process id derived under the verifier's EIP-712 domain (the client's chain
+id and <code>batchVerifier</code>); the proof binds them to the <code>settleBatch</code>
+argument. A use the counter skips one by one inside a call that does not
+revert (an unstaked seller, a key without a live registration, a process
+already counted) emits no event, and this reader does not see it;
+<code>UsageCounter.processCounted</code> answers for it.</p>
+<p><code>fromBlock</code> is required: a scan of a deployment starts at its
+<code>FigaroDeploymentRecord.deploymentBlock</code>. The node is asked for the two
+events only. A failed read throws, as every bulk reader of this SDK does
+(<code>fetchLogsChunked</code>): a partial scan would answer &quot;nothing skipped&quot; for
+the blocks it lost. A skipped batch whose <code>BatchOperations</code> log is absent
+from the node's answer, or whose stream does not decode, also throws: the
+verifier emits both in one transaction, so either is the node's error or a
+stream layout this SDK does not read, never a batch that carried nothing.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li><span><span class="tsd-kind-parameter">client</span>: <span class="tsd-signature-symbol">{}</span></span></li>
 <li><span><span class="tsd-kind-parameter">batchVerifier</span>: <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></span></li>
-<li><span><span class="tsd-kind-parameter">params</span>: <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">chunkSize</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">fromBlock</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">toBlock</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;latest&quot;</span> <span class="tsd-signature-symbol">}</span></span></li></ul></div>
+<li><span><span class="tsd-kind-parameter">params</span>: <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">chunkSize</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">fromBlock</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">toBlock</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;latest&quot;</span> <span class="tsd-signature-symbol">}</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.SkippedBatch.html" class="tsd-signature-type tsd-kind-interface">SkippedBatch</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L377">rpgf/index.ts:377</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L406">rpgf/index.ts:406</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

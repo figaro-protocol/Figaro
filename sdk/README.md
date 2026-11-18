@@ -389,7 +389,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `fetchDiscoveryEvents` | root | Registry events (clauses, assemblies, members); an unconfigured registry contributes nothing. |
 | `fetchEndpointLogAgreement` | root | The same agreement report, fetched from caller-supplied clients over one pinned `[fromBlock, toBlock]`. |
 | `fetchProcessesResolved` | root | For each process id, whether it has resolved and the block of its `ProcessResolved`: the Core's `processes(id)` getter decides the direct path, the verifier's `ProcessResolved` the batch path. |
-| `fetchSkippedBatchUses` | root | Each batch whose call to the counter reverted whole (`BatchAccrualSkipped`), with the period and the uses its `settleBatch` calldata carried: uses a later batch may prove again, rebuilt with `buildUsageClaims` and sent with `SequencerClient.submitUsageClaim`. |
+| `fetchSkippedBatchUses` | root | Each batch whose call to the counter reverted whole (`BatchAccrualSkipped`), with the period, the usage claims and the uses read from the `BatchOperations` log of the same transaction, on every call route. `fromBlock` is required (the deployment's `deploymentBlock`); a failed read throws. Each claim can be sent again with `SequencerClient.submitUsageClaim`, without the agreement, and a later batch may prove it while a period is open. |
 | `fetchUsageRecords` | root | `UsageRecorded` events — the direct-path half of the rewards mirror. |
 | `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalog and process set. |
 | `fillCatalogueMeasures` | root | Fold the measures each composed spec declares in `block.checkout.catalogueMeasures` from the lines' catalog items; a missing measure stays missing. |
@@ -477,6 +477,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `tryParseMemberProfileDocument` | root | Lenient profile parse — returns `null` instead of throwing, for discovery lists. |
 | `UNISWAP_V3_FEE_TIERS` | root | The Uniswap v3 fee tiers a quote probe walks: 100, 500, 3000, 10000. |
 | `unwrapWithSharedSecret` | `/handoff` | Decrypt what `wrapWithSharedSecret` produced. |
+| `usageClaimsOfOperationStream` | root | Every usage claim a batch's operation stream (the `operations` of `BatchOperations`) carries, whole and in order, in the wire form `SequencerClient.submitUsageClaim` sends. Walks every other entry by its own length and throws on a malformed stream, as the guest's `decode_operation_stream` refuses it. |
 | `validateCommitmentAgreement` | root | The non-throwing form of `assertAgreementSignable` — returns the findings instead. |
 | `validateContent` | `/clauses` | Validate clause content against its spec; on a closed clause, unknown fields are rejected; a geohash, its resolved format static or named by a sibling, is refused past its disposition's grain cap. |
 | `validateDraft` | `/agent` | The check a candidate runs before countersigning a race draft: structure, the bound assembly (`readProfile`), and with `specs` the merkle-leaf gate (`counterSignDraft` and `quoteDraft` run it themselves and refuse without `specs`). |
