@@ -545,11 +545,15 @@ the party's own address, then calls `FigaroCore.commit`.
   a counterparty; the commitment stays bilaterally signed.
 - Bond amounts derive from `c` (`2·payment`, `2·expectedCumulativeValue`),
   never from calldata; a leg reverts `OutputBelowBond` if the swap yields less.
-- The witness binds `{router, inputToken, maxInput, keccak256(swapData)}` into
-  a `SwapWitness` the party signs (`swapWitness(inputToken, maxInput,
-  swapData)` recomputes it for off-chain signers); substituting any of them
-  fails Permit2's own signature check before a token moves, so no relayer can
-  reroute the swap and capture the residual.
+- The witness binds `{router, inputToken, maxInput, keccak256(swapData),
+  commitmentHash, role}` into a `SwapWitness` the party signs
+  (`swapWitness(inputToken, maxInput, swapData, commitmentHash, role)`
+  recomputes it for off-chain signers; `commitmentHash` is
+  `CommitmentTypes.hashStruct(c)`, `role` is `BUYER_ROLE` 0 or `SELLER_ROLE`
+  1); substituting any of them fails Permit2's own signature check before a
+  token moves, so no relayer can reroute the swap and capture the residual,
+  and no caller can spend a leg on another commitment naming the party or in
+  the other party's place.
 - Immutable `figaroCore` / `permit2` / `router`; `ReentrancyGuard`; no admin,
   no pause. Alternative coordinators with other routers are valid
   compositions.

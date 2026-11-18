@@ -8,8 +8,10 @@
  * pulls the bond from the party as always, so the bilateral commitment is
  * untouched and the coordinator is never a counterparty.
  *
- * The witness binds `{router, inputToken, maxInput, keccak256(swapData)}` into
- * the digest the party signs, so a relayer cannot substitute the swap route.
+ * The witness binds `{router, inputToken, maxInput, keccak256(swapData),
+ * commitmentHash, role}` into the digest the party signs, so a relayer cannot
+ * substitute the swap route, and no one can spend the leg on another
+ * commitment naming the party, or in the other party's place.
  * This module is the off-chain half of that convention: the funding-leg wire
  * type and the EIP-712 typed data whose hash equals the digest Permit2
  * verifies (`swapWitness` on the coordinator recomputes the same witness
@@ -17,7 +19,8 @@
  * canonical Permit2 deployment).
  */
 import { keccak256, type TypedDataDomain } from "viem";
-import type { Hex } from "./types.js";
+import { hashCommitmentStruct } from "./commitments.js";
+import type { Commitment, Hex } from "./types.js";
 
 /** One funding leg of `swapAndCommit` — mirrors the coordinator's
  *  `SwapFunding` struct. `enabled = false` skips the leg (the party
@@ -65,12 +68,18 @@ export const SWAP_WITNESS_PERMIT_TYPES = {
         { name: "inputToken", type: "address" },
         { name: "maxInput", type: "uint256" },
         { name: "swapDataHash", type: "bytes32" },
+        { name: "commitmentHash", type: "bytes32" },
+        { name: "role", type: "uint8" },
     ],
     TokenPermissions: [
         { name: "token", type: "address" },
         { name: "amount", type: "uint256" },
     ],
 } as const;
+
+/** The role a leg funds, as the coordinator's witness encodes it
+ *  (the coordinator's internal `BUYER_ROLE` / `SELLER_ROLE`). */
+export const SWAP_WITNESS_ROLE = { buyer: 0, seller: 1 } as const;
 
 export interface SwapWitnessTypedDataArgs {
     /** Chain the Permit2 deployment lives on. */
@@ -89,6 +98,10 @@ export interface SwapWitnessTypedDataArgs {
     deadline: bigint;
     /** The exact swap calldata the venue will receive — route-bound. */
     swapData: Hex;
+    /** The one commitment this leg funds; its EIP-712 struct hash is bound. */
+    commitment: Commitment;
+    /** The party's place in that commitment; the leg funds that bond only. */
+    role: keyof typeof SWAP_WITNESS_ROLE;
 }
 
 /** Build the EIP-712 typed data a party signs to authorize one swap-funded
@@ -114,6 +127,8 @@ export function buildSwapWitnessTypedData(args: SwapWitnessTypedDataArgs) {
                 inputToken: args.inputToken,
                 maxInput: args.maxInput,
                 swapDataHash: keccak256(args.swapData),
+                commitmentHash: hashCommitmentStruct(args.commitment),
+                role: SWAP_WITNESS_ROLE[args.role],
             },
         },
     } as const;

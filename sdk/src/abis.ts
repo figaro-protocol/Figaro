@@ -154,9 +154,10 @@ export const WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI = parseAbi([
     "function permit2() view returns (address)",
     "function router() view returns (address)",
     // Recomputes the Permit2 witness a party must sign for a leg — binds
-    // {router, inputToken, maxInput, keccak256(swapData)} so the signature
-    // covers the exact swap route.
-    "function swapWitness(address inputToken, uint256 maxInput, bytes swapData) view returns (bytes32)",
+    // {router, inputToken, maxInput, keccak256(swapData), commitmentHash, role}
+    // so the signature covers the exact swap route, the one commitment the
+    // leg funds and the party's place in it (0 buyer, 1 seller).
+    "function swapWitness(address inputToken, uint256 maxInput, bytes swapData, bytes32 commitmentHash, uint8 role) view returns (bytes32)",
     `function swapAndCommit(${COMMITMENT_TUPLE} c, bytes buyerSig, bytes sellerSig, ${SWAP_FUNDING_TUPLE} buyerFunding, ${SWAP_FUNDING_TUPLE} sellerFunding) external returns (bytes32 processId, bytes32 orderHash)`,
     "error NothingToFund()",
     "error SwapCallFailed()",

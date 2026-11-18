@@ -26,6 +26,7 @@ import {
     buildDomain,
     buildOrderAgreement,
     computeCheckoutHash,
+    hashCommitmentStruct,
     type Commitment,
     type Hex,
 } from "@figaro-protocol/sdk";
@@ -41,6 +42,11 @@ const INPUT_TOKEN = `0x${"1a".repeat(20)}` as Hex;
 const CORE = "0x00000000000000000000000000000000000000c0" as Hex;
 const SIG = `0x${"11".repeat(65)}` as Hex;
 const BUYER_SIG = `0x${"22".repeat(65)}` as Hex;
+/** A buyer's witness-signed leg relayed with the order. */
+const BUYER_LEG = {
+    enabled: true, inputToken: INPUT_TOKEN, maxInput: 211n, permitNonce: 5n, permitDeadline: 9_999_999_999n,
+    permitSignature: `0x${"44".repeat(65)}` as Hex, swapData: "0xbeef" as Hex,
+};
 
 const s = vi.hoisted(() => ({
     address: "" as string,
@@ -76,9 +82,11 @@ vi.mock("@figaro-protocol/sdk", async (importOriginal) => ({
     checkSellerBindsAssembly: async () => ({ ok: true }),
 }));
 const confirm = vi.fn(async (..._args: unknown[]) => { s.acts.push("confirm"); return true; });
+const commitConfirm = vi.fn(async (..._args: unknown[]) => { s.acts.push("confirm-commit"); return true; });
 vi.mock("@/lib/checkout/orderPreview", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/checkout/orderPreview")>()),
     requestSignConfirmation: (...args: unknown[]) => confirm(...args),
+    requestCommitConfirmation: (...args: unknown[]) => commitConfirm(...args),
 }));
 const quoteFundingLeg = vi.fn(async (args: { inputToken: Hex; currency: Hex; bondAmount: bigint; deadline: bigint; chainId: number; slippageBps?: number }): Promise<FundingQuote> => {
     s.acts.push("quote");
@@ -139,6 +147,7 @@ beforeEach(() => {
     s.typedData = [];
     s.signFails = null;
     confirm.mockClear();
+    commitConfirm.mockClear();
     quoteFundingLeg.mockClear();
     shareSignedOrder.mockClear();
     commitSignedOrder.mockClear();
@@ -151,7 +160,7 @@ describe("signCommitment — the buyer's signature", () => {
         const p = preview();
         const { result } = renderHook(() => useOrderCommitmentFlow());
         const { value } = await run(() => result.current.signCommitment(p));
-        expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, null);
+        expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, null, []);
         expect(s.typedData).toEqual([{
             domain: buildDomain(31337, CORE),
             types: COMMITMENT_TYPES,
@@ -179,10 +188,14 @@ describe("signCommitment — the buyer's signature", () => {
             bondAmount: 200n, deadline: 9_999_999_999n, slippageBps: 300,
         });
         // The confirm's swap summary is the quote's figures and the signing party, nothing else.
-        expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, { inputToken: INPUT_TOKEN, currency: CURRENCY, maxInput: 207n, slippageBps: 300, party: BUYER });
+        expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, { inputToken: INPUT_TOKEN, currency: CURRENCY, maxInput: 207n, slippageBps: 300, party: BUYER }, []);
         expect(s.acts).toEqual(["quote", "confirm", "sign:Commitment", `sign:${s.typedData[1].primaryType}`]);
         // The witness the wallet signs carries the maxInput the confirm showed.
         expect((s.typedData[1].message as { permitted: { token: Hex; amount: bigint } }).permitted).toEqual({ token: INPUT_TOKEN, amount: 207n });
+        // And binds the one commitment it funds, in the buyer's place.
+        expect((s.typedData[1].message as { witness: { commitmentHash: Hex; role: number } }).witness).toMatchObject({
+            commitmentHash: hashCommitmentStruct(p.commitment), role: 0,
+        });
         expect(value?.buyerFunding).toMatchObject({ enabled: true, inputToken: INPUT_TOKEN, maxInput: 207n, permitNonce: 42n, swapData: "0xdead" });
         expect(result.current.step).toBe("awaiting-seller");
     });
@@ -313,7 +326,11 @@ describe("acceptOrder — the seller's funded counter-signature", () => {
         const { value } = await run(() => result.current.acceptOrder(incoming, { inputToken: INPUT_TOKEN, slippageBps: 50 }));
         expect(value).toBe(`0x${"cc".repeat(32)}`);
         expect(quoteFundingLeg.mock.calls[0][0]).toMatchObject({ inputToken: INPUT_TOKEN, currency: CURRENCY, bondAmount: 600n, slippageBps: 50 });
-        expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, { inputToken: INPUT_TOKEN, currency: CURRENCY, maxInput: 607n, slippageBps: 50, party: SELLER });
+        expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, { inputToken: INPUT_TOKEN, currency: CURRENCY, maxInput: 607n, slippageBps: 50, party: SELLER }, []);
+        // The seller's witness binds this commitment, in the seller's place.
+        expect((s.typedData[1].message as { witness: { commitmentHash: Hex; role: number } }).witness).toMatchObject({
+            commitmentHash: hashCommitmentStruct(p.commitment), role: 1,
+        });
         // The broadcast the flow hands to commitSignedOrder routes the funded
         // order through the coordinator, with the seller's witness-signed leg.
         const { payload, commit: broadcast } = commitSignedOrder.mock.calls[0][0];
@@ -330,8 +347,71 @@ describe("acceptOrder — the seller's funded counter-signature", () => {
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await run(() => result.current.acceptOrder({ commitment: p.commitment, agreement: p.agreement, buyerSig: BUYER_SIG }));
         expect(quoteFundingLeg).not.toHaveBeenCalled();
-        expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, null);
+        expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, null, []);
         expect(commitSignedOrder.mock.calls[0][0].commit).toBe(commit);
+    });
+
+    it("shows the buyer's relayed leg in the seller's confirm, and the broadcast carries exactly that leg", async () => {
+        s.address = SELLER;
+        const p = preview();
+        const incoming: CommitmentPayload = { commitment: p.commitment, agreement: p.agreement, buyerSig: BUYER_SIG, buyerFunding: BUYER_LEG };
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        await run(() => result.current.acceptOrder(incoming));
+        expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, null, [
+            { inputToken: INPUT_TOKEN, currency: CURRENCY, maxInput: 211n, party: BUYER },
+        ]);
+        const { commit: broadcast } = commitSignedOrder.mock.calls[0][0];
+        await broadcast(p.commitment, BUYER_SIG, SIG);
+        expect(swapAndCommit).toHaveBeenCalledWith(p.commitment, BUYER_SIG, SIG, BUYER_LEG, undefined);
+    });
+
+    it("with its own leg and the buyer's, shows both in the one confirm and broadcasts both", async () => {
+        s.address = SELLER;
+        const p = preview();
+        const incoming: CommitmentPayload = { commitment: p.commitment, agreement: p.agreement, buyerSig: BUYER_SIG, buyerFunding: BUYER_LEG };
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        await run(() => result.current.acceptOrder(incoming, { inputToken: INPUT_TOKEN, slippageBps: 50 }));
+        expect(confirm).toHaveBeenCalledWith(
+            p.commitment, p.agreement,
+            { inputToken: INPUT_TOKEN, currency: CURRENCY, maxInput: 607n, slippageBps: 50, party: SELLER },
+            [{ inputToken: INPUT_TOKEN, currency: CURRENCY, maxInput: 211n, party: BUYER }],
+        );
+        const { commit: broadcast } = commitSignedOrder.mock.calls[0][0];
+        await broadcast(p.commitment, BUYER_SIG, SIG);
+        expect(swapAndCommit).toHaveBeenCalledWith(p.commitment, BUYER_SIG, SIG, BUYER_LEG, expect.objectContaining({ maxInput: 607n }));
+    });
+});
+
+describe("commitOrder — the broadcast of a fully-signed order", () => {
+    it("shows the relayed buyer leg in the commit confirm, and the broadcast carries exactly that leg", async () => {
+        const p = preview();
+        const payload: CommitmentPayload = { commitment: p.commitment, agreement: p.agreement, buyerSig: BUYER_SIG, sellerSig: SIG, buyerFunding: BUYER_LEG };
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        const { caught } = await run(() => result.current.commitOrder(payload));
+        expect(caught).toBeUndefined();
+        expect(commitConfirm).toHaveBeenCalledWith(p.commitment, p.agreement, [
+            { inputToken: INPUT_TOKEN, currency: CURRENCY, maxInput: 211n, party: BUYER },
+        ]);
+        const { commit: broadcast } = commitSignedOrder.mock.calls[0][0];
+        await broadcast(p.commitment, BUYER_SIG, SIG);
+        expect(swapAndCommit).toHaveBeenCalledWith(p.commitment, BUYER_SIG, SIG, BUYER_LEG, undefined);
+    });
+
+    it("with no leg, shows none and broadcasts through FigaroCore's commit", async () => {
+        const p = preview();
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        await run(() => result.current.commitOrder({ commitment: p.commitment, agreement: p.agreement, buyerSig: BUYER_SIG, sellerSig: SIG }));
+        expect(commitConfirm).toHaveBeenCalledWith(p.commitment, p.agreement, []);
+        expect(commitSignedOrder.mock.calls[0][0].commit).toBe(commit);
+    });
+
+    it("a declined confirm broadcasts nothing", async () => {
+        commitConfirm.mockResolvedValueOnce(false);
+        const p = preview();
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        const { caught } = await run(() => result.current.commitOrder({ commitment: p.commitment, agreement: p.agreement, buyerSig: BUYER_SIG, sellerSig: SIG, buyerFunding: BUYER_LEG }));
+        expect((caught as Error).message).toBe("Commit canceled by user.");
+        expect(commitSignedOrder).not.toHaveBeenCalled();
     });
 
     it("waits for no second receipt: the broadcaster verifies its own, and a second wait on the same hash never resolves in the browser", async () => {

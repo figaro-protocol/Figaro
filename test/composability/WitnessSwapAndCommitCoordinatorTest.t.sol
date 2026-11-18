@@ -35,6 +35,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
 
     uint256 internal constant P = 1000 ether; // payment; buyer bond 2P, seller bond 2P at root
     uint256 internal constant MINT = 1_000_000 ether;
+    uint8 internal constant BUYER = 0; // WitnessSwapAndCommitCoordinator.BUYER_ROLE
+    uint8 internal constant SELLER = 1; // WitnessSwapAndCommitCoordinator.SELLER_ROLE
 
     function setUp() public {
         buyer = vm.addr(BUYER_KEY);
@@ -97,17 +99,22 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
     }
 
     /// @dev The Permit2 witness digest a party signs, reconstructed with the
-    ///      SAME rules as MockWitnessPermit2 (spender = the coordinator).
-    function _permitDigest(address inputToken, uint256 maxInput, uint256 nonce, uint256 deadline, bytes memory swapData)
-        internal
-        view
-        returns (bytes32)
-    {
-        bytes32 witness = coord.swapWitness(inputToken, maxInput, swapData);
+    ///      SAME rules as MockWitnessPermit2 (spender = the coordinator), for
+    ///      the leg funding `role`'s bond of commitment `c`.
+    function _permitDigest(
+        CommitmentTypes.Commitment memory c,
+        uint8 role,
+        address inputToken,
+        uint256 maxInput,
+        uint256 nonce,
+        uint256 deadline,
+        bytes memory swapData
+    ) internal view returns (bytes32) {
+        bytes32 witness = coord.swapWitness(inputToken, maxInput, swapData, c.hashStruct(), role);
         bytes32 typeHash = keccak256(
             abi.encodePacked(
                 "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,",
-                "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash)TokenPermissions(address token,uint256 amount)"
+                "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash,bytes32 commitmentHash,uint8 role)TokenPermissions(address token,uint256 amount)"
             )
         );
         bytes32 tokenPermissionsHash =
@@ -119,15 +126,16 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
 
     /// @dev A witness-signed swap-funding leg: swaps `amountIn` of `input` to the
     ///      bond currency, routed to the coordinator, with a Permit2 witness
-    ///      signature by `partyKey` over that exact route.
-    function _leg(MockERC20 input, uint256 amountIn, uint256 partyKey)
+    ///      signature by `partyKey` over that exact route, for `role`'s bond of
+    ///      commitment `c`.
+    function _leg(CommitmentTypes.Commitment memory c, uint8 role, MockERC20 input, uint256 amountIn, uint256 partyKey)
         internal
         view
         returns (WitnessSwapAndCommitCoordinator.SwapFunding memory)
     {
         bytes memory swapData = _swapData(input, amountIn, address(coord));
         uint256 deadline = block.timestamp + 1 hours;
-        bytes32 digest = _permitDigest(address(input), amountIn, 0, deadline, swapData);
+        bytes32 digest = _permitDigest(c, role, address(input), amountIn, 0, deadline, swapData);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(partyKey, digest);
         return WitnessSwapAndCommitCoordinator.SwapFunding({
             enabled: true,
@@ -168,7 +176,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         bytes memory sSig = _sign(c, SELLER_KEY);
 
         vm.prank(relayer);
-        coord.swapAndCommit(c, bSig, sSig, _leg(buyerInput, 2 * P, BUYER_KEY), _disabled());
+        coord.swapAndCommit(c, bSig, sSig, _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY), _disabled());
 
         assertEq(bond.balanceOf(address(core)), 4 * P, "escrow holds both bonds");
         assertEq(buyerInput.balanceOf(buyer), 0, "buyer input fully swapped");
@@ -185,7 +193,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         bytes memory sSig = _sign(c, SELLER_KEY);
 
         vm.prank(relayer);
-        coord.swapAndCommit(c, bSig, sSig, _disabled(), _leg(sellerInput, 2 * P, SELLER_KEY));
+        coord.swapAndCommit(c, bSig, sSig, _disabled(), _leg(c, SELLER, sellerInput, 2 * P, SELLER_KEY));
 
         assertEq(bond.balanceOf(address(core)), 4 * P, "escrow holds both bonds");
         assertEq(sellerInput.balanceOf(seller), 0, "seller input fully swapped");
@@ -201,7 +209,9 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         bytes memory sSig = _sign(c, SELLER_KEY);
 
         vm.prank(relayer);
-        coord.swapAndCommit(c, bSig, sSig, _leg(buyerInput, 2 * P, BUYER_KEY), _leg(sellerInput, 2 * P, SELLER_KEY));
+        coord.swapAndCommit(
+            c, bSig, sSig, _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY), _leg(c, SELLER, sellerInput, 2 * P, SELLER_KEY)
+        );
 
         assertEq(bond.balanceOf(address(core)), 4 * P, "escrow holds both bonds");
         assertEq(buyerInput.balanceOf(buyer), 0, "buyer input swapped");
@@ -218,7 +228,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         bytes memory sSig = _sign(c, SELLER_KEY);
 
         vm.prank(relayer);
-        coord.swapAndCommit(c, bSig, sSig, _leg(buyerInput, 2 * P, BUYER_KEY), _disabled());
+        coord.swapAndCommit(c, bSig, sSig, _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY), _disabled());
 
         assertEq(bond.balanceOf(address(core)), 4 * P, "escrow holds both bonds");
         assertEq(bond.balanceOf(buyer), P, "swap surplus over the bond refunded to buyer");
@@ -238,7 +248,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         // signature is what the buyer authorized.
         bytes memory swapData = _swapData(buyerInput, 2 * P, address(coord));
         uint256 deadline = block.timestamp + 1 hours;
-        bytes32 digest = _permitDigest(address(buyerInput), 3 * P, 0, deadline, swapData);
+        bytes32 digest = _permitDigest(c, BUYER, address(buyerInput), 3 * P, 0, deadline, swapData);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(BUYER_KEY, digest);
         WitnessSwapAndCommitCoordinator.SwapFunding memory leg = WitnessSwapAndCommitCoordinator.SwapFunding({
             enabled: true,
@@ -270,7 +280,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
 
         bytes memory swapData = _swapData(buyerInput, 2 * P, address(coord));
         uint256 deadline = block.timestamp + 1 hours;
-        bytes32 digest = _permitDigest(address(buyerInput), 3 * P, 0, deadline, swapData);
+        bytes32 digest = _permitDigest(c, BUYER, address(buyerInput), 3 * P, 0, deadline, swapData);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(BUYER_KEY, digest);
         WitnessSwapAndCommitCoordinator.SwapFunding memory leg = WitnessSwapAndCommitCoordinator.SwapFunding({
             enabled: true,
@@ -302,7 +312,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
             address(buyerInput), abi.encodeWithSelector(IERC20.transfer.selector, buyer, 0), "zero-value transfer"
         );
         vm.prank(relayer);
-        coord.swapAndCommit(c, bSig, sSig, _leg(buyerInput, 2 * P, BUYER_KEY), _disabled());
+        coord.swapAndCommit(c, bSig, sSig, _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY), _disabled());
 
         assertEq(bond.balanceOf(address(core)), 4 * P, "commit succeeded without a zero-value refund transfer");
     }
@@ -318,7 +328,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
 
         // Build the leg first: `_leg` calls `coord.swapWitness`, and that call
         // would otherwise consume the `expectRevert` armed just below.
-        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _leg(buyerInput, 2 * P, BUYER_KEY);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY);
         WitnessSwapAndCommitCoordinator.SwapFunding memory disabled = _disabled();
 
         vm.prank(relayer);
@@ -340,7 +350,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         // accepts the leg and the coordinator reaches the router call itself.
         bytes memory swapData = abi.encodeWithSignature("noSuchRoute()");
         uint256 deadline = block.timestamp + 1 hours;
-        bytes32 digest = _permitDigest(address(buyerInput), 2 * P, 0, deadline, swapData);
+        bytes32 digest = _permitDigest(c, BUYER, address(buyerInput), 2 * P, 0, deadline, swapData);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(BUYER_KEY, digest);
         WitnessSwapAndCommitCoordinator.SwapFunding memory leg = WitnessSwapAndCommitCoordinator.SwapFunding({
             enabled: true,
@@ -388,7 +398,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         bytes memory sSig = _sign(c, SELLER_KEY);
 
         // Buyer authorizes (and signs the witness for) the honest route.
-        WitnessSwapAndCommitCoordinator.SwapFunding memory honest = _leg(buyerInput, 2 * P, BUYER_KEY);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory honest = _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY);
 
         // Relayer keeps the buyer's signature but swaps in a self-dealing route.
         WitnessSwapAndCommitCoordinator.SwapFunding memory tampered = honest;
@@ -409,16 +419,28 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         bytes memory routeToCoord = _swapData(buyerInput, 2 * P, address(coord));
         bytes memory routeToRelayer = _swapData(buyerInput, 2 * P, relayer);
 
-        bytes32 wCoord = coord.swapWitness(address(buyerInput), 2 * P, routeToCoord);
-        bytes32 wRelayer = coord.swapWitness(address(buyerInput), 2 * P, routeToRelayer);
+        bytes32 h = _rootCommitment(40).hashStruct();
+        bytes32 wCoord = coord.swapWitness(address(buyerInput), 2 * P, routeToCoord, h, BUYER);
+        bytes32 wRelayer = coord.swapWitness(address(buyerInput), 2 * P, routeToRelayer, h, BUYER);
 
         assertTrue(wCoord != wRelayer, "witness must change when the swap route changes");
 
         // The input ceiling is bound too — widening maxInput flips the witness.
         assertTrue(
-            coord.swapWitness(address(buyerInput), 2 * P, routeToCoord)
-                != coord.swapWitness(address(buyerInput), 3 * P, routeToCoord),
+            coord.swapWitness(address(buyerInput), 2 * P, routeToCoord, h, BUYER)
+                != coord.swapWitness(address(buyerInput), 3 * P, routeToCoord, h, BUYER),
             "witness must change when maxInput changes"
+        );
+
+        // So are the commitment and the role.
+        assertTrue(
+            wCoord
+                != coord.swapWitness(address(buyerInput), 2 * P, routeToCoord, _rootCommitment(41).hashStruct(), BUYER),
+            "witness must change when the commitment changes"
+        );
+        assertTrue(
+            wCoord != coord.swapWitness(address(buyerInput), 2 * P, routeToCoord, h, SELLER),
+            "witness must change when the role changes"
         );
     }
 
@@ -437,7 +459,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         core.commit(c, bSig, sSig);
 
         _fundInput(seller, sellerInput, 2 * P);
-        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _leg(sellerInput, 2 * P, SELLER_KEY);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _leg(c, SELLER, sellerInput, 2 * P, SELLER_KEY);
         vm.prank(relayer);
         vm.expectRevert(FigaroCore.InvalidBuyerSignature.selector);
         coord.swapAndCommit(c, bSig, sSig, _disabled(), leg);
@@ -453,7 +475,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         core.commit(c, bSig, sSig);
 
         _fundInput(buyer, buyerInput, 2 * P);
-        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _leg(buyerInput, 2 * P, BUYER_KEY);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY);
         vm.prank(relayer);
         vm.expectRevert(FigaroCore.InvalidSellerSignature.selector);
         coord.swapAndCommit(c, bSig, sSig, leg, _disabled());
@@ -467,7 +489,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         CommitmentTypes.Commitment memory c = _rootCommitment(22);
         vm.prank(relayer);
         (bytes32 processId,) = coord.swapAndCommit(
-            c, _sign(c, BUYER_KEY), _sign(c, SELLER_KEY), _leg(buyerInput, 2 * P, BUYER_KEY), _disabled()
+            c, _sign(c, BUYER_KEY), _sign(c, SELLER_KEY), _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY), _disabled()
         );
 
         CommitmentTypes.Commitment[] memory cs = new CommitmentTypes.Commitment[](1);
@@ -490,11 +512,55 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
             c,
             _sign(c, BUYER_KEY),
             _sign(c, SELLER_KEY),
-            _leg(buyerInput, 2 * P, BUYER_KEY),
-            _leg(sellerInput, 2 * P, SELLER_KEY)
+            _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY),
+            _leg(c, SELLER, sellerInput, 2 * P, SELLER_KEY)
         );
         assertEq(bond.balanceOf(address(coord)), 0, "no bond currency");
         assertEq(buyerInput.balanceOf(address(coord)), 0, "no buyer input");
         assertEq(sellerInput.balanceOf(address(coord)), 0, "no seller input");
+    }
+
+    // ── The leg is bound to its commitment and its role ──────────
+
+    /// @notice A leg the buyer signed for an order that never committed is
+    ///         refused when a third address spends it on another commitment
+    ///         both parties signed: the witness carries the struct hash of
+    ///         the one commitment the leg funds.
+    function test_RevertWhen_LegSpentOnAnotherCommitment() public {
+        _fundInput(buyer, buyerInput, 4 * P);
+        _selfFundBond(seller, 2 * P);
+
+        CommitmentTypes.Commitment memory signedFor = _rootCommitment(30); // never commits
+        CommitmentTypes.Commitment memory other = _rootCommitment(31);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _leg(signedFor, BUYER, buyerInput, 2 * P, BUYER_KEY);
+        bytes memory bSig = _sign(other, BUYER_KEY);
+        bytes memory sSig = _sign(other, SELLER_KEY);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory disabled = _disabled();
+
+        vm.prank(address(0xA77AC4));
+        vm.expectRevert(MockWitnessPermit2.InvalidSigner.selector);
+        coord.swapAndCommit(other, bSig, sSig, leg, disabled);
+    }
+
+    /// @notice One wallet may be both buyer and seller of an order. A leg it
+    ///         signed as buyer is refused in the seller's place.
+    function test_RevertWhen_LegUsedUnderTheWrongRole() public {
+        CommitmentTypes.Commitment memory c = _rootCommitment(32);
+        c.seller = buyer;
+        _fundInput(buyer, buyerInput, 2 * P);
+        _selfFundBond(buyer, 2 * P);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory asBuyer = _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY);
+        // The same wallet's leg as seller of the same order is accepted.
+        WitnessSwapAndCommitCoordinator.SwapFunding memory asSeller = _leg(c, SELLER, buyerInput, 2 * P, BUYER_KEY);
+        bytes memory sig = _sign(c, BUYER_KEY);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory disabled = _disabled();
+
+        vm.prank(relayer);
+        vm.expectRevert(MockWitnessPermit2.InvalidSigner.selector);
+        coord.swapAndCommit(c, sig, sig, disabled, asBuyer);
+
+        vm.prank(relayer);
+        coord.swapAndCommit(c, sig, sig, disabled, asSeller);
+        assertEq(bond.balanceOf(address(core)), 4 * P, "the leg signed for the seller's place funds it");
     }
 }

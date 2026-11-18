@@ -8,8 +8,23 @@ vi.mock("@/lib/composition/contracts", () => ({
 }));
 
 import { decodeFunctionData, parseAbi } from "viem";
+import { hashCommitmentStruct, type Commitment } from "@figaro-protocol/sdk";
 import { quoteFundingLeg, signFundingLeg } from "@/lib/composition/swapFunding";
 import { _resetSwapVenueCache_TESTING_ONLY } from "@/lib/composition/swapVenue";
+
+/** The one commitment a signed leg funds, in the buyer's place. */
+const COMMITMENT: Commitment = {
+    processId: `0x${"00".repeat(32)}`,
+    buyer: `0x${"0b".repeat(20)}`,
+    seller: `0x${"05".repeat(20)}`,
+    currency: `0x${"22".repeat(20)}`,
+    payment: 2500n,
+    expectedCumulativeValue: 2500n,
+    checkoutHash: `0x${"c4".repeat(32)}`,
+    salt: 1n,
+    deadline: 9_999_999_999n,
+};
+const BINDING = { commitment: COMMITMENT, role: "buyer" as const };
 
 /**
  * Item 1 — Permit2 swap-leg confirmation. The confirm gate shows the quote's
@@ -38,13 +53,17 @@ describe("quoteFundingLeg → signFundingLeg (item 1)", () => {
         expect(quote.maxInput).toBe(5000n); // 1:1 rate
 
         let signedMaxInput: bigint | null = null;
-        const leg = await signFundingLeg(quote, async (typedData) => {
+        let witness: { commitmentHash: string; role: number } | null = null;
+        const leg = await signFundingLeg(quote, BINDING, async (typedData) => {
             // The witness the wallet would sign must carry the quoted maxInput.
             signedMaxInput = (typedData.message as { permitted: { amount: bigint } }).permitted.amount;
+            witness = typedData.message.witness;
             return ("0x" + "ab".repeat(65)) as `0x${string}`;
         });
 
         expect(signedMaxInput).toBe(quote.maxInput);       // signed == shown
+        // The leg is bound to the one commitment it funds, in the buyer's place.
+        expect(witness).toMatchObject({ commitmentHash: hashCommitmentStruct(COMMITMENT), role: 0 });
         expect(leg.maxInput).toBe(quote.maxInput);
         expect(leg.permitNonce).toBe(quote.nonce);
         expect(leg.swapData).toBe(quote.swapData);
@@ -75,7 +94,7 @@ describe("quoteFundingLeg → signFundingLeg (item 1)", () => {
         expect(args[2]).toBe(5125n);
 
         let signed: { permitted: { amount: bigint }; witness: { swapDataHash?: unknown } } | null = null;
-        const signedLeg = await signFundingLeg(quote, async (typedData) => {
+        const signedLeg = await signFundingLeg(quote, BINDING, async (typedData) => {
             signed = typedData.message as never;
             return ("0x" + "ab".repeat(65)) as `0x${string}`;
         });

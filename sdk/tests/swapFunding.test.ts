@@ -28,12 +28,25 @@ import {
     serializeCommitmentPayload,
     type CommitmentPayload,
 } from "../src/agent/coordination.js";
+import type { Commitment } from "../src/types.js";
 
 const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3" as const;
 const COORDINATOR = "0x1111111111111111111111111111111111111111" as const;
 const ROUTER = "0x2222222222222222222222222222222222222222" as const;
 const INPUT_TOKEN = "0x3333333333333333333333333333333333333333" as const;
 const CHAIN_ID = 31337;
+
+const COMMITMENT: Commitment = {
+    processId: `0x${"00".repeat(32)}`,
+    buyer: "0x9F8A75F6dd73353e1E10E1D517dAD1b9bc3ff353",
+    seller: "0xA7CD1b7B8C1EC831d40bC6310CBCb95803028D2F",
+    currency: "0x4444444444444444444444444444444444444444",
+    payment: 1000n,
+    expectedCumulativeValue: 1000n,
+    checkoutHash: keccak256(toHex("agreement")),
+    salt: 7n,
+    deadline: 1_900_000_000n,
+};
 
 const ARGS = {
     chainId: CHAIN_ID,
@@ -45,22 +58,39 @@ const ARGS = {
     nonce: 42n,
     deadline: 1_900_000_000n,
     swapData: "0xdeadbeef" as const,
-} as const;
+    commitment: COMMITMENT,
+    role: "buyer" as const,
+};
 
 /** Permit2's witness digest, reconstructed exactly as the contracts build it —
  *  no viem typed-data machinery, so a builder bug cannot cancel out. */
 function permit2WitnessDigest(): `0x${string}` {
     // The coordinator's SwapWitness struct hash.
     const swapWitnessTypehash = keccak256(
-        toHex("SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash)"),
+        toHex("SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash,bytes32 commitmentHash,uint8 role)"),
+    );
+    // The commitment's EIP-712 struct hash, built by hand from the Solidity
+    // type string, and the buyer's role (0).
+    const commitmentHash = keccak256(
+        encodeAbiParameters(
+            parseAbiParameters("bytes32, bytes32, address, address, address, uint256, uint256, bytes32, uint256, uint256"),
+            [
+                keccak256(toHex("Commitment(bytes32 processId,address buyer,address seller,address currency,uint256 payment,uint256 expectedCumulativeValue,bytes32 checkoutHash,uint256 salt,uint256 deadline)")),
+                COMMITMENT.processId, COMMITMENT.buyer, COMMITMENT.seller, COMMITMENT.currency,
+                COMMITMENT.payment, COMMITMENT.expectedCumulativeValue, COMMITMENT.checkoutHash,
+                COMMITMENT.salt, COMMITMENT.deadline,
+            ],
+        ),
     );
     const witness = keccak256(
-        encodeAbiParameters(parseAbiParameters("bytes32, address, address, uint256, bytes32"), [
+        encodeAbiParameters(parseAbiParameters("bytes32, address, address, uint256, bytes32, bytes32, uint8"), [
             swapWitnessTypehash,
             ROUTER,
             INPUT_TOKEN,
             ARGS.maxInput,
             keccak256(ARGS.swapData),
+            commitmentHash,
+            0,
         ]),
     );
 
@@ -68,7 +98,7 @@ function permit2WitnessDigest(): `0x${string}` {
     const typeHash = keccak256(
         toHex(
             "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline," +
-            "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash)TokenPermissions(address token,uint256 amount)",
+            "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash,bytes32 commitmentHash,uint8 role)TokenPermissions(address token,uint256 amount)",
         ),
     );
     const tokenPermissionsHash = keccak256(
@@ -112,6 +142,18 @@ describe("buildSwapWitnessTypedData — digest parity with Permit2's on-chain ha
         );
         expect(substituted).not.toBe(hashTypedData(buildSwapWitnessTypedData(ARGS)));
     });
+
+    it("the witness binds the commitment: another commitment naming the same party → different digest", () => {
+        const other = hashTypedData(
+            buildSwapWitnessTypedData({ ...ARGS, commitment: { ...COMMITMENT, salt: 8n } }),
+        );
+        expect(other).not.toBe(hashTypedData(buildSwapWitnessTypedData(ARGS)));
+    });
+
+    it("the witness binds the role: the same leg as the seller's → different digest", () => {
+        const asSeller = hashTypedData(buildSwapWitnessTypedData({ ...ARGS, role: "seller" }));
+        expect(asSeller).not.toBe(hashTypedData(buildSwapWitnessTypedData(ARGS)));
+    });
 });
 
 describe("CommitmentPayload — buyerFunding wire format", () => {
@@ -125,17 +167,7 @@ describe("CommitmentPayload — buyerFunding wire format", () => {
         swapData: ARGS.swapData,
     };
     const payload: CommitmentPayload = {
-        commitment: {
-            processId: `0x${"00".repeat(32)}`,
-            buyer: "0x9F8A75F6dd73353e1E10E1D517dAD1b9bc3ff353",
-            seller: "0xA7CD1b7B8C1EC831d40bC6310CBCb95803028D2F",
-            currency: "0x4444444444444444444444444444444444444444",
-            payment: 1000n,
-            expectedCumulativeValue: 1000n,
-            checkoutHash: keccak256(toHex("agreement")),
-            salt: 7n,
-            deadline: ARGS.deadline,
-        },
+        commitment: COMMITMENT,
         agreement: { orders: [] } as unknown as CommitmentPayload["agreement"],
         buyerFunding: leg,
     };
