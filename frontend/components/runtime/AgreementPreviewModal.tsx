@@ -20,6 +20,7 @@
  * the provider opens this modal and resolves your promise on confirm/cancel.
  */
 
+import { useCallback, useEffect, useState } from "react";
 import type { Commitment, Agreement } from "@figaro-protocol/sdk";
 import { ModalChrome } from "@/components/ui/ModalChrome";
 import { Button } from "@/components/ui/Button";
@@ -41,6 +42,10 @@ interface Props {
      *  reviews the swap's maxInput on the Figaro side, not only in the wallet's
      *  native Permit2 prompt. */
     swap?: SwapConfirmationDetails | null;
+    /** The legs already signed that the send carries (a buyer's leg relayed
+     *  with the order), each shown with its party, so every leg the send
+     *  carries is reviewed in this confirm. */
+    carriedSwaps?: readonly SwapConfirmationDetails[];
     onConfirm: () => void;
     onCancel: () => void;
 }
@@ -72,8 +77,10 @@ const INTENT_COPY: Record<ConfirmationIntent, { eyebrow: string; lede: React.Rea
 /** The swap leg's figures, read-only: the margin was set in the funding-token
  *  chooser before the quote, so these are exactly what the party signs. The
  *  coordinator pulls the whole max input from the party through Permit2, so
- *  the party's balance of the input token is shown against it. */
-function SwapLegFigures({ swap }: { swap: SwapConfirmationDetails }) {
+ *  the party's balance of the input token is shown against it. `own` says
+ *  whether the leg is the connected party's; a carried leg carries no margin.
+ *  `onShown` reports whether the max input figure is on screen. */
+function SwapLegFigures({ swap, own, onShown }: { swap: SwapConfirmationDetails; own: boolean; onShown: (shown: boolean) => void }) {
     const inputToken = swap.inputToken as `0x${string}`;
     const { read: balance } = useTokenBalance(inputToken, swap.party as `0x${string}`);
     // The figures are in the FUNDING token's units, read from the chain —
@@ -81,6 +88,8 @@ function SwapLegFigures({ swap }: { swap: SwapConfirmationDetails }) {
     const { decimals } = useTokenDecimals(inputToken);
     const { data: symbol } = useTokenSymbol(swap.inputToken);
     const figure = (value: bigint) => `${tokenFigure(value, decimals)}${typeof symbol === "string" && symbol ? ` ${symbol}` : ""}`;
+    const shown = decimals !== undefined;
+    useEffect(() => { onShown(shown); }, [shown, onShown]);
     return (
         <>
             <dl className="grid grid-cols-[110px_1fr] gap-y-1 text-sm">
@@ -92,13 +101,23 @@ function SwapLegFigures({ swap }: { swap: SwapConfirmationDetails }) {
                         </dd>
                     </>
                 )}
-                <dt className="text-ink-muted">Slippage margin</dt>
-                <dd className="text-ink-primary" data-testid="preview-swap-margin">
-                    {formatSlippagePercent(swap.slippageBps)}%
-                </dd>
+                {swap.slippageBps !== undefined && (
+                    <>
+                        <dt className="text-ink-muted">Slippage margin</dt>
+                        <dd className="text-ink-primary" data-testid="preview-swap-margin">
+                            {formatSlippagePercent(swap.slippageBps)}%
+                        </dd>
+                    </>
+                )}
+                {!own && (
+                    <>
+                        <dt className="text-ink-muted">Signed by</dt>
+                        <dd className="font-mono text-xs text-ink-primary break-all">{swap.party}</dd>
+                    </>
+                )}
                 {balance.status === "present" && decimals !== undefined && (
                     <>
-                        <dt className="text-ink-muted">Your balance</dt>
+                        <dt className="text-ink-muted">{own ? "Your balance" : "Its balance"}</dt>
                         <dd className="text-ink-primary" data-testid="preview-swap-balance">
                             <span className="font-mono text-xs">{figure(balance.value)}</span>
                         </dd>
@@ -111,15 +130,24 @@ function SwapLegFigures({ swap }: { swap: SwapConfirmationDetails }) {
             </dl>
             {balance.status === "present" && balance.value < swap.maxInput && (
                 <p role="alert" className="mt-2 text-sm text-error-fg" data-testid="preview-swap-balance-short">
-                    Your balance is below the max input, so this commit will fail.
+                    {own ? "Your balance" : "Its balance"} is below the max input, so this commit will fail.
                 </p>
             )}
         </>
     );
 }
 
-export function AgreementPreviewModal({ commitment, agreement, intent, swap, onConfirm, onCancel }: Props) {
+export function AgreementPreviewModal({ commitment, agreement, intent, swap, carriedSwaps = [], onConfirm, onCancel }: Props) {
     const copy = INTENT_COPY[intent];
+    // Confirm opens the wallet for every leg's max input, so it waits until
+    // each leg's figure is on screen; a figure that cannot be read keeps it
+    // disabled, and the party can only cancel.
+    const [shown, setShown] = useState<Record<string, boolean>>({});
+    const markShown = useCallback((key: string, value: boolean) =>
+        setShown((prev) => (prev[key] === value ? prev : { ...prev, [key]: value })), []);
+    const markOwnShown = useCallback((value: boolean) => markShown("own", value), [markShown]);
+    const legKeys = [...(swap ? ["own"] : []), ...carriedSwaps.map((_, i) => `carried-${i}`)];
+    const figuresShown = legKeys.every((key) => shown[key] === true);
     // The wallet's chain, by id, from viem's registry: whether it is a test
     // network and what it is called are the network's own facts. Read from
     // the wallet's connection, the same reading as the shell's network line.
@@ -182,9 +210,22 @@ export function AgreementPreviewModal({ commitment, agreement, intent, swap, onC
                                 currency. You are also authorizing a Permit2 transfer of up to
                                 the amount below — your wallet will show it as a second signature.
                             </p>
-                            <SwapLegFigures swap={swap} />
+                            <SwapLegFigures swap={swap} own onShown={markOwnShown} />
                         </section>
                     )}
+                    {carriedSwaps.map((carried, i) => (
+                        <section key={`carried-${i}`} className="mt-5 border-t border-default pt-4" data-testid="preview-carried-swap">
+                            <h3 className="text-xs font-semibold text-ink-muted mb-2">
+                                Swap-funded bond, already signed
+                            </h3>
+                            <p className="text-sm text-ink-body mb-2">
+                                This send also carries a swap the party below signed earlier. The
+                                coordinator pulls up to the max input from that party through Permit2
+                                and swaps it into the process currency.
+                            </p>
+                            <SwapLegFigures swap={carried} own={false} onShown={(value) => markShown(`carried-${i}`, value)} />
+                        </section>
+                    ))}
                 </div>
 
                 {/* Footer */}
@@ -201,6 +242,7 @@ export function AgreementPreviewModal({ commitment, agreement, intent, swap, onC
                     <Button
                         type="button"
                         onClick={onConfirm}
+                        disabled={!figuresShown}
                         data-testid="preview-confirm"
                         className="font-semibold"
                         autoFocus

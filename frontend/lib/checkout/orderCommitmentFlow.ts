@@ -131,6 +131,17 @@ function swapDetails(
     return { inputToken: quote.inputToken, currency: quote.currency, maxInput: quote.maxInput, slippageBps: quote.slippageBps, party };
 }
 
+/** The legs already signed that a payload carries to the broadcast — today
+ *  the buyer's relayed leg — projected for the confirm. The broadcast takes
+ *  its legs from the same payload field (`broadcasterFor`), so the confirm
+ *  shows every leg the send carries. A leg carries no margin: it is no
+ *  witness field. */
+function carriedSwapDetails(payload: CommitmentPayload): SwapConfirmationDetails[] {
+    const leg = payload.buyerFunding;
+    if (!leg?.enabled) return [];
+    return [{ inputToken: leg.inputToken, currency: payload.commitment.currency, maxInput: leg.maxInput, party: payload.commitment.buyer }];
+}
+
 /** Quote one party's swap-funded bond leg for `commitment`: the venue quote
  *  and exact route for the party's FigaroCore pull, no signature yet.
  *  calculateBonds(cumulativeValue, payment) — the buyer bond is 2×payment,
@@ -281,9 +292,11 @@ export function useOrderCommitmentFlow() {
         }
     }, []);
 
-    /** Witness-sign a quoted funding leg with the connected wallet. */
+    /** Witness-sign a quoted funding leg with the connected wallet, bound to
+     *  the one commitment it pays the bond of and the party's role in it. */
     const signLeg = useCallback(
-        (quote: FundingQuote) => signFundingLeg(quote, (typedData) => signTypedDataAsync(typedData) as Promise<Hex>),
+        (quote: FundingQuote, commitment: Commitment, role: PartyRole) =>
+            signFundingLeg(quote, { commitment, role }, (typedData) => signTypedDataAsync(typedData) as Promise<Hex>),
         [signTypedDataAsync],
     );
 
@@ -292,6 +305,7 @@ export function useOrderCommitmentFlow() {
         commitment: Commitment,
         agreement: Agreement,
         swap: SwapConfirmationDetails | null = null,
+        carriedSwaps: readonly SwapConfirmationDetails[] = [],
     ): Promise<Hex> => {
         assertSigningDomain(CONTRACTS.core, chainId);
         // The agreement's specs first: a key the cache had not warmed is read
@@ -308,8 +322,9 @@ export function useOrderCommitmentFlow() {
         assertAgreementSignable(agreement, commitment.checkoutHash, specSource(), commitment, design);
         // When the bond is swap-funded, `swap` surfaces the leg's maxInput in
         // the SAME confirm — one approval covers the commitment sign AND the
-        // Permit2 witness sign the caller does right after.
-        const approved = await requestSignConfirmation(commitment, agreement, swap);
+        // Permit2 witness sign the caller does right after. `carriedSwaps`
+        // shows every leg already signed that the caller's send carries.
+        const approved = await requestSignConfirmation(commitment, agreement, swap, carriedSwaps);
         if (!approved) throw new Error("Signing canceled by user.");
         const sig = await signTypedDataAsync({
             domain: buildDomain(chainId, CONTRACTS.core),
@@ -354,7 +369,7 @@ export function useOrderCommitmentFlow() {
                 : funding.legs ? quotedLeg(funding.legs, preview.commitment)
                 : await quoteBondFundingLeg(publicClient, chainId, funding, preview.commitment, "buyer");
             const buyerSig = await signAs(preview.commitment, preview.agreement, swapDetails(fundingQuote, preview.commitment.buyer));
-            const buyerFunding: CommitmentPayload["buyerFunding"] = fundingQuote ? await signLeg(fundingQuote) : undefined;
+            const buyerFunding: CommitmentPayload["buyerFunding"] = fundingQuote ? await signLeg(fundingQuote, preview.commitment, "buyer") : undefined;
             setStep("awaiting-seller");
             return {
                 commitment: preview.commitment,
@@ -502,7 +517,13 @@ export function useOrderCommitmentFlow() {
         const sellerQuote = funding && role === "seller"
             ? await quoteBondFundingLeg(publicClient, chainId, funding, incoming.commitment, "seller")
             : null;
-        const sig = await signAs(incoming.commitment, incoming.agreement, swapDetails(sellerQuote, incoming.commitment.seller));
+        // The broadcast below also carries any leg already signed in the
+        // payload (the buyer's relayed leg): the same confirm shows it.
+        const sig = await signAs(
+            incoming.commitment, incoming.agreement,
+            swapDetails(sellerQuote, incoming.commitment.seller),
+            carriedSwapDetails(incoming),
+        );
 
         const payload: CommitmentPayload = {
             ...incoming,
@@ -510,7 +531,7 @@ export function useOrderCommitmentFlow() {
             sellerSig: role === "seller" ? sig : incoming.sellerSig,
         };
 
-        const sellerFunding: SwapFundingLeg | undefined = sellerQuote ? await signLeg(sellerQuote) : undefined;
+        const sellerFunding: SwapFundingLeg | undefined = sellerQuote ? await signLeg(sellerQuote, incoming.commitment, "seller") : undefined;
 
         await opts?.beforeBroadcast?.();
 
@@ -649,9 +670,11 @@ export function useOrderCommitmentFlow() {
             payload.commitment,
             await readSigningInputs(payload.agreement, publicClient, chainId),
         );
+        // Every swap leg the broadcast carries is shown before it is sent.
         const approved = await requestCommitConfirmation(
             payload.commitment,
             payload.agreement,
+            carriedSwapDetails(payload),
         );
         if (!approved) throw new Error("Commit canceled by user.");
         await opts?.beforeBroadcast?.();

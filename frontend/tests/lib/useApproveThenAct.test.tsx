@@ -47,11 +47,11 @@ describe("useApproveThenAct", () => {
         expect(approve).not.toHaveBeenCalled();
     });
 
-    it("pends the action until the approval confirms, with a 10x approval", () => {
+    it("pends the action until the approval confirms, approving exactly the shown total", () => {
         const act = vi.fn();
         const { result, rerender, approve } = setup();
         result.current.runWithApproval(5n, act);
-        expect(approve).toHaveBeenCalledWith(50n);
+        expect(approve).toHaveBeenCalledWith(5n);
         expect(act).not.toHaveBeenCalled();
         rerender({ isApproveSuccess: true, isApproveError: false });
         expect(act).toHaveBeenCalledTimes(1);
@@ -102,11 +102,11 @@ describe("useApproveThenAct — ensureApproval, the awaitable step an accept flo
         expect(approve).not.toHaveBeenCalled();
     });
 
-    it("approves 10x and resolves once the approval confirms", async () => {
+    it("approves exactly the shown total and resolves once the approval confirms", async () => {
         const { result, rerender, approve } = setup();
         let settled = false;
         const step = result.current.ensureApproval(5n).then(() => { settled = true; });
-        expect(approve).toHaveBeenCalledWith(50n);
+        expect(approve).toHaveBeenCalledWith(5n);
         await Promise.resolve();
         expect(settled).toBe(false);
         rerender({ isApproveSuccess: true, isApproveError: false });

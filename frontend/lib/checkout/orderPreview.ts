@@ -61,9 +61,10 @@ export async function chainDeadline(ttlSeconds = 3600n): Promise<bigint> {
 /** Which wallet act the confirmation gates — the modal words itself by this. */
 export type ConfirmationIntent = "sign" | "commit";
 
-/** A swap-funded bond leg the party is about to witness-sign, surfaced in the
- *  SAME confirm as the agreement so `maxInput` (the Permit2 cap they authorize)
- *  is reviewed on the Figaro side, not only in the wallet's native prompt. */
+/** A swap-funded bond leg, surfaced in the SAME confirm as the agreement so
+ *  `maxInput` (the Permit2 cap) is reviewed on the Figaro side, not only in
+ *  the wallet's native prompt: the leg the party is about to witness-sign, or
+ *  a leg already signed that the send carries. */
 export interface SwapConfirmationDetails {
     inputToken: string;
     currency: string;
@@ -71,10 +72,13 @@ export interface SwapConfirmationDetails {
     maxInput: bigint;
     /** The slippage margin `maxInput` carries over the venue's quote, in basis
      *  points: set by the party in the funding-token chooser before the quote,
-     *  shown here read-only so what is reviewed is what is signed. */
-    slippageBps: number;
-    /** The signing party, whose input-token balance the modal shows against
-     *  `maxInput` (the coordinator pulls the whole cap through Permit2). */
+     *  shown here read-only so what is reviewed is what is signed. Absent on
+     *  a leg already signed: the margin is no witness field, so the leg does
+     *  not carry it. */
+    slippageBps?: number;
+    /** The party the leg pulls from, whose input-token balance the modal
+     *  shows against `maxInput` (the coordinator pulls the whole cap through
+     *  Permit2). */
     party: string;
 }
 
@@ -88,6 +92,8 @@ export interface PendingPreview {
     /** Present when this order's bond is swap-funded — the modal shows the swap
      *  leg alongside the agreement so one confirm covers both signatures. */
     swap?: SwapConfirmationDetails | null;
+    /** The legs already signed that the send carries — every one is shown. */
+    carriedSwaps?: readonly SwapConfirmationDetails[];
 }
 
 /**
@@ -121,6 +127,7 @@ function requestConfirmation(
     commitment: Commitment,
     agreement: Agreement | null,
     swap: SwapConfirmationDetails | null = null,
+    carriedSwaps: readonly SwapConfirmationDetails[] = [],
 ): Promise<boolean> {
     if (testMode === "auto-approve") return Promise.resolve(true);
     if (testMode === "auto-reject") return Promise.resolve(false);
@@ -128,7 +135,7 @@ function requestConfirmation(
     // cancel returns, or the caller drops the order under a false "canceled".
     if (current !== null) return Promise.reject(new SignConfirmationBusyError());
     return new Promise<boolean>((resolve) => {
-        current = { id: nextId++, intent, commitment, agreement, swap };
+        current = { id: nextId++, intent, commitment, agreement, swap, carriedSwaps };
         resolveCurrent = (approved) => {
             current = null;
             resolveCurrent = null;
@@ -144,26 +151,30 @@ function requestConfirmation(
  * Cancel. The Provider must be mounted; otherwise the promise pends forever.
  * When the bond is swap-funded, pass `swap` so the modal surfaces the swap leg
  * (its `maxInput`) alongside the agreement — one confirm gates BOTH the
- * commitment sign and the Permit2 witness sign that follows.
+ * commitment sign and the Permit2 witness sign that follows. Pass
+ * `carriedSwaps` for every leg already signed that the send will carry.
  */
 export function requestSignConfirmation(
     commitment: Commitment,
     agreement: Agreement | null,
     swap: SwapConfirmationDetails | null = null,
+    carriedSwaps: readonly SwapConfirmationDetails[] = [],
 ): Promise<boolean> {
-    return requestConfirmation("sign", commitment, agreement, swap);
+    return requestConfirmation("sign", commitment, agreement, swap, carriedSwaps);
 }
 
 /**
  * Request confirmation before broadcasting an already fully-signed commitment
  * on-chain — the standalone COMMIT step, the moment both bonds lock. Same
- * gate, same modal, commit wording.
+ * gate, same modal, commit wording. `carriedSwaps` lists every swap leg the
+ * broadcast carries, so each is reviewed before it is sent.
  */
 export function requestCommitConfirmation(
     commitment: Commitment,
     agreement: Agreement | null,
+    carriedSwaps: readonly SwapConfirmationDetails[] = [],
 ): Promise<boolean> {
-    return requestConfirmation("commit", commitment, agreement);
+    return requestConfirmation("commit", commitment, agreement, null, carriedSwaps);
 }
 
 /** Provider calls this on Confirm. */
