@@ -1364,10 +1364,11 @@ hand. The gate (`validateCommitmentAgreement`, thrown by
 required argument, and `designIssues` refuses the agreement when the design is
 `null`: "the agreement instantiates assembly …, which was not read, so its
 designer values cannot be checked". Every reader that hands the gate its
-design answers `null` on a failed or empty read: `readSigningDesign`
-(`frontend/lib/checkout/orderCommitmentFlow.ts`) on the buyer's sign, the
-counterparty's accept, the race candidate's counter-sign and the broadcast of
-a fully signed payload; `readOfferDesign` (`sdk/src/agent/originate.ts`) on
+design answers `null` on a failed or empty read: `readSigningInputs`
+(`frontend/lib/checkout/orderCommitmentFlow.ts`), which first loads the
+agreement's clause specs through `ClauseRegistry`, on the buyer's sign, the
+counterparty's accept, the race candidate's counter-sign, the broadcast of a
+fully signed payload and the `/sign` review; `readOfferDesign` (`sdk/src/agent/originate.ts`) on
 the agents' offer, race and quote handlers, which refuse every offer naming a
 design when the operator gives no reader. On `/sign` the review shows the
 refusal before any signature, and its heading names the design that was not

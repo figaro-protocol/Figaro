@@ -11,13 +11,13 @@
 
 import { Suspense, useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { deriveSignState } from "@/lib/checkout/signState";
-import { readSigningDesign, useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
+import { readSigningInputs, useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
@@ -270,19 +270,23 @@ function SignPageContent() {
     // Off-chain validation over what was pasted/relayed: does the inline agreement merkle
     // to the signed checkoutHash and conform to its clause specs? Computed at
     // review time so the party isn't reading terms that aren't the ones signed;
-    // the sign/commit gates re-assert this at the exit. The design the
-    // agreement names is read first, so the designer's values are checked
-    // against it; the check waits for the read.
+    // the sign/commit gates re-assert this at the exit. The review reads what
+    // the action's gate reads (`readSigningInputs`): the agreement's clause
+    // specs through the registry, then the design it names. The check waits
+    // for both, and runs again once they have landed, so a spec that loads is
+    // never reported as unloaded.
+    const publicClient = usePublicClient();
+    const chainId = useChainId();
     const [designRead, setDesignRead] = useState<{ agreement: unknown; design: HydratedAssembly | null } | null>(null);
     useEffect(() => {
         const agreement = parsed?.agreement;
         if (!agreement) return;
         let live = true;
-        void readSigningDesign(agreement).then((design) => {
+        void readSigningInputs(agreement, publicClient, chainId).then((design) => {
             if (live) setDesignRead({ agreement, design });
         });
         return () => { live = false; };
-    }, [parsed]);
+    }, [parsed, publicClient, chainId]);
     const agreementCheck = useMemo(() => {
         if (!parsed?.agreement || !commitment) return null;
         if (designRead?.agreement !== parsed.agreement) return null;
