@@ -4,18 +4,23 @@
  * Pure async helper consumed by both surfaces that emit the audit-bundle
  * PDF: `DownloadAuditBundleButton` (browser download) and `RecoursePanel`'s
  * evidence-bundle action (IPFS pin; the party attaches the pinned URI as
- * evidence on the recourse forum's own UI). Agreements are cleartext — there
- * is no redacted distribution form. The PDF includes a Process Timeline page when a
+ * evidence on the recourse forum's own UI). A file built for a public pin
+ * (`forPublicPin`) carries private content by its fingerprint only: each
+ * agreement in its public form (`publicForm`, every private clause withheld
+ * behind its data hash) and no held copy of a private attestation's content
+ * (`docs/DATA_LAYER.md`: a private witness's content is never published, and
+ * a received copy is never sent on). The PDF includes a Process Timeline page when a
  * `publicClient` is supplied, so the timeline doesn't need a separate
  * IPFS pin or evidence submission.
  */
 
 import { erc20Abi, type PublicClient } from "viem";
 import type { Order } from "@/lib/core/store";
-import type { Agreement } from "@figaro-protocol/sdk";
+import { publicForm, type Agreement } from "@figaro-protocol/sdk";
 import { getAllMemberRegistered, getActiveMembers } from "@/lib/protocol/membersRegistryIndexer";
 import { getAttestationsByOrder } from "@/lib/composition/indexer";
 import { readHeldWitness } from "@/lib/composition/witnessContent";
+import { specSource } from "@/lib/shared/clauseSpecSource";
 import { buildAuditBundle, type AuditBundle } from "@/lib/audit/auditBundle";
 import type {
     MemberRegisteredEvent,
@@ -49,6 +54,15 @@ export interface BuildAuditBundlePdfOptions {
      * caller knows the timeline shouldn't appear (e.g. preview render).
      */
     includeTimeline?: boolean;
+    /**
+     * The file is pinned in public. Every agreement is taken in its public
+     * form (`publicForm`: a private clause, its blinding value included, is
+     * withheld behind its data hash, and a clause whose spec is not loaded is
+     * withheld too), and no held copy of a private attestation's content is
+     * read, kept or received alike: the file names each by its fingerprint
+     * and says its holder keeps it.
+     */
+    forPublicPin?: boolean;
 }
 
 /**
@@ -63,11 +77,14 @@ export async function buildAuditBundleData(
     orders: readonly Order[],
     publicClient: PublicClient | undefined,
     chainId: number,
-    agreements: Map<string, Agreement>,
+    loadedAgreements: Map<string, Agreement>,
     options: BuildAuditBundlePdfOptions = {},
 ): Promise<AuditBundlePdfData> {
     const perOrderBundles: AuditBundle[] = [];
     const missing: MissingPart[] = [];
+    const agreements = options.forPublicPin
+        ? new Map([...loadedAgreements].map(([checkoutHash, agreement]) => [checkoutHash, publicForm(agreement, specSource())]))
+        : loadedAgreements;
 
     let memberRegisteredAll: MemberRegisteredEvent[] = [];
     if (publicClient) {
@@ -122,8 +139,7 @@ export async function buildAuditBundleData(
             });
             continue;
         }
-        // Agreements are cleartext end to end (the IPFS body carries every
-        // clause in full). No redacted distribution form.
+        // The agreement as loaded, or its public form for a public pin.
         const agreement = cleartextAgreement;
 
         let attestations: readonly AttestationRecord[] = [];
@@ -150,8 +166,8 @@ export async function buildAuditBundleData(
             // The private attestation content this browser kept, each
             // checked against its contentRef and decoded from those bytes:
             // the same reader the audit page passes, so both name the same
-            // pieces missing.
-            heldWitness: readHeldWitness,
+            // pieces missing. A file pinned in public reads none.
+            ...(options.forPublicPin ? {} : { heldWitness: readHeldWitness }),
         });
         perOrderBundles.push(bundle);
         missing.push(...bundle.missing);

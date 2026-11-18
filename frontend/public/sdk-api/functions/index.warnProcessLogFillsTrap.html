@@ -23,13 +23,13 @@ at DESIGN or CHECKOUT time (<code>design.fills</code> / <code>checkout.catalogue
 <code>checkout.profileFills</code> / <code>checkout.catalogueMeasures</code>) on a clause the article marks a process-log
 (<code>specIsProcessLog</code>).</p>
 <p>Process-log clauses are runtime event ladders — content arrives via
-LATER attestation submissions, never the initial agreement — so
-<code>validateCommitmentAgreement</code> SKIPS content validation for every clause
-of such a clause (its <code>specIsProcessLog</code> short-circuit) and
-<code>withSpecDefaults</code> never fills its omitted fields. A fill declared on
-such a clause is therefore content the author believes is pinned and
-checked, that in fact commits unchecked — the &quot;reserved article silently
-commits an empty (unvalidated) anchor&quot; trap. This is scoped precisely to
+LATER attestation submissions, never the initial agreement — so the
+commit carries an empty anchor <code>{}</code>, and <code>withSpecDefaults</code> never fills
+its omitted fields. A fill declared on such a clause turns that anchor
+into partial content, which <code>validateCommitmentAgreement</code> checks in full
+against the spec (only the empty anchor is skipped) with none of the
+spec's defaults filled — the &quot;reserved article commits content the
+author meant as an anchor&quot; trap. This is scoped precisely to
 that combination: <code>attestations</code> alone is not warned (it is meaningful
 and correct for a real process-log clause — neither shipped one,
 <code>figaro-merchant-process</code> nor <code>figaro-courier-process</code>, declares any
@@ -43,7 +43,7 @@ intended pattern (<code>figaro-utility-token</code>, <code>figaro-dimweight</cod
 <li><span><span class="tsd-kind-parameter">spec</span>: <a href="../types/index.ProjectionSpecView.html" class="tsd-signature-type tsd-kind-type-alias">ProjectionSpecView</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L327">projection.ts:327</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L337">projection.ts:337</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

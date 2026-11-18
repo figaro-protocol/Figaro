@@ -30,6 +30,7 @@ export type {
 // A stage key (`stageKey`, `stageOfKey`): the one spelling of a stage in `stages`, read and written.
 export {
     declaredStageFields,
+    fieldCarriesPrivate,
     fieldSetRuleErrors,
     parseClauseSpec,
     parseFieldSpec,

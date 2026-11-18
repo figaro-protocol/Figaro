@@ -55,7 +55,7 @@ import {
     type AssemblyAgreement,
     type HydratedAssembly,
 } from "./assembly.js";
-import { fieldSetRuleErrors, validateContent, type ClauseSpec, type FieldSpec } from "./clauses/index.js";
+import { fieldCarriesPrivate, fieldSetRuleErrors, validateContent, type ClauseSpec, type FieldSpec } from "./clauses/index.js";
 import { generateSalt } from "./commitments.js";
 import { isAddressHex, isBytes32Hex, type Address, type Commitment, type Hex } from "./types.js";
 
@@ -204,7 +204,9 @@ export function specDeclaresDesignFill(spec: ProjectionSpecView, fieldName: stri
     return specDesignFills(spec).includes(fieldName);
 }
 
-/** Whether a clause spec declares ANY field as `private`-disposition. A clause
+/** Whether a clause spec declares ANY field as `private`-disposition, at any
+ *  depth (`fieldCarriesPrivate`: a private field nested in an object or an
+ *  array counts). A clause
  *  committing such a clause carries paid-edge plaintext that must never reach a
  *  public surface. Because the merkle leaf model withholds a WHOLE clause (never
  *  one field), a clause is treated as private if ANY of its fields is — the
@@ -212,7 +214,7 @@ export function specDeclaresDesignFill(spec: ProjectionSpecView, fieldName: stri
  *  public fields). Off-chain validation refuses to register a clause that mixes
  *  dispositions, so in practice this only ever fires on a fully-private clause. */
 export function specHasPrivateField(spec: ProjectionSpecView): boolean {
-    return spec.fields.some((f) => f.disposition === "private");
+    return spec.fields.some(fieldCarriesPrivate);
 }
 
 /** The PUBLIC-pin form of an agreement: every clause whose clause declares a
@@ -269,6 +271,14 @@ export function specIsProcessLog(spec: ProjectionSpecView): boolean {
     return spec.hints?.article === "attestations";
 }
 
+/** Whether a clause's committed data is the empty anchor `{}`: no content,
+ *  so nothing to validate, default or blind. The only data a process-log
+ *  clause (`specIsProcessLog`) is exempt for; `block` is presentation, so
+ *  no content escapes a check by its article. */
+function isEmptyAnchor(data: Readonly<Record<string, unknown>>): boolean {
+    return Object.keys(data).length === 0;
+}
+
 /** True for ASSEMBLY-SCOPED clauses (`block.design.scope: "assembly"`) —
  *  terms of the composition itself (a denomination pin, a dispute forum),
  *  composed ONCE for the whole design and folded into EVERY agreement at
@@ -311,13 +321,13 @@ export function specCatalogueMeasures(spec: ProjectionSpecView): Readonly<Record
  *  (`specIsProcessLog`).
  *
  *  Process-log clauses are runtime event ladders — content arrives via
- *  LATER attestation submissions, never the initial agreement — so
- *  `validateCommitmentAgreement` SKIPS content validation for every clause
- *  of such a clause (its `specIsProcessLog` short-circuit) and
- *  `withSpecDefaults` never fills its omitted fields. A fill declared on
- *  such a clause is therefore content the author believes is pinned and
- *  checked, that in fact commits unchecked — the "reserved article silently
- *  commits an empty (unvalidated) anchor" trap. This is scoped precisely to
+ *  LATER attestation submissions, never the initial agreement — so the
+ *  commit carries an empty anchor `{}`, and `withSpecDefaults` never fills
+ *  its omitted fields. A fill declared on such a clause turns that anchor
+ *  into partial content, which `validateCommitmentAgreement` checks in full
+ *  against the spec (only the empty anchor is skipped) with none of the
+ *  spec's defaults filled — the "reserved article commits content the
+ *  author meant as an anchor" trap. This is scoped precisely to
  *  that combination: `attestations` alone is not warned (it is meaningful
  *  and correct for a real process-log clause — neither shipped one,
  *  `figaro-merchant-process` nor `figaro-courier-process`, declares any
@@ -331,8 +341,8 @@ export function warnProcessLogFillsTrap(spec: ProjectionSpecView): readonly stri
         warnings.push(
             `${spec.clauseId}: block.design.article is "attestations" (a process-log clause — ` +
             `content arrives via later runtime attestations, never the initial agreement) but the ` +
-            `spec also declares block.design.fills. The pinned fields will never be validated — ` +
-            `validateCommitmentAgreement skips content validation entirely for process-log clauseEntries. ` +
+            `spec also declares block.design.fills. The pinned fields turn the commit's empty anchor into ` +
+            `content, which validateCommitmentAgreement checks in full against the spec with none of its defaults filled. ` +
             `If this clause's content should be committed and checked at design time, use a ` +
             `different article; "attestations" is reserved for runtime event ladders.`,
         );
@@ -343,8 +353,8 @@ export function warnProcessLogFillsTrap(spec: ProjectionSpecView): readonly stri
             `${spec.clauseId}: block.design.article is "attestations" (a process-log clause — ` +
             `content arrives via later runtime attestations, never the initial agreement) but the ` +
             `spec also declares block.checkout.catalogueFills, profileFills or catalogueMeasures. That checkout-authored ` +
-            `content will never be validated — validateCommitmentAgreement skips content validation ` +
-            `entirely for process-log clauseEntries. "attestations" is reserved for runtime event ladders ` +
+            `content turns the commit's empty anchor into content, which validateCommitmentAgreement checks ` +
+            `in full against the spec with none of its defaults filled. "attestations" is reserved for runtime event ladders ` +
             `whose content arrives later, not checkout-time fills.`,
         );
     }
@@ -425,7 +435,8 @@ export function withFreshBlinding(
  *  clause's spec by its key, as `withSpecDefaults` reads it. `own` is the
  *  filling party's own data for the clause, as `withFreshBlinding` reads it.
  *  A clause whose spec is not loaded is left as it is (the sign gate refuses
- *  it), and a process-log clause stays an empty anchor at commit. */
+ *  it), and a process-log clause's empty anchor stays empty at commit; any
+ *  content it carries is blinded as any clause's is. */
 export function withClauseBlinding(
     specs: SpecSource,
     clauseKey: Hex,
@@ -433,7 +444,7 @@ export function withClauseBlinding(
     own?: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> {
     const spec = specs.get(clauseKey);
-    if (!spec || specIsProcessLog(spec)) return data;
+    if (!spec || (specIsProcessLog(spec) && isEmptyAnchor(data))) return data;
     return withFreshBlinding(spec.fields, data, own);
 }
 
@@ -793,6 +804,11 @@ function namedBlindingIssues(clause: string, spec: ProjectionSpecView): Commitme
     return issues;
 }
 
+/** Whether a `bytes32-hex` blinding value is zero, which blinds nothing. */
+export function isZeroBlindingValue(value: string): boolean {
+    return /^0x0{64}$/i.test(value);
+}
+
 /** The blinding values of a clause's committed data that blind nothing: a
  *  zero value, and a value another clause of the same agreement carries (one
  *  guess would then confirm both). `seen` collects the values met so far in
@@ -810,7 +826,7 @@ function blindingValueIssues(
         const value = data[field.name];
         if (!isBytes32Hex(value)) continue;
         const key = value.toLowerCase();
-        if (/^0x0{64}$/.test(key)) {
+        if (isZeroBlindingValue(key)) {
             issues.push({
                 clause,
                 path: field.name,
@@ -836,8 +852,8 @@ function blindingValueIssues(
  * The off-chain layer of the verification stack, run on BOTH sides of the bilateral commit
  * (buyer before initiating, seller before counter-signing) so neither party
  * signs an invalid agreement. Four checks: every present clause conforms to
- * its clause spec (validateContent; process-log clauses are presence-markers,
- * skipped); where a denomination pin is composed, the pin equals the token of
+ * its clause spec (validateContent; a process-log clause's empty anchor `{}`
+ * carries no content and is skipped, and any content it carries is checked); where a denomination pin is composed, the pin equals the token of
  * the commitment about to be signed; the order carries every clause of the
  * design its provenance names (the registered agreement's and the
  * assembly-scoped ones) and every designer value (`block.design.fills`) the
@@ -913,9 +929,12 @@ export function validateCommitmentAgreement(
         }
         issues.push(...setRuleIssues(clauseEntry.clause, spec));
         issues.push(...namedBlindingIssues(clauseEntry.clause, spec));
-        // A runtime-lifecycle clause is an empty anchor at commit — its content
-        // is attested later, so there is nothing to validate here.
-        if (specIsProcessLog(spec)) continue;
+        // A runtime-lifecycle clause commits an empty anchor — its content is
+        // attested later — and `{}` carries nothing to validate or blind. The
+        // article is presentation (`block`), which any frontend replaces, so
+        // it admits only that empty anchor: any content a clause carries is
+        // validated and its blinding checked whatever its article.
+        if (specIsProcessLog(spec) && isEmptyAnchor(clauseEntry.data)) continue;
         const result = validateContent(clauseEntry.data, spec);
         if (!result.ok) {
             for (const e of result.errors) {

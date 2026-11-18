@@ -211,6 +211,17 @@ describe("prepareAttestationContent draws the blinding value of a private stage"
         expect(decodeContentFromSpec(PRIVATE, one.content, { stage: 1 })).toEqual(one.values);
     });
 
+    it("refuses a zero blinding value and the committed set's own blinding value", () => {
+        const committedBlinding = `0x${"7e".repeat(32)}`;
+        const committed = { grade: "b", blinding: committedBlinding };
+        expect(() => prepareAttestationContent(PRIVATE, { reading: 7, blinding: `0x${"00".repeat(32)}` }, { stage: 1 })).toThrow(/blinding.*zero/);
+        expect(() => prepareAttestationContent(PRIVATE, { reading: 7, blinding: committedBlinding }, { stage: 1, committed })).toThrow(/blinding.*committed set/);
+        expect(() => prepareAttestationContent(PRIVATE, { reading: 7, blinding: committedBlinding.toUpperCase().replace("0X", "0x") }, { stage: 1, committed })).toThrow(/committed set/);
+        // A value of the party's own, distinct from the committed one, is kept.
+        const own = `0x${"3c".repeat(32)}`;
+        expect(prepareAttestationContent(PRIVATE, { reading: 7, blinding: own }, { stage: 1, committed }).values.blinding).toBe(own);
+    });
+
     it("two preparations on a public stage give the same content reference", () => {
         const one = prepareAttestationContent(PRIVATE, { note: "x" }, { stage: 2 });
         const two = prepareAttestationContent(PRIVATE, { note: "x" }, { stage: 2 });

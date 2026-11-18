@@ -53,6 +53,7 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
     const blindingPositives: ReadonlyArray<readonly [string, unknown]> = [
         ["a private set with its blinding field", withFields([secret, blinding])],
         ["a public set beside a private stage set with its blinding field", withFields([open], { "1": [secret, blinding] })],
+        ["a private object holding a private field, with the set's blinding field", withFields([{ name: "o", type: "object", required: true, disposition: "private", fields: [secret] }, blinding])],
     ];
     it.each(blindingPositives)("accepts (%s) in BOTH schema and parser", (_name, spec) => {
         expect(validateAgainstSchema(spec), JSON.stringify(validateAgainstSchema.errors)).toBe(true);
@@ -72,6 +73,11 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         ["a nested blinding field", withFields([secret, blinding, { name: "o", type: "object", required: true, disposition: "private", fields: [blinding] }])],
         ["a private stage set with no blinding field", withFields([open], { "1": [secret] })],
         ["a stage set that mixes public and private fields", withFields([open], { "1": [open, secret, blinding] })],
+        // A private field nested in a public one counts its top-level field as private.
+        ["a private field nested in a public object, no blinding field", withFields([{ name: "o", type: "object", required: true, fields: [secret] }])],
+        ["a private field nested in a public object, with a blinding field", withFields([{ name: "o", type: "object", required: true, fields: [secret] }, blinding])],
+        ["a private array item in a public array, with a blinding field", withFields([{ name: "a", type: "array", required: true, items: { type: "string", disposition: "private" } }, blinding])],
+        ["a private field two objects deep in a public object, with a blinding field", withFields([{ name: "o", type: "object", required: true, fields: [{ name: "p", type: "object", required: true, fields: [secret] }] }, blinding])],
     ];
     it.each(blindingNegatives)("rejects (%s) in BOTH schema and parser", (_name, spec) => {
         expect(validateAgainstSchema(JSON.parse(JSON.stringify(spec)))).toBe(false);

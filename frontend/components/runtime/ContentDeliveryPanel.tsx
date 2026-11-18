@@ -50,12 +50,14 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
 
     // Rebuild the stage-1 evidence from what was decrypted (the rehash,
     // and a private set's blinding value from the sealed envelope); the
-    // event binds contentRef = keccak(content). Null where the spec is not
+    // event binds contentRef = keccak(content), filed by the sender under
+    // this clause at the completion stage. Null where the spec is not
     // loaded or a private set's value did not arrive: no verdict.
     const expectedAnchor = useCallback(
-        (delivered: DeliveredContent) => {
+        (delivered: DeliveredContent, _blobB64: string, sender: string) => {
             const spec = getClauseSpec(clauseKey);
-            return spec ? completionEvidenceAnchor(spec, delivered) : null;
+            const contentRef = spec ? completionEvidenceAnchor(spec, delivered) : null;
+            return contentRef ? { contentRef, clauseId: clauseKey, stage: COMPLETION_STAGE, attester: sender } : null;
         },
         [clauseKey],
     );

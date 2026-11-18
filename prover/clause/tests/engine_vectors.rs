@@ -140,6 +140,30 @@ fn the_engine_encodes_layer_a_bytes() {
 }
 
 #[test]
+fn the_engine_reads_every_key_of_layer_a_canonical_bytes() {
+    // The guest hashes the clause-data bytes it is handed and reads the
+    // content from them; the SDK's canonical bytes must keep every key, a
+    // key named `__proto__` among them, so the content they carry is the
+    // content they were made from, and two contents never share one hash.
+    let fx = fixture();
+    let cases = fx["dataBytes"].as_array().expect("dataBytes");
+    assert!(cases.len() >= 2);
+    for case in cases {
+        let label = &case["label"];
+        let bytes = case["bytes"].as_str().unwrap();
+        let read: Value = serde_json::from_str(bytes).unwrap_or_else(|e| panic!("{label}: {e}"));
+        assert_eq!(read, case["content"], "{label}: the bytes carry the content");
+        // serde_json's map is ordered by key, so its compact form is the
+        // canonical form of these contents.
+        assert_eq!(serde_json::to_string(&read).unwrap(), bytes, "{label}: the bytes are canonical");
+    }
+    let mut all: Vec<&str> = cases.iter().map(|c| c["bytes"].as_str().unwrap()).collect();
+    all.sort();
+    all.dedup();
+    assert_eq!(all.len(), cases.len(), "no two contents share their bytes");
+}
+
+#[test]
 fn a_verdict_carries_its_reasons() {
     // `is_err` and `errors` are what the guest reports a rejection with.
     let spec = spec_of(&json!([{ "name": "v", "type": "integer", "required": true, "min": 0 }])).unwrap();

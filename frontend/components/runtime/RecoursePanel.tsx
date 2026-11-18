@@ -67,7 +67,10 @@ export function RecoursePanel({
     const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 
     // Build the process-scoped audit bundle in-browser, pin it to IPFS.
-    // Agreements are cleartext — no redacted distribution form. The pinned
+    // The pin is public, so the file carries private content by its
+    // fingerprint only (`forPublicPin`): a private clause and a private
+    // witness, kept or received, are named, never shown; their holder hands
+    // them to the forum. The pinned
     // CID is the evidence a party attaches on the forum's own UI. The
     // bundle carries per-seller financials, so its pin is erasable: a
     // rebuild unpins the superseded bundle, and the party can unpin
@@ -84,6 +87,7 @@ export function RecoursePanel({
                 publicClient ?? undefined,
                 chainId,
                 agreements,
+                { forPublicPin: true },
             );
             const cid = await evidenceTransport.pinBlob(blob);
             setPdfBlob(blob);

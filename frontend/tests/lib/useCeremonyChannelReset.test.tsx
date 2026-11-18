@@ -30,7 +30,7 @@ import { useCeremonyChannel } from "@/lib/handoff/useCeremonyChannel";
 const ME = "0x00000000000000000000000000000000000000a1" as const;
 const PEER = "0x00000000000000000000000000000000000000b2";
 const decrypt = async ({ blobB64 }: { blobB64: string }) => `decrypted:${blobB64}`;
-const expectedAnchor = () => `0x${"cd".repeat(32)}` as `0x${string}`;
+const expectedAnchor = () => ({ contentRef: `0x${"cd".repeat(32)}` as `0x${string}`, clauseId: `0x${"c1".repeat(32)}`, stage: 1, attester: PEER });
 
 function emit(ceremonyId: string) {
     const msg = { senderAddress: PEER, pubKeyHex: "0xpeer", wrappedKeyB64: "blob-A" } as unknown as AuthenticatedEcdhMessage;

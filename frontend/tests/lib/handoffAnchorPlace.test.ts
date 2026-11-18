@@ -1,6 +1,7 @@
 /**
- * attestationAnchorMatches with a whole place — the check the private
- * filings' receiver makes for each entry: an Attestation on the order at
+ * attestationAnchorMatches with a whole place — the check every hand-off
+ * ceremony's receiver makes (the private filings for each entry, the content
+ * delivery and the address detail for their one payload): an Attestation on the order at
  * that content reference, under that clause and stage, attested by the
  * sender. A row at the same reference that differs in attester, clause or
  * stage is refused; a row from either emitter (the coordinator's direct
@@ -57,8 +58,8 @@ describe("the anchor of a received private filing is its whole place", () => {
         expect(await attestationAnchorMatches(client, 31337, ORDER, place)).toBe(false);
     });
 
-    it("a reference alone, as the two other ceremonies expect it, matches any row carrying it", async () => {
+    it("a row carrying the reference alone, by another wallet under another clause and stage, is no anchor", async () => {
         rows = [row({ attester: THIRD, clauseId: OTHER_CLAUSE, stage: 2 })];
-        expect(await attestationAnchorMatches(client, 31337, ORDER, REF)).toBe(true);
+        expect(await attestationAnchorMatches(client, 31337, ORDER, place)).toBe(false);
     });
 });

@@ -337,7 +337,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildOrderAgreement` | root | Build one order's agreement document and its merkle tree from its clause map. |
 | `withClauseBlinding` | root | One clause's committed values with the blinding value of its private set drawn (`blinding: true` in the spec), read by the clause key from a `SpecSource`; given the party's own data for the clause, it keeps only the value that data carries; a public clause, a process-log clause and an unloaded spec pass unchanged. |
 | `withFreshBlinding` | root | One set of fields' values (a clause's `fields` or one `stages[N]`) with its blinding value drawn where absent; given the party's own data, it keeps only the value that data carries and draws over any other (one a design carried). |
-| `prepareAttestationContent` | `/agent` | A witness's content checked against its spec (the private set's rules re-checked), its blinding value drawn, encoded: `{ content, contentRef, values }`; keep `content` and `values` before sending a private one. |
+| `prepareAttestationContent` | `/agent` | A witness's content checked against its spec (the private set's rules re-checked), its blinding value drawn (a zero one, or the committed set's own, refused), encoded: `{ content, contentRef, values }`; keep `content` and `values` before sending a private one. |
 | `freshBlindingHex` | root | 32 random bytes as `bytes32-hex`, from `generateSalt`; throws without Web Crypto. |
 | `buildQuoteRequest` | `/agent` | Build an UNSIGNED RFQ draft, priced at the buyer's ceiling. |
 | `buildAssembly` | root | Design time: the assembly of agreements plus the new agreements to register; each new agreement carries exactly the clauses composed for its order; binds a registered agreement as is or composes a new one; each entry carries its own `follows`. |
@@ -1025,8 +1025,10 @@ if (!parsed.ok) throw new Error(parsed.errors[0].message);
 const content = encodeContentFromSpec(parsed.spec, signedClause.data);
 const contentRef = keccak256(content);
 //    A runtime witness goes through `prepareAttestationContent(spec, values,
-//    { stage })` (`/agent`), which validates, draws a private set's blinding
-//    value and returns `{ content, contentRef, values }`: the caller keeps
+//    { stage, committed })` (`/agent`), which validates, draws a private set's
+//    blinding value (refusing a zero one, and the committed set's own when
+//    `committed` carries the clause's committed data) and returns
+//    `{ content, contentRef, values }`: the caller keeps
 //    `content` and `values` before it sends the attestation, because a private
 //    set's content is never published and that copy is the only one.
 // 4. Attest. The coordinator's `clauseId` argument is that clause's key.
