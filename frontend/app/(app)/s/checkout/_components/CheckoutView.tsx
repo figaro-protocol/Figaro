@@ -90,7 +90,7 @@ interface ListedPrice {
     quantity: number;
 }
 
-/** One order's on-network composition (sixth noun): the composing clause, its
+/** One order's on-network composition (external, on-chain composition): the composing clause, its
  *  standard interface, and the runtime `block.runtime.fields` the buyer fills. */
 interface OrderComposition {
     nodeId: string;
@@ -525,7 +525,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // (seller-assigned). The fill mechanism is DERIVED from binding state +
     // composition — there is no coordination field.
     const unboundSubOrders = subOrderPlan.filter((p) => !p.seller);
-    // Any order that composes an on-network contract (the sixth noun) —
+    // Any order that composes an on-network contract (external, on-chain composition) —
     // discovered by reading `block.design.composes` + `block.runtime.fields`
     // off the clause spec, naming no clause and no interface. Applies to ANY
     // order (root, sub, 136th), not just sub-orders. The buyer fills each
@@ -1330,7 +1330,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                             </p>
                         )}
 
-                        {/* On-network composition inputs (the sixth noun): any
+                        {/* On-network composition inputs (external, on-chain composition): any
                             order whose clause declares block.design.composes +
                             block.runtime.fields gets those runtime fields
                             rendered here generically — one form, naming no

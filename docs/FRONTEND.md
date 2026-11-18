@@ -218,7 +218,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     gate's terms rendering is `components/runtime/AgreementReview.tsx` — the ONE
     shared agreement-terms surface, composed by `AgreementPreviewModal` and
     rendered inline on `/sign`.
-- **`composition/`** — third-party on-network contract composition (the sixth noun).
+- **`composition/`** — third-party on-network contract composition (external, on-chain composition).
   Generic dispatch is `useCompositionActions.ts`, with per-contract hooks and
   readers beneath it.
   - *The funding leg:* `swapFunding.ts` — the venue quote/route plus the
