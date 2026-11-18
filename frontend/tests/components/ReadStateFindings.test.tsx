@@ -52,7 +52,7 @@ vi.mock("@/lib/audit/signatureVerdicts", async (importOriginal) => ({
 // The committed clause data an order's evidence block shows; its extraction
 // is its own tests'. One committed clause puts the order's block on the page.
 vi.mock("@/lib/audit/clauseDataExtract", () => ({
-    extractClauseData: () => ({ clauses: [{ clauseKey: "0xc1", title: "A committed clause", fields: [] }], missing: [] }),
+    extractClauseData: () => ({ clauses: [{ clauseKey: "0xc1", title: "A committed clause", fields: [], withheld: false }], missing: [] }),
 }));
 vi.mock("@/lib/member/useMembersRegistry", () => ({
     useMemberProfile: () => ({ read: m.registration }),

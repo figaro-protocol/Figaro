@@ -74,6 +74,7 @@ describe("the evidence file, built by the party that holds the private content",
     it("holds each private clause's blinding value, so the forum rebuilds the clause leaf", () => {
         const bundle = buildAuditBundle(order, agreement, attestations, { heldWitness: () => ({ content: witness, values: witnessValues }) });
         expect(bundle.clauseData.blindingValues).toEqual([{ clauseKey: PRIVATE.clauseKey, field: "blinding", value: BLINDING }]);
+        expect(bundle.clauseData.clauses.map((c) => c.withheld)).toEqual([false]);
         // The clause's terms are listed without it, as every reader lists them.
         expect(JSON.stringify(bundle.clauseData.clauses)).not.toContain("3c3c");
     });
@@ -97,6 +98,25 @@ describe("the evidence file, built by a reader that does not hold the private co
             part: expect.stringContaining(`Content of private clause ${PRIVATE.clauseKey}`),
             reason: expect.stringMatching(/withheld.*blinding value/),
         }));
+    });
+
+    it("marks the withheld clause, so its place stays empty, and its page in the file does not say it was committed with no field values", () => {
+        const bundle = buildAuditBundle(order, publicForm(agreement, specSource()), attestations);
+        expect(bundle.clauseData.clauses.map((c) => c.withheld)).toEqual([true]);
+        // The file's list of what it lacks takes each bundle's own list, as
+        // the evidence file's builder gathers it (`auditBundlePdf.ts`).
+        const { container } = render(
+            <AuditBundlePdf data={{
+                processId: order.processId, buyer: BUYER, missing: bundle.missing, generatedAt: new Date(0),
+                perOrderBundles: [bundle], documents: [],
+            } as unknown as Parameters<typeof AuditBundlePdf>[0]["data"]} />,
+        );
+        const text = container.textContent ?? "";
+        container.remove();
+        expect(text).toContain("Private grade");
+        expect(text).not.toContain("Committed with no field values.");
+        // The list names the withheld clause once, and nowhere else does.
+        expect(text.split(`Content of private clause ${PRIVATE.clauseKey}`)).toHaveLength(2);
     });
 
     it("names a private witness it does not hold as missing", () => {

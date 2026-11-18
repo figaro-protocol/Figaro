@@ -1355,6 +1355,72 @@ checkout draft keeps its `checkoutHash`).
 
 ---
 
+## 34. The sign gate refuses an agreement whose design it could not read
+
+**Pattern**: An agreement whose provenance leaf names a design (an
+`assemblyHash` and an `agreementHash`) is signed only against that design in
+hand. The gate (`validateCommitmentAgreement`, thrown by
+`assertAgreementSignable`, `sdk/src/projection.ts`) takes the design as a
+required argument, and `designIssues` refuses the agreement when the design is
+`null`: "the agreement instantiates assembly …, which was not read, so its
+designer values cannot be checked". Every reader that hands the gate its
+design answers `null` on a failed or empty read: `readSigningDesign`
+(`frontend/lib/checkout/orderCommitmentFlow.ts`) on the buyer's sign, the
+counterparty's accept, the race candidate's counter-sign and the broadcast of
+a fully signed payload; `readOfferDesign` (`sdk/src/agent/originate.ts`) on
+the agents' offer, race and quote handlers, which refuse every offer naming a
+design when the operator gives no reader. On `/sign` the review shows the
+refusal before any signature, and its heading names the design that was not
+read. The gate compares the merkle root with the signed `checkoutHash` only
+when no other issue stands, so the review says the terms do not match that
+hash only beside the gate's `(merkle)` issue; any other refusal reads that
+the terms are refused. An agreement with
+no provenance leaf names no design and is not checked against one.
+
+**Why it looks wrong**: `docs/OPEN_WORLD.md` § 1 holds that a read which
+fails or resolves empty is absence, never a stand-in and never an error a
+page builds on. A failed fetch of an assembly from IPFS is an ordinary event,
+so refusing on it hands a party's signature to a gateway's uptime. And an
+agreement that names no design signs without the check, so naming a design
+looks to cost its parties more than naming none.
+
+**Why it is correct**: Absence is the rule of a display; a signature binds.
+The provenance leaf is inside the merkle root the `checkoutHash` commits, so
+a party that signs asserts the order instantiates that design. Only the
+design shows what that assertion holds: which clauses the registered
+agreement composes, which values its designer set under
+`block.design.fills`, and how many orders the entry follows. Without it the
+signer cannot tell whether the counterparty dropped a clause, added one, or
+changed a designer's value. Were an unread design read as nothing to check,
+a party could escape every one of these checks by naming an assembly no
+registry anchors, since its read then resolves empty
+(`frontend/tests/e2e/sign-gate-design.devnet.spec.ts` signs such a payload
+and is refused). The refusal is the same rule the gate holds for a clause
+whose spec is not loaded and a clause whose content is withheld: a signer
+binds nothing it cannot read. An agreement with no provenance claims no
+design, so no designer value exists for it to keep. The cost is time: a read
+that fails holds the signature until a read succeeds, and no bond moves
+meanwhile. The gate is the SDK's and the reference frontend's, not the
+Core's: `FigaroCore` reads the `checkoutHash` as 32 bytes and no agreement,
+so a stranger's tool that signs without the design is refused nothing on the
+chain, and its party carries what the gate would have caught.
+
+**Tests**: `sdk/tests/projection.test.ts` (an agreement naming a design that
+no one read is refused; one naming a design read and kept signs);
+`sdk/tests/originate.test.ts` (the seller refuses an offer whose design it
+cannot read); `frontend/tests/lib/signGateDesignRead.test.tsx` (both sign
+flows refuse an agreement whose design cannot be fetched or does not verify);
+`frontend/tests/components/SignPageFlow.test.tsx` (the `/sign` review names
+the unread design in its heading; a clause that breaks its spec is refused
+without being called a mismatch, beside an unread design or alone; only a
+signed hash that differs from the root is called one; a malformed provenance
+is not called an unread design);
+`frontend/tests/e2e/sign-gate-design.devnet.spec.ts` (an assembly no
+registry anchors is refused on counter-sign and on broadcast, with no
+`OrderCommitted` and no balance moved, read out of band).
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -1392,3 +1458,4 @@ checkout draft keeps its `checkoutHash`).
 | 31 | The topology leaf has a shape of its own | agreement format/reward-path | The provenance leaf takes the clause-leaf shape under a reserved key, and a leaf no contract rebuilds reads as unprovable | A reserved key in the clause-leaf shape could be registered by anyone and earn on every order; a 96-byte inner preimage opens under no clause key, with no contract or verification key moved, and the edges have no stage after commit to attest |
 | 32 | A reader names the opening order from the chain, and the edges from the agreement | reader/frontend | A test on `cumulativeValue` in a reader of the process's shape reads as bond arithmetic deciding the graph | It decides no edge: it answers which order opened the process, the Core's own fact at commit; the edges come only from the agreement's topology leaf, and unknown edges are shown as none |
 | 33 | A private set carries its own blinding value | data/spec format | The commitment's `salt` looks like the same random value, a declared field looks like boilerplate, and a public clause carries none | The commitment's `salt` is emitted in `OrderCommitted` and blinds nothing; a declared field enters the hashed bytes with no hash, contract or proof change and is what a stranger's tool reads from the spec; public content is published, so a random value there hides nothing |
+| 34 | The sign gate refuses an agreement whose design it could not read | sign gate/SDK/frontend | A failed or empty read is absence elsewhere, and an agreement naming no design signs without the check | A signature binds the provenance leaf; only the design shows its clauses, designer values and edge count, and reading "not read" as "nothing to check" lets a party escape them by naming an assembly no registry anchors; the gate is the SDK's, never the Core's |

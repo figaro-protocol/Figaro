@@ -36,6 +36,7 @@ import {
     buildDomain,
     calculateBonds,
     checkSellerBindsAssembly,
+    hashCommitmentStruct,
     verifyCommitmentSignature,
     type Agreement,
     type Commitment,
@@ -81,6 +82,15 @@ export interface BuyerFundingRequest {
      *  it is refused before the wallet opens: the price moved since the party
      *  authorized, and the commit would revert at Permit2. */
     approvedInput?: bigint;
+    /** Each order's leg of one checkout, quoted before its first signature
+     *  (`quoteBuyerFunding`), by the hash of the order's commitment struct.
+     *  Each swap pulls its whole cap through Permit2
+     *  (`WitnessSwapAndCommitCoordinator._fund`), one commit after another,
+     *  so the allowance covers the caps together, and the sum was checked
+     *  against `approvedInput` before anything was signed. A sign takes its
+     *  order's quote from here and quotes nothing; an order missing from it
+     *  is refused. */
+    legs?: ReadonlyMap<Hex, FundingQuote>;
 }
 
 /** The seller's accept-time choice to fund their bond by swap: which token
@@ -150,6 +160,15 @@ function quoteBondFundingLeg(
         }
         return quote;
     });
+}
+
+/** The quote `quoteBuyerFunding` made for this order. An order the checkout
+ *  did not quote with the others is refused: its cap was never counted
+ *  against the allowance. */
+function quotedLeg(legs: ReadonlyMap<Hex, FundingQuote>, commitment: Commitment): FundingQuote {
+    const quote = legs.get(hashCommitmentStruct(commitment));
+    if (!quote) throw new Error("This order's swap was not quoted with the checkout's other orders, so its maximum input was not counted against what you authorized.");
+    return quote;
 }
 
 function assertSigningDomain(core: string | undefined, chainId: number): asserts core is `0x${string}` {
@@ -312,10 +331,12 @@ export function useOrderCommitmentFlow() {
             // The buyer's optional swap-funded bond leg is QUOTED before the
             // sign so its maxInput rides into the SAME confirm as the agreement
             // (one approval, both signatures); it is then witness-signed against
-            // that exact quote so the relayer is untrusted by construction.
-            const fundingQuote = funding
-                ? await quoteBondFundingLeg(publicClient, chainId, funding, preview.commitment, "buyer")
-                : null;
+            // that exact quote so the relayer is untrusted by construction. A
+            // checkout's legs were quoted together before its first signature
+            // (`quoteBuyerFunding`): this order's quote is taken from them.
+            const fundingQuote = !funding ? null
+                : funding.legs ? quotedLeg(funding.legs, preview.commitment)
+                : await quoteBondFundingLeg(publicClient, chainId, funding, preview.commitment, "buyer");
             const buyerSig = await signAs(preview.commitment, preview.agreement, swapDetails(fundingQuote, preview.commitment.buyer));
             const buyerFunding: CommitmentPayload["buyerFunding"] = fundingQuote ? await signLeg(fundingQuote) : undefined;
             setStep("awaiting-seller");
@@ -327,6 +348,35 @@ export function useOrderCommitmentFlow() {
             };
         });
     }, [address, signAs, publicClient, chainId, runStep, signLeg]);
+
+    /**
+     * BUYER side: quote the swap leg of every order of one checkout before
+     * its first signature. Each swap pulls its own whole cap through Permit2
+     * from the one allowance, so the caps are summed and checked against
+     * `approvedInput` together; a sum above it is refused here, with nothing
+     * signed. Returns the request carrying each order's quote (`legs`), which
+     * every sign of the checkout then takes.
+     */
+    const quoteBuyerFunding = useCallback(async (
+        previews: readonly OrderPreview[],
+        funding: BuyerFundingRequest,
+    ): Promise<BuyerFundingRequest> => {
+        const legs = new Map<Hex, FundingQuote>();
+        let total = 0n;
+        for (const preview of previews) {
+            const quote = await quoteBondFundingLeg(publicClient, chainId, funding, preview.commitment, "buyer");
+            legs.set(hashCommitmentStruct(preview.commitment), quote);
+            total += quote.maxInput;
+        }
+        if (funding.approvedInput !== undefined && total > funding.approvedInput) {
+            throw new Error(
+                `The swaps of this checkout's ${previews.length} orders together may pull ${total} of the funding token, `
+                + `above the ${funding.approvedInput} you authorized: each swap pulls its own maximum. `
+                + "Authorize the funding token for their sum.",
+            );
+        }
+        return { ...funding, legs };
+    }, [publicClient, chainId]);
 
     /**
      * BUYER side: sign the previewed order and relay it to the seller — sign +
@@ -605,6 +655,7 @@ export function useOrderCommitmentFlow() {
         step,
         error,
         signCommitment,
+        quoteBuyerFunding,
         signAndShare,
         acceptOrder,
         counterSignAndReturn,

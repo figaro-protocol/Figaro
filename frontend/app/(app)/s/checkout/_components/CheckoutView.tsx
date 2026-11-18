@@ -46,6 +46,7 @@ import { assemblyFollows } from "@/lib/shared/assembly";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
+import type { BuyerFundingRequest } from "@/lib/checkout/orderCommitmentFlow";
 import {
     translateListedPrice,
     type ListedPriceTranslation,
@@ -247,6 +248,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         authorization: { isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess, isError: isApproveError },
         signRoot,
         signAndShare,
+        quoteBuyerFunding,
         order: { step: commitStep, error: commitError, payload },
     } = useCheckout(currency);
     // Nothing is priced, parsed or shown as a magnitude until the chain has answered decimals().
@@ -614,9 +616,14 @@ export function CheckoutView({ sellerAddress }: Props) {
         ? null
         : planTotal > 0n ? calculateBonds(planTotal, planTotal).buyerBond : 0n;
     const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && lockedTotal !== null && balance < lockedTotal;
-    // The margin against the whole locked total: every order's leg draws on
-    // the same funding token, and each is quoted again at its own sign.
-    const buyerMargin = fundingMargins.marginFor(lockedTotal);
+    // Each order's buyer bond, one swap leg each. Every leg draws on the same
+    // funding token and pulls its own cap from the one Permit2 allowance, so
+    // the cap the panel asks the buyer to authorize is the sum of each leg's
+    // own cap, quoted the way the legs are (`quoteBuyerFunding`).
+    const buyerBonds: bigint[] | null = kitBreakdown
+        ? (kitBreakdown.total === null ? null : kitBreakdown.rows.map((row) => calculateBonds(row.payment, row.payment).buyerBond))
+        : (lockedTotal === null ? null : [lockedTotal]);
+    const buyerMargin = fundingMargins.marginFor(buyerBonds);
     // Where the chosen funding token stands with Permit2 against the swap's
     // maximum input (the funding token's units, not the bond's) — the one
     // derived state the funding panel shows and the place-order button obeys.
@@ -798,6 +805,12 @@ export function CheckoutView({ sellerAddress }: Props) {
             // countersignature.
             const walkParams = buildWalkParams();
             if (!walkParams) { setCheckoutError("The order inputs are incomplete."); return; }
+            // Every order's swap pulls its own cap from the one Permit2
+            // allowance, so this attempt's legs are quoted together once
+            // every order is built, before the first signature, and their
+            // sum is checked against the allowance there; each sign then
+            // takes its order's quote.
+            let attemptFunding: BuyerFundingRequest | undefined;
             await executeAssemblyCheckout(
                 raceOutcome
                     ? {
@@ -813,17 +826,20 @@ export function CheckoutView({ sellerAddress }: Props) {
                         if (!publicClient) throw new Error("No chain connection — cannot verify the resolve ceiling.");
                         return maxOrdersResolvablePerProcess(publicClient);
                     },
+                    prepareSignatures: async (previews) => {
+                        attemptFunding = buyerFundingRequest ? await quoteBuyerFunding(previews, buyerFundingRequest) : undefined;
+                    },
                     // The buyer's funding choice binds here: every order the
                     // walk signs (root and sub-orders alike) carries its own
                     // witness-signed swap leg when a funding token is chosen.
-                    signRoot: (p) => signRoot(p, buyerFundingRequest),
+                    signRoot: (p) => signRoot(p, attemptFunding),
                     // An AGENT winner (declared services.rest) also receives the
                     // commit-ready payload at its endpoint — a wallet with no
                     // browser open still gets its order and broadcasts itself.
                     // The channel relay still goes out; dual delivery is
                     // harmless and the endpoint failing never blocks checkout.
                     signAndShare: async (p, opts) => {
-                        const payload = await signAndShare(p, buyerFundingRequest, opts);
+                        const payload = await signAndShare(p, attemptFunding, opts);
                         if (opts?.sellerSig && raceOutcome?.endpoint && hexEqual(p.commitment.seller, raceOutcome.selection.seller)) {
                             await postToAgentEndpoint(raceOutcome.endpoint, payload).catch(() => undefined);
                         }

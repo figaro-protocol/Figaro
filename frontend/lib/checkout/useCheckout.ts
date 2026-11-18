@@ -58,6 +58,7 @@ export function useCheckout(
     const {
         signCommitment,
         signAndShare,
+        quoteBuyerFunding,
         step: commitStep,
         error: commitError,
         reset,
@@ -102,6 +103,7 @@ export function useCheckout(
         // Order flow
         signRoot,
         signAndShare,
+        quoteBuyerFunding,
         order: {
             step: commitStep,
             error: commitError,

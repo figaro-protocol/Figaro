@@ -290,7 +290,22 @@ function SignPageContent() {
         // validator's own refusal (its verdict names the unread assembly), and
         // the review shows it before any signature: the gate refuses what it
         // cannot read, and the party reads why rather than no verdict at all.
-        return validateCommitmentAgreement(parsed.agreement, commitment.checkoutHash, specSource(), commitment, designRead.design);
+        const check = validateCommitmentAgreement(parsed.agreement, commitment.checkoutHash, specSource(), commitment, designRead.design);
+        // The design read resolved empty: the review says which design was
+        // not read, apart from the other issues. With no design in hand, the
+        // validator's one `(provenance) assemblyHash` issue is that unread
+        // assembly (`designIssues`), so it is the heading and not an item; a
+        // malformed provenance raises no such issue and is not called unread.
+        const unreadIssue = designRead.design === null
+            ? check.issues.find((issue) => issue.clause === "(provenance)" && issue.path === "assemblyHash")
+            : undefined;
+        const unreadDesign = unreadIssue ? parsed.agreement.provenance?.assemblyHash ?? null : null;
+        const issues = check.issues.filter((issue) => issue !== unreadIssue);
+        // The validator compares the merkle root only when no other issue
+        // stands, so only a `(merkle)` issue says the terms do not match the
+        // signed checkoutHash.
+        const mismatch = issues.some((issue) => issue.clause === "(merkle)");
+        return { ok: check.ok, unreadDesign, issues, mismatch };
     }, [parsed, commitment, designRead]);
 
     // The seller's own listed prices beside the amounts it is asked to sign,
@@ -376,16 +391,27 @@ function SignPageContent() {
 
                     {agreementCheck && !agreementCheck.ok && (
                         <div className="rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error-fg" data-testid="sign-agreement-invalid">
-                            <p className="font-semibold mb-1">
-                                These terms do NOT match the signed checkoutHash — do not proceed.
-                            </p>
-                            <ul className="list-disc pl-4 space-y-0.5">
-                                {agreementCheck.issues.map((issue, i) => (
-                                    <li key={i} className="break-all">
-                                        {issue.clause} {issue.path}: {issue.message}
-                                    </li>
-                                ))}
-                            </ul>
+                            {agreementCheck.unreadDesign !== null && (
+                                <p className="font-semibold mb-1 break-all" data-testid="sign-agreement-unread">
+                                    The design this agreement names, assembly {agreementCheck.unreadDesign}, was not read, so its designer values cannot be checked — do not proceed.
+                                </p>
+                            )}
+                            {agreementCheck.issues.length > 0 && (
+                                <>
+                                    <p className="font-semibold mb-1" data-testid="sign-agreement-refused">
+                                        {agreementCheck.mismatch
+                                            ? "These terms do NOT match the signed checkoutHash — do not proceed."
+                                            : "These terms are refused — do not proceed."}
+                                    </p>
+                                    <ul className="list-disc pl-4 space-y-0.5">
+                                        {agreementCheck.issues.map((issue, i) => (
+                                            <li key={i} className="break-all">
+                                                {issue.clause} {issue.path}: {issue.message}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </>
+                            )}
                         </div>
                     )}
                     {agreementCheck?.ok && (

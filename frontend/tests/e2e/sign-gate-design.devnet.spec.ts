@@ -206,7 +206,11 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
         const [buyerBefore, sellerBefore, coreBefore] = await Promise.all([balanceOf(BUYER.address), balanceOf(SELLER.address), balanceOf(core)]);
 
         /** Paste `payload` into /sign as `wallet`, read the review's verdict,
-         *  click `action`, and read the refusal it raises. */
+         *  click `action`, and read the refusal it raises. An unread design is
+         *  named in the verdict's heading. Every payload here carries its own
+         *  root as its checkoutHash and the gate compares no root while an
+         *  issue stands, so no verdict says the terms do not match it: the
+         *  other refusals read "These terms are refused". */
         const refuseOnSign = async (wallet: Hex, payload: CommitmentPayload, action: 'btn-counter-sign' | 'btn-broadcast', expected: RegExp) => {
             await gotoAsWallet(page, wallet, '/sign?e2e=devnet');
             await waitForConnected(page);
@@ -214,6 +218,16 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
             await page.getByTestId('btn-parse-payload').click();
             await expect(page.getByTestId('sign-agreement-invalid'), 'the review names the refusal before any signature')
                 .toContainText(expected, { timeout: 60000 });
+            if (expected === notRead) {
+                await expect(page.getByTestId('sign-agreement-unread'), 'the heading names the design that was not read')
+                    .toContainText(new RegExp(`assembly ${payload.agreement.provenance!.assemblyHash}, was not read`, 'i'));
+                await expect(page.getByTestId('sign-agreement-refused'), 'the unread design is the only refusal').toHaveCount(0);
+            } else {
+                await expect(page.getByTestId('sign-agreement-unread')).toHaveCount(0);
+                await expect(page.getByTestId('sign-agreement-refused'), 'the heading refuses the terms without calling them a mismatch')
+                    .toHaveText('These terms are refused — do not proceed.');
+            }
+            await expect(page.getByTestId('sign-agreement-invalid')).not.toContainText('do NOT match');
             await expect(page.getByTestId('sign-agreement-verified')).toHaveCount(0);
             const button = page.getByTestId(action);
             if (action === 'btn-counter-sign') {

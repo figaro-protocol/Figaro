@@ -75,6 +75,12 @@ export interface AssemblyCheckoutDeps {
      *  surface routes the standard `interface` to its handler and owns the tx +
      *  receipt wait (useCompositionActions). The composition runs alongside the
      *  order's normal commit. */
+    /** Runs once every order of the checkout is built and checked, before
+     *  the first signature, with every order (the sub-orders in walk order,
+     *  the root last). The buyer's swap legs are quoted here
+     *  (`quoteBuyerFunding`), so a leg the allowance cannot cover refuses the
+     *  checkout before anything is signed. */
+    prepareSignatures?: (previews: OrderPreview[]) => Promise<void>;
     compose?: (args: {
         interface: string;
         fieldValues: Record<string, unknown>;
@@ -287,6 +293,9 @@ export async function executeAssemblyCheckout(
     const compositionByNode = new Map<string, { interface: string; fieldValues: Record<string, unknown> }>();
     const deadline = params.deadline ?? await chainDeadline();
     let rootPreview: OrderPreview | null = null;
+    // The sub-orders in walk order, signed and relayed once every order is
+    // built; a race-formed one carries the winner's countersignature.
+    const subOrders: { preview: OrderPreview; sellerSig?: `0x${string}` }[] = [];
 
     const previewOf = (order: ReconstructedOrder): OrderPreview => ({
         agreement: order.agreement,
@@ -342,11 +351,17 @@ export async function executeAssemblyCheckout(
                     "The rebuilt sub-order does not match the struct the race winner countersigned — refusing to relay. The checkout inputs must reproduce the drafted struct exactly (same salts, deadline, selections, and fills).",
                 );
             }
-            await signAndShare(preview, race ? { sellerSig: race.sellerSig } : undefined);
+            subOrders.push({ preview, sellerSig: race?.sellerSig });
         },
     });
 
     if (!rootPreview) throw new Error("This assembly has no root order.");
+    // Every order is built and checked before the first signature, so a
+    // refusal of any of them — its swap leg's included — signs nothing.
+    await deps.prepareSignatures?.([...subOrders.map((s) => s.preview), rootPreview]);
+    for (const { preview, sellerSig } of subOrders) {
+        await signAndShare(preview, sellerSig ? { sellerSig } : undefined);
+    }
     await signRoot(rootPreview);
 }
 

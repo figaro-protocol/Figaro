@@ -69,6 +69,10 @@ export interface CheckoutHandle {
     // payload then holds BOTH signatures and arrives commit-ready.
     signRoot: (preview: OrderPreview, funding?: BuyerFundingRequest) => Promise<CommitmentPayload>;
     signAndShare: (preview: OrderPreview, funding?: BuyerFundingRequest, opts?: { sellerSig?: `0x${string}` }) => Promise<CommitmentPayload>;
+    // Quotes the swap leg of every order of one checkout before its first
+    // signature and refuses a sum of caps above the allowance; the returned
+    // request carries each order's quote to its sign.
+    quoteBuyerFunding: (previews: readonly OrderPreview[], funding: BuyerFundingRequest) => Promise<BuyerFundingRequest>;
 
     // Order status
     order: OrderFlowState;

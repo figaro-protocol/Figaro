@@ -128,12 +128,19 @@ names. Once the process's attestations have been read, an agreement still in
 flight shows the loading line in its order's place and is not listed. A read
 that answered with nothing else (an order with no attestation) is not listed.
 The three kinds whose place stays empty are held by
-`frontend/tests/components/ReadStateFindings.test.tsx`.
+`frontend/tests/components/ReadStateFindings.test.tsx`. A private clause whose
+content the agreement withholds keeps its title, and the place of its values
+stays empty; a clause signed with no field says so in its place, and the two
+are told apart by whether the agreement carries the clause's content or only
+its data hash (`frontend/tests/components/ProcessClauseEvidenceHeld.test.tsx`).
 
 The sign gate refuses what it cannot read: an agreement naming a design the gate
-could not read is refused, and `/sign` shows that verdict before any signature
+could not read is refused, and `/sign` shows that verdict before any signature,
+its heading naming the design that was not read
 (`designIssues` in `sdk/src/projection.ts`; `docs/FRONTEND.md`, the
 commitment choreography; `frontend/tests/components/SignPageFlow.test.tsx`).
+Why a signature refuses where a display shows absence is
+`docs/DESIGN_DECISIONS.md` § 34.
 
 ---
 

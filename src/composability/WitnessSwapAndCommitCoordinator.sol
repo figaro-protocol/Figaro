@@ -90,11 +90,11 @@ interface IPermit2WitnessTransfer {
 ///      router at deployment.
 ///
 ///      Per-party prerequisites (identical burden to the plain FigaroCore flow plus a
-///      witness signature): a one-time `approve(FigaroCore, …)` for the bond
-///      currency, an `approve(Permit2, …)` for the input token, for the signed
-///      maximum input (`maxInput`) of each swap, and a per-commit Permit2
-///      witness signature (over `swapWitness(...)`) alongside the usual
-///      commitment signature.
+///      witness signature): an `approve(FigaroCore, …)` for the bond currency
+///      covering the bonds FigaroCore pulls; an `approve(Permit2, …)` for the
+///      input token, one approval covering together the `maxInput`s of every
+///      swap made under it, since each swap pulls its own whole `maxInput`; and
+///      a per-commit Permit2 witness signature (over `swapWitness(...)`).
 contract WitnessSwapAndCommitCoordinator is ReentrancyGuard {
     using SafeERC20 for IERC20;
 

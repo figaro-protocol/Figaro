@@ -19,6 +19,14 @@ import { useAccount } from "wagmi";
  * is the ASSEMBLY. A never-seen clause still renders and collects its fields with
  * zero code here; INVOKING a contract needs a handler here — invocation is
  * per-standard-interface (code), not a config artifact.
+ *
+ * No handler is registered, so every interface refuses, naming itself. On a
+ * checkout walk (`executeAssemblyCheckout`), an unbound sub-order whose clause
+ * declares `block.design.composes` with runtime fields reaches this step
+ * while the walk builds the orders, before the first signature, and the walk
+ * stops there: no order of the checkout is signed while a declared
+ * composition has nothing to invoke it. The step is kept as the place a
+ * handler lands (`tests/lib/checkoutCompositionStep.test.tsx`).
  */
 
 /** Context the checkout walk hands each composition invocation. All fields are

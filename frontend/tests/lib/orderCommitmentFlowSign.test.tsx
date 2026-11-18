@@ -205,6 +205,44 @@ describe("signCommitment — the buyer's signature", () => {
         expect(value?.buyerFunding).toMatchObject({ maxInput: 207n });
     });
 
+    it("quoteBuyerFunding: two swap-funded orders in one token are quoted together before any signature, and a sum of caps above the allowance is refused", async () => {
+        // Each leg's cap is bond + 7: 207 and 407. The coordinator pulls each
+        // leg's whole cap through Permit2, one commit after another, against
+        // the one allowance: the two legs need 614.
+        const a = preview(100n, 100n);
+        const b = preview(200n, 300n);
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        const short = await run(() => result.current.quoteBuyerFunding([a, b], { inputToken: INPUT_TOKEN, slippageBps: 300, approvedInput: 613n }));
+        expect((short.caught as Error).message).toMatch(/together may pull 614 .* above the 613 you authorized/);
+        expect(confirm).not.toHaveBeenCalled();
+        expect(s.typedData).toEqual([]);
+
+        const enough = await run(() => result.current.quoteBuyerFunding([a, b], { inputToken: INPUT_TOKEN, slippageBps: 300, approvedInput: 614n }));
+        const legs = enough.value!.legs!;
+        expect([...legs.values()].map((q) => q.maxInput)).toEqual([207n, 407n]);
+        expect(confirm).not.toHaveBeenCalled();
+        expect(s.typedData).toEqual([]);
+    });
+
+    it("a sign with the checkout's quoted legs takes its order's quote and quotes nothing again; an order missing from them is refused before any wallet prompt", async () => {
+        const a = preview(100n, 100n);
+        const b = preview(200n, 300n);
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        const quoted = await run(() => result.current.quoteBuyerFunding([a], { inputToken: INPUT_TOKEN, slippageBps: 300, approvedInput: 614n }));
+        quoteFundingLeg.mockClear();
+        const signed = await run(() => result.current.signCommitment(a, quoted.value!));
+        expect(quoteFundingLeg).not.toHaveBeenCalled();
+        expect(signed.value?.buyerFunding).toMatchObject({ maxInput: 207n });
+
+        confirm.mockClear();
+        s.typedData = [];
+        const missing = await run(() => result.current.signCommitment(b, quoted.value!));
+        expect((missing.caught as Error).message).toMatch(/not quoted with the checkout's other orders/);
+        expect(quoteFundingLeg).not.toHaveBeenCalled();
+        expect(confirm).not.toHaveBeenCalled();
+        expect(s.typedData).toEqual([]);
+    });
+
     it("with a funding token and no chain connection, signs nothing, records the reason and stands at error", async () => {
         s.client = undefined;
         const p = preview();
