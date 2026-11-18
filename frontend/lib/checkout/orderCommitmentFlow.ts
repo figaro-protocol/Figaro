@@ -475,16 +475,7 @@ export function useOrderCommitmentFlow() {
         funding?: SellerFundingRequest,
         opts?: { beforeBroadcast?: () => Promise<void> },
     ): Promise<Hex> => runStep("Accept failed", async () => {
-        // The role is the entry that is still EMPTY. The Core admits
-        // buyer == seller (DESIGN_DECISIONS), so one wallet can hold both
-        // entries; the accepting role is then the one whose signature is
-        // missing, never "buyer" by address alone.
-        const isBuyer = hexEqual(address, incoming.commitment.buyer);
-        const isSeller = hexEqual(address, incoming.commitment.seller);
-        const role: PartyRole =
-            isSeller && !incoming.sellerSig ? "seller"
-            : isBuyer && !incoming.buyerSig ? "buyer"
-            : isBuyer ? "buyer" : "seller";
+        const role: PartyRole = hexEqual(address, incoming.commitment.buyer) ? "buyer" : "seller";
 
         // Verify the COUNTERPARTY's existing signature before we sign and
         // broadcast (acceptOrder): a relayed payload
