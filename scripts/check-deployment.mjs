@@ -89,7 +89,7 @@ const ABI = parseAbi([
     "function core() view returns (address)",
     "function members() view returns (address)",
     "function clauses() view returns (address)",
-    "function assemblies() view returns (address)",
+    "function processDesigns() view returns (address)",
     "function agreements() view returns (address)",
     "function batchVerifier() view returns (address)",
     "function usageCounter() view returns (address)",
