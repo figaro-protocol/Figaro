@@ -93,7 +93,9 @@ answers short or burns its gas reverts the batch
 validation of 4,000,000 gas, in the account's own frame and through
 `MockDelegatingWallet` one frame below it, requiring that every batch that
 lands carries the attestation. `OperationStreamVectorsTest` lands each
-harvested stream, the wallet-code one included, and `BatchGasCeilingTest`
+harvested stream, the wallet-code resolves and the wallet-code attestations
+of both roles included, expecting each attestation's `Attestation` before the
+Core's events, and `BatchGasCeilingTest`
 measures the wallet-code check (`test_Gas_settleStreamWalletCodeCheck`) and the wallet-code attestation entry (`test_Gas_settleStreamWalletCodeAttestation`).
 `BatchVerifierStepsWriteNoStorageTest` holds the premise under which
 `certora/BatchVerifierStateRoot.spec` summarizes three steps of `settleBatch`:
@@ -806,6 +808,31 @@ point inside an entry as `MalformedOperationStream`
 `test_theGeneratedStreamsMeetEveryEntryKind` asserts the generator meets every
 kind. The two generators are written apart; the cross-language lock remains
 `test/fixtures/operation-stream-vectors.json`.
+
+**The operation stream's cross-language lock.**
+`prover/lib/tests/operation_stream_vectors.rs` writes
+`test/fixtures/operation-stream-vectors.json` from `encode_operation_stream`
+(`--ignored write_fixture`) and asserts on every run that the committed file
+is what the encoder produces. Its seven streams carry every entry kind: a
+root commit; commits and a signed resolve; wallet-code resolves with
+authorizations of 17, 0 and 300 bytes; a clause claim and an assembly claim;
+and `walletCodeAttestationsAndAnAgreementClaim`, a wallet-code attestation by
+the seller of an order of a named process (17 bytes) and one by the buyer of
+a root order, whose process id the verifier derives (no byte), then an
+agreement (kind 2) claim with a two-word inclusion proof. Three readers hold
+it. `OperationStreamVectorsTest.test_everyStreamEmitsTheCoreEventsForItsEntries`
+lands each stream through `settleBatch`, every wallet-code party carrying
+`MockERC1271Wallet`, and expects each attestation's `Attestation` and the
+Core's events for each commit and resolve, ids under the verifier's domain;
+`BatchVerifierStepsWriteNoStorageTest` walks each stream. The SDK's
+`sdk/tests/operationStream.test.ts` reads each stream's claims with
+`usageClaimsOfOperationStream`, compares them with constants that mirror the
+Rust vectors, holds the test-side writer (`sdk/tests/operationStreamWriter.ts`)
+to the encoder's bytes entry for entry on both claim-bearing streams, and
+cuts the attestation stream at each entry's end (it reads) and one byte short
+(it is refused). `sdk/tests/rpgf.test.ts` pairs each skipped batch with the
+`BatchOperations` log of its own batch id, two batches in one transaction
+included.
 
 **Packer vectors — the batch verifier's four hand-packed hashes.** The usage
 packer's Rust-generated vector is asserted against the contract's assembly

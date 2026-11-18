@@ -755,6 +755,39 @@ describe("fetchSkippedBatchUses — the uses a batch carried and the counter cou
         expect(client.getTransaction).not.toHaveBeenCalled();
     });
 
+    it("two batches landed in one transaction: each skipped batch is paired with the BatchOperations log of its own batch id", async () => {
+        // A contract that calls `settleBatch` twice in one transaction: both
+        // pairs of logs carry the same transaction hash, and the logs of the
+        // second batch are interleaved with the first's.
+        const AGREEMENT_CLAIM: SequencerUsageClaim = {
+            order: SECOND,
+            clause_or_assembly: rep("a1", 32),
+            kind: { Agreement: { assembly_hash: rep("a2", 32) } },
+            inclusion_proof: [rep("a3", 32), rep("a4", 32)],
+        };
+        const OTHER = concatHex([commitEntry(FIRST), claimEntry(AGREEMENT_CLAIM)]);
+        const client = stubClient([
+            skippedLog(8n, ROUTED_TX, 9n, 0),
+            skippedLog(9n, ROUTED_TX, 9n, 2),
+            operationsLog(9n, ROUTED_TX, 9n, OTHER, 4, 3),
+            operationsLog(8n, ROUTED_TX, 9n, STREAM, 3, 1),
+        ]);
+        const skipped = await fetchSkippedBatchUses(client, VERIFIER, { fromBlock: 0n, toBlock: 10n });
+        expect(skipped.map((s) => [s.batchId, s.transactionHash])).toEqual([[8n, ROUTED_TX], [9n, ROUTED_TX]]);
+        expect(skipped[0].carried).toEqual({
+            period: 3,
+            provenanceLeaf: PROVENANCE_LEAF_KEY,
+            claims: [CLAUSE_CLAIM, ASSEMBLY_CLAIM],
+            uses: usesOf([CLAUSE_CLAIM, ASSEMBLY_CLAIM], [PROCESS, PROCESS]),
+        });
+        expect(skipped[1].carried).toEqual({
+            period: 4,
+            provenanceLeaf: PROVENANCE_LEAF_KEY,
+            claims: [AGREEMENT_CLAIM],
+            uses: usesOf([AGREEMENT_CLAIM], [PROCESS]),
+        });
+    });
+
     it("a skipped batch that carried no usage claim gives an empty list, never an absent one", async () => {
         const client = stubClient([skippedLog(4n, SKIP_TX, 7n), operationsLog(4n, SKIP_TX, 7n, concatHex([commitEntry(FIRST)]))]);
         const [skip] = await fetchSkippedBatchUses(client, VERIFIER, { fromBlock: 0n, toBlock: 10n });

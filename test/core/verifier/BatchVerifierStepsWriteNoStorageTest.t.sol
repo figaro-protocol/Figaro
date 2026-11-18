@@ -66,16 +66,7 @@ contract BatchVerifierStepsWriteNoStorageTest is OperationStreamVectorsTest {
         for (uint256 s = 0; s < streams; s++) {
             string memory sb = string.concat(".streams[", vm.toString(s), "]");
             bytes memory stream = vm.parseJsonBytes(json, string.concat(sb, ".stream"));
-            uint256 entries = vm.parseJsonUint(json, string.concat(sb, ".entryCount"));
-            for (uint256 e = 0; e < entries; e++) {
-                string memory eb = string.concat(sb, ".entries[", vm.toString(e), "]");
-                if (
-                    keccak256(bytes(vm.parseJsonString(json, string.concat(eb, ".kind"))))
-                        == keccak256("resolveByWalletCode")
-                ) {
-                    _approveWalletCode(json, eb);
-                }
-            }
+            _approveFixtureWalletCode(json, sb);
             string memory name = vm.parseJsonString(json, string.concat(sb, ".name"));
             // Step 4's walk (the wallet-code questions), then step 6's (the events).
             vm.record();
