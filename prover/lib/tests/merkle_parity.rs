@@ -35,13 +35,15 @@ fn generated() -> bool {
 }
 
 fn fixture() -> serde_json::Value {
-    let p = std::env::var("MERKLE_VECTORS").map(std::path::PathBuf::from).unwrap_or_else(|_| {
-        let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        p.pop(); // prover/
-        p.pop(); // repo root
-        p.push("test/fixtures/merkle-vectors.json");
-        p
-    });
+    let p = std::env::var("MERKLE_VECTORS")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| {
+            let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            p.pop(); // prover/
+            p.pop(); // repo root
+            p.push("test/fixtures/merkle-vectors.json");
+            p
+        });
     let text = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
     serde_json::from_str(&text).expect("fixture JSON")
 }
@@ -187,10 +189,7 @@ fn a_single_clause_root_is_the_leaf() {
     let fx = fixture();
     let one = &fx["agreements"][1];
     assert_eq!(one["clauseCount"].as_u64().unwrap(), 1);
-    assert_eq!(
-        b256(&one["checkoutHash"]),
-        b256(&one["clauses"][0]["leaf"])
-    );
+    assert_eq!(b256(&one["checkoutHash"]), b256(&one["clauses"][0]["leaf"]));
     assert!(one["clauses"][0]["proof"].as_array().unwrap().is_empty());
 }
 
@@ -220,18 +219,36 @@ fn proof_of(v: &serde_json::Value) -> Vec<B256> {
 fn every_agreement_hash_is_the_root_over_its_clause_leaves() {
     let fx = assembly_fixture();
     let agreements = fx["agreements"].as_array().unwrap();
-    let keys: Vec<B256> = agreements.iter().map(|a| b256(&a["agreementHash"])).collect();
+    let keys: Vec<B256> = agreements
+        .iter()
+        .map(|a| b256(&a["agreementHash"]))
+        .collect();
     for (i, agreement) in agreements.iter().enumerate() {
         let key = keys[i];
         let clauses = agreement["clauses"].as_array().unwrap();
-        assert!(!clauses.is_empty(), "{}: an agreement composes at least one clause", agreement["label"]);
+        assert!(
+            !clauses.is_empty(),
+            "{}: an agreement composes at least one clause",
+            agreement["label"]
+        );
         for clause in clauses {
             let fills = clause["fillsBytes"].as_str().unwrap();
-            assert_eq!(keccak256(fills.as_bytes()), b256(&clause["fillsHash"]), "fillsHash = keccak256(fillsBytes)");
+            assert_eq!(
+                keccak256(fills.as_bytes()),
+                b256(&clause["fillsHash"]),
+                "fillsHash = keccak256(fillsBytes)"
+            );
             let leaf = leaf_under(b256(&clause["clauseKey"]), fills);
-            assert_eq!(leaf, b256(&clause["leaf"]), "the rebuilt clause leaf is the SDK's");
+            assert_eq!(
+                leaf,
+                b256(&clause["leaf"]),
+                "the rebuilt clause leaf is the SDK's"
+            );
             let proof = proof_of(&clause["membershipProof"]);
-            assert!(verify_inclusion(&proof, key, leaf), "the clause proof opens under the agreement hash");
+            assert!(
+                verify_inclusion(&proof, key, leaf),
+                "the clause proof opens under the agreement hash"
+            );
             for (j, other) in keys.iter().enumerate() {
                 if j != i {
                     assert!(
@@ -242,7 +259,11 @@ fn every_agreement_hash_is_the_root_over_its_clause_leaves() {
             }
         }
         if clauses.len() == 1 {
-            assert_eq!(key, b256(&clauses[0]["leaf"]), "a one-clause agreement's hash is its leaf");
+            assert_eq!(
+                key,
+                b256(&clauses[0]["leaf"]),
+                "a one-clause agreement's hash is its leaf"
+            );
         }
     }
 }
@@ -251,21 +272,41 @@ fn every_agreement_hash_is_the_root_over_its_clause_leaves() {
 fn every_agreement_opens_under_its_own_root_and_no_other() {
     let fx = assembly_fixture();
     let assemblies = fx["assemblies"].as_array().unwrap();
-    let roots: Vec<B256> = assemblies.iter().map(|a| b256(&a["assemblyHash"])).collect();
+    let roots: Vec<B256> = assemblies
+        .iter()
+        .map(|a| b256(&a["assemblyHash"]))
+        .collect();
     for (i, assembly) in assemblies.iter().enumerate() {
         let root = roots[i];
         for entry in assembly["agreements"].as_array().unwrap() {
             let content = keccak256(entry["agreementBytes"].as_str().unwrap().as_bytes());
-            assert_eq!(content, b256(&entry["slotContentHash"]), "the agreement's content hash");
-            let leaf = assembly_leaf_under(b256(&entry["agreementHash"]), entry["agreementBytes"].as_str().unwrap());
-            assert_eq!(leaf, b256(&entry["leaf"]), "the rebuilt agreement leaf is the SDK's");
+            assert_eq!(
+                content,
+                b256(&entry["slotContentHash"]),
+                "the agreement's content hash"
+            );
+            let leaf = assembly_leaf_under(
+                b256(&entry["agreementHash"]),
+                entry["agreementBytes"].as_str().unwrap(),
+            );
+            assert_eq!(
+                leaf,
+                b256(&entry["leaf"]),
+                "the rebuilt agreement leaf is the SDK's"
+            );
             assert_ne!(
                 leaf,
-                leaf_under(b256(&entry["agreementHash"]), entry["agreementBytes"].as_str().unwrap()),
+                leaf_under(
+                    b256(&entry["agreementHash"]),
+                    entry["agreementBytes"].as_str().unwrap()
+                ),
                 "an assembly leaf never has the agreement format's shape"
             );
             let proof = proof_of(&entry["membershipProof"]);
-            assert!(verify_inclusion(&proof, root, leaf), "the membership proof opens");
+            assert!(
+                verify_inclusion(&proof, root, leaf),
+                "the membership proof opens"
+            );
             for (j, other) in roots.iter().enumerate() {
                 if j != i {
                     assert!(
@@ -277,7 +318,11 @@ fn every_agreement_opens_under_its_own_root_and_no_other() {
             let mut wrong_key = b256(&entry["agreementHash"]);
             wrong_key.0[0] ^= 1;
             assert!(
-                !verify_inclusion(&proof, root, assembly_leaf_under(wrong_key, entry["agreementBytes"].as_str().unwrap())),
+                !verify_inclusion(
+                    &proof,
+                    root,
+                    assembly_leaf_under(wrong_key, entry["agreementBytes"].as_str().unwrap())
+                ),
                 "another agreement in the same agreement does not open"
             );
         }
@@ -293,7 +338,8 @@ fn every_agreement_s_provenance_leaf_is_the_guest_s_reproduction() {
             assert_eq!(b256(&p["leafKey"]), PROVENANCE_LEAF_KEY);
             assert_eq!(b256(&p["agreementHash"]), b256(&entry["agreementHash"]));
             assert_eq!(b256(&p["assemblyHash"]), b256(&assembly["assemblyHash"]));
-            let bytes = provenance_leaf_bytes(&b256(&p["agreementHash"]), &b256(&p["assemblyHash"]));
+            let bytes =
+                provenance_leaf_bytes(&b256(&p["agreementHash"]), &b256(&p["assemblyHash"]));
             assert_eq!(bytes, p["clauseData"].as_str().unwrap().as_bytes());
             assert_eq!(keccak256(&bytes), b256(&p["clauseDataHash"]));
             assert_eq!(
@@ -317,7 +363,10 @@ fn the_terms_leaf_is_keyed_on_the_reserved_terms_key() {
         assert_eq!(b256(&terms["leafKey"]), ASSEMBLY_TERMS_LEAF_KEY);
         let bytes = terms["termsBytes"].as_str().unwrap();
         assert_eq!(keccak256(bytes.as_bytes()), b256(&terms["clauseDataHash"]));
-        assert_eq!(assembly_leaf_under(ASSEMBLY_TERMS_LEAF_KEY, bytes), b256(&terms["leaf"]));
+        assert_eq!(
+            assembly_leaf_under(ASSEMBLY_TERMS_LEAF_KEY, bytes),
+            b256(&terms["leaf"])
+        );
     }
     assert!(carriers >= 1, "the lock covers the terms leaf");
 }
@@ -328,6 +377,12 @@ fn a_one_agreement_root_is_its_leaf() {
     let one = &fx["assemblies"][0];
     assert_eq!(one["agreements"].as_array().unwrap().len(), 1);
     assert!(one["terms"].is_null());
-    assert_eq!(b256(&one["assemblyHash"]), b256(&one["agreements"][0]["leaf"]));
-    assert!(one["agreements"][0]["membershipProof"].as_array().unwrap().is_empty());
+    assert_eq!(
+        b256(&one["assemblyHash"]),
+        b256(&one["agreements"][0]["leaf"])
+    );
+    assert!(one["agreements"][0]["membershipProof"]
+        .as_array()
+        .unwrap()
+        .is_empty());
 }

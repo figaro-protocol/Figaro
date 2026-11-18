@@ -69,7 +69,9 @@ impl Summary {
     fn combine(left: Summary, right: Summary) -> Summary {
         match (left, right) {
             (Summary::Empty, Summary::Empty) => Summary::Empty,
-            (Summary::Empty, Summary::One(h)) | (Summary::One(h), Summary::Empty) => Summary::One(h),
+            (Summary::Empty, Summary::One(h)) | (Summary::One(h), Summary::Empty) => {
+                Summary::One(h)
+            }
             (l, r) => Summary::Node(node_hash(&l.hash(), &r.hash())),
         }
     }
@@ -83,7 +85,10 @@ fn summarize(leaves: &[(B256, B256)], d: usize) -> Summary {
         [(p, v)] => Summary::One(leaf_hash(p, v)),
         _ => {
             let split = leaves.partition_point(|(p, _)| !bit(p, d));
-            Summary::combine(summarize(&leaves[..split], d + 1), summarize(&leaves[split..], d + 1))
+            Summary::combine(
+                summarize(&leaves[..split], d + 1),
+                summarize(&leaves[split..], d + 1),
+            )
         }
     }
 }
@@ -161,7 +166,12 @@ impl<'a> Descent<'a> {
     /// are `w` (sorted, all on this position). Every leaf the proof names is
     /// checked against the position: a lone leaf rises through empty
     /// siblings, so the previous hash alone cannot tell where it sat.
-    fn walk(&mut self, w: &[WitnessedLeaf], d: usize, prefix: &B256) -> Result<(Summary, Summary), TreeError> {
+    fn walk(
+        &mut self,
+        w: &[WitnessedLeaf],
+        d: usize,
+        prefix: &B256,
+    ) -> Result<(Summary, Summary), TreeError> {
         match w {
             [] => match self.take()? {
                 ProofItem::Empty => Ok((Summary::Empty, Summary::Empty)),
@@ -180,7 +190,9 @@ impl<'a> Descent<'a> {
                     if x.before.is_some() {
                         return Err(TreeError::AbsenceProofForPresentEntry);
                     }
-                    let after = x.after.map_or(Summary::Empty, |v| Summary::One(leaf_hash(&x.path, &v)));
+                    let after = x
+                        .after
+                        .map_or(Summary::Empty, |v| Summary::One(leaf_hash(&x.path, &v)));
                     Ok((Summary::Empty, after))
                 }
                 ProofItem::Leaf { path, value_hash } if *path == x.path => {
@@ -190,7 +202,10 @@ impl<'a> Descent<'a> {
                         return Err(TreeError::ValueMismatch);
                     }
                     let after = x.after.ok_or(TreeError::LeafRemoved)?;
-                    Ok((Summary::One(leaf_hash(&x.path, &before)), Summary::One(leaf_hash(&x.path, &after))))
+                    Ok((
+                        Summary::One(leaf_hash(&x.path, &before)),
+                        Summary::One(leaf_hash(&x.path, &after)),
+                    ))
                 }
                 ProofItem::Leaf { path, value_hash } => {
                     // Another leaf holds the position: the witnessed one is absent.
@@ -221,7 +236,12 @@ impl<'a> Descent<'a> {
 
     /// Split the witnessed leaves by bit `d` — the direction from the
     /// paths, never from the proof — and combine the two halves.
-    fn split(&mut self, w: &[WitnessedLeaf], d: usize, prefix: &B256) -> Result<(Summary, Summary), TreeError> {
+    fn split(
+        &mut self,
+        w: &[WitnessedLeaf],
+        d: usize,
+        prefix: &B256,
+    ) -> Result<(Summary, Summary), TreeError> {
         let at = w.partition_point(|x| !bit(&x.path, d));
         let mut right = *prefix;
         right.0[d / 8] |= 1 << (7 - d % 8);
@@ -240,7 +260,10 @@ pub fn roots(leaves: &[WitnessedLeaf], proof: &[ProofItem]) -> Result<(B256, B25
     if leaves.windows(2).any(|pair| pair[0].path >= pair[1].path) {
         return Err(TreeError::EntriesNotStrictlyIncreasing);
     }
-    if leaves.iter().any(|x| x.before.is_some() && x.after.is_none()) {
+    if leaves
+        .iter()
+        .any(|x| x.before.is_some() && x.after.is_none())
+    {
         return Err(TreeError::LeafRemoved);
     }
     let mut descent = Descent { proof, next: 0 };
@@ -277,12 +300,18 @@ fn prove_at(leaves: &[(B256, B256)], paths: &[B256], d: usize, out: &mut Vec<Pro
     match paths {
         [] => out.push(match leaves {
             [] => ProofItem::Empty,
-            [(p, v)] => ProofItem::Leaf { path: *p, value_hash: *v },
+            [(p, v)] => ProofItem::Leaf {
+                path: *p,
+                value_hash: *v,
+            },
             _ => ProofItem::Node(summarize(leaves, d).hash()),
         }),
         [_] if leaves.len() <= 1 => out.push(match leaves {
             [] => ProofItem::Empty,
-            [(p, v)] => ProofItem::Leaf { path: *p, value_hash: *v },
+            [(p, v)] => ProofItem::Leaf {
+                path: *p,
+                value_hash: *v,
+            },
             _ => unreachable!(),
         }),
         _ => {

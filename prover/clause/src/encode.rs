@@ -37,16 +37,13 @@ use alloy_dyn_abi::DynSolValue;
 use alloy_primitives::{Address, B256, I256, U256};
 use serde_json::Value;
 
-use crate::spec::{FieldSpec, ClauseSpec, StringFieldSpec, StringFormat};
+use crate::spec::{ClauseSpec, FieldSpec, StringFieldSpec, StringFormat};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum EncodeError {
     /// A field could not be encoded. Carries the runtime field name —
     /// the generic encoder only has names parsed from the spec at runtime.
-    FieldError {
-        field: String,
-        reason: String,
-    },
+    FieldError { field: String, reason: String },
 }
 
 impl core::fmt::Display for EncodeError {
@@ -134,7 +131,10 @@ pub fn encode_content_from_spec(
     };
     let mut values = Vec::with_capacity(fields.len());
     for field in fields {
-        values.push(encode_field(field, content.get(field.base().name.as_str()))?);
+        values.push(encode_field(
+            field,
+            content.get(field.base().name.as_str()),
+        )?);
     }
     Ok(DynSolValue::Tuple(values).abi_encode_params())
 }
@@ -158,7 +158,8 @@ fn encode_present(field: &FieldSpec, v: &Value) -> Result<DynSolValue, EncodeErr
     let name = field.base().name.as_str();
     match field {
         FieldSpec::Boolean(_) => Ok(DynSolValue::Bool(
-            v.as_bool().ok_or_else(|| field_err(name, "expected boolean"))?,
+            v.as_bool()
+                .ok_or_else(|| field_err(name, "expected boolean"))?,
         )),
         // `integer` is SIGNED (int256) — the spec grammar admits negative
         // bounds; `bigint` is unsigned (uint256). Content may arrive as a
@@ -170,11 +171,10 @@ fn encode_present(field: &FieldSpec, v: &Value) -> Result<DynSolValue, EncodeErr
             let s = v
                 .as_str()
                 .ok_or_else(|| field_err(name, "expected an enum string"))?;
-            let idx = e
-                .values
-                .iter()
-                .position(|val| val == s)
-                .ok_or_else(|| field_err(name, format!("\"{s}\" is not a declared enum value")))?;
+            let idx =
+                e.values.iter().position(|val| val == s).ok_or_else(|| {
+                    field_err(name, format!("\"{s}\" is not a declared enum value"))
+                })?;
             Ok(DynSolValue::Uint(U256::from(idx), 8))
         }
         FieldSpec::String(s) => encode_string_field(name, s, v),
@@ -212,13 +212,10 @@ fn encode_string_field(
         None | Some(StringFormat::IsoDatetime) | Some(StringFormat::Other(_)) => {
             Ok(DynSolValue::String(text.to_string()))
         }
-        Some(StringFormat::Bytes32Hex) => Ok(DynSolValue::FixedBytes(
-            parse_bytes32(name, text)?,
-            32,
-        )),
-        Some(StringFormat::AddressHex) => Ok(DynSolValue::Address(
-            parse_address(name, text)?,
-        )),
+        Some(StringFormat::Bytes32Hex) => {
+            Ok(DynSolValue::FixedBytes(parse_bytes32(name, text)?, 32))
+        }
+        Some(StringFormat::AddressHex) => Ok(DynSolValue::Address(parse_address(name, text)?)),
         Some(StringFormat::BytesHex) => Ok(DynSolValue::Bytes(parse_bytes(name, text)?)),
     }
 }
@@ -252,7 +249,10 @@ fn parse_bytes32(name: &str, s: &str) -> Result<B256, EncodeError> {
     if bytes.len() != 32 {
         return Err(field_err(
             name,
-            format!("malformed bytes32 hex: expected 32 bytes, got {}", bytes.len()),
+            format!(
+                "malformed bytes32 hex: expected 32 bytes, got {}",
+                bytes.len()
+            ),
         ));
     }
     Ok(B256::from_slice(&bytes))
@@ -271,7 +271,10 @@ fn parse_address(name: &str, s: &str) -> Result<Address, EncodeError> {
     if bytes.len() != 20 {
         return Err(field_err(
             name,
-            format!("malformed address hex: expected 20 bytes, got {}", bytes.len()),
+            format!(
+                "malformed address hex: expected 20 bytes, got {}",
+                bytes.len()
+            ),
         ));
     }
     Ok(Address::from_slice(&bytes))

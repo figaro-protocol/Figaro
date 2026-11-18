@@ -236,11 +236,17 @@ pub fn build_canonical_batch_input() -> BatchInput {
     let resolve_hash = resolve_struct_hash(&process_id, &root.payment);
     let resolve_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &resolve_hash));
 
-    let attest_struct = attest_seller_struct_hash(&order_hash, &clause_key, 0, &witness_content_ref);
+    let attest_struct =
+        attest_seller_struct_hash(&order_hash, &clause_key, 0, &witness_content_ref);
     let attest_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &attest_struct));
 
-    let buyer_attest_struct =
-        attest_buyer_struct_hash(&process_id, &order_hash, &clause_key, 0, &re_assert_content_ref);
+    let buyer_attest_struct = attest_buyer_struct_hash(
+        &process_id,
+        &order_hash,
+        &clause_key,
+        0,
+        &re_assert_content_ref,
+    );
     let buyer_attest_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &buyer_attest_struct));
 
     BatchInput {

@@ -15,8 +15,8 @@ use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::kernel::{
-    apply_batch_with_state, apply_guest, compute_usage_accrual_hash, derive_commitment_ids, guest_input,
-    ASSEMBLY_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY,
+    apply_batch_with_state, apply_guest, compute_usage_accrual_hash, derive_commitment_ids,
+    guest_input, ASSEMBLY_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY,
 };
 use figaro_kernel::types::*;
 
@@ -137,7 +137,8 @@ fn two_slot_assembly(agreement_hash: &B256) -> (B256, B256, Vec<B256>) {
     let slot0 = slot_content_hash(0, None);
     let slot1 = slot_content_hash(1, Some("agreement-0"));
     let leaf0 = figaro_kernel::kernel::assembly_leaf(agreement_hash, &slot0);
-    let leaf1 = figaro_kernel::kernel::assembly_leaf(&keccak256(b"the-following-agreement"), &slot1);
+    let leaf1 =
+        figaro_kernel::kernel::assembly_leaf(&keccak256(b"the-following-agreement"), &slot1);
     (sorted_pair(leaf0, leaf1), slot0, vec![leaf1])
 }
 
@@ -217,7 +218,11 @@ fn batch(
     }
 }
 
-fn clause_claim(order: &Commitment, clause_or_assembly: B256, clause_data_hash: B256) -> UsageClaim {
+fn clause_claim(
+    order: &Commitment,
+    clause_or_assembly: B256,
+    clause_data_hash: B256,
+) -> UsageClaim {
     UsageClaim {
         order: order.clone(),
         clause_or_assembly,
@@ -275,7 +280,8 @@ fn rejects_a_claim_against_an_unresolved_order() {
     let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
     let clause_data_hash = keccak256(b"clause-bytes");
 
-    let (order, mut ops) = settled_order(&buyer, &seller, &clause_or_assembly, &clause_data_hash, 1);
+    let (order, mut ops) =
+        settled_order(&buyer, &seller, &clause_or_assembly, &clause_data_hash, 1);
     ops.truncate(1); // commit only — no resolve
 
     let input = batch(
@@ -302,7 +308,11 @@ fn rejects_a_clause_or_assembly_that_is_not_in_the_agreement() {
     let clause_data_hash = keccak256(b"clause-bytes");
 
     let (order, ops) = settled_order(&buyer, &seller, &signed, &clause_data_hash, 1);
-    let input = batch(ops, vec![clause_claim(&order, claimed, clause_data_hash)], empty_snapshot());
+    let input = batch(
+        ops,
+        vec![clause_claim(&order, claimed, clause_data_hash)],
+        empty_snapshot(),
+    );
 
     match apply_batch_with_state(&input).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
@@ -339,7 +349,10 @@ fn a_claim_presented_in_a_later_batch_yields_the_same_use() {
         post.to_snapshot(),
     );
     let (_, _, again_events, _) = apply_batch_with_state(&again).expect("the claim proves again");
-    assert_eq!(again_events.uses, first_events.uses, "the same (kind, key, process, seller)");
+    assert_eq!(
+        again_events.uses, first_events.uses,
+        "the same (kind, key, process, seller)"
+    );
 }
 
 /// The guest proves a claim against the post-state it reads from its witness:
@@ -352,7 +365,8 @@ fn the_guest_refuses_a_claim_whose_order_the_witness_leaves_out() {
     let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
     let clause_data_hash = keccak256(b"clause-bytes");
     let (order, ops) = settled_order(&buyer, &seller, &clause_or_assembly, &clause_data_hash, 1);
-    let (_, _, _, post) = apply_batch_with_state(&batch(ops, vec![], empty_snapshot())).expect("the order settles");
+    let (_, _, _, post) =
+        apply_batch_with_state(&batch(ops, vec![], empty_snapshot())).expect("the order settles");
     let claim_batch = batch(
         vec![],
         vec![clause_claim(&order, clause_or_assembly, clause_data_hash)],
@@ -360,12 +374,19 @@ fn the_guest_refuses_a_claim_whose_order_the_witness_leaves_out() {
     );
 
     let honest = guest_input(&claim_batch).expect("the claim batch's witness");
-    assert_eq!(honest.prev_witness.orders.len(), 1, "the witness carries the claimed order");
+    assert_eq!(
+        honest.prev_witness.orders.len(),
+        1,
+        "the witness carries the claimed order"
+    );
     assert!(apply_guest(&honest).is_ok());
 
     let mut missing = honest.clone();
     missing.prev_witness.orders.clear();
-    assert!(matches!(apply_guest(&missing).unwrap_err(), KernelError::UnwitnessedKey));
+    assert!(matches!(
+        apply_guest(&missing).unwrap_err(),
+        KernelError::UnwitnessedKey
+    ));
 }
 
 /// The same claim twice in one batch is one use: the guest gives each
@@ -401,9 +422,12 @@ fn many_buyers_through_one_seller_add_depth_not_breadth() {
     let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
     let clause_data_hash = keccak256(b"clause-bytes");
 
-    let (order_a, ops_a) = settled_order(&buyer, &seller, &clause_or_assembly, &clause_data_hash, 1);
-    let (order_b, ops_b) = settled_order(&buyer, &seller, &clause_or_assembly, &clause_data_hash, 2);
-    let (order_c, ops_c) = settled_order(&buyer2, &seller, &clause_or_assembly, &clause_data_hash, 3);
+    let (order_a, ops_a) =
+        settled_order(&buyer, &seller, &clause_or_assembly, &clause_data_hash, 1);
+    let (order_b, ops_b) =
+        settled_order(&buyer, &seller, &clause_or_assembly, &clause_data_hash, 2);
+    let (order_c, ops_c) =
+        settled_order(&buyer2, &seller, &clause_or_assembly, &clause_data_hash, 3);
 
     let ops: Vec<KernelOp> = ops_a.into_iter().chain(ops_b).chain(ops_c).collect();
     let claims = vec![
@@ -420,7 +444,10 @@ fn many_buyers_through_one_seller_add_depth_not_breadth() {
         events.uses.iter().map(|u| u.process_id).collect::<Vec<_>>(),
         vec![pid(&order_a), pid(&order_b), pid(&order_c)]
     );
-    assert!(events.uses.iter().all(|u| u.seller == SELLER1), "one seller behind all three");
+    assert!(
+        events.uses.iter().all(|u| u.seller == SELLER1),
+        "one seller behind all three"
+    );
 }
 
 /// The counterpart: the SAME buyer through two sellers — each use names its
@@ -433,8 +460,10 @@ fn distinct_sellers_raise_breadth() {
     let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
     let clause_data_hash = keccak256(b"clause-bytes");
 
-    let (order_a, ops_a) = settled_order(&buyer, &seller1, &clause_or_assembly, &clause_data_hash, 1);
-    let (order_b, ops_b) = settled_order(&buyer, &seller2, &clause_or_assembly, &clause_data_hash, 2);
+    let (order_a, ops_a) =
+        settled_order(&buyer, &seller1, &clause_or_assembly, &clause_data_hash, 1);
+    let (order_b, ops_b) =
+        settled_order(&buyer, &seller2, &clause_or_assembly, &clause_data_hash, 2);
 
     let ops: Vec<KernelOp> = ops_a.into_iter().chain(ops_b).collect();
     let claims = vec![
@@ -557,11 +586,19 @@ fn an_agreement_claim_opens_only_under_the_guest_s_provenance_key() {
     let composition = keccak256(b"a-composition");
     let clause_data_hash = provenance_leaf_data_hash(&agreement, &composition);
 
-    let (order, ops) = settled_order(&buyer, &seller, &forged_provenance_key(), &clause_data_hash, 1);
+    let (order, ops) = settled_order(
+        &buyer,
+        &seller,
+        &forged_provenance_key(),
+        &clause_data_hash,
+        1,
+    );
     let claim = UsageClaim {
         order,
         clause_or_assembly: agreement,
-        kind: UsageClaimKind::Agreement { assembly_hash: composition },
+        kind: UsageClaimKind::Agreement {
+            assembly_hash: composition,
+        },
         inclusion_proof: vec![],
     };
     let input = batch(ops, vec![claim], empty_snapshot());
@@ -586,7 +623,11 @@ fn the_usage_hash_commits_the_guest_s_provenance_key() {
     let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
     let clause_data_hash = keccak256(b"clause-bytes");
     let (order, ops) = settled_order(&buyer, &seller, &clause_or_assembly, &clause_data_hash, 1);
-    let input = batch(ops, vec![clause_claim(&order, clause_or_assembly, clause_data_hash)], empty_snapshot());
+    let input = batch(
+        ops,
+        vec![clause_claim(&order, clause_or_assembly, clause_data_hash)],
+        empty_snapshot(),
+    );
 
     let (pv, _, events, _) = apply_batch_with_state(&input).expect("batch applies");
     assert_eq!(
@@ -594,8 +635,12 @@ fn the_usage_hash_commits_the_guest_s_provenance_key() {
         compute_usage_accrual_hash(PERIOD, &PROVENANCE_LEAF_KEY, &events.uses),
         "the relay's run commits the format's key"
     );
-    let (guest_pv, _, _) = apply_guest(&guest_input(&input).expect("the witness builds")).expect("the guest applies");
-    assert_eq!(guest_pv.usage_accrual_hash, pv.usage_accrual_hash, "the guest's run commits the same key");
+    let (guest_pv, _, _) =
+        apply_guest(&guest_input(&input).expect("the witness builds")).expect("the guest applies");
+    assert_eq!(
+        guest_pv.usage_accrual_hash, pv.usage_accrual_hash,
+        "the guest's run commits the same key"
+    );
 }
 
 // ── The assembly leg ──────────────────────────────────────────────
@@ -709,7 +754,10 @@ fn rejects_an_assembly_claim_whose_membership_proof_is_under_another_root() {
     // Another assembly holding the same agreement in its agreement 0,
     // beside a different follower: its proof opens the agreement under ITS
     // root only.
-    let elsewhere = figaro_kernel::kernel::assembly_leaf(&keccak256(b"some-other-agreement"), &slot_content_hash(1, Some("agreement-0")));
+    let elsewhere = figaro_kernel::kernel::assembly_leaf(
+        &keccak256(b"some-other-agreement"),
+        &slot_content_hash(1, Some("agreement-0")),
+    );
     let claim = assembly_claim(&order, composition, agreement, entry, vec![elsewhere]);
 
     match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
@@ -774,14 +822,15 @@ fn one_provenance_leaf_credits_the_agreement_and_the_assembly_apart() {
         .map(|a| (a.clause_or_assembly, a.kind))
         .collect();
     kinds.sort();
-    let mut expected = vec![(agreement, USAGE_KIND_AGREEMENT), (composition, USAGE_KIND_ASSEMBLY)];
+    let mut expected = vec![
+        (agreement, USAGE_KIND_AGREEMENT),
+        (composition, USAGE_KIND_ASSEMBLY),
+    ];
     expected.sort();
     assert_eq!(kinds, expected, "one use per (kind, key)");
 }
 
 // ── The hash the verifier re-derives ──────────────────────────────
-
-
 
 /// The period and the provenance key are COMMITTED, not incidental: the
 /// counter re-checks both, and a batch proven for one period must not resolve
@@ -798,7 +847,11 @@ fn the_usage_hash_covers_the_period_and_the_provenance_key() {
 
     let mut other_kind = uses.clone();
     other_kind[0].kind = USAGE_KIND_ASSEMBLY;
-    assert_ne!(base, compute_usage_accrual_hash(0, &provenance_key(), &other_kind), "the kind is covered");
+    assert_ne!(
+        base,
+        compute_usage_accrual_hash(0, &provenance_key(), &other_kind),
+        "the kind is covered"
+    );
     let mut agreement_kind = uses.clone();
     agreement_kind[0].kind = USAGE_KIND_AGREEMENT;
     assert_ne!(
@@ -808,18 +861,34 @@ fn the_usage_hash_covers_the_period_and_the_provenance_key() {
     );
     let mut other_process = uses.clone();
     other_process[0].process_id = keccak256(b"another-process");
-    assert_ne!(base, compute_usage_accrual_hash(0, &provenance_key(), &other_process), "the process is covered");
+    assert_ne!(
+        base,
+        compute_usage_accrual_hash(0, &provenance_key(), &other_process),
+        "the process is covered"
+    );
     let mut other_seller = uses.clone();
     other_seller[0].seller = Address::ZERO;
-    assert_ne!(base, compute_usage_accrual_hash(0, &provenance_key(), &other_seller), "the seller is covered");
+    assert_ne!(
+        base,
+        compute_usage_accrual_hash(0, &provenance_key(), &other_seller),
+        "the seller is covered"
+    );
 
-    assert_ne!(base, compute_usage_accrual_hash(1, &provenance_key(), &uses), "period is covered");
+    assert_ne!(
+        base,
+        compute_usage_accrual_hash(1, &provenance_key(), &uses),
+        "period is covered"
+    );
     assert_ne!(
         base,
         compute_usage_accrual_hash(0, &keccak256(b"other-clause"), &uses),
         "provenance key is covered"
     );
-    assert_ne!(base, compute_usage_accrual_hash(0, &provenance_key(), &[]), "the uses are covered");
+    assert_ne!(
+        base,
+        compute_usage_accrual_hash(0, &provenance_key(), &[]),
+        "the uses are covered"
+    );
 }
 
 /// THE CROSS-LANGUAGE LOCK. Both sides pack this hash by hand — Rust here,
@@ -886,7 +955,10 @@ fn the_one_use_usage_hash_is_its_written_preimage() {
 
     let hash = compute_usage_accrual_hash(3, &prov, &uses);
     assert_eq!(hash, keccak256(&preimage));
-    assert_eq!(hash, b256!("7651d6b67629ae1203d1ba6085775549de93d0f620dd882fcb62368ebc889130"));
+    assert_eq!(
+        hash,
+        b256!("7651d6b67629ae1203d1ba6085775549de93d0f620dd882fcb62368ebc889130")
+    );
 }
 
 /// A registry accepts any bytes32, so a clause key and an assembly key can be
@@ -905,8 +977,10 @@ fn a_clause_and_an_assembly_on_the_same_key_accrue_apart() {
     let shared = figaro_kernel::kernel::assembly_leaf(&agreement, &entry);
 
     let clause_leaf = single_clause_root(&shared, &clause_data_hash);
-    let provenance_leaf =
-        single_clause_root(&provenance_key(), &provenance_leaf_data_hash(&agreement, &shared));
+    let provenance_leaf = single_clause_root(
+        &provenance_key(),
+        &provenance_leaf_data_hash(&agreement, &shared),
+    );
     let root = sorted_pair(clause_leaf, provenance_leaf);
 
     let (order, ops) = settled_order_under(&buyer, &seller, root, 1);
@@ -914,9 +988,7 @@ fn a_clause_and_an_assembly_on_the_same_key_accrue_apart() {
         UsageClaim {
             order: order.clone(),
             clause_or_assembly: shared,
-            kind: UsageClaimKind::Clause {
-                clause_data_hash,
-            },
+            kind: UsageClaimKind::Clause { clause_data_hash },
             inclusion_proof: vec![provenance_leaf],
         },
         UsageClaim {
@@ -965,7 +1037,10 @@ fn the_empty_usage_hash_is_the_one_the_verifier_derives() {
     expected.extend_from_slice(B256::ZERO.as_slice()); // provenance
     expected.extend_from_slice(&0u64.to_be_bytes()); // no uses
 
-    assert_eq!(compute_usage_accrual_hash(0, &B256::ZERO, &[]), keccak256(&expected));
+    assert_eq!(
+        compute_usage_accrual_hash(0, &B256::ZERO, &[]),
+        keccak256(&expected)
+    );
 }
 
 // ── The state root carries the usage leg ──────────────────────────
@@ -994,8 +1069,14 @@ fn crediting_usage_leaves_the_state_root_where_the_operations_left_it() {
     let (pv_with, _, _, _) = apply_batch_with_state(&with).expect("applies");
 
     assert_eq!(pv_without.prev_state_root, pv_with.prev_state_root);
-    assert_eq!(pv_without.new_state_root, pv_with.new_state_root, "claims move no state");
-    assert_ne!(pv_without.usage_accrual_hash, pv_with.usage_accrual_hash, "they move the usage hash");
+    assert_eq!(
+        pv_without.new_state_root, pv_with.new_state_root,
+        "claims move no state"
+    );
+    assert_ne!(
+        pv_without.usage_accrual_hash, pv_with.usage_accrual_hash,
+        "they move the usage hash"
+    );
 }
 
 // ── The provenance leaf on the attestation path ───────────────────
@@ -1084,12 +1165,17 @@ fn the_provenance_leaf_is_attestable_without_a_spec() {
 /// the contentRef is re-emitted as signed.
 #[test]
 fn a_hash_only_provenance_attestation_is_accepted_on_inclusion_alone() {
-    let committed = provenance_leaf_data_hash(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
+    let committed =
+        provenance_leaf_data_hash(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
     let content_ref = keccak256(b"the buyer's evidence");
-    let witness = AttestationWitness::HashOnly { clause_data_hash: committed, inclusion_proof: vec![] };
+    let witness = AttestationWitness::HashOnly {
+        clause_data_hash: committed,
+        inclusion_proof: vec![],
+    };
     let (input, process_id) = provenance_attestation_with(committed, witness, content_ref);
 
-    let (_, _, events, _) = apply_batch_with_state(&input).expect("hash-only provenance attestation applies");
+    let (_, _, events, _) =
+        apply_batch_with_state(&input).expect("hash-only provenance attestation applies");
     assert_eq!(events.attestations.len(), 1);
     assert_eq!(events.attestations[0].clause_id, provenance_key());
     assert_eq!(events.attestations[0].process_id, process_id);
@@ -1101,9 +1187,16 @@ fn a_hash_only_provenance_attestation_is_accepted_on_inclusion_alone() {
 /// leaf.
 #[test]
 fn a_hash_only_provenance_attestation_of_an_uncommitted_hash_is_refused() {
-    let committed = provenance_leaf_data_hash(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
-    let other = provenance_leaf_data_hash(&keccak256(b"another-agreement"), &keccak256(b"a-composition"));
-    let witness = AttestationWitness::HashOnly { clause_data_hash: other, inclusion_proof: vec![] };
+    let committed =
+        provenance_leaf_data_hash(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
+    let other = provenance_leaf_data_hash(
+        &keccak256(b"another-agreement"),
+        &keccak256(b"a-composition"),
+    );
+    let witness = AttestationWitness::HashOnly {
+        clause_data_hash: other,
+        inclusion_proof: vec![],
+    };
     let (input, _) = provenance_attestation_with(committed, witness, keccak256(b"evidence"));
 
     match apply_batch_with_state(&input).map(|_| ()) {
@@ -1204,10 +1297,14 @@ fn the_guest_s_terms_leaf_key_is_the_format_s_constant() {
 fn a_clause_claim_keyed_on_the_provenance_leaf_is_refused() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let clause_data_hash = provenance_leaf_data_hash(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
+    let clause_data_hash =
+        provenance_leaf_data_hash(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
     let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &clause_data_hash, 1);
     let claim = clause_claim(&order, PROVENANCE_LEAF_KEY, clause_data_hash);
-    expect_reserved(batch(ops, vec![claim], empty_snapshot()), PROVENANCE_LEAF_KEY);
+    expect_reserved(
+        batch(ops, vec![claim], empty_snapshot()),
+        PROVENANCE_LEAF_KEY,
+    );
 }
 
 /// Every kind refuses both reserved keys as its claim key, even when the
@@ -1231,8 +1328,13 @@ fn every_kind_keyed_on_a_reserved_key_is_refused() {
         expect_reserved(batch(ops, vec![claim], empty_snapshot()), reserved);
 
         let assembly_clause = provenance_leaf_data_hash(&keccak256(b"an-agreement"), &reserved);
-        let (order, ops) =
-            settled_order(&buyer, &seller, &provenance_key(), &assembly_clause, salt + 10);
+        let (order, ops) = settled_order(
+            &buyer,
+            &seller,
+            &provenance_key(),
+            &assembly_clause,
+            salt + 10,
+        );
         let claim = assembly_claim(
             &order,
             reserved,
@@ -1267,12 +1369,27 @@ fn an_assembly_claim_passing_the_terms_leaf_as_an_agreement_is_refused() {
     // The order's provenance names the terms key as its agreement.
     let clause_data_hash = provenance_leaf_data_hash(&terms_key(), &composition);
     let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &clause_data_hash, 1);
-    let claim = assembly_claim(&order, composition, terms_key(), terms_bytes, vec![slot_leaf]);
+    let claim = assembly_claim(
+        &order,
+        composition,
+        terms_key(),
+        terms_bytes,
+        vec![slot_leaf],
+    );
     expect_reserved(batch(ops, vec![claim], empty_snapshot()), terms_key());
 
     // And the provenance key as an agreement's agreementHash is refused too.
     let clause_data_hash = provenance_leaf_data_hash(&PROVENANCE_LEAF_KEY, &composition);
     let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &clause_data_hash, 2);
-    let claim = assembly_claim(&order, composition, PROVENANCE_LEAF_KEY, entry, vec![terms_leaf]);
-    expect_reserved(batch(ops, vec![claim], empty_snapshot()), PROVENANCE_LEAF_KEY);
+    let claim = assembly_claim(
+        &order,
+        composition,
+        PROVENANCE_LEAF_KEY,
+        entry,
+        vec![terms_leaf],
+    );
+    expect_reserved(
+        batch(ops, vec![claim], empty_snapshot()),
+        PROVENANCE_LEAF_KEY,
+    );
 }

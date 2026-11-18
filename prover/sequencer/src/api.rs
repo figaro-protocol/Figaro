@@ -11,20 +11,17 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use axum::{
-    extract::{
-        rejection::JsonRejection,
-        ConnectInfo, DefaultBodyLimit, State,
-    },
+    extract::{rejection::JsonRejection, ConnectInfo, DefaultBodyLimit, State},
     http::{Method, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
+use serde::{Deserialize, Serialize};
 use tower::limit::GlobalConcurrencyLimitLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::timeout::TimeoutLayer;
-use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
 use crate::mempool::{Mempool, SubmitError};
@@ -124,7 +121,9 @@ pub fn without_urls(text: &str) -> String {
         out.push_str("<url>");
         let after = &rest[at + scheme.len()..];
         let end = after
-            .find(|c: char| c.is_whitespace() || matches!(c, '"' | '\'' | '`' | ')' | ']' | '}' | '>'))
+            .find(|c: char| {
+                c.is_whitespace() || matches!(c, '"' | '\'' | '`' | ')' | ']' | '}' | '>')
+            })
             .unwrap_or(after.len());
         rest = &after[end..];
     }
@@ -142,7 +141,9 @@ pub async fn record_dropped_claims(
 ) -> u64 {
     for (claim, reason) in dropped {
         tracing::warn!(clause_or_assembly = ?claim.clause_or_assembly, %reason, "Usage claim dropped at {stage}");
-        failures.record_claims(1, format!("dropped at {stage}: {reason}")).await;
+        failures
+            .record_claims(1, format!("dropped at {stage}: {reason}"))
+            .await;
     }
     dropped.len() as u64
 }
@@ -157,7 +158,9 @@ pub async fn record_dropped(
 ) -> u64 {
     for (op, reason) in dropped {
         tracing::warn!(id = op.id, %reason, "Dropped at {stage}");
-        failures.record(1, format!("dropped at {stage}: {reason}")).await;
+        failures
+            .record(1, format!("dropped at {stage}: {reason}"))
+            .await;
     }
     dropped.len() as u64
 }
@@ -379,7 +382,10 @@ pub fn router(state: AppState, config: ApiConfig) -> Router {
                 .allow_origin(Any)
                 .allow_methods([Method::GET, Method::OPTIONS]),
         );
-    Router::new().merge(submissions).merge(reads).with_state(state)
+    Router::new()
+        .merge(submissions)
+        .merge(reads)
+        .with_state(state)
 }
 
 // ── Handlers ─────────────────────────────────────────────────────
@@ -406,7 +412,10 @@ fn submit_error(route: &'static str, kind: &'static str, e: SubmitError) -> Resp
     // An attestation's refusal can quote its content (a value outside a
     // spec's bounds), so the relay logs the refusal without its reason; the
     // reason goes to the sender alone, whose content it is.
-    if matches!(kind, "AttestAsSeller" | "AttestAsBuyer" | "AttestByWalletCode") {
+    if matches!(
+        kind,
+        "AttestAsSeller" | "AttestAsBuyer" | "AttestByWalletCode"
+    ) {
         warn!(route, kind, %status, "submission rejected");
     } else {
         warn!(route, kind, %status, %error, "submission rejected");
@@ -417,7 +426,11 @@ fn submit_error(route: &'static str, kind: &'static str, e: SubmitError) -> Resp
 /// A submission the relay could not verify because the chain could not be
 /// asked: `503`, to retry, its reason with every URL taken out.
 fn unverifiable(error: String) -> Response {
-    (StatusCode::SERVICE_UNAVAILABLE, Json(ErrorResponse { error })).into_response()
+    (
+        StatusCode::SERVICE_UNAVAILABLE,
+        Json(ErrorResponse { error }),
+    )
+        .into_response()
 }
 
 fn op_kind(op: &KernelOp) -> &'static str {
@@ -447,7 +460,11 @@ async fn submit_op(
     if let Err(invalid) = state.mempool.pre_check(&req.operation) {
         return submit_error("/submit", kind, SubmitError::Invalid(invalid));
     }
-    if let Err(unknown) = state.mempool.refuse_unknown(&req.operation, &state.state_mirror).await {
+    if let Err(unknown) = state
+        .mempool
+        .refuse_unknown(&req.operation, &state.state_mirror)
+        .await
+    {
         return submit_error("/submit", kind, SubmitError::Invalid(unknown));
     }
     // A commit's bonds are checked at the door: an unfunded commit would
@@ -472,7 +489,9 @@ async fn submit_op(
             Err(read) => {
                 let read = without_urls(&read);
                 warn!(route = "/submit", kind, %read, "funding unverifiable at the door; refused");
-                return unverifiable(format!("the commitment's bonds could not be read; retry: {read}"));
+                return unverifiable(format!(
+                    "the commitment's bonds could not be read; retry: {read}"
+                ));
             }
         }
     }
@@ -482,8 +501,10 @@ async fn submit_op(
     // refuses would revert a whole batch, a resolve's and an attestation's
     // alike. Code that could not be asked
     // is unverified, and the operation is refused, with a retry.
-    if let (Some(gate), KernelOp::ResolveByWalletCode { .. } | KernelOp::AttestByWalletCode { .. }) =
-        (&state.funding, &req.operation)
+    if let (
+        Some(gate),
+        KernelOp::ResolveByWalletCode { .. } | KernelOp::AttestByWalletCode { .. },
+    ) = (&state.funding, &req.operation)
     {
         match submitter::check_wallet_code(gate, &req.operation).await {
             Ok(Ok(())) => {}
@@ -500,7 +521,9 @@ async fn submit_op(
             Err(read) => {
                 let read = without_urls(&read);
                 warn!(route = "/submit", kind, %read, "the party's code could not be asked at the door; refused");
-                return unverifiable(format!("the party's code could not be asked; retry: {read}"));
+                return unverifiable(format!(
+                    "the party's code could not be asked; retry: {read}"
+                ));
             }
         }
     }
@@ -630,9 +653,18 @@ mod tests {
         let t0 = Instant::now();
         assert!(limiter.admit_at(a, t0));
         assert!(limiter.admit_at(a, t0));
-        assert!(!limiter.admit_at(a, t0), "the third in the window is refused");
-        assert!(limiter.admit_at(b, t0), "another address has its own window");
-        assert!(limiter.admit_at(a, t0 + Duration::from_secs(60)), "a new window");
+        assert!(
+            !limiter.admit_at(a, t0),
+            "the third in the window is refused"
+        );
+        assert!(
+            limiter.admit_at(b, t0),
+            "another address has its own window"
+        );
+        assert!(
+            limiter.admit_at(a, t0 + Duration::from_secs(60)),
+            "a new window"
+        );
         assert!(RateLimiter::new(0).admit_at(a, t0), "zero disables");
     }
 
@@ -650,7 +682,11 @@ mod tests {
         assert_eq!(limiter.windows.lock().unwrap().len(), 1_000);
         let late = IpAddr::V4(Ipv4Addr::new(192, 168, 0, 1));
         assert!(limiter.admit_at(late, t0 + Duration::from_secs(121)));
-        assert_eq!(limiter.windows.lock().unwrap().len(), 1, "every window past its minute is swept");
+        assert_eq!(
+            limiter.windows.lock().unwrap().len(),
+            1,
+            "every window past its minute is swept"
+        );
     }
 
     /// An IPv6 client holds a /64, so the addresses of one /64 share one
@@ -663,9 +699,15 @@ mod tests {
         let host = |h: u16| IpAddr::V6(std::net::Ipv6Addr::new(0x2001, 0xdb8, 0, 1, 0, 0, 0, h));
         assert!(limiter.admit_at(host(1), t0));
         assert!(limiter.admit_at(host(2), t0));
-        assert!(!limiter.admit_at(host(3), t0), "the third from one /64 is refused");
+        assert!(
+            !limiter.admit_at(host(3), t0),
+            "the third from one /64 is refused"
+        );
         assert_eq!(limiter.windows.lock().unwrap().len(), 1);
         let other = IpAddr::V6(std::net::Ipv6Addr::new(0x2001, 0xdb8, 0, 2, 0, 0, 0, 1));
-        assert!(limiter.admit_at(other, t0), "another /64 has its own window");
+        assert!(
+            limiter.admit_at(other, t0),
+            "another /64 has its own window"
+        );
     }
 }

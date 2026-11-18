@@ -56,15 +56,11 @@ pub struct ValidateOptions {
 // `pattern` field uses regex; nothing else does.
 
 fn is_bytes32_hex(s: &str) -> bool {
-    s.len() == 66
-        && s.starts_with("0x")
-        && s.as_bytes()[2..].iter().all(|b| b.is_ascii_hexdigit())
+    s.len() == 66 && s.starts_with("0x") && s.as_bytes()[2..].iter().all(|b| b.is_ascii_hexdigit())
 }
 
 fn is_address_hex(s: &str) -> bool {
-    s.len() == 42
-        && s.starts_with("0x")
-        && s.as_bytes()[2..].iter().all(|b| b.is_ascii_hexdigit())
+    s.len() == 42 && s.starts_with("0x") && s.as_bytes()[2..].iter().all(|b| b.is_ascii_hexdigit())
 }
 
 fn is_bytes_hex(s: &str) -> bool {
@@ -87,9 +83,17 @@ fn is_iso_datetime(s: &str) -> bool {
         }
         bytes[i..i + n].iter().all(|b| b.is_ascii_digit())
     };
-    if !digits_at(0, 4) || bytes[4] != b'-' || !digits_at(5, 2) || bytes[7] != b'-'
-        || !digits_at(8, 2) || bytes[10] != b'T' || !digits_at(11, 2) || bytes[13] != b':'
-        || !digits_at(14, 2) || bytes[16] != b':' || !digits_at(17, 2)
+    if !digits_at(0, 4)
+        || bytes[4] != b'-'
+        || !digits_at(5, 2)
+        || bytes[7] != b'-'
+        || !digits_at(8, 2)
+        || bytes[10] != b'T'
+        || !digits_at(11, 2)
+        || bytes[13] != b':'
+        || !digits_at(14, 2)
+        || bytes[16] != b':'
+        || !digits_at(17, 2)
     {
         return false;
     }
@@ -501,7 +505,10 @@ fn validate_integer(
                     }
                     _ => format!("expected integer, got {}", type_name(value)),
                 };
-                errors.push(ValidationError { path: path.to_string(), message });
+                errors.push(ValidationError {
+                    path: path.to_string(),
+                    message,
+                });
                 return;
             }
         },
@@ -822,12 +829,7 @@ fn validate_grain(
     }
 }
 
-fn validate_field(
-    value: &Value,
-    spec: &FieldSpec,
-    path: &str,
-    errors: &mut Vec<ValidationError>,
-) {
+fn validate_field(value: &Value, spec: &FieldSpec, path: &str, errors: &mut Vec<ValidationError>) {
     match spec {
         FieldSpec::String(s) => validate_string(value, s, path, errors),
         FieldSpec::Integer(s) => validate_integer(value, s, path, errors),

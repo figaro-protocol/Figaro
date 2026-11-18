@@ -10,7 +10,7 @@
 //!      engine must agree with Layer A on accept/reject for every case.
 
 use figaro_clause::{
-    parse_clause_spec, parse_stage_key, validate_content, ParseClauseSpecResult, ClauseSpec,
+    parse_clause_spec, parse_stage_key, validate_content, ClauseSpec, ParseClauseSpecResult,
     ValidateOptions, MAX_FIELD_DEPTH,
 };
 use serde_json::{json, Value};
@@ -237,7 +237,10 @@ fn enforces_canonical_formats() {
     });
     assert!(ok(&good, &spec));
     assert!(!ok(&json!({ "h": "0x1234" }), &spec));
-    assert!(!ok(&json!({ "h": format!("0x{}", "11".repeat(32)), "t": "yesterday" }), &spec));
+    assert!(!ok(
+        &json!({ "h": format!("0x{}", "11".repeat(32)), "t": "yesterday" }),
+        &spec
+    ));
 }
 
 #[test]
@@ -344,7 +347,13 @@ fn a_content_integer_written_as_a_float_is_read_exactly() {
             "{written} encodes as {exact}"
         );
     }
-    for past in ["9007199254740992.0", "9007199254740993.0", "1e16", "-9007199254740993.0", "1.5"] {
+    for past in [
+        "9007199254740992.0",
+        "9007199254740993.0",
+        "1e16",
+        "-9007199254740993.0",
+        "1.5",
+    ] {
         assert!(!ok(&text(past), &spec), "{past} is refused");
     }
 }
@@ -403,10 +412,12 @@ fn stage_override_selects_stage_fields() {
     // Without the stage, the default fields apply and the witness fails.
     assert!(validate_content(&witness, &spec, ValidateOptions::default()).is_err());
     // A stage with no override falls back to the default fields.
-    assert!(
-        validate_content(&json!({ "declared": "x" }), &spec, ValidateOptions { stage: Some(2) })
-            .is_ok()
-    );
+    assert!(validate_content(
+        &json!({ "declared": "x" }),
+        &spec,
+        ValidateOptions { stage: Some(2) }
+    )
+    .is_ok());
 }
 
 // ── Spec-parse gates (Layer A parity) ────────────────────────────────
@@ -458,7 +469,10 @@ fn rejects_default_that_mismatches_field() {
             { "name": "n", "type": "integer", "required": false, "min": 0, "default": -5 },
         ],
     }));
-    assert!(errors.iter().any(|e| e.path.ends_with(".default")), "{errors:?}");
+    assert!(
+        errors.iter().any(|e| e.path.ends_with(".default")),
+        "{errors:?}"
+    );
 }
 
 #[test]
@@ -470,7 +484,10 @@ fn rejects_sentinel_default() {
               "values": ["none", "a"], "sentinel": "none", "default": "none" },
         ],
     }));
-    assert!(errors.iter().any(|e| e.path.ends_with(".default")), "{errors:?}");
+    assert!(
+        errors.iter().any(|e| e.path.ends_with(".default")),
+        "{errors:?}"
+    );
 }
 
 #[test]
@@ -481,7 +498,10 @@ fn rejects_sentinel_not_in_values() {
             { "name": "e", "type": "enum", "required": true, "values": ["a"], "sentinel": "b" },
         ],
     }));
-    assert!(errors.iter().any(|e| e.path.ends_with(".sentinel")), "{errors:?}");
+    assert!(
+        errors.iter().any(|e| e.path.ends_with(".sentinel")),
+        "{errors:?}"
+    );
 }
 
 #[test]
@@ -493,7 +513,10 @@ fn rejects_value_label_for_undeclared_value() {
               "valueLabels": { "b": "Bee" } },
         ],
     }));
-    assert!(errors.iter().any(|e| e.path.contains("valueLabels")), "{errors:?}");
+    assert!(
+        errors.iter().any(|e| e.path.contains("valueLabels")),
+        "{errors:?}"
+    );
 }
 
 #[test]
@@ -504,7 +527,10 @@ fn rejects_invalid_regex_pattern() {
             { "name": "s", "type": "string", "required": true, "pattern": "([" },
         ],
     }));
-    assert!(errors.iter().any(|e| e.path.ends_with(".pattern")), "{errors:?}");
+    assert!(
+        errors.iter().any(|e| e.path.ends_with(".pattern")),
+        "{errors:?}"
+    );
 }
 
 #[test]
@@ -533,7 +559,10 @@ fn rejects_empty_format_string() {
             { "name": "s", "type": "string", "required": true, "format": "" },
         ],
     }));
-    assert!(errors.iter().any(|e| e.path.ends_with(".format")), "{errors:?}");
+    assert!(
+        errors.iter().any(|e| e.path.ends_with(".format")),
+        "{errors:?}"
+    );
 }
 
 #[test]
@@ -573,7 +602,13 @@ fn rejects_bad_top_level_shapes() {
         "clauseId": "", "version": -1, "title": "", "description": 5, "fields": "nope",
     }));
     let paths: Vec<&str> = errors.iter().map(|e| e.path.as_str()).collect();
-    for expected in ["$.clauseId", "$.version", "$.title", "$.description", "$.fields"] {
+    for expected in [
+        "$.clauseId",
+        "$.version",
+        "$.title",
+        "$.description",
+        "$.fields",
+    ] {
         assert!(paths.contains(&expected), "missing {expected} in {paths:?}");
     }
 }
@@ -586,7 +621,10 @@ fn rejects_bad_stage_keys() {
         "stages": { "256": [], "x": [] },
     }));
     assert_eq!(
-        errors.iter().filter(|e| e.message.contains("0..255")).count(),
+        errors
+            .iter()
+            .filter(|e| e.message.contains("0..255"))
+            .count(),
         2,
         "{errors:?}"
     );
@@ -598,7 +636,9 @@ fn a_stage_key_has_one_spelling() {
     for stage in 0..=255u8 {
         assert_eq!(parse_stage_key(&stage.to_string()), Some(stage));
     }
-    for key in ["01", "00", "+1", " 1", "1 ", "1.0", "0x1", "-0", "", "256", "1e1", "\u{0661}", "a"] {
+    for key in [
+        "01", "00", "+1", " 1", "1 ", "1.0", "0x1", "-0", "", "256", "1e1", "\u{0661}", "a",
+    ] {
         assert_eq!(parse_stage_key(key), None, "{key:?}");
     }
 }

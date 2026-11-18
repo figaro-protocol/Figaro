@@ -1,8 +1,8 @@
 use crate::state_tree;
 use crate::types::{KernelError, KernelStateSnapshot, ProcessState, StateWitness};
 use alloy_primitives::{keccak256, B256};
-use std::sync::Mutex;
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Mutex;
 
 /// A process leaf's tag in the state tree.
 pub const PROCESS_TAG: u8 = 0x01;
@@ -82,7 +82,11 @@ impl KernelState {
     /// Export to a deterministic, serializable snapshot.
     pub fn to_snapshot(&self) -> KernelStateSnapshot {
         KernelStateSnapshot {
-            processes: self.processes.iter().map(|(k, v)| (*k, v.clone())).collect(),
+            processes: self
+                .processes
+                .iter()
+                .map(|(k, v)| (*k, v.clone()))
+                .collect(),
             order_status: self.order_status.iter().map(|(k, v)| (*k, *v)).collect(),
         }
     }
@@ -128,7 +132,10 @@ impl KernelState {
                 return Err(KernelError::UnwitnessedKey);
             }
         }
-        self.touched.lock().unwrap_or_else(|e| e.into_inner()).insert((tag, *key));
+        self.touched
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert((tag, *key));
         Ok(())
     }
 
@@ -140,7 +147,10 @@ impl KernelState {
 
     /// The keys every access so far has touched.
     pub fn touched(&self) -> BTreeSet<(u8, B256)> {
-        self.touched.lock().unwrap_or_else(|e| e.into_inner()).clone()
+        self.touched
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     pub fn process(&self, id: &B256) -> Result<Option<&ProcessState>, KernelError> {
@@ -177,7 +187,10 @@ impl KernelState {
     pub fn leaf_value_hash(&self, tag: u8, key: &B256) -> Option<B256> {
         match tag {
             PROCESS_TAG => self.processes.get(key).map(process_value_hash),
-            _ => self.order_status.get(key).map(|status| order_value_hash(*status)),
+            _ => self
+                .order_status
+                .get(key)
+                .map(|status| order_value_hash(*status)),
         }
     }
 
@@ -207,7 +220,11 @@ impl KernelState {
         }
         let mut paths: Vec<B256> = keys.iter().map(|(t, k)| leaf_path(*t, k)).collect();
         paths.sort();
-        StateWitness { processes, orders, proof: state_tree::prove(&self.leaves(), &paths) }
+        StateWitness {
+            processes,
+            orders,
+            proof: state_tree::prove(&self.leaves(), &paths),
+        }
     }
 
     /// The state root: the root of the state tree over every entry this

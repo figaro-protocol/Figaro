@@ -30,10 +30,13 @@ async fn main() {
     // and the public values match the mirror's expected output.
     let mock_client = ProverClient::builder().mock().build().await;
     let mut stdin = SP1Stdin::new();
-    stdin.write(&figaro_kernel::kernel::guest_input(&input).expect("the canonical batch's witness"));
+    stdin
+        .write(&figaro_kernel::kernel::guest_input(&input).expect("the canonical batch's witness"));
     println!("── Stage 1/2 — Mock execution (no proof) ──");
-    let (public_values, report) =
-        mock_client.execute(elf.clone(), stdin.clone()).await.unwrap();
+    let (public_values, report) = mock_client
+        .execute(elf.clone(), stdin.clone())
+        .await
+        .unwrap();
     println!("Cycles: {}", report.total_instruction_count());
 
     let pv = PublicValues::abi_decode(public_values.as_slice()).expect("decode public values");
@@ -73,7 +76,10 @@ async fn main() {
         println!("Building proving key (setup)...");
         let setup_start = std::time::Instant::now();
         let pk = cpu_client.setup(elf).await.expect("setup failed");
-        println!("Setup complete in {:.1}s", setup_start.elapsed().as_secs_f64());
+        println!(
+            "Setup complete in {:.1}s",
+            setup_start.elapsed().as_secs_f64()
+        );
 
         println!("Generating Core proof (this can take minutes)...");
         let prove_start = std::time::Instant::now();
@@ -82,8 +88,8 @@ async fn main() {
         println!("Proof generated in {:.1}s", prove_elapsed.as_secs_f64());
 
         // Re-read public values from the actual proof, not the mock run.
-        let pv = PublicValues::abi_decode(proof.public_values.as_slice())
-            .expect("decode public values");
+        let pv =
+            PublicValues::abi_decode(proof.public_values.as_slice()).expect("decode public values");
         println!(
             "Proof public values — new_state_root: {:?}, spec_bindings_hash: {:?}",
             pv.new_state_root, pv.spec_bindings_hash,

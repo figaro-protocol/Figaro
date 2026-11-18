@@ -263,7 +263,9 @@ pub(crate) fn as_js_integer(v: &Value) -> Option<i64> {
             f as i64
         }
     };
-    (-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&i).then_some(i)
+    (-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER)
+        .contains(&i)
+        .then_some(i)
 }
 
 /// The tightened bigint grammar: `-?[0-9]+`, no empty string, no `+`
@@ -287,14 +289,22 @@ fn parse_base(raw: &Value, path: &str, errors: &mut Vec<SpecParseError>) -> Opti
     let name = match obj.get("name").and_then(Value::as_str) {
         Some(n) if !n.is_empty() => n.to_string(),
         _ => {
-            err(errors, &format!("{path}.name"), "field name must be a non-empty string");
+            err(
+                errors,
+                &format!("{path}.name"),
+                "field name must be a non-empty string",
+            );
             return None;
         }
     };
     let required = match obj.get("required").and_then(Value::as_bool) {
         Some(b) => b,
         None => {
-            err(errors, &format!("{path}.required"), "required must be a boolean");
+            err(
+                errors,
+                &format!("{path}.required"),
+                "required must be a boolean",
+            );
             return None;
         }
     };
@@ -302,7 +312,11 @@ fn parse_base(raw: &Value, path: &str, errors: &mut Vec<SpecParseError>) -> Opti
         None => None,
         Some(Value::String(s)) => Some(s.clone()),
         Some(_) => {
-            err(errors, &format!("{path}.description"), "description must be a string when present");
+            err(
+                errors,
+                &format!("{path}.description"),
+                "description must be a string when present",
+            );
             return None;
         }
     };
@@ -310,7 +324,11 @@ fn parse_base(raw: &Value, path: &str, errors: &mut Vec<SpecParseError>) -> Opti
         None => None,
         Some(Value::String(s)) => Some(s.clone()),
         Some(_) => {
-            err(errors, &format!("{path}.label"), "label must be a string when present");
+            err(
+                errors,
+                &format!("{path}.label"),
+                "label must be a string when present",
+            );
             return None;
         }
     };
@@ -319,7 +337,11 @@ fn parse_base(raw: &Value, path: &str, errors: &mut Vec<SpecParseError>) -> Opti
         Some(Value::String(s)) if s == "public" => Some(Disposition::Public),
         Some(Value::String(s)) if s == "private" => Some(Disposition::Private),
         Some(_) => {
-            err(errors, &format!("{path}.disposition"), "disposition must be \"public\" or \"private\" when present");
+            err(
+                errors,
+                &format!("{path}.disposition"),
+                "disposition must be \"public\" or \"private\" when present",
+            );
             return None;
         }
     };
@@ -327,11 +349,23 @@ fn parse_base(raw: &Value, path: &str, errors: &mut Vec<SpecParseError>) -> Opti
         None => false,
         Some(Value::Bool(true)) => true,
         Some(_) => {
-            err(errors, &format!("{path}.blinding"), "blinding must be true when present");
+            err(
+                errors,
+                &format!("{path}.blinding"),
+                "blinding must be true when present",
+            );
             return None;
         }
     };
-    Some(BaseFieldSpec { name, required, description, label, default: None, disposition, blinding })
+    Some(BaseFieldSpec {
+        name,
+        required,
+        description,
+        label,
+        default: None,
+        disposition,
+        blinding,
+    })
 }
 
 fn parse_non_negative_usize(
@@ -354,12 +388,21 @@ fn parse_non_negative_usize(
     }
 }
 
-fn parse_i64(raw: &Value, path: &str, field: &str, errors: &mut Vec<SpecParseError>) -> Option<i64> {
+fn parse_i64(
+    raw: &Value,
+    path: &str,
+    field: &str,
+    errors: &mut Vec<SpecParseError>,
+) -> Option<i64> {
     let n = raw.get(field)?;
     match as_js_integer(n) {
         Some(i) => Some(i),
         None => {
-            err(errors, &format!("{path}.{field}"), &format!("{field} must be an integer"));
+            err(
+                errors,
+                &format!("{path}.{field}"),
+                &format!("{field} must be an integer"),
+            );
             None
         }
     }
@@ -413,9 +456,7 @@ fn default_matches_field(spec: &FieldSpec, value: &Value) -> bool {
             .unwrap_or(false),
         FieldSpec::Boolean(_) => value.is_boolean(),
         FieldSpec::Enum(e) => match value.as_str() {
-            Some(s) => {
-                e.values.iter().any(|v| v == s) && e.sentinel.as_deref() != Some(s)
-            }
+            Some(s) => e.values.iter().any(|v| v == s) && e.sentinel.as_deref() != Some(s),
             None => false,
         },
         FieldSpec::Array(a) => match value.as_array() {
@@ -473,7 +514,9 @@ pub fn parse_field_spec(
     }
     // A default of any type marks the field: `default_value_of` carries
     // only the shapes a default may take, and the rule reads the raw key.
-    if spec.base().blinding && !blinding_shape_holds(&spec, raw.get("default").is_some(), path, errors, depth) {
+    if spec.base().blinding
+        && !blinding_shape_holds(&spec, raw.get("default").is_some(), path, errors, depth)
+    {
         return None;
     }
     Some(spec)
@@ -504,17 +547,33 @@ fn blinding_shape_holds(
     match spec {
         FieldSpec::String(s) => {
             if s.format != Some(StringFormat::Bytes32Hex) {
-                err(errors, &format!("{path}.format"), &format!("a blinding field carries format \"{BLINDING_FORMAT}\""));
+                err(
+                    errors,
+                    &format!("{path}.format"),
+                    &format!("a blinding field carries format \"{BLINDING_FORMAT}\""),
+                );
             }
         }
-        _ => err(errors, &format!("{path}.type"), "a blinding field is of type \"string\""),
+        _ => err(
+            errors,
+            &format!("{path}.type"),
+            "a blinding field is of type \"string\"",
+        ),
     }
     let base = spec.base();
     if !base.required {
-        err(errors, &format!("{path}.required"), "a blinding field is required");
+        err(
+            errors,
+            &format!("{path}.required"),
+            "a blinding field is required",
+        );
     }
     if !base.is_private() {
-        err(errors, &format!("{path}.disposition"), "a blinding field is \"private\"");
+        err(
+            errors,
+            &format!("{path}.disposition"),
+            "a blinding field is \"private\"",
+        );
     }
     if has_default {
         err(
@@ -622,7 +681,11 @@ fn parse_field_spec_core(
                 match f.as_str() {
                     Some(s) if !s.is_empty() => spec.format = Some(StringFormat::from_str(s)),
                     _ => {
-                        err(errors, &format!("{path}.format"), "format must be a non-empty string");
+                        err(
+                            errors,
+                            &format!("{path}.format"),
+                            "format must be a non-empty string",
+                        );
                         return None;
                     }
                 }
@@ -656,7 +719,11 @@ fn parse_field_spec_core(
                 let s = match p.as_str() {
                     Some(s) => s,
                     None => {
-                        err(errors, &format!("{path}.pattern"), "pattern must be a string (regex)");
+                        err(
+                            errors,
+                            &format!("{path}.pattern"),
+                            "pattern must be a string (regex)",
+                        );
                         return None;
                     }
                 };
@@ -669,7 +736,11 @@ fn parse_field_spec_core(
                     return None;
                 }
                 if regex::Regex::new(s).is_err() {
-                    err(errors, &format!("{path}.pattern"), "pattern must be a valid regex");
+                    err(
+                        errors,
+                        &format!("{path}.pattern"),
+                        "pattern must be a valid regex",
+                    );
                     return None;
                 }
                 spec.pattern = Some(s.to_string());
@@ -677,7 +748,11 @@ fn parse_field_spec_core(
             Some(FieldSpec::String(spec))
         }
         "integer" => {
-            let mut spec = IntegerFieldSpec { base, min: None, max: None };
+            let mut spec = IntegerFieldSpec {
+                base,
+                min: None,
+                max: None,
+            };
             if raw.get("min").is_some() {
                 spec.min = parse_i64(raw, path, "min", errors);
                 if spec.min.is_none() {
@@ -693,7 +768,11 @@ fn parse_field_spec_core(
             Some(FieldSpec::Integer(spec))
         }
         "bigint" => {
-            let mut spec = BigintFieldSpec { base, min: None, max: None };
+            let mut spec = BigintFieldSpec {
+                base,
+                min: None,
+                max: None,
+            };
             if raw.get("min").is_some() {
                 spec.min = parse_bigint_bound(raw, path, "min", errors);
                 if spec.min.is_none() {
@@ -713,7 +792,11 @@ fn parse_field_spec_core(
             let arr = match raw.get("values").and_then(Value::as_array) {
                 Some(a) if !a.is_empty() => a,
                 _ => {
-                    err(errors, &format!("{path}.values"), "enum requires a non-empty values array");
+                    err(
+                        errors,
+                        &format!("{path}.values"),
+                        "enum requires a non-empty values array",
+                    );
                     return None;
                 }
             };
@@ -723,7 +806,10 @@ fn parse_field_spec_core(
                 err(
                     errors,
                     &format!("{path}.values"),
-                    &format!("enum encodes as uint8 — at most 256 values (got {})", arr.len()),
+                    &format!(
+                        "enum encodes as uint8 — at most 256 values (got {})",
+                        arr.len()
+                    ),
                 );
                 return None;
             }
@@ -732,19 +818,32 @@ fn parse_field_spec_core(
                 match v.as_str() {
                     Some(s) => values.push(s.to_string()),
                     None => {
-                        err(errors, &format!("{path}.values[{i}]"), "enum values must be strings");
+                        err(
+                            errors,
+                            &format!("{path}.values[{i}]"),
+                            "enum values must be strings",
+                        );
                         return None;
                     }
                 }
             }
-            let mut spec = EnumFieldSpec { base, values, sentinel: None, value_labels: None };
+            let mut spec = EnumFieldSpec {
+                base,
+                values,
+                sentinel: None,
+                value_labels: None,
+            };
             if let Some(sentinel) = raw.get("sentinel") {
                 match sentinel.as_str() {
                     Some(s) if spec.values.iter().any(|v| v == s) => {
                         spec.sentinel = Some(s.to_string());
                     }
                     _ => {
-                        err(errors, &format!("{path}.sentinel"), "sentinel must be one of the enum values");
+                        err(
+                            errors,
+                            &format!("{path}.sentinel"),
+                            "sentinel must be one of the enum values",
+                        );
                         return None;
                     }
                 }
@@ -766,12 +865,20 @@ fn parse_field_spec_core(
                     let label = match v.as_str() {
                         Some(s) => s,
                         None => {
-                            err(errors, &format!("{path}.valueLabels.{k}"), "valueLabels entries must be strings");
+                            err(
+                                errors,
+                                &format!("{path}.valueLabels.{k}"),
+                                "valueLabels entries must be strings",
+                            );
                             return None;
                         }
                     };
                     if !spec.values.iter().any(|val| val == k) {
-                        err(errors, &format!("{path}.valueLabels.{k}"), "valueLabels key must be one of the enum values");
+                        err(
+                            errors,
+                            &format!("{path}.valueLabels.{k}"),
+                            "valueLabels key must be one of the enum values",
+                        );
                         return None;
                     }
                     labels.push((k.clone(), label.to_string()));
@@ -784,7 +891,11 @@ fn parse_field_spec_core(
             let items_raw = match raw.get("items") {
                 Some(v) if v.is_object() => v,
                 _ => {
-                    err(errors, &format!("{path}.items"), "array requires an items field spec");
+                    err(
+                        errors,
+                        &format!("{path}.items"),
+                        "array requires an items field spec",
+                    );
                     return None;
                 }
             };
@@ -795,7 +906,8 @@ fn parse_field_spec_core(
             items_obj.insert("name".to_string(), Value::String("*".to_string()));
             items_obj.insert("required".to_string(), Value::Bool(true));
             let items_value = Value::Object(items_obj);
-            let items = parse_field_spec(&items_value, &format!("{path}.items"), errors, depth + 1)?;
+            let items =
+                parse_field_spec(&items_value, &format!("{path}.items"), errors, depth + 1)?;
             let mut spec = ArrayFieldSpec {
                 base,
                 items: Box::new(items),
@@ -820,13 +932,19 @@ fn parse_field_spec_core(
             let arr = match raw.get("fields").and_then(Value::as_array) {
                 Some(a) => a,
                 None => {
-                    err(errors, &format!("{path}.fields"), "object requires a fields array");
+                    err(
+                        errors,
+                        &format!("{path}.fields"),
+                        "object requires a fields array",
+                    );
                     return None;
                 }
             };
             let mut fields = Vec::with_capacity(arr.len());
             for (i, v) in arr.iter().enumerate() {
-                if let Some(c) = parse_field_spec(v, &format!("{path}.fields[{i}]"), errors, depth + 1) {
+                if let Some(c) =
+                    parse_field_spec(v, &format!("{path}.fields[{i}]"), errors, depth + 1)
+                {
                     fields.push(c);
                 }
             }
@@ -875,7 +993,11 @@ pub fn parse_clause_spec(raw: &Value) -> ParseClauseSpecResult {
     let clause_id = match obj.get("clauseId").and_then(Value::as_str) {
         Some(s) if !s.is_empty() => s.to_string(),
         _ => {
-            err(&mut errors, "$.clauseId", "clauseId must be a non-empty string");
+            err(
+                &mut errors,
+                "$.clauseId",
+                "clauseId must be a non-empty string",
+            );
             String::new()
         }
     };
@@ -883,7 +1005,11 @@ pub fn parse_clause_spec(raw: &Value) -> ParseClauseSpecResult {
     let version = match obj.get("version").and_then(as_js_integer) {
         Some(n) if n >= 0 => n as u64,
         _ => {
-            err(&mut errors, "$.version", "version must be a non-negative integer");
+            err(
+                &mut errors,
+                "$.version",
+                "version must be a non-negative integer",
+            );
             0
         }
     };
@@ -923,51 +1049,56 @@ pub fn parse_clause_spec(raw: &Value) -> ParseClauseSpecResult {
     // and private fields; each stage's set is held to the same rules.
     field_set_rules_hold(&parsed_fields, "$.fields", &mut errors);
 
-    let parsed_stages: Option<std::collections::BTreeMap<u8, Vec<FieldSpec>>> =
-        match obj.get("stages") {
-            None => None,
-            Some(stages) => match stages.as_object() {
-                None => {
-                    err(&mut errors, "$.stages", "stages must be an object keyed by stage number");
-                    None
-                }
-                Some(stage_map) => {
-                    let mut out = std::collections::BTreeMap::new();
-                    for (key, value) in stage_map {
-                        let Some(stage_num) = parse_stage_key(key) else {
-                            err(
+    let parsed_stages: Option<std::collections::BTreeMap<u8, Vec<FieldSpec>>> = match obj
+        .get("stages")
+    {
+        None => None,
+        Some(stages) => match stages.as_object() {
+            None => {
+                err(
+                    &mut errors,
+                    "$.stages",
+                    "stages must be an object keyed by stage number",
+                );
+                None
+            }
+            Some(stage_map) => {
+                let mut out = std::collections::BTreeMap::new();
+                for (key, value) in stage_map {
+                    let Some(stage_num) = parse_stage_key(key) else {
+                        err(
                                 &mut errors,
                                 &format!("$.stages.{key}"),
                                 "stage key must be the decimal of an integer 0..255: digits only, no sign, no leading zero",
                             );
+                        continue;
+                    };
+                    let arr = match value.as_array() {
+                        Some(a) => a,
+                        None => {
+                            err(
+                                &mut errors,
+                                &format!("$.stages.{key}"),
+                                "stage entry must be a fields array",
+                            );
                             continue;
-                        };
-                        let arr = match value.as_array() {
-                            Some(a) => a,
-                            None => {
-                                err(
-                                    &mut errors,
-                                    &format!("$.stages.{key}"),
-                                    "stage entry must be a fields array",
-                                );
-                                continue;
-                            }
-                        };
-                        let mut sf = Vec::with_capacity(arr.len());
-                        for (i, v) in arr.iter().enumerate() {
-                            if let Some(c) =
-                                parse_field_spec(v, &format!("$.stages.{key}[{i}]"), &mut errors, 0)
-                            {
-                                sf.push(c);
-                            }
                         }
-                        field_set_rules_hold(&sf, &format!("$.stages.{key}"), &mut errors);
-                        out.insert(stage_num, sf);
+                    };
+                    let mut sf = Vec::with_capacity(arr.len());
+                    for (i, v) in arr.iter().enumerate() {
+                        if let Some(c) =
+                            parse_field_spec(v, &format!("$.stages.{key}[{i}]"), &mut errors, 0)
+                        {
+                            sf.push(c);
+                        }
                     }
-                    Some(out)
+                    field_set_rules_hold(&sf, &format!("$.stages.{key}"), &mut errors);
+                    out.insert(stage_num, sf);
                 }
-            },
-        };
+                Some(out)
+            }
+        },
+    };
 
     // The `block` slice is presentation metadata this layer does not own —
     // ignored, matching Layer A.

@@ -78,14 +78,20 @@ fn the_guest_reproduces_every_batch_authorization() {
     let chain_id = fx["chainId"].as_u64().unwrap();
     let batch = &fx["batch"];
     let domain = domain_separator(chain_id, addr(&batch["verifyingContract"]));
-    assert_eq!(domain, b256(&batch["domainSeparator"]), "the verifier's domain separator");
+    assert_eq!(
+        domain,
+        b256(&batch["domainSeparator"]),
+        "the verifier's domain separator"
+    );
 
     let mut seen = std::collections::BTreeSet::new();
     for a in batch["authorizations"].as_array().expect("authorizations") {
         let kind = s(&a["type"]);
         let m = &a["message"];
         let struct_hash = match kind {
-            "ResolveProcess" => resolve_struct_hash(&b256(&m["processId"]), &u256(&m["cumulativeValue"])),
+            "ResolveProcess" => {
+                resolve_struct_hash(&b256(&m["processId"]), &u256(&m["cumulativeValue"]))
+            }
             "AttestSeller" => attest_seller_struct_hash(
                 &b256(&m["orderHash"]),
                 &b256(&m["clauseId"]),
@@ -101,7 +107,11 @@ fn the_guest_reproduces_every_batch_authorization() {
             ),
             other => panic!("unknown authorization {other}"),
         };
-        assert_eq!(struct_hash, b256(&a["structHash"]), "{kind}: struct hash — {m}");
+        assert_eq!(
+            struct_hash,
+            b256(&a["structHash"]),
+            "{kind}: struct hash — {m}"
+        );
         assert_eq!(
             typed_data_hash(&domain, &struct_hash),
             b256(&a["digest"]),
@@ -109,5 +119,9 @@ fn the_guest_reproduces_every_batch_authorization() {
         );
         seen.insert(kind.to_string());
     }
-    assert_eq!(seen.len(), 3, "the fixture carries all three authorizations");
+    assert_eq!(
+        seen.len(),
+        3,
+        "the fixture carries all three authorizations"
+    );
 }

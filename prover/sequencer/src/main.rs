@@ -17,12 +17,12 @@ use tokio::sync::RwLock;
 use tokio::time;
 use tracing::{error, info, warn};
 
-use figaro_sequencer::api::{self, AppState, FailureLog};
-use figaro_sequencer::assembler::{self, AssemblerConfig};
-use figaro_sequencer::gas;
 use figaro_kernel::kernel::apply_batch_with_state;
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::BatchInput;
+use figaro_sequencer::api::{self, AppState, FailureLog};
+use figaro_sequencer::assembler::{self, AssemblerConfig};
+use figaro_sequencer::gas;
 use figaro_sequencer::mempool::{Mempool, PendingOp};
 use figaro_sequencer::prover;
 use figaro_sequencer::state::{self, Held, NextState, StateMirror, StateStore};
@@ -121,13 +121,14 @@ async fn main() {
     )
     .parse()
     .expect("invalid FIGARO_CORE_ADDRESS");
-    let verifying_contract = match submitter::verifying_contract_for(verifier_addr, verifying_contract) {
-        Ok(address) => address,
-        Err(reason) => {
-            error!(%reason, "refusing to start");
-            std::process::exit(2);
-        }
-    };
+    let verifying_contract =
+        match submitter::verifying_contract_for(verifier_addr, verifying_contract) {
+            Ok(address) => address,
+            Err(reason) => {
+                error!(%reason, "refusing to start");
+                std::process::exit(2);
+            }
+        };
     let private_key =
         match submitter::signing_key_from_env(std::env::var("SEQUENCER_PRIVATE_KEY").ok()) {
             Ok(key) => key,
@@ -167,7 +168,9 @@ async fn main() {
     // deferral, before it is dead-lettered (`mempool::DEFAULT_DEFER_WINDOW`).
     let defer_window_secs: u64 = env_or(
         "DEFER_WINDOW_SECS",
-        &figaro_sequencer::mempool::DEFAULT_DEFER_WINDOW.as_secs().to_string(),
+        &figaro_sequencer::mempool::DEFAULT_DEFER_WINDOW
+            .as_secs()
+            .to_string(),
     )
     .parse()
     .expect("invalid DEFER_WINDOW_SECS");
@@ -260,7 +263,9 @@ async fn main() {
     // whose limit later falls below the cap holds such a batch until the
     // limit returns.
     let settle_gas_cap_checked = match submitter::read_block_gas_limit(&rpc_url).await {
-        Ok(block_gas_limit) if settle_gas_cap > gas::settle_gas_budget(block_gas_limit, u64::MAX) => {
+        Ok(block_gas_limit)
+            if settle_gas_cap > gas::settle_gas_budget(block_gas_limit, u64::MAX) =>
+        {
             error!(
                 %settle_gas_cap,
                 %block_gas_limit,
@@ -302,7 +307,14 @@ async fn main() {
         let from_block: u64 = env_or("REBUILD_FROM_BLOCK", "0")
             .parse()
             .expect("invalid REBUILD_FROM_BLOCK");
-        match figaro_sequencer::rebuild::rebuild_from_chain(&rpc_url, verifier_addr, from_block, chain_id).await {
+        match figaro_sequencer::rebuild::rebuild_from_chain(
+            &rpc_url,
+            verifier_addr,
+            from_block,
+            chain_id,
+        )
+        .await
+        {
             Ok(rebuilt) => {
                 if let Err(e) = state_store.keep(rebuilt.root, &rebuilt.state).await {
                     error!(%e, %state_path, "refusing to start: the rebuilt state could not be kept");
@@ -322,7 +334,10 @@ async fn main() {
         match submitter::read_state_root(&rpc_url, verifier_addr).await {
             Ok(root) => {
                 if step_to(root, &state_mirror, &state_store, &batch_count).await {
-                    info!(?root, "This relay holds the state behind the verifier's root");
+                    info!(
+                        ?root,
+                        "This relay holds the state behind the verifier's root"
+                    );
                 } else {
                     error!(
                         on_chain_root = ?root,
@@ -472,7 +487,12 @@ async fn batch_loop(
         // and no batch is built until it is). A root that cannot be read
         // leaves the tick's submissions queued.
         if !dry_run {
-            match submitter::read_state_root(&submitter_config.rpc_url, submitter_config.verifier_address).await {
+            match submitter::read_state_root(
+                &submitter_config.rpc_url,
+                submitter_config.verifier_address,
+            )
+            .await
+            {
                 Ok(root) => {
                     if !step_to(root, &state_mirror, &state_store, &batch_count).await {
                         if out_of_step != Some(root) {
@@ -529,7 +549,12 @@ async fn batch_loop(
         // for the residual race (a seller unstaking after this read).
         let (usage_claims, dropped_claims) =
             submitter::filter_usage_claims(&submitter_config, usage_claims).await;
-        api::record_dropped_claims(&failures, &dropped_claims, "the usage-claim pre-filter — the counter would reject it").await;
+        api::record_dropped_claims(
+            &failures,
+            &dropped_claims,
+            "the usage-claim pre-filter — the counter would reject it",
+        )
+        .await;
 
         if pending.is_empty() && usage_claims.is_empty() {
             continue;
@@ -537,7 +562,6 @@ async fn batch_loop(
 
         // Get current state snapshot
         let prev_state = state_mirror.snapshot().await;
-
 
         // Stateful filter: trial-apply each op against the state mirror
         // and drop any that would abort the proof. apply_batch is
@@ -600,7 +624,8 @@ async fn batch_loop(
         // An attestation whose witness spec does not hash to its clause key,
         // or whose key is not registered, reverts the whole batch on chain:
         // dropped here, alone.
-        let (valid, mut unanchored) = submitter::filter_anchored_attestations(funding.as_ref(), valid).await;
+        let (valid, mut unanchored) =
+            submitter::filter_anchored_attestations(funding.as_ref(), valid).await;
         for (p, reason) in &unanchored {
             warn!(id = p.id, %reason, "Dropped attestation at batch formation");
             failures.record(1, reason.clone()).await;
@@ -609,7 +634,8 @@ async fn batch_loop(
         // the verifier will ask, reverts the whole batch on chain, a resolve
         // and an attestation alike: dropped here, alone, as an unanchored
         // attestation is.
-        let (mut valid, unvalidated) = submitter::filter_wallet_code_ops(funding.as_ref(), valid).await;
+        let (mut valid, unvalidated) =
+            submitter::filter_wallet_code_ops(funding.as_ref(), valid).await;
         for (p, reason) in &unvalidated {
             warn!(id = p.id, %reason, "Dropped wallet-code operation at batch formation");
             failures.record(1, reason.clone()).await;
@@ -640,7 +666,10 @@ async fn batch_loop(
                 failures.record(1, why).await;
             }
             for p in &follow {
-                info!(id = p.id, "Deferred at batch formation with the commit it was filtered behind");
+                info!(
+                    id = p.id,
+                    "Deferred at batch formation with the commit it was filtered behind"
+                );
             }
             to_defer.extend(unread);
             to_defer.extend(follow);
@@ -684,7 +713,9 @@ async fn batch_loop(
                 if !usage_claims.is_empty() {
                     let why = "no usage counter, or accrual has closed";
                     warn!(claims = usage_claims.len(), "Dropping usage claims — {why}");
-                    failures.record_claims(usage_claims.len() as u64, why.to_string()).await;
+                    failures
+                        .record_claims(usage_claims.len() as u64, why.to_string())
+                        .await;
                 }
                 assembler::UsageContext::default()
             }
@@ -735,7 +766,11 @@ async fn batch_loop(
             );
             Ok(gas::settle_gas_estimate(
                 &calldata,
-                gas::SettleItems::of(&positions, &events).with_stream(stream.len(), &input.operations, input.usage_claims.len()),
+                gas::SettleItems::of(&positions, &events).with_stream(
+                    stream.len(),
+                    &input.operations,
+                    input.usage_claims.len(),
+                ),
             ))
         };
 
@@ -749,7 +784,13 @@ async fn batch_loop(
         // is filtered again without it.
         let cap_budget = gas::settle_gas_budget(u64::MAX, config.settle_gas_cap);
         let max_orders = gas::max_orders_in_one_settle(cap_budget);
-        let (mut valid, outgrown) = assembler::filter_commits_within_resolve_capacity(chain_id, verifying_contract, &prev_state, valid, max_orders);
+        let (mut valid, outgrown) = assembler::filter_commits_within_resolve_capacity(
+            chain_id,
+            verifying_contract,
+            &prev_state,
+            valid,
+            max_orders,
+        );
         for (p, reason) in &outgrown {
             warn!(id = p.id, %reason, "Dropped commit at batch formation");
             failures.record(1, reason.clone()).await;
@@ -802,7 +843,11 @@ async fn batch_loop(
         // the plan goes on; one that fits the cap but not this tick's budget
         // waits. The operations after the kept prefix go back to the front
         // of the mempool untried.
-        let ops_budget = if claims_starved && !usage.claims.is_empty() { budget / 2 } else { budget };
+        let ops_budget = if claims_starved && !usage.claims.is_empty() {
+            budget / 2
+        } else {
+            budget
+        };
         let batch = loop {
             let ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
             let batch = assembler::assemble_batch(
@@ -813,12 +858,20 @@ async fn batch_loop(
                 prev_state.clone(),
                 usage.clone(),
             );
-            let planned = match gas::trim_ops_to_budget(batch, cap_budget, budget, ops_budget, &mut estimate) {
+            let planned = match gas::trim_ops_to_budget(
+                batch,
+                cap_budget,
+                budget,
+                ops_budget,
+                &mut estimate,
+            ) {
                 Ok(planned) => planned,
                 Err(e) => {
                     let n = valid.len();
                     error!(%e, ops = n, "Batch failed to execute while being planned — dead-lettered");
-                    failures.record(n as u64, format!("planning failed: {e}")).await;
+                    failures
+                        .record(n as u64, format!("planning failed: {e}"))
+                        .await;
                     valid.clear();
                     break None;
                 }
@@ -864,7 +917,9 @@ async fn batch_loop(
             // No operation is left to prove. The claims were admitted against
             // operations that are gone: they wait for the next tick.
             if !usage.claims.is_empty() {
-                mempool.requeue_usage(std::mem::take(&mut usage.claims)).await;
+                mempool
+                    .requeue_usage(std::mem::take(&mut usage.claims))
+                    .await;
             }
             continue;
         };
@@ -884,18 +939,28 @@ async fn batch_loop(
             );
             if !stranded.is_empty() {
                 info!(claims = stranded.len(), "Usage claims set aside with the operations they credit; they wait for the next tick");
-                mempool.requeue_usage(stranded.into_iter().map(|(claim, _)| claim).collect()).await;
+                mempool
+                    .requeue_usage(stranded.into_iter().map(|(claim, _)| claim).collect())
+                    .await;
             }
             batch.usage_claims = kept_claims;
         }
         let claims_planned = batch.usage_claims.len() as u64;
-        let (batch, claims_given_back) = match gas::trim_claims_to_budget(batch, budget, &mut estimate) {
+        let (batch, claims_given_back) = match gas::trim_claims_to_budget(
+            batch,
+            budget,
+            &mut estimate,
+        ) {
             Ok(cut) => cut,
             Err(e) => {
                 let n = valid.len();
                 error!(%e, ops = n, "Batch failed to execute while its claims were planned — dead-lettered");
-                failures.record(n as u64, format!("planning failed: {e}")).await;
-                failures.record_claims(claims_planned, format!("planning failed: {e}")).await;
+                failures
+                    .record(n as u64, format!("planning failed: {e}"))
+                    .await;
+                failures
+                    .record_claims(claims_planned, format!("planning failed: {e}"))
+                    .await;
                 continue;
             }
         };
@@ -918,8 +983,15 @@ async fn batch_loop(
                 // normal poison op. Re-queuing would loop forever, so
                 // dead-letter the batch instead.
                 error!(%e, ops = op_count, "Batch failed to prove after filtering — dead-lettered");
-                failures.record(op_count as u64, format!("prove failed: {e}")).await;
-                failures.record_claims(batch.usage_claims.len() as u64, format!("prove failed: {e}")).await;
+                failures
+                    .record(op_count as u64, format!("prove failed: {e}"))
+                    .await;
+                failures
+                    .record_claims(
+                        batch.usage_claims.len() as u64,
+                        format!("prove failed: {e}"),
+                    )
+                    .await;
                 continue;
             }
         };
@@ -940,7 +1012,12 @@ async fn batch_loop(
             if let Err(e) = state_store.hold_next(next.clone()).await {
                 error!(%e, "Could not write the batch's state — the batch is not sent; re-queuing operations");
                 requeue_or_dead_letter(&mempool, &failures, valid).await;
-                failures.record_claims(batch.usage_claims.len() as u64, format!("the batch's state could not be written: {e}")).await;
+                failures
+                    .record_claims(
+                        batch.usage_claims.len() as u64,
+                        format!("the batch's state could not be written: {e}"),
+                    )
+                    .await;
                 continue;
             }
         }
@@ -954,9 +1031,12 @@ async fn batch_loop(
             // moves the root — one that does not leaves nothing to read.
             let landed_earlier = moves_root
                 && outcome.is_err()
-                && submitter::read_state_root(&submitter_config.rpc_url, submitter_config.verifier_address)
-                    .await
-                    .is_ok_and(|root| root == next_root);
+                && submitter::read_state_root(
+                    &submitter_config.rpc_url,
+                    submitter_config.verifier_address,
+                )
+                .await
+                .is_ok_and(|root| root == next_root);
             if landed_earlier {
                 step_to(next_root, &state_mirror, &state_store, &batch_count).await;
                 info!(new_root = ?next_root, ops = op_count, "Batch already resolved on-chain by an earlier send, state mirror advanced");
@@ -1006,8 +1086,11 @@ async fn batch_loop(
                     // burned the gas forwarded to it. Its code is
                     // asked again; only a verdict names it, a read failure
                     // re-queues with the rest.
-                    let (kept, code_dropped) =
-                        submitter::filter_wallet_code_ops(funding.as_ref(), std::mem::take(&mut still_funded)).await;
+                    let (kept, code_dropped) = submitter::filter_wallet_code_ops(
+                        funding.as_ref(),
+                        std::mem::take(&mut still_funded),
+                    )
+                    .await;
                     still_funded = kept;
                     let (code_unread, code_refused): (Vec<_>, Vec<_>) = code_dropped
                         .into_iter()
@@ -1052,7 +1135,9 @@ async fn batch_loop(
                                 failures.record(1, why).await;
                             }
                         }
-                        failures.record_claims(batch.usage_claims.len() as u64, claims_reason).await;
+                        failures
+                            .record_claims(batch.usage_claims.len() as u64, claims_reason)
+                            .await;
                     } else {
                         let mut signaled: Vec<Address> = Vec::new();
                         for (op, why, who) in &verdict.dead {
@@ -1064,7 +1149,9 @@ async fn batch_loop(
                                 }
                             }
                         }
-                        failures.record_claims(batch.usage_claims.len() as u64, claims_reason).await;
+                        failures
+                            .record_claims(batch.usage_claims.len() as u64, claims_reason)
+                            .await;
                         for who in signaled {
                             let hits = revocations.record(who);
                             if hits > 1 {
@@ -1088,7 +1175,12 @@ async fn batch_loop(
                     // never lands is not re-proved forever.
                     error!(error = %e, "On-chain submission failed (transient) — re-queuing operations");
                     requeue_or_dead_letter(&mempool, &failures, valid).await;
-                    failures.record_claims(batch.usage_claims.len() as u64, format!("on-chain submission failed (transient): {}", e.message)).await;
+                    failures
+                        .record_claims(
+                            batch.usage_claims.len() as u64,
+                            format!("on-chain submission failed (transient): {}", e.message),
+                        )
+                        .await;
                 }
             }
         } else {
@@ -1143,10 +1235,11 @@ async fn adopt(
     state_store: &StateStore,
     batch_count: &Arc<RwLock<u64>>,
 ) {
-    state_mirror.advance(KernelState::from_snapshot(&next.state)).await;
+    state_mirror
+        .advance(KernelState::from_snapshot(&next.state))
+        .await;
     if let Err(e) = state_store.keep(next.root, &next.state).await {
         error!(%e, root = ?next.root, "Could not write the kept state — it stays held in the next-state journal");
     }
     *batch_count.write().await += 1;
 }
-

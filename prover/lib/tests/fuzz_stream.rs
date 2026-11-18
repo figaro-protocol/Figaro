@@ -73,7 +73,9 @@ use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::kernel::{apply_batch_with_state, derive_commitment_ids};
-use figaro_kernel::operation_stream::{decode_operation_stream, encode_operation_stream, encode_stream_parts};
+use figaro_kernel::operation_stream::{
+    decode_operation_stream, encode_operation_stream, encode_stream_parts,
+};
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
 
@@ -81,13 +83,15 @@ use figaro_kernel::types::*;
 const KEYS: [u64; 5] = [0xB0B, 0x5E11, 0x5E12, 0x5E13, 0xB0B2];
 
 fn stream() -> Vec<serde_json::Value> {
-    let path = std::env::var("KERNEL_FUZZ_STREAM").map(std::path::PathBuf::from).unwrap_or_else(|_| {
-        let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        p.pop(); // prover/
-        p.pop(); // repo root
-        p.push("test/fixtures/streams/kernel.jsonl");
-        p
-    });
+    let path = std::env::var("KERNEL_FUZZ_STREAM")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| {
+            let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            p.pop(); // prover/
+            p.pop(); // repo root
+            p.push("test/fixtures/streams/kernel.jsonl");
+            p
+        });
     let text = std::fs::read_to_string(&path).unwrap_or_else(|e| {
         panic!(
             "read {}: {e} — run scripts/test-cross-impl-fuzz.sh, which writes the stream first",
@@ -136,7 +140,10 @@ fn words(v: &serde_json::Value) -> Vec<B256> {
 
 fn hex_bytes(v: &serde_json::Value) -> Vec<u8> {
     let hex = s(v).trim_start_matches("0x");
-    (0..hex.len()).step_by(2).map(|i| u8::from_str_radix(&hex[i..i + 2], 16).expect("hex")).collect()
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).expect("hex"))
+        .collect()
 }
 
 /// The `Attestation` event as the EVM logs it: the signature and the three
@@ -151,7 +158,10 @@ fn encode_log(e: &AttestationEventData) -> (Vec<B256>, Vec<u8>) {
     stage[31] = e.stage;
     data.extend_from_slice(&stage);
     data.extend_from_slice(e.content_ref.as_slice());
-    (vec![signature, e.order_hash, e.process_id, B256::from(attester)], data)
+    (
+        vec![signature, e.order_hash, e.process_id, B256::from(attester)],
+        data,
+    )
 }
 
 fn make_signing_key(secret: u64) -> SigningKey {
@@ -233,7 +243,10 @@ fn sentinel_attestation() -> KernelOp {
         stage: 0,
         content_ref: B256::ZERO,
         authorization: Default::default(),
-        proof: AttestationWitness::HashOnly { clause_data_hash: B256::ZERO, inclusion_proof: vec![] },
+        proof: AttestationWitness::HashOnly {
+            clause_data_hash: B256::ZERO,
+            inclusion_proof: vec![],
+        },
     }
 }
 
@@ -250,7 +263,9 @@ fn check_wallet_code_attestation_codec(
     let ops = vec![op.clone(), sentinel_attestation()];
     let bytes = encode_operation_stream(&ops, &[]);
     if keccak256(&bytes) != b256(&step["walletCodeStreamHash"]) {
-        divergences.push(format!("step {i}: the guest's encoder writes other attestation bytes than the verifier read"));
+        divergences.push(format!(
+            "step {i}: the guest's encoder writes other attestation bytes than the verifier read"
+        ));
         return;
     }
     match decode_operation_stream(&bytes) {
@@ -258,12 +273,24 @@ fn check_wallet_code_attestation_codec(
             if !decoded.is_empty() || !claims.is_empty() || entries.len() != 2 {
                 divergences.push(format!("step {i}: the guest's decoder read other entries than the entry and its sentinel"));
             } else if encode_stream_parts(&decoded, &entries, &claims) != bytes {
-                divergences.push(format!("step {i}: re-encoding the decoded entries gives other bytes"));
+                divergences.push(format!(
+                    "step {i}: re-encoding the decoded entries gives other bytes"
+                ));
             }
         }
-        Err(e) => divergences.push(format!("step {i}: the guest's decoder refused the verifier's bytes: {e}")),
+        Err(e) => divergences.push(format!(
+            "step {i}: the guest's decoder refused the verifier's bytes: {e}"
+        )),
     }
-    let KernelOp::AttestByWalletCode { role, target, clause_id, stage, content_ref, .. } = op else {
+    let KernelOp::AttestByWalletCode {
+        role,
+        target,
+        clause_id,
+        stage,
+        content_ref,
+        ..
+    } = op
+    else {
         unreachable!("a wallet-code attestation")
     };
     if s(&step["walletCodeOutcome"]) == "emitted" {
@@ -276,8 +303,15 @@ fn check_wallet_code_attestation_codec(
             stage: *stage,
             content_ref: *content_ref,
         });
-        if expected != (words(&step["walletCodeTopics"]), hex_bytes(&step["walletCodeData"])) {
-            divergences.push(format!("step {i}: the verifier emitted another Attestation than the mirror derives"));
+        if expected
+            != (
+                words(&step["walletCodeTopics"]),
+                hex_bytes(&step["walletCodeData"]),
+            )
+        {
+            divergences.push(format!(
+                "step {i}: the verifier emitted another Attestation than the mirror derives"
+            ));
         }
     }
 }
@@ -316,18 +350,24 @@ fn check_wallet_code_codec(
     // bytes, so decoding them decodes what the verifier read.
     let bytes = encode_operation_stream(&ops, &[]);
     if keccak256(&bytes) != b256(&step["walletCodeStreamHash"]) {
-        divergences.push(format!("step {i}: the guest's encoder writes other bytes than the verifier read"));
+        divergences.push(format!(
+            "step {i}: the guest's encoder writes other bytes than the verifier read"
+        ));
         return None;
     }
     let sum = u256(&step["walletCodeSum"]);
     let decoded = match decode_operation_stream(&bytes) {
         Ok((ops, entries, claims)) if claims.is_empty() && entries.is_empty() => ops,
         Ok(_) => {
-            divergences.push(format!("step {i}: the guest's decoder read a usage claim or a wallet-code attestation"));
+            divergences.push(format!(
+                "step {i}: the guest's decoder read a usage claim or a wallet-code attestation"
+            ));
             return None;
         }
         Err(e) => {
-            divergences.push(format!("step {i}: the guest's decoder refused the verifier's bytes: {e}"));
+            divergences.push(format!(
+                "step {i}: the guest's decoder refused the verifier's bytes: {e}"
+            ));
             return None;
         }
     };
@@ -345,7 +385,9 @@ fn check_wallet_code_codec(
             ..
         }] => {
             if p != process_id || a.as_ref() != authorization || hashes(cs) != hashes(commitments) {
-                divergences.push(format!("step {i}: the guest's decoder read another entry than was written"));
+                divergences.push(format!(
+                    "step {i}: the guest's decoder read another entry than was written"
+                ));
             }
             if *cumulative_value != sum {
                 divergences.push(format!(
@@ -353,11 +395,16 @@ fn check_wallet_code_codec(
                 ));
             }
             if *sentinel != sentinel_process_id() || !none.is_empty() {
-                divergences.push(format!("step {i}: the guest's decoder did not stop where the sentinel starts"));
+                divergences.push(format!(
+                    "step {i}: the guest's decoder did not stop where the sentinel starts"
+                ));
             }
             decoded_value = Some(*cumulative_value);
         }
-        other => divergences.push(format!("step {i}: the guest's decoder read {} entries, not the entry and its sentinel", other.len())),
+        other => divergences.push(format!(
+            "step {i}: the guest's decoder read {} entries, not the entry and its sentinel",
+            other.len()
+        )),
     }
     if s(&step["walletCodeOutcome"]) == "ok" {
         let expected: Vec<B256> = commitments
@@ -365,12 +412,16 @@ fn check_wallet_code_codec(
             .map(|c| compute_order_hash(process_id, &commitment_struct_hash(c)))
             .collect();
         if words(&step["walletCodeOrderHashes"]) != expected {
-            divergences.push(format!("step {i}: the verifier resolved other orders than the entry lists"));
+            divergences.push(format!(
+                "step {i}: the verifier resolved other orders than the entry lists"
+            ));
         }
         if commitments.first().map(|c| c.buyer) != Some(addr(&step["walletCodeBuyer"]))
             || count(&step["walletCodeCount"]) != commitments.len()
         {
-            divergences.push(format!("step {i}: the verifier's ProcessResolved names another buyer or count"));
+            divergences.push(format!(
+                "step {i}: the verifier's ProcessResolved names another buyer or count"
+            ));
         }
     }
     decoded_value
@@ -436,7 +487,11 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
     let mut steps: Vec<&serde_json::Value> =
         lines.iter().filter(|l| s(&l["type"]) == "step").collect();
     steps.sort_by_key(|l| count(&l["index"]));
-    assert_eq!(steps.len(), count(&header["stepCount"]), "every step is in the stream");
+    assert_eq!(
+        steps.len(),
+        count(&header["stepCount"]),
+        "every step is in the stream"
+    );
 
     let mut state = KernelState::new();
     let mut committed: BTreeMap<usize, Commitment> = BTreeMap::new();
@@ -454,7 +509,8 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
         let outcome = s(&step["outcome"]);
 
         let wallet_code = kind == "resolve" && step.get("form").map(s) == Some("walletCode");
-        let wallet_code_attest = kind.starts_with("attest") && step.get("form").map(s) == Some("walletCode");
+        let wallet_code_attest =
+            kind.starts_with("attest") && step.get("form").map(s) == Some("walletCode");
         let mut wallet_code_value: Option<U256> = None;
         let mut applied_value = U256::ZERO;
         let op = match kind {
@@ -481,8 +537,14 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                 applied_value = cumulative_value;
                 if wallet_code {
                     let authorization = authorization(step);
-                    wallet_code_value =
-                        check_wallet_code_codec(i, step, &process_id, &commitments, &authorization, &mut divergences);
+                    wallet_code_value = check_wallet_code_codec(
+                        i,
+                        step,
+                        &process_id,
+                        &commitments,
+                        &authorization,
+                        &mut divergences,
+                    );
                     KernelOp::ResolveByWalletCode {
                         process_id,
                         cumulative_value,
@@ -490,7 +552,10 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                         authorization: authorization.into(),
                     }
                 } else {
-                    let digest = typed_data_hash(&domain, &resolve_struct_hash(&process_id, &cumulative_value));
+                    let digest = typed_data_hash(
+                        &domain,
+                        &resolve_struct_hash(&process_id, &cumulative_value),
+                    );
                     KernelOp::Resolve {
                         process_id,
                         cumulative_value,
@@ -512,7 +577,11 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                 };
                 if wallet_code_attest {
                     let op = KernelOp::AttestByWalletCode {
-                        role: if kind == "attestAsSeller" { AttesterRole::Seller } else { AttesterRole::Buyer },
+                        role: if kind == "attestAsSeller" {
+                            AttesterRole::Seller
+                        } else {
+                            AttesterRole::Buyer
+                        },
                         target,
                         clause_id,
                         stage,
@@ -520,7 +589,13 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                         authorization: authorization(step).into(),
                         proof,
                     };
-                    check_wallet_code_attestation_codec(i, step, &op, &reader_domain, &mut divergences);
+                    check_wallet_code_attestation_codec(
+                        i,
+                        step,
+                        &op,
+                        &reader_domain,
+                        &mut divergences,
+                    );
                     op
                 } else if kind == "attestAsSeller" {
                     let h = attest_seller_struct_hash(&order_hash, &clause_id, stage, &content_ref);
@@ -533,7 +608,13 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                         proof,
                     }
                 } else {
-                    let h = attest_buyer_struct_hash(&process_id, &order_hash, &clause_id, stage, &content_ref);
+                    let h = attest_buyer_struct_hash(
+                        &process_id,
+                        &order_hash,
+                        &clause_id,
+                        stage,
+                        &content_ref,
+                    );
                     KernelOp::AttestAsBuyer {
                         target,
                         clause_id,
@@ -578,7 +659,8 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                 let joined = if wallet_code_attest {
                     kernel_error == "NotAuthorized" && verifier == "WalletCodeAttestationRefused"
                 } else {
-                    kernel_error == "NotProcessBuyer" && verifier == "WalletCodeAuthorizationRefused"
+                    kernel_error == "NotProcessBuyer"
+                        && verifier == "WalletCodeAuthorizationRefused"
                 };
                 if !joined {
                     divergences.push(format!(
@@ -609,14 +691,20 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                     match events.attestations.as_slice() {
                         [e] => {
                             let (topics, data) = encode_log(e);
-                            if topics != words(&step["topics"]) || data != hex_bytes(&step["data"]) {
+                            if topics != words(&step["topics"]) || data != hex_bytes(&step["data"])
+                            {
                                 divergences.push(format!("step {i} ({kind}): the event bytes differ from the coordinator's"));
                             }
                         }
-                        other => divergences.push(format!("step {i} ({kind}): {} events, the coordinator emitted one", other.len())),
+                        other => divergences.push(format!(
+                            "step {i} ({kind}): {} events, the coordinator emitted one",
+                            other.len()
+                        )),
                     }
                     if !events.spec_bindings.is_empty() {
-                        divergences.push(format!("step {i} ({kind}): a hash-only attestation committed a spec binding"));
+                        divergences.push(format!(
+                            "step {i} ({kind}): a hash-only attestation committed a spec binding"
+                        ));
                     }
                 }
                 if kind == "commit" {
@@ -658,10 +746,16 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
         let deposit = deposits.get(&key).copied().unwrap_or_default();
         let payout = payouts.get(&key).copied().unwrap_or_default();
         if deposit != u256(&party["deposit"]) {
-            divergences.push(format!("{key:?}: deposits {deposit}, the kernel pulled {}", s(&party["deposit"])));
+            divergences.push(format!(
+                "{key:?}: deposits {deposit}, the kernel pulled {}",
+                s(&party["deposit"])
+            ));
         }
         if payout != u256(&party["payout"]) {
-            divergences.push(format!("{key:?}: payouts {payout}, the kernel paid {}", s(&party["payout"])));
+            divergences.push(format!(
+                "{key:?}: payouts {payout}, the kernel paid {}",
+                s(&party["payout"])
+            ));
         }
     }
 
@@ -675,7 +769,8 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                 if ps.cumulative_value != u256(&process["cumulativeValue"]) {
                     divergences.push(format!("process {pid}: cumulative value differs"));
                 }
-                if ps.active_order_count != s(&process["activeOrderCount"]).parse::<u64>().unwrap() {
+                if ps.active_order_count != s(&process["activeOrderCount"]).parse::<u64>().unwrap()
+                {
                     divergences.push(format!("process {pid}: active order count differs"));
                 }
             }
@@ -688,8 +783,14 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
         ));
     }
 
-    assert!(accepted > 0 && rejected > 0, "seed {seed}: the stream exercises both outcomes");
-    assert!(attestations > 0, "seed {seed}: the stream holds accepted attestations");
+    assert!(
+        accepted > 0 && rejected > 0,
+        "seed {seed}: the stream exercises both outcomes"
+    );
+    assert!(
+        attestations > 0,
+        "seed {seed}: the stream holds accepted attestations"
+    );
     assert!(
         wallet_code_accepted > 0,
         "seed {seed}: the stream holds accepted wallet-code resolves (0x04)"

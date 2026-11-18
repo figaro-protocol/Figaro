@@ -61,9 +61,10 @@ pub async fn prove_batch(batch: &BatchInput) -> Result<ProveResult, String> {
     // The guest reads only the entries the batch touches, proved against the
     // previous root. Its run, natively, must reach the native run's public
     // values before any proving time is spent.
-    let guest = figaro_kernel::kernel::guest_input(batch).map_err(|e| format!("the witness could not be built: {e}"))?;
-    let (guest_pv, _, _) =
-        figaro_kernel::kernel::apply_guest(&guest).map_err(|e| format!("the guest's run refused the witness: {e}"))?;
+    let guest = figaro_kernel::kernel::guest_input(batch)
+        .map_err(|e| format!("the witness could not be built: {e}"))?;
+    let (guest_pv, _, _) = figaro_kernel::kernel::apply_guest(&guest)
+        .map_err(|e| format!("the guest's run refused the witness: {e}"))?;
     if guest_pv.abi_encode() != pv.abi_encode() {
         return Err("the guest's run reached other public values than the native run".to_string());
     }
@@ -131,7 +132,9 @@ pub fn proof_mode() -> Result<ProofMode, String> {
         Err(_) => Ok(ProofMode::Groth16),
         Ok(v) if v.is_empty() || v.eq_ignore_ascii_case("groth16") => Ok(ProofMode::Groth16),
         Ok(v) if v.eq_ignore_ascii_case("plonk") => Ok(ProofMode::Plonk),
-        Ok(v) => Err(format!("SP1_PROOF_MODE must be `groth16` or `plonk`, got `{v}`")),
+        Ok(v) => Err(format!(
+            "SP1_PROOF_MODE must be `groth16` or `plonk`, got `{v}`"
+        )),
     }
 }
 
@@ -194,7 +197,12 @@ async fn prove_mock(elf: Elf, stdin: SP1Stdin, pv: &PublicValues) -> Result<Vec<
 /// Real prover (testnet / mainnet). Generates a WRAPPED proof — Groth16 or
 /// PLONK per `mode`, the two forms an SP1 verifier gateway verifies on-chain —
 /// with the prover backend named by `SP1_PROVER` (`cpu`, `cuda`, `network`).
-async fn prove_wrapped(elf: Elf, stdin: SP1Stdin, pv: &PublicValues, mode: ProofMode) -> Result<Vec<u8>, String> {
+async fn prove_wrapped(
+    elf: Elf,
+    stdin: SP1Stdin,
+    pv: &PublicValues,
+    mode: ProofMode,
+) -> Result<Vec<u8>, String> {
     let client = ProverClient::from_env().await;
     let pk = client
         .setup(elf)
@@ -203,8 +211,14 @@ async fn prove_wrapped(elf: Elf, stdin: SP1Stdin, pv: &PublicValues, mode: Proof
     info!(?mode, "Generating wrapped proof (this can take minutes)");
     let request = client.prove(&pk, stdin);
     let proof = match mode {
-        ProofMode::Groth16 => request.groth16().await.map_err(|e| format!("SP1 Groth16 proving failed: {e}"))?,
-        ProofMode::Plonk => request.plonk().await.map_err(|e| format!("SP1 PLONK proving failed: {e}"))?,
+        ProofMode::Groth16 => request
+            .groth16()
+            .await
+            .map_err(|e| format!("SP1 Groth16 proving failed: {e}"))?,
+        ProofMode::Plonk => request
+            .plonk()
+            .await
+            .map_err(|e| format!("SP1 PLONK proving failed: {e}"))?,
     };
     check_committed_values(proof.public_values.as_slice(), pv)?;
     Ok(proof.bytes())

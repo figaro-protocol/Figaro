@@ -17,7 +17,9 @@ use alloy_primitives::{keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
-use figaro_kernel::kernel::{apply_batch_with_state, apply_guest, apply_operations, derive_commitment_ids, guest_input};
+use figaro_kernel::kernel::{
+    apply_batch_with_state, apply_guest, apply_operations, derive_commitment_ids, guest_input,
+};
 use figaro_kernel::operation_stream::resolved_cumulative_value;
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
@@ -161,8 +163,10 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
             for process_id in &process_order {
                 let commitments = by_process[process_id].clone();
                 let buyer = commitments[0].buyer;
-                let cumulative_value = resolved_cumulative_value(&commitments).expect("payments fit");
-                let digest = typed_data_hash(&domain, &resolve_struct_hash(process_id, &cumulative_value));
+                let cumulative_value =
+                    resolved_cumulative_value(&commitments).expect("payments fit");
+                let digest =
+                    typed_data_hash(&domain, &resolve_struct_hash(process_id, &cumulative_value));
                 ops.push(KernelOp::Resolve {
                     process_id: *process_id,
                     cumulative_value,
@@ -188,9 +192,14 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
         // The guest reads only the entries the batch touches, proved against
         // the previous root; its public values are the native run's.
         let guest = guest_input(&input).unwrap_or_else(|e| panic!("{name}: the witness: {e:?}"));
-        let (guest_pv, _, _) = apply_guest(&guest).unwrap_or_else(|e| panic!("{name}: the guest: {e:?}"));
+        let (guest_pv, _, _) =
+            apply_guest(&guest).unwrap_or_else(|e| panic!("{name}: the guest: {e:?}"));
         // Every public value, the positions' hash among them.
-        assert_eq!(guest_pv.abi_encode(), pv.abi_encode(), "{name}: the guest's public values are the native run's");
+        assert_eq!(
+            guest_pv.abi_encode(),
+            pv.abi_encode(),
+            "{name}: the guest's public values are the native run's"
+        );
 
         // A second batch on the post-state: one process's resolve replayed
         // is refused on both paths alike.
@@ -200,7 +209,10 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
                 prev_state: state.to_snapshot(),
                 ..input.clone()
             };
-            assert!(apply_batch_with_state(&replay).is_err(), "{name}: a resolve replayed is refused");
+            assert!(
+                apply_batch_with_state(&replay).is_err(),
+                "{name}: a resolve replayed is refused"
+            );
             let replay_guest = guest_input(&replay);
             assert!(
                 replay_guest.is_err() || apply_guest(&replay_guest.unwrap()).is_err(),
@@ -215,18 +227,38 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
         let mut running = KernelState::from_snapshot(&input.prev_state);
         let mut trial_positions: BTreeMap<(Address, Address), (U256, U256)> = BTreeMap::new();
         for op in &input.operations {
-            let effects = apply_operations(&mut running, chain_id, core, BLOCK_TIMESTAMP, std::slice::from_ref(op))
-                .unwrap_or_else(|e| panic!("{name}: the trial path refused an operation the batch applied: {e:?}"));
+            let effects = apply_operations(
+                &mut running,
+                chain_id,
+                core,
+                BLOCK_TIMESTAMP,
+                std::slice::from_ref(op),
+            )
+            .unwrap_or_else(|e| {
+                panic!("{name}: the trial path refused an operation the batch applied: {e:?}")
+            });
             for p in effects.positions {
                 let e = trial_positions.entry((p.token, p.user)).or_default();
                 e.0 += p.deposit;
                 e.1 += p.payout;
             }
         }
-        assert_eq!(running.compute_root(), state.compute_root(), "{name}: the trial path's root is the batch's");
+        assert_eq!(
+            running.compute_root(),
+            state.compute_root(),
+            "{name}: the trial path's root is the batch's"
+        );
         for p in &positions {
-            let got = trial_positions.get(&(p.token, p.user)).copied().unwrap_or_default();
-            assert_eq!(got, (p.deposit, p.payout), "{name}: the trial path's positions are the batch's for {}", p.user);
+            let got = trial_positions
+                .get(&(p.token, p.user))
+                .copied()
+                .unwrap_or_default();
+            assert_eq!(
+                got,
+                (p.deposit, p.payout),
+                "{name}: the trial path's positions are the batch's for {}",
+                p.user
+            );
         }
 
         // ── Every party's deposit and payout, exactly ──
@@ -317,13 +349,19 @@ fn the_guest_refuses_a_witness_missing_an_entry_or_carrying_a_wrong_value() {
     // refuses the read instead of taking the order as absent.
     let mut missing = guest_input(&first).unwrap();
     missing.prev_witness.orders.clear();
-    assert!(matches!(apply_guest(&missing).unwrap_err(), KernelError::UnwitnessedKey));
+    assert!(matches!(
+        apply_guest(&missing).unwrap_err(),
+        KernelError::UnwitnessedKey
+    ));
 
     // One entry carried twice, even with the same value: refused.
     let mut doubled = guest_input(&first).unwrap();
     let entry = doubled.prev_witness.orders[0];
     doubled.prev_witness.orders.push(entry);
-    assert!(matches!(apply_guest(&doubled).unwrap_err(), KernelError::DuplicateWitnessEntry));
+    assert!(matches!(
+        apply_guest(&doubled).unwrap_err(),
+        KernelError::DuplicateWitnessEntry
+    ));
 
     // A process entry carried with a currency the tree does not hold: the
     // resolve reads it without a check of its own, so only the witness's
@@ -333,7 +371,10 @@ fn the_guest_refuses_a_witness_missing_an_entry_or_carrying_a_wrong_value() {
         panic!("the resolve's witness carries its process");
     };
     ps.currency = Address::repeat_byte(0x77);
-    assert!(matches!(apply_guest(&wrong).unwrap_err(), KernelError::Witness(_)));
+    assert!(matches!(
+        apply_guest(&wrong).unwrap_err(),
+        KernelError::Witness(_)
+    ));
     // The honest witness of the same batch is accepted.
     assert!(apply_guest(&guest_input(&again_resolvable(&first, &state)).unwrap()).is_ok());
 }
@@ -342,10 +383,15 @@ fn the_guest_refuses_a_witness_missing_an_entry_or_carrying_a_wrong_value() {
 fn again_resolvable(first: &BatchInput, state: &KernelState) -> BatchInput {
     let keys = keyring();
     let domain = domain_separator(first.chain_id, first.verifying_contract);
-    let KernelOp::Commit { commitment, .. } = &first.operations[0] else { unreachable!() };
+    let KernelOp::Commit { commitment, .. } = &first.operations[0] else {
+        unreachable!()
+    };
     let (_, process_id) = derive_commitment_ids(&domain, commitment);
     let cumulative_value = commitment.expected_cumulative_value;
-    let digest = typed_data_hash(&domain, &resolve_struct_hash(&process_id, &cumulative_value));
+    let digest = typed_data_hash(
+        &domain,
+        &resolve_struct_hash(&process_id, &cumulative_value),
+    );
     BatchInput {
         operations: vec![KernelOp::Resolve {
             process_id,

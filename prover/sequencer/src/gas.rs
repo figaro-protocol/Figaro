@@ -115,7 +115,9 @@ pub const SETTLE_GAS_HEADROOM_PCT: u64 = 25;
 /// `settle_gas_budget`, under the chain's cap on one transaction). An
 /// estimate above `ceiling` is never sent (`submitter::submit_batch`).
 pub fn settle_gas_limit(estimate: u64, ceiling: u64) -> u64 {
-    estimate.saturating_add(estimate / 100 * SETTLE_GAS_HEADROOM_PCT).min(ceiling)
+    estimate
+        .saturating_add(estimate / 100 * SETTLE_GAS_HEADROOM_PCT)
+        .min(ceiling)
 }
 
 /// The most gas one transaction may take, by default: EIP-7825's cap of
@@ -267,7 +269,8 @@ pub fn settle_gas_estimate(calldata: &[u8], items: SettleItems) -> u64 {
         + items.stream_resolved_orders as u64 * SETTLE_GAS_PER_STREAM_RESOLVED_ORDER
         + items.stream_resolutions as u64 * SETTLE_GAS_PER_STREAM_RESOLUTION
         + items.stream_claims as u64 * SETTLE_GAS_PER_STREAM_CLAIM
-        + items.stream_wallet_code_checks as u64 * (SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK + WALLET_CODE_EXECUTION_GAS)
+        + items.stream_wallet_code_checks as u64
+            * (SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK + WALLET_CODE_EXECUTION_GAS)
         + items.stream_wallet_code_attestations as u64
             * (SETTLE_GAS_PER_STREAM_WALLET_CODE_ATTESTATION + WALLET_CODE_EXECUTION_GAS)
 }
@@ -381,29 +384,39 @@ where
     let claims = std::mem::take(&mut batch.usage_claims);
     let mut ops = std::mem::take(&mut batch.operations);
     let mut probe = batch.clone();
-    let planned_at = |probe: &mut BatchInput, ops: &[KernelOp], estimate: &mut F| -> Result<u64, String> {
-        probe.operations = ops.to_vec();
-        estimate(probe)
-    };
+    let planned_at =
+        |probe: &mut BatchInput, ops: &[KernelOp], estimate: &mut F| -> Result<u64, String> {
+            probe.operations = ops.to_vec();
+            estimate(probe)
+        };
     let mut first_alone = 0;
     if !ops.is_empty() {
         first_alone = planned_at(&mut probe, &ops[..1], &mut estimate)?;
         if first_alone > cap {
             let first = ops.remove(0);
             batch.usage_claims = claims;
-            return Ok(PlannedOps { batch, unfit: Some((first, first_alone)), given_back: ops });
+            return Ok(PlannedOps {
+                batch,
+                unfit: Some((first, first_alone)),
+                given_back: ops,
+            });
         }
     }
     let n = ops.len();
-    let mut kept =
-        largest_fitting_prefix(n, |len| Ok(planned_at(&mut probe, &ops[..len], &mut estimate)? <= prefix_budget))?;
+    let mut kept = largest_fitting_prefix(n, |len| {
+        Ok(planned_at(&mut probe, &ops[..len], &mut estimate)? <= prefix_budget)
+    })?;
     if kept == 0 && n > 0 && first_alone <= budget {
         kept = 1;
     }
     let given_back = ops.split_off(kept);
     batch.operations = ops;
     batch.usage_claims = claims;
-    Ok(PlannedOps { batch, unfit: None, given_back })
+    Ok(PlannedOps {
+        batch,
+        unfit: None,
+        given_back,
+    })
 }
 
 /// The batch's usage claims cut to the budget, its operations as they are:
@@ -442,17 +455,42 @@ mod tests {
 
     #[test]
     fn the_estimate_is_the_sum_of_its_parts() {
-        let items = SettleItems { positions: 2, attestations: 1, spec_bindings: 1, uses: 1, stream_words: 0, stream_commits: 0, stream_resolved_orders: 0, stream_resolutions: 0, stream_claims: 0, stream_wallet_code_checks: 1, stream_wallet_code_attestations: 1 };
+        let items = SettleItems {
+            positions: 2,
+            attestations: 1,
+            spec_bindings: 1,
+            uses: 1,
+            stream_words: 0,
+            stream_commits: 0,
+            stream_resolved_orders: 0,
+            stream_resolutions: 0,
+            stream_claims: 0,
+            stream_wallet_code_checks: 1,
+            stream_wallet_code_attestations: 1,
+        };
         assert_eq!(
             settle_gas_estimate(&[1], items),
-            21_016 + 300_000 + 105_000 + 2 * SETTLE_GAS_PER_POSITION + 6_000 + 4_500 + SETTLE_GAS_PER_USE + 15_000 + 500_000 + 24_000 + 500_000
+            21_016
+                + 300_000
+                + 105_000
+                + 2 * SETTLE_GAS_PER_POSITION
+                + 6_000
+                + 4_500
+                + SETTLE_GAS_PER_USE
+                + 15_000
+                + 500_000
+                + 24_000
+                + 500_000
         );
     }
 
     #[test]
     fn the_budget_keeps_the_headroom_under_the_transaction_cap() {
         assert_eq!(settle_gas_budget(30_000_000, u64::MAX), 28_500_000);
-        assert_eq!(settle_gas_budget(60_000_000, DEFAULT_SETTLE_GAS_CAP), 16_777_216);
+        assert_eq!(
+            settle_gas_budget(60_000_000, DEFAULT_SETTLE_GAS_CAP),
+            16_777_216
+        );
         assert_eq!(settle_gas_budget(200_000_000, u64::MAX), 190_000_000);
     }
 
@@ -468,7 +506,10 @@ mod tests {
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(2)), 2);
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(7) - 1), 6);
         assert_eq!(max_orders_in_one_settle(DEFAULT_SETTLE_GAS_CAP), 115);
-        assert!(resolve_settle_gas(115) <= DEFAULT_SETTLE_GAS_CAP && resolve_settle_gas(116) > DEFAULT_SETTLE_GAS_CAP);
+        assert!(
+            resolve_settle_gas(115) <= DEFAULT_SETTLE_GAS_CAP
+                && resolve_settle_gas(116) > DEFAULT_SETTLE_GAS_CAP
+        );
         // The least cap admits a process of one order, and no less.
         assert_eq!(MIN_SETTLE_GAS_CAP, 1_298_439);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP), 1);

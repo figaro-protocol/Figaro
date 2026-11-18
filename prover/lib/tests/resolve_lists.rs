@@ -9,7 +9,7 @@
 /// and longer, a dropped order, an order of another process, an empty list, a
 /// resolve signed by a wallet that is not the root buyer, and a resolve of a
 /// process already resolved. The sequence of a correct list is free on both paths.
-use alloy_primitives::{address, Address, B256, U256, keccak256};
+use alloy_primitives::{address, keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
@@ -127,7 +127,11 @@ fn process(n: usize, salt: u64) -> Process {
         .enumerate()
         .map(|(i, c)| commit_op(c, sellers[i]))
         .collect();
-    Process { id, orders, commits }
+    Process {
+        id,
+        orders,
+        commits,
+    }
 }
 
 impl Process {
@@ -164,7 +168,11 @@ fn resolve_list(p: &Process, list: Vec<Commitment>) -> Result<Vec<NetPosition>, 
 fn expect_not_committed(p: &Process, at: &[usize], repeated: usize) {
     match resolve_list(p, p.pick(at)) {
         Err(KernelError::OrderNotCommitted(h)) => {
-            assert_eq!(h, order_hash(&p.id, &p.orders[repeated]), "list {at:?}: the repeated order")
+            assert_eq!(
+                h,
+                order_hash(&p.id, &p.orders[repeated]),
+                "list {at:?}: the repeated order"
+            )
         }
         other => panic!("list {at:?}: expected OrderNotCommitted, got {other:?}"),
     }
@@ -173,7 +181,10 @@ fn expect_not_committed(p: &Process, at: &[usize], repeated: usize) {
 fn expect_incomplete(p: &Process, list: Vec<Commitment>, what: &str) {
     let provided = list.len() as u64;
     match resolve_list(p, list) {
-        Err(KernelError::IncompleteOrderList { required, provided: given }) => {
+        Err(KernelError::IncompleteOrderList {
+            required,
+            provided: given,
+        }) => {
             assert_eq!(required, p.orders.len() as u64, "{what}: required");
             assert_eq!(given, provided, "{what}: provided");
         }
@@ -193,7 +204,10 @@ fn a_resolve_list_repeating_an_order_of_a_two_order_process_is_refused() {
     expect_incomplete(&p, p.pick(&[0, 1, 0]), "first repeated, longer");
     expect_incomplete(&p, p.pick(&[0, 1, 1]), "last repeated, longer");
     // The true list resolves.
-    assert!(resolve_list(&p, p.pick(&[0, 1])).is_ok(), "the true list resolves");
+    assert!(
+        resolve_list(&p, p.pick(&[0, 1])).is_ok(),
+        "the true list resolves"
+    );
 }
 
 #[test]
@@ -205,7 +219,10 @@ fn a_resolve_list_repeating_an_order_of_a_three_order_process_is_refused() {
     expect_incomplete(&p, p.pick(&[0, 1, 2, 0]), "first repeated, longer");
     expect_incomplete(&p, p.pick(&[0, 1, 2, 1]), "middle repeated, longer");
     expect_incomplete(&p, p.pick(&[0, 1, 2, 2]), "last repeated, longer");
-    assert!(resolve_list(&p, p.pick(&[0, 1, 2])).is_ok(), "the true list resolves");
+    assert!(
+        resolve_list(&p, p.pick(&[0, 1, 2])).is_ok(),
+        "the true list resolves"
+    );
 }
 
 // ── A list that does not name every open order ────────────────────
@@ -233,7 +250,11 @@ fn a_resolve_list_naming_an_order_of_another_process_is_refused() {
             // The order hash binds the process: the other process's order,
             // hashed under this one, names no committed order.
             Err(KernelError::OrderNotCommitted(h)) => {
-                assert_eq!(h, order_hash(&p.id, &other.orders[foreign]), "place {place}")
+                assert_eq!(
+                    h,
+                    order_hash(&p.id, &other.orders[foreign]),
+                    "place {place}"
+                )
             }
             other => panic!("place {place}: expected OrderNotCommitted, got {other:?}"),
         }

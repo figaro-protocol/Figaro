@@ -40,15 +40,15 @@ pub mod spec;
 pub mod validate;
 
 pub use encode::{encode_content_from_spec, EncodeError, EncodeOptions};
-pub use spec::{
-    parse_clause_spec, parse_field_spec, parse_stage_key, ArrayFieldSpec, BaseFieldSpec, BigintFieldSpec,
-    BooleanFieldSpec, DefaultValue, Disposition, EnumFieldSpec, FieldSpec, IntegerFieldSpec, ObjectFieldSpec,
-    ParseClauseSpecResult, ClauseSpec, SpecParseError, StringFieldSpec, StringFormat,
-    MAX_FIELD_DEPTH,
-};
 pub use grain::{
     geohash_capture_precision, GEOHASH_FORMAT, PRIVATE_GEOHASH_MAX_PRECISION,
     PUBLIC_GEOHASH_MAX_PRECISION,
+};
+pub use spec::{
+    parse_clause_spec, parse_field_spec, parse_stage_key, ArrayFieldSpec, BaseFieldSpec,
+    BigintFieldSpec, BooleanFieldSpec, ClauseSpec, DefaultValue, Disposition, EnumFieldSpec,
+    FieldSpec, IntegerFieldSpec, ObjectFieldSpec, ParseClauseSpecResult, SpecParseError,
+    StringFieldSpec, StringFormat, MAX_FIELD_DEPTH,
 };
 pub use validate::{
     resolve_input_format, validate_content, ValidateOptions, ValidationError, ValidationResult,

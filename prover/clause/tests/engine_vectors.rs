@@ -78,7 +78,12 @@ fn the_engine_gives_layer_a_verdict_on_every_value() {
             ));
         }
     }
-    assert!(differing.is_empty(), "{} verdicts differ:\n{}", differing.len(), differing.join("\n"));
+    assert!(
+        differing.is_empty(),
+        "{} verdicts differ:\n{}",
+        differing.len(),
+        differing.join("\n")
+    );
 }
 
 #[test]
@@ -89,10 +94,18 @@ fn the_engine_gives_layer_a_verdict_on_every_content() {
         let expected = case["ok"].as_bool();
         let got = verdict(&case["fields"], &case["content"]);
         if got != expected {
-            differing.push(format!("{}: Layer A {expected:?}, the engine {got:?}", case["label"]));
+            differing.push(format!(
+                "{}: Layer A {expected:?}, the engine {got:?}",
+                case["label"]
+            ));
         }
     }
-    assert!(differing.is_empty(), "{} verdicts differ:\n{}", differing.len(), differing.join("\n"));
+    assert!(
+        differing.is_empty(),
+        "{} verdicts differ:\n{}",
+        differing.len(),
+        differing.join("\n")
+    );
 }
 
 #[test]
@@ -103,7 +116,10 @@ fn the_engine_parses_the_specs_layer_a_parses_and_no_others() {
     let mut differing = Vec::new();
     for case in cases {
         let expected = case["ok"].as_bool().unwrap();
-        let got = matches!(parse_clause_spec(&case["spec"]), ParseClauseSpecResult::Ok(_));
+        let got = matches!(
+            parse_clause_spec(&case["spec"]),
+            ParseClauseSpecResult::Ok(_)
+        );
         if got != expected {
             differing.push(format!(
                 "{}: Layer A {}, the engine {}",
@@ -113,7 +129,12 @@ fn the_engine_parses_the_specs_layer_a_parses_and_no_others() {
             ));
         }
     }
-    assert!(differing.is_empty(), "{} specs differ:\n{}", differing.len(), differing.join("\n"));
+    assert!(
+        differing.is_empty(),
+        "{} specs differ:\n{}",
+        differing.len(),
+        differing.join("\n")
+    );
 }
 
 #[test]
@@ -152,10 +173,17 @@ fn the_engine_reads_every_key_of_layer_a_canonical_bytes() {
         let label = &case["label"];
         let bytes = case["bytes"].as_str().unwrap();
         let read: Value = serde_json::from_str(bytes).unwrap_or_else(|e| panic!("{label}: {e}"));
-        assert_eq!(read, case["content"], "{label}: the bytes carry the content");
+        assert_eq!(
+            read, case["content"],
+            "{label}: the bytes carry the content"
+        );
         // serde_json's map is ordered by key, so its compact form is the
         // canonical form of these contents.
-        assert_eq!(serde_json::to_string(&read).unwrap(), bytes, "{label}: the bytes are canonical");
+        assert_eq!(
+            serde_json::to_string(&read).unwrap(),
+            bytes,
+            "{label}: the bytes are canonical"
+        );
     }
     let mut all: Vec<&str> = cases.iter().map(|c| c["bytes"].as_str().unwrap()).collect();
     all.sort();
@@ -166,18 +194,26 @@ fn the_engine_reads_every_key_of_layer_a_canonical_bytes() {
 #[test]
 fn a_verdict_carries_its_reasons() {
     // `is_err` and `errors` are what the guest reports a rejection with.
-    let spec = spec_of(&json!([{ "name": "v", "type": "integer", "required": true, "min": 0 }])).unwrap();
+    let spec =
+        spec_of(&json!([{ "name": "v", "type": "integer", "required": true, "min": 0 }])).unwrap();
     let good = validate_content(&json!({ "v": 1 }), &spec, ValidateOptions::default());
     assert!(good.is_ok() && !good.is_err());
     assert!(good.errors().is_empty());
 
-    let bad = validate_content(&json!({ "v": "x", "w": 1 }), &spec, ValidateOptions::default());
+    let bad = validate_content(
+        &json!({ "v": "x", "w": 1 }),
+        &spec,
+        ValidateOptions::default(),
+    );
     assert!(bad.is_err() && !bad.is_ok());
     let errors = bad.errors();
     assert_eq!(errors.len(), 2, "one reason per fault: {errors:?}");
     assert_eq!(errors[0].path, "$.v");
     assert_eq!(errors[0].message, "expected integer, got string");
-    assert!(errors.iter().any(|e| e.path == "$.w"), "the unknown field is named: {errors:?}");
+    assert!(
+        errors.iter().any(|e| e.path == "$.w"),
+        "the unknown field is named: {errors:?}"
+    );
 
     // The names are JavaScript's `typeof`, Layer A's: an array is an object.
     for (value, name) in [
@@ -197,7 +233,8 @@ fn a_verdict_carries_its_reasons() {
 
     // An integer written as a whole number and out of range names the range;
     // a fraction names the type.
-    let unbounded = spec_of(&json!([{ "name": "v", "type": "integer", "required": true }])).unwrap();
+    let unbounded =
+        spec_of(&json!([{ "name": "v", "type": "integer", "required": true }])).unwrap();
     let past: Value = serde_json::from_str(r#"{"v":1e21}"#).unwrap();
     assert_eq!(
         validate_content(&past, &unbounded, ValidateOptions::default()).errors()[0].message,
@@ -226,14 +263,26 @@ fn a_verdict_carries_its_reasons() {
     );
     let mut paths: Vec<&str> = v.errors().iter().map(|e| e.path.as_str()).collect();
     paths.sort();
-    assert_eq!(paths, ["$.o.a", "$.o.l[1]", "$.o.z", "$.w"], "{:?}", v.errors());
+    assert_eq!(
+        paths,
+        ["$.o.a", "$.o.l[1]", "$.o.z", "$.w"],
+        "{:?}",
+        v.errors()
+    );
     let absent = validate_content(&json!({ "o": {} }), &nested, ValidateOptions::default());
     let mut paths: Vec<&str> = absent.errors().iter().map(|e| e.path.as_str()).collect();
     paths.sort();
     assert_eq!(paths, ["$.o.a", "$.o.l"], "{:?}", absent.errors());
 
-    let formatted = spec_of(&json!([{ "name": "v", "type": "string", "required": true, "format": "address-hex" }])).unwrap();
-    let v = validate_content(&json!({ "v": "0x00" }), &formatted, ValidateOptions::default());
+    let formatted = spec_of(
+        &json!([{ "name": "v", "type": "string", "required": true, "format": "address-hex" }]),
+    )
+    .unwrap();
+    let v = validate_content(
+        &json!({ "v": "0x00" }),
+        &formatted,
+        ValidateOptions::default(),
+    );
     assert!(
         v.errors()[0].message.contains("address-hex"),
         "the reason names the format: {:?}",
