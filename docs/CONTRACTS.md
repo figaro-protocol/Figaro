@@ -657,7 +657,7 @@ deploy script wires and under which environment variable.
 
 **Multisender.** Batch dispersal — one payment, many recipients, one
 transaction — is a wallet splitting its own receipts after resolution to
-earmarked addresses, leaving a fiscal trail as a byproduct. It reads neither
+earmarked addresses. It reads neither
 the Core nor any registry, and the network already supplies it: the
 canonical public Disperse deployment
 (`0xD152f549545093347A162Dce210e7293f1452150`, the same address

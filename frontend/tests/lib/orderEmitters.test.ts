@@ -75,3 +75,26 @@ describe('the order readers fold both emitters', () => {
         expect(cachedGetLogsMock.mock.calls.map((c) => c[2].address)).toEqual([CORE]);
     });
 });
+
+describe('getOrderCommittedBySeller reads a batched order', () => {
+    it('finds an order whose OrderSeller and OrderCommitted came from the verifier alone', async () => {
+        vi.resetModules();
+        vi.doMock('@/lib/core/contracts', async (importOriginal) => ({
+            ...(await importOriginal<typeof import('@/lib/core/contracts')>()),
+            CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
+        }));
+        const { getOrderCommittedBySeller } = await import('@/lib/core/indexer');
+        const SELLER = '0x3333333333333333333333333333333333333333';
+        cachedGetLogsMock.mockReset();
+        cachedGetLogsMock.mockImplementation(async (_c: unknown, _id: number, opts: { address: string; eventName: string }) => {
+            if (opts.address !== VERIFIER) return [];
+            return opts.eventName === 'OrderSeller'
+                ? [{ blockNumber: 4n, logIndex: 0, args: { orderHash: '0xabc', seller: SELLER } }]
+                : opts.eventName === 'OrderCommitted'
+                  ? [{ blockNumber: 4n, logIndex: 1, args: { orderHash: '0xabc', buyer: '0x4444' } }]
+                  : [];
+        });
+        const logs = await getOrderCommittedBySeller(CLIENT, 31337, SELLER);
+        expect(logs).toHaveLength(1);
+    });
+});
