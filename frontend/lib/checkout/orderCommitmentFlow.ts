@@ -189,7 +189,7 @@ function assertSigningDomain(core: string | undefined, chainId: number): asserts
  *  designer's values against. Null when the agreement names none or the read
  *  fails; the gate then refuses an agreement naming a design (fail-closed:
  *  an agreement it cannot fetch or verify is never signed or broadcast). */
-export async function readSigningDesign(agreement: Agreement): Promise<HydratedAssembly | null> {
+async function readSigningDesign(agreement: Agreement): Promise<HydratedAssembly | null> {
     const provenance = agreement.provenance;
     if (!provenance) return null;
     try {
@@ -224,6 +224,22 @@ async function readSigningSpecs(agreement: Agreement, client: { getBlockNumber?:
         if (!row?.args?.contentURI) continue;
         try { await loadClauseSpec(key as `0x${string}`, row.args.contentURI); } catch { /* the gate refuses an unloaded spec */ }
     }
+}
+
+/** What the sign gate reads before it judges an agreement: its clause specs,
+ *  resolved through `ClauseRegistry` into the cache (`readSigningSpecs`),
+ *  then the design its provenance leaf names (`readSigningDesign`). Every
+ *  sign, the commit broadcast and the `/sign` review call this one read, so
+ *  the review's verdict is the one the action's gate would give. Returns the
+ *  design, null when none is named or it could not be read; a spec that
+ *  cannot be loaded stays unloaded, and the gate refuses its clause. */
+export async function readSigningInputs(
+    agreement: Agreement,
+    client: { getBlockNumber?: unknown } | undefined,
+    chainId: number,
+): Promise<HydratedAssembly | null> {
+    await readSigningSpecs(agreement, client, chainId);
+    return readSigningDesign(agreement);
 }
 
 export function useOrderCommitmentFlow() {
@@ -280,8 +296,8 @@ export function useOrderCommitmentFlow() {
         assertSigningDomain(CONTRACTS.core, chainId);
         // The agreement's specs first: a key the cache had not warmed is read
         // through the registry; a key no registry holds stays unloaded and the
-        // gate below refuses it.
-        await readSigningSpecs(agreement, publicClient, chainId);
+        // gate below refuses it. Then the design it names.
+        const design = await readSigningInputs(agreement, publicClient, chainId);
         // Off-chain validation — the FULL gate at the sign step, so no caller can bypass
         // it: every clause conforms to its clause spec AND the agreement's
         // recomputed merkle root equals the hash being signed. The /orders
@@ -289,7 +305,7 @@ export function useOrderCommitmentFlow() {
         // here — both sides of the bilateral commit get the same check. The
         // design the agreement names is read and verified here, so the
         // designer's values are checked against it.
-        assertAgreementSignable(agreement, commitment.checkoutHash, specSource(), commitment, await readSigningDesign(agreement));
+        assertAgreementSignable(agreement, commitment.checkoutHash, specSource(), commitment, design);
         // When the bond is swap-funded, `swap` surfaces the leg's maxInput in
         // the SAME confirm — one approval covers the commitment sign AND the
         // Permit2 witness sign the caller does right after.
@@ -537,8 +553,8 @@ export function useOrderCommitmentFlow() {
             // The FULL draft gate — the specs (resolved through the registry
             // first) and the design the agreement names — so a bad request is
             // refused before the person is asked anything.
-            await readSigningSpecs(incoming.agreement, publicClient, chainId);
-            const check = await validateDraft(incoming, address, undefined, specSource(), await readSigningDesign(incoming.agreement), profileReaderForChain(publicClient, chainId));
+            const design = await readSigningInputs(incoming.agreement, publicClient, chainId);
+            const check = await validateDraft(incoming, address, undefined, specSource(), design, profileReaderForChain(publicClient, chainId));
             if (!check.ok) throw new Error(`Refusing this draft — ${check.reason}`);
             setStep("signing");
             const sellerSig = await signAs(incoming.commitment, incoming.agreement);
@@ -576,8 +592,8 @@ export function useOrderCommitmentFlow() {
             // The FULL draft gate — the specs (resolved through the registry
             // first) and the design the agreement names — so a bad request is
             // refused before the person is asked anything.
-            await readSigningSpecs(incoming.agreement, publicClient, chainId);
-            const check = await validateDraft(incoming, address, undefined, specSource(), await readSigningDesign(incoming.agreement), profileReaderForChain(publicClient, chainId));
+            const design = await readSigningInputs(incoming.agreement, publicClient, chainId);
+            const check = await validateDraft(incoming, address, undefined, specSource(), design, profileReaderForChain(publicClient, chainId));
             if (!check.ok) throw new Error(`Refusing this draft — ${check.reason}`);
             const terms = incoming.quoteRequest;
             if (!terms) {
@@ -631,7 +647,7 @@ export function useOrderCommitmentFlow() {
             payload.commitment.checkoutHash,
             specSource(),
             payload.commitment,
-            await readSigningDesign(payload.agreement),
+            await readSigningInputs(payload.agreement, publicClient, chainId),
         );
         const approved = await requestCommitConfirmation(
             payload.commitment,
@@ -649,7 +665,7 @@ export function useOrderCommitmentFlow() {
         });
         setStep("done");
         return hash;
-    }), [broadcasterFor, publicClient, runStep]);
+    }), [broadcasterFor, publicClient, chainId, runStep]);
 
     return {
         step,

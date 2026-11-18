@@ -15,13 +15,14 @@
  *   offer and "done" the submitted commitment, each in place of the review.
  */
 import React from "react";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import path from "node:path";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { buildOrderAgreement, calculateBonds, computeCheckoutHash, type Commitment, type Hex } from "@figaro-protocol/sdk";
 import { tokenFigure } from "@/lib/shared/utils";
 import { serializeCommitmentPayload, type CommitmentPayload } from "@figaro-protocol/sdk/agent";
-import { keyOf, primeClauseSpecs } from "../lib/primeClauseSpecs";
-import { specSource } from "@/lib/shared/clauseSpecSource";
+import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "../lib/primeClauseSpecs";
+import { _resetClauseSpecCache_TESTING_ONLY, loadClauseSpec, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
 
 const BUYER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as Hex;
 const SELLER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" as Hex;
@@ -30,6 +31,7 @@ const FUNDING_TOKEN = `0x${"1a".repeat(20)}` as Hex;
 
 type Step = "idle" | "signing" | "sharing" | "awaiting-seller" | "awaiting-buyer" | "committing" | "done" | "error";
 const m = vi.hoisted(() => ({
+    client: { chain: { id: 31337 } },
     address: undefined as string | undefined,
     search: "",
     flow: undefined as unknown as { step: Step; error: string | null; acceptOrder: (...a: unknown[]) => Promise<unknown>; reset: () => void },
@@ -37,15 +39,32 @@ const m = vi.hoisted(() => ({
     swap: undefined as unknown as { fundingToken: Hex | null; authorization: string },
     // What the seller typed in the chooser's slippage margin field (null: untouched).
     marginText: null as string | null,
+    // The ClauseRegistry registrations the review reads a spec's address from.
+    registryRows: [] as Array<{ args: { clauseKey: string; contentURI: string } }>,
 }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(m.search) }));
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: m.address }) }));
-vi.mock("@/lib/checkout/orderCommitmentFlow", () => ({
+// One client for every render, as wagmi's hook keeps it.
+vi.mock("wagmi", () => ({ useAccount: () => ({ address: m.address }), usePublicClient: () => m.client, useChainId: () => 31337 }));
+// The review's reads are the sign action's own (`readSigningInputs`): the
+// clause specs through the registry, then the design. No design is read here.
+vi.mock("@/lib/checkout/orderCommitmentFlow", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/checkout/orderCommitmentFlow")>()),
     useOrderCommitmentFlow: () => ({
         ...m.flow,
         counterSignAndReturn: vi.fn(), quoteAndReturn: vi.fn(), commitOrder: vi.fn(),
     }),
-    readSigningDesign: async () => null,
+}));
+vi.mock("@/lib/protocol/useAssemblyRegistry", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/protocol/useAssemblyRegistry")>()),
+    fetchHydratedAssemblyByHash: async () => null,
+}));
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
+    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, clauseRegistry: "0x00000000000000000000000000000000000000c1" } };
+});
+vi.mock("@/lib/core/eventCache", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/eventCache")>()),
+    cachedGetContractEvents: async () => m.registryRows,
 }));
 vi.mock("@/lib/checkout/orderPendingSellerSignature", () => ({ useCommitmentPayloadInbox: () => m.inbox }));
 vi.mock("@/lib/composition/useSwapFunding", async (importOriginal) => ({
@@ -113,6 +132,7 @@ beforeEach(() => {
     m.inbox = { entries: [], status: "listening", error: null };
     m.swap = { fundingToken: null, authorization: "none" };
     m.marginText = null;
+    m.registryRows = [];
 });
 
 describe("/sign — the coordination-channel inbox", () => {
@@ -224,6 +244,66 @@ describe("/sign — the terms check", () => {
         await flush();
         expect(screen.queryByTestId("sign-agreement-unread")).toBeNull();
         expect(screen.getByTestId("sign-agreement-invalid").textContent).toMatch(/32-byte/);
+    });
+});
+
+describe("/sign — the review reads the clause specs the sign action reads", () => {
+    // A made-up clause beside the commerce clause, so one spec can be left
+    // out of the registry.
+    const EXTRA = pinSpec({
+        clauseId: "test-sign-review-extra",
+        version: 1,
+        title: "Extra term",
+        description: "A made-up clause with one optional field.",
+        fields: [{ name: "note", type: "string", required: false }],
+    });
+    const COMMERCE_FILE = path.resolve(process.cwd(), "../clauses/figaro-commerce.json");
+
+    /** A payload naming an unread design whose clauses the cache does not
+     *  hold: built while the specs are loaded, then the cache is emptied. */
+    async function unreadPayloadWithColdCache(): Promise<{ payload: CommitmentPayload; commerce: Hex }> {
+        setClauseSpecFetcher(async (uri) => (uri === "mem://extra" ? EXTRA.bytes : canonicalFileBytes(uri)));
+        await loadClauseSpec(EXTRA.clauseKey, "mem://extra");
+        const commerce = keyOf("figaro-commerce");
+        const p = payload();
+        const clauses = [...p.agreement.clauses, ...buildOrderAgreement(BUYER, SELLER, { [EXTRA.clauseKey]: { note: "x" } }, specSource()).agreement.clauses];
+        const agreement = { ...p.agreement, clauses, follows: [], provenance: { agreementHash: `0x${"a1".repeat(32)}` as Hex, assemblyHash: `0x${"a5".repeat(32)}` as Hex } };
+        const out: CommitmentPayload = { ...p, agreement, commitment: { ...p.commitment, checkoutHash: computeCheckoutHash(agreement) } };
+        _resetClauseSpecCache_TESTING_ONLY();
+        return { payload: out, commerce };
+    }
+
+    afterEach(async () => {
+        _resetClauseSpecCache_TESTING_ONLY();
+        await primeClauseSpecs(["figaro-commerce"]);
+    });
+
+    it("clause specs the cache lacks but the registry holds are loaded before the check: the unread design is the only refusal", async () => {
+        const { payload: p, commerce } = await unreadPayloadWithColdCache();
+        m.registryRows = [
+            { args: { clauseKey: commerce, contentURI: COMMERCE_FILE } },
+            { args: { clauseKey: EXTRA.clauseKey, contentURI: "mem://extra" } },
+        ];
+        m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(p))}`;
+        render(<SignPage />);
+        await flush();
+        await flush();
+        expect(screen.getByTestId("sign-agreement-unread").textContent).toMatch(/was not read/);
+        expect(screen.queryByTestId("sign-agreement-refused")).toBeNull();
+    });
+
+    it("a clause spec no registry holds stays unloaded: the review names that clause beside the unread design", async () => {
+        const { payload: p, commerce } = await unreadPayloadWithColdCache();
+        m.registryRows = [{ args: { clauseKey: commerce, contentURI: COMMERCE_FILE } }];
+        m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(p))}`;
+        render(<SignPage />);
+        await flush();
+        await flush();
+        expect(screen.getByTestId("sign-agreement-unread").textContent).toMatch(/was not read/);
+        expect(screen.getByTestId("sign-agreement-refused").textContent).toBe("These terms are refused — do not proceed.");
+        const block = screen.getByTestId("sign-agreement-invalid").textContent ?? "";
+        expect(block).toContain(`${EXTRA.clauseKey} clause: the clause's spec is not loaded`);
+        expect(block).not.toContain(`${commerce} clause:`);
     });
 });
 

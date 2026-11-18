@@ -33,6 +33,7 @@ const CURRENCY = `0x${"ab".repeat(20)}` as Hex;
 const OTHER_TOKEN = `0x${"1a".repeat(20)}` as Hex;
 
 const m = vi.hoisted(() => ({
+    client: { chain: { id: 31337 } },
     address: undefined as string | undefined,
     buyer: undefined as string | undefined,
     capacity: null as unknown,
@@ -49,7 +50,8 @@ const m = vi.hoisted(() => ({
 vi.mock("wagmi", () => ({
     useAccount: () => ({ address: m.address }),
     useChainId: () => 31337,
-    usePublicClient: () => ({ chain: { id: 31337 } }),
+    // One client for every render, as wagmi's hook keeps it.
+    usePublicClient: () => m.client,
 }));
 vi.mock("next/navigation", () => ({
     useSearchParams: () => new URLSearchParams(m.search),
@@ -109,7 +111,7 @@ vi.mock("@/lib/checkout/orderCommitmentFlow", () => ({
         step: "idle", error: null, acceptOrder: vi.fn(), reset: vi.fn(),
         counterSignAndReturn: vi.fn(), quoteAndReturn: vi.fn(), commitOrder: vi.fn(),
     }),
-    readSigningDesign: async () => null,
+    readSigningInputs: async () => null,
 }));
 vi.mock("@/lib/checkout/orderPendingSellerSignature", () => ({
     useCommitmentPayloadInbox: () => ({ entries: [], status: "idle", error: null }),
