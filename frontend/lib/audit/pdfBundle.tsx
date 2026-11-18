@@ -432,7 +432,10 @@ function ClauseDataPage({ doc }: { doc: AuditBundle["clauseData"] }) {
             {doc.clauses.map((clause) => (
                 <View key={clause.clauseKey}>
                     <Text style={styles.h2}>{clause.title}</Text>
-                    {clause.fields.length === 0 ? (
+                    {/* A withheld clause's values exist and are not in this file:
+                        their place stays empty, and the list of what the file
+                        lacks names them. */}
+                    {clause.withheld ? null : clause.fields.length === 0 ? (
                         <Text style={styles.sectionBody}>Committed with no field values.</Text>
                     ) : (
                         <View style={styles.table}>

@@ -107,6 +107,8 @@ test.describe('/sign counter-sign — shared review before commit (devnet)', () 
         await expect(page.getByTestId('sign-agreement-verified'), 'the relayed terms verify against the signed hash')
             .toBeVisible();
         await expect(page.getByTestId('sign-agreement-invalid')).toHaveCount(0);
+        await expect(page.getByTestId('sign-agreement-unread'), 'no design is named as unread').toHaveCount(0);
+        await expect(page.getByTestId('sign-agreement-refused'), 'no refusal heading').toHaveCount(0);
 
         // ── Authorize the seller bond, then counter-sign through the gate.
         //    TokenApprovalFlow auto-completes when the allowance already

@@ -553,9 +553,11 @@ the party's own address, then calls `FigaroCore.commit`.
 - Immutable `figaroCore` / `permit2` / `router`; `ReentrancyGuard`; no admin,
   no pause. Alternative coordinators with other routers are valid
   compositions.
-- Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the
-  denomination, an `approve(Permit2, …)` for the input token, for the signed maximum of
-  each swap, and a per-commit Permit2 witness signature.
+- Per-party prerequisites: an `approve(FigaroCore, …)` for the denomination
+  covering the bonds `FigaroCore` pulls; an `approve(Permit2, …)` for the input
+  token, one approval covering together the `maxInput`s of every swap made
+  under it, since each swap pulls its own whole `maxInput`; and a per-commit
+  Permit2 witness signature.
 
 ## Coordinators — the shape of a contract beside `FigaroCore`
 

@@ -157,22 +157,73 @@ describe("/sign — the terms check", () => {
         m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(payload({ tamper: true })))}`;
         render(<SignPage />);
         await flush();
-        expect(screen.getByTestId("sign-agreement-invalid").textContent).toMatch(/These terms do NOT match the signed checkoutHash — do not proceed\./);
+        expect(screen.getByTestId("sign-agreement-refused").textContent).toBe("These terms do NOT match the signed checkoutHash — do not proceed.");
         expect(screen.queryByTestId("sign-agreement-verified")).toBeNull();
     });
 
     it("an agreement naming a design that could not be read is refused in the review, before any signature", async () => {
         // The gate reads the design an agreement names and refuses what it
-        // cannot read: the validator's verdict names the unread assembly, and
-        // the review shows it rather than no verdict at all.
+        // cannot read. The terms merkle to the signed checkoutHash: the review
+        // says which design was not read, and never that the terms do not match.
         const p = payload();
-        const agreement = { ...p.agreement, provenance: { agreementHash: `0x${"a1".repeat(32)}` as Hex, assemblyHash: `0x${"a5".repeat(32)}` as Hex } };
+        const assemblyHash = `0x${"a5".repeat(32)}` as Hex;
+        // A root order of the design: its topology leaf is the empty list.
+        const agreement = { ...p.agreement, follows: [], provenance: { agreementHash: `0x${"a1".repeat(32)}` as Hex, assemblyHash } };
         const unread: CommitmentPayload = { ...p, agreement, commitment: { ...p.commitment, checkoutHash: computeCheckoutHash(agreement) } };
         m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(unread))}`;
         render(<SignPage />);
         await flush();
-        expect(screen.getByTestId("sign-agreement-invalid").textContent).toMatch(/was not read/);
+        const block = screen.getByTestId("sign-agreement-invalid").textContent ?? "";
+        expect(screen.getByTestId("sign-agreement-unread").textContent).toBe(
+            `The design this agreement names, assembly ${assemblyHash}, was not read, so its designer values cannot be checked — do not proceed.`,
+        );
+        expect(block).not.toMatch(/do NOT match/);
+        // The heading names the unread design once; no item repeats it.
+        expect(block.match(/was not read/g) ?? []).toHaveLength(1);
         expect(screen.queryByTestId("sign-agreement-verified")).toBeNull();
+    });
+
+    it("an agreement naming an unread design whose clause also breaks its spec names the design and refuses the terms, without saying they do not match", async () => {
+        const p = payload();
+        const assemblyHash = `0x${"a5".repeat(32)}` as Hex;
+        // The commerce clause's line items are not a list: a term its spec refuses.
+        const clauses = p.agreement.clauses.map((c) => ({ ...c, data: { ...(c as { data?: object }).data, lineItems: "not a list" } }));
+        const agreement = { ...p.agreement, clauses, follows: [], provenance: { agreementHash: `0x${"a1".repeat(32)}` as Hex, assemblyHash } };
+        const both: CommitmentPayload = { ...p, agreement: agreement as CommitmentPayload["agreement"], commitment: { ...p.commitment, checkoutHash: `0x${"ee".repeat(32)}` as Hex } };
+        m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(both))}`;
+        render(<SignPage />);
+        await flush();
+        expect(screen.getByTestId("sign-agreement-unread").textContent).toMatch(/was not read/);
+        expect(screen.getByTestId("sign-agreement-refused").textContent).toBe("These terms are refused — do not proceed.");
+        expect(screen.getByTestId("sign-agreement-invalid").textContent).not.toMatch(/do NOT match/);
+    });
+
+    it("a clause that breaks its spec under the signed checkoutHash refuses the terms, without saying they do not match it", async () => {
+        // The root is computed over the refused clause, so the signed hash is
+        // the agreement's own; the validator never compares it while an issue stands.
+        const p = payload();
+        const clauses = p.agreement.clauses.map((c) => ({ ...c, data: { ...(c as { data?: object }).data, lineItems: "not a list" } }));
+        const agreement = { ...p.agreement, clauses } as CommitmentPayload["agreement"];
+        const checkoutHash = computeCheckoutHash(agreement);
+        const refused: CommitmentPayload = { ...p, agreement, commitment: { ...p.commitment, checkoutHash } };
+        m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(refused))}`;
+        render(<SignPage />);
+        await flush();
+        expect(screen.getByTestId("sign-agreement-refused").textContent).toBe("These terms are refused — do not proceed.");
+        expect(screen.getByTestId("sign-agreement-invalid").textContent).toMatch(/lineItems/);
+        expect(screen.getByTestId("sign-agreement-invalid").textContent).not.toMatch(/do NOT match/);
+        expect(screen.queryByTestId("sign-agreement-unread")).toBeNull();
+    });
+
+    it("a malformed provenance is not called an unread design", async () => {
+        const p = payload();
+        const agreement = { ...p.agreement, follows: [], provenance: { agreementHash: `0x${"6f".repeat(32)}` as Hex, assemblyHash: "0x5e" as Hex } };
+        const malformed: CommitmentPayload = { ...p, agreement, commitment: { ...p.commitment, checkoutHash: computeCheckoutHash(p.agreement) } };
+        m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(malformed))}`;
+        render(<SignPage />);
+        await flush();
+        expect(screen.queryByTestId("sign-agreement-unread")).toBeNull();
+        expect(screen.getByTestId("sign-agreement-invalid").textContent).toMatch(/32-byte/);
     });
 });
 

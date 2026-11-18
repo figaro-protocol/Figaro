@@ -6,6 +6,7 @@
  * page lists an absent agreement as lacking and shows a loading line for a
  * pending one, so the two are never folded together.
  */
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { ABSENT, present, type NetworkRead } from "@/lib/shared/networkRead";
@@ -94,6 +95,66 @@ describe("useProcessAgreementReads", () => {
         const { result } = renderHook(() => useProcessAgreementReads([ZERO]));
         expect(result.current.get(ZERO)?.status).toBe("absent");
         expect(m.fetch).not.toHaveBeenCalled();
+    });
+
+    it("a changed list of hashes: the hash it adds is fetched once and reads pending until its answer, never absent from an earlier failure; the hash it keeps is not fetched again", async () => {
+        // The shared store holds FAILS as failed, from an earlier consumer's fetch.
+        (window as unknown as { __FIGARO_AGREEMENT_STORE__?: unknown }).__FIGARO_AGREEMENT_STORE__ = {
+            cache: new Map(), inflight: new Set(), failed: new Set([FAILS]), subscribers: new Set(),
+        };
+        const retry = deferred();
+        m.fetch.mockImplementation(async (hash: string) => (hash === LOADS ? present(AGREEMENT) : retry.promise));
+        const seen: string[] = [];
+        const { result, rerender } = renderHook(({ hashes }: { hashes: string[] }) => {
+            const reads = useProcessAgreementReads(hashes);
+            seen.push(reads.get(FAILS)?.status ?? "none");
+            return reads;
+        }, { initialProps: { hashes: [LOADS] } });
+        await waitFor(() => expect(result.current.get(LOADS)).toEqual(present(AGREEMENT)));
+
+        rerender({ hashes: [LOADS, FAILS] });
+        expect(result.current.get(FAILS)?.status).toBe("pending");
+        expect(result.current.get(LOADS)).toEqual(present(AGREEMENT));
+        expect(seen).not.toContain("absent");
+        expect(m.fetch.mock.calls.map(([h]) => h)).toEqual([LOADS, FAILS]);
+
+        await act(async () => { retry.settle(present(AGREEMENT)); });
+        await waitFor(() => expect(result.current.get(FAILS)).toEqual(present(AGREEMENT)));
+        expect(seen).not.toContain("absent");
+        // A list that only reorders the same hashes asks for nothing.
+        rerender({ hashes: [FAILS, LOADS] });
+        expect(m.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("two consumers mounted together share one fetch per hash and read the same answer", async () => {
+        const slow = deferred();
+        m.fetch.mockImplementation(() => slow.promise);
+        const { result } = renderHook(() => ({
+            a: useProcessAgreementReads([LOADS]),
+            b: useProcessAgreementReads([LOADS]),
+        }));
+        expect(result.current.a.get(LOADS)?.status).toBe("pending");
+        expect(result.current.b.get(LOADS)?.status).toBe("pending");
+        expect(m.fetch).toHaveBeenCalledTimes(1);
+
+        await act(async () => { slow.settle(present(AGREEMENT)); });
+        await waitFor(() => expect(result.current.a.get(LOADS)).toEqual(present(AGREEMENT)));
+        expect(result.current.b.get(LOADS)).toEqual(present(AGREEMENT));
+        expect(m.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("under StrictMode's double effects: one fetch, the answer reaches the consumer, and unmounting leaves no subscriber", async () => {
+        const slow = deferred();
+        m.fetch.mockImplementation(() => slow.promise);
+        const { result, unmount } = renderHook(() => useProcessAgreementReads([LOADS]), { wrapper: StrictMode });
+        expect(result.current.get(LOADS)?.status).toBe("pending");
+        expect(m.fetch).toHaveBeenCalledTimes(1);
+
+        await act(async () => { slow.settle(present(AGREEMENT)); });
+        await waitFor(() => expect(result.current.get(LOADS)).toEqual(present(AGREEMENT)));
+        unmount();
+        const store = (window as unknown as { __FIGARO_AGREEMENT_STORE__: { subscribers: Set<unknown> } }).__FIGARO_AGREEMENT_STORE__;
+        expect(store.subscribers.size).toBe(0);
     });
 
     it("the agreements map holds only the loaded agreements", async () => {

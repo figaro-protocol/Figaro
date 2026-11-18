@@ -21,8 +21,11 @@ export interface ClauseDataDocument extends ExtractedDocument {
      *  field's label + committed value(s). EVERY committed leaf surfaces, even
      *  when its fields render no values (e.g. a process-log clause's empty
      *  anchor): the audit's contract is completeness over the committed
-     *  tree, so omission would hide a leaf the merkle root provably carries. */
-    clauses: ClauseDescription[];
+     *  tree, so omission would hide a leaf the merkle root provably carries.
+     *  `withheld` is true when the agreement carries the clause's data hash
+     *  and no content: its values exist and are not here, so a reader leaves
+     *  their place empty, where a clause signed with no field says so. */
+    clauses: (ClauseDescription & { withheld: boolean })[];
     /** Each private clause's blinding value, as the agreement this file was
      *  built from carries it: no term, so `clauses` never lists it, yet the
      *  forum needs it to rebuild the clause's data hash and leaf. Present only
@@ -40,9 +43,12 @@ export function extractClauseData(
     order: Order,
     agreement: Agreement,
 ): ClauseDataDocument {
-    const clauses = agreement.clauses.map((clauseEntry) =>
-        describeClause(clauseEntry.clause, (clauseEntry as { data?: Record<string, unknown> }).data),
-    );
+    // A content-withheld clause carries its `dataHash` in place of its `data`
+    // (`ClauseEntry`, sdk/src/agreement.ts).
+    const clauses = agreement.clauses.map((clauseEntry) => ({
+        ...describeClause(clauseEntry.clause, (clauseEntry as { data?: Record<string, unknown> }).data),
+        withheld: clauseEntry.dataHash !== undefined,
+    }));
     const missing: MissingPart[] = agreement.clauses
         .filter((c) => !getClauseSpec(c.clause))
         .map((c) => ({
@@ -53,7 +59,7 @@ export function extractClauseData(
     const blindingValues: ClauseDataDocument["blindingValues"] = [];
     for (const clauseEntry of agreement.clauses) {
         const data = (clauseEntry as { data?: Record<string, unknown> }).data;
-        if (data === undefined) {
+        if (clauseEntry.dataHash !== undefined) {
             missing.push({
                 part: `Content of private clause ${clauseEntry.clause}`,
                 orderHash: order.orderHash,
@@ -61,6 +67,7 @@ export function extractClauseData(
             });
             continue;
         }
+        if (data === undefined) continue;
         const spec = getClauseSpec(clauseEntry.clause);
         for (const field of spec?.fields ?? []) {
             if (field.blinding !== true || typeof data[field.name] !== "string") continue;

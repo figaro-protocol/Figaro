@@ -372,9 +372,12 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                             {clauseData && clauseData.clauses.length > 0 && (
                                 <div className="space-y-4">
                                     {clauseData.clauses.map((clause) => (
-                                        <div key={`data-${clause.clauseKey}`} className="space-y-2">
+                                        <div key={`data-${clause.clauseKey}`} className="space-y-2" data-testid={`audit-clause-${clause.clauseKey}`}>
                                             <h3 className="text-sm font-semibold text-ink-heading">{clause.title}</h3>
-                                            {clause.fields.length === 0 ? (
+                                            {/* A withheld clause's values exist and are not in this
+                                                agreement: their place stays empty, and the list of what
+                                                the evidence lacks names them. */}
+                                            {clause.withheld ? null : clause.fields.length === 0 ? (
                                                 <p className="text-sm text-ink-muted">Committed with no field values.</p>
                                             ) : (
                                                 <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 text-sm">
