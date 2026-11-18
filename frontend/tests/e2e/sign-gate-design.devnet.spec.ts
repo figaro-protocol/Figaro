@@ -221,7 +221,11 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
             if (expected === notRead) {
                 await expect(page.getByTestId('sign-agreement-unread'), 'the heading names the design that was not read')
                     .toContainText(new RegExp(`assembly ${payload.agreement.provenance!.assemblyHash}, was not read`, 'i'));
-                await expect(page.getByTestId('sign-agreement-refused'), 'the unread design is the only refusal').toHaveCount(0);
+                // The payload is the root order with no buyer value filled, so the
+                // review also lists its missing required fields: that list sits
+                // under the neutral heading, never under a mismatch.
+                await expect(page.getByTestId('sign-agreement-refused'), 'the other refusals are not called a mismatch')
+                    .toHaveText('These terms are refused — do not proceed.');
             } else {
                 await expect(page.getByTestId('sign-agreement-unread')).toHaveCount(0);
                 await expect(page.getByTestId('sign-agreement-refused'), 'the heading refuses the terms without calling them a mismatch')
