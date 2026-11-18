@@ -20,7 +20,7 @@
  * `--no-deps` once the gate has seeded the chain.
  */
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
-import { createPublicClient, createWalletClient, defineChain, http, parseAbi, parseEther, type Hex } from 'viem';
+import { createPublicClient, createWalletClient, defineChain, http, parseAbi, parseEther, maxUint256, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { calculateBonds } from '@figaro-protocol/sdk';
 import {
@@ -286,10 +286,15 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         //    sellerBond, FigaroCore escrow↑ both. Exact deltas — gas is paid in ETH,
         //    so the payment-token deltas are the bonds only. ──
         const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
-        // The approval landed inside the accept flow, after the confirm: the
-        // allowance covered the bond the Core pulled.
-        expect(allowanceBefore >= sellerBond || (await allowanceOf()) > allowanceBefore,
-            'the seller bond was approved after the terms confirm (or an earlier allowance covered it)').toBe(true);
+        // The approval landed inside the accept flow, after the confirm, and
+        // was exactly the seller bond the Core pulled: an allowance that
+        // already covered it was spent down by the bond and nothing was
+        // approved; otherwise the approval set it to the bond and the commit
+        // spent all of it.
+        expect(await allowanceOf(),
+            'the allowance after the commit is the allowance before less the seller bond, or zero when the flow approved exactly the bond')
+            .toBe(allowanceBefore === maxUint256 ? maxUint256 // an unlimited allowance is never spent down (ERC-20 convention)
+                : allowanceBefore >= sellerBond ? allowanceBefore - sellerBond : 0n);
         const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
         ]);
