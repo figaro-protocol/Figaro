@@ -16,7 +16,7 @@ One file per network, named `<chainId>.json`, in the same shape
   "attestationCoordinator": "0x...",
   "clauseRegistry": "0x...",
   "membersRegistry": "0x...",
-  "assemblyRegistry": "0x...",
+  "processRegistry": "0x...",
   "agreementRegistry": "0x...",
   "florinToken": "0x...",
   "usageCounter": "0x...",
@@ -112,7 +112,7 @@ the compiler's metadata hash covers the source text, comments included: a
 tree whose NatSpec differs from the deployed build reports that contract as
 differing, with no change in what it executes. Against Sepolia this holds for
 `ClauseRegistry`, `AttestationCoordinator`, `FigaroBatchVerifier`,
-`AgreementRegistry`, `AssemblyRegistry` and `UsageCounter`, and for every clause key, which is
+`AgreementRegistry`, `ProcessRegistry` and `UsageCounter`, and for every clause key, which is
 derived as above, until the redeploy.
 
 - `1.expected.json` — mainnet. The deposits, the cooldown and the wallets are

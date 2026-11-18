@@ -11,7 +11,7 @@
  *      bigint→hex replacer + prototype-pollution stripping on deserialize),
  *   3. agreement projection → checkoutHash (since Phase 3: @figaro-protocol/sdk
  *      projection — spec-default injection, process-log skip, clause sort),
- *   4. assembly composition → assemblyHash (since Phase 3: @figaro-protocol/sdk
+ *   4. assembly composition → processDesignHash (since Phase 3: @figaro-protocol/sdk
  *      projection — the designer's composed clauses, sparse-version
  *      normalization, editorial exclusion).
  *
@@ -40,7 +40,7 @@ import {
     serializeCommitmentPayload,
     type CommitmentPayload,
 } from "@figaro-protocol/sdk/agent";
-import { canonicalize, buildOrderAgreement, buildAssembly, serializeAssembly } from "@figaro-protocol/sdk";
+import { canonicalize, buildOrderAgreement, buildProcessDesign, serializeProcessDesign } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { primeClauseSpecs, resolveAuthored } from "./primeClauseSpecs";
 
@@ -100,7 +100,7 @@ function assemblyCase() {
         { orderHash: "synthetic-root", follows: [] },
         { orderHash: "synthetic-child", follows: ["synthetic-root"] },
     ];
-    const built = buildAssembly({
+    const built = buildProcessDesign({
         name: "Golden Vector Chain",
         orders,
         clausesByOrderId: { "synthetic-root": byKey({ "figaro-commerce": {} }), "synthetic-child": byKey({ "figaro-commerce": {} }) },
@@ -108,7 +108,7 @@ function assemblyCase() {
         specs: specSource(),
     });
     return {
-        ...serializeAssembly(built.assembly),
+        ...serializeProcessDesign(built.assembly),
         // The agreements newly composed for the agreements, each as the
         // canonical document publish pins.
         agreements: Object.fromEntries(
@@ -122,12 +122,12 @@ function payloadCase(agreement: Agreement, checkoutHash: `0x${string}`): Commitm
         processId: `0x${"00".repeat(32)}`,
         buyer: BUYER,
         seller: SELLER,
-        currency: "0x0000000000000000000000000000000000000001",
+        token: "0x0000000000000000000000000000000000000001",
         payment: 25_000000000000000000n,
-        expectedCumulativeValue: 25_000000000000000000n,
+        runningTotal: 25_000000000000000000n,
         checkoutHash,
         salt: 0x1234n,
-        deadline: 1770000000n,
+        commitDeadline: 1770000000n,
     };
     return { commitment, agreement, buyerSig: `0x${"ab".repeat(65)}` };
 }
@@ -151,7 +151,7 @@ interface GoldenVectors {
         defaults: { canonicalAgreement: string; checkoutHash: string };
         processLog: { canonicalAgreement: string; checkoutHash: string };
     };
-    assembly: { canonicalJson: string; assemblyHash: string; agreements: Record<string, string> };
+    assembly: { canonicalJson: string; processDesignHash: string; agreements: Record<string, string> };
 }
 
 beforeAll(async () => {
@@ -202,7 +202,7 @@ beforeAll(async () => {
             },
             assembly: {
                 canonicalJson: assembly.json,
-                assemblyHash: assembly.assemblyHash,
+                processDesignHash: assembly.processDesignHash,
                 agreements: assembly.agreements,
             },
         };
@@ -272,11 +272,11 @@ describe("SDK-promotion golden vectors — the live bytes, frozen", () => {
         expect(checkoutHash).toBe(v.checkoutHash);
     });
 
-    it("assembly: the composed clauses + relabeling reproduce the frozen assembly, its agreements + assemblyHash", () => {
+    it("assembly: the composed clauses + relabeling reproduce the frozen assembly, its agreements + processDesignHash", () => {
         const v = loadVectors().assembly;
         const assembly = assemblyCase();
         expect(assembly.json).toBe(v.canonicalJson);
-        expect(assembly.assemblyHash).toBe(v.assemblyHash);
+        expect(assembly.processDesignHash).toBe(v.processDesignHash);
         expect(assembly.agreements).toEqual(v.agreements);
     });
 });

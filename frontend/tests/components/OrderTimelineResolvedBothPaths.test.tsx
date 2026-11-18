@@ -214,7 +214,7 @@ describe.each([
         emits(emitter, {
             OrderCommitted: [
                 orderCommittedLog({ address: emitter, blockNumber: 3n, orderHash: ROOT_ORDER, processId: PROCESS, buyer: BUYER, seller: "0x00000000000000000000000000000000000000a0", payment: rootPayment }),
-                orderCommittedLog({ address: emitter, blockNumber: 4n, orderHash: ORDER, processId: PROCESS, buyer: BUYER, seller: SELLER, payment: PAYMENT, cumulativeValue: running }),
+                orderCommittedLog({ address: emitter, blockNumber: 4n, orderHash: ORDER, processId: PROCESS, buyer: BUYER, seller: SELLER, payment: PAYMENT, runningTotal: running }),
             ],
             OrderResolved: [
                 orderResolvedLog({ address: emitter, blockNumber: 9n, orderHash: ROOT_ORDER, processId: PROCESS, sellerPayout: 3n * rootPayment, buyerPayout: rootPayment }),

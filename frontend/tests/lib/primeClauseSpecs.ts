@@ -18,14 +18,14 @@ import {
     computeClauseKey,
     resolveAuthoredClauseKeys,
     agreementHashOf,
-    assembleAuthored,
+    composeAuthoredProcessDesign,
     composeAuthoredAgreement,
     composeAuthoredAgreements,
-    type Assembly,
+    type ProcessDesign,
     type RegisteredAgreement,
     type Hex,
-    type HydratedAssembly,
-    type AssemblyAgreement,
+    type HydratedProcessDesign,
+    type ProcessDesignAgreement,
 } from "@figaro-protocol/sdk";
 import { listKnownClauses, loadClauseSpec, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
 
@@ -105,11 +105,11 @@ export function authoredAgreements(): Record<string, RegisteredAgreement> {
 
 /** A reference assembly (`assemblies/<name>`) built exactly as the seeding
  *  builds it: over the authored agreements its agreements name
- *  (`assembleAuthored`), every registered agreement beside the assembly,
+ *  (`composeAuthoredProcessDesign`), every registered agreement beside the assembly,
  *  keyed by lowercased key, as a registry read hands them to checkout. */
-export function referenceAssembly(name: string): HydratedAssembly {
+export function referenceAssembly(name: string): HydratedProcessDesign {
     const authored = JSON.parse(readFileSync(path.resolve(process.cwd(), "../assemblies", name), "utf8")) as object;
-    const { assembly, agreements } = assembleAuthored(authored, authoredAgreements(), specSource());
+    const { assembly, agreements } = composeAuthoredProcessDesign(authored, authoredAgreements(), specSource());
     const byKey: Record<Hex, RegisteredAgreement> = {};
     for (const [key, doc] of Object.entries(agreements)) byKey[key.toLowerCase() as Hex] = doc;
     return { assembly, agreements: byKey };
@@ -124,9 +124,9 @@ export function referenceAssembly(name: string): HydratedAssembly {
  *  composes as the seeding composes an authored one
  *  (`composeAuthoredAgreement` over the primed specs, value-free but for
  *  design fills; prime the specs first) and the assembly builds over them
- *  (`assembleAuthored`); `{ compose: false }` keys each inline clause set as
+ *  (`composeAuthoredProcessDesign`); `{ compose: false }` keys each inline clause set as
  *  written, values included. */
-export function hydrateAuthored(authored: object, opts: { compose?: boolean } = {}): HydratedAssembly {
+export function hydrateAuthored(authored: object, opts: { compose?: boolean } = {}): HydratedProcessDesign {
     const byKey: Record<Hex, RegisteredAgreement> = {};
     if (opts.compose !== false) {
         const { agreements: written, ...rest } = authored as {
@@ -138,14 +138,14 @@ export function hydrateAuthored(authored: object, opts: { compose?: boolean } = 
             byName[id] = composeAuthoredAgreement({ clauses: entry.clauses }, specSource()).document;
             return { id, agreement: id, ...(entry.follows ? { follows: [...entry.follows] } : {}) };
         });
-        const { assembly, agreements } = assembleAuthored({ ...rest, agreements: entries }, byName, specSource());
+        const { assembly, agreements } = composeAuthoredProcessDesign({ ...rest, agreements: entries }, byName, specSource());
         for (const [key, doc] of Object.entries(agreements)) byKey[key.toLowerCase() as Hex] = doc;
         return { assembly, agreements: byKey };
     }
     const { agreements: written, ...rest } = authored as {
         agreements: { id: string; clauses: Record<Hex, Record<string, unknown>>; follows?: string[] }[];
-    } & Omit<Assembly, "agreements">;
-    const entries: AssemblyAgreement[] = written.map((entry) => {
+    } & Omit<ProcessDesign, "agreements">;
+    const entries: ProcessDesignAgreement[] = written.map((entry) => {
         const clauses = { ...entry.clauses };
         const agreementHash = agreementHashOf({ clauses });
         byKey[agreementHash.toLowerCase() as Hex] = { clauses };

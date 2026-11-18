@@ -85,7 +85,7 @@ export async function publishWitnessContent(params: PublishWitnessContentParams)
     if (isEmptyHex(content)) return; // nothing to learn from empty content
     if (hexEqual(params.clauseId, PROVENANCE_LEAF_KEY)) {
         // The agreement FORMAT's provenance leaf has no spec: its bytes are
-        // the format's own (`{"agreementHash":…,"assemblyHash":…}`,
+        // the format's own (`{"agreementHash":…,"processDesignHash":…}`,
         // reproducible from a registered — public — agreement hash and
         // assembly root), so they pin as-is when
         // `decodeProvenanceContent` reads them, and not at all otherwise.

@@ -43,12 +43,12 @@ export const COMMITMENT_TYPES = {
         { name: "processId", type: "bytes32" },
         { name: "buyer", type: "address" },
         { name: "seller", type: "address" },
-        { name: "currency", type: "address" },
+        { name: "token", type: "address" },
         { name: "payment", type: "uint256" },
-        { name: "expectedCumulativeValue", type: "uint256" },
+        { name: "runningTotal", type: "uint256" },
         { name: "checkoutHash", type: "bytes32" },
         { name: "salt", type: "uint256" },
-        { name: "deadline", type: "uint256" },
+        { name: "commitDeadline", type: "uint256" },
     ],
 } as const;
 
@@ -164,32 +164,32 @@ export async function verifyCommitmentSignature(
 export const RESOLVE_PROCESS_TYPES = {
     ResolveProcess: [
         { name: "processId", type: "bytes32" },
-        { name: "cumulativeValue", type: "uint256" },
+        { name: "runningTotal", type: "uint256" },
     ],
 } as const;
 
 /**
  * The digest a batch-path resolve authorizes: `ResolveProcess(processId,
- * cumulativeValue)` under the verifier's domain. The buyer's wallet code
+ * runningTotal)` under the verifier's domain. The buyer's wallet code
  * validates its wallet-code authorization against this digest, and the verifier
  * derives the same one at resolution from the process and the listed payments.
  * `ctx.core` is the FigaroBatchVerifier.
  */
 export function hashResolveProcess(
     processId: Hex,
-    cumulativeValue: bigint,
+    runningTotal: bigint,
     ctx: { chainId: number; core: Address },
 ): Hex {
     return hashTypedData({
         domain: buildDomain(ctx.chainId, ctx.core),
         types: RESOLVE_PROCESS_TYPES,
         primaryType: "ResolveProcess",
-        message: { processId, cumulativeValue },
+        message: { processId, runningTotal },
     });
 }
 
 /**
- * Does `signature` authorize resolving `processId` at `cumulativeValue`, from
+ * Does `signature` authorize resolving `processId` at `runningTotal`, from
  * `signer`? The batch-path counterpart of {@link verifyCommitmentSignature}:
  * a reader of a batched resolution uses it to check that the buyer really did
  * authorize the resolution of the process at that value before believing the
@@ -208,7 +208,7 @@ export function hashResolveProcess(
  */
 export async function verifyResolveProcessSignature(
     processId: Hex,
-    cumulativeValue: bigint,
+    runningTotal: bigint,
     signature: Hex,
     signer: Address,
     ctx: { chainId: number; core: Address },
@@ -219,7 +219,7 @@ export async function verifyResolveProcessSignature(
             domain: buildDomain(ctx.chainId, ctx.core),
             types: RESOLVE_PROCESS_TYPES,
             primaryType: "ResolveProcess",
-            message: { processId, cumulativeValue },
+            message: { processId, runningTotal },
             signature,
         });
     } catch {
@@ -259,8 +259,8 @@ export function computeOrderHash(c: Commitment, chainId: number, coreAddress: Ad
  * Rebuild the Commitment struct from an event-derived Order. `Order` carries
  * every Commitment field (the OrderCommitted event emits all of them), so an
  * agent can reconstruct what to pass to `resolveProcess` without having stored
- * the original structs. `expectedCumulativeValue` is the order's committed
- * `cumulativeValue`.
+ * the original structs. `runningTotal` is the order's committed
+ * `runningTotal`.
  *
  * NOTE: a ROOT order's `processId` here is the DERIVED id (what the event
  * carries), not the `0` the party signed. Pass the result through
@@ -272,12 +272,12 @@ export function orderToCommitment(order: Order): Commitment {
         processId: order.processId,
         buyer: order.buyer,
         seller: order.seller,
-        currency: order.currency,
+        token: order.currency,
         payment: order.payment,
-        expectedCumulativeValue: order.cumulativeValue,
+        runningTotal: order.runningTotal,
         checkoutHash: order.checkoutHash,
         salt: order.salt,
-        deadline: order.deadline,
+        commitDeadline: order.deadline,
     };
 }
 
@@ -347,7 +347,7 @@ export function computeDeadline(nowSeconds: bigint, ttlSeconds: number = DEFAULT
 // ── Cumulative value fetcher ────────────────────────────────────────────────
 
 /**
- * Read the current cumulativeValue for a process from the contract.
+ * Read the current runningTotal for a process from the contract.
  * This MUST be called before building a sub-order commitment to prevent
  * CumulativeValueMismatch reverts.
  */
@@ -362,7 +362,7 @@ export async function fetchCumulativeValue(
         functionName: "processes",
         args: [processId],
     });
-    // processes() returns (rootBuyer, currency, cumulativeValue, activeOrderCount)
+    // processes() returns (rootBuyer, currency, runningTotal, activeOrderCount)
     return (result as readonly [Address, Address, bigint, bigint])[2];
 }
 
@@ -373,23 +373,23 @@ export interface CommitmentParams {
     processId: Hex;
     buyer: Address;
     seller: Address;
-    currency: Address;
+    token: Address;
     payment: bigint;
     /**
      * Expected cumulative value of the process after this order.
      * For root orders: equals payment (first order sets the baseline).
-     * For sub-orders: the process's current on-chain cumulativeValue PLUS
+     * For sub-orders: the process's current on-chain runningTotal PLUS
      * this order's payment — what FigaroCore checks at commit
-     * (`expectedCumulativeValue == cumulativeValue + payment`).
+     * (`runningTotal == the process's runningTotal + payment`).
      */
-    expectedCumulativeValue: bigint;
+    runningTotal: bigint;
     checkoutHash: Hex;
     /** Override random salt. Useful for deterministic testing. */
     salt?: bigint;
     /** Deadline in CHAIN time — `computeDeadline(await readChainTimestamp(client))`.
      *  REQUIRED: there is deliberately no machine-clock default (maintainer
      *  rule — FigaroCore checks `block.timestamp`, not your clock). */
-    deadline: bigint;
+    commitDeadline: bigint;
 }
 
 /**
@@ -401,12 +401,12 @@ export function buildCommitment(params: CommitmentParams, domain: EIP712Domain) 
         processId: params.processId,
         buyer: params.buyer,
         seller: params.seller,
-        currency: params.currency,
+        token: params.token,
         payment: params.payment,
-        expectedCumulativeValue: params.expectedCumulativeValue,
+        runningTotal: params.runningTotal,
         checkoutHash: params.checkoutHash,
         salt: params.salt ?? generateSalt(),
-        deadline: params.deadline,
+        commitDeadline: params.commitDeadline,
     };
 
     const typedData = {
@@ -421,7 +421,7 @@ export function buildCommitment(params: CommitmentParams, domain: EIP712Domain) 
 
 /**
  * Convenience: fetch the process's current cumulative value and build a
- * sub-order commitment in one call, its `expectedCumulativeValue` the value
+ * sub-order commitment in one call, its `runningTotal` the value
  * FigaroCore will check — the process's cumulative value PLUS this order's
  * payment — so the struct cannot revert `CumulativeValueMismatch` against
  * the state it was built on.
@@ -429,7 +429,7 @@ export function buildCommitment(params: CommitmentParams, domain: EIP712Domain) 
 export async function buildCommitmentSafe(
     client: PublicClient,
     addresses: FigaroAddresses,
-    params: Omit<CommitmentParams, "expectedCumulativeValue">,
+    params: Omit<CommitmentParams, "runningTotal">,
     domain: EIP712Domain,
 ) {
     const currentCumulativeValue = await fetchCumulativeValue(
@@ -439,7 +439,7 @@ export async function buildCommitmentSafe(
     );
 
     return buildCommitment(
-        { ...params, expectedCumulativeValue: currentCumulativeValue + params.payment },
+        { ...params, runningTotal: currentCumulativeValue + params.payment },
         domain,
     );
 }

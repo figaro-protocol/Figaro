@@ -6,9 +6,9 @@
  * struct the winner countersigned.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { agreementHashOf, hashCommitmentStruct, type Hex, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { agreementHashOf, hashCommitmentStruct, type Hex, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { loadClauseSpec, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
-import { planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
+import { planProcessOrders } from "@/lib/checkout/assemblyCheckout";
 import { freshBlindingStore, withCheckoutBlinding, type CheckoutFills } from "@/lib/checkout/checkoutBlinding";
 import { draftRaceCandidates } from "@/lib/checkout/dispatchRace";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
@@ -36,7 +36,7 @@ const PRIVATE = pinSpec({
     ],
 });
 
-let hydrated: HydratedAssembly;
+let hydrated: HydratedProcessDesign;
 
 beforeAll(async () => {
     await primeClauseSpecs(["figaro-commerce"]);
@@ -108,7 +108,7 @@ describe("the dispatch race draws a blinding value per candidate's draft", () =>
         const winner = drafts[1];
         kept["agreement-1"] = winner.blinding;
         const signedFills = withCheckoutBlinding(hydrated, { "agreement-1": { [PRIVATE.clauseKey]: { grade: "b" } } }, specSource(), kept);
-        const orders = await planAssemblyOrders({
+        const orders = await planProcessOrders({
             ...checkout,
             clauseFills: signedFills,
             subOrderSelections: { "agreement-1": { seller: CANDIDATE_B as Hex, price: winner.price, item: winner.item } },
@@ -129,7 +129,7 @@ describe("the dispatch race draws a blinding value per candidate's draft", () =>
  * it was: the raced struct must hash to what the winner countersigned.
  */
 describe("a retry after a failed raced attempt rebuilds the struct the winner countersigned", () => {
-    const BOTH_HOLD = (): HydratedAssembly => {
+    const BOTH_HOLD = (): HydratedProcessDesign => {
         const root = { [keyOf("figaro-commerce")]: {}, [PRIVATE.clauseKey]: {} };
         const sub = { [PRIVATE.clauseKey]: {} };
         const rootHash = agreementHashOf({ clauses: root });
@@ -147,7 +147,7 @@ describe("a retry after a failed raced attempt rebuilds the struct the winner co
             },
         };
     };
-    const ASSEMBLY_SCOPE = (): HydratedAssembly => {
+    const ASSEMBLY_SCOPE = (): HydratedProcessDesign => {
         const root = { [keyOf("figaro-commerce")]: {} };
         const sub = { [keyOf("figaro-commerce")]: {} };
         const rootHash = agreementHashOf({ clauses: root });
@@ -163,7 +163,7 @@ describe("a retry after a failed raced attempt rebuilds the struct the winner co
         };
     };
 
-    async function raceFailRetry(design: HydratedAssembly, buyerFills: CheckoutFills) {
+    async function raceFailRetry(design: HydratedProcessDesign, buyerFills: CheckoutFills) {
         // The page's store: the checkout draws each order's values once.
         let kept: CheckoutFills = {};
         const fills = withCheckoutBlinding(design, buyerFills, specSource(), kept);
@@ -194,7 +194,7 @@ describe("a retry after a failed raced attempt rebuilds the struct the winner co
         Object.assign((kept[outcome.nodeId] ??= {}), outcome.blinding);
         const walk = async () => {
             const walkFills = withCheckoutBlinding(design, buyerFills, specSource(), kept);
-            const orders = await planAssemblyOrders({
+            const orders = await planProcessOrders({
                 ...checkout,
                 clauseFills: walkFills,
                 subOrderSelections: { "agreement-1": { seller: CANDIDATE_A as Hex, price: winner.price, item: winner.item } },

@@ -52,7 +52,7 @@ export interface ContractDocument extends ExtractedDocument {
     /** Payment value (P) in token smallest units. */
     payment: bigint;
     /** Cumulative value (G) at this order's commit. */
-    cumulativeValue: bigint;
+    runningTotal: bigint;
     /** EIP-712 commitment salt + deadline (for full reconstruction). */
     salt: bigint;
     deadline: bigint;
@@ -152,7 +152,7 @@ export function extractContract(
         parties: { buyer: order.buyer, seller: order.seller },
         currency: order.currency ?? ZERO_ADDRESS,
         payment: order.payment,
-        cumulativeValue: order.cumulativeValue,
+        runningTotal: order.runningTotal,
         salt: order.salt,
         deadline: order.deadline,
         clauses: agreement.clauses.map(contractClauseFrom),

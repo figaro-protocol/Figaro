@@ -55,7 +55,7 @@ library BatchHashes {
         for (uint256 i = 0; i < u.uses.length; i++) {
             packed = bytes.concat(
                 packed,
-                abi.encodePacked(u.uses[i].clauseOrAssembly, u.uses[i].kind, u.uses[i].processId, u.uses[i].seller)
+                abi.encodePacked(u.uses[i].clauseOrProcess, u.uses[i].kind, u.uses[i].processId, u.uses[i].seller)
             );
         }
         return keccak256(packed);

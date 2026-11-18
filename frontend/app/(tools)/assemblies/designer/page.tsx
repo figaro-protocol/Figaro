@@ -9,7 +9,7 @@ import { Breadcrumb } from "@/components/shared/Breadcrumb";
 
 export const metadata: Metadata = withOg({
     title: "Designer — Figaro",
-    description: "Compose a Figaro assembly on the composition canvas. Drafts persist locally; publish to the on-chain AssemblyRegistry when ready.",
+    description: "Compose a Figaro assembly on the composition canvas. Drafts persist locally; publish to the on-chain ProcessRegistry when ready.",
 });
 
 export default function DesignerLanding() {
@@ -26,7 +26,7 @@ export default function DesignerLanding() {
                     Compose an assembly.
                 </h1>
                 <p className="text-body-lead text-ink-body max-w-2xl mb-4">
-                    An assembly composes agreements into a design anyone can use and reuse; each run of it is a process. It is anchored on the on-chain <code>AssemblyRegistry</code>. Full explanation of how one is composed: <Link href="/assemblies" className="underline">/assemblies</Link>.
+                    An assembly composes agreements into a design anyone can use and reuse; each run of it is a process. It is anchored on the on-chain <code>ProcessRegistry</code>. Full explanation of how one is composed: <Link href="/assemblies" className="underline">/assemblies</Link>.
                 </p>
                 <div className="mt-8">
                     <Link
@@ -53,7 +53,7 @@ export default function DesignerLanding() {
                     Your published assemblies
                 </h2>
                 <p className="text-sm text-ink-muted mb-6 max-w-2xl">
-                    Designs published to the on-chain <code>AssemblyRegistry</code> by the connected wallet, or by the address a link names with <code>?wallet=0x…</code>. Reconstructed from <code>AssemblyRegistered</code> events filtered by that address.
+                    Designs published to the on-chain <code>ProcessRegistry</code> by the connected wallet, or by the address a link names with <code>?wallet=0x…</code>. Reconstructed from <code>ProcessRegistered</code> events filtered by that address.
                 </p>
                 <PublishedList />
             </section>

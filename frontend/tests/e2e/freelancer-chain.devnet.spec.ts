@@ -69,7 +69,7 @@ import {
     waitForConnected,
     keyOf,
     primeRegisteredClauseSpecs,
-    anchoredAssemblyHash,
+    anchoredProcessDesignHash,
     setVenueRate,
     VENUE_ABI,
 } from './devnet-helpers';
@@ -123,7 +123,7 @@ async function seedChainSellers(
     listsIn: (s: ChainSeller) => ListedToken,
 ): Promise<Map<string, string>> {
     const contributors = sellers.filter((s) => s.label !== 'lead');
-    const assemblyHash = await anchoredAssemblyHash(slug);
+    const processDesignHash = await anchoredProcessDesignHash(slug);
     const catalogs = new Map<string, string>();
     for (const s of sellers) {
         const { uri: catalogURI } = await pinJSONToIPFS({
@@ -151,10 +151,10 @@ async function seedChainSellers(
                 acceptedTokens: [own, ...accepted.filter((t) => t.address.toLowerCase() !== own.address.toLowerCase())]
                     .map((t) => ({ address: t.address, symbol: t.symbol, chainId: 31337 })),
                 defaultTokenAddress: own.address,
-                assemblyBindings: [{
+                processBindings: [{
                     bindingId: `chain-${s.label}`,
                     subjectAddress: s.address,
-                    assemblyHash,
+                    processDesignHash,
                     coSellerBindings: s.label === 'lead'
                         ? [{ clauseKey: CONTENT_CLAUSE, addresses: contributors.map((c) => c.address) }]
                         : [],
@@ -278,8 +278,8 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
             const payment = parseUnits(s.price, 18);
             expectedCumulative += payment;
             expect(event.args.payment, `${s.label}'s payment = its catalog price`).toBe(payment);
-            expect(event.args.cumulativeValue, `cumulative after ${s.label}`).toBe(expectedCumulative);
-            const bonds = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+            expect(event.args.runningTotal, `cumulative after ${s.label}`).toBe(expectedCumulative);
+            const bonds = calculateBonds(event.args.runningTotal!, event.args.payment!);
             buyerBondSoFar += bonds.buyerBond;
             escrowSoFar += bonds.buyerBond + bonds.sellerBond;
             const [b, sb, c] = await Promise.all([balanceOf(BUYER), balanceOf(s.address), balanceOf(core)]);
@@ -307,7 +307,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
         //    the chain's cumulative value ranks the orders in commit order. ──
         const processOrders = (await queryCommitted())
             .filter((e) => e.args.processId === processId)
-            .sort((a, b) => (a.args.cumulativeValue! < b.args.cumulativeValue! ? -1 : 1));
+            .sort((a, b) => (a.args.runningTotal! < b.args.runningTotal! ? -1 : 1));
         expect(processOrders, 'the process holds exactly three orders').toHaveLength(3);
         const expectedOrderLabels = processOrders
             .map((e, i) => `Order ${i + 1} of 3 · seller ${truncateHex(e.args.seller!)}`)
@@ -598,14 +598,14 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
                 expect((event.args.currency as string).toLowerCase(), `${s.label}'s order is in the one denomination`).toBe(mockToken.toLowerCase());
                 expect(event.args.payment, `${s.label}'s payment is the amount the buyer signed, in MOCK`).toBe(payment);
                 cumulative += payment;
-                expect(event.args.cumulativeValue, `the cumulative value through ${s.label}`).toBe(cumulative);
-                const bonds = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+                expect(event.args.runningTotal, `the cumulative value through ${s.label}`).toBe(cumulative);
+                const bonds = calculateBonds(event.args.runningTotal!, event.args.payment!);
                 expect(bonds.buyerBond, 'the buyer bonds twice the payment').toBe(2n * payment);
                 expect(bonds.sellerBond, `${s.label} bonds twice the cumulative value`).toBe(2n * cumulative);
                 buyerBonds += bonds.buyerBond;
                 escrow += bonds.buyerBond + bonds.sellerBond;
             }
-            const sellerBond = (i: number) => calculateBonds(commits[i].event.args.cumulativeValue!, commits[i].payment).sellerBond;
+            const sellerBond = (i: number) => calculateBonds(commits[i].event.args.runningTotal!, commits[i].payment).sellerBond;
             expect(base.get(`mock:${BUYER.toLowerCase()}`)! - await balanceOf(mockToken, BUYER), 'the buyer locked its bonds in MOCK').toBe(buyerBonds);
             expect(await balanceOf(mockToken, core) - base.get(`mock:${core.toLowerCase()}`)!, 'the Core holds every bond in MOCK').toBe(escrow);
             expect(base.get(`mock:${lead.address.toLowerCase()}`)! - await balanceOf(mockToken, lead.address)).toBe(sellerBond(0));

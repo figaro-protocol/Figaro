@@ -28,8 +28,8 @@ import { expect, type Page } from '@playwright/test';
 import { sellerPageHref } from '@/lib/member/memberListing';
 import { test, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import type { Hex } from 'viem';
-import { ASSEMBLY_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { deriveAssemblySlug } from '@/lib/shared/assembly';
+import { PROCESS_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import { deriveProcessDesignSlug } from '@/lib/shared/assembly';
 import {
     discoverAnchoredAssemblies,
     latestMemberProfileURI,
@@ -37,7 +37,7 @@ import {
     pinJSONToIPFS,
     readLocalDeploymentConfig,
     referenceAssemblySlug,
-    referenceAssemblyHash,
+    referenceProcessDesignHash,
     resolveIpfsURI,
     seedRegisteredMember,
 } from './devnet-helpers';
@@ -76,8 +76,8 @@ async function seedBaseline(runTag: string): Promise<{ itemName: string; slug: s
             catalogURI,
             acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
             defaultTokenAddress: token,
-            assemblyBindings: [{
-                bindingId: 'wizard-catalog', subjectAddress: WIZARD, assemblyHash: referenceAssemblyHash('pos.json'), coSellerBindings: [],
+            processBindings: [{
+                bindingId: 'wizard-catalog', subjectAddress: WIZARD, processDesignHash: referenceProcessDesignHash('pos.json'), coSellerBindings: [],
             }],
         },
     });
@@ -100,17 +100,17 @@ async function pinnedCatalog(): Promise<CatalogDoc> {
 async function expectedAssemblyOrder(): Promise<string[]> {
     const client = localPublicClient();
     const config = readLocalDeploymentConfig();
-    const address = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? config.assemblyRegistry) as Hex;
+    const address = (process.env.NEXT_PUBLIC_PROCESS_REGISTRY ?? config.processRegistry) as Hex;
     const [registered, withdrawn] = await Promise.all([
-        client.getContractEvents({ address, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered', fromBlock: 0n }),
-        client.getContractEvents({ address, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'DepositWithdrawn', fromBlock: 0n }),
+        client.getContractEvents({ address, abi: PROCESS_REGISTRY_ABI, eventName: 'ProcessRegistered', fromBlock: 0n }),
+        client.getContractEvents({ address, abi: PROCESS_REGISTRY_ABI, eventName: 'DepositWithdrawn', fromBlock: 0n }),
     ]);
-    const gone = new Set(withdrawn.map((e) => String(e.args.assemblyHash).toLowerCase()));
+    const gone = new Set(withdrawn.map((e) => String(e.args.processDesignHash).toLowerCase()));
     return registered
-        .filter((e) => !gone.has(String(e.args.assemblyHash).toLowerCase()))
+        .filter((e) => !gone.has(String(e.args.processDesignHash).toLowerCase()))
         .map((e, i) => ({ e, i }))
         .sort((a, b) => Number(b.e.blockNumber! - a.e.blockNumber!) || a.i - b.i)
-        .map(({ e }) => deriveAssemblySlug(e.args.assemblyHash as Hex));
+        .map(({ e }) => deriveProcessDesignSlug(e.args.processDesignHash as Hex));
 }
 
 /** The slugs the Assemblies step lists right now, top to bottom. */
@@ -270,7 +270,7 @@ test.describe('member wizard — catalog and assemblies steps (devnet)', () => {
         // names the assembly by its full assembly hash.
         await page.waitForFunction(
             (needle) => Object.keys(window.localStorage).some((k) => (window.localStorage.getItem(k) ?? '').includes(needle)),
-            referenceAssemblyHash('pos.json'), { timeout: 15_000 },
+            referenceProcessDesignHash('pos.json'), { timeout: 15_000 },
         );
         await page.reload({ waitUntil: 'domcontentloaded' });
         await expect(rows).toHaveCount(expected.length, { timeout: 30_000 });

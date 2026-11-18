@@ -9,7 +9,7 @@
  * rule as the per-order drawer. The drawer excludes these clauses; this panel
  * offers only these — the two surfaces partition the registry by declared
  * scope, so a duplicate is structurally impossible on this canvas (and
- * `buildAssembly` re-verifies at draft/publish for imported or
+ * `buildProcessDesign` re-verifies at draft/publish for imported or
  * hand-written compositions).
  *
  * At checkout every assembly-scoped clause folds into EVERY agreement, so
@@ -38,16 +38,16 @@ import { FieldControl } from "@/components/runtime/FieldControl";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 /** The assembly root and each agreement's agreement hash. */
-function CompositionAgreements({ composition }: { composition: { assemblyHash: `0x${string}`; agreementHashes: readonly `0x${string}`[] } }) {
+function CompositionAgreements({ composition }: { composition: { processDesignHash: `0x${string}`; agreementHashes: readonly `0x${string}`[] } }) {
     return (
         <section data-testid="assembly-composition" className="border border-default rounded bg-paper p-3 space-y-2">
             <p className="text-xs font-semibold text-ink-body">Composition</p>
             <p className="text-xs text-ink-muted leading-relaxed">
-                The root is the AssemblyRegistry key: the merkle root over the agreements, each
+                The root is the ProcessRegistry key: the merkle root over the agreements, each
                 binding one registered agreement by its AgreementRegistry key, and the assembly terms.
             </p>
-            <p className="font-mono text-[10px] text-ink-body break-all" data-testid="assembly-composition-root" title={composition.assemblyHash}>
-                {composition.assemblyHash}
+            <p className="font-mono text-[10px] text-ink-body break-all" data-testid="assembly-composition-root" title={composition.processDesignHash}>
+                {composition.processDesignHash}
             </p>
             <ul className="space-y-0.5">
                 {composition.agreementHashes.map((agreementHash, index) => (
@@ -80,7 +80,7 @@ export function AssemblyTermsPanel({
     readOnly?: boolean;
     /** The assembly root and each agreement's agreement hash, in
      *  assembly order — shown by the read-only surfaces. */
-    composition?: { assemblyHash: `0x${string}`; agreementHashes: readonly `0x${string}`[] };
+    composition?: { processDesignHash: `0x${string}`; agreementHashes: readonly `0x${string}`[] };
 }) {
     const { read: registeredRead } = useAllRegisteredClauses();
     const registered = registeredRead.status === "present" ? registeredRead.value : null;

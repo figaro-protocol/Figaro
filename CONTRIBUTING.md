@@ -87,7 +87,7 @@ Four prompt definitions that act for a **user's** wallet on the permissionless n
 
 - **`figaro-operator`** — operate a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) via `@figaro-protocol/sdk/agent`, under the owner's policy (HITL default; refuse-all floor).
 - **`figaro-clause-author`** — design or version a clause → `ClauseRegistry`.
-- **`figaro-assembly-designer`** — compose or fork an assembly → `AssemblyRegistry`.
+- **`figaro-assembly-designer`** — compose or fork an assembly → `ProcessRegistry`.
 - **`figaro-analyst`** — read and analyze a market's public graphs via `@figaro-protocol/sdk/derive`; it holds no key and signs nothing.
 
 See `ecosystem-agents/README.md`.

@@ -81,10 +81,10 @@ function typedCommitment() {
     const domain = buildDomain(11155111, CORE);
     return buildCommitment({
         processId: ("0x" + "00".repeat(32)) as Hex,
-        buyer: WALLET, seller: privateKeyToAccount(OTHER_KEY).address, currency: TOKEN,
-        payment: 500_000n, expectedCumulativeValue: 500_000n,
+        buyer: WALLET, seller: privateKeyToAccount(OTHER_KEY).address, token: TOKEN,
+        payment: 500_000n, runningTotal: 500_000n,
         checkoutHash: ("0x" + "11".repeat(32)) as Hex,
-        salt: 7n, deadline: 9_999_999_999n,
+        salt: 7n, commitDeadline: 9_999_999_999n,
     }, domain).typedData;
 }
 

@@ -14,17 +14,17 @@
 <section class="tsd-panel">
 <ul class="tsd-signatures">
 <li class="">
-<div class="tsd-signature tsd-anchor-link" id="calculatebonds"><span class="tsd-kind-call-signature">calculateBonds</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">cumulativeValue</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">payment</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.BondBreakdown.html" class="tsd-signature-type tsd-kind-interface">BondBreakdown</a><a href="#calculatebonds" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-signature tsd-anchor-link" id="calculatebonds"><span class="tsd-kind-call-signature">calculateBonds</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">runningTotal</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">payment</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.BondBreakdown.html" class="tsd-signature-type tsd-kind-interface">BondBreakdown</a><a href="#calculatebonds" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Calculate the required bonds for an order.</p>
 <p>Invariants (FigaroCore):
-sellerBond = 2 × cumulativeValue
+sellerBond = 2 × runningTotal
 buyerBond  = 2 × payment</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
-<li><span><span class="tsd-kind-parameter">cumulativeValue</span>: <span class="tsd-signature-type">bigint</span></span></li>
+<li><span><span class="tsd-kind-parameter">runningTotal</span>: <span class="tsd-signature-type">bigint</span></span></li>
 <li><span><span class="tsd-kind-parameter">payment</span>: <span class="tsd-signature-type">bigint</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/index.BondBreakdown.html" class="tsd-signature-type tsd-kind-interface">BondBreakdown</a></h4><aside class="tsd-sources">
 <ul>

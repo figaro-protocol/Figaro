@@ -4,7 +4,7 @@
 # Halmos symbolically executes the harnesses against the Z3 SMT solver and
 # proves 41 properties hold for ALL possible inputs: 7 HalmosFigaroCore +
 # 7 HalmosMembersRegistry + 9 HalmosUsageCounter + 6 HalmosClauseRegistry +
-# 6 HalmosAssemblyRegistry + 6 HalmosAgreementRegistry.
+# 6 HalmosProcessRegistry + 6 HalmosAgreementRegistry.
 #
 #   HalmosFigaroCore (7 properties):
 #     check_tokenConservation_afterCommit
@@ -114,7 +114,7 @@ echo ""
 
 run_halmos \
     "${CORE_ARGS[@]}" \
-    --match-test '(tokenConservation|contractSolvency|correctBondAmounts|orderStatusTransition|buyerDominance|cumulativeValue)' \
+    --match-test '(tokenConservation|contractSolvency|correctBondAmounts|orderStatusTransition|buyerDominance|runningTotal)' \
     "$@"
 
 echo ""
@@ -186,11 +186,11 @@ run_halmos \
     "$@"
 
 echo ""
-echo "▶ Pass 6/7 — AssemblyRegistry: the same stake machine, assemblyHash-keyed"
+echo "▶ Pass 6/7 — ProcessRegistry: the same stake machine, processDesignHash-keyed"
 echo ""
 
 run_halmos \
-    --contract HalmosAssemblyRegistry \
+    --contract HalmosProcessRegistry \
     --solver z3 \
     --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS" \
     "$@"
@@ -206,4 +206,4 @@ run_halmos \
     "$@"
 
 echo ""
-echo "✅ All 41 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 9 UsageCounter + 6 ClauseRegistry + 6 AssemblyRegistry + 6 AgreementRegistry)."
+echo "✅ All 41 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 9 UsageCounter + 6 ClauseRegistry + 6 ProcessRegistry + 6 AgreementRegistry)."

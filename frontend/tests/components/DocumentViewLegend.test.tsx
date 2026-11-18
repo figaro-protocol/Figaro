@@ -13,7 +13,7 @@ import { OrderState, type Order } from "@/lib/core/store";
 
 const ORDER: Order = {
     orderHash: "0xA", processId: "0xPROC", buyer: "0xBUYER", seller: "0xSELLER", currency: "0xToKeN",
-    cumulativeValue: 100n, payment: 100n, state: OrderState.Active,
+    runningTotal: 100n, payment: 100n, state: OrderState.Active,
     sellerBond: 200n, buyerBond: 200n, salt: 0n, deadline: 0n,
 };
 

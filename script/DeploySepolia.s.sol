@@ -12,7 +12,7 @@ import "../src/registries/MembersRegistry.sol";
 import "../src/rewards/FlorinToken.sol";
 import {RpgfMinter} from "../src/rewards/RpgfMinter.sol";
 import {UsageCounter} from "../src/rewards/UsageCounter.sol";
-import {AssemblyRegistry} from "../src/registries/AssemblyRegistry.sol";
+import {ProcessRegistry} from "../src/registries/ProcessRegistry.sol";
 import {AgreementRegistry} from "../src/registries/AgreementRegistry.sol";
 import "../src/core/verifier/FigaroBatchVerifier.sol";
 import "../src/mocks/MockTreasuryMultisig.sol";
@@ -146,12 +146,12 @@ contract DeploySepolia is Script {
         _clauses = address(clauses);
         console.log("ClauseRegistry:         ", _clauses);
 
-        AssemblyRegistry assemblies = new AssemblyRegistry(0.05 ether);
+        ProcessRegistry assemblies = new ProcessRegistry(0.05 ether);
         _assemblies = address(assemblies);
-        console.log("AssemblyRegistry:       ", _assemblies);
+        console.log("ProcessRegistry:       ", _assemblies);
 
         // AgreementRegistry — the registered agreements' anchor, parallel to
-        // ClauseRegistry and AssemblyRegistry. RpgfMinter reads it for the
+        // ClauseRegistry and ProcessRegistry. RpgfMinter reads it for the
         // agreement's designer of record. Same stake, same reasoning as above.
         AgreementRegistry agreements = new AgreementRegistry(0.05 ether);
         _agreements = address(agreements);
@@ -264,7 +264,7 @@ contract DeploySepolia is Script {
         console.log("  NEXT_PUBLIC_SWAP_ROUTER=", vm.envAddress("SWAP_ROUTER"));
         console.log("  NEXT_PUBLIC_PERMIT2=", vm.envAddress("PERMIT2"));
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=          ", _clauses);
-        console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=        ", _assemblies);
+        console.log("  NEXT_PUBLIC_PROCESS_REGISTRY=        ", _assemblies);
         console.log("  NEXT_PUBLIC_AGREEMENT_REGISTRY=       ", _agreements);
         console.log("  NEXT_PUBLIC_MEMBERS_REGISTRY=       ", _members);
         console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=        ", _florin);

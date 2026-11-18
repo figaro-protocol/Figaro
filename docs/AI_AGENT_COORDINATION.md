@@ -25,7 +25,7 @@ Pre-defined agents are **maintainer-facing by default** — they act on this rep
 
 - **Public ecosystem agents** (this document's subject; any user, acting for their own wallet, never the repo) are prompt definitions in `ecosystem-agents/`, one per capacity:
   - **`figaro-operator`** — *operate* a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) using `@figaro-protocol/sdk/agent`, guided by the owner's policy (HITL by default; refuse-all until a rule is set). Role is read from process state, so the same operator is buyer in one process and seller in another.
-  - **`figaro-clause-author` / `figaro-assembly-designer`** — write or **fork** a clause/assembly and register it on the permissionless registries (an off-chain `ClauseSpec` / a `RegisteredAgreement` / an `Assembly` → IPFS → `ClauseRegistry`/`AgreementRegistry`/`AssemblyRegistry`, under the **user's** key). The designer composes an assembly from registered agreements and registers a new one only when none fits. The clause, agreement or assembly belongs to the user, and designer rewards follow its use.
+  - **`figaro-clause-author` / `figaro-assembly-designer`** — write or **fork** a clause/assembly and register it on the permissionless registries (an off-chain `ClauseSpec` / a `RegisteredAgreement` / a `ProcessDesign` → IPFS → `ClauseRegistry`/`AgreementRegistry`/`ProcessRegistry`, under the **user's** key). The designer composes an assembly from registered agreements and registers a new one only when none fits. The clause, agreement or assembly belongs to the user, and designer rewards follow its use.
   - **`figaro-analyst`** — *read and analyze* a market's public graphs with `@figaro-protocol/sdk/derive` (base graphs from the must-have clauses, overlays spec-derived per attestable clause family in use, composition graphs from discovered venues). It holds **no key and signs nothing**; substance it was not given it BUYS as an ordinary data-market buyer, through the operator; and it sells **analyses**, never the corpus. Reference runnable: `ecosystem-agents/runtime/figaro-analyst.mjs` — a service, not a script: six HTTP routes (`GET /status`, `GET /graphs`, three `GET /queries/*`, and a key-gated `POST /prompt`), CORS answered so browsers read it directly, with opt-in cross-checking against extra RPC endpoints via `FIGARO_ANALYST_CROSSCHECK_RPC_URLS`.
 - **Maintainer-facing repo agents** (the subagents that build THIS repo, acting only for the maintainer): their definitions are NOT in the public tree — the build side of the seam is private, and `ecosystem-agents/` is the whole public set. They touch the repo, which is their job; nothing in this document applies to them.
 
@@ -107,13 +107,13 @@ handshake is safe between strangers over an untrusted transport.
 
 The gate above answers "is this offer honest?". Whether to counter-sign an honest offer is
 a second question, and the answer is **no** until the operator says otherwise — twice.
-Counter-signing bonds the seller 2× an attacker-chosen `expectedCumulativeValue` in an
-attacker-chosen `currency`, so autonomy is opt-IN at two independent seams:
+Counter-signing bonds the seller 2× an attacker-chosen `runningTotal` in an
+attacker-chosen `token`, so autonomy is opt-IN at two independent seams:
 
 - **The business floor (`accept`)** — an operator-written predicate over the offer. Omit
   it, or return false, and the offer is declined.
 - **The economic floor (`OfferPolicy`)** — bounds on the fields the seller bonds against:
-  `requireRootShape` (a root order signs `processId` zero and `expectedCumulativeValue ==
+  `requireRootShape` (a root order signs `processId` zero and `runningTotal ==
   payment`; omit it for a seller serving sub-orders in a chain), `currencyAllowlist` (the
   operator's own currencies — never a bundled token list), and `maxValue` (the magnitude
   cap); and `maxDeadlineSeconds` (the latest deadline the seller counter-signs, in seconds past
@@ -211,8 +211,8 @@ paths), sliced by `filterByClause` / `filterByStage` / `filterByProcess` /
 and checking them against the anchors — `/audit/view?process=` is the built example.
 
 **The figures are derived, not stored.** `OrderCommitted` carries `payment` and
-`cumulativeValue`; the bonds are computed at the invariant 2×,
-`calculateBonds(cumulativeValue, payment)` → `{sellerBond, buyerBond, totalLocked}`,
+`runningTotal`; the bonds are computed at the invariant 2×,
+`calculateBonds(runningTotal, payment)` → `{sellerBond, buyerBond, totalLocked}`,
 with `calculateResolution` for the payouts. Timing comes from the events'
 `blockNumber`: commit-to-resolve is a chain interval, never a host clock reading.
 Aggregate what the events actually name — value by denomination, by seller, by
@@ -221,7 +221,7 @@ over the orders they chose to treat as comparable, and the protocol neither
 publishes that comparison nor endorses it.
 
 **Provenance rides committed leaves.** The agreement format's reserved
-provenance leaf carries the `agreementHash` and the `assemblyHash` that name
+provenance leaf carries the `agreementHash` and the `processDesignHash` that name
 which registered agreement and which registered assembly an order instantiated —
 the same values the once-per-process agreement and assembly credits are claimed
 from, each counting only while its own registry holds a live binding, the
@@ -284,7 +284,7 @@ What is emitted, and what each thing is evidence of:
   backwards. Evidence of: a counterparty holding a live, reclaimable stake — never a
   score, never a gate.
 - **New terms and new shapes of trade exist.** `ClauseRegistry.ClauseRegistered`,
-  `AgreementRegistry.AgreementRegistered` and `AssemblyRegistry.AssemblyRegistered` carry
+  `AgreementRegistry.AgreementRegistered` and `ProcessRegistry.ProcessRegistered` carry
   the designer and a `contentURI`; the content resolves chain → IPFS, and a reader
   verifies it against the key (an agreement by recomputing its `agreementHash`). Either registry's `DepositWithdrawn` de-surfaces the entry for new
   compositions while every order already committed against it still resolves.
@@ -303,10 +303,10 @@ What is emitted, and what each thing is evidence of:
 - **A process ended.** `OrderResolved` and `ProcessResolved` — the whole process resolving
   at once on the buyer's single call, atomically and terminally.
 - **What the network is actually composed OF.**
-  `UsageCounter.UsageRecorded(kind, clauseOrAssembly, period, processId, seller, c, d, score)`,
+  `UsageCounter.UsageRecorded(kind, clauseOrProcess, period, processId, seller, c, d, score)`,
   emitted for every use the counter counts, on either route — a direct call or a proved
-  batch; `scoreOf(kind, clauseOrAssembly, period)` reads the one tally, kind `0` for a clause key,
-  `1` for an assembly's `assemblyHash` and `2` for a registered agreement's
+  batch; `scoreOf(kind, clauseOrProcess, period)` reads the one tally, kind `0` for a clause key,
+  `1` for an assembly's `processDesignHash` and `2` for a registered agreement's
   `agreementHash`. The `d` term counts DISTINCT LIVE-STAKED
   sellers, so it reads as adoption breadth priced at one deposit per seller — the nearest
   thing on the network to a demand signal for a clause, an agreement or an assembly. It exists only
@@ -350,7 +350,7 @@ composes.
   handshake — `makeSellerOfferHandler` (the anti-tamper gate, the bound-assembly check,
   and two decline-by-default floors), `makeSellerRaceHandler` / `makeSellerQuoteHandler` on
   the formation legs. A seller accepts only orders under an assembly its own profile binds
-  (`checkSellerBindsAssembly`, the profile read through `readProfile` when the payload
+  (`checkSellerBindsProcess`, the profile read through `readProfile` when the payload
   arrives). Being
   DISCOVERABLE is `MembersRegistry.register(metadataURI)`; being REACHABLE for inbound
   offers is a `services` endpoint inside that profile. Two different things, and neither is
@@ -368,7 +368,7 @@ composes.
   deposit-backed; the capacity's prompt is `ecosystem-agents/figaro-clause-author.md`.
 - **Assembly designer** — `AgreementRegistry.registerAgreement(agreementHash, contentURI)`
   for each agreement no registration already carries, then
-  `AssemblyRegistry.registerAssembly(assemblyHash, contentURI)` over a published
+  `ProcessRegistry.registerProcess(processDesignHash, contentURI)` over a published
   assembly whose agreements name registered agreements. Composition is the designer's act and happens only there,
   never mid-checkout and never mid-process (`OPEN_WORLD.md` §1, pattern 1); the prompt is
   `ecosystem-agents/figaro-assembly-designer.md`.

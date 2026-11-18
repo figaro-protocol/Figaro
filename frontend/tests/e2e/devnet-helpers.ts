@@ -20,35 +20,35 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import {
     AGREEMENT_REGISTRY_ABI,
-    ASSEMBLY_REGISTRY_ABI,
+    PROCESS_REGISTRY_ABI,
     CLAUSE_REGISTRY_ABI,
-    anchorAssembly,
+    anchorProcessDesign,
     canonicalize,
     computeClauseKey,
-    hydrateAssembly,
+    hydrateProcessDesign,
     parseProjectionHints,
     agreementClauses,
-    assemblyFollows,
-    assembleAuthored,
+    processDesignFollows,
+    composeAuthoredProcessDesign,
     fillDeployTimeCurrency,
     composeAuthoredAgreements,
     agreementHashOf,
-    assemblyHashOf,
+    processDesignHashOf,
     tryParseMemberProfileDocument,
     verifyCommitmentSignature,
-    type Assembly,
-    type BuiltAssembly,
+    type ProcessDesign,
+    type BuiltProcessDesign,
     type MemberProfileReader,
     type RegisteredAgreement,
     type Hex,
-    type HydratedAssembly,
+    type HydratedProcessDesign,
     type ProjectionSpecView,
     type SpecSource,
 } from '@figaro-protocol/sdk';
 import { deserializeCommitmentPayload } from '@figaro-protocol/sdk/agent';
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 import { encodeGeohash } from '@figaro-protocol/sdk/derive';
-import { deriveAssemblySlug } from '@/lib/shared/assembly';
+import { deriveProcessDesignSlug } from '@/lib/shared/assembly';
 import { clauseLadderField, labelEnumValue, loadClauseSpec, setClauseSpecFetcher, specSource } from '@/lib/shared/clauseSpecSource';
 import { keyOf } from '../lib/primeClauseSpecs';
 
@@ -161,7 +161,7 @@ type DeploymentConfig = {
     clauseRegistry?: `0x${string}`;
     clauseRegistrationHelper?: `0x${string}`;
     membersRegistry?: `0x${string}`;
-    assemblyRegistry?: `0x${string}`;
+    processRegistry?: `0x${string}`;
     agreementRegistry?: `0x${string}`;
     florinToken?: `0x${string}`;
     usageCounter?: `0x${string}`;
@@ -206,7 +206,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRY') config.clauseRegistry = value;
             if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER') config.clauseRegistrationHelper = value;
             if (key === 'NEXT_PUBLIC_MEMBERS_REGISTRY') config.membersRegistry = value;
-            if (key === 'NEXT_PUBLIC_ASSEMBLY_REGISTRY') config.assemblyRegistry = value;
+            if (key === 'NEXT_PUBLIC_PROCESS_REGISTRY') config.processRegistry = value;
             if (key === 'NEXT_PUBLIC_AGREEMENT_REGISTRY') config.agreementRegistry = value;
             if (key === 'NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS') config.florinToken = value;
             if (key === 'NEXT_PUBLIC_USAGE_COUNTER') config.usageCounter = value;
@@ -223,7 +223,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
         config.clauseRegistry = config.clauseRegistry ?? (contents as any).clauseRegistry;
         config.clauseRegistrationHelper = config.clauseRegistrationHelper ?? (contents as any).clauseRegistrationHelper;
         config.membersRegistry = config.membersRegistry ?? contents.membersRegistry;
-        config.assemblyRegistry = config.assemblyRegistry ?? (contents as any).assemblyRegistry;
+        config.processRegistry = config.processRegistry ?? (contents as any).processRegistry;
         config.agreementRegistry = config.agreementRegistry ?? (contents as any).agreementRegistry;
         config.batchVerifier = config.batchVerifier ?? (contents as any).batchVerifier;
     }
@@ -266,11 +266,11 @@ export interface SeedMemberProfile {
     /** The assemblies this seller adopts. The assembly-driven checkout only
      *  enables place-order for a seller whose profile binds a PUBLISHED
      *  assembly — a profile without bindings is browse-only. */
-    assemblyBindings?: Array<{
+    processBindings?: Array<{
         bindingId: string;
         subjectAddress: `0x${string}`;
-        /** The bound assembly's full `AssemblyRegistry` assembly hash. */
-        assemblyHash: `0x${string}`;
+        /** The bound assembly's full `ProcessRegistry` assembly hash. */
+        processDesignHash: `0x${string}`;
         coSellerBindings: Array<{ clauseKey: string; addresses: string[] }>;
     }>;
     /** Agent service endpoints (`MemberAgentServices`) — a declared `rest`
@@ -278,7 +278,7 @@ export interface SeedMemberProfile {
     services?: { mcp?: string; a2a?: string; rest?: string; did?: string; ens?: string };
     /** The buyer's assembly SUBSCRIPTIONS — the assemblies this member buys
      *  through and monetizes records from (independent of the bindings). */
-    buyerAssemblies?: Array<{ assemblyHash: `0x${string}` }>;
+    buyerAssemblies?: Array<{ processDesignHash: `0x${string}` }>;
 }
 
 /** Result of `seedRegisteredMember`. Includes the on-chain address (derived
@@ -489,10 +489,10 @@ export async function assertPinnedInIpfs(cid: string): Promise<void> {
 // ── Mainnet-faithful seller discovery ───────────────────────────────────────
 // Runtime specs must consume sellers the way a mainnet client does: read
 // MembersRegistry events, fetch each seller's profile from IPFS, and match on the
-// on-chain `assemblyBindings`. NO roster, NO hardcoded addresses/names/keys — a
+// on-chain `processBindings`. NO roster, NO hardcoded addresses/names/keys — a
 // spec that takes seller identity from a TS file is not testing mainnet usage.
 // (This mirrors what the indexer / `discoveryService` does; it additionally keeps
-// the `assemblyBindings` that the buyer-facing `MemberCatalog` projection drops.)
+// the `processBindings` that the buyer-facing `MemberCatalog` projection drops.)
 
 /** MembersRegistry registration events — carry the profile metadataURI. Internal
  *  to discovery; read by `discoverMembers`. */
@@ -511,8 +511,8 @@ export interface DiscoveredMember {
     name: string;
     /** The seller's home geohash (profile.location.geohash), discovered from IPFS. */
     geohash?: string;
-    assemblyBindings: Array<{
-        assemblyHash: `0x${string}`;
+    processBindings: Array<{
+        processDesignHash: `0x${string}`;
         coSellerBindings?: Array<{ clauseKey: string; addresses: string[] }>;
     }>;
 }
@@ -520,17 +520,17 @@ export interface DiscoveredMember {
 /** Does this profile binding name the assembly with this assembly hash?
  *  A binding records the full hash; the slug a UI testid carries is derived
  *  from it. */
-export function isBindingOf(binding: { assemblyHash?: string }, assemblyHash: string): boolean {
-    return !!binding.assemblyHash && binding.assemblyHash.toLowerCase() === assemblyHash.toLowerCase();
+export function isBindingOf(binding: { processDesignHash?: string }, processDesignHash: string): boolean {
+    return !!binding.processDesignHash && binding.processDesignHash.toLowerCase() === processDesignHash.toLowerCase();
 }
 
 /** The full assembly hash of the ANCHORED assembly a slug is derived
  *  from — what a profile binding records. Read from the registry's events;
  *  throws when no anchored assembly derives that slug. */
-export async function anchoredAssemblyHash(slug: string): Promise<`0x${string}`> {
+export async function anchoredProcessDesignHash(slug: string): Promise<`0x${string}`> {
     const found = (await discoverAnchoredAssemblies()).find((a) => a.slug === slug);
     if (!found) throw new Error(`no anchored assembly derives the slug ${slug}`);
-    return found.assemblyHash;
+    return found.processDesignHash;
 }
 
 /** Every LIVE registered seller, discovered from chain → IPFS (events +
@@ -593,7 +593,7 @@ export async function discoverMembers(): Promise<DiscoveredMember[]> {
         let profile: {
             name?: string;
             location?: { geohash?: string };
-            assemblyBindings?: DiscoveredMember['assemblyBindings'];
+            processBindings?: DiscoveredMember['processBindings'];
         };
         try {
             profile = await (await fetch(resolveIpfsURI(uri))).json();
@@ -604,7 +604,7 @@ export async function discoverMembers(): Promise<DiscoveredMember[]> {
             address,
             name: profile.name ?? '',
             geohash: profile.location?.geohash,
-            assemblyBindings: profile.assemblyBindings ?? [],
+            processBindings: profile.processBindings ?? [],
         });
     }
     return out;
@@ -652,13 +652,13 @@ export function chainProfileReader(): MemberProfileReader {
 }
 
 /** The design a payload's provenance names, read from the chain when it is
- *  needed — AssemblyRegistry → IPFS, each agreement verified against its key:
+ *  needed — ProcessRegistry → IPFS, each agreement verified against its key:
  *  the `readDesign` a seller handler takes. Null when no anchored assembly has
  *  that assembly hash. */
-export function chainDesignReader(): (provenance: { assemblyHash: string }) => Promise<HydratedAssembly | null> {
+export function chainDesignReader(): (provenance: { processDesignHash: string }) => Promise<HydratedProcessDesign | null> {
     return async (provenance) => {
         const found = (await discoverAnchoredAssemblies())
-            .find((a) => a.assemblyHash.toLowerCase() === provenance.assemblyHash.toLowerCase());
+            .find((a) => a.processDesignHash.toLowerCase() === provenance.processDesignHash.toLowerCase());
         return found?.hydrated ?? null;
     };
 }
@@ -667,14 +667,14 @@ export function chainDesignReader(): (provenance: { assemblyHash: string }) => P
  *  (chain events → IPFS). Empty when unregistered or unresolvable. */
 export async function memberProfileBindings(
     seller: `0x${string}`,
-): Promise<DiscoveredMember['assemblyBindings']> {
+): Promise<DiscoveredMember['processBindings']> {
     const uri = await latestMemberProfileURI(seller);
     if (!uri) return [];
     try {
         const doc = await (await fetch(resolveIpfsURI(uri))).json() as {
-            assemblyBindings?: DiscoveredMember['assemblyBindings'];
+            processBindings?: DiscoveredMember['processBindings'];
         };
-        return doc.assemblyBindings ?? [];
+        return doc.processBindings ?? [];
     } catch {
         return [];
     }
@@ -720,12 +720,12 @@ export async function confirmAgreementPreviews(
  *  clause keys) instead of a hardcoded slug. */
 export interface DiscoveredAssembly {
     slug: string;
-    assemblyHash: `0x${string}`;
+    processDesignHash: `0x${string}`;
     /** Per agreement, in assembly order: its id, the agreement hash it binds,
      *  the clauses it instantiates, and the labels of the entries it follows. */
     agreements: Array<{ id: string; agreementHash: Hex; clauses: Record<string, Record<string, unknown>>; follows: string[] }>;
     /** The assembly and the agreements beside it, as checkout reads them. */
-    hydrated: HydratedAssembly;
+    hydrated: HydratedProcessDesign;
     /** The designer's editorial prose from the pinned assembly — what a
      *  reading surface must show instead of the bare slug. Absent when the
      *  designer wrote none. */
@@ -761,28 +761,28 @@ function authoredAgreementsBuilt(): Record<string, RegisteredAgreement> {
 
 /** A reference assembly (`assemblies/<name>`) built exactly as the seeding
  *  builds it before registering: over the authored agreements its order
- *  entries name, each distinct agreement beside the assembly (`assembleAuthored`). */
-export function referenceAssemblyBuilt(name: string): BuiltAssembly {
+ *  entries name, each distinct agreement beside the assembly (`composeAuthoredProcessDesign`). */
+export function referenceAssemblyBuilt(name: string): BuiltProcessDesign {
     const doc = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../assemblies', name), 'utf8')) as object;
-    return assembleAuthored(doc, authoredAgreementsBuilt(), authoredSpecSource());
+    return composeAuthoredProcessDesign(doc, authoredAgreementsBuilt(), authoredSpecSource());
 }
 
 /** The slug of a REFERENCE assembly identified by its IDENTITY — the
- *  assemblyHash over its canonical composition, the same one
+ *  processDesignHash over its canonical composition, the same one
  *  populate-test-data anchors it under (names resolved to keys first). An
  *  assembly IS its composition; it is never a "kind" inferred from which
  *  clauses it happens to carry, so a spec that wants a SPECIFIC assembly must
  *  name it by identity, never select it with a clause-shape heuristic.
  *  `name` is the file in `assemblies/`. */
 export function referenceAssemblySlug(name: string): string {
-    return deriveAssemblySlug(referenceAssemblyHash(name));
+    return deriveProcessDesignSlug(referenceProcessDesignHash(name));
 }
 
 /** The assembly hash of a REFERENCE assembly — the identity
  *  `referenceAssemblySlug` derives its slug from, and what a profile binding
  *  records. `name` is the file in `assemblies/`. */
-export function referenceAssemblyHash(name: string): `0x${string}` {
-    return assemblyHashOf(referenceAssemblyBuilt(name).assembly);
+export function referenceProcessDesignHash(name: string): `0x${string}` {
+    return processDesignHashOf(referenceAssemblyBuilt(name).assembly);
 }
 
 /** Identity of a reference whose written copy leaves its denomination pin
@@ -794,7 +794,7 @@ export function referenceAssemblyHash(name: string): `0x${string}` {
  *  is anchored. `name` is the file in `assemblies/`. */
 export function referenceAssemblySlugWithLiveCurrency(name: string, tokenAddress: `0x${string}`): string {
     const assembly = fillDeployTimeCurrency(referenceAssemblyBuilt(name).assembly, tokenAddress, authoredSpecSource());
-    return deriveAssemblySlug(assemblyHashOf(assembly));
+    return deriveProcessDesignSlug(processDesignHashOf(assembly));
 }
 
 /** A registered agreement's binding, read BY KEY from `AgreementRegistry`
@@ -824,15 +824,15 @@ export async function readRegisteredAgreementDocument(agreementHash: Hex): Promi
 /** Hydrate a assembly out of band: each agreement's agreement read by key
  *  from `AgreementRegistry` (whatever its stake) and fetched from IPFS — the
  *  SDK verifies each against its key. Null when any is absent. */
-async function hydrateFromChain(assembly: Assembly): Promise<HydratedAssembly | null> {
-    return hydrateAssembly(assembly, async (agreementHash) => {
+async function hydrateFromChain(assembly: ProcessDesign): Promise<HydratedProcessDesign | null> {
+    return hydrateProcessDesign(assembly, async (agreementHash) => {
         const binding = await readAgreementBinding(agreementHash);
         if (!binding) return null;
         return new Uint8Array(await fetchPinnedBytes(binding.contentURI));
     });
 }
 
-/** Every anchored assembly, discovered from chain → IPFS (AssemblyRegistered
+/** Every anchored assembly, discovered from chain → IPFS (ProcessRegistered
  *  events + assembly docs, each agreement's agreement from AgreementRegistry
  *  → IPFS), in anchoring order. Mainnet-realistic tolerance: a assembly or an
  *  agreement that fails to fetch, parse or verify is skipped — anyone can
@@ -840,25 +840,25 @@ async function hydrateFromChain(assembly: Assembly): Promise<HydratedAssembly | 
 export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]> {
     const publicClient = localPublicClient();
     const config = readLocalDeploymentConfig();
-    const assemblyRegistry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? config.assemblyRegistry ?? '') as `0x${string}`;
+    const processRegistry = (process.env.NEXT_PUBLIC_PROCESS_REGISTRY ?? config.processRegistry ?? '') as `0x${string}`;
     const anchored = await publicClient.getContractEvents({
-        address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI,
-        eventName: 'AssemblyRegistered', fromBlock: 0n,
+        address: processRegistry, abi: PROCESS_REGISTRY_ABI,
+        eventName: 'ProcessRegistered', fromBlock: 0n,
     });
     const out: DiscoveredAssembly[] = [];
     for (const ev of anchored) {
-        const { assemblyHash, contentURI } = ev.args as { assemblyHash?: `0x${string}`; contentURI?: string };
-        if (!assemblyHash || !contentURI) continue;
+        const { processDesignHash, contentURI } = ev.args as { processDesignHash?: `0x${string}`; contentURI?: string };
+        if (!processDesignHash || !contentURI) continue;
         try {
-            const assembly = anchorAssembly(await (await fetch(resolveIpfsURI(contentURI))).json(), assemblyHash);
+            const assembly = anchorProcessDesign(await (await fetch(resolveIpfsURI(contentURI))).json(), processDesignHash);
             if (!assembly || assembly.agreements.length === 0) continue;
             const hydrated = await hydrateFromChain(assembly);
             if (!hydrated) continue;
             out.push({
-                slug: deriveAssemblySlug(assemblyHash), assemblyHash,
+                slug: deriveProcessDesignSlug(processDesignHash), processDesignHash,
                 agreements: assembly.agreements.map((entry) => ({
                     id: entry.id, agreementHash: entry.agreementHash, clauses: agreementClauses(hydrated, entry),
-                    follows: assemblyFollows(entry),
+                    follows: processDesignFollows(entry),
                 })),
                 hydrated,
                 name: assembly.name,
@@ -1093,7 +1093,7 @@ export async function waitForConnected(page: Page): Promise<void> {
  * PUBLISH OR ADOPT the reviewed composition and return its content slug. Opens
  * the Review screen for the draft `handle` with the publish intent and reads the
  * composition it would anchor from `designer-assembly-hash`'s title. The
- * chain fact — `AssemblyRegistry.bindings(hash)`, read out-of-band — decides the
+ * chain fact — `ProcessRegistry.bindings(hash)`, read out-of-band — decides the
  * branch: unbound, the publish anchors it and the receipt names the slug; bound
  * (first-write-wins), the Review screen reads that binding at the edge, closes
  * publish, and its `review-already-anchored` notice names the anchored slug,
@@ -1115,8 +1115,8 @@ export async function publishOrAdoptReviewed(
     const reviewedHash = await page.getByTestId('designer-assembly-hash').getAttribute('title') as `0x${string}`;
     expect(reviewedHash, 'the review screen states the composition it would anchor').toMatch(/^0x[0-9a-f]{64}$/i);
     const [, registeredAt] = await localPublicClient().readContract({
-        address: readLocalDeploymentConfig().assemblyRegistry as `0x${string}`,
-        abi: ASSEMBLY_REGISTRY_ABI,
+        address: readLocalDeploymentConfig().processRegistry as `0x${string}`,
+        abi: PROCESS_REGISTRY_ABI,
         functionName: 'bindings',
         args: [reviewedHash],
     }) as readonly [`0x${string}`, bigint, boolean, string];
@@ -1260,7 +1260,7 @@ export async function ensureDeliveryAssembly(page: Page): Promise<string> {
         // The hand-off mode, proximity band, and geohashes are transaction
         // particulars — authored by the buyer at checkout, never here.
 
-        // Editorial identity + publish (pin assembly → AssemblyRegistered).
+        // Editorial identity + publish (pin assembly → ProcessRegistered).
         await page.getByTestId('designer-name-input').fill('Local commerce');
         await page.getByTestId('designer-summary-input').fill('Merchant delivery: a merchant order plus one co-equal courier order.');
         await page.getByTestId('designer-description-input').fill('The local-commerce runtime: the buyer orders with the delivery modality; the courier order carries the goods; each transfer is attested; one resolve pays both.');

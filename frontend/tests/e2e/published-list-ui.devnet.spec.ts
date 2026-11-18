@@ -32,12 +32,12 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
         // Publish a per-run-unique assembly via the REAL canvas — the nonce in the
         // probe clause id gives a fresh content-derived slug each run, so no
         // snapshot/revert (devnet is a mainnet rehearsal). PublishedList then reads
-        // the AssemblyRegistered event for the connected wallet.
+        // the ProcessRegistered event for the connected wallet.
         const { slug } = await publishProbeAssembly(page);
 
         // ── The publish actually anchored, read back out-of-band ─────
         const anchored = (await discoverAnchoredAssemblies()).some((t) => t.slug === slug);
-        expect(anchored, 'the published probe assembly is anchored on AssemblyRegistry').toBe(true);
+        expect(anchored, 'the published probe assembly is anchored on ProcessRegistry').toBe(true);
 
         // ── The row appears on the designer index ────────────────────
         await page.goto('/assemblies/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });

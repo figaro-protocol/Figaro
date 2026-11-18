@@ -43,7 +43,7 @@ import {
 
 const FAMILY_LABEL: Record<RegistryFamily, string> = { clauses: "Clauses", agreements: "Agreements", assemblies: "Assemblies", members: "Members" };
 // ONE role, plainly phrased: the wallet that registered the row — both
-// contracts spell it `registeredBy` (ClauseRegistry and AssemblyRegistry,
+// contracts spell it `registeredBy` (ClauseRegistry and ProcessRegistry,
 // the same per-wallet role); the reader sees one expression.
 const SORT_LABEL: Record<(typeof REGISTRY_SORTS)[number], string> = { article: "Article", name: "Name", block: "Most recent", registeredBy: "Registered by" };
 const STAKE_LABEL: Record<(typeof STAKE_VIEWS)[number], string> = { live: "Live stake", withdrawn: "Stake withdrawn", all: "All" };
@@ -136,7 +136,7 @@ export function RegistryExplorer() {
             out.push({
                 family: "assemblies", key: `assembly-${a.slug}`, id: a.slug, name: a.name, article: "", description,
                 registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: a.stakeWithdrawn, clauses: a.clauses ?? [],
-                contentURI: a.contentURI, anchoredHash: a.assemblyHash,
+                contentURI: a.contentURI, anchoredHash: a.processDesignHash,
                 text: [a.slug, a.name, description, a.registeredBy, ...(a.clauses ?? []),
                     ...(a.clauses ?? []).map((k) => getClauseSpec(k)?.clauseId ?? "")].join(" "),
             });
@@ -400,7 +400,7 @@ function MemberRows({ rows, members }: { rows: Array<ExplorerRow & RowText>; mem
         <ul className="space-y-5">
             {rows.map((r) => {
                 const m = byAddress.get(r.id.toLowerCase());
-                const offers = (m?.profile?.assemblyBindings?.length ?? 0) > 0;
+                const offers = (m?.profile?.processBindings?.length ?? 0) > 0;
                 return (
                     <li key={r.key} id={r.key} className="flex flex-col gap-1 scroll-mt-24" data-testid={`member-row-${r.id.toLowerCase()}`}>
                         <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-3">

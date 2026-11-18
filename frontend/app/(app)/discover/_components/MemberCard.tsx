@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "@/components/shared/Link";
-import { deriveAssemblySlug } from "@/lib/shared/assembly";
+import { deriveProcessDesignSlug } from "@/lib/shared/assembly";
 import { ContentImage } from "@/components/shared/ContentImage";
 import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +12,7 @@ import {
 import { useMemberResolutionHistory } from "@/lib/member/useMemberResolutionHistory";
 
 function distinctAssemblySlugs(listing: Listing): string[] {
-    return Array.from(new Set(listing.bindings.map((b) => deriveAssemblySlug(b.assemblyHash))));
+    return Array.from(new Set(listing.bindings.map((b) => deriveProcessDesignSlug(b.assemblyHash))));
 }
 
 interface MemberCardProps {

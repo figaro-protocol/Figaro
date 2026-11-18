@@ -22,7 +22,7 @@ const TAG_ATTEST_BY_WALLET_CODE = 0x05;
 
 // prover/lib/src/types.rs:340-344, the kind byte `UsageClaimKind::code()`.
 const KIND_CLAUSE = 0x00;
-const KIND_ASSEMBLY = 0x01;
+const KIND_PROCESS = 0x01;
 const KIND_AGREEMENT = 0x02;
 
 /** operation_stream.rs:124, `COMMITMENT_BYTES`. */
@@ -70,12 +70,12 @@ class Reader {
             process_id: this.b256(),
             buyer: this.address(),
             seller: this.address(),
-            currency: this.address(),
+            token: this.address(),
             payment: this.u256().toString(),
-            expected_cumulative_value: this.u256().toString(),
+            running_total: this.u256().toString(),
             checkout_hash: this.b256(),
             salt: this.u256().toString(),
-            deadline: this.u256().toString(),
+            commit_deadline: this.u256().toString(),
         };
     }
     /** operation_stream.rs:437-444 and :72: count(2) word(32)*. */
@@ -86,7 +86,7 @@ class Reader {
         return out;
     }
     /** A resolve's commitments, refused when their payments overflow a word
-     *  (operation_stream.rs:261-267, `resolved_cumulative_value`). */
+     *  (operation_stream.rs:261-267, `resolved_running_total`). */
     resolvedCommitments(): void {
         const n = this.count();
         let sum = 0n;
@@ -147,21 +147,21 @@ export function usageClaimsOfOperationStream(stream: Hex): SequencerUsageClaim[]
             }
             case TAG_USAGE_CLAIM: { // operation_stream.rs:311-335, :56, :67-69
                 const order = r.commitment();
-                const clauseOrAssembly = r.b256();
+                const clauseOrProcess = r.b256();
                 const kindByte = r.u8();
                 let kind: SequencerUsageClaim["kind"];
                 if (kindByte === KIND_CLAUSE) {
                     kind = { Clause: { clause_data_hash: r.b256() } };
                 } else if (kindByte === KIND_AGREEMENT) {
-                    kind = { Agreement: { assembly_hash: r.b256() } };
-                } else if (kindByte === KIND_ASSEMBLY) {
+                    kind = { Agreement: { process_design_hash: r.b256() } };
+                } else if (kindByte === KIND_PROCESS) {
                     const agreementHash = r.b256();
                     const contentHash = r.b256();
-                    kind = { Assembly: { agreement_hash: agreementHash, slot_content_hash: contentHash, membership_proof: r.words() } };
+                    kind = { Process: { agreement_hash: agreementHash, agreement_content_hash: contentHash, membership_proof: r.words() } };
                 } else {
                     throw new Error(`unknown usage claim kind 0x${kindByte.toString(16).padStart(2, "0")}`);
                 }
-                claims.push({ order, clause_or_assembly: clauseOrAssembly, kind, inclusion_proof: r.words() });
+                claims.push({ order, clause_or_process: clauseOrProcess, kind, inclusion_proof: r.words() });
                 break;
             }
             default:

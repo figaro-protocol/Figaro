@@ -22,7 +22,7 @@
  *                                     geolocation
  *
  * This leg drives the REAL designer UI all the way to the IPFS pin +
- * AssemblyRegistry anchor (persisted — the same publish a builder performs on
+ * ProcessRegistry anchor (persisted — the same publish a builder performs on
  * mainnet; idempotent by SHAPE discovery, never a slug), onboards + binds the
  * six sellers, and checks out as the buyer through SIGN + relay with the
  * derived chain total asserted. The runtime leg
@@ -186,7 +186,7 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
         const shipperBindings = await memberProfileBindings(SHIPPER.address as Hex);
         const plan = planSubOrderSellers({
             hydratedAssembly: anchored.hydrated,
-            coSellerBindings: (shipperBindings.find((b) => isBindingOf(b, anchored.assemblyHash))?.coSellerBindings ?? [])
+            coSellerBindings: (shipperBindings.find((b) => isBindingOf(b, anchored.processDesignHash))?.coSellerBindings ?? [])
                 .map((cb) => ({ clauseKey: cb.clauseKey as Hex, addresses: cb.addresses as `0x${string}`[] })),
         });
         expect(plan.map((p) => p.seller?.toLowerCase()), 'five sub-order sellers resolve in commit order').toEqual([

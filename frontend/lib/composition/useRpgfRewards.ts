@@ -34,14 +34,14 @@ import {
     RPGF_MINTER_ABI,
     USAGE_COUNTER_ABI,
     USAGE_KIND_AGREEMENT,
-    USAGE_KIND_ASSEMBLY,
+    USAGE_KIND_PROCESS,
     USAGE_KIND_CLAUSE,
     usageKeyId,
     type UsageKey,
     type UsageKind,
 } from "@figaro-protocol/sdk";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { CONTRACTS, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
+import { CONTRACTS, PROCESS_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
 import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -52,10 +52,10 @@ import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead
  *  `d` = distinct staked sellers, `score` = the uniform breadth
  *  measure (`icbrt(c·d²·1e18)`) the payout divides by. */
 export interface RpgfClauseOrAssemblyAccrual {
-    /** Clause key, agreement hash or assembly assemblyHash. */
-    clauseOrAssembly: `0x${string}`;
+    /** Clause key, agreement hash or assembly processDesignHash. */
+    clauseOrProcess: `0x${string}`;
     /** The registry the key was found in — `USAGE_KIND_CLAUSE`,
-     *  `USAGE_KIND_AGREEMENT` or `USAGE_KIND_ASSEMBLY`; every read and the
+     *  `USAGE_KIND_AGREEMENT` or `USAGE_KIND_PROCESS`; every read and the
      *  claim name it. */
     kind: UsageKind;
     /** Human label: the clause spec's own name and version when it is loaded,
@@ -135,7 +135,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
      *  for, from the registries' event streams. Empty (not an error) when the wallet
      *  designed nothing — resolved-empty is absence. */
     const discoverClausesAndAssemblies = useCallback(async (): Promise<
-        Array<Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "kind" | "label" | "family">>
+        Array<Pick<RpgfClauseOrAssemblyAccrual, "clauseOrProcess" | "kind" | "label" | "family">>
     > => {
         if (!publicClient || !account) return [];
         // Through the event cache (deployment block, adaptive chunks); the
@@ -154,46 +154,46 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                 })
                 : Promise.resolve([]),
             cachedGetContractEvents(publicClient, chainId, {
-                address: CONTRACTS.assemblyRegistry,
-                abi: ASSEMBLY_REGISTRY_ABI,
-                eventName: "AssemblyRegistered",
+                address: CONTRACTS.processRegistry,
+                abi: PROCESS_REGISTRY_ABI,
+                eventName: "ProcessRegistered",
             }),
         ]);
         type ClauseArgs = { registeredBy?: string; clauseKey?: `0x${string}` };
         type AgreementArgs = { registeredBy?: string; agreementHash?: `0x${string}` };
-        type AssemblyArgs = { registeredBy?: string; assemblyHash?: `0x${string}` };
+        type AssemblyArgs = { registeredBy?: string; processDesignHash?: `0x${string}` };
         const clauseEvents = allClauseEvents.filter((l) => hexEqual(String((l.args as ClauseArgs | undefined)?.registeredBy ?? ""), account));
         const agreementEvents = allAgreementEvents.filter((l) => hexEqual(String((l.args as AgreementArgs | undefined)?.registeredBy ?? ""), account));
         const assemblyEvents = allAssemblyEvents.filter((l) => hexEqual(String((l.args as AssemblyArgs | undefined)?.registeredBy ?? ""), account));
-        const out = new Map<string, Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "kind" | "label" | "family">>();
+        const out = new Map<string, Pick<RpgfClauseOrAssemblyAccrual, "clauseOrProcess" | "kind" | "label" | "family">>();
         for (const ev of clauseEvents) {
-            const clauseOrAssembly = (ev.args as ClauseArgs | undefined)?.clauseKey;
-            if (!clauseOrAssembly) continue;
-            const spec = getClauseSpec(clauseOrAssembly);
-            out.set(usageKeyId(USAGE_KIND_CLAUSE, clauseOrAssembly), {
-                clauseOrAssembly,
+            const clauseOrProcess = (ev.args as ClauseArgs | undefined)?.clauseKey;
+            if (!clauseOrProcess) continue;
+            const spec = getClauseSpec(clauseOrProcess);
+            out.set(usageKeyId(USAGE_KIND_CLAUSE, clauseOrProcess), {
+                clauseOrProcess,
                 kind: USAGE_KIND_CLAUSE,
-                label: spec ? `${spec.clauseId} v${spec.version}` : truncateHex(clauseOrAssembly, { head: 10, tail: 0 }),
+                label: spec ? `${spec.clauseId} v${spec.version}` : truncateHex(clauseOrProcess, { head: 10, tail: 0 }),
                 family: "clause",
             });
         }
         for (const ev of agreementEvents) {
-            const clauseOrAssembly = (ev.args as AgreementArgs | undefined)?.agreementHash;
-            if (!clauseOrAssembly) continue;
-            out.set(usageKeyId(USAGE_KIND_AGREEMENT, clauseOrAssembly), {
-                clauseOrAssembly,
+            const clauseOrProcess = (ev.args as AgreementArgs | undefined)?.agreementHash;
+            if (!clauseOrProcess) continue;
+            out.set(usageKeyId(USAGE_KIND_AGREEMENT, clauseOrProcess), {
+                clauseOrProcess,
                 kind: USAGE_KIND_AGREEMENT,
-                label: truncateHex(clauseOrAssembly, { head: 10, tail: 0 }),
+                label: truncateHex(clauseOrProcess, { head: 10, tail: 0 }),
                 family: "agreement",
             });
         }
         for (const ev of assemblyEvents) {
-            const clauseOrAssembly = (ev.args as AssemblyArgs | undefined)?.assemblyHash;
-            if (!clauseOrAssembly) continue;
-            out.set(usageKeyId(USAGE_KIND_ASSEMBLY, clauseOrAssembly), {
-                clauseOrAssembly,
-                kind: USAGE_KIND_ASSEMBLY,
-                label: truncateHex(clauseOrAssembly, { head: 10, tail: 0 }),
+            const clauseOrProcess = (ev.args as AssemblyArgs | undefined)?.processDesignHash;
+            if (!clauseOrProcess) continue;
+            out.set(usageKeyId(USAGE_KIND_PROCESS, clauseOrProcess), {
+                clauseOrProcess,
+                kind: USAGE_KIND_PROCESS,
+                label: truncateHex(clauseOrProcess, { head: 10, tail: 0 }),
                 family: "assembly",
             });
         }
@@ -231,16 +231,16 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                     }) as Promise<boolean>)
                     : Promise.resolve(null),
             ]);
-            type UsageArgs = { kind?: number; clauseOrAssembly?: `0x${string}`; period?: number };
+            type UsageArgs = { kind?: number; clauseOrProcess?: `0x${string}`; period?: number };
             const usedIn = new Map<number, Set<string>>();
             for (const ev of usageEvents) {
                 const a = ev.args as UsageArgs | undefined;
-                if (a?.kind === undefined || !a.clauseOrAssembly || a.period === undefined) continue;
+                if (a?.kind === undefined || !a.clauseOrProcess || a.period === undefined) continue;
                 let set = usedIn.get(Number(a.period));
                 if (!set) { set = new Set(); usedIn.set(Number(a.period), set); }
-                set.add(usageKeyId(a.kind as UsageKind, a.clauseOrAssembly));
+                set.add(usageKeyId(a.kind as UsageKind, a.clauseOrProcess));
             }
-            const clausesOrAssemblies: UsageKey[] = mine.map((m) => ({ kind: m.kind, key: m.clauseOrAssembly }));
+            const clausesOrProcesses: UsageKey[] = mine.map((m) => ({ kind: m.kind, key: m.clauseOrProcess }));
             const ids = Array.from({ length: Number(periodCount) }, (_, i) => i);
             const rows = await Promise.all(
                 ids.map(async (periodId) => {
@@ -274,33 +274,33 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                                 functionName: "totalScoreIn",
                                 args: [period],
                             }),
-                            account && clausesOrAssemblies.length > 0
+                            account && clausesOrProcesses.length > 0
                                 ? publicClient.readContract({
                                       ...minterBase,
                                       functionName: "claimable",
-                                      args: [periodId, account, clausesOrAssemblies],
+                                      args: [periodId, account, clausesOrProcesses],
                                   })
                                 : Promise.resolve(0n),
                             Promise.all(
-                                mine.filter((m) => usedIn.get(period)?.has(usageKeyId(m.kind, m.clauseOrAssembly))).map(async (m) => {
+                                mine.filter((m) => usedIn.get(period)?.has(usageKeyId(m.kind, m.clauseOrProcess))).map(async (m) => {
                                     // The one tally, route-blind; `scoreOf` is
                                     // the figure the minter rewards on.
                                     const [[c, d], score, claimed] = await Promise.all([
                                         publicClient.readContract({
                                             ...counterBase,
                                             functionName: "accrualOf",
-                                            args: [m.kind, m.clauseOrAssembly, period],
+                                            args: [m.kind, m.clauseOrProcess, period],
                                         }),
                                         publicClient.readContract({
                                             ...counterBase,
                                             functionName: "scoreOf",
-                                            args: [m.kind, m.clauseOrAssembly, period],
+                                            args: [m.kind, m.clauseOrProcess, period],
                                         }),
                                         // The minter rewards each key once per period.
                                         publicClient.readContract({
                                             ...minterBase,
                                             functionName: "claimed",
-                                            args: [periodId, m.kind, m.clauseOrAssembly],
+                                            args: [periodId, m.kind, m.clauseOrProcess],
                                         }),
                                     ]);
                                     return { ...m, c, d, score, claimed };
@@ -342,8 +342,8 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             if (!minter) throw new Error("Designer-rewards minter unconfigured.");
             if (!account) throw new Error("Connect a wallet to claim.");
             const row = read.status === "present" ? read.value.periods.find((t) => t.periodId === periodId) : undefined;
-            const clausesOrAssemblies: UsageKey[] = row?.accruals.map((a) => ({ kind: a.kind, key: a.clauseOrAssembly })) ?? [];
-            if (clausesOrAssemblies.length === 0) throw new Error("This wallet designed nothing that accrued in this period.");
+            const clausesOrProcesses: UsageKey[] = row?.accruals.map((a) => ({ kind: a.kind, key: a.clauseOrProcess })) ?? [];
+            if (clausesOrProcesses.length === 0) throw new Error("This wallet designed nothing that accrued in this period.");
             if (!publicClient) throw new Error("No public client available to send the claim.");
             const hash = await simulateWriteVerify({
                 client: publicClient,
@@ -351,7 +351,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                 address: minter,
                 abi: RPGF_MINTER_ABI as Abi,
                 functionName: "claim",
-                args: [periodId, clausesOrAssemblies],
+                args: [periodId, clausesOrProcesses],
                 account,
                 failureMessage: "The reward was not claimed.",
             });

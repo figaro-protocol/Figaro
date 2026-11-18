@@ -26,7 +26,7 @@ import {
     A2aChannel, makeA2aOfferResponder,
 } from "@figaro-protocol/sdk/agent";
 import {
-    anchorAssembly, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, agreementClauses,
+    anchorProcessDesign, computeDeadline, hydrateProcessDesign, parseProjectionHints, readChainTimestamp, agreementClauses,
 } from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 import { bindAssemblyAsSeller, designReader, memberProfileReader } from "./devnet-seller.mjs";
@@ -41,7 +41,7 @@ const GATEWAY = "http://127.0.0.1:8080/ipfs/";
 const IPFS_API = env.NEXT_PUBLIC_IPFS_API_URL || "http://127.0.0.1:5001";
 const addresses = {
     core: env.NEXT_PUBLIC_FIGARO_CORE, clauseRegistry: env.NEXT_PUBLIC_CLAUSE_REGISTRY,
-    membersRegistry: env.NEXT_PUBLIC_MEMBERS_REGISTRY, assemblyRegistry: env.NEXT_PUBLIC_ASSEMBLY_REGISTRY,
+    membersRegistry: env.NEXT_PUBLIC_MEMBERS_REGISTRY, processRegistry: env.NEXT_PUBLIC_PROCESS_REGISTRY,
     agreementRegistry: env.NEXT_PUBLIC_AGREEMENT_REGISTRY,
 };
 const TOKEN = env.NEXT_PUBLIC_TOKEN_ADDRESS;
@@ -81,9 +81,9 @@ const specs = {
 // hash and every one of its registered agreements hydrates and verifies
 // against its key — read from the binding whatever its stake.
 const hydrate = async (a) => {
-    const t = anchorAssembly(await tryHydrate(a.contentURI), a.assemblyHash);
+    const t = anchorProcessDesign(await tryHydrate(a.contentURI), a.processDesignHash);
     if (!t) return null;
-    return hydrateAssembly(t, async (key) => {
+    return hydrateProcessDesign(t, async (key) => {
         const binding = ctx.getAgreementBinding(key);
         return binding ? tryHydrate(binding.contentURI) : null;
     });
@@ -132,11 +132,11 @@ check("located the commerce clause by its declared field", !!commerceClauseId);
 
 // ── The seller binds the assembly in its own member profile ──────────────────
 await bindAssemblyAsSeller({
-    pub, wallet: sellerW, membersRegistry: addresses.membersRegistry, assemblyHash: chosen.assemblyHash,
+    pub, wallet: sellerW, membersRegistry: addresses.membersRegistry, processDesignHash: chosen.processDesignHash,
     ipfsApiUrl: IPFS_API, readProfile, name: "Origination proof seller",
 });
-check("the seller's own profile binds the assembly", (await readProfile(SELLER.address))?.assemblyBindings
-    ?.some((b) => b.assemblyHash.toLowerCase() === chosen.assemblyHash.toLowerCase()) === true);
+check("the seller's own profile binds the assembly", (await readProfile(SELLER.address))?.processBindings
+    ?.some((b) => b.processDesignHash.toLowerCase() === chosen.processDesignHash.toLowerCase()) === true);
 
 // ── Buyer LOOP: originate over HttpChannel (the seller is reached via the socket) ─
 const channel = new A2aChannel({ resolveEndpoint: async () => sellerUrl });

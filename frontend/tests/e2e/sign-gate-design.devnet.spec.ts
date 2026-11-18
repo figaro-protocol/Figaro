@@ -25,7 +25,7 @@
  * for the buyer, and no token moved.
  *
  * Everything is discovered from chain → IPFS: the clause specs from
- * `ClauseRegistry`, the assemblies from `AssemblyRegistry` and each
+ * `ClauseRegistry`, the assemblies from `ProcessRegistry` and each
  * registered agreement from `AgreementRegistry`, the candidate selected by
  * shape (a design fill the assembly sets, a forged value that still conforms
  * to its clause's spec) — no clause, assembly or field is named here.
@@ -36,16 +36,16 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
     buildDomain,
     fillCommerceClause,
-    planAssemblyOrders,
+    planProcessOrders,
     readUtilityTokenPin,
-    reconstructOrdersFromAssembly,
+    reconstructOrdersFromProcessDesign,
     specDesignFills,
     validateCommitmentAgreement,
     computeCheckoutHash,
     buildCommitment,
     type Agreement,
     type Commitment,
-    type HydratedAssembly,
+    type HydratedProcessDesign,
 } from '@figaro-protocol/sdk';
 import { validateContent } from '@figaro-protocol/sdk/clauses';
 import { serializeCommitmentPayload, type CommitmentPayload } from '@figaro-protocol/sdk/agent';
@@ -95,15 +95,15 @@ function forgedValue(clauseKey: Hex, data: Record<string, unknown>, field: strin
 async function rootOrder(found: DiscoveredAssembly, forged: Record<string, Record<string, unknown>>) {
     const config = readLocalDeploymentConfig();
     const specs = specSource();
-    const hydrated: HydratedAssembly = found.hydrated;
-    const [root] = planAssemblyOrders(hydrated);
+    const hydrated: HydratedProcessDesign = found.hydrated;
+    const [root] = planProcessOrders(hydrated);
     const currency = (readUtilityTokenPin(root.clauses, specs) ?? config.tokenAddress) as Hex;
     const payment = 1_000_000n;
     const filled = fillCommerceClause(root.clauses, specs, [
         { itemId: 'sign-gate-design', name: 'Signed out of band', quantity: 1, unitPrice: payment.toString() },
     ]);
     const chainNow = (await localPublicClient().getBlock({ blockTag: 'latest' })).timestamp;
-    const orders = await reconstructOrdersFromAssembly(hydrated, {
+    const orders = await reconstructOrdersFromProcessDesign(hydrated, {
         buyer: BUYER.address, currency, chainId: 31337, core: config.figaroCore as Hex, specs,
         deadline: chainNow + 3600n,
         nodes: (planned) => ({
@@ -145,10 +145,10 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
         // clauses carry a designer value the assembly sets, and a forged
         // value its spec still accepts. Prefer the one whose only refusal is
         // the designer value.
-        type Forged = { found: DiscoveredAssembly; clauseKey: Hex; field: string; order: Awaited<ReturnType<typeof rootOrder>>['order']; hydrated: HydratedAssembly; onlyDesigner: boolean };
+        type Forged = { found: DiscoveredAssembly; clauseKey: Hex; field: string; order: Awaited<ReturnType<typeof rootOrder>>['order']; hydrated: HydratedProcessDesign; onlyDesigner: boolean };
         let forgedCase: Forged | undefined;
         for (const found of assemblies) {
-            const [root] = planAssemblyOrders(found.hydrated);
+            const [root] = planProcessOrders(found.hydrated);
             for (const [clauseKey, data] of Object.entries(root.clauses) as [Hex, Record<string, unknown>][]) {
                 const spec = specSource().get(clauseKey);
                 if (!spec) continue;
@@ -184,9 +184,9 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
         const unread = forgedCase!.order.agreement;
         const unanchored = keccak256(toHex(`sign-gate-design:${Date.now()}`));
         const { order: cleanOrder } = await rootOrder(forgedCase!.found, {});
-        const unreadAgreement: Agreement = { ...cleanOrder.agreement, provenance: { agreementHash: cleanOrder.agreement.provenance!.agreementHash, assemblyHash: unanchored } };
+        const unreadAgreement: Agreement = { ...cleanOrder.agreement, provenance: { agreementHash: cleanOrder.agreement.provenance!.agreementHash, processDesignHash: unanchored } };
         const unreadCommitment: Commitment = { ...cleanOrder.commitment, checkoutHash: computeCheckoutHash(unreadAgreement) };
-        expect(unread.provenance?.assemblyHash).toBe(forgedCase!.found.assemblyHash);
+        expect(unread.provenance?.processDesignHash).toBe(forgedCase!.found.processDesignHash);
 
         // The seller binds both assemblies the payloads name — its own act,
         // through its own registry entry — so the counter-sign reaches the
@@ -196,8 +196,8 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
             profile: {
                 name: 'Sign gate seller',
                 description: 'Seeded by sign-gate-design.devnet.spec.ts',
-                assemblyBindings: [forgedCase!.found.assemblyHash, unanchored].map((assemblyHash, i) => ({
-                    bindingId: `sign-gate-design-${i}`, subjectAddress: SELLER.address, assemblyHash, coSellerBindings: [],
+                processBindings: [forgedCase!.found.processDesignHash, unanchored].map((processDesignHash, i) => ({
+                    bindingId: `sign-gate-design-${i}`, subjectAddress: SELLER.address, processDesignHash, coSellerBindings: [],
                 })),
             },
         });
@@ -220,7 +220,7 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
                 .toContainText(expected, { timeout: 60000 });
             if (expected === notRead) {
                 await expect(page.getByTestId('sign-agreement-unread'), 'the heading names the design that was not read')
-                    .toContainText(new RegExp(`assembly ${payload.agreement.provenance!.assemblyHash}, was not read`, 'i'));
+                    .toContainText(new RegExp(`assembly ${payload.agreement.provenance!.processDesignHash}, was not read`, 'i'));
                 // The payload is the root order with no buyer value filled, so the
                 // review also lists its missing required fields: that list sits
                 // under the neutral heading, never under a mismatch.
@@ -277,7 +277,7 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
             type: 'dropped clause',
             description: `assembly ${forgedCase!.found.slug} clause ${droppedClauseId} (only refusal: ${dropped!.onlyMissing})`,
         });
-        const hash = forgedCase!.found.assemblyHash;
+        const hash = forgedCase!.found.processDesignHash;
         const notCarried = new RegExp(`(?:${droppedClauseId}|${dropped!.clauseKey}) clause: the order does not carry this clause, which assembly ${forgedCase!.found.slug} \\(${hash}\\) composes`, 'i');
         await refuseOnSign(SELLER.address, await signedPayload(dropped!.agreement, dropped!.commitment, false), 'btn-counter-sign', notCarried);
         await refuseOnSign(BUYER.address, await signedPayload(dropped!.agreement, dropped!.commitment, true), 'btn-broadcast', notCarried);

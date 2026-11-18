@@ -25,8 +25,8 @@ describe("CommitmentPayload — golden-vector byte-exactness", () => {
         // The commitment's numeric fields revive as bigints.
         expect(typeof payload.commitment.payment).toBe("bigint");
         expect(typeof payload.commitment.salt).toBe("bigint");
-        expect(typeof payload.commitment.deadline).toBe("bigint");
-        expect(typeof payload.commitment.expectedCumulativeValue).toBe("bigint");
+        expect(typeof payload.commitment.commitDeadline).toBe("bigint");
+        expect(typeof payload.commitment.runningTotal).toBe("bigint");
     });
 
     it("deserialize strips prototype-pollution keys from a malicious envelope", () => {

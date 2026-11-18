@@ -45,7 +45,7 @@ export { witnessContentCid, witnessContentCidBase32 } from "./witnessContent.js"
 export {
     deriveInFlightOrders,
     deriveClauseWithdrawGate,
-    deriveAssemblyWithdrawGate,
+    deriveProcessWithdrawGate,
     deriveAgreementWithdrawGate,
 } from "./withdraw.js";
 export type {

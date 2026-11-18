@@ -21,7 +21,7 @@ contract MockAlwaysMember {
 }
 
 /// @notice Test-only subclass exposing `_accrue` directly.
-/// @dev    `recordClauseUsage` / `recordAgreementUsage` / `recordAssemblyUsage` reach `_accrue` only
+/// @dev    `recordClauseUsage` / `recordAgreementUsage` / `recordProcessDesignUsage` reach `_accrue` only
 ///         after a signed EIP-712 order (2 ECDSA recoveries) and a merkle
 ///         inclusion proof — both unreachable to Halmos symbolically (see
 ///         `reference_halmos_operations`: "a property needing signed EIP-712
@@ -44,12 +44,12 @@ contract UsageCounterHarness is UsageCounter {
         uint64[] memory _periodEnd
     ) UsageCounter(_core, _members, _clauses, _assemblies, _agreements, _batchVerifier, _minSellers, _periodEnd) {}
 
-    function accrue(bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) external {
-        _accrue(KIND_CLAUSE, clauseOrAssembly, period, processId, seller);
+    function accrue(bytes32 clauseOrProcess, uint8 period, bytes32 processId, address seller) external {
+        _accrue(KIND_CLAUSE, clauseOrProcess, period, processId, seller);
     }
 
-    function accrueAs(uint8 kind, bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) external {
-        _accrue(kind, clauseOrAssembly, period, processId, seller);
+    function accrueAs(uint8 kind, bytes32 clauseOrProcess, uint8 period, bytes32 processId, address seller) external {
+        _accrue(kind, clauseOrProcess, period, processId, seller);
     }
 }
 
@@ -146,7 +146,7 @@ contract HalmosUsageCounter is Test {
     ///      of the three ever touch each other's accruals.
     uint8 internal constant KIND_CLAUSE = 0;
     bytes32 internal constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
-    bytes32 internal constant ASSEMBLY_TERMS_LEAF = keccak256("figaro-assembly-terms");
+    bytes32 internal constant PROCESS_TERMS_LEAF = keccak256("figaro-assembly-terms");
     uint64 internal constant P0_END = 1_000_000;
     uint64 internal constant P1_END = 2_000_000;
 
@@ -170,9 +170,9 @@ contract HalmosUsageCounter is Test {
         return new UsageCounterHarness(
             address(0xC0FFEE), // core — unused by `_accrue`/`applyBatchAccrual`
             address(new MockAlwaysMember()), // seller-side gate — isolated, see header
-            address(new MockClauseOrAssemblyStake()), // clause-side clauseOrAssembly gate — live by default
-            address(new MockClauseOrAssemblyStake()), // assembly-side clauseOrAssembly gate — live by default
-            address(new MockClauseOrAssemblyStake()), // agreement-side clauseOrAssembly gate — live by default
+            address(new MockClauseOrAssemblyStake()), // clause-side clauseOrProcess gate — live by default
+            address(new MockClauseOrAssemblyStake()), // assembly-side clauseOrProcess gate — live by default
+            address(new MockClauseOrAssemblyStake()), // agreement-side clauseOrProcess gate — live by default
             address(this), // batchVerifier — this contract IS the caller below
             1, // minSellers = 1 — floor disabled, isolate from that gate
             periods
@@ -186,7 +186,7 @@ contract HalmosUsageCounter is Test {
     /// makes a repeat a no-op, which is monotone trivially since state is
     /// unchanged on revert).
     function check_directAccrualMonotone(
-        bytes32 clauseOrAssembly,
+        bytes32 clauseOrProcess,
         uint8 period,
         bytes32 processId1,
         bytes32 processId2,
@@ -195,15 +195,15 @@ contract HalmosUsageCounter is Test {
     ) public {
         UsageCounterHarness counter = _deploy();
 
-        Snapshot memory s0 = _snapshot(counter, clauseOrAssembly, period);
+        Snapshot memory s0 = _snapshot(counter, clauseOrProcess, period);
 
-        Snapshot memory s1 = _accrueAndSnapshot(counter, clauseOrAssembly, period, processId1, seller1);
+        Snapshot memory s1 = _accrueAndSnapshot(counter, clauseOrProcess, period, processId1, seller1);
         assertGe(s1.c, s0.c, "c never goes backwards");
         assertGe(s1.d, s0.d, "d never goes backwards");
         assertGe(s1.score, s0.score, "score never goes backwards");
         assertGe(s1.total, s0.total, "the period total never goes backwards");
 
-        Snapshot memory s2 = _accrueAndSnapshot(counter, clauseOrAssembly, period, processId2, seller2);
+        Snapshot memory s2 = _accrueAndSnapshot(counter, clauseOrProcess, period, processId2, seller2);
         assertGe(s2.c, s1.c, "c never goes backwards (2nd call)");
         assertGe(s2.d, s1.d, "d never goes backwards (2nd call)");
         assertGe(s2.score, s1.score, "score never goes backwards (2nd call)");
@@ -216,12 +216,12 @@ contract HalmosUsageCounter is Test {
     ///      site instead of four scalars (this repo's existing pattern for
     ///      stack depth, matching `UsageCounterTest`'s `_recordOn`/`_accrual`
     ///      helpers).
-    function _snapshot(UsageCounterHarness counter, bytes32 clauseOrAssembly, uint8 period)
+    function _snapshot(UsageCounterHarness counter, bytes32 clauseOrProcess, uint8 period)
         internal
         view
         returns (Snapshot memory s)
     {
-        (s.c, s.d, s.score) = counter.accrualOf(KIND_CLAUSE, clauseOrAssembly, period);
+        (s.c, s.d, s.score) = counter.accrualOf(KIND_CLAUSE, clauseOrProcess, period);
         s.total = counter.totalScoreIn(period);
     }
 
@@ -230,13 +230,13 @@ contract HalmosUsageCounter is Test {
     ///      a struct rather than four scalars.
     function _accrueAndSnapshot(
         UsageCounterHarness counter,
-        bytes32 clauseOrAssembly,
+        bytes32 clauseOrProcess,
         uint8 period,
         bytes32 processId,
         address seller
     ) internal returns (Snapshot memory) {
-        address(counter).call(abi.encodeCall(counter.accrue, (clauseOrAssembly, period, processId, seller)));
-        return _snapshot(counter, clauseOrAssembly, period);
+        address(counter).call(abi.encodeCall(counter.accrue, (clauseOrProcess, period, processId, seller)));
+        return _snapshot(counter, clauseOrProcess, period);
     }
 
     // ── 2. A use counts the same on either route ─────────────────────
@@ -287,7 +287,7 @@ contract HalmosUsageCounter is Test {
     /// `scoreOf(kind, key, period) == accrualOf.score` for every combination
     /// of "has the direct path counted here" and "has a batch counted here".
     function check_scoreOfIsTheOneTally(
-        bytes32 clauseOrAssembly,
+        bytes32 clauseOrProcess,
         address seller,
         bytes32 processId,
         bool doDirect,
@@ -296,13 +296,13 @@ contract HalmosUsageCounter is Test {
         UsageCounterHarness counter = _deploy();
         vm.warp(P0_END - 1000);
 
-        if (doDirect) _tryCount(counter, KIND_CLAUSE, clauseOrAssembly, processId, seller, false);
+        if (doDirect) _tryCount(counter, KIND_CLAUSE, clauseOrProcess, processId, seller, false);
         if (doBatch) {
-            _tryCount(counter, KIND_CLAUSE, clauseOrAssembly, keccak256(abi.encode(processId)), seller, true);
+            _tryCount(counter, KIND_CLAUSE, clauseOrProcess, keccak256(abi.encode(processId)), seller, true);
         }
 
-        (,, uint256 score) = counter.accrualOf(KIND_CLAUSE, clauseOrAssembly, 0);
-        assertEq(counter.scoreOf(KIND_CLAUSE, clauseOrAssembly, 0), score, "scoreOf reads the one tally");
+        (,, uint256 score) = counter.accrualOf(KIND_CLAUSE, clauseOrProcess, 0);
+        assertEq(counter.scoreOf(KIND_CLAUSE, clauseOrProcess, 0), score, "scoreOf reads the one tally");
         assertEq(counter.totalScoreIn(0), score, "the period total is that score");
     }
 
@@ -334,25 +334,25 @@ contract HalmosUsageCounter is Test {
     /// open is rejected, and — crucially — the REJECTED write touches nothing,
     /// while a write accepted into the correct period leaves every OTHER
     /// period's entry for the same clause or assembly exactly as it was.
-    function check_wrongPeriodIsRejected_andOtherPeriodUntouched(bytes32 clauseOrAssembly, address seller) public {
+    function check_wrongPeriodIsRejected_andOtherPeriodUntouched(bytes32 clauseOrProcess, address seller) public {
         UsageCounterHarness counter = _deploy();
         vm.warp(P0_END - 1000); // period 0 is open
 
-        UsageCounter.BatchUse[] memory uses = _oneUse(KIND_CLAUSE, clauseOrAssembly, keccak256("a-process"), seller);
+        UsageCounter.BatchUse[] memory uses = _oneUse(KIND_CLAUSE, clauseOrProcess, keccak256("a-process"), seller);
 
         // Claiming period 1 while period 0 is open must revert.
         (bool wrongOk,) =
             address(counter).call(abi.encodeCall(UsageCounter.applyBatchAccrual, (1, PROVENANCE_LEAF, uses)));
         assertFalse(wrongOk, "a batch cannot land in a period the chain has not opened");
 
-        (,, uint256 otherBefore) = counter.accrualOf(KIND_CLAUSE, clauseOrAssembly, 1);
+        (,, uint256 otherBefore) = counter.accrualOf(KIND_CLAUSE, clauseOrProcess, 1);
         assertEq(otherBefore, 0, "the rejected write touched nothing");
 
         // The correct period succeeds...
         counter.applyBatchAccrual(0, PROVENANCE_LEAF, uses);
 
         // ...and period 1's entry for the SAME clause or assembly is untouched.
-        (,, uint256 otherAfter) = counter.accrualOf(KIND_CLAUSE, clauseOrAssembly, 1);
+        (,, uint256 otherAfter) = counter.accrualOf(KIND_CLAUSE, clauseOrProcess, 1);
         assertEq(otherAfter, otherBefore, "recording in period 0 never touches period 1's slot");
     }
 
@@ -436,7 +436,7 @@ contract HalmosUsageCounter is Test {
         bool viaBatch
     ) public {
         vm.assume(countedKind < 3 && otherKind < 3 && countedKind != otherKind);
-        vm.assume(key != PROVENANCE_LEAF && key != ASSEMBLY_TERMS_LEAF);
+        vm.assume(key != PROVENANCE_LEAF && key != PROCESS_TERMS_LEAF);
         vm.warp(P0_END - 1000);
         UsageCounterHarness counter = _deploy();
 
@@ -473,7 +473,7 @@ contract HalmosUsageCounter is Test {
         bool countedViaBatch
     ) public {
         vm.assume(pair < 6);
-        vm.assume(key != PROVENANCE_LEAF && key != ASSEMBLY_TERMS_LEAF);
+        vm.assume(key != PROVENANCE_LEAF && key != PROCESS_TERMS_LEAF);
         (uint8 countedKind, uint8 otherKind) = _orderedKindPair(pair);
         vm.warp(P0_END - 1000);
         UsageCounterHarness counter = _deploy();
@@ -499,7 +499,7 @@ contract HalmosUsageCounter is Test {
     /// batch's token resolution still lands.
     function check_anUnknownKindIsSkipped(uint8 unknownKind, uint8 probeKind, bytes32 key, address seller) public {
         vm.assume(unknownKind >= 3);
-        vm.assume(key != PROVENANCE_LEAF && key != ASSEMBLY_TERMS_LEAF);
+        vm.assume(key != PROVENANCE_LEAF && key != PROCESS_TERMS_LEAF);
         vm.warp(P0_END - 1000);
         UsageCounterHarness counter = _deploy();
 

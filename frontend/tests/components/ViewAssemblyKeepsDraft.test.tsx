@@ -10,11 +10,11 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { deriveAssemblySlug } from "@/lib/shared/assembly";
+import { deriveProcessDesignSlug } from "@/lib/shared/assembly";
 
 const DESIGNER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as const;
 const HASH = `0x${"ab".repeat(32)}` as const;
-const SLUG = deriveAssemblySlug(HASH);
+const SLUG = deriveProcessDesignSlug(HASH);
 
 const mocks = vi.hoisted(() => ({ readContract: vi.fn() }));
 const CLIENT = { chain: { id: 31337 }, readContract: (...a: unknown[]) => mocks.readContract(...a) };
@@ -29,9 +29,9 @@ vi.mock("wagmi", () => ({
     usePublicClient: () => CLIENT,
 }));
 const PUBLISHED = vi.hoisted(() => ({ value: null as unknown }));
-vi.mock("@/lib/protocol/useAssemblyRegistry", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/protocol/useAssemblyRegistry")>()),
-    getAssemblyRegistry: () => "0x3333333333333333333333333333333333333333",
+vi.mock("@/lib/protocol/useProcessRegistry", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/protocol/useProcessRegistry")>()),
+    getProcessRegistry: () => "0x3333333333333333333333333333333333333333",
     usePublishedAssemblies: () => PUBLISHED.value,
     fetchHydratedAssembly: async () => ({ assembly: { name: "Point of sale", agreements: [] }, agreements: {} }),
 }));
@@ -52,7 +52,7 @@ vi.mock("@/app/(tools)/assemblies/designer/_components/AssemblyTermsPanel", () =
 vi.mock("@/app/(tools)/assemblies/designer/_components/AssemblyIdentity", () => ({ AssemblyIdentity: () => null }));
 
 PUBLISHED.value = {
-    read: { status: "present", value: [{ slug: SLUG, assemblyHash: HASH, contentURI: "ipfs://a", registeredBy: DESIGNER, stakeWithdrawn: false }] },
+    read: { status: "present", value: [{ slug: SLUG, processDesignHash: HASH, contentURI: "ipfs://a", registeredBy: DESIGNER, stakeWithdrawn: false }] },
     refetch: () => undefined,
 };
 

@@ -27,7 +27,7 @@
 // a batch whose accrual did not apply, a burst of withdrawals. The solvency
 // check reads FigaroCore's whole history from the deployment block: for every
 // token a process was ever denominated in, FigaroCore must hold exactly the
-// bonds of the orders still open — 2·payment + 2·cumulativeValue per order
+// bonds of the orders still open — 2·payment + 2·runningTotal per order
 // (VERIFICATION_MAP.md A-8). Less than that is the incident; more is a surplus
 // someone sent, reported but not an alert. The relay check reads each given
 // relay's `GET /status`: work queued there while no batch has resolved for
@@ -115,7 +115,7 @@ const deployBlock = BigInt(record.deploymentBlock);
 // Every address the watch reads must hold code: a wrong address in the record
 // answers every event query with nothing, and a watcher reading nothing
 // raises nothing. A record the chain does not carry is a heartbeat failure.
-const WATCHED = ["figaroCore", "florinToken", "rpgfMinter", "batchVerifier", "membersRegistry", "clauseRegistry", "assemblyRegistry"];
+const WATCHED = ["figaroCore", "florinToken", "rpgfMinter", "batchVerifier", "membersRegistry", "clauseRegistry", "processRegistry"];
 for (const key of WATCHED) {
     const code = await client.getCode({ address: record[key] });
     if (!code || code === "0x") throw new Error(`record ${key} ${record[key]} holds no code on chain ${chainId} — the record is not this chain's deployment`);
@@ -191,7 +191,7 @@ if (RELAYS.length > 0) {
 const withdrawals = [
     ...(await eventsChunked({ address: record.membersRegistry, abi: abiOf("MembersRegistry"), eventName: "MemberWithdrawalRequested", fromBlock: windowFrom, toBlock: head })),
     ...(await eventsChunked({ address: record.clauseRegistry, abi: abiOf("ClauseRegistry"), eventName: "DepositWithdrawn", fromBlock: windowFrom, toBlock: head })),
-    ...(await eventsChunked({ address: record.assemblyRegistry, abi: abiOf("AssemblyRegistry"), eventName: "DepositWithdrawn", fromBlock: windowFrom, toBlock: head })),
+    ...(await eventsChunked({ address: record.processRegistry, abi: abiOf("ProcessRegistry"), eventName: "DepositWithdrawn", fromBlock: windowFrom, toBlock: head })),
 ];
 if (withdrawals.length >= BURST) {
     alert("notice", `withdrawal-burst-${windowFrom}`,
@@ -215,7 +215,7 @@ committed.forEach((o, i) => {
     if (statuses[i] === 2) { resolved++; return; }
     if (statuses[i] !== 1) throw new Error(`order ${o.args.orderHash} committed in tx ${o.transactionHash} has FigaroCore status ${statuses[i]}; the node is not on this deployment's chain`);
     open++;
-    const bonds = 2n * o.args.payment + 2n * o.args.cumulativeValue;
+    const bonds = 2n * o.args.payment + 2n * o.args.runningTotal;
     held.set(o.args.currency, (held.get(o.args.currency) ?? 0n) + bonds);
 });
 const currencies = new Set(committed.map((o) => o.args.currency));

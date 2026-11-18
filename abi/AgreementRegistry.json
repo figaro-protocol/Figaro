@@ -12,7 +12,7 @@
   },
   {
     "type": "function",
-    "name": "ASSEMBLY_TERMS_LEAF_KEY",
+    "name": "PROCESS_TERMS_LEAF_KEY",
     "inputs": [],
     "outputs": [
       {

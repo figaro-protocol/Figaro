@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { deriveAssemblySlug } from "@/lib/shared/assembly";
+import { deriveProcessDesignSlug } from "@/lib/shared/assembly";
 import { MemberCard } from "./MemberCard";
 import { useDeviceLocation } from "./useDeviceLocation";
 import { useMounted } from "@/hooks/useMounted";
@@ -14,7 +14,7 @@ import {
 import { useMemberListings } from "@/lib/member/useMemberListings";
 
 function listingAssemblies(listing: Listing): string[] {
-    return Array.from(new Set(listing.bindings.map((b) => deriveAssemblySlug(b.assemblyHash))));
+    return Array.from(new Set(listing.bindings.map((b) => deriveProcessDesignSlug(b.assemblyHash))));
 }
 
 export function MemberDiscovery() {

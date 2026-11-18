@@ -65,12 +65,12 @@ describe("buildCommitment", () => {
                 processId: "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex,
                 buyer: BUYER,
                 seller: SELLER,
-                currency: TOKEN,
+                token: TOKEN,
                 payment: 1000n,
-                expectedCumulativeValue: 1000n,
+                runningTotal: 1000n,
                 checkoutHash: AGREEMENT,
                 salt: 42n,
-                deadline: 9999n,
+                commitDeadline: 9999n,
             },
             domain,
         );
@@ -78,12 +78,12 @@ describe("buildCommitment", () => {
         expect(commitment.processId).toBe("0x0000000000000000000000000000000000000000000000000000000000000000");
         expect(commitment.buyer).toBe(BUYER);
         expect(commitment.seller).toBe(SELLER);
-        expect(commitment.currency).toBe(TOKEN);
+        expect(commitment.token).toBe(TOKEN);
         expect(commitment.payment).toBe(1000n);
-        expect(commitment.expectedCumulativeValue).toBe(1000n);
+        expect(commitment.runningTotal).toBe(1000n);
         expect(commitment.checkoutHash).toBe(AGREEMENT);
         expect(commitment.salt).toBe(42n);
-        expect(commitment.deadline).toBe(9999n);
+        expect(commitment.commitDeadline).toBe(9999n);
 
         expect(typedData.domain).toBe(domain);
         expect(typedData.types).toBe(COMMITMENT_TYPES);
@@ -97,37 +97,37 @@ describe("buildCommitment", () => {
                 processId: "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex,
                 buyer: BUYER,
                 seller: SELLER,
-                currency: TOKEN,
+                token: TOKEN,
                 payment: 1000n,
-                expectedCumulativeValue: 1000n,
+                runningTotal: 1000n,
                 checkoutHash: AGREEMENT,
-                deadline: 1_900_000_000n,
+                commitDeadline: 1_900_000_000n,
             },
             domain,
         );
 
         expect(commitment.salt > 0n).toBe(true);
-        expect(commitment.deadline).toBe(1_900_000_000n);
+        expect(commitment.commitDeadline).toBe(1_900_000_000n);
     });
 
-    it("builds sub-order commitment with processId and expectedCumulativeValue", () => {
+    it("builds sub-order commitment with processId and runningTotal", () => {
         const { commitment, typedData } = buildCommitment(
             {
                 processId: PROCESS_ID,
                 buyer: BUYER,
                 seller: SELLER,
-                currency: TOKEN,
+                token: TOKEN,
                 payment: 500n,
-                expectedCumulativeValue: 1000n,
+                runningTotal: 1000n,
                 checkoutHash: AGREEMENT,
                 salt: 7n,
-                deadline: 5000n,
+                commitDeadline: 5000n,
             },
             domain,
         );
 
         expect(commitment.processId).toBe(PROCESS_ID);
-        expect(commitment.expectedCumulativeValue).toBe(1000n);
+        expect(commitment.runningTotal).toBe(1000n);
         expect(commitment.payment).toBe(500n);
 
         expect(typedData.types).toBe(COMMITMENT_TYPES);
@@ -141,19 +141,19 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
         processId: ZERO,
         buyer: BUYER,
         seller: SELLER,
-        currency: TOKEN,
+        token: TOKEN,
         payment: 500n,
-        expectedCumulativeValue: 500n,
+        runningTotal: 500n,
         checkoutHash: AGREEMENT,
         salt: 12345n,
-        deadline: 1700000000n,
+        commitDeadline: 1700000000n,
     };
 
     it("COMMITMENT_TYPEHASH equals FigaroCore's literal type string", () => {
         const literal =
-            "Commitment(bytes32 processId,address buyer,address seller,address currency," +
-            "uint256 payment,uint256 expectedCumulativeValue,bytes32 checkoutHash," +
-            "uint256 salt,uint256 deadline)";
+            "Commitment(bytes32 processId,address buyer,address seller,address token," +
+            "uint256 payment,uint256 runningTotal,bytes32 checkoutHash," +
+            "uint256 salt,uint256 commitDeadline)";
         expect(COMMITMENT_TYPEHASH).toBe(keccak256(toBytes(literal)));
     });
 
@@ -168,8 +168,8 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
                 ],
                 [
                     COMMITMENT_TYPEHASH, root.processId, root.buyer, root.seller,
-                    root.currency, root.payment, root.expectedCumulativeValue,
-                    root.checkoutHash, root.salt, root.deadline,
+                    root.token, root.payment, root.runningTotal,
+                    root.checkoutHash, root.salt, root.commitDeadline,
                 ],
             ),
         );
@@ -196,18 +196,18 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
 });
 
 describe("buildCommitmentSafe — the sub-order's cumulative value is what FigaroCore checks", () => {
-    const processes = async () => [BUYER, TOKEN, 700n, 2n] as const; // rootBuyer, currency, cumulativeValue, activeOrderCount
+    const processes = async () => [BUYER, TOKEN, 700n, 2n] as const; // rootBuyer, currency, runningTotal, activeOrderCount
     const client = { readContract: processes } as unknown as Parameters<typeof buildCommitmentSafe>[0];
     const addresses = { core: CORE_ADDR } as Parameters<typeof buildCommitmentSafe>[1];
     const domain = buildDomain(31337, CORE_ADDR);
 
-    it("sets expectedCumulativeValue to the process's current cumulative value PLUS this order's payment", async () => {
+    it("sets runningTotal to the process's current cumulative value PLUS this order's payment", async () => {
         const { commitment } = await buildCommitmentSafe(client, addresses, {
-            processId: PROCESS_ID, buyer: BUYER, seller: SELLER, currency: TOKEN, payment: 50n,
-            checkoutHash: AGREEMENT, salt: 1n, deadline: 2_000_000n,
+            processId: PROCESS_ID, buyer: BUYER, seller: SELLER, token: TOKEN, payment: 50n,
+            checkoutHash: AGREEMENT, salt: 1n, commitDeadline: 2_000_000n,
         }, domain);
-        // FigaroCore: expectedCumulativeValue == cumulativeValue + payment, else CumulativeValueMismatch.
-        expect(commitment.expectedCumulativeValue).toBe(700n + 50n);
+        // FigaroCore: the commitment's runningTotal == the process's runningTotal + payment, else CumulativeValueMismatch.
+        expect(commitment.runningTotal).toBe(700n + 50n);
         expect(commitment.payment).toBe(50n);
         expect(commitment.processId).toBe(PROCESS_ID);
     });

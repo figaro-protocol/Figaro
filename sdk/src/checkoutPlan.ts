@@ -30,8 +30,8 @@ import {
     type ProjectionSpecView,
     type SpecSource,
 } from "./projection.js";
-import { agreementClauses, assemblyFollows, type HydratedAssembly, type AssemblyAgreement } from "./assembly.js";
-import { planAssemblyOrders, type PlannedAssemblyOrder } from "./reconstructOrders.js";
+import { agreementClauses, processDesignFollows, type HydratedProcessDesign, type ProcessDesignAgreement } from "./assembly.js";
+import { planProcessOrders, type PlannedProcessOrder } from "./reconstructOrders.js";
 import { isAddressHex, type Hex } from "./types.js";
 import type { CoSellerBinding } from "./memberProfile.js";
 import type { CatalogItemMetadata } from "./memberCatalog.js";
@@ -39,7 +39,7 @@ import type { CatalogItemMetadata } from "./memberCatalog.js";
 /** An order's clause fields — the same map the agreement commits. */
 type ClauseFields = Record<string, Record<string, unknown>>;
 
-export interface AssemblyCheckoutLineItem {
+export interface ProcessCheckoutLineItem {
     itemId: string;
     name: string;
     quantity: number;
@@ -115,7 +115,7 @@ export function derivePricedFields(
 export function fillCommerceClause(
     clauses: ClauseFields,
     specs: SpecSource,
-    lineItems?: AssemblyCheckoutLineItem[],
+    lineItems?: ProcessCheckoutLineItem[],
 ): ClauseFields {
     const commerceClauseId = composedClauseDeclaring(clauses, "lineItems", specs);
     if (!commerceClauseId || !lineItems) return clauses;
@@ -136,7 +136,7 @@ export function fillCommerceClause(
  * declaration is the whole routing rule: ANY clause — including one this
  * code has never seen — declaring a `currency` design fill IS one, and a
  * clause declaring `currency` as plain content is never a pin. The pin
- * survives the value-free assembly build and is part of the assemblyHash:
+ * survives the value-free assembly build and is part of the processDesignHash:
  * the assembly's one-token tailoring.
  *
  * Undefined = unpinned (the buyer's payment-token pick, else the seller's
@@ -188,7 +188,7 @@ export function mechanicallyFilledFieldNames(
 
 /** One catalog measure as a number: the line's catalog-item field, when it
  *  is a finite, non-negative number. Anything else is a missing measure. */
-function lineMeasure(line: AssemblyCheckoutLineItem, from: string): number | undefined {
+function lineMeasure(line: ProcessCheckoutLineItem, from: string): number | undefined {
     const value = (line.catalogItem as Record<string, unknown> | undefined)?.[from];
     return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
 }
@@ -198,7 +198,7 @@ function lineMeasure(line: AssemblyCheckoutLineItem, from: string): number | und
  *  lacks the item value (a partial sum would understate the order).
  *  `"single-unit"`: the item's value when the order is one unit (one line,
  *  quantity 1), missing otherwise. No line, no value: nothing is invented. */
-function combineMeasure(lines: readonly AssemblyCheckoutLineItem[], measure: CatalogueMeasure): number | undefined {
+function combineMeasure(lines: readonly ProcessCheckoutLineItem[], measure: CatalogueMeasure): number | undefined {
     if (lines.length === 0) return undefined;
     if (measure.combine === "single-unit") {
         return lines.length === 1 && lines[0].quantity === 1 ? lineMeasure(lines[0], measure.from) : undefined;
@@ -226,7 +226,7 @@ function combineMeasure(lines: readonly AssemblyCheckoutLineItem[], measure: Cat
  */
 export function fillCatalogueMeasures(
     clauses: ClauseFields,
-    lines: readonly AssemblyCheckoutLineItem[],
+    lines: readonly ProcessCheckoutLineItem[],
     specs: SpecSource,
 ): ClauseFields {
     let out = clauses;
@@ -292,7 +292,7 @@ export function missingCatalogueMeasures(
  */
 export function fillClassClauses(
     clauses: ClauseFields,
-    lines: AssemblyCheckoutLineItem[],
+    lines: ProcessCheckoutLineItem[],
     specs: SpecSource,
 ): ClauseFields {
     let out = clauses;
@@ -402,7 +402,7 @@ export function fillDimweightClause(
  */
 export function fillDerivedClauses(
     clauses: ClauseFields,
-    lines: AssemblyCheckoutLineItem[],
+    lines: ProcessCheckoutLineItem[],
     specs: SpecSource,
     profileValues?: Readonly<Record<string, Record<string, unknown>>>,
 ): ClauseFields {
@@ -450,8 +450,8 @@ export function profileValuesFor(
 /** The binding slice of a bound assembly — the hydrated assembly (assembly
  *  plus each agreement's registered agreement) and the adopting seller's
  *  co-seller bindings (any richer projection passes structurally). */
-export interface BoundAssemblyPlanInput {
-    hydratedAssembly: HydratedAssembly;
+export interface BoundProcessPlanInput {
+    hydratedAssembly: HydratedProcessDesign;
     coSellerBindings: readonly CoSellerBinding[];
 }
 
@@ -468,21 +468,21 @@ export interface BoundAssemblyPlanInput {
  * unresolvable) — the same guard the checkout relies on.
  */
 export function planSubOrderSellers(
-    bound: BoundAssemblyPlanInput,
-): Array<{ node: PlannedAssemblyOrder; seller: `0x${string}` | null; itemId: string | null }> {
+    bound: BoundProcessPlanInput,
+): Array<{ node: PlannedProcessOrder; seller: `0x${string}` | null; itemId: string | null }> {
     const { assembly } = bound.hydratedAssembly;
     const rootId =
-        assembly.agreements.find((o) => assemblyFollows(o).length === 0)?.id ??
+        assembly.agreements.find((o) => processDesignFollows(o).length === 0)?.id ??
         assembly.agreements[0]?.id;
     // Commit order (throws on a cyclic topology — the guard the checkout
     // relies on), then the sub-orders are everything but the root.
-    const ordered = planAssemblyOrders(bound.hydratedAssembly).filter((node) => node.nodeId !== rootId);
+    const ordered = planProcessOrders(bound.hydratedAssembly).filter((node) => node.nodeId !== rootId);
     const byId = new Map(assembly.agreements.map((entry) => [entry.id, entry]));
     const cursor = new Map<string, number>();
     return ordered.map((node) => {
         // The agreement's own clauses — its registered agreement's — never
         // the assembly-scoped terms every order carries.
-        const entry = byId.get(node.nodeId) as AssemblyAgreement;
+        const entry = byId.get(node.nodeId) as ProcessDesignAgreement;
         const nodeClauses = Object.keys(agreementClauses(bound.hydratedAssembly, entry)).map((k) => k.toLowerCase());
         const binding = bound.coSellerBindings.find((cb) => nodeClauses.includes(cb.clauseKey.toLowerCase()));
         if (!binding || binding.addresses.length === 0) return { node, seller: null, itemId: null };
@@ -543,7 +543,7 @@ export interface SubOrderPricing {
  * refuses a payment of zero at commit regardless).
  */
 export function resolveSubOrderPricing(args: {
-    node: Pick<PlannedAssemblyOrder, "clauses">;
+    node: Pick<PlannedProcessOrder, "clauses">;
     seller: `0x${string}`;
     sellerCatalogs: readonly PricingCatalog[];
     tokenDecimals: number;

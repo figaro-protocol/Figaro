@@ -27,7 +27,7 @@
 //
 //   <agreement.json>  The agreement you were shown: {version:"a1", buyer,
 //                     seller, clauses:[{clause, data | dataHash}, …],
-//                     provenance?: {agreementHash, assemblyHash},
+//                     provenance?: {agreementHash, processDesignHash},
 //                     follows?: [orderHash, …]} — the `Agreement` type of
 //                     sdk/src/agreement.ts. Each `clause` is a clause key; a
 //                     clause carries its `data` or, content-withheld, its
@@ -115,12 +115,12 @@ const commitment = {
     processId: message.processId,
     buyer: message.buyer,
     seller: message.seller,
-    currency: message.currency,
+    token: message.token,
     payment: BigInt(message.payment),
-    expectedCumulativeValue: BigInt(message.expectedCumulativeValue),
+    runningTotal: BigInt(message.runningTotal),
     checkoutHash: message.checkoutHash,
     salt: BigInt(message.salt),
-    deadline: BigInt(message.deadline),
+    commitDeadline: BigInt(message.commitDeadline),
 };
 const chainId = Number(domain.chainId);
 const core = domain.verifyingContract;

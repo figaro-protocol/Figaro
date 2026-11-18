@@ -19,13 +19,13 @@ import {
 import { InProcessChannel } from "../src/agent/coordination.js";
 import { computeCheckoutHash } from "../src/agreement.js";
 import { buildDomain, COMMITMENT_TYPES } from "../src/commitments.js";
-import { assemblyHashOf } from "../src/assembly.js";
+import { processDesignHashOf } from "../src/assembly.js";
 import type { Address } from "../src/types.js";
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { hydrateAuthored, profileBinding } from "./hydrate.js";
 import type { PublicClient } from "viem";
 import { makeSellerOfferHandler } from "../src/agent/originate.js";
-import { deriveAssemblySlug } from "../src/assembly.js";
+import { deriveProcessDesignSlug } from "../src/assembly.js";
 import type { CommitmentPayload } from "../src/agent/coordination.js";
 import { forgeBuyerOffer } from "./forgeOffer.js";
 
@@ -144,15 +144,15 @@ describe("validateOffer — the economic floor (operator policy)", () => {
         expect((await validateOffer(offer, SELLER.address, policy, undefined, null, BOUND)).ok).toBe(true);
     });
 
-    it("rejects a root-shape violation when requireRootShape is set (cumulativeValue != payment)", async () => {
+    it("rejects a root-shape violation when requireRootShape is set (runningTotal != payment)", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        offer.commitment.expectedCumulativeValue = 500n; // != payment (1000) — not a well-formed root
+        offer.commitment.runningTotal = 500n; // != payment (1000) — not a well-formed root
         expect((await validateOffer(offer, SELLER.address, policy, undefined, null, BOUND)).reason).toMatch(/root order/i);
     });
 
     it("accepts a non-root shape when requireRootShape is omitted (a sub-order seller)", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        offer.commitment.expectedCumulativeValue = 1800n; // running total on a sub-order
+        offer.commitment.runningTotal = 1800n; // running total on a sub-order
         const subPolicy: OfferPolicy = { currencyAllowlist: [CURRENCY], maxValue: 10_000n };
         expect((await validateOffer(offer, SELLER.address, subPolicy, undefined, null, BOUND)).ok).toBe(true);
     });
@@ -222,7 +222,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
         };
         const offer = await forgeBuyerOffer(buyerW, restated);
         // The signed STRUCT still names the allowlisted currency.
-        expect(offer.commitment.currency).toBe(CURRENCY);
+        expect(offer.commitment.token).toBe(CURRENCY);
 
         // validateOffer without specs is structural only — the restated
         // token is invisible to it; no signing path runs without specs.
@@ -316,10 +316,10 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
         const a = instantiateRootAgreement(pinned, { buyer: BUYER.address, seller: SELLER.address, overrides });
         expect(a.provenance).toEqual({
             agreementHash: pinned.assembly.agreements[0].agreementHash,
-            assemblyHash: assemblyHashOf(pinned.assembly),
+            processDesignHash: processDesignHashOf(pinned.assembly),
         });
         // The provenance leaf is the format's, not a clause: no clause carries it.
-        expect(a.clauses.some((s) => "assemblyHash" in (s.data ?? {}))).toBe(false);
+        expect(a.clauses.some((s) => "processDesignHash" in (s.data ?? {}))).toBe(false);
     });
 
     it("the folded pin now REACHES the sign gate: a pin contradicting the struct refuses to sign", async () => {
@@ -341,7 +341,7 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
             chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, overrides, specs: FOLD_SPECS,
         });
         expect(offer.buyerSig).toBeDefined();
-        expect(offer.agreement.provenance?.assemblyHash).toBe(assemblyHashOf(pinned.assembly));
+        expect(offer.agreement.provenance?.processDesignHash).toBe(processDesignHashOf(pinned.assembly));
         expect(offer.commitment.checkoutHash).toBe(computeCheckoutHash(offer.agreement));
     });
 });
@@ -412,8 +412,8 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
             account: BUYER, domain: buildDomain(CHAIN, CORE), types: COMMITMENT_TYPES, primaryType: "Commitment", message: commitment,
         });
         const short: CommitmentPayload = { commitment, agreement, buyerSig };
-        const assemblyHash = assemblyHashOf(designed.assembly);
-        const named = new RegExp(`figaro-consent clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(assemblyHash)} \\(${assemblyHash}\\) composes`);
+        const processDesignHash = processDesignHashOf(designed.assembly);
+        const named = new RegExp(`figaro-consent clause: the order does not carry this clause, which assembly ${deriveProcessDesignSlug(processDesignHash)} \\(${processDesignHash}\\) composes`);
         expect((await validateOffer(short, SELLER.address, undefined, DESIGN_SPECS, designed, profileBinding(designed))).reason).toMatch(named);
         await expect(counterSignOffer(sellerW, short, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, DESIGN_SPECS, () => true, policy, designed, profileBinding(designed)))
             .rejects.toThrow(named);
@@ -437,7 +437,7 @@ describe("the seller's bound assemblies — the offer leg refuses an order under
     const elsewhere = hydrateAuthored({
         agreements: [{ id: "agreement-0", clauses: {}, follows: [] }],
     });
-    const offeredHash = assemblyHashOf(assembly.assembly);
+    const offeredHash = processDesignHashOf(assembly.assembly);
     const CTX = { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW };
     // The handler reads only the chain id and the chain's clock from its
     // public client here: the bond approval is switched off, so nothing else
@@ -450,7 +450,7 @@ describe("the seller's bound assemblies — the offer leg refuses an order under
         expect((await validateOffer(offer, SELLER.address, undefined, undefined, null, BOUND)).ok).toBe(true);
         const refused = await validateOffer(offer, SELLER.address, undefined, undefined, null, profileBinding(elsewhere));
         expect(refused.ok).toBe(false);
-        expect(refused.reason).toContain(deriveAssemblySlug(offeredHash));
+        expect(refused.reason).toContain(deriveProcessDesignSlug(offeredHash));
         expect(refused.reason).toContain(offeredHash);
     });
 
@@ -458,7 +458,7 @@ describe("the seller's bound assemblies — the offer leg refuses an order under
         const offer = await buildBuyerOffer(buyerW, offerParams());
         expect((await counterSignOffer(sellerW, offer, CTX, SPECS, () => true, policy, assembly, BOUND))?.sellerSig).toBeDefined();
         await expect(counterSignOffer(sellerW, offer, CTX, SPECS, () => true, policy, assembly, profileBinding(elsewhere)))
-            .rejects.toThrow(new RegExp(`has not bound assembly ${deriveAssemblySlug(offeredHash)} \\(${offeredHash}\\)`));
+            .rejects.toThrow(new RegExp(`has not bound assembly ${deriveProcessDesignSlug(offeredHash)} \\(${offeredHash}\\)`));
     });
 
     it("counterSignOffer refuses an offer whose agreement carries no provenance leaf", async () => {
@@ -586,7 +586,7 @@ describe("the seller's deadline cap — the latest deadline it will counter-sign
     }) as unknown as PublicClient;
 
     it("checkDeadlineCap passes a deadline at most maxDeadlineSeconds past the chain's now, and refuses one past it", () => {
-        const c = { deadline: DEADLINE } as Parameters<typeof checkDeadlineCap>[0];
+        const c = { commitDeadline: DEADLINE } as Parameters<typeof checkDeadlineCap>[0];
         const capped: OfferPolicy = { ...policy, maxDeadlineSeconds: 600n };
         expect(checkDeadlineCap(c, capped, DEADLINE - 600n)).toEqual({ ok: true });
         const over = checkDeadlineCap(c, capped, DEADLINE - 601n);
@@ -595,14 +595,14 @@ describe("the seller's deadline cap — the latest deadline it will counter-sign
     });
 
     it("an omitted cap applies DEFAULT_MAX_DEADLINE_SECONDS, which clears the buyer's default one-hour deadline", () => {
-        const c = { deadline: DEADLINE } as Parameters<typeof checkDeadlineCap>[0];
+        const c = { commitDeadline: DEADLINE } as Parameters<typeof checkDeadlineCap>[0];
         expect(DEFAULT_MAX_DEADLINE_SECONDS).toBeGreaterThanOrEqual(3600n);
         expect(checkDeadlineCap(c, policy, DEADLINE - DEFAULT_MAX_DEADLINE_SECONDS).ok).toBe(true);
         expect(checkDeadlineCap(c, policy, DEADLINE - DEFAULT_MAX_DEADLINE_SECONDS - 1n).ok).toBe(false);
     });
 
     it("refuses when no chain time is given: the deadline has nothing to be bounded against", () => {
-        const c = { deadline: DEADLINE } as Parameters<typeof checkDeadlineCap>[0];
+        const c = { commitDeadline: DEADLINE } as Parameters<typeof checkDeadlineCap>[0];
         expect(checkDeadlineCap(c, policy, undefined).reason).toMatch(/no chain time/);
     });
 

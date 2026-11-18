@@ -48,11 +48,11 @@ export interface ProveAndSettleConfig {
 }
 
 /** The buyer's resolve, in either of its forms: the buyer's own EIP-712 signature over
- *  `ResolveProcess(processId, cumulativeValue)` under the verifier's domain, or the bytes
+ *  `ResolveProcess(processId, runningTotal)` under the verifier's domain, or the bytes
  *  the buyer's wallet code validates for that digest (ERC-1271). */
 export type BuyerResolve =
-    | { processId: Hex; cumulativeValue: bigint; commitments: Commitment[]; buyerSignature: Hex }
-    | { processId: Hex; cumulativeValue: bigint; commitments: Commitment[]; walletAuthorization: Hex };
+    | { processId: Hex; runningTotal: bigint; commitments: Commitment[]; buyerSignature: Hex }
+    | { processId: Hex; runningTotal: bigint; commitments: Commitment[]; walletAuthorization: Hex };
 
 /** The landing of the batch that resolved the process. */
 export interface Settled {
@@ -137,9 +137,9 @@ export async function proveAndSettle(config: ProveAndSettleConfig, resolve: Buye
         }
 
         if ("buyerSignature" in resolve) {
-            await relay.submitResolve(resolve.processId, resolve.cumulativeValue, resolve.commitments, resolve.buyerSignature);
+            await relay.submitResolve(resolve.processId, resolve.runningTotal, resolve.commitments, resolve.buyerSignature);
         } else {
-            await relay.submitResolveByWalletCode(resolve.processId, resolve.cumulativeValue, resolve.commitments, resolve.walletAuthorization);
+            await relay.submitResolveByWalletCode(resolve.processId, resolve.runningTotal, resolve.commitments, resolve.walletAuthorization);
         }
 
         for (;;) {

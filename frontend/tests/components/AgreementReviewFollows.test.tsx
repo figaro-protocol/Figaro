@@ -22,12 +22,12 @@ const commitment: Commitment = {
     processId: ZERO_BYTES32,
     buyer: "0x1111111111111111111111111111111111111111",
     seller: "0x2222222222222222222222222222222222222222",
-    currency: "0x3333333333333333333333333333333333333333",
+    token: "0x3333333333333333333333333333333333333333",
     payment: 1n,
-    expectedCumulativeValue: 1n,
+    runningTotal: 1n,
     checkoutHash: `0x${"ab".repeat(32)}`,
     salt: 1n,
-    deadline: 1_900_000_000n,
+    commitDeadline: 1_900_000_000n,
 };
 
 const base: Agreement = {

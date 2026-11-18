@@ -40,7 +40,7 @@ function profileToCatalog(
         defaultTokenAddress: profile.defaultTokenAddress,
         profileClauseValues: profile.profileClauseValues,
         agentServices: profile.services,
-        assemblyBindings: profile.assemblyBindings,
+        processBindings: profile.processBindings,
         unitSystem: catalog?.unitSystem,
     };
 }
@@ -63,11 +63,11 @@ async function fetchSellerAsCatalog(
     // (it extends the discover rule): the
     // contracts are permissionless — anyone can anchor any profile shape —
     // but this frontend surfaces only members whose profile binds ≥1 assembly
-    // anchored in the AssemblyRegistry (the registry is the authority, the
+    // anchored in the ProcessRegistry (the registry is the authority, the
     // profile an assertion). No anchored binding ⇒ absence, on /discover,
     // /s, and checkout alike.
-    const hasAnchoredBinding = (profile.assemblyBindings ?? [])
-        .some((b) => publishedHashes.has(b.assemblyHash.toLowerCase()));
+    const hasAnchoredBinding = (profile.processBindings ?? [])
+        .some((b) => publishedHashes.has(b.processDesignHash.toLowerCase()));
     if (!hasAnchoredBinding) return null;
 
     // Stamp the wallet onto the profile so downstream renderers can
@@ -86,7 +86,7 @@ async function fetchSellerAsCatalog(
 
 export interface DiscoveryService {
     isRegistryConfigured(): boolean;
-    /** `publishedHashes` = the AssemblyRegistry's anchored composition
+    /** `publishedHashes` = the ProcessRegistry's anchored composition
      *  hashes, lowercased; the surfacing rule drops members without ≥1
      *  anchored binding (applied evenly across every projection). */
     listCatalogs(client: PublicClient, chainId: number, publishedHashes: ReadonlySet<string>): Promise<DiscoveryResult>;

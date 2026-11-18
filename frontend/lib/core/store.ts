@@ -26,10 +26,10 @@ export interface Order {
      *  whose topology lives in the committed agreement's topology leaf
      *  (`Agreement.follows`, reconstructed off-chain). */
     follows?: string[];
-    cumulativeValue: bigint;
+    runningTotal: bigint;
     payment: bigint;
     state: OrderState;
-    /** Computed: 2 × cumulativeValue. Not carried directly on FigaroCore event. */
+    /** Computed: 2 × runningTotal. Not carried directly on FigaroCore event. */
     sellerBond: bigint;
     /** Computed: 2 × payment. Not carried directly on FigaroCore event. */
     buyerBond: bigint;
@@ -53,7 +53,7 @@ export interface Order {
 export function orderFromSdk(order: SdkOrder): Order {
     // Destructured, NOT spread — calculateBonds also returns totalLocked,
     // which must not ride along as an extra bigint field on the Order.
-    const { sellerBond, buyerBond } = calculateBonds(order.cumulativeValue, order.payment);
+    const { sellerBond, buyerBond } = calculateBonds(order.runningTotal, order.payment);
     return {
         orderHash: order.orderHash,
         processId: order.processId,
@@ -62,7 +62,7 @@ export function orderFromSdk(order: SdkOrder): Order {
         currency: order.currency,
         checkoutHash: order.checkoutHash,
         payment: order.payment,
-        cumulativeValue: order.cumulativeValue,
+        runningTotal: order.runningTotal,
         state: order.state,
         sellerBond,
         buyerBond,

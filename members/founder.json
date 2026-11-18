@@ -13,10 +13,10 @@
   "defaultTokenAddress": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
   "buyerAssemblies": [
     {
-      "assemblyHash": "0xc256e99944b6991fe03a954ca07468be382d4ef1b12e876664d07397a60cc69c"
+      "processDesignHash": "0xc256e99944b6991fe03a954ca07468be382d4ef1b12e876664d07397a60cc69c"
     },
     {
-      "assemblyHash": "0x5207af4319fae9a3f1a3cfac93f0a80e2b7dbb7025bfc8472e64269fb4f05b9e"
+      "processDesignHash": "0x5207af4319fae9a3f1a3cfac93f0a80e2b7dbb7025bfc8472e64269fb4f05b9e"
     }
   ]
 }

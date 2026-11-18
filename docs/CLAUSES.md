@@ -26,9 +26,9 @@ adding one. The list of clauses is the directory `clauses/`; each spec's
 
 Every clause is a merkle leaf under `checkoutHash`. The commitment
 struct (`src/core/kernel/CommitmentTypes.sol`, struct `Commitment`) carries
-what every order must carry: the parties, the token (`currency`), the
-`payment`, `expectedCumulativeValue`, the `checkoutHash`, the salt and the
-`deadline`. Both parties sign that struct, and it names the merkle root, so
+what every order must carry: the parties, the token (`token`), the
+`payment`, `runningTotal`, the `checkoutHash`, the salt and the
+`commitDeadline`. Both parties sign that struct, and it names the merkle root, so
 the struct and the clauses are signed together. No term that every order
 carries is a registered clause, and no clause restates a field of the
 struct: `figaro-commerce` declares only `lineItems`, and a clause carrying
@@ -45,7 +45,7 @@ Beside the clause leaves, the agreement format carries one reserved leaf: the
 assembly it instantiated. Its key is `keccak256("figaro-agreement-provenance")`
 (`0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6`), its
 committed content is exactly the canonical JSON
-`{"agreementHash":"0x<64 lowercase hex>","assemblyHash":"0x<64 lowercase hex>"}`,
+`{"agreementHash":"0x<64 lowercase hex>","processDesignHash":"0x<64 lowercase hex>"}`,
 and its leaf follows the clause-leaf convention,
 `keccak256(keccak256(key ‖ keccak256(content)))`, the same convention as a
 clause, whose leaf key is the clause key. The provenance key is a
@@ -57,7 +57,7 @@ direct path reverts (`UsageCounter._accrue`,
 it (`apply_usage_claims` in `prover/lib/src/kernel.rs`), and the counter's
 batch path skips it (`applyBatchAccrual`). Checkout writes the leaf from the
 agreement the order instantiates — the agreement's `agreementHash` and the assembly's
-`assemblyHash`; an agreement that names no assembly carries no provenance
+`processDesignHash`; an agreement that names no assembly carries no provenance
 leaf. The SDK owns the format (`PROVENANCE_LEAF_KEY`,
 `provenanceLeafBytes`, `computeProvenanceLeaf`, `agreementLeaves`,
 `buildProvenanceInclusionProof`, `provenanceLeafAttestation` in
@@ -65,7 +65,7 @@ leaf. The SDK owns the format (`PROVENANCE_LEAF_KEY`,
 `PROVENANCE_LEAF_KEY` hold the same constant, and the guest verifies an
 attestation of the leaf by inclusion with the bytes reproduced, consulting no
 spec. `decodeProvenanceContent(bytes)` returns `{ agreementHash,
-assemblyHash }` or `null`.
+processDesignHash }` or `null`.
 
 The agreement format carries a second leaf of its own: the **topology leaf**,
 the orders this order follows (`Agreement.follows`, their FigaroCore order
@@ -103,7 +103,7 @@ leaf when the agreement names a design, and the topology leaf when it carries
   empty tree's is `bytes32(0)`.
 
 An assembly's root is built by the same rules over the assembly tree's leaves
-(`assemblyHashOf`, `sdk/src/assembly.ts`).
+(`processDesignHashOf`, `sdk/src/assembly.ts`).
 
 The inner preimage of a clause leaf, and of the provenance leaf, is 64 bytes,
 a key and a data hash. No pair of a 32-byte key and a 32-byte data hash
@@ -115,7 +115,7 @@ because `ClauseRegistry.registerClause` accepts any nonzero key and
 `UsageCounter` and the guest refuse only the two reserved keys
 (`is_reserved_key`, `prover/lib/src/kernel.rs`). An assembly leaf's inner
 preimage is also 96 bytes (domain, key, data hash), and it is kept apart from
-the topology leaf by its first word, the domain: `ASSEMBLY_LEAF_DOMAIN` =
+the topology leaf by its first word, the domain: `PROCESS_LEAF_DOMAIN` =
 `keccak256("figaro-assembly-leaf")` =
 `0xb44cab2cf6dbf97cfe57060c8f30ee31552bc93f52859b4f32bd145f2882dfc6`, against
 `TOPOLOGY_LEAF_DOMAIN` =
@@ -147,9 +147,9 @@ registered design and not a second object beside the agreement completed at chec
 clause with the designer's fills, value-free, keyed by its root, the `agreementHash`
 (`AgreementRegistry`), and an
 assembly is a merkle tree of agreements, each binding a registered agreement by
-its `agreementHash`, plus the assembly-scoped terms (`AssemblyRegistry`). Assemblies use agreements, agreements use clauses, and
+its `agreementHash`, plus the assembly-scoped terms (`ProcessRegistry`). Assemblies use agreements, agreements use clauses, and
 neither knows what uses it; every arrow is off-chain, in the pinned documents.
-`AssemblyRegistry` checks nothing about an assembly's agreements, and each kind of
+`ProcessRegistry` checks nothing about an assembly's agreements, and each kind of
 designer reward is gated by its own registry alone. Each document's published
 shape is a JSON Schema beside the clause's: `sdk/src/agreement.schema.json` and
 `sdk/src/assembly.schema.json`, each covering the written form (clauses and
@@ -178,7 +178,7 @@ order.
 
 **Hydration.** A reader fetches the document from the binding's `contentURI`,
 parses it, and requires `agreementHashOf(doc)` to equal the registered key
-(`anchorRegisteredAgreement(raw, agreementHash)`, as `anchorAssembly` recomputes
+(`anchorRegisteredAgreement(raw, agreementHash)`, as `anchorProcessDesign` recomputes
 an assembly's root). The check is on the key, not the raw bytes, because the
 editorial fields sit outside the key. A failed fetch, a failed parse or a
 mismatch is absence: the agreement, and so the assembly, is not offered, and
@@ -189,41 +189,41 @@ composition, and the agreement earns only while its stake is live.
 
 **The assembly.** The assembly document is `{ name?, summary?, description?,
 faq?, assemblyClauses?, agreements: [{ id: "agreement-<i>", agreementHash,
-clauses, follows }] }`. Each entry of `agreements` is an agreement (`AssemblyAgreement`):
+clauses, follows }] }`. Each entry of `agreements` is an agreement (`ProcessDesignAgreement`):
 a position that holds one registered agreement, the fills that belong to
 the position (`clauses`, `{}` when it fills none), and `follows`, the labels
 `["agreement-<j>", …]` of the entries it follows (`[]` or absent on the
 root). The topology is never a clause: at design time it is the entry's
 `follows`, at runtime the signed agreement's topology leaf. The
-assembly's key, `assemblyHash`, is the merkle root built with the clause-leaf
+assembly's key, `processDesignHash`, is the merkle root built with the clause-leaf
 convention above over one leaf per agreement `i` (0-based, assembly order) — key
 the agreement's `agreementHash`, content the canonical JSON
-`{"clauses":{…},"follows":[…],"slot":i}` (object keys sorted, arrays in
+`{"agreement":i,"clauses":{…},"follows":[…]}` (object keys sorted, arrays in
 assembly order, `follows` `[]` when absent) — and, when any
 assembly-scoped clauses are composed, one assembly terms leaf, key
-`ASSEMBLY_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms")`, content the
+`PROCESS_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms")`, content the
 canonical JSON of `assemblyClauses`. A one-leaf tree's root is its leaf.
 Agreements are ordered, so one registered agreement may hold two. The
 editorial fields are excluded from the root. Membership of an agreement in an
 assembly is a membership proof: the sorted-pair proof of its agreement leaf under
-`assemblyHash` (`buildAgreementInclusionProof(assembly, i)`, with
-`agreementLeafBytes(entry, i)` giving the content and `slotContentHash` its
+`processDesignHash` (`buildAgreementInclusionProof(assembly, i)`, with
+`agreementLeafBytes(entry, i)` giving the content and `agreementContentHash` its
 hash). Every leaf of the assembly tree, the agreement leaves and the terms leaf,
 is built in the assembly tree's own shape,
-`keccak256(keccak256(assemblyLeafDomain ‖ key ‖ dataHash))` with
-`assemblyLeafDomain = keccak256("figaro-assembly-leaf")`, where the agreement format's leaf is
+`keccak256(keccak256(processLeafDomain ‖ key ‖ dataHash))` with
+`processLeafDomain = keccak256("figaro-assembly-leaf")`, where the agreement format's leaf is
 `keccak256(keccak256(key ‖ dataHash))`: a tree over agreements and a tree over
 clauses never share one shape, so no agreement root opens an assembly
-leaf. The SDK owns the format (`assemblyHashOf`, `computeAssemblyLeaf`,
-`ASSEMBLY_LEAF_DOMAIN`, `AssemblyAgreement`, `ASSEMBLY_TERMS_LEAF_KEY` in
-`sdk/src/assembly.ts`); `UsageCounter.assemblyLeafDomain` and the guest hold the
+leaf. The SDK owns the format (`processDesignHashOf`, `computeProcessLeaf`,
+`PROCESS_LEAF_DOMAIN`, `ProcessDesignAgreement`, `PROCESS_TERMS_LEAF_KEY` in
+`sdk/src/assembly.ts`); `UsageCounter.processLeafDomain` and the guest hold the
 same constant.
 
-**Two reserved keys.** `PROVENANCE_LEAF_KEY` and `ASSEMBLY_TERMS_LEAF_KEY` are
+**Two reserved keys.** `PROVENANCE_LEAF_KEY` and `PROCESS_TERMS_LEAF_KEY` are
 constants of the format, never a registration and never an `agreementHash`:
 `AgreementRegistry.registerAgreement` refuses either
 (`ReservedKeyIsNotARegistration`), the counter refuses both at accrual on
-every kind and skips both on the batch path, `recordAssemblyUsage` refuses an
+every kind and skips both on the batch path, `recordProcessDesignUsage` refuses an
 `agreementHash` equal to either, and the guest and the relay refuse both the
 same way.
 
@@ -600,8 +600,8 @@ Two structural notes that no single spec can carry:
 - A process credits its registered agreement's and its assembly's designers
   through the agreement format's provenance leaf (§ "Every clause is a merkle
   leaf"), never through a clause: `UsageCounter.recordAgreementUsage` proves
-  that one leaf, and `recordAssemblyUsage` proves it and the agreement's
-  membership proof under `assemblyHash`. The leaf earns
+  that one leaf, and `recordProcessDesignUsage` proves it and the agreement's
+  membership proof under `processDesignHash`. The leaf earns
   nothing itself: it is refused at accrual by comparison with the constant,
   whatever a registry holds at that key (above).
 

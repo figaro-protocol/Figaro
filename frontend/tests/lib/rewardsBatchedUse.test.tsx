@@ -38,7 +38,7 @@ const A = vi.hoisted(() => ({
     core: "0x00000000000000000000000000000000000c0e01" as `0x${string}`,
     batchVerifier: "0x00000000000000000000000000000000000b0a01" as `0x${string}`,
     clauseRegistry: "0x00000000000000000000000000000000000c1a01" as `0x${string}`,
-    assemblyRegistry: "0x00000000000000000000000000000000000a5501" as `0x${string}`,
+    processRegistry: "0x00000000000000000000000000000000000a5501" as `0x${string}`,
     membersRegistry: "0x00000000000000000000000000000000000e3b01" as `0x${string}`,
     counter: "0x00000000000000000000000000000000000c0c01" as `0x${string}`,
     minter: "0x00000000000000000000000000000000000f1001" as `0x${string}`,
@@ -60,7 +60,7 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
             core: A.core,
             batchVerifier: A.batchVerifier,
             clauseRegistry: A.clauseRegistry,
-            assemblyRegistry: A.assemblyRegistry,
+            processRegistry: A.processRegistry,
             agreementRegistry: "",
             membersRegistry: A.membersRegistry,
             usageCounter: A.counter,
@@ -127,7 +127,7 @@ const usage = (
     key: Hex, processId: Hex, seller: `0x${string}`, c: bigint, d: bigint, score: bigint,
     at: { blockNumber: bigint; logIndex: number; transactionHash: Hex },
 ) => raw(A.counter, USAGE, "UsageRecorded", {
-    kind: USAGE_KIND_CLAUSE, clauseOrAssembly: key, period: 0, processId, seller, c, d, score,
+    kind: USAGE_KIND_CLAUSE, clauseOrProcess: key, period: 0, processId, seller, c, d, score,
 }, at);
 
 /** The chain: the designer registered both clauses; one process resolved on
@@ -181,8 +181,8 @@ async function getLogs({ address, event, fromBlock, toBlock }: {
  *  (kind, key, period) carries its `c`, `d` and score. */
 function counterState(kind: number, key: Hex, period: number) {
     const rows = parseEventLogs({ abi: USAGE, logs: CHAIN.filter((l) => l.address === A.counter) })
-        .map((l) => l.args as unknown as { kind: number; clauseOrAssembly: Hex; period: number; c: bigint; d: bigint; score: bigint })
-        .filter((a) => a.kind === kind && a.clauseOrAssembly.toLowerCase() === key.toLowerCase() && a.period === period);
+        .map((l) => l.args as unknown as { kind: number; clauseOrProcess: Hex; period: number; c: bigint; d: bigint; score: bigint })
+        .filter((a) => a.kind === kind && a.clauseOrProcess.toLowerCase() === key.toLowerCase() && a.period === period);
     const last = rows[rows.length - 1];
     return last ? { c: last.c, d: last.d, score: last.score } : { c: 0n, d: 0n, score: 0n };
 }
@@ -219,7 +219,7 @@ describe("the rewards page counts a use from a batched trade beside one from the
         const read = result.current.read;
         if (read.status !== "present") throw new Error("unreachable");
         const period = read.value.periods[0];
-        const byKey = new Map(period.accruals.map((a) => [a.clauseOrAssembly.toLowerCase(), a]));
+        const byKey = new Map(period.accruals.map((a) => [a.clauseOrProcess.toLowerCase(), a]));
         expect(byKey.get(KEY_BOTH)).toMatchObject({ c: 2n, d: 2n, score: 1_587n, family: "clause" });
         expect(byKey.get(KEY_BATCH_ONLY)).toMatchObject({ c: 1n, d: 1n, score: 1_000n, family: "clause" });
         expect(period.myScore).toBe(2_587n);

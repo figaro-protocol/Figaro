@@ -242,7 +242,7 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         const processId = event.args.processId!;
 
         // Value leg — the bond LOCK, read from the token contract.
-        const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+        const { buyerBond, sellerBond } = calculateBonds(event.args.runningTotal!, event.args.payment!);
         const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
         ]);

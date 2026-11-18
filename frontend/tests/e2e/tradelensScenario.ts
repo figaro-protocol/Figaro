@@ -22,7 +22,7 @@ import {
     seedRegisteredMember,
     memberProfileBindings,
     keyOf,
-    anchoredAssemblyHash,
+    anchoredProcessDesignHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
@@ -168,7 +168,7 @@ export async function fillTradelensCheckout(page: Page): Promise<void> {
  *  catalog-sourced cold-chain + freight-class on the carrier's), the
  *  shipper's binding carrying the five co-seller designations. */
 export async function seedTradelensSellers(slug: string, token: Hex): Promise<void> {
-    const assemblyHash = await anchoredAssemblyHash(slug);
+    const processDesignHash = await anchoredProcessDesignHash(slug);
     const seed = async (
         who: { address: Hex }, keyIndex: number, name: string, itemName: string, price: string,
         itemProps?: Record<string, unknown>,
@@ -197,10 +197,10 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
                 catalogURI,
                 acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
                 defaultTokenAddress: token,
-                assemblyBindings: [{
+                processBindings: [{
                     bindingId: `tradelens-${who.address.slice(2, 8).toLowerCase()}`,
                     subjectAddress: who.address,
-                    assemblyHash,
+                    processDesignHash,
                     coSellerBindings,
                 }],
             },
@@ -209,7 +209,7 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
 
     const conformant = async (): Promise<boolean> => {
         const bindings = await memberProfileBindings(SHIPPER.address as Hex);
-        const b = bindings.find((x) => isBindingOf(x, assemblyHash));
+        const b = bindings.find((x) => isBindingOf(x, processDesignHash));
         if (!b || !(b.coSellerBindings ?? []).some((cb) => cb.clauseKey.toLowerCase() === C.merchant && cb.addresses.length === 3)) return false;
         // The cargo master data must ride the ITEM level (massGrams/volumeMl)
         // — the channel figaro-cargo folds from; a clauseValues copy does NOT

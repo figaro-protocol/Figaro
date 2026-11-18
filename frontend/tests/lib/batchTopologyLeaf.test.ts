@@ -56,8 +56,8 @@ const SUB_SELLER = "0x00000000000000000000000000000000000000a2" as const;
 const CHAIN_ID = 31337;
 
 const committed: FixtureLog[] = [
-    orderCommittedLog({ address: VERIFIER, blockNumber: 4n, orderHash: ROOT, processId: PROCESS, buyer: BUYER, seller: ROOT_SELLER, payment: 3n, cumulativeValue: 3n, checkoutHash: ROOT_CHECKOUT }),
-    { ...orderCommittedLog({ address: VERIFIER, blockNumber: 4n, orderHash: SUB, processId: PROCESS, buyer: BUYER, seller: SUB_SELLER, payment: 2n, cumulativeValue: 5n, checkoutHash: SUB_CHECKOUT }), logIndex: 1 },
+    orderCommittedLog({ address: VERIFIER, blockNumber: 4n, orderHash: ROOT, processId: PROCESS, buyer: BUYER, seller: ROOT_SELLER, payment: 3n, runningTotal: 3n, checkoutHash: ROOT_CHECKOUT }),
+    { ...orderCommittedLog({ address: VERIFIER, blockNumber: 4n, orderHash: SUB, processId: PROCESS, buyer: BUYER, seller: SUB_SELLER, payment: 2n, runningTotal: 5n, checkoutHash: SUB_CHECKOUT }), logIndex: 1 },
 ];
 
 const agreementOf = (seller: `0x${string}`, follows: Hex[]): Agreement => ({

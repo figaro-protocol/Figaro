@@ -15,7 +15,7 @@
 import { MemberEditGate } from "@/components/members/MemberEditGate";
 import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
 import type {
-    BuyerAssemblySubscription,
+    BuyerProcessSubscription,
 } from "@/lib/member/memberProfileMetadata";
 import { OnboardingBuyerForm } from "@/components/members/OnboardingBuyerForm";
 
@@ -32,7 +32,7 @@ export function MemberEditBuyer() {
         return <MemberEditGate gate={editor.gate} />;
     }
 
-    async function handleSave(subscriptions: BuyerAssemblySubscription[]): Promise<void> {
+    async function handleSave(subscriptions: BuyerProcessSubscription[]): Promise<void> {
         // Absence is the field's no-declaration state: an emptied list CLEARS the field
         // instead of pinning `[]`, so a member who never declared round-trips unchanged.
         if (subscriptions.length > 0) await editor.updater.save({ buyerAssemblies: subscriptions });

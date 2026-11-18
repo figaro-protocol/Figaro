@@ -190,7 +190,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                         </div>
                         <div className="flex justify-between">
                             <span className="text-ink-body">Total</span>
-                            <span className="text-ink-primary">{tokenFigure(data.cumulativeValue ?? 0n, data.decimals)}</span>
+                            <span className="text-ink-primary">{tokenFigure(data.runningTotal ?? 0n, data.decimals)}</span>
                         </div>
                         <div className="flex justify-between font-mono text-[10px] text-ink-muted pt-1 border-t border-default">
                             <span title={data.buyer}>{buyerShort}</span>

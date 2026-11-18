@@ -2,7 +2,7 @@
  * The revert tables every K4 staked-intent registry shares: the register
  * reverts common to all of them, and the `withdrawDeposit` reverts. Pure
  * functions, with no wallet and no client: each registry's read module
- * (`useClauseRegistry.ts`, `useAssemblyRegistry.ts`, `useAgreementRegistry.ts`)
+ * (`useClauseRegistry.ts`, `useProcessRegistry.ts`, `useAgreementRegistry.ts`)
  * builds its own tables on them, and the withdraw hooks
  * (`useWithdrawStake.ts`) take the withdraw table from here.
  */

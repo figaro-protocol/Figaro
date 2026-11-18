@@ -6,7 +6,7 @@ import {
     computeClauseKey,
     parseClauseRegistryLogs,
     parseMembersRegistryLogs,
-    parseAssemblyRegistryLogs,
+    parseProcessRegistryLogs,
     parseAgreementRegistryLogs,
     fetchDiscoveryEvents,
     type DiscoveryEvents,
@@ -89,14 +89,14 @@ describe("DiscoveryGraph — assemblies", () => {
     it("surfaces registered assemblies and de-surfaces on withdraw", () => {
         const g = reconstructDiscovery(mkEvents({
             assemblyRegistered: [
-                { assemblyHash: COMP_1, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a1", blockNumber: 1, logIndex: 0 },
-                { assemblyHash: COMP_2, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a2", blockNumber: 1, logIndex: 1 },
+                { processDesignHash: COMP_1, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a1", blockNumber: 1, logIndex: 0 },
+                { processDesignHash: COMP_2, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a2", blockNumber: 1, logIndex: 1 },
             ],
-            assemblyWithdrawn: [{ assemblyHash: COMP_1, registeredBy: ASM_REGISTERED_BY, blockNumber: 9, logIndex: 0 }],
+            assemblyWithdrawn: [{ processDesignHash: COMP_1, registeredBy: ASM_REGISTERED_BY, blockNumber: 9, logIndex: 0 }],
         }));
         const live = g.getAssemblies();
         expect(live).toHaveLength(1);
-        expect(live[0].assemblyHash).toBe(COMP_2);
+        expect(live[0].processDesignHash).toBe(COMP_2);
         expect(g.getAssembly(COMP_1)).toBeUndefined();
         expect(g.getAssembly(COMP_2)?.contentURI).toBe("ipfs://a2");
     });
@@ -191,7 +191,7 @@ describe("DiscoveryGraph — members (order-dependent liveness)", () => {
 describe("registry log parsers (decode round-trip — no chain)", () => {
     // Hand-build the exact { data, topics } shape a node returns, then parse it
     // back — proves the ABI decode + field mapping (the silent
-    // a.clauseId/a.assemblyHash trap). topic0 = keccak(canonical signature);
+    // a.clauseId/a.processDesignHash trap). topic0 = keccak(canonical signature);
     // indexed params are the remaining topics; non-indexed params are the data.
     const addrTopic = (a: Address): Hex => pad(a.toLowerCase() as Hex, { size: 32 });
     function mkLog(
@@ -242,15 +242,15 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
         expect(parseMembersRegistryLogs([claim]).withdrawn).toHaveLength(0);
     });
 
-    it("parses AssemblyRegistered + DepositWithdrawn keyed by assemblyHash", () => {
-        const reg = mkLog("AssemblyRegistered(bytes32,address,string)", [COMP_1, addrTopic(ASM_REGISTERED_BY)],
+    it("parses ProcessRegistered + DepositWithdrawn keyed by processDesignHash", () => {
+        const reg = mkLog("ProcessRegistered(bytes32,address,string)", [COMP_1, addrTopic(ASM_REGISTERED_BY)],
             [{ type: "string" }], ["ipfs://a"], 1n, 0);
         const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [COMP_1, addrTopic(ASM_REGISTERED_BY)],
             [{ type: "uint256" }], [10n], 2n, 0);
-        const parsed = parseAssemblyRegistryLogs([reg, wd]);
-        expect(parsed.registered[0].assemblyHash).toBe(COMP_1);
+        const parsed = parseProcessRegistryLogs([reg, wd]);
+        expect(parsed.registered[0].processDesignHash).toBe(COMP_1);
         expect(parsed.registered[0].contentURI).toBe("ipfs://a");
-        expect(parsed.withdrawn[0].assemblyHash).toBe(COMP_1);
+        expect(parsed.withdrawn[0].processDesignHash).toBe(COMP_1);
     });
 
     it("parses AgreementRegistered + DepositWithdrawn keyed by agreementHash", () => {
@@ -270,9 +270,9 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
     });
 
     it("end-to-end: decoded logs fold to the correct live view", () => {
-        const regLog = mkLog("AssemblyRegistered(bytes32,address,string)", [COMP_2, addrTopic(ASM_REGISTERED_BY)],
+        const regLog = mkLog("ProcessRegistered(bytes32,address,string)", [COMP_2, addrTopic(ASM_REGISTERED_BY)],
             [{ type: "string" }], ["ipfs://live"], 1n, 0);
-        const { registered, withdrawn } = parseAssemblyRegistryLogs([regLog]);
+        const { registered, withdrawn } = parseProcessRegistryLogs([regLog]);
         const g = reconstructDiscovery({
             clauseRegistered: [], clauseWithdrawn: [], memberRegistered: [], memberWithdrawn: [],
             assemblyRegistered: registered, assemblyWithdrawn: withdrawn,
@@ -306,7 +306,7 @@ describe("fetchDiscoveryEvents — chunked getLogs", () => {
         core: "0x000000000000000000000000000000000000c0de" as Address,
         clauseRegistry: "0x0000000000000000000000000000000000c1a05e" as Address,
         membersRegistry: "0x0000000000000000000000000000000000dead01" as Address,
-        assemblyRegistry: "0x0000000000000000000000000000000000a55e60" as Address,
+        processRegistry: "0x0000000000000000000000000000000000a55e60" as Address,
         agreementRegistry: "0x0000000000000000000000000000000000a62ee0" as Address,
     };
 

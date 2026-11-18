@@ -104,12 +104,12 @@ contract GasCeilingTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: rootSeller,
-            currency: address(token),
+            token: address(token),
             payment: PAYMENT,
-            expectedCumulativeValue: PAYMENT,
+            runningTotal: PAYMENT,
             checkoutHash: keccak256(abi.encodePacked("g-root-", keyBase)),
             salt: keyBase,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         (processId,) = core.commit(root, _sign(root, BUYER_KEY), _sign(root, keyBase));
         commitments[0] = root;
@@ -127,12 +127,12 @@ contract GasCeilingTest is Test {
                 processId: processId,
                 buyer: buyer,
                 seller: ss,
-                currency: address(token),
+                token: address(token),
                 payment: PAYMENT,
-                expectedCumulativeValue: cumulative,
+                runningTotal: cumulative,
                 checkoutHash: keccak256(abi.encodePacked("g-sub-", keyBase, i)),
                 salt: sk,
-                deadline: block.timestamp + 1 hours
+                commitDeadline: block.timestamp + 1 hours
             });
             core.commit(sub, _sign(sub, BUYER_KEY), _sign(sub, sk));
             commitments[i] = sub;

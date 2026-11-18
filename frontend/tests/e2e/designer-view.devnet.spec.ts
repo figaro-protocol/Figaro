@@ -6,7 +6,7 @@
  * covered the on-chain read-only resolution path before.
  *
  * `ViewAssemblyClient` resolves a slug from a localStorage draft first,
- * else from the chain (`AssemblyRegistered` event → IPFS assembly), else
+ * else from the chain (`ProcessRegistered` event → IPFS assembly), else
  * an error. This spec covers the on-chain branch and the not-found branch:
  *
  *   1. Publish an assembly via the canvas, then open /view/<slug> — it
@@ -15,7 +15,7 @@
  *      the same reading the review screen makes of the bytes it is about to
  *      anchor), and a published assembly offers Fork (not Edit).
  *      Fork it unchanged and open its Review: the fork's assembly hash is
- *      the anchored one (`AssemblyRegistry.bindings` read out-of-band), so the
+ *      the anchored one (`ProcessRegistry.bindings` read out-of-band), so the
  *      Review screen says it is already anchored and publish stays closed.
  *   2. A slug that is neither a draft nor on-chain → the not-found error.
  *
@@ -25,8 +25,8 @@ import type { Hex } from 'viem';
 import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { composedClauseChip, publishProbeAssembly } from './probeAssembly';
 import { discoverAnchoredAssemblies, localPublicClient, readLocalDeploymentConfig } from './devnet-helpers';
-import { ASSEMBLY_REGISTRY_ABI } from '@/lib/core/contracts';
-import { deriveAssemblySlug } from '@/lib/shared/assembly';
+import { PROCESS_REGISTRY_ABI } from '@/lib/core/contracts';
+import { deriveProcessDesignSlug } from '@/lib/shared/assembly';
 
 
 test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
@@ -42,18 +42,18 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
 
         // ── The publish actually anchored, read back out-of-band ─────
         const anchored = (await discoverAnchoredAssemblies()).some((t) => t.slug === slug);
-        expect(anchored, 'the published probe assembly is anchored on AssemblyRegistry').toBe(true);
+        expect(anchored, 'the published probe assembly is anchored on ProcessRegistry').toBe(true);
 
         // ── Inspect the published assembly read-only ─────────────────
         // The publish flow deleted the local draft, so /view/<slug> resolves from
-        // chain. `just-published=1` rides out the AssemblyRegistered indexer race.
+        // chain. `just-published=1` rides out the ProcessRegistered indexer race.
         await page.goto(
             `/assemblies/designer/view?slug=${slug}&just-published=1&e2e=devnet`,
             { waitUntil: 'domcontentloaded' },
         );
 
         await expect(page.getByTestId('assembly-view-page')).toBeVisible({ timeout: 30000 });
-        // Resolved from chain (AssemblyRegistered → IPFS assembly), not a draft.
+        // Resolved from chain (ProcessRegistered → IPFS assembly), not a draft.
         await expect(page.getByTestId('view-source-badge')).toContainText('on-chain', { timeout: 15000 });
         // The on-chain assembly's editorial name rendered in the toolbar.
         await expect(page.getByTestId('view-toolbar')).toContainText(name);
@@ -96,13 +96,13 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         // The chain fact, read out-of-band — never from the screen that claims it:
         // the binding under the reviewed hash exists, and it is the one just published.
         const [registeredBy, registeredAt] = await localPublicClient().readContract({
-            address: readLocalDeploymentConfig().assemblyRegistry as Hex,
-            abi: ASSEMBLY_REGISTRY_ABI,
+            address: readLocalDeploymentConfig().processRegistry as Hex,
+            abi: PROCESS_REGISTRY_ABI,
             functionName: 'bindings',
             args: [reviewedHash],
         }) as readonly [Hex, bigint, boolean, string];
-        expect(registeredAt, 'AssemblyRegistry.bindings(reviewedHash) is anchored').toBeGreaterThan(0n);
-        expect(deriveAssemblySlug(reviewedHash), 'the unchanged fork is the published composition').toBe(slug);
+        expect(registeredAt, 'ProcessRegistry.bindings(reviewedHash) is anchored').toBeGreaterThan(0n);
+        expect(deriveProcessDesignSlug(reviewedHash), 'the unchanged fork is the published composition').toBe(slug);
         expect(registeredBy.toLowerCase(), 'anchored by the publishing wallet').toBe(ANVIL_ACCOUNTS[0].toLowerCase());
         // The reaction in the UI: the Review screen names the anchored slug and
         // closes the publish button.

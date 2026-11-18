@@ -76,7 +76,7 @@ const CONTRACTS = {
     attestationCoordinator: "AttestationCoordinator",
     clauseRegistry: "ClauseRegistry",
     membersRegistry: "MembersRegistry",
-    assemblyRegistry: "AssemblyRegistry",
+    processRegistry: "ProcessRegistry",
     agreementRegistry: "AgreementRegistry",
     florinToken: "FlorinToken",
     usageCounter: "UsageCounter",
@@ -104,8 +104,8 @@ const ABI = parseAbi([
     "function florin() view returns (address)",
     "function counter() view returns (address)",
     "function provenanceLeaf() view returns (bytes32)",
-    "function assemblyTermsLeaf() view returns (bytes32)",
-    "function assemblyLeafDomain() view returns (bytes32)",
+    "function processTermsLeaf() view returns (bytes32)",
+    "function processLeafDomain() view returns (bytes32)",
     "function minSellers() view returns (uint64)",
     "function periodCount() view returns (uint256)",
     "function periodAmount(uint256) view returns (uint256)",
@@ -243,7 +243,7 @@ async function main() {
         ["usageCounter", "core", "figaroCore"],
         ["usageCounter", "members", "membersRegistry"],
         ["usageCounter", "clauses", "clauseRegistry"],
-        ["usageCounter", "assemblies", "assemblyRegistry"],
+        ["usageCounter", "assemblies", "processRegistry"],
         ["usageCounter", "agreements", "agreementRegistry"],
         ["usageCounter", "batchVerifier", "batchVerifier"],
         ["batchVerifier", "usageCounter", "usageCounter"],
@@ -252,7 +252,7 @@ async function main() {
         ["rpgfMinter", "counter", "usageCounter"],
         ["rpgfMinter", "members", "membersRegistry"],
         ["rpgfMinter", "clauses", "clauseRegistry"],
-        ["rpgfMinter", "assemblies", "assemblyRegistry"],
+        ["rpgfMinter", "assemblies", "processRegistry"],
         ["rpgfMinter", "agreements", "agreementRegistry"],
         ["witnessSwapAndCommitCoordinator", "figaroCore", "figaroCore"],
         ["witnessSwapAndCommitCoordinator", "permit2", "permit2"],
@@ -315,7 +315,7 @@ async function main() {
     await expectValue("membersRegistry.registrationDeposit()", e.registries?.membersRegistrationDeposit, String(await read(record.membersRegistry, "registrationDeposit")));
     await expectValue("membersRegistry.withdrawalCooldown()", e.registries?.membersWithdrawalCooldown, String(await read(record.membersRegistry, "withdrawalCooldown")));
     await expectValue("clauseRegistry.registrationDeposit()", e.registries?.clauseRegistrationDeposit, String(await read(record.clauseRegistry, "registrationDeposit")));
-    await expectValue("assemblyRegistry.registrationDeposit()", e.registries?.assemblyRegistrationDeposit, String(await read(record.assemblyRegistry, "registrationDeposit")));
+    await expectValue("processRegistry.registrationDeposit()", e.registries?.assemblyRegistrationDeposit, String(await read(record.processRegistry, "registrationDeposit")));
     await expectValue("agreementRegistry.registrationDeposit()", e.registries?.agreementRegistrationDeposit, String(await read(record.agreementRegistry, "registrationDeposit")));
 
     console.log("\nThe usage counter and the reward minter");
@@ -328,10 +328,10 @@ async function main() {
     await expectValue("usageCounter.provenanceLeaf()", u.provenanceLeaf, await read(record.usageCounter, "provenanceLeaf"));
     // The assembly format's reserved terms leaf: a constant of the counter,
     // keccak256("figaro-assembly-terms") — never an agreementHash.
-    await expectValue("usageCounter.assemblyTermsLeaf()", u.assemblyTermsLeaf, await read(record.usageCounter, "assemblyTermsLeaf"));
+    await expectValue("usageCounter.processTermsLeaf()", u.processTermsLeaf, await read(record.usageCounter, "processTermsLeaf"));
     // The assembly tree's leaf domain: a constant of the counter,
     // keccak256("figaro-assembly-leaf") — a counter without it is in the old leaf shape.
-    await expectValue("usageCounter.assemblyLeafDomain()", u.assemblyLeafDomain, await read(record.usageCounter, "assemblyLeafDomain"));
+    await expectValue("usageCounter.processLeafDomain()", u.processLeafDomain, await read(record.usageCounter, "processLeafDomain"));
     const minterPeriods = await read(record.rpgfMinter, "periodCount");
     let sum = 0n;
     for (let i = 0n; i < minterPeriods; i++) sum += await read(record.rpgfMinter, "periodAmount", [i]);
@@ -379,7 +379,7 @@ async function main() {
     } else {
         await checkRegistrars({
             planned: plannedRegistrations(plan),
-            readBinding: (family, key) => read(family === "agreement" ? record.agreementRegistry : record.assemblyRegistry, "bindings", [key]),
+            readBinding: (family, key) => read(family === "agreement" ? record.agreementRegistry : record.processRegistry, "bindings", [key]),
             walletAddress: (name) => resolveAddress({ wallet: name }, name),
             ok,
             bad,

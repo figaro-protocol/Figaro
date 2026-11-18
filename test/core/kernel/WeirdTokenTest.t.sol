@@ -195,12 +195,12 @@ contract WeirdTokenTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller,
-            currency: currency,
+            token: currency,
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: keccak256("root-agreement"),
             salt: salt,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         (processId,) = core.commit(c, _sign(c, BUYER_KEY), _sign(c, sellerKey));
     }
@@ -218,12 +218,12 @@ contract WeirdTokenTest is Test {
             processId: processId,
             buyer: buyer,
             seller: seller,
-            currency: currency,
+            token: currency,
             payment: payment,
-            expectedCumulativeValue: expectedCum,
+            runningTotal: expectedCum,
             checkoutHash: keccak256("sub-agreement"),
             salt: salt,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         core.commit(c, _sign(c, BUYER_KEY), _sign(c, sellerKey));
     }

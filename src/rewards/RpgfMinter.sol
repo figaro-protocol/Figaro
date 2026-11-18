@@ -11,7 +11,7 @@ interface IUsageCounter {
     /// @dev The score of the one tally both routes feed — a use counts the
     ///      same whether its process resolved through `FigaroCore` or in a
     ///      proved batch.
-    function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);
+    function scoreOf(uint8 kind, bytes32 clauseOrProcess, uint8 period) external view returns (uint256);
 }
 
 /// @notice The one MembersRegistry field this contract reads — whether an
@@ -28,9 +28,9 @@ interface IClauseAuthor {
     function depositOf(bytes32 clauseKey) external view returns (address registeredBy, bool withdrawn);
 }
 
-/// @notice Designer of record for an assembly — `AssemblyRegistry.bindings`.
-interface IAssemblyAuthor {
-    function bindings(bytes32 assemblyHash)
+/// @notice Designer of record for an assembly — `ProcessRegistry.bindings`.
+interface IProcessAuthor {
+    function bindings(bytes32 processDesignHash)
         external
         view
         returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string memory contentURI);
@@ -107,15 +107,15 @@ contract RpgfMinter {
     ///         designer-side membership gate (`NotLiveMember`).
     IMemberStake public immutable members;
     IClauseAuthor public immutable clauses;
-    IAssemblyAuthor public immutable assemblies;
+    IProcessAuthor public immutable processDesigns;
     IAgreementAuthor public immutable agreements;
 
     /// @notice The kind of a clause entry — `UsageCounter.KIND_CLAUSE`; its key
     ///         is a `ClauseRegistry` clause key.
     uint8 public constant KIND_CLAUSE = 0;
-    /// @notice The kind of an assembly entry — `UsageCounter.KIND_ASSEMBLY`; its
-    ///         key is an `AssemblyRegistry` assemblyHash.
-    uint8 public constant KIND_ASSEMBLY = 1;
+    /// @notice The kind of an assembly entry — `UsageCounter.KIND_PROCESS`; its
+    ///         key is an `ProcessRegistry` processDesignHash.
+    uint8 public constant KIND_PROCESS = 1;
     /// @notice The kind of an agreement entry — `UsageCounter.KIND_AGREEMENT`;
     ///         its key is an `AgreementRegistry` agreementHash.
     uint8 public constant KIND_AGREEMENT = 2;
@@ -126,7 +126,7 @@ contract RpgfMinter {
     ///         registry takes any bytes32, so the same bytes can stand in all
     ///         three; the kind keeps a stake in one family from earning
     ///         another's.
-    struct ClauseOrAssemblyKey {
+    struct ClauseOrProcessKey {
         uint8 kind;
         bytes32 key;
     }
@@ -162,9 +162,9 @@ contract RpgfMinter {
     error UnknownPeriod(uint8 periodId);
     error AmountsPeriodsMismatch(uint256 amounts, uint256 periods);
     error PeriodStillAccruing(uint8 periodId);
-    error NoClausesOrAssemblies();
-    error DuplicateClauseOrAssembly(uint8 kind, bytes32 clauseOrAssembly);
-    error NotAuthorOfRecord(uint8 kind, bytes32 clauseOrAssembly, address caller);
+    error NoClausesOrProcesses();
+    error DuplicateClauseOrProcess(uint8 kind, bytes32 clauseOrProcess);
+    error NotAuthorOfRecord(uint8 kind, bytes32 clauseOrProcess, address caller);
     error UnknownKind(uint8 kind);
     error NothingToClaim();
     error PeriodBudgetExceeded(uint8 periodId);
@@ -175,7 +175,7 @@ contract RpgfMinter {
     /// @param _counter     UsageCounter — the accrual this pays from.
     /// @param _members     MembersRegistry — the claimant's live member stake (the designer-side membership gate).
     /// @param _clauses     ClauseRegistry — clause designer of record.
-    /// @param _assemblies  AssemblyRegistry — assembly designer of record.
+    /// @param _processDesigns  ProcessRegistry — assembly designer of record.
     /// @param _agreements  AgreementRegistry — registered agreement designer of record.
     /// @param _amounts     Per-period florin budgets, one per counter period.
     constructor(
@@ -183,13 +183,13 @@ contract RpgfMinter {
         address _counter,
         address _members,
         address _clauses,
-        address _assemblies,
+        address _processDesigns,
         address _agreements,
         uint256[] memory _amounts
     ) {
         if (
             _florin == address(0) || _counter == address(0) || _members == address(0) || _clauses == address(0)
-                || _assemblies == address(0) || _agreements == address(0)
+                || _processDesigns == address(0) || _agreements == address(0)
         ) {
             revert ZeroAddress();
         }
@@ -199,7 +199,7 @@ contract RpgfMinter {
         counter = IUsageCounter(_counter);
         members = IMemberStake(_members);
         clauses = IClauseAuthor(_clauses);
-        assemblies = IAssemblyAuthor(_assemblies);
+        processDesigns = IProcessAuthor(_processDesigns);
         agreements = IAgreementAuthor(_agreements);
         periodAmount = _amounts;
     }
@@ -212,10 +212,10 @@ contract RpgfMinter {
     }
 
     /// @notice What `account` could claim for `periodId` with
-    ///         `clausesOrAssemblies`, without sending a transaction. A key
+    ///         `clausesOrProcesses`, without sending a transaction. A key
     ///         already claimed in the period counts zero, and a wallet that
     ///         holds no live member stake is quoted zero.
-    function claimable(uint8 periodId, address account, ClauseOrAssemblyKey[] calldata clausesOrAssemblies)
+    function claimable(uint8 periodId, address account, ClauseOrProcessKey[] calldata clausesOrProcesses)
         external
         view
         returns (uint256)
@@ -224,7 +224,7 @@ contract RpgfMinter {
         // The quote reads the gates the claim reads: a wallet that is not a
         // live member is quoted zero, the answer its claim would give.
         if (!members.registered(account)) return 0;
-        (uint256 amount,) = _entitlement(periodId, account, clausesOrAssemblies);
+        (uint256 amount,) = _entitlement(periodId, account, clausesOrProcesses);
         return amount;
     }
 
@@ -237,31 +237,31 @@ contract RpgfMinter {
     ///         The claimant holds a live member stake (`NotLiveMember` otherwise),
     ///         read before any key: the designer-side membership gate.
     /// @param periodId  The accrual period being claimed.
-    /// @param clausesOrAssemblies (kind, key) pairs — clause keys under
-    ///                  `KIND_CLAUSE`, assemblyHashes under
-    ///                  `KIND_ASSEMBLY`, agreementHashes under `KIND_AGREEMENT` —
+    /// @param clausesOrProcesses (kind, key) pairs — clause keys under
+    ///                  `KIND_CLAUSE`, processDesignHashes under
+    ///                  `KIND_PROCESS`, agreementHashes under `KIND_AGREEMENT` —
     ///                  the caller is designer of record for.
     ///                  Each is verified against the one registry its kind
     ///                  names — the caller's list is a lookup key, never a claim
     ///                  of ownership.
-    function claim(uint8 periodId, ClauseOrAssemblyKey[] calldata clausesOrAssemblies) external {
+    function claim(uint8 periodId, ClauseOrProcessKey[] calldata clausesOrProcesses) external {
         if (periodId >= periodAmount.length) revert UnknownPeriod(periodId);
         if (!counter.periodClosed(periodId)) revert PeriodStillAccruing(periodId);
-        if (clausesOrAssemblies.length == 0) revert NoClausesOrAssemblies();
+        if (clausesOrProcesses.length == 0) revert NoClausesOrProcesses();
         // The designer-side membership gate, read at the claim: the claimant
         // holds a live member stake, as the seller of record held one when its
         // usage counted. Both halves of the two-sided stake are live here —
         // this one on the wallet, `_isAuthor`'s on each key's registration.
         if (!members.registered(msg.sender)) revert NotLiveMember(msg.sender);
 
-        (uint256 amount, uint256 score) = _entitlement(periodId, msg.sender, clausesOrAssemblies);
+        (uint256 amount, uint256 score) = _entitlement(periodId, msg.sender, clausesOrProcesses);
         if (amount == 0) revert NothingToClaim();
 
         uint256 spent = minted[periodId] + amount;
         if (spent > periodAmount[periodId]) revert PeriodBudgetExceeded(periodId);
 
-        for (uint256 i = 0; i < clausesOrAssemblies.length; ++i) {
-            claimed[periodId][clausesOrAssemblies[i].kind][clausesOrAssemblies[i].key] = true;
+        for (uint256 i = 0; i < clausesOrProcesses.length; ++i) {
+            claimed[periodId][clausesOrProcesses[i].kind][clausesOrProcesses[i].key] = true;
         }
         minted[periodId] = spent;
 
@@ -296,7 +296,7 @@ contract RpgfMinter {
     ///      structurally (`totalScoreIn` is the sum over ALL clauses and
     ///      assemblies, of which the caller's are a subset), so there is nothing
     ///      left to clamp.
-    function _entitlement(uint8 periodId, address account, ClauseOrAssemblyKey[] calldata clausesOrAssemblies)
+    function _entitlement(uint8 periodId, address account, ClauseOrProcessKey[] calldata clausesOrProcesses)
         internal
         view
         returns (uint256 amount, uint256 score)
@@ -304,17 +304,17 @@ contract RpgfMinter {
         uint256 total = counter.totalScoreIn(periodId);
         if (total == 0) return (0, 0);
 
-        for (uint256 i = 0; i < clausesOrAssemblies.length; ++i) {
-            uint8 kind = clausesOrAssemblies[i].kind;
-            bytes32 clauseOrAssembly = clausesOrAssemblies[i].key;
+        for (uint256 i = 0; i < clausesOrProcesses.length; ++i) {
+            uint8 kind = clausesOrProcesses[i].kind;
+            bytes32 clauseOrProcess = clausesOrProcesses[i].key;
             for (uint256 j = 0; j < i; ++j) {
-                if (clausesOrAssemblies[j].kind == kind && clausesOrAssemblies[j].key == clauseOrAssembly) {
-                    revert DuplicateClauseOrAssembly(kind, clauseOrAssembly);
+                if (clausesOrProcesses[j].kind == kind && clausesOrProcesses[j].key == clauseOrProcess) {
+                    revert DuplicateClauseOrProcess(kind, clauseOrProcess);
                 }
             }
-            if (!_isAuthor(kind, clauseOrAssembly, account)) revert NotAuthorOfRecord(kind, clauseOrAssembly, account);
-            if (claimed[periodId][kind][clauseOrAssembly]) continue;
-            score += counter.scoreOf(kind, clauseOrAssembly, periodId);
+            if (!_isAuthor(kind, clauseOrProcess, account)) revert NotAuthorOfRecord(kind, clauseOrProcess, account);
+            if (claimed[periodId][kind][clauseOrProcess]) continue;
+            score += counter.scoreOf(kind, clauseOrProcess, periodId);
         }
         if (score == 0) return (0, 0);
 
@@ -337,17 +337,17 @@ contract RpgfMinter {
     ///      upside (more trade → more base-currency demand → ETH appreciates for
     ///      every registry staker), not a cost, so keeping it live is the honest
     ///      designer's default.
-    function _isAuthor(uint8 kind, bytes32 clauseOrAssembly, address account) internal view returns (bool) {
+    function _isAuthor(uint8 kind, bytes32 clauseOrProcess, address account) internal view returns (bool) {
         if (kind == KIND_CLAUSE) {
-            (address registeredBy, bool withdrawn) = clauses.depositOf(clauseOrAssembly);
+            (address registeredBy, bool withdrawn) = clauses.depositOf(clauseOrProcess);
             return registeredBy != address(0) && registeredBy == account && !withdrawn;
         }
-        if (kind == KIND_ASSEMBLY) {
-            (address assemblyRegisteredBy,, bool depositWithdrawn,) = assemblies.bindings(clauseOrAssembly);
+        if (kind == KIND_PROCESS) {
+            (address assemblyRegisteredBy,, bool depositWithdrawn,) = processDesigns.bindings(clauseOrProcess);
             return assemblyRegisteredBy != address(0) && assemblyRegisteredBy == account && !depositWithdrawn;
         }
         if (kind == KIND_AGREEMENT) {
-            (address agreementRegisteredBy,, bool agreementWithdrawn,) = agreements.bindings(clauseOrAssembly);
+            (address agreementRegisteredBy,, bool agreementWithdrawn,) = agreements.bindings(clauseOrProcess);
             return agreementRegisteredBy != address(0) && agreementRegisteredBy == account && !agreementWithdrawn;
         }
         revert UnknownKind(kind);

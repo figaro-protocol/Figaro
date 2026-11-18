@@ -48,7 +48,7 @@ export interface DenominationVolume {
 
 /** One assembly's market aggregates. */
 export interface MarketShapeGroup {
-    /** The caller's attribution key (e.g. a registered assemblyHash). */
+    /** The caller's attribution key (e.g. a registered processDesignHash). */
     key: string;
     processCount: number;
     orderCount: number;

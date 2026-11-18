@@ -128,7 +128,7 @@ const SECOND_STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.
 const RESOLVE_TYPES = {
     ResolveProcess: [
         { name: "processId", type: "bytes32" },
-        { name: "cumulativeValue", type: "uint256" },
+        { name: "runningTotal", type: "uint256" },
     ],
 } as const;
 
@@ -353,12 +353,12 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                     "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex,
                 buyer: buyerAccount.address,
                 seller: sellerAccount.address,
-                currency: tokenAddress,
+                token: tokenAddress,
                 payment: PAYMENT,
-                expectedCumulativeValue: PAYMENT,
+                runningTotal: PAYMENT,
                 checkoutHash: clauseLeaf,
                 salt: 42n,
-                deadline: computeDeadline(await readChainTimestamp(publicClient)),
+                commitDeadline: computeDeadline(await readChainTimestamp(publicClient)),
             },
             domain,
         );
@@ -512,17 +512,17 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
         // The process holds the one order: its cumulative value is that
         // order's expected cumulative value.
-        const cumulativeValue = commitment.expectedCumulativeValue;
+        const runningTotal = commitment.runningTotal;
         const buyerResolveSig = await buyerWallet.signTypedData({
             domain,
             types: RESOLVE_TYPES,
             primaryType: "ResolveProcess" as const,
-            message: { processId, cumulativeValue },
+            message: { processId, runningTotal },
         });
 
         const resolveResult = await secondClient.submitResolve(
             processId,
-            cumulativeValue,
+            runningTotal,
             [commitment],
             buyerResolveSig,
         );
@@ -551,7 +551,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         const claimContext = await fetchUsageClaimContext(publicClient, usageCounterAddress);
         const claims = buildUsageClaims(commitment, agreement, claimContext);
         expect(claims).toHaveLength(1);
-        expect(claims[0].clause_or_assembly).toBe(clauseKey);
+        expect(claims[0].clause_or_process).toBe(clauseKey);
 
         const submitted = await secondClient.submitUsageClaim(claims[0]);
         expect(submitted.pending).toBe(1);
@@ -703,12 +703,12 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                         "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex,
                     buyer: buyerAccount.address,
                     seller: sellerAccount.address,
-                    currency: tokenAddress,
+                    token: tokenAddress,
                     payment: PAYMENT,
-                    expectedCumulativeValue: PAYMENT,
+                    runningTotal: PAYMENT,
                     checkoutHash: clauseLeaf,
                     salt: 43n,
-                    deadline: computeDeadline(await readChainTimestamp(publicClient)),
+                    commitDeadline: computeDeadline(await readChainTimestamp(publicClient)),
                 },
                 domain,
             );
@@ -759,12 +759,12 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             // verifier's root from the verifier's logs (REBUILD_FROM_CHAIN=1),
             // takes the buyer's signed resolve, proves the batch and lands it,
             // and answers with the transaction that resolved the process.
-            const cumulativeValue = commitment.expectedCumulativeValue;
+            const runningTotal = commitment.runningTotal;
             const buyerResolveSig = await buyerWallet.signTypedData({
                 domain,
                 types: RESOLVE_TYPES,
                 primaryType: "ResolveProcess" as const,
-                message: { processId, cumulativeValue },
+                message: { processId, runningTotal },
             });
             const settled = await proveAndSettle(
                 {
@@ -775,14 +775,14 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                     env: {
                         USAGE_COUNTER_ADDRESS: relay.usageCounterAddress,
                         CLAUSE_REGISTRY_ADDRESS: relay.registries.clauses,
-                        ASSEMBLY_REGISTRY_ADDRESS: relay.registries.assemblies,
+                        PROCESS_REGISTRY_ADDRESS: relay.registries.assemblies,
                         AGREEMENT_REGISTRY_ADDRESS: relay.registries.agreements,
                         MEMBERS_REGISTRY_ADDRESS: relay.registries.members,
                         BATCH_INTERVAL_SECS: "2",
                     },
                     timeoutMs: 10 * 60_000,
                 },
-                { processId, cumulativeValue, commitments: [commitment], buyerSignature: buyerResolveSig },
+                { processId, runningTotal, commitments: [commitment], buyerSignature: buyerResolveSig },
             );
             const receipt = await publicClient.getTransactionReceipt({ hash: settled.transactionHash });
             expect(receipt.status).toBe("success");
@@ -850,7 +850,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                 },
                 {
                     processId: `0x${"11".repeat(32)}` as Hex,
-                    cumulativeValue: 1n,
+                    runningTotal: 1n,
                     commitments: [],
                     buyerSignature: `0x${"22".repeat(65)}` as Hex,
                 },

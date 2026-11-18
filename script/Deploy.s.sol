@@ -22,12 +22,12 @@ import "../src/core/verifier/FigaroBatchVerifier.sol";
 // (the coordinator exemplar), which would collide with AttestationCoordinator's.
 import {WitnessSwapAndCommitCoordinator} from "../src/composability/WitnessSwapAndCommitCoordinator.sol";
 import {MockDisperse} from "../src/mocks/MockDisperse.sol";
-import "../src/registries/AssemblyRegistry.sol";
+import "../src/registries/ProcessRegistry.sol";
 import "../src/registries/AgreementRegistry.sol";
 
 /// @title Deploy — Full protocol stack to local Anvil
 /// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,
-///         AssemblyRegistry, AgreementRegistry, MembersRegistry, WitnessSwapAndCommitCoordinator
+///         ProcessRegistry, AgreementRegistry, MembersRegistry, WitnessSwapAndCommitCoordinator
 ///         (+ MockWitnessPermit2 / MockSwapVenue as its devnet Permit2 and
 ///         swap venue), FlorinToken, MockERC20, MockPermitToken.
 ///         Clauses are populated post-deploy (populate-clauses.mjs). Mints test
@@ -118,7 +118,7 @@ contract Deploy is Script {
         // reject garbage). Any registered clause is attestable with no
         // per-clause on-chain code — open-world by construction.
 
-        // ── AssemblyRegistry ────────────────────────────────────────
+        // ── ProcessRegistry ────────────────────────────────────────
         // Permissionless first-write-wins anchor for designer-built
         // assemblies. Parallel to ClauseRegistry and MembersRegistry —
         // each registry family has its own anchor per the
@@ -136,14 +136,14 @@ contract Deploy is Script {
         // Devnet value: 0.001 ETH deposit so test wallets can register
         // without faucet drama. Mainnet picks its own value via
         // DeployMainnet.s.sol — record the reasoning there.
-        _assemblies = new AssemblyRegistry(0.001 ether);
-        console.log("AssemblyRegistry deployed at:", address(_assemblies));
+        _assemblies = new ProcessRegistry(0.001 ether);
+        console.log("ProcessRegistry deployed at:", address(_assemblies));
 
         // ── AgreementRegistry ───────────────────────────────────────
         // Permissionless first-write-wins anchor for registered agreements:
         // the clauses composed for one order, a reusable unit any
         // assembly binds. Its own family beside ClauseRegistry and
-        // AssemblyRegistry, with the same reclaimable stake and the same
+        // ProcessRegistry, with the same reclaimable stake and the same
         // devnet value.
         _agreements = new AgreementRegistry(0.001 ether);
         console.log("AgreementRegistry deployed at:", address(_agreements));
@@ -250,7 +250,7 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_SWAP_ROUTER=", address(_router));
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=", address(_clauses));
         console.log("  NEXT_PUBLIC_MEMBERS_REGISTRY=", address(_members));
-        console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(_assemblies));
+        console.log("  NEXT_PUBLIC_PROCESS_REGISTRY=", address(_assemblies));
         console.log("  NEXT_PUBLIC_AGREEMENT_REGISTRY=", address(_agreements));
         console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=", address(_florin));
         console.log("  NEXT_PUBLIC_BATCH_VERIFIER=", _batchVerifier);
@@ -264,7 +264,7 @@ contract Deploy is Script {
     MockSwapVenue internal _router;
     WitnessSwapAndCommitCoordinator internal _swapCoordinator;
     ClauseRegistry internal _clauses;
-    AssemblyRegistry internal _assemblies;
+    ProcessRegistry internal _assemblies;
     AgreementRegistry internal _agreements;
     MembersRegistry internal _members;
     FlorinToken internal _florin;

@@ -40,12 +40,12 @@ const COMMITMENT: Commitment = {
     processId: `0x${"00".repeat(32)}`,
     buyer: "0x9F8A75F6dd73353e1E10E1D517dAD1b9bc3ff353",
     seller: "0xA7CD1b7B8C1EC831d40bC6310CBCb95803028D2F",
-    currency: "0x4444444444444444444444444444444444444444",
+    token: "0x4444444444444444444444444444444444444444",
     payment: 1000n,
-    expectedCumulativeValue: 1000n,
+    runningTotal: 1000n,
     checkoutHash: keccak256(toHex("agreement")),
     salt: 7n,
-    deadline: 1_900_000_000n,
+    commitDeadline: 1_900_000_000n,
 };
 
 const ARGS = {
@@ -75,10 +75,10 @@ function permit2WitnessDigest(): `0x${string}` {
         encodeAbiParameters(
             parseAbiParameters("bytes32, bytes32, address, address, address, uint256, uint256, bytes32, uint256, uint256"),
             [
-                keccak256(toHex("Commitment(bytes32 processId,address buyer,address seller,address currency,uint256 payment,uint256 expectedCumulativeValue,bytes32 checkoutHash,uint256 salt,uint256 deadline)")),
-                COMMITMENT.processId, COMMITMENT.buyer, COMMITMENT.seller, COMMITMENT.currency,
-                COMMITMENT.payment, COMMITMENT.expectedCumulativeValue, COMMITMENT.checkoutHash,
-                COMMITMENT.salt, COMMITMENT.deadline,
+                keccak256(toHex("Commitment(bytes32 processId,address buyer,address seller,address token,uint256 payment,uint256 runningTotal,bytes32 checkoutHash,uint256 salt,uint256 commitDeadline)")),
+                COMMITMENT.processId, COMMITMENT.buyer, COMMITMENT.seller, COMMITMENT.token,
+                COMMITMENT.payment, COMMITMENT.runningTotal, COMMITMENT.checkoutHash,
+                COMMITMENT.salt, COMMITMENT.commitDeadline,
             ],
         ),
     );

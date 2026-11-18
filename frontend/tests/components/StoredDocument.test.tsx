@@ -19,7 +19,7 @@
 import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { canonicalize, computeClauseKey, assemblyHashOf } from "@figaro-protocol/sdk";
+import { canonicalize, computeClauseKey, processDesignHashOf } from "@figaro-protocol/sdk";
 import { stringToBytes } from "viem";
 
 const fetchCappedContentMock = vi.fn();
@@ -203,7 +203,7 @@ describe("StoredDocument — the pinned document, verbatim", () => {
             summary: "Editorial wording, outside the anchor.",
             agreements: [{ id: "agreement-0", agreementHash: `0x${"a1".repeat(32)}`, clauses: {} }],
         };
-        const hash = assemblyHashOf(assembly as Parameters<typeof assemblyHashOf>[0]);
+        const hash = processDesignHashOf(assembly as Parameters<typeof processDesignHashOf>[0]);
         fetchCappedContentMock.mockResolvedValue(served(JSON.stringify(assembly, null, 2)));
         mount({ id: "assembly-asm-1", anchoredHash: hash, anchor: "assembly-hash" });
         screen.getByTestId("stored-toggle-assembly-asm-1").click();

@@ -58,9 +58,9 @@ describe("buildChainOffers — the value-added chain walk", () => {
     it("orders root first and accumulates cumulative value across the chain", async () => {
         const offers = await buildChainOffers(buyerW, params);
         expect(offers.map((o) => o.nodeId)).toEqual(["agreement-0", "agreement-1", "agreement-2"]);
-        expect(offers[0].offer.commitment.expectedCumulativeValue).toBe(1000n);
-        expect(offers[1].offer.commitment.expectedCumulativeValue).toBe(1500n);
-        expect(offers[2].offer.commitment.expectedCumulativeValue).toBe(1800n);
+        expect(offers[0].offer.commitment.runningTotal).toBe(1000n);
+        expect(offers[1].offer.commitment.runningTotal).toBe(1500n);
+        expect(offers[2].offer.commitment.runningTotal).toBe(1800n);
     });
 
     it("root signs processId=0; sub-orders name the root's derived processId", async () => {

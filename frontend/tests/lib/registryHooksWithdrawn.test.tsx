@@ -40,19 +40,19 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
             ...actual.CONTRACTS,
             clauseRegistry: "0x3333333333333333333333333333333333333333",
             agreementRegistry: "0x4444444444444444444444444444444444444444",
-            assemblyRegistry: "0x5555555555555555555555555555555555555555",
+            processRegistry: "0x5555555555555555555555555555555555555555",
         },
     };
 });
 
 import {
     AGREEMENT_REGISTRY_ABI,
-    ASSEMBLY_REGISTRY_ABI,
+    PROCESS_REGISTRY_ABI,
     CLAUSE_REGISTRY_ABI,
 } from "@figaro-protocol/sdk";
 import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
 import { usePublishedAgreements } from "@/lib/protocol/useAgreementRegistry";
-import { useAllPublishedAssemblies, usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
+import { useAllPublishedAssemblies, usePublishedAssemblies } from "@/lib/protocol/useProcessRegistry";
 import { isLiveRegistration } from "@/lib/shared/clauseSpecSource";
 
 /** One raw log of `eventName` as a node returns it: topics and data, ABI-encoded. */
@@ -115,24 +115,24 @@ describe("a withdrawn entry leaves view in the registry hooks", () => {
     });
 
     it("assemblies: the network-wide read drops the withdrawn one; the wallet's read keeps it flagged", async () => {
-        const abi = ASSEMBLY_REGISTRY_ABI as Abi;
+        const abi = PROCESS_REGISTRY_ABI as Abi;
         chainHolds(
             [
-                rawLog(abi, "AssemblyRegistered", { assemblyHash: KEY_LIVE, registeredBy: REGISTRANT, contentURI: "ipfs://live" }, 5n),
-                rawLog(abi, "AssemblyRegistered", { assemblyHash: KEY_GONE, registeredBy: REGISTRANT, contentURI: "ipfs://gone" }, 4n),
+                rawLog(abi, "ProcessRegistered", { processDesignHash: KEY_LIVE, registeredBy: REGISTRANT, contentURI: "ipfs://live" }, 5n),
+                rawLog(abi, "ProcessRegistered", { processDesignHash: KEY_GONE, registeredBy: REGISTRANT, contentURI: "ipfs://gone" }, 4n),
             ],
-            [rawLog(abi, "DepositWithdrawn", { assemblyHash: KEY_GONE, registeredBy: REGISTRANT, amount: 1n }, 6n)],
-            "AssemblyRegistered",
+            [rawLog(abi, "DepositWithdrawn", { processDesignHash: KEY_GONE, registeredBy: REGISTRANT, amount: 1n }, 6n)],
+            "ProcessRegistered",
         );
 
         const all = renderHook(() => useAllPublishedAssemblies());
         const allRead = await settled(all.result);
         expect(allRead.status).toBe("present");
-        expect(allRead.value?.map((r) => r.assemblyHash)).toEqual([KEY_LIVE]);
+        expect(allRead.value?.map((r) => r.processDesignHash)).toEqual([KEY_LIVE]);
 
         const own = renderHook(() => usePublishedAssemblies(REGISTRANT));
         const ownRead = await settled(own.result);
-        expect(ownRead.value?.map((r) => [r.assemblyHash, r.stakeWithdrawn])).toEqual([
+        expect(ownRead.value?.map((r) => [r.processDesignHash, r.stakeWithdrawn])).toEqual([
             [KEY_LIVE, false],
             [KEY_GONE, true],
         ]);

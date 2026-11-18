@@ -10,7 +10,7 @@
  * errors keep surfacing as its own copy.
  *
  * These hooks need a wallet provider, so they live apart from the registries'
- * read modules (`useClauseRegistry.ts`, `useAssemblyRegistry.ts`,
+ * read modules (`useClauseRegistry.ts`, `useProcessRegistry.ts`,
  * `useAgreementRegistry.ts`), which import nothing from `wagmi` and which a
  * page with no wallet provider reads through.
  */
@@ -18,11 +18,11 @@
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import type { Abi } from "viem";
 import { AGREEMENT_REGISTRY_ABI } from "@figaro-protocol/sdk";
-import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
+import { PROCESS_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { withdrawRevertMessage } from "@/lib/protocol/registryRevertMessages";
 import { clauseWithdrawRevertMessage, getClauseRegistry } from "@/lib/protocol/useClauseRegistry";
-import { getAssemblyRegistry } from "@/lib/protocol/useAssemblyRegistry";
+import { getProcessRegistry } from "@/lib/protocol/useProcessRegistry";
 import { getAgreementRegistry } from "@/lib/protocol/useAgreementRegistry";
 
 interface WithdrawStakeConfig {
@@ -91,7 +91,7 @@ export const useWithdrawClause = createUseWithdrawStake({
 });
 
 /**
- * Reclaim an assembly's registration stake (`AssemblyRegistry.withdrawDeposit`).
+ * Reclaim an assembly's registration stake (`ProcessRegistry.withdrawDeposit`).
  * The binding is permanent — withdraw only moves the stake and de-surfaces
  * the assembly for NEW orders; committed processes keep resolving. Gating on
  * in-flight trades is the caller's job via `useWithdrawGate` (advisory,
@@ -100,9 +100,9 @@ export const useWithdrawClause = createUseWithdrawStake({
  * `success` receipt. Throws on any failure.
  */
 export const useWithdrawAssembly = createUseWithdrawStake({
-    getRegistry: getAssemblyRegistry,
-    abi: ASSEMBLY_REGISTRY_ABI,
-    notConfiguredMessage: "AssemblyRegistry address not configured (NEXT_PUBLIC_ASSEMBLY_REGISTRY).",
+    getRegistry: getProcessRegistry,
+    abi: PROCESS_REGISTRY_ABI,
+    notConfiguredMessage: "ProcessRegistry address not configured (NEXT_PUBLIC_PROCESS_REGISTRY).",
     revertMessage: withdrawRevertMessage("assembly"),
 });
 

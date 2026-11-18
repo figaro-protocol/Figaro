@@ -172,10 +172,10 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
                 catalogURI,
                 acceptedTokens: [{ address: token!, symbol: 'MOCK', chainId: 31337 }],
                 defaultTokenAddress: token!,
-                assemblyBindings: [{
+                processBindings: [{
                     bindingId: `xmtp-smoke-${SELLER.slice(2, 8).toLowerCase()}`,
                     subjectAddress: SELLER,
-                    assemblyHash: assembly.assemblyHash,
+                    processDesignHash: assembly.processDesignHash,
                     coSellerBindings: [],
                 }],
             },

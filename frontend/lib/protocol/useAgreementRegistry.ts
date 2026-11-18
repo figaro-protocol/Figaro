@@ -1,6 +1,6 @@
 /**
  * useAgreementRegistry — on-chain hooks for the `AgreementRegistry`. Parallel
- * to `useAssemblyRegistry` (assemblies) and the clause-registry wiring
+ * to `useProcessRegistry` (assemblies) and the clause-registry wiring
  * (clauses) per the separation-of-concerns doctrine: the agreement family has
  * its own anchor, its own events and its own reader.
  *
@@ -11,7 +11,7 @@
  * assembly composed from an agreement keeps working after its stake is
  * reclaimed), fetches the pinned document from IPFS, and verifies it against
  * the key (`anchorRegisteredAgreement`). `hydrateAnchoredAssembly` runs the SDK's
- * `hydrateAssembly` over that reader: an assembly is offered only when every
+ * `hydrateProcessDesign` over that reader: an assembly is offered only when every
  * agreement's agreement reads and verifies — any absence is the assembly's
  * absence, never a fallback to another copy. This file imports nothing from
  * `wagmi`; the withdraw hook, which needs a wallet, is `useWithdrawAgreement`
@@ -24,12 +24,12 @@ import {
     agreementHashOf,
     anchorRegisteredAgreement,
     canonicalize,
-    hydrateAssembly,
+    hydrateProcessDesign,
     parseAgreementRegistryLogs,
     type Anchored,
-    type Assembly,
+    type ProcessDesign,
     type RegisteredAgreement,
-    type HydratedAssembly,
+    type HydratedProcessDesign,
 } from "@figaro-protocol/sdk";
 import { isValidAddress } from "@/lib/shared/evm";
 import { CONTRACTS } from "@/lib/core/contracts";
@@ -224,7 +224,7 @@ export async function fetchRegisteredAgreement(
  *  through `fetchRegisteredAgreement` and verified against its key. Null when
  *  any agreement's agreement is absent — the assembly is not offered. */
 export function hydrateAnchoredAssembly(
-    assembly: Anchored<Assembly> | Assembly,
-): Promise<HydratedAssembly | null> {
-    return hydrateAssembly(assembly, (agreementHash) => fetchRegisteredAgreement(agreementHash));
+    assembly: Anchored<ProcessDesign> | ProcessDesign,
+): Promise<HydratedProcessDesign | null> {
+    return hydrateProcessDesign(assembly, (agreementHash) => fetchRegisteredAgreement(agreementHash));
 }

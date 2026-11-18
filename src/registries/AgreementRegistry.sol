@@ -5,7 +5,7 @@ pragma solidity 0.8.26;
 /// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice On-chain dedup guard + event emission for agreement registration.
-///         Parallel to `ClauseRegistry` (clauses), `AssemblyRegistry`
+///         Parallel to `ClauseRegistry` (clauses), `ProcessRegistry`
 ///         (assemblies) and `MembersRegistry` (members) — each family
 ///         carries its own anchor per the protocol's separation-of-concerns
 ///         doctrine, and this contract reads none of them.
@@ -38,7 +38,7 @@ pragma solidity 0.8.26;
 ///         `checkoutHash` a commitment carries: an order instantiating a
 ///         registered agreement carries the agreement format's reserved
 ///         provenance leaf, whose bytes name the agreementHash and the
-///         assemblyHash of the assembly it came from, under its own
+///         processDesignHash of the assembly it came from, under its own
 ///         `checkoutHash`.
 ///
 ///         STAKED INTENT: registration requires an ETH stake
@@ -64,7 +64,7 @@ pragma solidity 0.8.26;
 ///         whoever anchors a composition first is its designer of record.
 ///         Editorial prose is not identity, so a front-runner can anchor
 ///         someone else's composition under their own prose — the same
-///         accepted squatting economics as `AssemblyRegistry`; the stake is
+///         accepted squatting economics as `ProcessRegistry`; the stake is
 ///         the cost floor.
 ///
 ///         No owner, no admin, no charge kept. The binding is first-write-wins
@@ -82,7 +82,7 @@ contract AgreementRegistry {
     /// @notice The key of an assembly tree's terms leaf,
     ///         `keccak256("figaro-assembly-terms")` — a format constant, never
     ///         a registration and never an agreementHash.
-    bytes32 public constant ASSEMBLY_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms");
+    bytes32 public constant PROCESS_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms");
 
     /// @notice Stake in wei required at registration. Immutable at deploy.
     /// @dev Sybil-resistance stake, never a charge. The protocol does not
@@ -161,7 +161,7 @@ contract AgreementRegistry {
     function registerAgreement(bytes32 agreementHash, string calldata contentURI) external payable {
         if (msg.value != registrationDeposit) revert WrongDeposit(msg.value, registrationDeposit);
         if (agreementHash == bytes32(0)) revert ZeroAgreementHash();
-        if (agreementHash == PROVENANCE_LEAF_KEY || agreementHash == ASSEMBLY_TERMS_LEAF_KEY) {
+        if (agreementHash == PROVENANCE_LEAF_KEY || agreementHash == PROCESS_TERMS_LEAF_KEY) {
             revert ReservedKeyIsNotARegistration(agreementHash);
         }
         if (bytes(contentURI).length == 0) revert EmptyContentURI();

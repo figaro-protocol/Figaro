@@ -3,7 +3,7 @@
  * refuses what it cannot read or verify. `useOrderCommitmentFlow`'s sign step
  * (`acceptOrder` → `signAs`, the path every signature takes) and its
  * broadcast of a fully signed payload (`commitOrder`) read the assembly the
- * agreement's provenance leaf names from `AssemblyRegistry` → IPFS, every
+ * agreement's provenance leaf names from `ProcessRegistry` → IPFS, every
  * registered agreement from `AgreementRegistry` → IPFS, verify each against
  * its root or key, and run `assertAgreementSignable` with it. An assembly
  * that cannot be fetched, one that does not hash to its root, a registered
@@ -16,12 +16,12 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import {
     agreementHashOf,
-    assemblyHashOf,
+    processDesignHashOf,
     buildOrderAgreement,
     computeCheckoutHash,
-    deriveAssemblySlug,
+    deriveProcessDesignSlug,
     type Agreement,
-    type Assembly,
+    type ProcessDesign,
     type Commitment,
     type Hex,
     type RegisteredAgreement,
@@ -38,7 +38,7 @@ import { specSource, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource"
 const BUYER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as Hex;
 const SELLER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" as Hex;
 const CURRENCY = `0x${"ab".repeat(20)}` as Hex;
-const ASSEMBLY_REGISTRY = `0x${"a5".repeat(20)}` as Hex;
+const PROCESS_REGISTRY = `0x${"a5".repeat(20)}` as Hex;
 const AGREEMENT_REGISTRY = `0x${"a6".repeat(20)}` as Hex;
 
 vi.mock("wagmi", () => ({
@@ -56,7 +56,7 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
         CONTRACTS: {
             ...actual.CONTRACTS,
             core: "0x00000000000000000000000000000000000000c0",
-            assemblyRegistry: ASSEMBLY_REGISTRY,
+            processRegistry: PROCESS_REGISTRY,
             agreementRegistry: AGREEMENT_REGISTRY,
             clauseRegistry: `0x${"c1".repeat(20)}`,
         },
@@ -120,7 +120,7 @@ vi.mock("@/lib/member/profileFetcher", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/member/profileFetcher")>()),
     profileReaderForChain: () => async () => ({
         name: "Seller",
-        assemblyBindings: designed.map((assemblyHash, i) => ({ bindingId: `b-${i}`, subjectAddress: SELLER, assemblyHash })),
+        processBindings: designed.map((processDesignHash, i) => ({ bindingId: `b-${i}`, subjectAddress: SELLER, processDesignHash })),
     }),
 }));
 
@@ -140,16 +140,16 @@ function design(extraClauses: Record<string, Record<string, unknown>> = {}) {
     const documents = [{ documentHash: `0x${"d0".repeat(32)}`, documentVersion: "1.0.0", documentTitle: `Terms ${caseId}` }];
     const registered: RegisteredAgreement = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-consent")]: { documents }, ...extraClauses } };
     const agreementHash = agreementHashOf(registered);
-    const assembly: Assembly = { agreements: [{ id: "agreement-0", agreementHash, clauses: {} }] };
-    const assemblyHash = assemblyHashOf(assembly);
-    designed.push(assemblyHash);
+    const assembly: ProcessDesign = { agreements: [{ id: "agreement-0", agreementHash, clauses: {} }] };
+    const processDesignHash = processDesignHashOf(assembly);
+    designed.push(processDesignHash);
     const anchor = () => {
-        bindings.set(assemblyHash.toLowerCase(), `ipfs://assembly-${caseId}`);
+        bindings.set(processDesignHash.toLowerCase(), `ipfs://assembly-${caseId}`);
         bindings.set(agreementHash.toLowerCase(), `ipfs://agreement-${caseId}`);
         pinned.set(`ipfs://assembly-${caseId}`, JSON.stringify(assembly));
         pinned.set(`ipfs://agreement-${caseId}`, JSON.stringify(registered));
     };
-    return { documents, registered, agreementHash, assembly, assemblyHash, anchor, id: caseId };
+    return { documents, registered, agreementHash, assembly, processDesignHash, anchor, id: caseId };
 }
 
 /** The order `d` designs, its consent clause carrying `consent` — or, with
@@ -166,17 +166,17 @@ function payloadFor(
         },
         ...(consent === null ? {} : { [keyOf("figaro-consent")]: consent }),
     }, specSource());
-    const agreement: Agreement = { ...built, clauses: [...built.clauses, ...extra], follows: [], provenance: { agreementHash: d.agreementHash, assemblyHash: d.assemblyHash } };
+    const agreement: Agreement = { ...built, clauses: [...built.clauses, ...extra], follows: [], provenance: { agreementHash: d.agreementHash, processDesignHash: d.processDesignHash } };
     const commitment: Commitment = {
         processId: `0x${"00".repeat(32)}` as Hex,
         buyer: BUYER,
         seller: SELLER,
-        currency: CURRENCY,
+        token: CURRENCY,
         payment: 1000n,
-        expectedCumulativeValue: 1000n,
+        runningTotal: 1000n,
         checkoutHash: computeCheckoutHash(agreement),
         salt: 1n,
-        deadline: 9_999_999_999n,
+        commitDeadline: 9_999_999_999n,
     };
     return { commitment, agreement, buyerSig: `0x${"22".repeat(65)}` as Hex };
 }
@@ -237,7 +237,7 @@ describe("both sign flows read and verify the design the agreement names", () =>
     it("refuses an order missing a clause of the registered agreement it names, naming the assembly by slug and full hash", async () => {
         const d = design();
         d.anchor();
-        const missing = new RegExp(`figaro-consent clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(d.assemblyHash)} \\(${d.assemblyHash}\\) composes`);
+        const missing = new RegExp(`figaro-consent clause: the order does not carry this clause, which assembly ${deriveProcessDesignSlug(d.processDesignHash)} \\(${d.processDesignHash}\\) composes`);
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await expect(result.current.acceptOrder(payloadFor(d, null))).rejects.toThrow(missing);
         await expect(result.current.commitOrder(signed(payloadFor(d, null)))).rejects.toThrow(missing);

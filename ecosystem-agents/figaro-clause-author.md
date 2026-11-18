@@ -92,7 +92,7 @@ nothing else:
 | Hint | Writes into | Effect |
 |---|---|---|
 | `block.design.article: "attestations"` | `checkoutHash` | the clause is committed as an EMPTY anchor, filled by attestation later; field `default`s are NOT applied |
-| `block.design.scope: "assembly"` | `assemblyHash` + `checkoutHash` | composed ONCE for the whole design, folded into EVERY agreement at checkout; composing it on one order is a build error |
+| `block.design.scope: "assembly"` | `processDesignHash` + `checkoutHash` | composed ONCE for the whole design, folded into EVERY agreement at checkout; composing it on one order is a build error |
 | `block.design.fills` | `agreementHash` | names the fields whose DESIGN-TIME values survive into an agreement; name nothing and the agreement carries `{}` |
 | `block.checkout.catalogueFills` / `profileFills` | `checkoutHash` | names which fields the seller's catalog / profile folds write onto the leaf at checkout |
 | `block.checkout.catalogueMeasures` | `checkoutHash` | maps a field to the catalog-item field it is read from and how the order's lines combine it (`"sum"`, or `"single-unit"` for a one-unit order); a measure the items do not supply stays missing, so give such a field no `default` |

@@ -7,7 +7,7 @@
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { agreementHashOf, type Hex, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { agreementHashOf, type Hex, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 
 vi.mock("wagmi", () => ({ useAccount: () => ({ address: "0x1111111111111111111111111111111111111111" }) }));
 vi.mock("@/lib/core/contracts", async (importOriginal) => {
@@ -41,7 +41,7 @@ const COMPOSING = pinSpec({
     },
 });
 
-let hydrated: HydratedAssembly;
+let hydrated: HydratedProcessDesign;
 
 beforeAll(async () => {
     await primeClauseSpecs(["figaro-commerce"]);

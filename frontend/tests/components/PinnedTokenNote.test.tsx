@@ -9,7 +9,7 @@
 import React from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import type { Assembly } from "@figaro-protocol/sdk";
+import type { ProcessDesign } from "@figaro-protocol/sdk";
 
 vi.mock("@/hooks/useTokenSymbol", () => ({
     useTokenSymbol: (address: string) => ({ data: address ? "MOCK" : undefined }),
@@ -30,7 +30,7 @@ beforeAll(async () => {
 
 describe("PinnedTokenNote — binding a pinned assembly accepts its token", () => {
     // Built per test: the specs are primed in beforeAll, after collection.
-    const pinned = (): Assembly => ({
+    const pinned = (): ProcessDesign => ({
         agreements: [],
         assemblyClauses: { [keyOf("figaro-utility-token")]: { currency: TOKEN } },
     });
@@ -45,7 +45,7 @@ describe("PinnedTokenNote — binding a pinned assembly accepts its token", () =
 
     it("renders nothing for an assembly whose designer pinned no token", () => {
         specsState.loaded = true;
-        const assembly: Assembly = { agreements: [], assemblyClauses: {} };
+        const assembly: ProcessDesign = { agreements: [], assemblyClauses: {} };
         const { container } = render(<PinnedTokenNote assembly={assembly} slug="open" />);
         expect(container.textContent).toBe("");
         expect(screen.queryByTestId("seller-assembly-pinned-token-open")).toBeNull();

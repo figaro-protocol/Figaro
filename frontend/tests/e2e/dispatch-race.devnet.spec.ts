@@ -60,7 +60,7 @@ import {
     seedRegisteredMember,
     memberProfileBindings,
     waitForConnected,
-    anchoredAssemblyHash,
+    anchoredProcessDesignHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
@@ -114,7 +114,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
 
         // ── ENSURE the delivery assembly (shared author-if-absent). ──
         const deliverySlug = await ensureDeliveryAssembly(page);
-        const deliveryHash = await anchoredAssemblyHash(deliverySlug);
+        const deliveryHash = await anchoredProcessDesignHash(deliverySlug);
 
         // ── BIND (idempotent): Aurora pins the assembly, designating NOBODY —
         //    the absence IS what makes the courier node race-able. ──
@@ -160,10 +160,10 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
                     catalogURI,
                     acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
                     defaultTokenAddress: token,
-                    assemblyBindings: [{
+                    processBindings: [{
                         bindingId: `race-binding-${address.slice(2, 8).toLowerCase()}`,
                         subjectAddress: address,
-                        assemblyHash: deliveryHash,
+                        processDesignHash: deliveryHash,
                         coSellerBindings: [],
                     }],
                 },
@@ -301,7 +301,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
         }).toBe(committedBefore + 1);
         const rootEvent = (await queryCommitted())[committedBefore];
         const processId = rootEvent.args.processId!;
-        const rootBonds = calculateBonds(rootEvent.args.cumulativeValue!, rootEvent.args.payment!);
+        const rootBonds = calculateBonds(rootEvent.args.runningTotal!, rootEvent.args.payment!);
         {
             const [b, m, c] = await Promise.all([balanceOf(BUYER), balanceOf(MERCHANT), balanceOf(core)]);
             expect(buyer0 - b, 'after root: buyer down by its buyer bond').toBe(rootBonds.buyerBond);
@@ -369,7 +369,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
             'the committed seller IS the race winner — formed at checkout, no contract',
         ).toBe(COURIER_CHEAP.toLowerCase());
         expect(courierEvent.args.payment, "the committed payment is the winner's drafted posted price").toBe(cheapPayment);
-        const courierBonds = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
+        const courierBonds = calculateBonds(courierEvent.args.runningTotal!, courierEvent.args.payment!);
         // The ready lane's approval landed after the confirm and before the
         // commit, and covered the bond the Core pulled.
         {

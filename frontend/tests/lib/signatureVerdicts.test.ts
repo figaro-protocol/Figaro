@@ -84,12 +84,12 @@ const commitment: Commitment = {
     processId: ZERO_BYTES32,
     buyer: buyerAccount.address,
     seller: sellerAccount.address,
-    currency: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    token: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
     payment: 1_000_000_000_000_000_000n,
-    expectedCumulativeValue: 1_000_000_000_000_000_000n,
+    runningTotal: 1_000_000_000_000_000_000n,
     checkoutHash: `0x${"ab".repeat(32)}`,
     salt: 7n,
-    deadline: 4_000_000_000n,
+    commitDeadline: 4_000_000_000n,
 };
 
 const signCommitment = (account: typeof buyerAccount) =>

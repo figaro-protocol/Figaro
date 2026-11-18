@@ -1,6 +1,6 @@
 "use client";
 
-import type { Assembly } from "@figaro-protocol/sdk";
+import type { ProcessDesign } from "@figaro-protocol/sdk";
 import { readUtilityTokenPin } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
@@ -19,7 +19,7 @@ import { useTokenSymbol } from "@/hooks/useTokenSymbol";
  * the note says that, never silence a seller would read as "no pin"; it
  * renders nothing for an assembly with no pin once the specs are read.
  */
-export function PinnedTokenNote({ assembly, slug }: { assembly: Assembly; slug: string }) {
+export function PinnedTokenNote({ assembly, slug }: { assembly: ProcessDesign; slug: string }) {
     const { loaded, failed } = useClauseSpecs();
     const pin = loaded ? readUtilityTokenPin(assembly.assemblyClauses ?? {}, specSource()) : undefined;
     const { data: symbol } = useTokenSymbol(pin ?? "");

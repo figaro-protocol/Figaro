@@ -200,12 +200,12 @@ contract KernelTransitionVectorsTest is Test {
                 processId: isRoot ? bytes32(0) : r.processIds[ord.rootIndex],
                 buyer: buyer,
                 seller: ord.seller,
-                currency: address(token),
+                token: address(token),
                 payment: ord.payment,
-                expectedCumulativeValue: cumulative[i],
+                runningTotal: cumulative[i],
                 checkoutHash: keccak256(abi.encodePacked("agreement-", r.name, "-", vm.toString(i))),
                 salt: i + 1,
-                deadline: DEADLINE
+                commitDeadline: DEADLINE
             });
             (r.processIds[i], r.orderHashes[i]) =
                 core.commit(r.cs[i], _sign(r.cs[i], BUYER_KEY), _sign(r.cs[i], ord.sellerKey));
@@ -239,12 +239,12 @@ contract KernelTransitionVectorsTest is Test {
             vm.serializeBytes32(ok, "commitmentProcessId", c.processId);
             vm.serializeAddress(ok, "buyer", c.buyer);
             vm.serializeAddress(ok, "seller", c.seller);
-            vm.serializeAddress(ok, "currency", c.currency);
+            vm.serializeAddress(ok, "token", c.token);
             vm.serializeString(ok, "payment", vm.toString(c.payment));
-            vm.serializeString(ok, "expectedCumulativeValue", vm.toString(c.expectedCumulativeValue));
+            vm.serializeString(ok, "runningTotal", vm.toString(c.runningTotal));
             vm.serializeBytes32(ok, "checkoutHash", c.checkoutHash);
             vm.serializeString(ok, "salt", vm.toString(c.salt));
-            string memory oj = vm.serializeString(ok, "deadline", vm.toString(c.deadline));
+            string memory oj = vm.serializeString(ok, "commitDeadline", vm.toString(c.commitDeadline));
             vm.serializeString(r.key, string.concat("o", vm.toString(i)), oj);
         }
     }
@@ -277,10 +277,10 @@ contract KernelTransitionVectorsTest is Test {
         uint256 pc;
         for (uint256 root = 0; root < r.orders.length; root++) {
             if (r.orders[root].rootIndex != root) continue;
-            (,, uint256 cumulativeValue, uint256 activeOrderCount) = core.processes(r.processIds[root]);
+            (,, uint256 runningTotal, uint256 activeOrderCount) = core.processes(r.processIds[root]);
             string memory rk = string.concat(r.key, ".pr", vm.toString(pc));
             vm.serializeBytes32(rk, "processId", r.processIds[root]);
-            vm.serializeString(rk, "cumulativeValue", vm.toString(cumulativeValue));
+            vm.serializeString(rk, "runningTotal", vm.toString(runningTotal));
             string memory rj = vm.serializeString(rk, "activeOrderCount", vm.toString(activeOrderCount));
             out = vm.serializeString(r.key, string.concat("pr", vm.toString(pc)), rj);
             pc++;

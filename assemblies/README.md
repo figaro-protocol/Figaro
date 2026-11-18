@@ -12,12 +12,12 @@ bound by `pos.json` and `equipment-hire.json`, `freelance-deliverable.json` by
 that shape; the populate path builds the registered shape from it at deploy:
 `composeAuthoredAgreement` (in the SDK) composes each written agreement —
 names resolved to keys, the key derived — and
-`assembleAuthored` builds each assembly over the agreements its agreements
+`composeAuthoredProcessDesign` builds each assembly over the agreements its agreements
 name (each binds the agreement's hash and carries its written `follows`), then the seeding pins and registers each DISTINCT agreement once on
 `AgreementRegistry` (one stake each; a key already registered is skipped) and
-registers the assembly on `AssemblyRegistry`. Identity is content-derived on
+registers the assembly on `ProcessRegistry`. Identity is content-derived on
 both registries (the `agreementHash`, a merkle root over the composed clauses;
-the `assemblyHash`, a merkle root over the agreements), first-write-wins,
+the `processDesignHash`, a merkle root over the agreements), first-write-wins,
 so re-anchoring is a no-op and independently composing the same design
 collapses onto the same on-chain bindings. This directory and `agreements/`
 are `clauses/`' siblings: clauses are the vocabulary, agreements the terms of one
@@ -37,7 +37,7 @@ asserted from chain:
 | `freelancer-value-chain.json` | 3 orders | A lead freelancer + contributors, one resolution | `freelancer-chain.devnet.spec.ts` (full cycle: three encrypted deliveries, one resolution) |
 | `tradelens.json` | 6 orders | The containerized import chain: shipper → inspection → forwarder → reefer carrier → customs → drayage; every agreement carries the property-transfer clause from signing, so a cargo sold in transit is squared by the parties, attested on each order, and paid as they agreed when the buyer resolves; the title passes by the instrument the parties fingerprint, never on chain | `scenario-tradelens` + `tradelens-runtime` |
 | `aerial-survey.json` | 1 order | A credentialed drone operator flies a committed window and route; the flight's co-produced record is part of the service (each party holds its copy) | `data-market.devnet.spec.ts` (full cycle: adopt, dual posture, ERC-20 balance assertions, self-authenticating data-terms leaf) |
-| `aerial-survey-open-data.json` | 1 order | The SAME flight with the disclosure regime `open` — one changed design fill, a different assemblyHash: regime variants are sibling assemblies, and whether a market flies open or closed is decided by adoption, never by the protocol | sibling of the above (`data-market.devnet.spec.ts` asserts both siblings anchored under distinct assemblyHashes) |
+| `aerial-survey-open-data.json` | 1 order | The SAME flight with the disclosure regime `open` — one changed design fill, a different processDesignHash: regime variants are sibling assemblies, and whether a market flies open or closed is decided by adoption, never by the protocol | sibling of the above (`data-market.devnet.spec.ts` asserts both siblings anchored under distinct processDesignHashes) |
 | `data-stream-subscription.json` | 1 order | A window of licensed access to another member's live data — credential over the encrypted hand-off, every entry a leaf provable against the resolved agreement that produced it; gas is paid once per window, never per data point | `data-market.devnet.spec.ts` (full cycle: license anchored to the resolved flight process, encrypted hand-off evidence, self-authenticating license leaf) |
 | `equipment-hire.json` | 1 order | A renter hires equipment straight from its owner — the same shape as the point-of-sale reference, plus the designer's own denomination pinned once for the whole composition, so no token picker ever appears at checkout | `equipment-hire.devnet.spec.ts` (full cycle: no picker, the pin drives the commitment and every value leg, the commerce/pin provenance pair asserted from the committed agreement) |
 
@@ -55,7 +55,7 @@ field missing, which the format refuses to sign) and the populate path fills
 the deployment's token into it before anchoring (the SDK's
 `fillDeployTimeCurrency`, which reads the pin by the spec's shape: an
 assembly-scoped clause of the denomination article, its designer-filled
-`address-hex` field) — the anchored assemblyHash is over the FILLED assembly,
+`address-hex` field) — the anchored processDesignHash is over the FILLED assembly,
 never the written one. A spec that wants this reference's slug hashes the
 filled assembly too (`referenceAssemblySlugWithLiveCurrency`,
 `devnet-helpers.ts`), not the raw file.
@@ -63,7 +63,7 @@ filled assembly too (`referenceAssemblySlugWithLiveCurrency`,
 The written shape is published as a JSON Schema beside the clause's,
 `sdk/src/assembly.schema.json`, which also describes the pinned form;
 `sdk/tests/documents/schema-conformance.test.ts` keeps that `.schema.json` and
-`assembleAuthored` in lockstep over these files.
+`composeAuthoredProcessDesign` in lockstep over these files.
 Conformance: `frontend/tests/lib/referenceAssemblies.test.ts` — every written
 agreement names itself, says what it is and is bound by a reference assembly;
 every assembly parses, hashes, resolves its topology, composes only registered

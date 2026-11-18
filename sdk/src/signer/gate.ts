@@ -132,13 +132,13 @@ export function evaluateTypedData(
         const buyer = typeof req.message.buyer === "string" ? req.message.buyer.toLowerCase() : "";
         const seller = typeof req.message.seller === "string" ? req.message.seller.toLowerCase() : "";
         const payment = toBigInt(req.message.payment);
-        const cumulative = toBigInt(req.message.expectedCumulativeValue);
-        const currency = typeof req.message.currency === "string" ? req.message.currency.toLowerCase() : "";
+        const cumulative = toBigInt(req.message.runningTotal);
+        const token = typeof req.message.token === "string" ? req.message.token.toLowerCase() : "";
         if (payment === null || cumulative === null) {
-            return refuse("Commitment payment/expectedCumulativeValue are not quantities");
+            return refuse("Commitment payment/runningTotal are not quantities");
         }
-        if (currency !== policy.token) {
-            return refuse(`Commitment currency ${currency || "(missing)"} is not the policy token`);
+        if (token !== policy.token) {
+            return refuse(`Commitment token ${token || "(missing)"} is not the policy token`);
         }
         const me = wallet.toLowerCase();
         const bonds = calculateBonds(cumulative, payment);
@@ -151,12 +151,12 @@ export function evaluateTypedData(
         risk = { token: mine, native: 0n };
     } else if (req.primaryType === "ResolveProcess") {
         const processId = typeof req.message.processId === "string" ? req.message.processId.toLowerCase() : "";
-        const cumulative = toBigInt(req.message.cumulativeValue);
+        const cumulative = toBigInt(req.message.runningTotal);
         if (!BYTES32.test(processId)) {
             return refuse("ResolveProcess processId is not a bytes32");
         }
         if (cumulative === null) {
-            return refuse("ResolveProcess cumulativeValue is not a quantity");
+            return refuse("ResolveProcess runningTotal is not a quantity");
         }
         return {
             allow: true,

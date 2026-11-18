@@ -55,7 +55,7 @@ vi.mock("@figaro-protocol/sdk", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@figaro-protocol/sdk")>()),
     readUtilityTokenPin: () => "0x00000000000000000000000000000000000000d2",
     agreementClauses: () => ({}),
-    assemblyHashOf: () => `0x${"ab".repeat(32)}`,
+    processDesignHashOf: () => `0x${"ab".repeat(32)}`,
     planSubOrderSellers: () => [{ node: { nodeId: "agreement-1", clauses: {} }, seller: undefined, itemId: undefined }],
 }));
 const signRoot = vi.fn(async (_p: unknown, funding: unknown) => { H.attempts[H.attempts.length - 1].push(funding); return {}; });

@@ -12,9 +12,9 @@
  * — so nothing is invoked from here. The surface is a round-trip:
  *
  *   OUT — the current canvas serialized as `{ assembly, agreements }`: the
- *         canonical `Assembly` (one agreement per order, each
+ *         canonical `ProcessDesign` (one agreement per order, each
  *         binding an agreement by key) and the agreements newly composed for
- *         it, built by the same `buildAssembly` walk publish uses,
+ *         it, built by the same `buildProcessDesign` walk publish uses,
  *         for the designer to hand their agent as its starting point.
  *   IN  — the agent's composition pasted back, parsed + soundness-probed
  *         (`parseAssemblyJson`), each agreement's agreement read
@@ -26,7 +26,7 @@
 
 import Link from "@/components/shared/Link";
 import { useCallback, useMemo, useState } from "react";
-import { canonicalize, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { canonicalize, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { snapshotToAssembly } from "@/lib/designer/draftToAssembly";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { copyToClipboard } from "@/lib/shared/clipboard";
@@ -44,7 +44,7 @@ interface CompositionAssistProps {
      *  replace-confirmation and the state swap). Returns false when the
      *  designer declines the replacement — the panel then stays open with
      *  the pasted text intact. */
-    onImportAssembly: (hydrated: HydratedAssembly, composeKeys: ReadonlySet<string>) => boolean;
+    onImportAssembly: (hydrated: HydratedProcessDesign, composeKeys: ReadonlySet<string>) => boolean;
 }
 
 /** The current draft as pretty-printed canonical assembly JSON, or an

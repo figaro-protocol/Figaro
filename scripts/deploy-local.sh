@@ -6,7 +6,7 @@ set -e
 #   frontend/.env.local            (frontend)
 #   .deployments/local.json         (downstream/manual consumption)
 #
-# Stack: FigaroCore, AttestationCoordinator, ClauseRegistry, AssemblyRegistry,
+# Stack: FigaroCore, AttestationCoordinator, ClauseRegistry, ProcessRegistry,
 #        MembersRegistry, WitnessSwapAndCommitCoordinator (+ MockWitnessPermit2,
 #        MockSwapVenue), FlorinToken, MockERC20, MockPermitToken.
 #
@@ -95,7 +95,7 @@ PERMIT2_ADDR=$(echo "$FORGE_OUT"     | grep 'MockWitnessPermit2 deployed at:'   
 SWAP_ROUTER_ADDR=$(echo "$FORGE_OUT" | grep 'MockSwapVenue deployed at:'     | grep -oE '0x[0-9a-fA-F]+')
 CLAUSE_ADDR=$(echo "$FORGE_OUT"      | grep 'ClauseRegistry deployed at:'         | grep -oE '0x[0-9a-fA-F]+')
 MEMBERS_ADDR=$(echo "$FORGE_OUT"    | grep 'MembersRegistry deployed at:'      | grep -oE '0x[0-9a-fA-F]+')
-ASSEMBLY_ADDR=$(echo "$FORGE_OUT"    | grep 'AssemblyRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
+ASSEMBLY_ADDR=$(echo "$FORGE_OUT"    | grep 'ProcessRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
 AGREEMENT_ADDR=$(echo "$FORGE_OUT"   | grep 'AgreementRegistry deployed at:'      | grep -oE '0x[0-9a-fA-F]+')
 FLORIN_TOKEN_ADDR=$(echo "$FORGE_OUT"   | grep 'FlorinToken deployed at:'               | grep -oE '0x[0-9a-fA-F]+')
 RPGF_MINTER_ADDR=$(echo "$FORGE_OUT" | grep 'RpgfMinter deployed at:'             | grep -oE '0x[0-9a-fA-F]+')
@@ -172,7 +172,7 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_PERMIT2"                    "$PERMIT2_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_SWAP_ROUTER"                "$SWAP_ROUTER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_CLAUSE_REGISTRY"           "$CLAUSE_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_MEMBERS_REGISTRY"         "$MEMBERS_ADDR"
-update_env "$CORE_ENV" "NEXT_PUBLIC_ASSEMBLY_REGISTRY"         "$ASSEMBLY_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_PROCESS_REGISTRY"         "$ASSEMBLY_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_AGREEMENT_REGISTRY"        "$AGREEMENT_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS"         "$FLORIN_TOKEN_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_USAGE_COUNTER"             "$USAGE_COUNTER_ADDR"
@@ -210,7 +210,7 @@ cat > "$CORE_DEPLOYMENT" <<EOF
   "swapRouter": "$SWAP_ROUTER_ADDR",
   "clauseRegistry": "$CLAUSE_ADDR",
   "membersRegistry": "$MEMBERS_ADDR",
-  "assemblyRegistry": "$ASSEMBLY_ADDR",
+  "processRegistry": "$ASSEMBLY_ADDR",
   "agreementRegistry": "$AGREEMENT_ADDR",
   "florinToken": "$FLORIN_TOKEN_ADDR",
   "usageCounter": "$USAGE_COUNTER_ADDR",
@@ -252,7 +252,7 @@ echo "   NEXT_PUBLIC_PERMIT2=$PERMIT2_ADDR"
 echo "   NEXT_PUBLIC_SWAP_ROUTER=$SWAP_ROUTER_ADDR"
 echo "   NEXT_PUBLIC_CLAUSE_REGISTRY=$CLAUSE_ADDR"
 echo "   NEXT_PUBLIC_MEMBERS_REGISTRY=$MEMBERS_ADDR"
-echo "   NEXT_PUBLIC_ASSEMBLY_REGISTRY=$ASSEMBLY_ADDR"
+echo "   NEXT_PUBLIC_PROCESS_REGISTRY=$ASSEMBLY_ADDR"
 echo "   NEXT_PUBLIC_AGREEMENT_REGISTRY=$AGREEMENT_ADDR"
 echo "   NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=$FLORIN_TOKEN_ADDR"
 echo "   NEXT_PUBLIC_USAGE_COUNTER=$USAGE_COUNTER_ADDR"
@@ -271,7 +271,7 @@ echo "   Deployment: $CORE_DEPLOYMENT"
 # with "clause specs not loaded: no structural clauses in the cache".
 # The same invocation registers the reference assemblies, as the Sepolia
 # genesis does: each assembly's distinct registered agreements on
-# AgreementRegistry, then the assembly on AssemblyRegistry, with the devnet's
+# AgreementRegistry, then the assembly on ProcessRegistry, with the devnet's
 # MockERC20 filled into the denomination pin a written reference leaves
 # unfilled (the token populate-test-data.mjs and the e2e specs fill too).
 # ── The DAO's clause ─────────────────────────────────────────────────────────
@@ -300,11 +300,11 @@ if [ "$(cast chain-id --rpc-url "$RPC_URL")" = "31337" ] && [ -n "$DAO_CLAUSES" 
 fi
 
 echo ""
-echo "📎 Populating clauses, agreements and reference assemblies (pin → IPFS, anchor → ClauseRegistry, AgreementRegistry, AssemblyRegistry)..."
+echo "📎 Populating clauses, agreements and reference assemblies (pin → IPFS, anchor → ClauseRegistry, AgreementRegistry, ProcessRegistry)..."
 (cd "$REPO_ROOT/frontend" && \
     NEXT_PUBLIC_CLAUSE_REGISTRY="$CLAUSE_ADDR" \
     NEXT_PUBLIC_AGREEMENT_REGISTRY="$AGREEMENT_ADDR" \
-    NEXT_PUBLIC_ASSEMBLY_REGISTRY="$ASSEMBLY_ADDR" \
+    NEXT_PUBLIC_PROCESS_REGISTRY="$ASSEMBLY_ADDR" \
     ASSEMBLY_TOKEN_ADDRESS="$TOKEN_ADDR" \
     node scripts/populate-clauses.mjs)
 

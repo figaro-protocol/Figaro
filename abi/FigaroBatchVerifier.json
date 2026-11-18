@@ -264,7 +264,7 @@
             "internalType": "struct IUsageCounter.BatchUse[]",
             "components": [
               {
-                "name": "clauseOrAssembly",
+                "name": "clauseOrProcess",
                 "type": "bytes32",
                 "internalType": "bytes32"
               },
@@ -525,7 +525,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "cumulativeValue",
+        "name": "runningTotal",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"

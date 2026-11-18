@@ -355,18 +355,18 @@ impl Mempool {
             }
             KernelOp::Resolve {
                 process_id,
-                cumulative_value,
+                running_total,
                 commitments,
                 buyer_sig,
             } => {
                 buf.extend_from_slice(b"resolve");
                 buf.extend_from_slice(process_id.as_slice());
-                buf.extend_from_slice(&cumulative_value.to_be_bytes::<32>());
+                buf.extend_from_slice(&running_total.to_be_bytes::<32>());
                 // Admission checks the signer against the root buyer of a
                 // held or queued process (`refuse_unknown`); the signer
                 // stays in the key.
                 let digest =
-                    typed_data_hash(&domain, &resolve_struct_hash(process_id, cumulative_value));
+                    typed_data_hash(&domain, &resolve_struct_hash(process_id, running_total));
                 if let Ok(signer) = recover_signer(&digest, buyer_sig) {
                     buf.extend_from_slice(signer.as_slice());
                 }
@@ -380,7 +380,7 @@ impl Mempool {
             }
             KernelOp::ResolveByWalletCode {
                 process_id,
-                cumulative_value,
+                running_total,
                 commitments,
                 authorization,
             } => {
@@ -389,7 +389,7 @@ impl Mempool {
                 // validates a duplicate.
                 buf.extend_from_slice(b"resolve-by-wallet-code");
                 buf.extend_from_slice(process_id.as_slice());
-                buf.extend_from_slice(&cumulative_value.to_be_bytes::<32>());
+                buf.extend_from_slice(&running_total.to_be_bytes::<32>());
                 buf.extend_from_slice(keccak256(authorization).as_slice());
                 for commitment in commitments {
                     let (order_hash, _) = derive_commitment_ids(&domain, commitment);
@@ -474,7 +474,7 @@ impl Mempool {
     /// nothing. Bounded by `max_pending_usage` with the same
     /// evict-the-newcomer policy as ops.
     pub async fn submit_usage_claim(&self, claim: UsageClaim) -> Result<usize, SubmitError> {
-        if claim.clause_or_assembly == alloy_primitives::B256::ZERO {
+        if claim.clause_or_process == alloy_primitives::B256::ZERO {
             return Err(SubmitError::Invalid(
                 "usage claim clause-or-assembly is zero".to_string(),
             ));
@@ -1172,7 +1172,7 @@ impl Mempool {
             }
             KernelOp::Resolve {
                 process_id,
-                cumulative_value,
+                running_total,
                 buyer_sig,
                 ..
             } => {
@@ -1180,7 +1180,7 @@ impl Mempool {
                     return Err(unknown("the resolve's process", process_id));
                 };
                 let digest =
-                    typed_data_hash(&domain, &resolve_struct_hash(process_id, cumulative_value));
+                    typed_data_hash(&domain, &resolve_struct_hash(process_id, running_total));
                 let signer = recover_signer(&digest, buyer_sig)
                     .map_err(|e| format!("invalid resolve signature: {e}"))?;
                 if signer != buyer {
@@ -1248,11 +1248,11 @@ impl Mempool {
             }
             KernelOp::Resolve {
                 process_id,
-                cumulative_value,
+                running_total,
                 commitments,
                 buyer_sig,
             } => {
-                let struct_hash = resolve_struct_hash(process_id, cumulative_value);
+                let struct_hash = resolve_struct_hash(process_id, running_total);
                 let digest = typed_data_hash(&domain, &struct_hash);
                 recover_signer(&digest, buyer_sig)
                     .map_err(|e| format!("invalid resolve signature: {e}"))?;
@@ -1437,9 +1437,7 @@ fn commit_precedes(domain: &B256, c: &KernelOp, f: &KernelOp, touched: &HashSet<
         return false;
     }
     match f {
-        KernelOp::Commit { commitment: f, .. } => {
-            c.expected_cumulative_value < f.expected_cumulative_value
-        }
+        KernelOp::Commit { commitment: f, .. } => c.running_total < f.running_total,
         _ => true,
     }
 }

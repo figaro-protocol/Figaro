@@ -45,7 +45,7 @@ import {
     seedRegisteredMember,
     memberProfileBindings,
     waitForConnected,
-    anchoredAssemblyHash,
+    anchoredProcessDesignHash,
     isBindingOf,
     chainProfileReader,
     chainDesignReader,
@@ -159,7 +159,7 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
             //    the two couriers (human posted 2 / agent posted 1.5 +
             //    services.rest), funding. ──
             const deliverySlug = await ensureDeliveryAssembly(page);
-            const deliveryHash = await anchoredAssemblyHash(deliverySlug);
+            const deliveryHash = await anchoredProcessDesignHash(deliverySlug);
             if (!(await memberProfileBindings(MERCHANT)).some((b) => isBindingOf(b, deliveryHash))) {
                 await gotoAsWallet(page, MERCHANT, '/members/edit/assemblies?e2e=devnet');
                 const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
@@ -197,10 +197,10 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
                         catalogURI,
                         acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
                         defaultTokenAddress: token,
-                        assemblyBindings: [{
+                        processBindings: [{
                             bindingId: `race-binding-${address.slice(2, 8).toLowerCase()}`,
                             subjectAddress: address,
-                            assemblyHash: deliveryHash,
+                            processDesignHash: deliveryHash,
                             coSellerBindings: [],
                         }],
                         ...(services ? { services } : {}),
@@ -313,14 +313,14 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
             }).toBe(committedBefore + 1);
             const rootEvent = (await queryCommitted())[committedBefore];
             const processId = rootEvent.args.processId!;
-            const rootBonds = calculateBonds(rootEvent.args.cumulativeValue!, rootEvent.args.payment!);
+            const rootBonds = calculateBonds(rootEvent.args.runningTotal!, rootEvent.args.payment!);
 
             // ── THE AGENT BROADCASTS ITSELF: approve the bond, submit the
             //    commit — headless, its own key, its own gas. ──
             const c = commitReady!.commitment;
-            // calculateBonds(cumulativeValue, payment): seller bonds 2× the
+            // calculateBonds(runningTotal, payment): seller bonds 2× the
             // CUMULATIVE value at this depth, not 2× its own payment.
-            const agentBond = calculateBonds(c.expectedCumulativeValue, c.payment).sellerBond;
+            const agentBond = calculateBonds(c.runningTotal, c.payment).sellerBond;
             await agentWallet.writeContract({
                 address: token, abi: ERC20_ABI, functionName: 'approve', args: [core, agentBond],
             }).then((h) => publicClient.waitForTransactionReceipt({ hash: h }));
@@ -335,7 +335,7 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
             expect(courierEvent.args.seller?.toLowerCase(), 'the committed seller IS the agent wallet')
                 .toBe(AGENT_COURIER.toLowerCase());
             expect(courierEvent.args.payment, "committed at the agent's posted 1.5").toBe(parseUnits('1.5', 18));
-            const agentBonds = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
+            const agentBonds = calculateBonds(courierEvent.args.runningTotal!, courierEvent.args.payment!);
             {
                 const [b, a, cc] = await Promise.all([balanceOf(BUYER), balanceOf(AGENT_COURIER), balanceOf(core)]);
                 expect(buyer0 - b, 'buyer down by both buyer bonds').toBe(rootBonds.buyerBond + agentBonds.buyerBond);

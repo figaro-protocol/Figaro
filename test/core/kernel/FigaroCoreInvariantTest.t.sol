@@ -57,12 +57,12 @@ contract FigaroCoreHandler is CommonBase, StdCheats, StdUtils {
             processId: bytes32(0),
             buyer: vm.addr(buyerKey),
             seller: vm.addr(sellerKey),
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: keccak256(abi.encode("invariant-root", nextSalt)),
             salt: nextSalt++,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         (bytes32 processId,) = _commit(c, buyerKey, sellerKey);
 
@@ -81,16 +81,16 @@ contract FigaroCoreHandler is CommonBase, StdCheats, StdUtils {
             processId: p.id,
             buyer: vm.addr(p.buyerKey),
             seller: vm.addr(sellerKey),
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: p.cumulative + payment,
+            runningTotal: p.cumulative + payment,
             checkoutHash: keccak256(abi.encode("invariant-sub", nextSalt)),
             salt: nextSalt++,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         _commit(c, p.buyerKey, sellerKey);
 
-        p.cumulative = c.expectedCumulativeValue;
+        p.cumulative = c.runningTotal;
         ordersOf[at].push(c);
     }
 
@@ -104,7 +104,7 @@ contract FigaroCoreHandler is CommonBase, StdCheats, StdUtils {
         core.resolveProcess(p.id, list);
 
         for (uint256 i = 0; i < list.length; i++) {
-            openBonds -= 2 * list[i].payment + 2 * list[i].expectedCumulativeValue;
+            openBonds -= 2 * list[i].payment + 2 * list[i].runningTotal;
         }
         p.open = false;
         resolves++;
@@ -126,7 +126,7 @@ contract FigaroCoreHandler is CommonBase, StdCheats, StdUtils {
     function payoutOf(uint256 at) external view returns (uint256 total) {
         CommitmentTypes.Commitment[] storage list = ordersOf[at];
         for (uint256 i = 0; i < list.length; i++) {
-            total += 2 * list[i].expectedCumulativeValue + list[i].payment + list[i].payment;
+            total += 2 * list[i].runningTotal + list[i].payment + list[i].payment;
         }
     }
 
@@ -155,7 +155,7 @@ contract FigaroCoreHandler is CommonBase, StdCheats, StdUtils {
     {
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), c.hashStruct()));
         (processId, orderHash) = core.commit(c, _sign(buyerKey, digest), _sign(sellerKey, digest));
-        openBonds += 2 * c.payment + 2 * c.expectedCumulativeValue;
+        openBonds += 2 * c.payment + 2 * c.runningTotal;
         commits++;
     }
 

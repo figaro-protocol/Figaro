@@ -9,7 +9,7 @@
  *
  * The result is a `NetworkRead<MemberCatalog[]>`: `present([])` only when
  * the registry really holds no catalog; a failed registry read, a failed
- * catalog read, or a failed AssemblyRegistry cross-check is `absent` — the
+ * catalog read, or a failed ProcessRegistry cross-check is `absent` — the
  * caller renders nothing for it, never "no members".
  */
 "use client";
@@ -21,7 +21,7 @@ import {
     DEFAULT_DISCOVERY_SERVICE,
     type DiscoveryService,
 } from "@/lib/member/discoveryService";
-import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
+import { usePublishedAssemblies } from "@/lib/protocol/useProcessRegistry";
 import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
 import { ABSENT, PENDING, mapRead, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 
@@ -39,7 +39,7 @@ export function useRegisteredCatalogs(
     const { generation, refetch: bump } = useRefetchGeneration();
     const client = usePublicClient();
     const chainId = useChainId();
-    // The AssemblyRegistry read the surfacing rule cross-checks against —
+    // The ProcessRegistry read the surfacing rule cross-checks against —
     // the SAME gate useMemberListings applies (rule applied evenly). Pending
     // is pending and absent is absent: the unchecked member list is never
     // rendered, and a failed assembly read never rejects every member.
@@ -54,7 +54,7 @@ export function useRegisteredCatalogs(
             setRead(publishedAssemblies);
             return;
         }
-        const publishedHashes = new Set(publishedAssemblies.value.map((a) => a.assemblyHash.toLowerCase()));
+        const publishedHashes = new Set(publishedAssemblies.value.map((a) => a.processDesignHash.toLowerCase()));
 
         let canceled = false;
         void readNetwork("useRegisteredCatalogs", () => service.listCatalogs(client, chainId, publishedHashes))

@@ -1,5 +1,5 @@
 /**
- * OnboardingAssembliesForm — a failed AssemblyRegistry read is never "nothing
+ * OnboardingAssembliesForm — a failed ProcessRegistry read is never "nothing
  * to bind": the autosave does not run on it, so the seller's bindings in the
  * draft are never overwritten with `assemblies: []`.
  */
@@ -22,11 +22,11 @@ vi.mock("@/lib/core/eventCache", () => ({
 }));
 vi.mock("@/lib/core/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, assemblyRegistry: "0x3333333333333333333333333333333333333333" } };
+    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, processRegistry: "0x3333333333333333333333333333333333333333" } };
 });
 // The seller's saved draft: one assembly bound.
 const ONBOARDING = {
-    state: { assemblies: [{ bindingId: `binding:${ADDRESS}:${BOUND}`, subjectAddress: ADDRESS, assemblyHash: BOUND }] },
+    state: { assemblies: [{ bindingId: `binding:${ADDRESS}:${BOUND}`, subjectAddress: ADDRESS, processDesignHash: BOUND }] },
     loaded: true,
     subject: ADDRESS,
     update: mocks.update,
@@ -45,7 +45,7 @@ vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ versi
 import { OnboardingAssembliesForm } from "@/components/members/OnboardingAssembliesForm";
 
 describe("OnboardingAssembliesForm — a failed registry read takes no action", () => {
-    it("the AssemblyRegistry read fails: no autosave wipes the seller's bindings", async () => {
+    it("the ProcessRegistry read fails: no autosave wipes the seller's bindings", async () => {
         vi.spyOn(console, "warn").mockImplementation(() => undefined);
         mocks.cachedGetContractEvents.mockRejectedValue(new Error("fetch failed: RPC unreachable"));
         render(<OnboardingAssembliesForm />);

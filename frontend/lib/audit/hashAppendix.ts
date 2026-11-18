@@ -107,12 +107,12 @@ export function buildHashAppendix(
     //     under the reserved key. A leaf of the same tree: without it the
     //     listed leaves do not rebuild the root.
     if (agreement.provenance !== undefined) {
-        const { agreementHash, assemblyHash } = agreement.provenance;
+        const { agreementHash, processDesignHash } = agreement.provenance;
         anchors.push({
             kind: "agreement-provenance-leaf",
             label: "Provenance leaf — the registered agreement and the assembly this order instantiated",
-            hash: computeProvenanceLeaf(agreementHash, assemblyHash),
-            sourceLocation: `Merkle leaf under checkoutHash root. Reader recomputes via computeProvenanceLeaf("${agreementHash}", "${assemblyHash}") and verifies inclusion in the checkoutHash tree.`,
+            hash: computeProvenanceLeaf(agreementHash, processDesignHash),
+            sourceLocation: `Merkle leaf under checkoutHash root. Reader recomputes via computeProvenanceLeaf("${agreementHash}", "${processDesignHash}") and verifies inclusion in the checkoutHash tree.`,
         });
     }
 

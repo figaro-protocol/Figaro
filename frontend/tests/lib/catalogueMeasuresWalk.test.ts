@@ -7,7 +7,7 @@
  * cargo spec, read from `clauses/`; no rule names it.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { checkoutMeasureRefusals, planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
+import { checkoutMeasureRefusals, planProcessOrders } from "@/lib/checkout/assemblyCheckout";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
 import { hydrateAuthored, keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 
@@ -37,7 +37,7 @@ const inputs = (catalogItem: Record<string, unknown> | undefined) => ({
     tokenDecimals: 0,
 });
 
-const plan = (catalogItem: Record<string, unknown> | undefined) => planAssemblyOrders(
+const plan = (catalogItem: Record<string, unknown> | undefined) => planProcessOrders(
     {
         buyer: BUYER,
         leadSellerAddress: LEAD,

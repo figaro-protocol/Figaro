@@ -8,7 +8,7 @@
  * ONE spec, registeredBy-driven (not a scenario/runtime pair): the subject is the
  * REGISTERED_BY's registration lifecycle — publish (staked intent) → verified
  * in-flight trade blocks → atomic resolve unblocks → reclaim + exact refund.
- * `AssemblyRegistry.withdrawDeposit` is once-only per PERMANENT binding, so
+ * `ProcessRegistry.withdrawDeposit` is once-only per PERMANENT binding, so
  * nothing survives for a runtime spec to consume (the assembly ends
  * de-surfaced), and the buyer/seller commit+resolve legs are supporting
  * participants already covered by orders-accept — splitting would duplicate
@@ -27,7 +27,7 @@
  * IPFS). Nothing about the network is hardcoded.
  *
  * The gate is OFF-CHAIN and advisory (the chain carries no composition
- * provenance — AssemblyRegistry.withdrawDeposit's own NatSpec): VERIFIED
+ * provenance — ProcessRegistry.withdrawDeposit's own NatSpec): VERIFIED
  * in-flight trades disable the button with the count; agreements this
  * browser context never witnessed are party-private → surfaced as the
  * caveat strip, never blocking. The buyer's checkout runs in THIS context,
@@ -47,9 +47,9 @@ import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem'
 import { mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
 import { publishProbeAssembly } from './probeAssembly';
-import { calculateBonds, ASSEMBLY_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import { calculateBonds, PROCESS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { CORE_ABI } from '@/lib/core/contracts';
-import { deriveAssemblySlug } from '@/lib/shared/assembly';
+import { deriveProcessDesignSlug } from '@/lib/shared/assembly';
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
@@ -71,7 +71,7 @@ const REGISTERED_BY = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 18 }).ad
 // clause-authoring and content-delivery (its profile binding is rewritten every run).
 const SELLER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 19 }).address as Hex;
 
-test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)', () => {
+test.describe('ProcessRegistry withdraw — the commits==resolves gate (devnet)', () => {
     test.setTimeout(360_000);
 
     test('registeredBy reclaims the stake only after every composed trade resolves; registry refunds exactly the deposit', async ({ page }) => {
@@ -80,7 +80,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         const config = readLocalDeploymentConfig();
         const core = config.figaroCore as Hex;
         const token = config.tokenAddress as Hex;
-        const registry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? config.assemblyRegistry) as Hex;
+        const registry = (process.env.NEXT_PUBLIC_PROCESS_REGISTRY ?? config.processRegistry) as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
@@ -93,15 +93,15 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         await gotoAsWallet(page, REGISTERED_BY, '/?e2e=devnet');
         const { slug } = await publishProbeAssembly(page);
 
-        // The binding this run anchors — assemblyHash found by deriving each
-        // AssemblyRegistered event's slug (the slug exists nowhere on-chain).
+        // The binding this run anchors — processDesignHash found by deriving each
+        // ProcessRegistered event's slug (the slug exists nowhere on-chain).
         const registered = await publicClient.getContractEvents({
-            address: registry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered',
+            address: registry, abi: PROCESS_REGISTRY_ABI, eventName: 'ProcessRegistered',
             args: { registeredBy: REGISTERED_BY }, fromBlock: 0n,
         });
-        const binding = registered.find((e) => deriveAssemblySlug(e.args.assemblyHash as Hex) === slug);
+        const binding = registered.find((e) => deriveProcessDesignSlug(e.args.processDesignHash as Hex) === slug);
         expect(binding, 'the publish anchored a binding whose derived slug matches the receipt').toBeTruthy();
-        const assemblyHash = binding!.args.assemblyHash as Hex;
+        const processDesignHash = binding!.args.processDesignHash as Hex;
 
         // ── BIND: onboard the dedicated member through the real wizard — one
         //    catalog item, EXACTLY this run's assembly bound (a prior run's
@@ -187,7 +187,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         const payment = event.args.payment!;
 
         // Value leg (commit): the asymmetric bonds actually locked.
-        const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, payment);
+        const { buyerBond, sellerBond } = calculateBonds(event.args.runningTotal!, payment);
         const [buyerMid, sellerMid, coreMid] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
         ]);
@@ -282,7 +282,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         //    escrow drops by exactly the deposit and the registeredBy's ETH rises by
         //    exactly deposit − gas (both read from the chain). ──
         const deposit = await publicClient.readContract({
-            address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registrationDeposit',
+            address: registry, abi: PROCESS_REGISTRY_ABI, functionName: 'registrationDeposit',
         }) as bigint;
         const blockBefore = await publicClient.getBlockNumber();
         const [registryEthBefore, authorEthBefore] = await Promise.all([
@@ -298,10 +298,10 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         await expect(reclaimBtn).toBeDisabled();
 
         // The event, from strictly after the pre-click head (pattern 17),
-        // keyed by THIS run's assemblyHash.
+        // keyed by THIS run's processDesignHash.
         const withdrawnEvents = await publicClient.getContractEvents({
-            address: registry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'DepositWithdrawn',
-            args: { assemblyHash }, fromBlock: blockBefore + 1n,
+            address: registry, abi: PROCESS_REGISTRY_ABI, eventName: 'DepositWithdrawn',
+            args: { processDesignHash }, fromBlock: blockBefore + 1n,
         });
         expect(withdrawnEvents, 'exactly one DepositWithdrawn for this binding').toHaveLength(1);
         expect((withdrawnEvents[0].args.registeredBy as string).toLowerCase()).toBe(REGISTERED_BY.toLowerCase());
@@ -323,7 +323,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         ).toBe(deposit - gasCost);
         test.info().annotations.push({
             type: 'DepositWithdrawn',
-            description: `composition=${assemblyHash} deposit=${deposit} gas=${gasCost} tx=${receipt.transactionHash}`,
+            description: `composition=${processDesignHash} deposit=${deposit} gas=${gasCost} tx=${receipt.transactionHash}`,
         });
 
         // ── DE-SURFACE REFLECTION: a fresh read of the view page resolves the

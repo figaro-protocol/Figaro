@@ -56,7 +56,7 @@ import {
     readLocalDeploymentConfig,
     memberProfileBindings,
     waitForConnected,
-    anchoredAssemblyHash,
+    anchoredProcessDesignHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
@@ -94,7 +94,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
 
         // ── ENSURE the delivery assembly (shared author-if-absent). ──
         const deliverySlug = await ensureDeliveryAssembly(page);
-        const deliveryHash = await anchoredAssemblyHash(deliverySlug);
+        const deliveryHash = await anchoredProcessDesignHash(deliverySlug);
 
         // ── BIND (idempotent): Aurora pins the assembly and designates NOBODY.
         //    The co-seller editor is left untouched — the ABSENCE of a
@@ -131,7 +131,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         const courier = sellers.find(
             (s) => anvilAddrs.has(s.address.toLowerCase())
                 && s.address.toLowerCase() !== MERCHANT.toLowerCase()
-                && s.assemblyBindings.some((b) => isBindingOf(b, deliveryHash)),
+                && s.processBindings.some((b) => isBindingOf(b, deliveryHash)),
         );
         expect(courier, 'a non-merchant, anvil-held seller bound to the delivery assembly exists on-chain to pick').toBeTruthy();
         const COURIER = courier!.address;
@@ -216,7 +216,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         // Root — the merchant. Creates the process.
         const rootEvent = await acceptAs(MERCHANT, 'merchant');
         const processId = rootEvent.args.processId!;
-        const rootBonds = calculateBonds(rootEvent.args.cumulativeValue!, rootEvent.args.payment!);
+        const rootBonds = calculateBonds(rootEvent.args.runningTotal!, rootEvent.args.payment!);
         {
             const [b, m, c] = await Promise.all([balanceOf(BUYER), balanceOf(MERCHANT), balanceOf(core)]);
             expect(buyer0 - b, 'after root: buyer down by its buyer bond').toBe(rootBonds.buyerBond);
@@ -232,7 +232,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
             courierEvent.args.seller?.toLowerCase(),
             "the committed courier IS the buyer's pick — buyer-assigned, on-chain",
         ).toBe(COURIER.toLowerCase());
-        const courierBonds = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
+        const courierBonds = calculateBonds(courierEvent.args.runningTotal!, courierEvent.args.payment!);
         {
             const [b, c2, c] = await Promise.all([balanceOf(BUYER), balanceOf(COURIER), balanceOf(core)]);
             expect(buyer0 - b, 'after courier: buyer down by both buyer bonds')

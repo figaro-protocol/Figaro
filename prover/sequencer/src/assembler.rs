@@ -183,7 +183,7 @@ pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bo
         | KernelError::DuplicateCommitment
         | KernelError::ProcessAlreadyResolved
         | KernelError::NoActiveOrders
-        | KernelError::OrderResolved
+        | KernelError::OrderAlreadyResolved
         | KernelError::NotProcessBuyer
         | KernelError::CurrencyMismatch
         | KernelError::NotAuthorized
@@ -509,7 +509,7 @@ pub fn filter_applicable_claims(
             std::slice::from_ref(&claim),
         ) {
             Ok(uses) => match uses.first() {
-                Some(u) if carried.insert((u.kind, u.clause_or_assembly, u.process_id)) => {
+                Some(u) if carried.insert((u.kind, u.clause_or_process, u.process_id)) => {
                     valid.push(claim)
                 }
                 _ => poison.push((

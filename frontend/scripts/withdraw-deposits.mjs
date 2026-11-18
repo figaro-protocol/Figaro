@@ -1,6 +1,6 @@
 /**
  * withdraw-deposits.mjs — bulk-reclaim registration deposits from the clause,
- * agreement and assembly registries, the withdraw half of populate-clauses.mjs (which
+ * agreement and process registries, the withdraw half of populate-clauses.mjs (which
  * is the bulk-deposit half). Built for the Sepolia redeploy day: every id the
  * acting wallet registered on the OLD stack is withdrawn (no cooldown), the
  * stakes return, and the new stack is seeded fresh. Withdrawing de-surfaces;
@@ -16,7 +16,7 @@
  *     VAULT, which forwards per the day's plan — this script never moves it.
  *
  * Discovery is from the chain, never a list: ClauseRegistered /
- * AgreementRegistered / AssemblyRegistered events are scanned (SCAN_FROM_BLOCK trims public-network
+ * AgreementRegistered / ProcessRegistered events are scanned (SCAN_FROM_BLOCK trims public-network
  * scans), narrowed to rows whose registeredBy is the actor, and each live
  * deposit is withdrawn. Already-withdrawn ids are skipped, so a re-run
  * converges — same idempotence discipline as the populate scripts. The old
@@ -29,7 +29,7 @@
  * Env:
  *   RPC_URL                       — required
  *   NEXT_PUBLIC_CLAUSE_REGISTRY   — falls back to frontend/.env.local
- *   NEXT_PUBLIC_ASSEMBLY_REGISTRY — falls back to frontend/.env.local
+ *   NEXT_PUBLIC_PROCESS_REGISTRY — falls back to frontend/.env.local
  *   NEXT_PUBLIC_AGREEMENT_REGISTRY — falls back to frontend/.env.local; a
  *                                   stack without one has no agreements to
  *                                   withdraw
@@ -39,7 +39,7 @@
  *                                   instead of the event scan (public gateways'
  *                                   log indexes are load-balanced and flaky —
  *                                   state reads are not). WITHDRAW_ASSEMBLIES
- *                                   is its sibling (csv of assemblyHashes),
+ *                                   is its sibling (csv of processDesignHashes),
  *                                   and WITHDRAW_AGREEMENTS (csv of agreement
  *                                   hashes); any one alone skips the other
  *                                   families' scans.
@@ -50,7 +50,7 @@
 
 import { createPublicClient, createWalletClient, encodeFunctionData, formatEther, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, isBytes32Hex } from '@figaro-protocol/sdk';
+import { CLAUSE_REGISTRY_ABI, PROCESS_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, isBytes32Hex } from '@figaro-protocol/sdk';
 import {
     VAULT_ABI, ledgerWalletClient, readEnvLocal, registrarAccount, resolveChain, vaultExecute,
 } from './populate-clauses.mjs';
@@ -76,8 +76,8 @@ async function scanContractEvents(publicClient, params, fromBlock) {
 async function main() {
     const envLocal = readEnvLocal();
     const clauseRegistry = process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? envLocal.NEXT_PUBLIC_CLAUSE_REGISTRY;
-    const assemblyRegistry = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? envLocal.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
-    if (!clauseRegistry || !assemblyRegistry) throw new Error('registry addresses missing (env or frontend/.env.local)');
+    const processRegistry = process.env.NEXT_PUBLIC_PROCESS_REGISTRY ?? envLocal.NEXT_PUBLIC_PROCESS_REGISTRY;
+    if (!clauseRegistry || !processRegistry) throw new Error('registry addresses missing (env or frontend/.env.local)');
     const agreementRegistry = process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? envLocal.NEXT_PUBLIC_AGREEMENT_REGISTRY;
 
     const chain = await resolveChain();
@@ -145,23 +145,23 @@ async function main() {
     }
 
     const assemblyDeposit = await publicClient.readContract({
-        address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registrationDeposit',
+        address: processRegistry, abi: PROCESS_REGISTRY_ABI, functionName: 'registrationDeposit',
     });
     const assemblyKeys = explicit
         ? explicitAssemblies
         : (await scanContractEvents(publicClient, {
-            address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered',
+            address: processRegistry, abi: PROCESS_REGISTRY_ABI, eventName: 'ProcessRegistered',
         }, fromBlock))
             .filter((e) => String(e.args.registeredBy ?? '').toLowerCase() === actor)
-            .map((e) => e.args.assemblyHash);
+            .map((e) => e.args.processDesignHash);
     for (const key of assemblyKeys) {
         const [registeredBy, , depositWithdrawn] = await publicClient.readContract({
-            address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'bindings', args: [key],
+            address: processRegistry, abi: PROCESS_REGISTRY_ABI, functionName: 'bindings', args: [key],
         });
         if (registeredBy.toLowerCase() !== actor) { console.log(`  · assembly ${key} — not this actor's (registeredBy ${registeredBy}), skipped`); continue; }
         if (depositWithdrawn) { console.log(`  · assembly ${key} — already withdrawn, skipped`); continue; }
         manifest.push({
-            registry: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, key, stake: assemblyDeposit,
+            registry: processRegistry, abi: PROCESS_REGISTRY_ABI, key, stake: assemblyDeposit,
             label: `assembly ${key}`,
         });
     }

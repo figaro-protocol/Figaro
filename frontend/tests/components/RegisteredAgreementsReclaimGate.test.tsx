@@ -93,7 +93,7 @@ function emits(emitter: string, logs: Record<string, FixtureLog[]>) {
 /** The agreement body a party holds: its clauses, and the provenance naming the registered agreement it was composed from. */
 const body = (agreementHash: string) => ({
     version: "a1", buyer: BUYER, seller: SELLER, clauses: [],
-    provenance: { agreementHash, assemblyHash: `0x${"cc".repeat(32)}` },
+    provenance: { agreementHash, processDesignHash: `0x${"cc".repeat(32)}` },
 });
 
 async function reclaimButton(): Promise<HTMLButtonElement> {

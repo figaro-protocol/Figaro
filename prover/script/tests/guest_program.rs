@@ -18,7 +18,7 @@ use figaro_kernel::kernel::{apply_batch, provenance_leaf_bytes};
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::{
     AttestationWitness, BatchInput, Commitment, KernelOp, KernelStateSnapshot, PublicValues,
-    UsageClaim, UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY,
+    UsageClaim, UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_PROCESS,
 };
 use figaro_prove_test::{
     build_canonical_batch_input, load_spec_json, make_signing_key, sign_commitment, sign_digest,
@@ -291,10 +291,10 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
     let provenance_key = keccak256(b"figaro-agreement-provenance");
 
     let agreement = keccak256(b"an-agreement");
-    let slot0 = keccak256(br#"{"clauses":{},"follows":[],"slot":0}"#);
+    let slot0 = keccak256(br#"{"agreement":0,"clauses":{},"follows":[]}"#);
     let slot1_leaf = figaro_kernel::kernel::assembly_leaf(
         &keccak256(b"the-following-agreement"),
-        &keccak256(br#"{"clauses":{},"follows":["agreement-0"],"slot":1}"#),
+        &keccak256(br#"{"agreement":1,"clauses":{},"follows":["agreement-0"]}"#),
     );
     let composition = sorted_pair(
         figaro_kernel::kernel::assembly_leaf(&agreement, &slot0),
@@ -314,12 +314,12 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
         process_id: B256::ZERO,
         buyer: BUYER,
         seller: SELLER1,
-        currency: TOKEN,
+        token: TOKEN,
         payment: U256::from(100u64),
-        expected_cumulative_value: U256::from(100u64),
+        running_total: U256::from(100u64),
         checkout_hash: format_leaf(&provenance_key, &clause_data_hash),
         salt: U256::from(77u64),
-        deadline: U256::from(2000u64),
+        commit_deadline: U256::from(2000u64),
     };
     let process_id = typed_data_hash(&domain, &commitment_struct_hash(&order));
     let resolve_sig = sign_digest(
@@ -339,7 +339,7 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
             },
             KernelOp::Resolve {
                 process_id,
-                cumulative_value: order.payment,
+                running_total: order.payment,
                 commitments: vec![order.clone()],
                 buyer_sig: resolve_sig,
             },
@@ -351,18 +351,18 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
         usage_claims: vec![
             UsageClaim {
                 order: order.clone(),
-                clause_or_assembly: agreement,
+                clause_or_process: agreement,
                 kind: UsageClaimKind::Agreement {
-                    assembly_hash: composition,
+                    process_design_hash: composition,
                 },
                 inclusion_proof: vec![],
             },
             UsageClaim {
                 order,
-                clause_or_assembly: composition,
-                kind: UsageClaimKind::Assembly {
+                clause_or_process: composition,
+                kind: UsageClaimKind::Process {
                     agreement_hash: agreement,
-                    slot_content_hash: slot0,
+                    agreement_content_hash: slot0,
                     membership_proof: membership,
                 },
                 inclusion_proof: vec![],
@@ -378,7 +378,7 @@ async fn guest_credits_an_agreement_and_an_assembly_as_the_host_does() {
     let (host_pv, _positions, host_events) = apply_batch(&input).expect("host apply_batch");
     let mut kinds: Vec<u8> = host_events.uses.iter().map(|u| u.kind).collect();
     kinds.sort();
-    assert_eq!(kinds, vec![USAGE_KIND_ASSEMBLY, USAGE_KIND_AGREEMENT]);
+    assert_eq!(kinds, vec![USAGE_KIND_PROCESS, USAGE_KIND_AGREEMENT]);
 
     let pv_bytes = execute_guest(&input).await;
     assert_eq!(

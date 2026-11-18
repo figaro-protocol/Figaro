@@ -81,7 +81,7 @@ def verify (proof : List Word) (root leaf : Word) : Bool :=
 def clauseLeaf (key dataHash : Word) : Word :=
   keccak (keccak (key.bytes ++ dataHash.bytes)).bytes
 
-/-- The assembly leaf (`computeAssemblyLeaf`). -/
+/-- The assembly leaf (`computeProcessLeaf`). -/
 def assemblyLeaf (domain key dataHash : Word) : Word :=
   keccak (keccak (domain.bytes ++ key.bytes ++ dataHash.bytes)).bytes
 

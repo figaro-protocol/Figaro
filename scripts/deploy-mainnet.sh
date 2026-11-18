@@ -153,7 +153,7 @@ echo "$FORGE_OUT"
 CORE_ADDR=$(echo "$FORGE_OUT"            | grep 'NEXT_PUBLIC_FIGARO_CORE='             | grep -oE '0x[0-9a-fA-F]+')
 ATTESTATION_ADDR=$(echo "$FORGE_OUT"     | grep 'NEXT_PUBLIC_ATTESTATION_COORDINATOR=' | grep -oE '0x[0-9a-fA-F]+')
 CLAUSE_ADDR=$(echo "$FORGE_OUT"          | grep 'NEXT_PUBLIC_CLAUSE_REGISTRY='         | grep -oE '0x[0-9a-fA-F]+')
-ASSEMBLY_ADDR=$(echo "$FORGE_OUT"        | grep 'NEXT_PUBLIC_ASSEMBLY_REGISTRY='       | grep -oE '0x[0-9a-fA-F]+')
+ASSEMBLY_ADDR=$(echo "$FORGE_OUT"        | grep 'NEXT_PUBLIC_PROCESS_REGISTRY='       | grep -oE '0x[0-9a-fA-F]+')
 AGREEMENT_ADDR=$(echo "$FORGE_OUT"       | grep 'NEXT_PUBLIC_AGREEMENT_REGISTRY='      | grep -oE '0x[0-9a-fA-F]+')
 MEMBERS_ADDR=$(echo "$FORGE_OUT"         | grep 'NEXT_PUBLIC_MEMBERS_REGISTRY='        | grep -oE '0x[0-9a-fA-F]+')
 FLORIN_TOKEN_ADDR=$(echo "$FORGE_OUT"    | grep 'NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS='    | grep -oE '0x[0-9a-fA-F]+')
@@ -257,7 +257,7 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "attestationCoordinator": "$ATTESTATION_ADDR",
   "clauseRegistry": "$CLAUSE_ADDR",
   "membersRegistry": "$MEMBERS_ADDR",
-  "assemblyRegistry": "$ASSEMBLY_ADDR",
+  "processRegistry": "$ASSEMBLY_ADDR",
   "agreementRegistry": "$AGREEMENT_ADDR",
   "florinToken": "$FLORIN_TOKEN_ADDR",
   "usageCounter": "$USAGE_COUNTER_ADDR",
@@ -283,7 +283,7 @@ echo "   FigaroCore              = $CORE_ADDR"
 echo "   AttestationCoordinator  = $ATTESTATION_ADDR"
 echo "   ClauseRegistry          = $CLAUSE_ADDR"
 echo "   MembersRegistry         = $MEMBERS_ADDR"
-echo "   AssemblyRegistry        = $ASSEMBLY_ADDR"
+echo "   ProcessRegistry        = $ASSEMBLY_ADDR"
 echo "   AgreementRegistry       = $AGREEMENT_ADDR"
 echo "   FlorinToken             = $FLORIN_TOKEN_ADDR"
 echo "   UsageCounter            = $USAGE_COUNTER_ADDR"

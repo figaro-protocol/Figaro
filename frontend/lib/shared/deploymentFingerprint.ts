@@ -24,7 +24,7 @@ import { pageRecord } from "@/lib/shared/chains";
 // fingerprint-fields:start
 const OPERATIVE_FIELDS = [
     "agreementRegistry",
-    "assemblyRegistry",
+    "processRegistry",
     "attestationCoordinator",
     "batchVerifier",
     "clauseRegistry",

@@ -14,7 +14,7 @@
 //! provenance leaf (the vector's optional `provenance` entry): its key is a
 //! constant of the agreement format, `keccak256("figaro-agreement-provenance")`,
 //! never a clause key, and its bytes are
-//! `{"agreementHash":"0x…","assemblyHash":"0x…"}`, which the guest
+//! `{"agreementHash":"0x…","processDesignHash":"0x…"}`, which the guest
 //! reproduces from the two keys for an agreement or assembly claim
 //! (`kernel::provenance_leaf_bytes`). This file rebuilds that leaf from
 //! `leafKey` and the bytes, checks the guest reproduces the SDK's bytes, and
@@ -27,7 +27,7 @@ use std::str::FromStr;
 
 use alloy_primitives::{keccak256, B256};
 
-use figaro_kernel::kernel::{provenance_leaf_bytes, ASSEMBLY_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY};
+use figaro_kernel::kernel::{provenance_leaf_bytes, PROCESS_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY};
 use figaro_kernel::merkle::verify_inclusion;
 
 fn generated() -> bool {
@@ -115,7 +115,7 @@ fn every_frozen_proof_opens_against_the_rebuilt_leaf() {
 
 /// The reserved provenance leaf: the key is the agreement format's
 /// constant, the bytes are what the guest reproduces from the agreementHash
-/// and the assemblyHash, and the frozen proof opens against the
+/// and the processDesignHash, and the frozen proof opens against the
 /// agreement root.
 fn opens_the_provenance_leaf(provenance: &serde_json::Value, root: B256) {
     let key = b256(&provenance["leafKey"]);
@@ -126,7 +126,7 @@ fn opens_the_provenance_leaf(provenance: &serde_json::Value, root: B256) {
     );
     let clause_data = provenance["clauseData"].as_str().unwrap();
     let agreement = b256(&provenance["agreementHash"]);
-    let composition = b256(&provenance["assemblyHash"]);
+    let composition = b256(&provenance["processDesignHash"]);
     assert_eq!(
         provenance_leaf_bytes(&agreement, &composition),
         clause_data.as_bytes(),
@@ -274,7 +274,7 @@ fn every_agreement_opens_under_its_own_root_and_no_other() {
     let assemblies = fx["assemblies"].as_array().unwrap();
     let roots: Vec<B256> = assemblies
         .iter()
-        .map(|a| b256(&a["assemblyHash"]))
+        .map(|a| b256(&a["processDesignHash"]))
         .collect();
     for (i, assembly) in assemblies.iter().enumerate() {
         let root = roots[i];
@@ -282,7 +282,7 @@ fn every_agreement_opens_under_its_own_root_and_no_other() {
             let content = keccak256(entry["agreementBytes"].as_str().unwrap().as_bytes());
             assert_eq!(
                 content,
-                b256(&entry["slotContentHash"]),
+                b256(&entry["agreementContentHash"]),
                 "the agreement's content hash"
             );
             let leaf = assembly_leaf_under(
@@ -337,9 +337,12 @@ fn every_agreement_s_provenance_leaf_is_the_guest_s_reproduction() {
             let p = &entry["provenance"];
             assert_eq!(b256(&p["leafKey"]), PROVENANCE_LEAF_KEY);
             assert_eq!(b256(&p["agreementHash"]), b256(&entry["agreementHash"]));
-            assert_eq!(b256(&p["assemblyHash"]), b256(&assembly["assemblyHash"]));
+            assert_eq!(
+                b256(&p["processDesignHash"]),
+                b256(&assembly["processDesignHash"])
+            );
             let bytes =
-                provenance_leaf_bytes(&b256(&p["agreementHash"]), &b256(&p["assemblyHash"]));
+                provenance_leaf_bytes(&b256(&p["agreementHash"]), &b256(&p["processDesignHash"]));
             assert_eq!(bytes, p["clauseData"].as_str().unwrap().as_bytes());
             assert_eq!(keccak256(&bytes), b256(&p["clauseDataHash"]));
             assert_eq!(
@@ -360,11 +363,11 @@ fn the_terms_leaf_is_keyed_on_the_reserved_terms_key() {
             continue;
         }
         carriers += 1;
-        assert_eq!(b256(&terms["leafKey"]), ASSEMBLY_TERMS_LEAF_KEY);
+        assert_eq!(b256(&terms["leafKey"]), PROCESS_TERMS_LEAF_KEY);
         let bytes = terms["termsBytes"].as_str().unwrap();
         assert_eq!(keccak256(bytes.as_bytes()), b256(&terms["clauseDataHash"]));
         assert_eq!(
-            assembly_leaf_under(ASSEMBLY_TERMS_LEAF_KEY, bytes),
+            assembly_leaf_under(PROCESS_TERMS_LEAF_KEY, bytes),
             b256(&terms["leaf"])
         );
     }
@@ -378,7 +381,7 @@ fn a_one_agreement_root_is_its_leaf() {
     assert_eq!(one["agreements"].as_array().unwrap().len(), 1);
     assert!(one["terms"].is_null());
     assert_eq!(
-        b256(&one["assemblyHash"]),
+        b256(&one["processDesignHash"]),
         b256(&one["agreements"][0]["leaf"])
     );
     assert!(one["agreements"][0]["membershipProof"]

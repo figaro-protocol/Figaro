@@ -40,7 +40,7 @@ import { isBytes32Hex } from "./types.js";
 import { isGeohash } from "./derive/geo.js";
 import type { Address } from "./types.js";
 import type { Agreement } from "./agreement.js";
-import { deriveAssemblySlug } from "./assembly.js";
+import { deriveProcessDesignSlug } from "./assembly.js";
 
 // ── Dependent identity types ──────────────────────────────────────────────────
 
@@ -119,30 +119,30 @@ export interface CoSellerBinding {
 
 /**
  * One assembly the member has bound as a seller. The assembly is named by
- * its full `assemblyHash` — the `AssemblyRegistry` key, the same identity
- * a buyer's `BuyerAssemblySubscription` and an agreement's provenance leaf
- * carry. A slug shown anywhere is derived from it (`deriveAssemblySlug`),
+ * its full `processDesignHash` — the `ProcessRegistry` key, the same identity
+ * a buyer's `BuyerProcessSubscription` and an agreement's provenance leaf
+ * carry. A slug shown anywhere is derived from it (`deriveProcessDesignSlug`),
  * never stored.
  */
-export interface AssemblyBindingRecord {
+export interface ProcessBindingRecord {
     bindingId: string;
     subjectAddress: `0x${string}`;
-    /** `AssemblyRegistry` assemblyHash of the bound assembly. */
-    assemblyHash: `0x${string}`;
+    /** `ProcessRegistry` processDesignHash of the bound assembly. */
+    processDesignHash: `0x${string}`;
     coSellerBindings?: CoSellerBinding[];
 }
 
 /**
  * One buyer-side assembly SUBSCRIPTION — the assembly this member buys
  * through and monetizes records from. Subscribing is the buyer's verb;
- * BINDING (`AssemblyBindingRecord`) stays the seller's, and the two lists
+ * BINDING (`ProcessBindingRecord`) stays the seller's, and the two lists
  * are independent: a wallet does not buy through the assemblies it sells
  * through. Deliberately minimal — no co-seller bindings, no role
  * machinery; those belong to seller binding.
  */
-export interface BuyerAssemblySubscription {
-    /** `AssemblyRegistry` assemblyHash of the subscribed assembly. */
-    assemblyHash: `0x${string}`;
+export interface BuyerProcessSubscription {
+    /** `ProcessRegistry` processDesignHash of the subscribed assembly. */
+    processDesignHash: `0x${string}`;
 }
 
 /**
@@ -211,15 +211,15 @@ export interface MemberProfileMetadata {
      * participates in. Co-seller wallet designations live inside
      * each binding's `coSellerBindings`. The role the seller
      * plays in an assembly is event-derived, not declared here. See
-     * `AssemblyBindingRecord` above for the shape.
+     * `ProcessBindingRecord` above for the shape.
      */
-    assemblyBindings?: AssemblyBindingRecord[];
+    processBindings?: ProcessBindingRecord[];
     /**
      * The buyer's assembly subscriptions — which registered assemblies
      * this member buys through and monetizes records from. Independent
-     * of `assemblyBindings` (the seller's list).
+     * of `processBindings` (the seller's list).
      */
-    buyerAssemblies?: BuyerAssemblySubscription[];
+    buyerAssemblies?: BuyerProcessSubscription[];
     /** ERC-8004 agent service endpoints, keyed by transport (an open set). */
     services?: MemberAgentServices;
     /** IPFS URI of the wallet's catalog document. */
@@ -292,19 +292,19 @@ function parseCoSellerItemIds(
     return out;
 }
 
-function parseAssemblyBindingDocument(value: unknown, sourceLabel = "institution binding"): AssemblyBindingRecord {
+function parseProcessBindingDocument(value: unknown, sourceLabel = "institution binding"): ProcessBindingRecord {
     const record = asRecord(value, sourceLabel);
     return {
         bindingId: asString(record.bindingId, `${sourceLabel}.bindingId`),
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
-        assemblyHash: asAssemblyHash(record.assemblyHash, `${sourceLabel}.assemblyHash`),
+        processDesignHash: asProcessDesignHash(record.processDesignHash, `${sourceLabel}.processDesignHash`),
         coSellerBindings: parseCoSellerBindingArray(record.coSellerBindings, `${sourceLabel}.coSellerBindings`),
     };
 }
 
-/** A assemblyHash is a 32-byte keccak digest, not a 20-byte address —
+/** A processDesignHash is a 32-byte keccak digest, not a 20-byte address —
  *  validate the `0x` + hex shape at digest length. */
-function asAssemblyHash(value: unknown, path: string): `0x${string}` {
+function asProcessDesignHash(value: unknown, path: string): `0x${string}` {
     if (!isBytes32Hex(value)) {
         throw new Error(`${path} must be a 32-byte hex hash.`);
     }
@@ -384,17 +384,17 @@ function parseAssetsField(value: unknown, path: string): MemberAssetReferences |
     };
 }
 
-function parseAssemblyBindings(value: unknown, path: string): AssemblyBindingRecord[] | undefined {
+function parseProcessBindings(value: unknown, path: string): ProcessBindingRecord[] | undefined {
     if (value === undefined) return undefined;
     if (!Array.isArray(value)) {
         throw new Error(`${path} must be an array.`);
     }
     return value.map((entry, index) =>
-        parseAssemblyBindingDocument(entry, `${path}[${index}]`)
+        parseProcessBindingDocument(entry, `${path}[${index}]`)
     );
 }
 
-function parseBuyerAssemblies(value: unknown, path: string): BuyerAssemblySubscription[] | undefined {
+function parseBuyerAssemblies(value: unknown, path: string): BuyerProcessSubscription[] | undefined {
     if (value === undefined) return undefined;
     if (!Array.isArray(value)) {
         throw new Error(`${path} must be an array.`);
@@ -402,7 +402,7 @@ function parseBuyerAssemblies(value: unknown, path: string): BuyerAssemblySubscr
     return value.map((entry, index) => {
         const record = asRecord(entry, `${path}[${index}]`);
         return {
-            assemblyHash: asAssemblyHash(record.assemblyHash, `${path}[${index}].assemblyHash`),
+            processDesignHash: asProcessDesignHash(record.processDesignHash, `${path}[${index}].processDesignHash`),
         };
     });
 }
@@ -444,7 +444,7 @@ export function parseMemberProfileDocument(
         acceptedTokens,
         defaultTokenAddress,
         profileClauseValues: parseProfileClauseValues(record.profileClauseValues, `${sourceLabel}.profileClauseValues`),
-        assemblyBindings: parseAssemblyBindings(record.assemblyBindings, `${sourceLabel}.assemblyBindings`),
+        processBindings: parseProcessBindings(record.processBindings, `${sourceLabel}.processBindings`),
         buyerAssemblies: parseBuyerAssemblies(record.buyerAssemblies, `${sourceLabel}.buyerAssemblies`),
         services: parseAgentServicesField(record.services, `${sourceLabel}.services`),
         catalogURI: asOptionalString(record.catalogURI, `${sourceLabel}.catalogURI`),
@@ -519,7 +519,7 @@ export function projectAgentServices(value: unknown): AgentServiceInfo {
 export type MemberProfileReader = (member: Address) => Promise<MemberProfileMetadata | null>;
 
 /** The bound-assembly check's verdict; `reason` names a refusal. */
-export interface AssemblyBindingCheck {
+export interface ProcessBindingCheck {
     ok: boolean;
     reason?: string;
 }
@@ -527,7 +527,7 @@ export interface AssemblyBindingCheck {
 /**
  * Does the seller's own profile bind the assembly the order instantiates?
  * Every process instantiates an assembly: the order's agreement names it in
- * its provenance leaf (`assemblyHash`), and a seller accepts only orders
+ * its provenance leaf (`processDesignHash`), and a seller accepts only orders
  * under assemblies it has bound. Run on EVERY seller acceptance path — the
  * offer, the race draft, the quote request — before any signature.
  *
@@ -537,16 +537,16 @@ export interface AssemblyBindingCheck {
  * be read, and an assembly the profile does not bind. A refusal names the
  * assembly by its derived slug and its full hash.
  */
-export async function checkSellerBindsAssembly(
+export async function checkSellerBindsProcess(
     agreement: Agreement,
     seller: Address,
     readProfile?: MemberProfileReader,
-): Promise<AssemblyBindingCheck> {
-    const assemblyHash = agreement.provenance?.assemblyHash;
-    if (!assemblyHash) {
+): Promise<ProcessBindingCheck> {
+    const processDesignHash = agreement.provenance?.processDesignHash;
+    if (!processDesignHash) {
         return { ok: false, reason: "the order names no assembly: its agreement carries no provenance leaf, and every process instantiates an assembly" };
     }
-    const named = `assembly ${deriveAssemblySlug(assemblyHash)} (${assemblyHash})`;
+    const named = `assembly ${deriveProcessDesignSlug(processDesignHash)} (${processDesignHash})`;
     if (!readProfile) {
         return { ok: false, reason: `no member-profile reader is given, so whether the seller has bound ${named} cannot be read` };
     }
@@ -559,8 +559,8 @@ export async function checkSellerBindsAssembly(
     if (!profile) {
         return { ok: false, reason: `the seller's profile could not be read (MembersRegistry → metadataURI → IPFS), so whether it has bound ${named} cannot be checked` };
     }
-    const bound = (profile.assemblyBindings ?? [])
-        .some((b) => b.assemblyHash.toLowerCase() === assemblyHash.toLowerCase());
+    const bound = (profile.processBindings ?? [])
+        .some((b) => b.processDesignHash.toLowerCase() === processDesignHash.toLowerCase());
     if (!bound) {
         return { ok: false, reason: `the seller ${seller} has not bound ${named} in its member profile` };
     }

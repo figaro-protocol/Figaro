@@ -253,10 +253,10 @@ function linkedPayload(processId: Hex = `0x${"00".repeat(32)}` as Hex): string {
         },
     }, specSource());
     const commitment: Commitment = {
-        processId, buyer: BUYER, seller: SELLER, currency: CURRENCY,
-        payment: 1000n, expectedCumulativeValue: 1000n,
+        processId, buyer: BUYER, seller: SELLER, token: CURRENCY,
+        payment: 1000n, runningTotal: 1000n,
         checkoutHash: computeCheckoutHash(agreement),
-        salt: 1n, deadline: 9_999_999_999n,
+        salt: 1n, commitDeadline: 9_999_999_999n,
     };
     const payload: CommitmentPayload = { commitment, agreement, buyerSig: `0x${"22".repeat(65)}` as Hex };
     return `payload=${encodeURIComponent(serializeCommitmentPayload(payload))}`;

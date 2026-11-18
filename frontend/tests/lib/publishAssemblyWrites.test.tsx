@@ -13,17 +13,17 @@
  * reviewed; otherwise it pins the assembly and simulates its registration,
  * pins and simulates each newly composed agreement no registry binds yet —
  * every check before any write — then sends each agreement's registration
- * and last `AssemblyRegistry.registerAssembly(assemblyHash, uri)`, each with
+ * and last `ProcessRegistry.registerProcess(processDesignHash, uri)`, each with
  * its registry's stake and each simulated, sent and held to a success
  * receipt in that order.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { ContractFunctionRevertedError, encodeErrorResult } from "viem";
-import { agreementHashOf, assemblyHashOf, type Assembly, type RegisteredAgreement, type Hex } from "@figaro-protocol/sdk";
+import { agreementHashOf, processDesignHashOf, type ProcessDesign, type RegisteredAgreement, type Hex } from "@figaro-protocol/sdk";
 import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 
-const ASSEMBLY_REGISTRY = "0x00000000000000000000000000000000000a5501";
+const PROCESS_REGISTRY = "0x00000000000000000000000000000000000a5501";
 const AGREEMENT_REGISTRY = "0x00000000000000000000000000000000000a9e01";
 const DESIGNER = "0x1111111111111111111111111111111111111111";
 const ASSEMBLY_STAKE = 7n * 10n ** 16n;
@@ -49,7 +49,7 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return {
         ...actual,
-        CONTRACTS: { ...actual.CONTRACTS, assemblyRegistry: "0x00000000000000000000000000000000000a5501", agreementRegistry: "0x00000000000000000000000000000000000a9e01" },
+        CONTRACTS: { ...actual.CONTRACTS, processRegistry: "0x00000000000000000000000000000000000a5501", agreementRegistry: "0x00000000000000000000000000000000000a9e01" },
     };
 });
 vi.mock("@/lib/shared/publicClient", () => ({ publicClient: {} }));
@@ -88,7 +88,7 @@ beforeEach(() => {
     s.cap = 10;
     s.client = {
         readContract: vi.fn(async ({ address, functionName, args }: { address: string; functionName: string; args?: [string] }) => {
-            if (functionName === "registrationDeposit") return address.toLowerCase() === ASSEMBLY_REGISTRY ? ASSEMBLY_STAKE : AGREEMENT_STAKE;
+            if (functionName === "registrationDeposit") return address.toLowerCase() === PROCESS_REGISTRY ? ASSEMBLY_STAKE : AGREEMENT_STAKE;
             if (functionName === "bindings") {
                 return s.bound.has(String(args?.[0]).toLowerCase())
                     ? [DESIGNER, 1n, false, "ipfs://already"]
@@ -162,24 +162,24 @@ describe("usePublishAssembly — the agreements, then the assembly", () => {
         let outcome: Awaited<ReturnType<typeof result.current.publish>> | undefined;
         await act(async () => { outcome = await result.current.publish(snapshot()); });
         // Pins: the assembly first, then each new agreement's document.
-        const [assemblyDoc, ...agreementDocs] = s.pins as [Assembly, ...RegisteredAgreement[]];
-        const assemblyHash = assemblyHashOf(assemblyDoc);
+        const [assemblyDoc, ...agreementDocs] = s.pins as [ProcessDesign, ...RegisteredAgreement[]];
+        const processDesignHash = processDesignHashOf(assemblyDoc);
         const keys = agreementDocs.map((d) => agreementHashOf(d));
         expect(keys).toHaveLength(2);
         expect(assemblyDoc.agreements.map((a) => a.agreementHash)).toEqual(keys);
         expect(s.write.mock.calls.map(([c]) => shape(c))).toEqual([
             { address: AGREEMENT_REGISTRY, functionName: "registerAgreement", args: [keys[0], "ipfs://pin-2"], value: AGREEMENT_STAKE },
             { address: AGREEMENT_REGISTRY, functionName: "registerAgreement", args: [keys[1], "ipfs://pin-3"], value: AGREEMENT_STAKE },
-            { address: ASSEMBLY_REGISTRY, functionName: "registerAssembly", args: [assemblyHash, "ipfs://pin-1"], value: ASSEMBLY_STAKE },
+            { address: PROCESS_REGISTRY, functionName: "registerProcess", args: [processDesignHash, "ipfs://pin-1"], value: ASSEMBLY_STAKE },
         ]);
         for (const [c] of s.write.mock.calls) expect(c.chainId).toBe(activeChain.id);
         expect(s.calls).toEqual([
-            "pin:1", "simulate:registerAssembly",
+            "pin:1", "simulate:registerProcess",
             "pin:2", "simulate:registerAgreement",
             "pin:3", "simulate:registerAgreement",
             "simulate:registerAgreement", "write:registerAgreement", "receipt",
             "simulate:registerAgreement", "write:registerAgreement", "receipt",
-            "simulate:registerAssembly", "write:registerAssembly", "receipt",
+            "simulate:registerProcess", "write:registerProcess", "receipt",
         ]);
         expect(outcome).toMatchObject({
             hash: TX, ipfsURI: "ipfs://pin-1",
@@ -202,14 +202,14 @@ describe("usePublishAssembly — the agreements, then the assembly", () => {
         await act(async () => { await result.current.publish(snap); });
         expect(s.write.mock.calls.map(([c]) => [c.functionName, c.args[0]])).toEqual([
             ["registerAgreement", otherKey],
-            ["registerAssembly", assemblyHashOf(s.pins[0] as Assembly)],
+            ["registerProcess", processDesignHashOf(s.pins[0] as ProcessDesign)],
         ]);
     });
 
     it("a registration that would revert sends nothing at all — no agreement registered, no stake placed", async () => {
         const abi = [{ type: "error", name: "AlreadyRegistered", inputs: [] }] as const;
         s.client.simulateContract.mockImplementationOnce(async () => {
-            throw new ContractFunctionRevertedError({ abi, data: encodeErrorResult({ abi, errorName: "AlreadyRegistered" }), functionName: "registerAssembly" });
+            throw new ContractFunctionRevertedError({ abi, data: encodeErrorResult({ abi, errorName: "AlreadyRegistered" }), functionName: "registerProcess" });
         });
         const { result } = renderHook(() => usePublishAssembly());
         const e = await caught(() => result.current.publish(snapshot()));

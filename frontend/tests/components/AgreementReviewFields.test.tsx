@@ -30,12 +30,12 @@ const commitment: Commitment = {
     processId: ZERO_BYTES32,
     buyer: "0x1111111111111111111111111111111111111111",
     seller: "0x2222222222222222222222222222222222222222",
-    currency: "0x3333333333333333333333333333333333333333",
+    token: "0x3333333333333333333333333333333333333333",
     payment: PAYMENT,
-    expectedCumulativeValue: PAYMENT,
+    runningTotal: PAYMENT,
     checkoutHash: `0x${"ab".repeat(32)}`,
     salt: 42n,
-    deadline: 1_900_000_000n,
+    commitDeadline: 1_900_000_000n,
 };
 
 afterEach(() => {
@@ -49,7 +49,7 @@ describe("AgreementReview shows every signed field", () => {
     it("names a root order's new process, the cumulative value, both bonds and the salt", () => {
         render(<AgreementReview commitment={commitment} agreement={null} />);
         expect(screen.getByTestId("preview-process").textContent).toMatch(/new process/);
-        const bonds = calculateBonds(commitment.expectedCumulativeValue, commitment.payment);
+        const bonds = calculateBonds(commitment.runningTotal, commitment.payment);
         expect(screen.getByTestId("preview-cumulative").textContent).toContain(`raw: ${PAYMENT.toString()}`);
         expect(screen.getByTestId("preview-buyer-bond").textContent).toContain(`raw: ${bonds.buyerBond.toString()}`);
         expect(screen.getByTestId("preview-seller-bond").textContent).toContain(`raw: ${bonds.sellerBond.toString()}`);
@@ -61,7 +61,7 @@ describe("AgreementReview shows every signed field", () => {
         decimalsState.ready = true;
         decimalsState.loading = false;
         render(<AgreementReview commitment={commitment} agreement={null} />);
-        expect(screen.getByTestId("preview-token").textContent).toBe(commitment.currency);
+        expect(screen.getByTestId("preview-token").textContent).toBe(commitment.token);
         expect(screen.getByTestId("preview-payment").textContent).toContain("1.5");
         expect(screen.getByTestId("agreement-review").textContent).toContain("Running total");
         expect(screen.getByTestId("preview-buyer-bond").textContent).toMatch(/^3 /);
@@ -70,7 +70,7 @@ describe("AgreementReview shows every signed field", () => {
     });
 
     it("names a sub-order's process by its id", () => {
-        const sub = { ...commitment, processId: `0x${"cd".repeat(32)}` as const, expectedCumulativeValue: 4_000_000n };
+        const sub = { ...commitment, processId: `0x${"cd".repeat(32)}` as const, runningTotal: 4_000_000n };
         render(<AgreementReview commitment={sub} agreement={null} />);
         expect(screen.getByTestId("preview-process").textContent).toContain(`0x${"cd".repeat(32)}`);
         expect(screen.getByTestId("preview-seller-bond").textContent).toContain(`raw: ${(8_000_000n).toString()}`);

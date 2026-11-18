@@ -54,7 +54,7 @@ vi.mock("@figaro-protocol/sdk", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@figaro-protocol/sdk")>()),
     readUtilityTokenPin: () => "0x00000000000000000000000000000000000000d2",
     agreementClauses: () => ({ [PRIVATE_KEY.key]: {} }),
-    assemblyHashOf: () => `0x${"ab".repeat(32)}`,
+    processDesignHashOf: () => `0x${"ab".repeat(32)}`,
     // The sub-order is unbound: the buyer fills it by a pick or a race.
     planSubOrderSellers: () => [{ node: { nodeId: "agreement-1", clauses: {} }, seller: undefined, itemId: undefined }],
 }));

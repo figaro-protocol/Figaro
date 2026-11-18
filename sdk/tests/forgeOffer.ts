@@ -19,9 +19,9 @@ export async function forgeBuyerOffer(
     });
     const checkoutHash = computeCheckoutHash(agreement);
     const { commitment, typedData } = buildCommitment({
-        processId: ZERO_PROCESS_ID, buyer: account.address, seller: params.seller, currency: params.currency,
-        payment: params.payment, expectedCumulativeValue: params.payment,
-        checkoutHash, salt: params.salt, deadline: params.deadline,
+        processId: ZERO_PROCESS_ID, buyer: account.address, seller: params.seller, token: params.currency,
+        payment: params.payment, runningTotal: params.payment,
+        checkoutHash, salt: params.salt, commitDeadline: params.deadline,
     }, buildDomain(params.chainId, params.core));
     const buyerSig = await wallet.signTypedData({ account, ...typedData });
     return { commitment, agreement, buyerSig };

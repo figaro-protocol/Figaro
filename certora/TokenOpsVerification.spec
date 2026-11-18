@@ -134,8 +134,8 @@ function validCommitInputs(env e, CommitmentTypes.Commitment c) returns bool {
         c.seller  != 0 &&
         c.payment > 0 &&
         c.payment < MAX_VALUE() &&
-        c.expectedCumulativeValue >= c.payment &&
-        c.expectedCumulativeValue < MAX_VALUE() &&
+        c.runningTotal >= c.payment &&
+        c.runningTotal < MAX_VALUE() &&
         c.deadline >= e.block.timestamp;
 }
 
@@ -162,7 +162,7 @@ rule commitBuyerExactDelta(
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 2: Seller bonds exactly 2× expectedCumulativeValue on commit
+// RULE 2: Seller bonds exactly 2× runningTotal on commit
 // ═══════════════════════════════════════════════════════════════════
 
 rule commitSellerExactDelta(
@@ -179,8 +179,8 @@ rule commitSellerExactDelta(
     mathint after_ = balance[c.seller];
 
     assert !reverted
-        => before - after_ == 2 * to_mathint(c.expectedCumulativeValue),
-        "on successful commit, seller balance must decrease by exactly 2 * c.expectedCumulativeValue";
+        => before - after_ == 2 * to_mathint(c.runningTotal),
+        "on successful commit, seller balance must decrease by exactly 2 * c.runningTotal";
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -201,8 +201,8 @@ rule commitContractExactDelta(
     mathint after_ = balance[currentContract];
 
     assert !reverted
-        => after_ - before == 2 * to_mathint(c.payment) + 2 * to_mathint(c.expectedCumulativeValue),
-        "on successful commit, FigaroCore balance must increase by exactly 2*payment + 2*cumulativeValue";
+        => after_ - before == 2 * to_mathint(c.payment) + 2 * to_mathint(c.runningTotal),
+        "on successful commit, FigaroCore balance must increase by exactly 2*payment + 2*runningTotal";
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -290,7 +290,7 @@ rule resolveSingleOrderPayout(
 
     assert !reverted
         => sellerAfter - sellerBefore
-           == 2 * to_mathint(c.expectedCumulativeValue) + to_mathint(c.payment),
+           == 2 * to_mathint(c.runningTotal) + to_mathint(c.payment),
         "on successful resolve, seller payout = 2*cumulative + payment";
 
     assert !reverted
@@ -299,7 +299,7 @@ rule resolveSingleOrderPayout(
 
     assert !reverted
         => coreBefore - coreAfter
-           == 2 * to_mathint(c.expectedCumulativeValue) + 2 * to_mathint(c.payment),
+           == 2 * to_mathint(c.runningTotal) + 2 * to_mathint(c.payment),
         "on successful resolve, FigaroCore payout = 2*cumulative + 2*payment";
 }
 

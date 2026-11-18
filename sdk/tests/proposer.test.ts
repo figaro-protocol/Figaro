@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { proposeActions, proposeInitiations, filterActions } from "../src/agent/proposer.js";
-import type { Process, Order, RegisteredAssembly } from "../src/types.js";
+import type { Process, Order, RegisteredProcessDesign } from "../src/types.js";
 import { OrderState } from "../src/types.js";
 import type { Hex, Address } from "../src/types.js";
 
@@ -20,7 +20,7 @@ function mkOrder(overrides: Partial<Order> = {}): Order {
         seller: SELLER,
         currency: TOKEN,
         payment: 100n,
-        cumulativeValue: 100n,
+        runningTotal: 100n,
         checkoutHash: "0x" as Hex,
         salt: 1n,
         deadline: 999999999n,
@@ -37,7 +37,7 @@ function mkProcess(overrides: Partial<Process> = {}): Process {
         processId: PID,
         rootBuyer: BUYER,
         currency: TOKEN,
-        cumulativeValue: 100n,
+        runningTotal: 100n,
         orders,
         resolved: false,
         ...overrides,
@@ -69,7 +69,7 @@ describe("proposeActions", () => {
             expect(resolve.commitments).toHaveLength(1);
             expect(resolve.commitments[0].seller).toBe(SELLER);
             expect(resolve.commitments[0].payment).toBe(100n);
-            expect(resolve.commitments[0].expectedCumulativeValue).toBe(100n);
+            expect(resolve.commitments[0].runningTotal).toBe(100n);
             expect(resolve.settlements).toHaveLength(1);
             // payment=100, sellerBond=2*100=200, buyerBond=2*100=200
             // sellerPayout = 100+200 = 300, buyerPayout = 200-100 = 100
@@ -111,10 +111,10 @@ describe("proposeActions", () => {
             orderHash: OH2,
             seller: SELLER2,
             payment: 50n,
-            cumulativeValue: 150n,
+            runningTotal: 150n,
             blockNumber: 2,
         }));
-        process.cumulativeValue = 150n;
+        process.runningTotal = 150n;
 
         const actions = proposeActions(process, BUYER);
         const resolve = actions.find((a) => a.type === "resolve-process")!;
@@ -131,14 +131,14 @@ describe("proposeInitiations", () => {
     const REGISTERED_BY = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" as Address;
 
     it("proposes one initiate-process per discovered assembly, buyer = me", () => {
-        const assemblies: RegisteredAssembly[] = [
-            { assemblyHash: COMP, registeredBy: REGISTERED_BY, contentURI: "ipfs://asm" },
+        const assemblies: RegisteredProcessDesign[] = [
+            { processDesignHash: COMP, registeredBy: REGISTERED_BY, contentURI: "ipfs://asm" },
         ];
         const inits = proposeInitiations(assemblies, BUYER);
         expect(inits).toHaveLength(1);
         expect(inits[0].type).toBe("initiate-process");
         expect(inits[0].buyer).toBe(BUYER);
-        expect(inits[0].assemblyHash).toBe(COMP);
+        expect(inits[0].processDesignHash).toBe(COMP);
         expect(inits[0].contentURI).toBe("ipfs://asm");
         // No process exists yet — FigaroCore derives the id at root commit.
         expect(inits[0].processId).toBe(`0x${"0".repeat(64)}`);

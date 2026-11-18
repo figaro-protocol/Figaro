@@ -18,7 +18,7 @@ import {
     PROVENANCE_LEAF_KEY,
     provenanceLeafBytes,
     type Agreement,
-    type Assembly,
+    type ProcessDesign,
     type Commitment,
     type UsageClaimContext,
 } from "@figaro-protocol/sdk";
@@ -58,9 +58,9 @@ export interface CapabilityExecutorDeps {
      *  only if the simulation passes. */
     fetchUsageClaimContext: () => Promise<UsageClaimContext>;
     /** The assembly of the assembly a provenance names, read from
-     *  `AssemblyRegistry` by its assembly root (whatever its stake) and
+     *  `ProcessRegistry` by its assembly root (whatever its stake) and
      *  verified against it; null when absent. */
-    readAssembly: (assemblyHash: Hex) => Promise<Assembly | null>;
+    readAssembly: (processDesignHash: Hex) => Promise<ProcessDesign | null>;
     simulateUsage: (write: UsageWrite) => Promise<void>;
     recordUsage: (write: UsageWrite) => Promise<Hex | undefined>;
     submitAttestation: (role: "buyer" | "seller", args: AttestationSubmitArgs) => Promise<Hex | undefined>;
@@ -82,7 +82,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
 
         // Reconstruct each order's Commitment from its indexed event —
         // resolveProcess needs the full Commitment[] to resolve the process
-        // atomically. expectedCumulativeValue is the order's committed cumulativeValue.
+        // atomically. runningTotal is the order's committed runningTotal.
         // resolveProcess recomputes each order's hash from hashStruct(commitment),
         // so the SIGNED commitment is required — restore the root's processId 0
         // (the event/store carries the derived processId).
@@ -94,12 +94,12 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             processId: order.processId as Hex,
             buyer: order.buyer as Hex,
             seller: order.seller as Hex,
-            currency: order.currency as Hex,
+            token: order.currency as Hex,
             payment: order.payment,
-            expectedCumulativeValue: order.cumulativeValue,
+            runningTotal: order.runningTotal,
             checkoutHash: order.checkoutHash as Hex,
             salt: order.salt,
-            deadline: order.deadline,
+            commitDeadline: order.deadline,
         }, chainId));
 
         // ── USAGE RECORDING, PLANNED BEFORE THE BUYER IS ASKED: the buyer's
@@ -161,7 +161,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             return [];
         }
         // Each assembly a provenance names, read once by its assembly root.
-        const assemblies = new Map<string, Assembly | null>();
+        const assemblies = new Map<string, ProcessDesign | null>();
         const entries: UsagePlanEntry[] = [];
         for (let i = 0; i < activeOrders.length; i++) {
             const { orderHash, checkoutHash } = activeOrders[i];
@@ -170,10 +170,10 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                 console.error(`[usage-recording] no hydrated agreement for order ${orderHash} (hash ${checkoutHash}) — skipping its clauses and assemblies`);
                 continue;
             }
-            let assembly: Assembly | undefined;
-            if (agreement.provenance && isBytes32Hex(agreement.provenance.assemblyHash)) {
-                const key = agreement.provenance.assemblyHash.toLowerCase();
-                if (!assemblies.has(key)) assemblies.set(key, await deps.readAssembly(agreement.provenance.assemblyHash).catch(() => null));
+            let assembly: ProcessDesign | undefined;
+            if (agreement.provenance && isBytes32Hex(agreement.provenance.processDesignHash)) {
+                const key = agreement.provenance.processDesignHash.toLowerCase();
+                if (!assemblies.has(key)) assemblies.set(key, await deps.readAssembly(agreement.provenance.processDesignHash).catch(() => null));
                 assembly = assemblies.get(key) ?? undefined;
             }
             entries.push({ orderHash, commitment: commitments[i], agreement, context, assembly });
@@ -252,7 +252,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             orderHash: action.orderHash as Hex,
             clauseId: PROVENANCE_LEAF_KEY,
             stage: 0,
-            content: provenanceLeafBytes(action.agreementHash, action.assemblyHash),
+            content: provenanceLeafBytes(action.agreementHash, action.processDesignHash),
             failureMessage: "provenance attestation failed",
         });
 

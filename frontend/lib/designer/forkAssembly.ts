@@ -30,11 +30,11 @@ import {
     uniqueDraftSlug,
 } from "./syntheticDesignStore";
 import { assemblyToDraft } from "./assemblyToDraft";
-import type { HydratedAssembly } from "@figaro-protocol/sdk";
+import type { HydratedProcessDesign } from "@figaro-protocol/sdk";
 
 export function forkPublishedAssembly(
     sourceSlug: string,
-    hydrated: HydratedAssembly,
+    hydrated: HydratedProcessDesign,
 ): { finalSlug: string } {
     const finalSlug = uniqueDraftSlug(`${sourceSlug}-fork`);
     const draft = assemblyToDraft(hydrated, { slug: finalSlug });

@@ -134,7 +134,7 @@ export const membersRegistryRevertMessage: RevertMessage = (errorName) => {
             return "This wallet is already registered. Update its profile instead, or switch to a fresh wallet.";
         case "NotRegistered":
             return "This wallet is not registered. Register it before updating its profile or leaving.";
-        case "InsufficientDeposit":
+        case "WrongStake":
             return "Registration stake mismatch — the value sent differs from the registry's `registrationDeposit`. Reload and try again.";
         case "NothingPending":
             return "No withdrawal is pending for this wallet.";

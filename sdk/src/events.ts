@@ -43,7 +43,7 @@ export function parseOrderCommittedLogs(logs: Log[]): OrderCommittedEvent[] {
                 seller: a.seller as Address,
                 currency: a.currency as Address,
                 payment: a.payment as bigint,
-                cumulativeValue: a.cumulativeValue as bigint,
+                runningTotal: a.runningTotal as bigint,
                 checkoutHash: a.checkoutHash as Hex,
                 salt: a.salt as bigint,
                 deadline: a.deadline as bigint,

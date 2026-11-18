@@ -111,16 +111,16 @@ const CHAIN_ID: u64 = 31337;
 
 const DOMAIN_SEP: B256 = b256!("6325a49af8b05e724de86f3ff9397854cd7733afbdaf519b96ee7b6816891bc4");
 const ROOT_STRUCT_HASH: B256 =
-    b256!("f61125bef0f1916de4d1fd36fe243e3b513e6489b2b8827a4e62deb87e340da9");
-const ROOT_DIGEST: B256 = b256!("a809fe3f6ab3509a130c6cd20bf910767b4ccafce5d46f8ad99d0e62f367c83b");
-const PROCESS_ID: B256 = b256!("a809fe3f6ab3509a130c6cd20bf910767b4ccafce5d46f8ad99d0e62f367c83b");
+    b256!("0115085fc5113fad97cd557f126d1fe0269247cc312a2c364415b20d278763bc");
+const ROOT_DIGEST: B256 = b256!("218b062c3f37a305b72333c552ba4b9533f40af565e315b35d7d48e47c3d033c");
+const PROCESS_ID: B256 = b256!("218b062c3f37a305b72333c552ba4b9533f40af565e315b35d7d48e47c3d033c");
 const ROOT_ORDER_HASH: B256 =
-    b256!("b9a9afa9c257441ff216d7f9abea2edbab8db358f55896bf4be58f9d9a76f8ea");
+    b256!("67bc40e86ea91a90e3c3945490a042f70c68e01f7e9136a2c3457902387e5178");
 const SUB_STRUCT_HASH: B256 =
-    b256!("d9a5cb004387bfb22c64bf61d3d263df2689df6b51144cd3ad18f684af1c3231");
-const SUB_DIGEST: B256 = b256!("1536806c68219bb71421f3f57af5806054f8e5c21c207923234a45a103248845");
+    b256!("03ad150d953fa26be34b210e132d814e3c30f5c887a0ccd5ecdb321fde6e7b8a");
+const SUB_DIGEST: B256 = b256!("daddc0cbc9d3bd9f28a6ac7602b21522c43dcd7859247aac29917d1474e60cfe");
 const SUB_ORDER_HASH: B256 =
-    b256!("da9af386b03e8c5787b58f31ae5a4f5556f1142f40e2a2508af62d3ba2637e59");
+    b256!("e766eb795133192c5181d251fadc1786c3064e058473b36f3b770771643b5b02");
 
 // ── Signing helpers ───────────────────────────────────────────────
 
@@ -321,7 +321,7 @@ fn test_full_batch_commit_resolve_payouts() {
 
     // Sign resolve authorization over the process as it stands after both
     // commits: 100 + 50 ether.
-    let resolved_value = sub.expected_cumulative_value;
+    let resolved_value = sub.running_total;
     let resolve_hash = resolve_struct_hash(&PROCESS_ID, &resolved_value);
     let resolve_digest = typed_data_hash(&domain, &resolve_hash);
     let resolve_sig = sign_digest(&buyer_key, &resolve_digest);
@@ -343,7 +343,7 @@ fn test_full_batch_commit_resolve_payouts() {
             },
             KernelOp::Resolve {
                 process_id: PROCESS_ID,
-                cumulative_value: resolved_value,
+                running_total: resolved_value,
                 commitments: vec![root, sub],
                 buyer_sig: resolve_sig,
             },
@@ -358,8 +358,8 @@ fn test_full_batch_commit_resolve_payouts() {
     let ether = U256::from(1_000_000_000_000_000_000u64);
 
     // Payouts must match Solidity exactly.
-    // Seller1: expectedCumulativeValue*2 + payment = 100*2 + 100 = 300 ether
-    // Seller2: expectedCumulativeValue*2 + payment = 150*2 + 50 = 350 ether
+    // Seller1: runningTotal*2 + payment = 100*2 + 100 = 300 ether
+    // Seller2: runningTotal*2 + payment = 150*2 + 50 = 350 ether
     // Buyer: payment per order = 100 + 50 = 150 ether
     let s1 = positions.iter().find(|p| p.user == SELLER1).unwrap();
     let s2 = positions.iter().find(|p| p.user == SELLER2).unwrap();
@@ -394,12 +394,12 @@ fn root_commitment() -> Commitment {
         process_id: B256::ZERO,
         buyer: BUYER,
         seller: SELLER1,
-        currency: TOKEN,
+        token: TOKEN,
         payment: U256::from(100_000_000_000_000_000_000u128), // 100 ether
-        expected_cumulative_value: U256::from(100_000_000_000_000_000_000u128),
+        running_total: U256::from(100_000_000_000_000_000_000u128),
         checkout_hash: keccak256("test-agreement"),
         salt: U256::from(42u64),
-        deadline: U256::from(2000u64),
+        commit_deadline: U256::from(2000u64),
     }
 }
 
@@ -408,12 +408,12 @@ fn sub_commitment() -> Commitment {
         process_id: PROCESS_ID,
         buyer: BUYER,
         seller: SELLER2,
-        currency: TOKEN,
+        token: TOKEN,
         payment: U256::from(50_000_000_000_000_000_000u128), // 50 ether
-        expected_cumulative_value: U256::from(150_000_000_000_000_000_000u128), // 150 ether
+        running_total: U256::from(150_000_000_000_000_000_000u128), // 150 ether
         checkout_hash: keccak256("sub-agreement"),
         salt: U256::from(43u64),
-        deadline: U256::from(2000u64),
+        commit_deadline: U256::from(2000u64),
     }
 }
 
@@ -1160,7 +1160,7 @@ fn a_hash_only_attestation_signed_by_another_wallet_is_refused() {
 #[test]
 fn attest_on_resolved_order_fails() {
     // The evidence window closes at resolution — the coordinator's
-    // OrderResolved gate, mirrored in the batch.
+    // OrderAlreadyResolved gate, mirrored in the batch.
     let f = attest_fixture();
     let buyer_key = make_signing_key(BUYER_KEY);
     let seller1_key = make_signing_key(SELLER1_KEY);
@@ -1185,7 +1185,7 @@ fn attest_on_resolved_order_fails() {
             },
             KernelOp::Resolve {
                 process_id: f.process_id,
-                cumulative_value: f.root.payment,
+                running_total: f.root.payment,
                 commitments: vec![f.root.clone()],
                 buyer_sig: resolve_sig,
             },
@@ -1204,8 +1204,8 @@ fn attest_on_resolved_order_fails() {
     };
 
     match apply_batch(&input) {
-        Err(KernelError::OrderResolved) => {}
-        other => panic!("expected OrderResolved, got {other:?}"),
+        Err(KernelError::OrderAlreadyResolved) => {}
+        other => panic!("expected OrderAlreadyResolved, got {other:?}"),
     }
 }
 
@@ -1224,12 +1224,12 @@ fn attest_as_seller_against_another_sellers_order_fails() {
         process_id: f.process_id,
         buyer: BUYER,
         seller: SELLER2,
-        currency: TOKEN,
+        token: TOKEN,
         payment: U256::from(50_000_000_000_000_000_000u128),
-        expected_cumulative_value: U256::from(150_000_000_000_000_000_000u128),
+        running_total: U256::from(150_000_000_000_000_000_000u128),
         checkout_hash: keccak256("sub-agreement"),
         salt: U256::from(43u64),
-        deadline: U256::from(2000u64),
+        commit_deadline: U256::from(2000u64),
     };
 
     let (proof, content_ref) = runtime_witness_proof(&f);
@@ -1295,7 +1295,7 @@ fn commit_at(timestamp: u64) -> Result<(PublicValues, Vec<NetPosition>, BatchEve
 #[test]
 fn a_commitment_lives_through_its_deadline_and_not_one_second_past() {
     // FigaroCore: `if (c.deadline < block.timestamp) revert DeadlineExpired()`.
-    let deadline: u64 = root_commitment().deadline.try_into().unwrap();
+    let deadline: u64 = root_commitment().commit_deadline.try_into().unwrap();
     assert!(commit_at(deadline - 1).is_ok(), "before the deadline");
     assert!(
         commit_at(deadline).is_ok(),
@@ -1341,7 +1341,7 @@ fn the_state_root_binds_every_map_it_covers() {
             ProcessState {
                 root_buyer: BUYER,
                 currency: TOKEN,
-                cumulative_value: U256::from(100u64),
+                running_total: U256::from(100u64),
                 active_order_count: 1,
             },
         )];
@@ -1358,7 +1358,7 @@ fn the_state_root_binds_every_map_it_covers() {
 
     let mut cases: Vec<(&str, KernelStateSnapshot)> = Vec::new();
     let mut s = base.clone();
-    s.processes[0].1.cumulative_value = U256::from(101u64);
+    s.processes[0].1.running_total = U256::from(101u64);
     cases.push(("a process's cumulative value", s));
     let mut s = base.clone();
     s.processes[0].1.active_order_count = 0;
@@ -1426,12 +1426,12 @@ fn a_bond_accumulation_overflow_is_rejected_not_a_panic() {
         process_id: B256::ZERO,
         buyer: BUYER,
         seller: BUYER,
-        currency: TOKEN,
+        token: TOKEN,
         payment: huge,
-        expected_cumulative_value: huge,
+        running_total: huge,
         checkout_hash: keccak256("overflow"),
         salt: U256::from(1u64),
-        deadline: U256::from(1_000_000u64),
+        commit_deadline: U256::from(1_000_000u64),
     };
     let sig = sign_commitment(&c, &domain, &key);
     let input = BatchInput {
@@ -1484,12 +1484,12 @@ fn resolved_order_under(checkout_hash: B256, salt: u64) -> (Commitment, Vec<Kern
         process_id: B256::ZERO,
         buyer: BUYER,
         seller: SELLER1,
-        currency: TOKEN,
+        token: TOKEN,
         payment: U256::from(100u64),
-        expected_cumulative_value: U256::from(100u64),
+        running_total: U256::from(100u64),
         checkout_hash,
         salt: U256::from(salt),
-        deadline: U256::from(2000u64),
+        commit_deadline: U256::from(2000u64),
     };
     let process_id = typed_data_hash(&domain, &commitment_struct_hash(&order));
     let ops = vec![
@@ -1500,7 +1500,7 @@ fn resolved_order_under(checkout_hash: B256, salt: u64) -> (Commitment, Vec<Kern
         },
         KernelOp::Resolve {
             process_id,
-            cumulative_value: order.payment,
+            running_total: order.payment,
             commitments: vec![order.clone()],
             buyer_sig: sign_digest(
                 &buyer_key,
@@ -1526,9 +1526,9 @@ fn claims_batch(ops: Vec<KernelOp>, claims: Vec<UsageClaim>) -> BatchInput {
 fn kind2(order: &Commitment, entry: &serde_json::Value) -> UsageClaim {
     UsageClaim {
         order: order.clone(),
-        clause_or_assembly: hex32(&entry["agreementHash"]),
+        clause_or_process: hex32(&entry["agreementHash"]),
         kind: UsageClaimKind::Agreement {
-            assembly_hash: hex32(&entry["provenance"]["assemblyHash"]),
+            process_design_hash: hex32(&entry["provenance"]["processDesignHash"]),
         },
         inclusion_proof: vec![],
     }
@@ -1538,15 +1538,15 @@ fn kind1(
     order: &Commitment,
     composition: B256,
     agreement_hash: B256,
-    slot_content_hash: B256,
+    agreement_content_hash: B256,
     proof: Vec<B256>,
 ) -> UsageClaim {
     UsageClaim {
         order: order.clone(),
-        clause_or_assembly: composition,
-        kind: UsageClaimKind::Assembly {
+        clause_or_process: composition,
+        kind: UsageClaimKind::Process {
             agreement_hash,
-            slot_content_hash,
+            agreement_content_hash,
             membership_proof: proof,
         },
         inclusion_proof: vec![],
@@ -1562,7 +1562,7 @@ fn every_vector_agreement_credits_its_agreement_and_its_assembly() {
     let fx = assembly_vectors();
     let mut salt = 1000u64;
     for assembly in fx["assemblies"].as_array().unwrap() {
-        let composition = hex32(&assembly["assemblyHash"]);
+        let composition = hex32(&assembly["processDesignHash"]);
         for entry in assembly["agreements"].as_array().unwrap() {
             salt += 1;
             let (order, ops) = resolved_order_under(hex32(&entry["provenance"]["leaf"]), salt);
@@ -1572,7 +1572,7 @@ fn every_vector_agreement_credits_its_agreement_and_its_assembly() {
                     &order,
                     composition,
                     hex32(&entry["agreementHash"]),
-                    hex32(&entry["slotContentHash"]),
+                    hex32(&entry["agreementContentHash"]),
                     proof_list(&entry["membershipProof"]),
                 ),
             ];
@@ -1581,12 +1581,12 @@ fn every_vector_agreement_credits_its_agreement_and_its_assembly() {
             let mut got: Vec<(B256, u8)> = events
                 .uses
                 .iter()
-                .map(|u| (u.clause_or_assembly, u.kind))
+                .map(|u| (u.clause_or_process, u.kind))
                 .collect();
             got.sort();
             let mut want = vec![
                 (hex32(&entry["agreementHash"]), USAGE_KIND_AGREEMENT),
-                (composition, USAGE_KIND_ASSEMBLY),
+                (composition, USAGE_KIND_PROCESS),
             ];
             want.sort();
             assert_eq!(got, want);
@@ -1611,9 +1611,9 @@ fn a_vector_membership_proof_from_another_assembly_is_refused() {
     let (order, ops) = resolved_order_under(hex32(&entry["provenance"]["leaf"]), 1);
     let claim = kind1(
         &order,
-        hex32(&two["assemblyHash"]),
+        hex32(&two["processDesignHash"]),
         hex32(&entry["agreementHash"]),
-        hex32(&one["agreements"][0]["slotContentHash"]),
+        hex32(&one["agreements"][0]["agreementContentHash"]),
         proof_list(&one["agreements"][0]["membershipProof"]),
     );
     match apply_batch(&claims_batch(ops, vec![claim])).map(|_| ()) {
@@ -1630,7 +1630,7 @@ fn a_vector_agreement_claim_with_the_wrong_agreement_hash_is_refused() {
     let entry = &fx["assemblies"][2]["agreements"][2];
     let (order, ops) = resolved_order_under(hex32(&entry["provenance"]["leaf"]), 1);
     let mut claim = kind2(&order, entry);
-    claim.clause_or_assembly = hex32(&fx["assemblies"][2]["agreements"][0]["agreementHash"]);
+    claim.clause_or_process = hex32(&fx["assemblies"][2]["agreements"][0]["agreementHash"]);
     match apply_batch(&claims_batch(ops, vec![claim])).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
@@ -1645,7 +1645,7 @@ fn a_vector_agreement_claim_with_the_wrong_agreement_hash_is_refused() {
 fn the_vector_terms_leaf_never_passes_as_an_agreement() {
     let fx = assembly_vectors();
     let assembly = &fx["assemblies"][2];
-    let composition = hex32(&assembly["assemblyHash"]);
+    let composition = hex32(&assembly["processDesignHash"]);
     let terms = &assembly["terms"];
     let terms_leaf = hex32(&terms["leaf"]);
 
@@ -1715,7 +1715,7 @@ fn two_commits_then_resolve(signed_value: U256) -> BatchInput {
             },
             KernelOp::Resolve {
                 process_id: PROCESS_ID,
-                cumulative_value: signed_value,
+                running_total: signed_value,
                 commitments: vec![root, sub],
                 buyer_sig: resolve_sig,
             },
@@ -1733,8 +1733,8 @@ fn two_commits_then_resolve(signed_value: U256) -> BatchInput {
 /// root order alone.
 #[test]
 fn a_resolve_signed_before_a_later_commit_is_refused() {
-    let signed = root_commitment().expected_cumulative_value;
-    let current = sub_commitment().expected_cumulative_value;
+    let signed = root_commitment().running_total;
+    let current = sub_commitment().running_total;
     match apply_batch(&two_commits_then_resolve(signed)) {
         Err(KernelError::StaleResolveAuthorization {
             signed: s,
@@ -1751,7 +1751,7 @@ fn a_resolve_signed_before_a_later_commit_is_refused() {
 /// resolves both orders.
 #[test]
 fn a_resolve_signed_over_the_current_cumulative_value_resolves() {
-    let current = sub_commitment().expected_cumulative_value;
+    let current = sub_commitment().running_total;
     let (_pv, positions, _events) =
         apply_batch(&two_commits_then_resolve(current)).expect("resolves");
     let s2 = positions.iter().find(|p| p.user == SELLER2).unwrap();
@@ -1768,12 +1768,9 @@ fn a_resolve_signed_over_the_current_cumulative_value_resolves() {
 /// signer and the resolve is refused.
 #[test]
 fn a_resolve_whose_signed_value_was_rewritten_is_refused() {
-    let mut input = two_commits_then_resolve(root_commitment().expected_cumulative_value);
-    if let KernelOp::Resolve {
-        cumulative_value, ..
-    } = &mut input.operations[2]
-    {
-        *cumulative_value = sub_commitment().expected_cumulative_value;
+    let mut input = two_commits_then_resolve(root_commitment().running_total);
+    if let KernelOp::Resolve { running_total, .. } = &mut input.operations[2] {
+        *running_total = sub_commitment().running_total;
     }
     match apply_batch(&input) {
         Err(KernelError::NotProcessBuyer) | Err(KernelError::InvalidSignature) => {}
@@ -1791,7 +1788,7 @@ fn two_commits_then_wallet_code_resolve(value: U256, authorization: &[u8]) -> Ba
     let mut input = two_commits_then_resolve(value);
     let KernelOp::Resolve {
         process_id,
-        cumulative_value,
+        running_total,
         commitments,
         ..
     } = input.operations.pop().unwrap()
@@ -1800,7 +1797,7 @@ fn two_commits_then_wallet_code_resolve(value: U256, authorization: &[u8]) -> Ba
     };
     input.operations.push(KernelOp::ResolveByWalletCode {
         process_id,
-        cumulative_value,
+        running_total,
         commitments,
         authorization: alloy_primitives::Bytes::copy_from_slice(authorization),
     });
@@ -1814,7 +1811,7 @@ fn two_commits_then_wallet_code_resolve(value: U256, authorization: &[u8]) -> Ba
 /// them against the buyer's code at resolution.
 #[test]
 fn a_wallet_code_resolve_is_accepted_and_published_in_the_operation_stream() {
-    let current = sub_commitment().expected_cumulative_value;
+    let current = sub_commitment().running_total;
     let authorization = b"guardian-approval".to_vec();
     let input = two_commits_then_wallet_code_resolve(current, &authorization);
     let (pv, positions, _events) = apply_batch(&input).expect("a wallet-code resolve applies");
@@ -1836,12 +1833,12 @@ fn a_wallet_code_resolve_is_accepted_and_published_in_the_operation_stream() {
     match &ops[2] {
         KernelOp::ResolveByWalletCode {
             process_id,
-            cumulative_value,
+            running_total,
             authorization: a,
             ..
         } => {
             assert_eq!(*process_id, PROCESS_ID);
-            assert_eq!(*cumulative_value, current);
+            assert_eq!(*running_total, current);
             assert_eq!(
                 a.as_ref(),
                 authorization.as_slice(),
@@ -1857,7 +1854,7 @@ fn a_wallet_code_resolve_is_accepted_and_published_in_the_operation_stream() {
 /// refused before any payout.
 #[test]
 fn a_wallet_code_resolve_for_a_passed_value_is_refused() {
-    let signed = root_commitment().expected_cumulative_value;
+    let signed = root_commitment().running_total;
     match apply_batch(&two_commits_then_wallet_code_resolve(
         signed,
         b"guardian-approval",

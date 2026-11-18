@@ -5,7 +5,7 @@ import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 const fetchHydratedAssemblyMock = vi.fn();
 const publishedMock = vi.fn();
 const loadErrorMock = vi.fn<(hash: string) => string | undefined>(() => undefined);
-vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
+vi.mock("@/lib/protocol/useProcessRegistry", () => ({
     usePublishedAssemblies: () => publishedMock(),
     fetchHydratedAssembly: (...args: unknown[]) => fetchHydratedAssemblyMock(...args),
     getAssemblyLoadError: (hash: string) => loadErrorMock(hash),
@@ -14,7 +14,7 @@ vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 
 const EVENT = {
-    slug: "asm-fresh", registeredBy: "0xA", assemblyHash: "0x1", contentURI: "ipfs://fresh", blockNumber: 2n,
+    slug: "asm-fresh", registeredBy: "0xA", processDesignHash: "0x1", contentURI: "ipfs://fresh", blockNumber: 2n,
 };
 const ASSEMBLY = { assembly: { name: "Containerized import chain", agreements: [], assemblyClauses: {} }, agreements: {} };
 

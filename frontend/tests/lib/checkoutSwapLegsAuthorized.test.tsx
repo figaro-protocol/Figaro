@@ -14,7 +14,7 @@
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { agreementHashOf, hashCommitmentStruct, type Hex, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { agreementHashOf, hashCommitmentStruct, type Hex, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 
 const INPUT_TOKEN = "0x00000000000000000000000000000000000000f1" as const;
 
@@ -57,7 +57,7 @@ vi.mock("@/lib/shared/runtimeServicesContext", () => ({ useRuntimeServices: () =
 
 import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { capWithSlippage } from "@/lib/composition/swapVenue";
-import { executeAssemblyCheckout, planAssemblyOrders, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
+import { executeAssemblyCheckout, planProcessOrders, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { useOrderCommitmentFlow, type BuyerFundingRequest } from "@/lib/checkout/orderCommitmentFlow";
 import { useFundingMargin } from "@/lib/composition/useFundingMargin";
 import type { OrderPreview } from "@/lib/checkout/orderPreview";
@@ -78,7 +78,7 @@ const SERVICE = pinSpec({
     stages: { "1": [{ name: "note", type: "string", required: true }] },
 });
 
-let hydrated: HydratedAssembly;
+let hydrated: HydratedProcessDesign;
 let params: AssemblyCheckoutParams & { salt: (nodeId: string) => bigint; deadline: bigint };
 
 beforeAll(async () => {
@@ -123,7 +123,7 @@ beforeAll(async () => {
 /** The panel's cap for the checkout's orders, as the page asks for it: each
  *  order's buyer bond is one leg. */
 async function panelCap(): Promise<{ cap: bigint; bps: number; bonds: bigint[] }> {
-    const orders = await planAssemblyOrders(params, { chainId: 31337 });
+    const orders = await planProcessOrders(params, { chainId: 31337 });
     const bonds = orders.map((o) => 2n * o.commitment.payment);
     const { result } = renderHook(() => useFundingMargin({ party: BUYER, currency: TOKEN, fundingToken: INPUT_TOKEN, fundingSymbol: "FND" }).marginFor(bonds));
     await waitFor(() => expect(result.current.maxInput).not.toBeNull());

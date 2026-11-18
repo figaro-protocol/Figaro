@@ -252,7 +252,7 @@ export async function corroborateEndpoints({
         batchVerifier: addresses.batchVerifier,
         clauseRegistry: addresses.clauseRegistry,
         membersRegistry: addresses.membersRegistry,
-        assemblyRegistry: addresses.assemblyRegistry,
+        processRegistry: addresses.processRegistry,
         agreementRegistry: addresses.agreementRegistry,
     }).filter(([, address]) => Boolean(address));
     try {
@@ -365,8 +365,8 @@ export async function syncCorpus({
             for (const entry of hit.assembly.agreements ?? []) {
                 if (BYTES32.test(entry.agreementHash ?? "")) {
                     provenanceContentRefs.set(
-                        provenanceContentRef(entry.agreementHash, assembly.assemblyHash).toLowerCase(),
-                        assembly.assemblyHash,
+                        provenanceContentRef(entry.agreementHash, assembly.processDesignHash).toLowerCase(),
+                        assembly.processDesignHash,
                     );
                 }
                 // Each agreement's registered agreement, read from its
@@ -448,7 +448,7 @@ export async function syncCorpus({
 function assemblyAttribution(corpus) {
     const byProcess = new Map();
     for (const { agreement, order } of corpus.held.byHash.values()) {
-        const key = agreement.provenance?.assemblyHash;
+        const key = agreement.provenance?.processDesignHash;
         // A assembly hash is a bytes32; anything else there is a party's
         // free text, attributes nothing, and never reaches the wire.
         if (typeof key === "string" && BYTES32.test(key)) byProcess.set(order.processId.toLowerCase(), key);
@@ -464,9 +464,9 @@ function assemblyAttribution(corpus) {
             const contentRef = entry.contentRef.toLowerCase();
             let key = refs.get(contentRef);
             const pair = entry.decoded;
-            if (pair && BYTES32.test(pair.agreementHash ?? "") && BYTES32.test(pair.assemblyHash ?? "")
-                && provenanceContentRef(pair.agreementHash, pair.assemblyHash).toLowerCase() === contentRef) {
-                key = pair.assemblyHash;
+            if (pair && BYTES32.test(pair.agreementHash ?? "") && BYTES32.test(pair.processDesignHash ?? "")
+                && provenanceContentRef(pair.agreementHash, pair.processDesignHash).toLowerCase() === contentRef) {
+                key = pair.processDesignHash;
             }
             if (typeof key === "string" && BYTES32.test(key)) byProcess.set(processId, key);
         }
@@ -565,7 +565,7 @@ export function walletRecordAnswer(corpus, wallet) {
         truthBoundary: rec.boundary,
         wallet: rec.wallet,
         processesAsRootBuyer: rec.processesAsRootBuyer.map((p) => ({
-            processId: p.processId, currency: p.currency, cumulativeValue: p.cumulativeValue,
+            processId: p.processId, currency: p.currency, runningTotal: p.runningTotal,
             resolved: p.resolved, orderCount: p.orders.size,
         })),
         ordersAsBuyer: rec.ordersAsBuyer.map(orderRow),
@@ -576,7 +576,7 @@ export function walletRecordAnswer(corpus, wallet) {
 function orderRow(o) {
     return {
         orderHash: o.orderHash, processId: o.processId, buyer: o.buyer, seller: o.seller,
-        currency: o.currency, payment: o.payment, cumulativeValue: o.cumulativeValue,
+        currency: o.currency, payment: o.payment, runningTotal: o.runningTotal,
         state: o.state, blockNumber: o.blockNumber,
         sellerPayout: o.sellerPayout ?? null, buyerPayout: o.buyerPayout ?? null,
     };
@@ -639,11 +639,11 @@ export function tradeStory(corpus, processId) {
         resolution: {
             truthBoundary: corpus.graphs.resolution.boundary,
             currency: chain.currency,
-            cumulativeValue: chain.cumulativeValue,
+            runningTotal: chain.runningTotal,
             resolved: chain.resolved,
             orders: chain.orders.map((o) => ({
                 orderHash: o.orderHash, buyer: o.buyer, seller: o.seller,
-                payment: o.payment, cumulativeValue: o.cumulativeValue,
+                payment: o.payment, runningTotal: o.runningTotal,
                 lockedBuyerBond: o.locked.buyerBond, lockedSellerBond: o.locked.sellerBond,
                 atResolutionSellerPayout: o.atResolution.sellerPayout,
                 atResolutionBuyerPayout: o.atResolution.buyerPayout,

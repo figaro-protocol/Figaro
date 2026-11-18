@@ -11,7 +11,7 @@ registers it from its owner's wallet — every member from its own balance
 
 - `founder.json` — the founder as a BUYER-side member: buyer
   assembly subscriptions (`buyerAssemblies`, keyed by content-derived
-  assemblyHash — the assembly root over the assembly's agreements,
+  processDesignHash — the assembly root over the assembly's agreements,
   stable across redeploys; the profile names no agreement hash). The seller side
   lands later on the same profile.
 - `dao.json` — the DAO's identity, registered under its EIP-7702 OPERATOR EOA,

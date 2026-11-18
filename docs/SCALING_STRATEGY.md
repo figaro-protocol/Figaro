@@ -19,7 +19,7 @@ admin, no timeout, no cancel, no escape hatches.
 `FigaroCore` is small and correct. Scaling must preserve it exactly. Any
 execution environment must preserve these properties:
 
-1. asymmetric bonding: buyer bond = 2 × payment, seller bond = 2 × cumulativeValue
+1. asymmetric bonding: buyer bond = 2 × payment, seller bond = 2 × runningTotal
 2. dual-signed commitment entry, not staged offer/accept
 3. buyer dominance at resolution
 4. atomic process resolution
@@ -194,7 +194,7 @@ that accepts any proof.
    single-denomination invariant
 2. each `resolveProcess` in the batch preserved buyer dominance, atomic
    resolution, conservation, and direct transfer semantics, its buyer's
-   authorization over `ResolveProcess(bytes32 processId,uint256 cumulativeValue)`
+   authorization over `ResolveProcess(bytes32 processId,uint256 runningTotal)`
    applied only while the process holds the authorized cumulative value, so it
    pays exactly the prefix of the process whose cumulative value the buyer
    authorized, every order of which the buyer co-signed; a value the process has
@@ -334,7 +334,7 @@ ceiling several-fold and negates the batch path's gas advantage entirely.
    `FigaroCore.commit` emits `OrderCommitted` first. A reader that depends on
    the order of logs within a transaction treats the two paths apart.
 6. **The deadline clock**: the proof program checks each commitment's
-   `deadline` against the clock the batch commits in its public values, never
+   `commitDeadline` against the clock the batch commits in its public values, never
    against the landing block. Whoever builds and proves the batch chooses that
    clock; `settleBatch` accepts it when it is no later than the landing
    block's `block.timestamp` and at most `MAX_BATCH_STALENESS`, one hour,
@@ -597,8 +597,8 @@ invariant — but they avoid wasting prover compute on batches that would fail.
 trigger — every N seconds, or at M operations, whichever comes first —
 together with the sequencer's local state snapshot, the usage claims for
 batch-resolved orders (kind 0 a clause, 1 an assembly with its agreement's
-`agreementHash`, `slotContentHash` and membership proof, 2 a registered
-agreement with its assembly's `assemblyHash`) and the period. The provenance
+`agreementHash`, `agreementContentHash` and membership proof, 2 a registered
+agreement with its assembly's `processDesignHash`) and the period. The provenance
 leaf's key is no input: the guest proves agreement and assembly claims under
 its own constant and commits it in the usage hash. The
 relay's pre-filter checks each claim against its own kind's registry —

@@ -8,9 +8,9 @@
  *      browser.
  *   2. On-chain published assembly — the registry reader's registration
  *      (`usePublishedAssemblies`, withdrawn stakes included) matched by its
- *      derived slug (a pure function of the indexed assemblyHash),
+ *      derived slug (a pure function of the indexed processDesignHash),
  *      then the assembly fetched from IPFS via contentURI and verified
- *      against the anchored assemblyHash, and every agreement's
+ *      against the anchored processDesignHash, and every agreement's
  *      registered agreement read from AgreementRegistry by key and verified
  *      against it (absent ⇒ the assembly is not shown).
  *
@@ -53,12 +53,12 @@ import {
     discardPublishedDraft,
     loadNamedDraft,
 } from "@/lib/designer/syntheticDesignStore";
-import { ASSEMBLY_REGISTRY_ABI } from "@/lib/core/contracts";
+import { PROCESS_REGISTRY_ABI } from "@/lib/core/contracts";
 import {
     fetchHydratedAssembly,
-    getAssemblyRegistry,
+    getProcessRegistry,
     usePublishedAssemblies,
-} from "@/lib/protocol/useAssemblyRegistry";
+} from "@/lib/protocol/useProcessRegistry";
 import { useWithdrawAssembly } from "@/lib/protocol/useWithdrawStake";
 import { readNetwork } from "@/lib/shared/networkRead";
 import { useWithdrawGate, withdrawBlockedReason, withdrawGateOpen, withdrawUnverifiedCaveat } from "@/lib/protocol/withdrawGate";
@@ -71,8 +71,8 @@ import {
     unfilledAssemblyTerms,
 } from "@/lib/designer/draftToAssembly";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import type { HydratedAssembly } from "@figaro-protocol/sdk";
-import { deriveAssemblySlug } from "@/lib/shared/assembly";
+import type { HydratedProcessDesign } from "@figaro-protocol/sdk";
+import { deriveProcessDesignSlug } from "@/lib/shared/assembly";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { fetchRegisteredAgreement, useRegisteredAgreementsVersion } from "@/lib/protocol/useAgreementRegistry";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
@@ -88,8 +88,8 @@ type ResolvedSource =
         /** The designer's editorial name, when the pinned assembly carries one. */
         name: string | undefined;
         orders: Order[];
-        hydratedAssembly: HydratedAssembly;
-        assemblyHash: `0x${string}`;
+        hydratedAssembly: HydratedProcessDesign;
+        processDesignHash: `0x${string}`;
         /** The on-chain binding — who registered it (gates the registeredBy-only
          *  reclaim) and whether the stake was reclaimed. Only a read binding
          *  surfaces: a failed read renders nothing. */
@@ -107,7 +107,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const isPublishReview = searchParams.get("intent") === "publish";
     /** Hint set by the publish-receipt's "Open public read-only view" link.
      *  When true, the on-chain lookup retries with bounded backoff to ride
-     *  out the gap between AssemblyRegistered emission and the provider's
+     *  out the gap between ProcessRegistered emission and the provider's
      *  log-query reflecting it. Without the hint, lookups single-shot so
      *  non-existent slugs 404 fast. */
     const justPublished = searchParams.get("just-published") === "1";
@@ -137,7 +137,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     // reads `.canWithdraw`.
     const { gate: withdrawGate } = useWithdrawGate(
         resolved.kind === "published"
-            ? { kind: "assembly", assemblyHash: resolved.assemblyHash }
+            ? { kind: "assembly", processDesignHash: resolved.processDesignHash }
             : null,
     );
     // `assemblyToOrders` builds synthetic agreements through the chain-loaded
@@ -159,7 +159,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             return;
         }
         // Fall through to on-chain lookup.
-        const registry = getAssemblyRegistry();
+        const registry = getProcessRegistry();
         if (!client || !registry) {
             setResolved({ kind: "absent" });
             return;
@@ -177,7 +177,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         }
         if (retry.current.slug !== slug) retry.current = { slug, attempt: 0 };
         // The slug is not on-chain — it is derived from the indexed
-        // assemblyHash, so resolution finds the registration whose derived
+        // processDesignHash, so resolution finds the registration whose derived
         // slug matches.
         const row = publishedRead.value.find((r) => r.slug === slug);
         if (!row) {
@@ -201,7 +201,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         let canceled = false;
         (async () => {
             try {
-                const hydratedAssembly = await fetchHydratedAssembly(row.contentURI, row.assemblyHash);
+                const hydratedAssembly = await fetchHydratedAssembly(row.contentURI, row.processDesignHash);
                 if (canceled) return;
                 if (!hydratedAssembly) {
                     setResolved({ kind: "absent" });
@@ -213,9 +213,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 const binding = await readNetwork("ViewAssemblyClient.bindings", async () => {
                     const b = (await client.readContract({
                         address: registry,
-                        abi: ASSEMBLY_REGISTRY_ABI,
+                        abi: PROCESS_REGISTRY_ABI,
                         functionName: "bindings",
-                        args: [row.assemblyHash],
+                        args: [row.processDesignHash],
                     })) as readonly [`0x${string}`, bigint, boolean, string];
                     return { registeredBy: b[0], stakeWithdrawn: b[2] };
                 });
@@ -231,7 +231,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     name: hydratedAssembly.assembly.name,
                     orders,
                     hydratedAssembly,
-                    assemblyHash: row.assemblyHash,
+                    processDesignHash: row.processDesignHash,
                     binding: binding.value,
                 });
             } catch (err) {
@@ -294,23 +294,23 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     );
     /**
      * The registry's answer for the composition under review, read at the edge
-     * (`AssemblyRegistry.bindings(assemblyHash)`): `null` is resolved-empty —
+     * (`ProcessRegistry.bindings(processDesignHash)`): `null` is resolved-empty —
      * nothing anchored, publish stays open; a binding means this composition is
      * already anchored (an unchanged fork, say: the name and descriptions sit
      * outside the hash), so publish could only revert. `undefined` is not yet
      * read, or a read that failed — publish stays open and its simulate remains
      * the backstop (`assemblyRegisterRevertMessage`).
      */
-    const reviewedHash = isPublishReview && review?.ok ? review.assemblyHash : null;
+    const reviewedHash = isPublishReview && review?.ok ? review.processDesignHash : null;
     const [anchoredBinding, setAnchoredBinding] = useState<{ registeredBy: `0x${string}` } | null | undefined>(undefined);
     useEffect(() => {
         setAnchoredBinding(undefined);
-        const registry = getAssemblyRegistry();
+        const registry = getProcessRegistry();
         if (!reviewedHash || !client || !registry) return;
         let canceled = false;
         client.readContract({
             address: registry,
-            abi: ASSEMBLY_REGISTRY_ABI,
+            abi: PROCESS_REGISTRY_ABI,
             functionName: "bindings",
             args: [reviewedHash],
         }).then((binding) => {
@@ -347,7 +347,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         const stored = loadNamedDraft(resolved.snapshot.slug);
         const storedReview = stored ? projectSnapshotForReview(stored) : null;
         if (storedReview && (!storedReview.ok
-            || !hexEqual(storedReview.assemblyHash, review.assemblyHash))) {
+            || !hexEqual(storedReview.processDesignHash, review.processDesignHash))) {
             setPublishError(
                 "This draft changed after it was opened for review, so what is on screen is no "
                 + "longer what would be published. Nothing was published — go back to the editor "
@@ -358,7 +358,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         setConfirming(true);
         setPublishError(null);
         try {
-            const outcome = await publish(resolved.snapshot, review.assemblyHash);
+            const outcome = await publish(resolved.snapshot, review.processDesignHash);
             // publish() waits for receipt-confirmed status:success, so
             // it's safe to remove the named draft and its autosaves here.
             discardPublishedDraft(resolved.snapshot);
@@ -392,7 +392,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         setWithdrawing(true);
         setWithdrawError(null);
         try {
-            await withdraw(resolved.assemblyHash);
+            await withdraw(resolved.processDesignHash);
             // Reflect the reclaim locally — the binding stays; only the stake moved.
             setResolved((prev) => (prev.kind === "published"
                 ? { ...prev, binding: { ...prev.binding, stakeWithdrawn: true } }
@@ -459,7 +459,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 prose={
                     <>
                         The slug <code data-testid="receipt-slug">{receipt.slug}</code> is now anchored on
-                        the AssemblyRegistry. The assembly is pinned to IPFS;
+                        the ProcessRegistry. The assembly is pinned to IPFS;
                         the slug binding is irreversible.
                         {receipt.agreements.length > 0 && (
                             <> {receipt.agreements.length === 1 ? "One new agreement was" : `${receipt.agreements.length} new agreements were`}{" "}
@@ -630,9 +630,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         : review?.ok ? review.assembly : null;
     const composition = entryAssembly
         ? {
-            assemblyHash: resolved.kind === "published"
-                ? resolved.assemblyHash
-                : (review?.ok ? review.assemblyHash : ("0x" as `0x${string}`)),
+            processDesignHash: resolved.kind === "published"
+                ? resolved.processDesignHash
+                : (review?.ok ? review.processDesignHash : ("0x" as `0x${string}`)),
             agreementHashes: entryAssembly.agreements.map((entry) => entry.agreementHash),
         }
         : null;
@@ -687,8 +687,8 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         <div className="mt-2 max-w-3xl space-y-1" data-testid="review-agreements">
                             <p className="text-xs text-warning-fg leading-relaxed">
                                 Assembly root{" "}
-                                <code className="font-mono" data-testid="review-composition-root" title={review.assemblyHash}>
-                                    {review.assemblyHash}
+                                <code className="font-mono" data-testid="review-composition-root" title={review.processDesignHash}>
+                                    {review.processDesignHash}
                                 </code>
                                 . Each agreement binds one agreement by key:
                             </p>
@@ -736,12 +736,12 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                             role="status"
                             data-testid="review-already-anchored"
                         >
-                            This composition is already anchored on the AssemblyRegistry as{" "}
+                            This composition is already anchored on the ProcessRegistry as{" "}
                             <Link
-                                href={`/assemblies/designer/view?slug=${encodeURIComponent(deriveAssemblySlug(review.assemblyHash))}`}
+                                href={`/assemblies/designer/view?slug=${encodeURIComponent(deriveProcessDesignSlug(review.processDesignHash))}`}
                                 className="font-mono underline"
                             >
-                                {deriveAssemblySlug(review.assemblyHash)}
+                                {deriveProcessDesignSlug(review.processDesignHash)}
                             </Link>
                             . Its identity is the composition, and the name and descriptions sit outside
                             it, so publishing would anchor nothing new. To publish a different assembly,

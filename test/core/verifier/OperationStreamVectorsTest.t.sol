@@ -96,12 +96,12 @@ contract OperationStreamVectorsTest is Test {
         c.processId = vm.parseJsonBytes32(json, string.concat(at, ".processId"));
         c.buyer = vm.parseJsonAddress(json, string.concat(at, ".buyer"));
         c.seller = vm.parseJsonAddress(json, string.concat(at, ".seller"));
-        c.currency = vm.parseJsonAddress(json, string.concat(at, ".currency"));
+        c.token = vm.parseJsonAddress(json, string.concat(at, ".token"));
         c.payment = _uint(json, string.concat(at, ".payment"));
-        c.expectedCumulativeValue = _uint(json, string.concat(at, ".expectedCumulativeValue"));
+        c.runningTotal = _uint(json, string.concat(at, ".runningTotal"));
         c.checkoutHash = vm.parseJsonBytes32(json, string.concat(at, ".checkoutHash"));
         c.salt = _uint(json, string.concat(at, ".salt"));
-        c.deadline = _uint(json, string.concat(at, ".deadline"));
+        c.commitDeadline = _uint(json, string.concat(at, ".commitDeadline"));
     }
 
     /// @dev The fixture writes numbers as decimal strings (a uint256 does not
@@ -144,21 +144,19 @@ contract OperationStreamVectorsTest is Test {
             processId,
             c.buyer,
             c.seller,
-            c.currency,
+            c.token,
             c.payment,
-            c.expectedCumulativeValue,
+            c.runningTotal,
             c.checkoutHash,
             c.salt,
-            c.deadline
+            c.commitDeadline
         );
     }
 
     function _expectResolved(bytes32 processId, CommitmentTypes.Commitment memory c) internal {
         bytes32 orderHash = keccak256(abi.encodePacked(processId, c.hashStruct()));
         vm.expectEmit(true, true, true, true, address(verifier));
-        emit FigaroBatchVerifier.OrderResolved(
-            orderHash, processId, c.expectedCumulativeValue * 2 + c.payment, c.payment
-        );
+        emit FigaroBatchVerifier.OrderResolved(orderHash, processId, c.runningTotal * 2 + c.payment, c.payment);
     }
 
     function test_everyStreamEmitsTheCoreEventsForItsEntries() public {
@@ -303,9 +301,9 @@ contract OperationStreamVectorsTest is Test {
     function _approveWalletCode(string memory json, string memory eb) internal {
         bytes32 processId = vm.parseJsonBytes32(json, string.concat(eb, ".processId"));
         address buyer = vm.parseJsonAddress(json, string.concat(eb, ".commitments[0].buyer"));
-        uint256 cumulativeValue;
+        uint256 runningTotal;
         for (uint256 i = 0; vm.keyExistsJson(json, string.concat(eb, ".commitments[", vm.toString(i), "]")); i++) {
-            cumulativeValue += _uint(json, string.concat(eb, ".commitments[", vm.toString(i), "].payment"));
+            runningTotal += _uint(json, string.concat(eb, ".commitments[", vm.toString(i), "].payment"));
         }
         bytes32 digest = keccak256(
             abi.encodePacked(
@@ -313,9 +311,7 @@ contract OperationStreamVectorsTest is Test {
                 _domainSeparator(),
                 keccak256(
                     abi.encode(
-                        keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)"),
-                        processId,
-                        cumulativeValue
+                        keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"), processId, runningTotal
                     )
                 )
             )
@@ -426,25 +422,17 @@ contract OperationStreamVectorsTest is Test {
         c.processId = h % 4 == 0 ? bytes32(0) : keccak256(abi.encode(h, 0));
         c.buyer = buyer;
         c.seller = address(uint160(uint256(keccak256(abi.encode(h, 2)))));
-        c.currency = address(uint160(uint256(keccak256(abi.encode(h, 3)))));
+        c.token = address(uint160(uint256(keccak256(abi.encode(h, 3)))));
         c.payment = uint128(uint256(keccak256(abi.encode(h, 4))));
-        c.expectedCumulativeValue = uint128(uint256(keccak256(abi.encode(h, 5))));
+        c.runningTotal = uint128(uint256(keccak256(abi.encode(h, 5))));
         c.checkoutHash = keccak256(abi.encode(h, 6));
         c.salt = uint256(keccak256(abi.encode(h, 7)));
-        c.deadline = uint256(keccak256(abi.encode(h, 8)));
+        c.commitDeadline = uint256(keccak256(abi.encode(h, 8)));
     }
 
     function _packCommitment(CommitmentTypes.Commitment memory c) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            c.processId,
-            c.buyer,
-            c.seller,
-            c.currency,
-            c.payment,
-            c.expectedCumulativeValue,
-            c.checkoutHash,
-            c.salt,
-            c.deadline
+            c.processId, c.buyer, c.seller, c.token, c.payment, c.runningTotal, c.checkoutHash, c.salt, c.commitDeadline
         );
     }
 
@@ -503,7 +491,7 @@ contract OperationStreamVectorsTest is Test {
                 keccak256(abi.encode(h, "first"))
             );
             if (kind == 1) {
-                claim = bytes.concat(claim, keccak256(abi.encode(h, "slot")), _packWords(h, (h >> 8) % 5));
+                claim = bytes.concat(claim, keccak256(abi.encode(h, "agreement")), _packWords(h, (h >> 8) % 5));
             }
             s = bytes.concat(s, claim, _packWords(h >> 1, (h >> 16) % 5));
             ends[ops + atts + i] = s.length;
@@ -585,16 +573,14 @@ contract OperationStreamVectorsTest is Test {
         );
     }
 
-    function _resolveDigest(bytes32 processId, uint256 cumulativeValue) internal view returns (bytes32) {
+    function _resolveDigest(bytes32 processId, uint256 runningTotal) internal view returns (bytes32) {
         return keccak256(
             abi.encodePacked(
                 "\x19\x01",
                 _domainSeparator(),
                 keccak256(
                     abi.encode(
-                        keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)"),
-                        processId,
-                        cumulativeValue
+                        keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"), processId, runningTotal
                     )
                 )
             )

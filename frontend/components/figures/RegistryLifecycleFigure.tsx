@@ -13,7 +13,7 @@ export type RegistryLifecycleFigureProps = BaseFigureProps;
  *
  * `src/registries/MembersRegistry.sol`
  *  - `register(metadataURI) payable` requires `msg.value == registrationDeposit`
- *    EXACTLY (`InsufficientDeposit`), sets the dedup guard, emits
+ *    EXACTLY (`WrongStake`), sets the dedup guard, emits
  *    `MemberRegistered`. A second call reverts `AlreadyRegistered`.
  *  - `updateProfile(metadataURI)` is a self-loop on the live state, callable
  *    only while registered, and changes no deposit.
@@ -29,10 +29,10 @@ export type RegistryLifecycleFigureProps = BaseFigureProps;
  *    its cooldown. That is the anti-rage-quit property the contract's own
  *    comment names — without it, one deposit is recyclable across identities.
  *
- * `src/registries/ClauseRegistry.sol` + `AssemblyRegistry.sol`
- *  - `registerClause(...)` / `registerAgreement(...)` / `registerAssembly(...)` take the exact deposit
+ * `src/registries/ClauseRegistry.sol` + `ProcessRegistry.sol`
+ *  - `registerClause(...)` / `registerAgreement(...)` / `registerProcess(...)` take the exact deposit
  *    (`WrongDeposit`), keep `registeredBy`, and are first-write-wins:
- *    `AlreadyRegistered(clauseKey)` / `AssemblyAlreadyRegistered(hash)`.
+ *    `AlreadyRegistered(clauseKey)` / `ProcessAlreadyRegistered(hash)`.
  *    First-write-wins is anti-DISPLACEMENT: a clause key is `keccak256` of the
  *    canonical spec without `block`, so there is nothing to squat but bytes — a
  *    lookalike spec of the same name is another key. What the registry
@@ -110,7 +110,7 @@ const CLAUSE: Machine = {
     subheading: [
         "ClauseRegistry — hash of the spec without block",
         "AgreementRegistry — root of its composed clauses",
-        "AssemblyRegistry — hash of the pinned composition",
+        "ProcessRegistry — hash of the pinned composition",
     ],
     states: [
         { label: "unregistered", note: "nothing anchored under the key" },

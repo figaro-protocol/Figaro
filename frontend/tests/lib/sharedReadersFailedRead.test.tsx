@@ -50,7 +50,7 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
         },
     };
 });
-vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
+vi.mock("@/lib/protocol/useProcessRegistry", () => ({
     usePublishedAssemblies: () => ({ read: mocks.published, refetch: () => undefined }),
 }));
 

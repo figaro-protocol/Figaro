@@ -14,10 +14,10 @@
 <section class="tsd-panel">
 <ul class="tsd-signatures">
 <li class="">
-<div class="tsd-signature tsd-anchor-link" id="isprocessroot"><span class="tsd-kind-call-signature">isProcessRoot</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">order</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">cumulativeValue</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">payment</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#isprocessroot" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-signature tsd-anchor-link" id="isprocessroot"><span class="tsd-kind-call-signature">isProcessRoot</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">order</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">payment</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">runningTotal</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#isprocessroot" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Whether a committed order is its process's root, read from the
-<code>OrderCommitted</code> event alone: the root's <code>cumulativeValue</code> equals its own
+<code>OrderCommitted</code> event alone: the root's <code>runningTotal</code> equals its own
 <code>payment</code>. Both paths emit the two fields (<code>FigaroCore._emitCommitted</code>,
 <code>FigaroBatchVerifier._emitCommitted</code>), and both refuse a root whose declared
 cumulative value is not its payment (<code>InvalidRootCumulativeValue</code>, in
@@ -29,7 +29,7 @@ off the chain, and it may be absent or unread.</p>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
-<li><span><span class="tsd-kind-parameter">order</span>: <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">cumulativeValue</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">payment</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">}</span></span></li></ul></div>
+<li><span><span class="tsd-kind-parameter">order</span>: <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">payment</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">runningTotal</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">}</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L53">state.ts:53</a></li></ul></aside></div></li></ul></section></div>

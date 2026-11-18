@@ -32,12 +32,12 @@ fn dummy_commitment() -> Commitment {
         process_id: B256::ZERO,
         buyer: BUYER,
         seller: SELLER1,
-        currency: TOKEN,
+        token: TOKEN,
         payment: U256::from(100u64),
-        expected_cumulative_value: U256::from(100u64),
+        running_total: U256::from(100u64),
         checkout_hash: keccak256("test"),
         salt: U256::from(1u64),
-        deadline: U256::from(1000u64),
+        commit_deadline: U256::from(1000u64),
     }
 }
 
@@ -92,7 +92,7 @@ fn bincode_roundtrip_full_batchinput() {
             },
             KernelOp::Resolve {
                 process_id: B256::ZERO,
-                cumulative_value: U256::ZERO,
+                running_total: U256::ZERO,
                 commitments: vec![dummy_commitment()],
                 buyer_sig: dummy_sig(),
             },
@@ -236,7 +236,7 @@ fn bincode_roundtrip_public_values_and_events() {
             clause_id: B256::repeat_byte(0x0a),
         }],
         uses: vec![BatchUse {
-            clause_or_assembly: B256::repeat_byte(0x0c),
+            clause_or_process: B256::repeat_byte(0x0c),
             kind: USAGE_KIND_CLAUSE,
             process_id: B256::repeat_byte(0x0f),
             seller: SELLER1,
@@ -254,7 +254,7 @@ fn bincode_roundtrip_public_values_and_events() {
 fn bincode_roundtrip_every_usage_claim_kind() {
     let claim = |kind: UsageClaimKind| UsageClaim {
         order: dummy_commitment(),
-        clause_or_assembly: B256::repeat_byte(0x0d),
+        clause_or_process: B256::repeat_byte(0x0d),
         kind,
         inclusion_proof: vec![B256::repeat_byte(0x0e)],
     };
@@ -269,11 +269,11 @@ fn bincode_roundtrip_every_usage_claim_kind() {
                 clause_data_hash: B256::repeat_byte(0x01),
             }),
             claim(UsageClaimKind::Agreement {
-                assembly_hash: B256::repeat_byte(0x02),
+                process_design_hash: B256::repeat_byte(0x02),
             }),
-            claim(UsageClaimKind::Assembly {
+            claim(UsageClaimKind::Process {
                 agreement_hash: B256::repeat_byte(0x03),
-                slot_content_hash: B256::repeat_byte(0x04),
+                agreement_content_hash: B256::repeat_byte(0x04),
                 membership_proof: vec![B256::repeat_byte(0x05), B256::repeat_byte(0x06)],
             }),
         ],
@@ -285,22 +285,24 @@ fn bincode_roundtrip_every_usage_claim_kind() {
     let codes: Vec<u8> = decoded.usage_claims.iter().map(|c| c.kind.code()).collect();
     assert_eq!(
         codes,
-        vec![USAGE_KIND_CLAUSE, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY]
+        vec![USAGE_KIND_CLAUSE, USAGE_KIND_AGREEMENT, USAGE_KIND_PROCESS]
     );
     match &decoded.usage_claims[1].kind {
-        UsageClaimKind::Agreement { assembly_hash } => {
-            assert_eq!(*assembly_hash, B256::repeat_byte(0x02))
+        UsageClaimKind::Agreement {
+            process_design_hash,
+        } => {
+            assert_eq!(*process_design_hash, B256::repeat_byte(0x02))
         }
         other => panic!("expected Agreement, got {other:?}"),
     }
     match &decoded.usage_claims[2].kind {
-        UsageClaimKind::Assembly {
+        UsageClaimKind::Process {
             agreement_hash,
-            slot_content_hash,
+            agreement_content_hash,
             membership_proof,
         } => {
             assert_eq!(*agreement_hash, B256::repeat_byte(0x03));
-            assert_eq!(*slot_content_hash, B256::repeat_byte(0x04));
+            assert_eq!(*agreement_content_hash, B256::repeat_byte(0x04));
             assert_eq!(
                 membership_proof,
                 &vec![B256::repeat_byte(0x05), B256::repeat_byte(0x06)]

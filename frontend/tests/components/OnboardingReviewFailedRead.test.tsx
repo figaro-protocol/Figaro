@@ -17,7 +17,7 @@ vi.mock("next/link", () => ({
 }));
 const STATE = {
     profile: { name: "Seller", defaultTokenAddress: "0x0000000000000000000000000000000000000001" },
-    assemblies: [{ bindingId: "b", subjectAddress: ADDRESS, assemblyHash: `0x${"ab".repeat(32)}` }],
+    assemblies: [{ bindingId: "b", subjectAddress: ADDRESS, processDesignHash: `0x${"ab".repeat(32)}` }],
     catalog: { items: [{ id: "i", name: "Item", description: "", price: "1", available: true }] } as { items: unknown[] },
 };
 vi.mock("@/lib/member/onboardingState", () => ({

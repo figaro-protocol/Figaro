@@ -26,7 +26,7 @@ const ONBOARDING = {
         assemblies: [{
             bindingId: `binding:${ADDRESS}:${BOUND}`,
             subjectAddress: ADDRESS,
-            assemblyHash: BOUND,
+            processDesignHash: BOUND,
             coSellerBindings: [{ clauseKey: CLAUSE, addresses: [COURIER] }],
         }],
     },
@@ -42,7 +42,7 @@ vi.mock("@/lib/member/onboardingState", () => ({
 const CHOICES = vi.hoisted(() => ({
     read: {
         status: "present",
-        value: [{ assemblyHash: `0x${"ab".repeat(32)}`, slug: "asm-ab", state: "loaded", hydratedAssembly: {}, clauses: [] }],
+        value: [{ processDesignHash: `0x${"ab".repeat(32)}`, slug: "asm-ab", state: "loaded", hydratedAssembly: {}, clauses: [] }],
     },
 }));
 vi.mock("@/lib/protocol/assemblyChoices", () => ({

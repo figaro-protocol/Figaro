@@ -14,8 +14,8 @@ export type {
     MemberAgentServices,
     MemberAssetReferences,
     CoSellerBinding,
-    AssemblyBindingRecord,
-    BuyerAssemblySubscription,
+    ProcessBindingRecord,
+    BuyerProcessSubscription,
     AgentServiceInfo,
 } from "@figaro-protocol/sdk";
 

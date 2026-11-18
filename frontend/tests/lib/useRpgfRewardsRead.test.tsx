@@ -11,7 +11,7 @@ import { render, renderHook, screen, waitFor } from "@testing-library/react";
 const w = vi.hoisted(() => {
     process.env.NEXT_PUBLIC_CLAUSE_REGISTRY = "0x00000000000000000000000000000000000c1a01";
     process.env.NEXT_PUBLIC_MEMBERS_REGISTRY = "0x00000000000000000000000000000000000e3b01";
-    process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY = "0x00000000000000000000000000000000000a5501";
+    process.env.NEXT_PUBLIC_PROCESS_REGISTRY = "0x00000000000000000000000000000000000a5501";
     return {
         address: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as `0x${string}`,
         key: `0x${"ab".repeat(32)}` as `0x${string}`,
@@ -46,7 +46,7 @@ vi.mock("@/lib/core/eventCache", () => ({
     cachedGetContractEvents: async (_client: unknown, _chainId: number, { eventName }: { eventName: string }) => {
         const keys = w.twoKeys ? [w.key, w.key2] : [w.key];
         if (eventName === "ClauseRegistered") return keys.map((k) => ({ args: { registeredBy: w.address, clauseKey: k } }));
-        if (eventName === "UsageRecorded") return keys.map((k) => ({ args: { kind: 0, clauseOrAssembly: k, period: 0 } }));
+        if (eventName === "UsageRecorded") return keys.map((k) => ({ args: { kind: 0, clauseOrProcess: k, period: 0 } }));
         return [];
     },
 }));

@@ -10,7 +10,7 @@
  * even for a seller who accepts more than one token. The pin leaf, committed
  * under the checkoutHash, and the commitment's token carry the SAME address.
  *
- *   discover → the reference is identified by IDENTITY (assemblyHash →
+ *   discover → the reference is identified by IDENTITY (processDesignHash →
  *              slug), computed from the written assembly with the live
  *              deployment's token filled into the denomination pin the file
  *              leaves unfilled — the exact fill populate-test-data performs
@@ -54,7 +54,7 @@ import {
     RPC_URL,
     keyOf,
     primeRegisteredClauseSpecs,
-    anchoredAssemblyHash,
+    anchoredProcessDesignHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
@@ -103,8 +103,8 @@ async function findEquipmentHireAssembly(tokenAddress: Hex): Promise<string> {
 
 async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Promise<Hex> {
     const slug = await findEquipmentHireAssembly(mockToken);
-    const assemblyHash = await anchoredAssemblyHash(slug);
-    const bound = (await memberProfileBindings(SELLER)).some((b) => isBindingOf(b, assemblyHash));
+    const processDesignHash = await anchoredProcessDesignHash(slug);
+    const bound = (await memberProfileBindings(SELLER)).some((b) => isBindingOf(b, processDesignHash));
     if (!bound) {
         const { uri: catalogURI } = await pinJSONToIPFS({
             subjectAddress: SELLER,
@@ -135,16 +135,16 @@ async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Prom
                     { address: permitToken, symbol: 'MPMT', chainId: 31337 },
                 ],
                 defaultTokenAddress: permitToken,
-                assemblyBindings: [{
+                processBindings: [{
                     bindingId: 'equipment-hire-reference',
                     subjectAddress: SELLER,
-                    assemblyHash,
+                    processDesignHash,
                     coSellerBindings: [],
                 }],
             },
         });
         await expect.poll(async () =>
-            (await memberProfileBindings(SELLER)).some((b) => isBindingOf(b, assemblyHash)), {
+            (await memberProfileBindings(SELLER)).some((b) => isBindingOf(b, processDesignHash)), {
             timeout: 60000, message: "the equipment-hire seller's pinned profile carries the binding",
         }).toBe(true);
     }
@@ -285,7 +285,7 @@ test.describe('THE UTILITY-TOKEN REFERENCE — equipment hire, denominated by de
         const processId = event.args.processId!;
 
         // Value leg at commit — the bond LOCK, in the pin's token.
-        const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+        const { buyerBond, sellerBond } = calculateBonds(event.args.runningTotal!, event.args.payment!);
         const [buyerAfterCommit, sellerAfterCommit, coreAfterCommit] = await Promise.all([
             balanceOf(mockToken, BUYER), balanceOf(mockToken, SELLER_ADDR), balanceOf(mockToken, core),
         ]);

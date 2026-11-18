@@ -111,12 +111,12 @@ contract AttestationCoordinatorTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller1,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: checkoutHash,
             salt: salt,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
     }
 
@@ -143,12 +143,12 @@ contract AttestationCoordinatorTest is Test {
             processId: processId,
             buyer: buyer,
             seller: seller,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: expectedCum,
+            runningTotal: expectedCum,
             checkoutHash: checkoutHash,
             salt: salt,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
         bytes memory sellerSig = _signCommitment(c, sellerKey);
@@ -332,12 +332,12 @@ contract AttestationCoordinatorTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller1,
-            currency: address(token),
+            token: address(token),
             payment: 50 ether,
-            expectedCumulativeValue: 50 ether,
+            runningTotal: 50 ether,
             checkoutHash: keccak256("fake"),
             salt: 999,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         vm.prank(seller1);
@@ -356,12 +356,12 @@ contract AttestationCoordinatorTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller1,
-            currency: address(token),
+            token: address(token),
             payment: 50 ether,
-            expectedCumulativeValue: 50 ether,
+            runningTotal: 50 ether,
             checkoutHash: keccak256("fake-buyer"),
             salt: 998,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         vm.prank(buyer);
@@ -419,7 +419,7 @@ contract AttestationCoordinatorTest is Test {
 
         // The evidence window closes at resolve (orderStatus == 2)
         vm.prank(seller1);
-        vm.expectRevert(AttestationCoordinator.OrderResolved.selector);
+        vm.expectRevert(AttestationCoordinator.OrderAlreadyResolved.selector);
         coordinator.attestAsSeller(c, LIFECYCLE_CLAUSE, 10, EMPTY, _emptyProof(), EMPTY);
     }
 
@@ -436,7 +436,7 @@ contract AttestationCoordinatorTest is Test {
         core.resolveProcess(processId, cs);
 
         vm.prank(buyer);
-        vm.expectRevert(AttestationCoordinator.OrderResolved.selector);
+        vm.expectRevert(AttestationCoordinator.OrderAlreadyResolved.selector);
         coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 10, EMPTY, _emptyProof(), EMPTY);
     }
 
@@ -467,12 +467,12 @@ contract AttestationCoordinatorTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller1,
-            currency: address(token),
+            token: address(token),
             payment: 50 ether,
-            expectedCumulativeValue: 50 ether,
+            runningTotal: 50 ether,
             checkoutHash: keccak256("nonexistent-order-in-process"),
             salt: 666,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         vm.prank(buyer);
@@ -498,12 +498,12 @@ contract AttestationCoordinatorTest is Test {
             processId: bytes32(0),
             buyer: otherBuyer,
             seller: seller2,
-            currency: address(token),
+            token: address(token),
             payment: 25 ether,
-            expectedCumulativeValue: 25 ether,
+            runningTotal: 25 ether,
             checkoutHash: AgreementTestHelper.singleClauseRoot(LIFECYCLE_CLAUSE, ""),
             salt: 2,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         bytes memory bs = _signCommitment(c2, SELLER1_KEY); // seller1 acts as buyer here
         bytes memory ss = _signCommitment(c2, SELLER2_KEY);

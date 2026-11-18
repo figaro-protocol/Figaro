@@ -118,12 +118,12 @@ function ConsentValueToken({ token }: { token: string }) {
 }
 
 export function AgreementReview({ commitment, agreement }: Props) {
-    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(commitment.token as `0x${string}` | undefined);
     // A figure is shown only once the token's decimals are READ: until then
     // the raw integer stands alone, never a magnitude formatted on a default.
     const figure = (amount: bigint) => decimals !== undefined ? formatPayment(amount, decimals) : "(token decimals loading)";
     const isRoot = commitment.processId === ZERO_BYTES32;
-    const bonds = calculateBonds(commitment.expectedCumulativeValue, commitment.payment);
+    const bonds = calculateBonds(commitment.runningTotal, commitment.payment);
     const lineItems = commerceLineItems(agreement);
     const dumpedClauses = fullDumpClauses(agreement);
     const consented = consentClauses(agreement);
@@ -155,14 +155,14 @@ export function AgreementReview({ commitment, agreement }: Props) {
                 <h3 className="text-xs font-semibold text-ink-muted mb-2">Payment</h3>
                 <dl className="grid grid-cols-[80px_1fr] gap-y-1 text-sm">
                     <dt className="text-ink-muted">Token</dt>
-                    <dd className="font-mono text-xs text-ink-primary break-all" data-testid="preview-token">{commitment.currency}</dd>
+                    <dd className="font-mono text-xs text-ink-primary break-all" data-testid="preview-token">{commitment.token}</dd>
                     <dt className="text-ink-muted">Amount</dt>
                     <dd className="text-ink-primary" data-testid="preview-payment">
                         {figure(commitment.payment)} <span className="text-ink-muted text-xs">(raw: {commitment.payment.toString()})</span>
                     </dd>
                     <dt className="text-ink-muted">Deadline</dt>
                     <dd className="text-ink-primary">
-                        {formatBlockTimestamp(commitment.deadline)} <span className="text-ink-muted text-xs">(unix {commitment.deadline.toString()})</span>
+                        {formatBlockTimestamp(commitment.commitDeadline)} <span className="text-ink-muted text-xs">(unix {commitment.commitDeadline.toString()})</span>
                     </dd>
                 </dl>
             </section>
@@ -178,7 +178,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
                     </dd>
                     <dt className="text-ink-muted">Running total</dt>
                     <dd className="text-ink-primary" data-testid="preview-cumulative">
-                        {figure(commitment.expectedCumulativeValue)} <span className="text-ink-muted text-xs">(raw: {commitment.expectedCumulativeValue.toString()} — the sum of the payments of the process through this order)</span>
+                        {figure(commitment.runningTotal)} <span className="text-ink-muted text-xs">(raw: {commitment.runningTotal.toString()} — the sum of the payments of the process through this order)</span>
                     </dd>
                     <dt className="text-ink-muted">Buyer bond</dt>
                     <dd className="text-ink-primary" data-testid="preview-buyer-bond">
@@ -287,7 +287,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
                         </dd>
                         <dt className="text-ink-muted">Assembly root</dt>
                         <dd className="font-mono text-ink-primary break-all" data-testid="preview-provenance-assembly-hash">
-                            {agreement.provenance.assemblyHash}
+                            {agreement.provenance.processDesignHash}
                         </dd>
                     </dl>
                 </section>

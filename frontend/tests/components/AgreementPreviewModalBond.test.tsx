@@ -21,19 +21,19 @@ const commitment: Commitment = {
     processId: `0x${"cd".repeat(32)}`,
     buyer: "0x1111111111111111111111111111111111111111",
     seller: "0x2222222222222222222222222222222222222222",
-    currency: "0x3333333333333333333333333333333333333333",
+    token: "0x3333333333333333333333333333333333333333",
     payment: 1_000_000n,
-    expectedCumulativeValue: 4_000_000n, // earlier orders added 3 before this one
+    runningTotal: 4_000_000n, // earlier orders added 3 before this one
     checkoutHash: `0x${"ab".repeat(32)}`,
     salt: 7n,
-    deadline: 1_900_000_000n,
+    commitDeadline: 1_900_000_000n,
 };
 
 describe("the signing modal shows the token, the payment and the bonds", () => {
     it("shows each before the wallet opens", () => {
         expect(commitment.processId).not.toBe(ZERO_BYTES32);
         render(<AgreementPreviewModal commitment={commitment} agreement={null} intent="sign" onConfirm={() => {}} onCancel={() => {}} />);
-        expect(screen.getByTestId("preview-token").textContent).toBe(commitment.currency);
+        expect(screen.getByTestId("preview-token").textContent).toBe(commitment.token);
         expect(screen.getByTestId("preview-payment").textContent).toContain("1");
         expect(screen.getByTestId("preview-payment").textContent).toContain("raw: 1000000");
         // buyer bond: twice the payment; seller bond: twice the running total
@@ -42,7 +42,7 @@ describe("the signing modal shows the token, the payment and the bonds", () => {
     });
 
     it("each bond is the SDK's calculateBonds over the running total and the payment", () => {
-        const bonds = calculateBonds(commitment.expectedCumulativeValue, commitment.payment);
+        const bonds = calculateBonds(commitment.runningTotal, commitment.payment);
         expect(bonds.sellerBond).not.toBe(commitment.payment * 2n);
         render(<AgreementPreviewModal commitment={commitment} agreement={null} intent="sign" onConfirm={() => {}} onCancel={() => {}} />);
         expect(screen.getByTestId("preview-seller-bond").textContent).toContain(`raw: ${bonds.sellerBond}`);

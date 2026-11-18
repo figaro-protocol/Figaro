@@ -15,7 +15,7 @@
 <div class="tsd-comment tsd-typography"><p>The operator's economic floor for an inbound offer — the counterpart to the
 <code>accept</code> refuse-all floor, for the offer's <em>economic fields</em> rather than its
 business fit. A seller counter-signing bonds 2× the offer's
-<code>expectedCumulativeValue</code> in the offer's <code>currency</code>, so a hostile offer can
+<code>runningTotal</code> in the offer's <code>currency</code>, so a hostile offer can
 carry an absurd magnitude or an unexpected currency; this policy bounds both.
 Everything here is OPERATOR-SUPPLIED — the allowlist is the operator's own set
 of currencies, never a bundled token list. Passing a policy is opt-IN: with
@@ -65,7 +65,7 @@ take the chain's now as <code>ctx.chainNow</code>.</p>
 <h3 class="tsd-anchor-link" id="maxvalue"><code class="tsd-tag">Optional</code><span>max<wbr/>Value</span><a href="#maxvalue" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">maxValue</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">bigint</span></div>
 <div class="tsd-comment tsd-typography"><p>The operator's magnitude cap — neither <code>payment</code> nor
-<code>expectedCumulativeValue</code> may exceed it. REQUIRED when a policy is
+<code>runningTotal</code> may exceed it. REQUIRED when a policy is
 supplied: an absent cap leaves magnitude unbounded, so the offer is
 rejected.</p>
 </div><aside class="tsd-sources">
@@ -75,7 +75,7 @@ rejected.</p>
 <h3 class="tsd-anchor-link" id="requirerootshape"><code class="tsd-tag">Optional</code><span>require<wbr/>Root<wbr/>Shape</span><a href="#requirerootshape" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">requireRootShape</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span></div>
 <div class="tsd-comment tsd-typography"><p>Require the offer to be a well-formed ROOT order: <code>processId</code> zero AND
-<code>expectedCumulativeValue == payment</code> (a root order's cumulative value IS
+<code>runningTotal == payment</code> (a root order's cumulative value IS
 its payment; the root signs processId=0 and the chain derives the real
 id). OMIT (or false) for a seller that serves sub-orders in a chain, where
 <code>processId</code> is the root's derived id and cumulative value exceeds payment.</p>

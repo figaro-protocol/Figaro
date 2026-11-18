@@ -29,7 +29,7 @@
  * chain. Depends on populate-test-data (clauses + reference assemblies
  * anchored).
  */
-import { deriveAssemblySlug } from '@/lib/shared/assembly';
+import { deriveProcessDesignSlug } from '@/lib/shared/assembly';
 import type { Page } from '@playwright/test';
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { createPublicClient, createWalletClient, http, parseAbi, parseEther, type Hex } from 'viem';
@@ -109,8 +109,8 @@ async function readPublishedDataMember(): Promise<PublishedDataMember | null> {
     return {
         // A binding names its assembly by the full assembly hash; the
         // slug it is compared under is derived from it.
-        bindings: ((profile.assemblyBindings ?? []) as Array<{ assemblyHash: `0x${string}` }>).map((b) => deriveAssemblySlug(b.assemblyHash)),
-        subscriptions: ((profile.buyerAssemblies ?? []) as Array<{ assemblyHash: string }>).map((s) => s.assemblyHash),
+        bindings: ((profile.processBindings ?? []) as Array<{ processDesignHash: `0x${string}` }>).map((b) => deriveProcessDesignSlug(b.processDesignHash)),
+        subscriptions: ((profile.buyerAssemblies ?? []) as Array<{ processDesignHash: string }>).map((s) => s.processDesignHash),
         items: (catalog.items ?? []) as PublishedDataMember['items'],
     };
 }
@@ -221,7 +221,7 @@ async function ensureDataMember(page: Page): Promise<{ streamSlug: string; itemI
         survey!.agreements.some((o) => Object.keys(o.clauses ?? {}).includes(RECORD_CLAUSE)),
         'the survey composes the flight-record clause',
     ).toBe(true);
-    const surveyHash = survey!.assemblyHash;
+    const surveyHash = survey!.processDesignHash;
 
     if (!isTheDataMember(await readPublishedDataMember(), surveyHash, surveySlug, streamSlug)) {
         await authorDataMemberThroughWizard(page, surveyHash, surveySlug, streamSlug);
@@ -338,7 +338,7 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
         const event = committedAfter[committedAfter.length - 1];
         expect(event.args.seller?.toLowerCase(), 'committed against the data seller')
             .toBe(DATA_SELLER.toLowerCase());
-        const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+        const { buyerBond, sellerBond } = calculateBonds(event.args.runningTotal!, event.args.payment!);
         const [buyerMid, sellerMid, coreMid] = await Promise.all([
             balanceOf(DATA_BUYER), balanceOf(DATA_SELLER), balanceOf(core),
         ]);

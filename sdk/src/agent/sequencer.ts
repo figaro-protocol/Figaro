@@ -82,7 +82,7 @@ export type SequencerOp =
         /** The cumulative value the buyer's signature accepts (decimal
          *  string): the proof applies the resolve only while the process
          *  holds it. */
-        cumulative_value: string;
+        running_total: string;
         commitments: SequencerCommitment[];
         buyer_sig: SequencerSignature;
     }
@@ -91,10 +91,10 @@ export type SequencerOp =
         process_id: Hex;
         /** The cumulative value the authorization accepts (decimal string),
          *  as for `Resolve`. */
-        cumulative_value: string;
+        running_total: string;
         commitments: SequencerCommitment[];
         /** Bytes the buyer's own account code validates for
-         *  `hashResolveProcess(process_id, cumulative_value)` (ERC-1271). */
+         *  `hashResolveProcess(process_id, running_total)` (ERC-1271). */
         authorization: Hex;
     }
     | {
@@ -135,12 +135,12 @@ export interface SequencerCommitment {
     process_id: Hex;
     buyer: Address;
     seller: Address;
-    currency: Address;
+    token: Address;
     payment: string;
-    expected_cumulative_value: string;
+    running_total: string;
     checkout_hash: Hex;
     salt: string;
-    deadline: string;
+    commit_deadline: string;
 }
 
 /**
@@ -157,16 +157,16 @@ export interface SequencerCommitment {
  */
 export type SequencerUsageClaimKind =
     | { Clause: { clause_data_hash: Hex } }
-    | { Agreement: { assembly_hash: Hex } }
-    | { Assembly: { agreement_hash: Hex; slot_content_hash: Hex; membership_proof: Hex[] } };
+    | { Agreement: { process_design_hash: Hex } }
+    | { Process: { agreement_hash: Hex; agreement_content_hash: Hex; membership_proof: Hex[] } };
 
 export interface SequencerUsageClaim {
     order: SequencerCommitment;
     /** Clause key (kind `Clause`), agreement hash (kind `Agreement`) or
-     *  assembly assemblyHash (kind `Assembly`). Field name mirrors the Rust
-     *  guest's `UsageClaim.clause_or_assembly` (prover/lib/src/types.rs) — a
+     *  assembly processDesignHash (kind `Process`). Field name mirrors the Rust
+     *  guest's `UsageClaim.clause_or_process` (prover/lib/src/types.rs) — a
      *  wire-protocol identity; any change must land in lockstep with the Rust side. */
-    clause_or_assembly: Hex;
+    clause_or_process: Hex;
     /** serde's externally-tagged encoding of the Rust `UsageClaimKind`;
      *  codes 0 / 2 / 1 (`usageClaimKindCode`). */
     kind: SequencerUsageClaimKind;
@@ -212,12 +212,12 @@ export function toSequencerCommitment(c: Commitment): SequencerCommitment {
         process_id: c.processId,
         buyer: c.buyer,
         seller: c.seller,
-        currency: c.currency,
+        token: c.token,
         payment: c.payment.toString(),
-        expected_cumulative_value: c.expectedCumulativeValue.toString(),
+        running_total: c.runningTotal.toString(),
         checkout_hash: c.checkoutHash,
         salt: c.salt.toString(),
-        deadline: c.deadline.toString(),
+        commit_deadline: c.commitDeadline.toString(),
     };
 }
 
@@ -352,20 +352,20 @@ export class SequencerClient {
      * Submit a Resolve operation using SDK types.
      * Convenience wrapper that converts commitments + buyer signature.
      * `buyerSig` is the buyer's `ResolveProcess` signature over `processId`
-     * and `cumulativeValue`, the process's cumulative value when the buyer
+     * and `runningTotal`, the process's cumulative value when the buyer
      * signed; the proof refuses the resolve unless the process still holds
      * it, so a later commit calls for a new signature.
      */
     async submitResolve(
         processId: Hex,
-        cumulativeValue: bigint,
+        runningTotal: bigint,
         commitments: Commitment[],
         buyerSig: Hex,
     ): Promise<SubmitResult> {
         return this.submit({
             type: "Resolve",
             process_id: processId,
-            cumulative_value: cumulativeValue.toString(),
+            running_total: runningTotal.toString(),
             commitments: commitments.map(toSequencerCommitment),
             buyer_sig: toSequencerSig(buyerSig),
         });
@@ -374,7 +374,7 @@ export class SequencerClient {
     /**
      * Submit a resolve authorized by the buyer's wallet code: `authorization`
      * is bytes the buyer's own account code validates for
-     * `hashResolveProcess(processId, cumulativeValue, { chainId, core:
+     * `hashResolveProcess(processId, runningTotal, { chainId, core:
      * verifier })` through ERC-1271's `isValidSignature` — the form a wallet
      * whose key is lost resolves with, through code it installed while it held
      * the key. The wallet's code validates the bytes; the wallet's signer or
@@ -386,14 +386,14 @@ export class SequencerClient {
      */
     async submitResolveByWalletCode(
         processId: Hex,
-        cumulativeValue: bigint,
+        runningTotal: bigint,
         commitments: Commitment[],
         authorization: Hex,
     ): Promise<SubmitResult> {
         return this.submit({
             type: "ResolveByWalletCode",
             process_id: processId,
-            cumulative_value: cumulativeValue.toString(),
+            running_total: runningTotal.toString(),
             commitments: commitments.map(toSequencerCommitment),
             authorization,
         });

@@ -11,7 +11,7 @@
  *   2. Register/update the seller through the canonical idempotent
  *      seeder (devnet-helpers.seedRegisteredMember) with a profile
  *      pointing at the catalog AND binding an assembly DISCOVERED
- *      from the AssemblyRegistry (frontend/scripts/populate-test-data.mjs anchors
+ *      from the ProcessRegistry (frontend/scripts/populate-test-data.mjs anchors
  *      them before Playwright runs). The surfacing rule applies EVENLY:
  *      a seller without ≥1 anchored binding is absent on
  *      /discover, /s, and checkout alike.
@@ -40,7 +40,7 @@ import {
     seedRegisteredMember,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { ASSEMBLY_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import { PROCESS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -52,24 +52,24 @@ const LOCAL_ANVIL = defineChain({
 
 /** Discover an anchored assembly slug from chain (never a roster) — the
  *  seeded profile must bind one to satisfy the even surfacing rule. */
-async function discoverAnchoredAssemblyHash(): Promise<Hex> {
+async function discoverAnchoredProcessDesignHash(): Promise<Hex> {
     const config = readLocalDeploymentConfig();
-    const registry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY
-        ?? config.assemblyRegistry ?? '') as Hex;
+    const registry = (process.env.NEXT_PUBLIC_PROCESS_REGISTRY
+        ?? config.processRegistry ?? '') as Hex;
     if (!registry || registry.length !== 42) {
-        throw new Error('NEXT_PUBLIC_ASSEMBLY_REGISTRY not set — run ./deploy-local.sh');
+        throw new Error('NEXT_PUBLIC_PROCESS_REGISTRY not set — run ./deploy-local.sh');
     }
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     const events = await publicClient.getContractEvents({
         address: registry,
-        abi: ASSEMBLY_REGISTRY_ABI,
-        eventName: 'AssemblyRegistered',
+        abi: PROCESS_REGISTRY_ABI,
+        eventName: 'ProcessRegistered',
         fromBlock: 0n,
     });
     if (events.length === 0) {
         throw new Error('no anchored assemblies on this devnet — run frontend/scripts/populate-test-data.mjs first');
     }
-    return events[events.length - 1].args.assemblyHash as Hex;
+    return events[events.length - 1].args.processDesignHash as Hex;
 }
 
 const SELLER_KEY = ANVIL_KEYS[1];
@@ -111,7 +111,7 @@ async function seedRegisteredMemberWithCatalog(): Promise<SeededSeller> {
     };
     const { uri: catalogURI } = await pinJSONToIPFS(catalog);
 
-    const anchoredHash = await discoverAnchoredAssemblyHash();
+    const anchoredHash = await discoverAnchoredProcessDesignHash();
     await seedRegisteredMember({
         walletKey: SELLER_KEY,
         profile: {
@@ -120,10 +120,10 @@ async function seedRegisteredMemberWithCatalog(): Promise<SeededSeller> {
             catalogURI,
             acceptedTokens: [{ address: tokenAddress, symbol: 'MOCK', chainId: 31337 }],
             defaultTokenAddress: tokenAddress,
-            assemblyBindings: [{
+            processBindings: [{
                 bindingId: `seller-page-binding-${Date.now()}`,
                 subjectAddress: SELLER_ADDR as Hex,
-                assemblyHash: anchoredHash,
+                processDesignHash: anchoredHash,
                 coSellerBindings: [],
             }],
         },

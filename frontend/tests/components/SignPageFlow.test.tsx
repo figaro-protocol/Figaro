@@ -54,8 +54,8 @@ vi.mock("@/lib/checkout/orderCommitmentFlow", async (importOriginal) => ({
         counterSignAndReturn: vi.fn(), quoteAndReturn: vi.fn(), commitOrder: vi.fn(),
     }),
 }));
-vi.mock("@/lib/protocol/useAssemblyRegistry", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/protocol/useAssemblyRegistry")>()),
+vi.mock("@/lib/protocol/useProcessRegistry", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/protocol/useProcessRegistry")>()),
     fetchHydratedAssemblyByHash: async () => null,
 }));
 vi.mock("@/lib/core/contracts", async (importOriginal) => {
@@ -105,17 +105,17 @@ import SignPage from "@/app/(app)/sign/page";
 
 /** A buyer-signed order awaiting the seller, its agreement merkling to its
  *  checkoutHash unless `tamper` changes the signed hash. */
-function payload(opts: { tamper?: boolean; salt?: bigint; processId?: Hex; expectedCumulativeValue?: bigint } = {}): CommitmentPayload {
+function payload(opts: { tamper?: boolean; salt?: bigint; processId?: Hex; runningTotal?: bigint } = {}): CommitmentPayload {
     const { agreement } = buildOrderAgreement(BUYER, SELLER, {
         [keyOf("figaro-commerce")]: {
             lineItems: [{ itemId: "item-1", name: "Item", quantity: 1, unitPrice: "1000" }],
         },
     }, specSource());
     const commitment: Commitment = {
-        processId: opts.processId ?? (`0x${"00".repeat(32)}` as Hex), buyer: BUYER, seller: SELLER, currency: CURRENCY,
-        payment: 1000n, expectedCumulativeValue: opts.expectedCumulativeValue ?? 1000n,
+        processId: opts.processId ?? (`0x${"00".repeat(32)}` as Hex), buyer: BUYER, seller: SELLER, token: CURRENCY,
+        payment: 1000n, runningTotal: opts.runningTotal ?? 1000n,
         checkoutHash: opts.tamper ? (`0x${"ee".repeat(32)}` as Hex) : computeCheckoutHash(agreement),
-        salt: opts.salt ?? 1n, deadline: 9_999_999_999n,
+        salt: opts.salt ?? 1n, commitDeadline: 9_999_999_999n,
     };
     return { commitment, agreement, buyerSig: `0x${"22".repeat(65)}` as Hex };
 }
@@ -186,16 +186,16 @@ describe("/sign — the terms check", () => {
         // cannot read. The terms merkle to the signed checkoutHash: the review
         // says which design was not read, and never that the terms do not match.
         const p = payload();
-        const assemblyHash = `0x${"a5".repeat(32)}` as Hex;
+        const processDesignHash = `0x${"a5".repeat(32)}` as Hex;
         // A root order of the design: its topology leaf is the empty list.
-        const agreement = { ...p.agreement, follows: [], provenance: { agreementHash: `0x${"a1".repeat(32)}` as Hex, assemblyHash } };
+        const agreement = { ...p.agreement, follows: [], provenance: { agreementHash: `0x${"a1".repeat(32)}` as Hex, processDesignHash } };
         const unread: CommitmentPayload = { ...p, agreement, commitment: { ...p.commitment, checkoutHash: computeCheckoutHash(agreement) } };
         m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(unread))}`;
         render(<SignPage />);
         await flush();
         const block = screen.getByTestId("sign-agreement-invalid").textContent ?? "";
         expect(screen.getByTestId("sign-agreement-unread").textContent).toBe(
-            `The design this agreement names, assembly ${assemblyHash}, was not read, so its designer values cannot be checked — do not proceed.`,
+            `The design this agreement names, assembly ${processDesignHash}, was not read, so its designer values cannot be checked — do not proceed.`,
         );
         expect(block).not.toMatch(/do NOT match/);
         // The heading names the unread design once; no item repeats it.
@@ -205,10 +205,10 @@ describe("/sign — the terms check", () => {
 
     it("an agreement naming an unread design whose clause also breaks its spec names the design and refuses the terms, without saying they do not match", async () => {
         const p = payload();
-        const assemblyHash = `0x${"a5".repeat(32)}` as Hex;
+        const processDesignHash = `0x${"a5".repeat(32)}` as Hex;
         // The commerce clause's line items are not a list: a term its spec refuses.
         const clauses = p.agreement.clauses.map((c) => ({ ...c, data: { ...(c as { data?: object }).data, lineItems: "not a list" } }));
-        const agreement = { ...p.agreement, clauses, follows: [], provenance: { agreementHash: `0x${"a1".repeat(32)}` as Hex, assemblyHash } };
+        const agreement = { ...p.agreement, clauses, follows: [], provenance: { agreementHash: `0x${"a1".repeat(32)}` as Hex, processDesignHash } };
         const both: CommitmentPayload = { ...p, agreement: agreement as CommitmentPayload["agreement"], commitment: { ...p.commitment, checkoutHash: `0x${"ee".repeat(32)}` as Hex } };
         m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(both))}`;
         render(<SignPage />);
@@ -237,7 +237,7 @@ describe("/sign — the terms check", () => {
 
     it("a malformed provenance is not called an unread design", async () => {
         const p = payload();
-        const agreement = { ...p.agreement, follows: [], provenance: { agreementHash: `0x${"6f".repeat(32)}` as Hex, assemblyHash: "0x5e" as Hex } };
+        const agreement = { ...p.agreement, follows: [], provenance: { agreementHash: `0x${"6f".repeat(32)}` as Hex, processDesignHash: "0x5e" as Hex } };
         const malformed: CommitmentPayload = { ...p, agreement, commitment: { ...p.commitment, checkoutHash: computeCheckoutHash(p.agreement) } };
         m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(malformed))}`;
         render(<SignPage />);
@@ -267,7 +267,7 @@ describe("/sign — the review reads the clause specs the sign action reads", ()
         const commerce = keyOf("figaro-commerce");
         const p = payload();
         const clauses = [...p.agreement.clauses, ...buildOrderAgreement(BUYER, SELLER, { [EXTRA.clauseKey]: { note: "x" } }, specSource()).agreement.clauses];
-        const agreement = { ...p.agreement, clauses, follows: [], provenance: { agreementHash: `0x${"a1".repeat(32)}` as Hex, assemblyHash: `0x${"a5".repeat(32)}` as Hex } };
+        const agreement = { ...p.agreement, clauses, follows: [], provenance: { agreementHash: `0x${"a1".repeat(32)}` as Hex, processDesignHash: `0x${"a5".repeat(32)}` as Hex } };
         const out: CommitmentPayload = { ...p, agreement, commitment: { ...p.commitment, checkoutHash: computeCheckoutHash(agreement) } };
         _resetClauseSpecCache_TESTING_ONLY();
         return { payload: out, commerce };
@@ -354,7 +354,7 @@ describe("/sign — the seller's counter-signature and the flow's step", () => {
     ] as const)("a sub-order: %s is shown the SDK's calculateBonds over the running total and the payment", async (_who, wallet, bond) => {
         m.address = wallet;
         // Earlier orders of the process committed 2000; this one pays 1000, so its running total is 3000.
-        const p = payload({ processId: `0x${"5b".repeat(32)}` as Hex, expectedCumulativeValue: 3000n });
+        const p = payload({ processId: `0x${"5b".repeat(32)}` as Hex, runningTotal: 3000n });
         const awaiting: CommitmentPayload = wallet === BUYER ? { ...p, buyerSig: undefined, sellerSig: `0x${"33".repeat(65)}` as Hex } : p;
         m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(awaiting))}`;
         render(<SignPage />);

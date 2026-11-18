@@ -20,7 +20,7 @@ clause, a registered agreement or an assembly, whether or not it wrote it. Two t
 of different objects: the registration binding is permanent (first-write-wins,
 below), and the designer earns as designer of record for as long as it holds a
 live stake against that entry in the entry's own registry. An entry is a (kind, key) pair — a clause key under the clause kind
-(0), an assembly's `assemblyHash` under the assembly kind (1), a registered
+(0), an assembly's `processDesignHash` under the assembly kind (1), a registered
 agreement's `agreementHash` under the agreement kind (2) — and the meter, the
 claim and the check of the designer of record are all keyed by it, so a stake
 in one family never earns another family's usage at the same bytes
@@ -145,7 +145,7 @@ own currency, at the moment it counts:
   registration stake is live and registered by the claimant. A claim names
   `(kind, key)` pairs, and `RpgfMinter` verifies each against the one
   registry its kind names — `ClauseRegistry` for the clause kind,
-  `AssemblyRegistry` for the assembly kind, `AgreementRegistry` for the
+  `ProcessRegistry` for the assembly kind, `AgreementRegistry` for the
   agreement kind; a withdrawn stake earns nothing further.
 
 The stake is reclaimable, and use counts only while the stake is live. A designer

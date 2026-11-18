@@ -12,7 +12,7 @@ import {
     registerRateQuantitySource,
     listRateQuantitySources,
     getRateQuantityResolver,
-    type BoundAssemblyPlanInput,
+    type BoundProcessPlanInput,
     type PricingCatalog,
 } from "../src/checkoutPlan.js";
 import { buildOrderAgreement } from "../src/projection.js";
@@ -24,7 +24,7 @@ import { hydrateAuthored } from "./hydrate.js";
 // to [Swift, Mercato], so the per-clause cursor hands B→Swift, D→Mercato by
 // commit order. Structure + clauses come straight off the registered agreements —
 // party-agnostic, no baked payment. Parents are each entry's own `follows`
-// (planSubOrderSellers reads them via assemblyFollows).
+// (planSubOrderSellers reads them via processDesignFollows).
 const MERCATO = "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f" as const;
 const SWIFT = "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955" as const;
 const ROSSO = "0x976EA74026E726554dB657fA54763abd0C3a0aa9" as const;
@@ -47,7 +47,7 @@ const GEO_SPECS_NO_DEFAULT = (() => {
 })();
 const SCHEDULE_SPECS = specSourceFromFixtures(["figaro-schedule"]);
 
-const assembly: BoundAssemblyPlanInput = {
+const assembly: BoundProcessPlanInput = {
     coSellerBindings: [
         { clauseKey: PROX, addresses: [SWIFT, MERCATO] },
         { clauseKey: EMISSIONS, addresses: [ROSSO] },
@@ -108,7 +108,7 @@ describe("planSubOrderSellers", () => {
     });
 
     it("returns a null seller when no binding covers the order's clause", () => {
-        const unbound: BoundAssemblyPlanInput = { ...assembly, coSellerBindings: [] };
+        const unbound: BoundProcessPlanInput = { ...assembly, coSellerBindings: [] };
         expect(planSubOrderSellers(unbound).every((p) => p.seller === null)).toBe(true);
     });
 });
@@ -126,7 +126,7 @@ describe("a co-seller binding that names an item in the co-seller's catalog", ()
         },
         { address: MERCATO, items: [{ id: "kit-assemble", name: "Assemble", price: "0.25", available: true }] },
     ] as unknown as PricingCatalog[];
-    const named: BoundAssemblyPlanInput = {
+    const named: BoundProcessPlanInput = {
         ...assembly,
         coSellerBindings: [
             { clauseKey: PROX, addresses: [SWIFT, MERCATO], itemIds: { [SWIFT.toLowerCase()]: "kit-rivets" } },

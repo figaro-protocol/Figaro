@@ -6,7 +6,7 @@
  * the list's place says so and reads nothing.
  *
  * Reads from `useAssemblyChoices(subject)` which combines the
- * `AssemblyRegistered` event log with a lazy hydrated read (name,
+ * `ProcessRegistered` event log with a lazy hydrated read (name,
  * order count, clause set). The same hook backs the member-profile
  * assembly picker, so the two surfaces can't drift on what they show
  * about an assembly.
@@ -79,7 +79,7 @@ function PublishedOf({ subject, signer }: ListedAddress) {
         <ul className="space-y-3" data-testid="published-list">
             {data.map((choice) => (
                 <li
-                    key={`${choice.assemblyHash}-${choice.blockNumber.toString()}`}
+                    key={`${choice.processDesignHash}-${choice.blockNumber.toString()}`}
                     className="rounded-lg border border-default bg-paper px-5 py-3 flex items-start gap-4"
                     data-testid={`published-row-${choice.slug}`}
                 >
@@ -96,7 +96,7 @@ function PublishedOf({ subject, signer }: ListedAddress) {
                             testId={`published-shape-${choice.slug}`}
                         />
                         <p className="font-mono text-[11px] text-ink-muted mt-1">
-                            content <span title={choice.assemblyHash}>{truncateHex(choice.assemblyHash, { head: 10, tail: 6 })}</span>
+                            content <span title={choice.processDesignHash}>{truncateHex(choice.processDesignHash, { head: 10, tail: 6 })}</span>
                             {" · block "}
                             {choice.blockNumber.toString()}
                         </p>

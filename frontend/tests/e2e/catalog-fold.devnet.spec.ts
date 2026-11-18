@@ -35,7 +35,7 @@
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server (:3100).
  * figaro-cargo is a KNOWN, pre-populated clause, so this spec's composition is
  * FIXED — and assembly identity IS the composition (editorial names are
- * excluded from the assemblyHash). On the persistent devnet the first run
+ * excluded from the processDesignHash). On the persistent devnet the first run
  * against a deployment ANCHORS the assembly; every later run ADOPTS it: the
  * publish leg reads the binding from the chain: unbound, it publishes and
  * reads the receipt; bound (first-write-wins), the Review screen closes publish
@@ -235,7 +235,7 @@ test.describe('CATALOG→LEAF fold — physical catalog data derives onto the ca
 
         // ── Funds actually moved: buyer↓ buyerBond, seller↓ sellerBond, escrow↑
         //    both — read from the token contract, not the UI. ──
-        const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+        const { buyerBond, sellerBond } = calculateBonds(event.args.runningTotal!, event.args.payment!);
         const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
         ]);

@@ -71,7 +71,7 @@ fn resolve_op(process_id: B256, value: U256, list: Vec<Commitment>, signer: u64)
     let digest = typed_data_hash(&domain(), &resolve_struct_hash(&process_id, &value));
     KernelOp::Resolve {
         process_id,
-        cumulative_value: value,
+        running_total: value,
         commitments: list,
         buyer_sig: sign(signer, &digest),
     }
@@ -98,12 +98,12 @@ fn process(n: usize, salt: u64) -> Process {
         process_id: B256::ZERO,
         buyer: BUYER,
         seller: address_of(SELLER1_KEY),
-        currency: TOKEN,
+        token: TOKEN,
         payment: ether(100),
-        expected_cumulative_value: ether(100),
+        running_total: ether(100),
         checkout_hash: keccak256(format!("resolve-lists-root-{salt}")),
         salt: U256::from(salt),
-        deadline: U256::from(2000u64),
+        commit_deadline: U256::from(2000u64),
     };
     let id = typed_data_hash(&domain(), &commitment_struct_hash(&root));
     let mut orders = vec![root];
@@ -114,12 +114,12 @@ fn process(n: usize, salt: u64) -> Process {
             process_id: id,
             buyer: BUYER,
             seller: address_of(sellers[i]),
-            currency: TOKEN,
+            token: TOKEN,
             payment: ether(payments[i]),
-            expected_cumulative_value: ether(total),
+            running_total: ether(total),
             checkout_hash: keccak256(format!("resolve-lists-sub-{salt}-{i}")),
             salt: U256::from(salt * 100 + i as u64),
-            deadline: U256::from(2000u64),
+            commit_deadline: U256::from(2000u64),
         });
     }
     let commits = orders
@@ -136,7 +136,7 @@ fn process(n: usize, salt: u64) -> Process {
 
 impl Process {
     fn value(&self) -> U256 {
-        self.orders.last().unwrap().expected_cumulative_value
+        self.orders.last().unwrap().running_total
     }
     fn pick(&self, at: &[usize]) -> Vec<Commitment> {
         at.iter().map(|&i| self.orders[i].clone()).collect()

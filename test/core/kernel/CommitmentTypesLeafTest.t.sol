@@ -23,7 +23,7 @@ contract CommitmentTypesLeafTest is Test {
     function testFuzz_clauseLeafNeverHasTheAssemblyTreesShape(bytes32 key, bytes32 dataHash) public pure {
         bytes32 formatLeaf = CommitmentTypes.clauseLeaf(key, dataHash);
         bytes32 assemblyLeaf = keccak256(
-            bytes.concat(keccak256(abi.encodePacked(AgreementTestHelper.ASSEMBLY_LEAF_DOMAIN, key, dataHash)))
+            bytes.concat(keccak256(abi.encodePacked(AgreementTestHelper.PROCESS_LEAF_DOMAIN, key, dataHash)))
         );
         assertTrue(formatLeaf != assemblyLeaf, "the two trees never share a leaf");
     }

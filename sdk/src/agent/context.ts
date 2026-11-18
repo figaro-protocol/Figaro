@@ -20,7 +20,7 @@ import type {
     Order,
     RegisteredClause,
     RegisteredMember,
-    RegisteredAssembly,
+    RegisteredProcessDesign,
     AgreementBinding,
 } from "../types.js";
 import { Topology } from "../state.js";
@@ -36,7 +36,7 @@ export interface SyncResult {
     newClauses: number;
     /** Number of new MemberRegistered/MemberProfileUpdated events ingested. */
     newMembers: number;
-    /** Number of new AssemblyRegistered events ingested. */
+    /** Number of new ProcessRegistered events ingested. */
     newAssemblies: number;
     /** Number of new AgreementRegistered events ingested. */
     newAgreements: number;
@@ -176,7 +176,7 @@ export class FigaroContext {
 
     /** All live-staked assemblies on the network — the assemblies an agent can
      *  instantiate from a cold start. */
-    getAssemblies(): RegisteredAssembly[] {
+    getAssemblies(): RegisteredProcessDesign[] {
         return this.discovery.getAssemblies();
     }
 
@@ -187,7 +187,7 @@ export class FigaroContext {
     }
 
     /** A registered agreement's binding by key WHATEVER its stake — what
-     *  hydrating an assembly's agreement reads (`hydrateAssembly`). */
+     *  hydrating an assembly's agreement reads (`hydrateProcessDesign`). */
     getAgreementBinding(agreementHash: Hex): AgreementBinding | undefined {
         return this.discovery.getAgreementBinding(agreementHash);
     }

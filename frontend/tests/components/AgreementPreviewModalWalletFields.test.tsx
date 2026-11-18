@@ -43,7 +43,7 @@ describe("the signing modal lists every field the wallet shows", () => {
 
     it("says the deadline is the last moment to submit the signed commitment and no deadline for the work", () => {
         render(modal("sign"));
-        const deadline = screen.getByTestId("preview-wallet-field-deadline").textContent ?? "";
+        const deadline = screen.getByTestId("preview-wallet-field-commitDeadline").textContent ?? "";
         expect(deadline).toMatch(/last moment/);
         expect(deadline).toMatch(/submitted/);
         expect(deadline).toMatch(/not a deadline for the work/);
@@ -51,7 +51,7 @@ describe("the signing modal lists every field the wallet shows", () => {
 
     it("says a seller's bond is twice the running total shown", () => {
         render(modal("sign"));
-        const total = screen.getByTestId("preview-wallet-field-expectedCumulativeValue").textContent ?? "";
+        const total = screen.getByTestId("preview-wallet-field-runningTotal").textContent ?? "";
         expect(total).toMatch(/running total/);
         expect(total).toMatch(/seller.*twice/i);
     });

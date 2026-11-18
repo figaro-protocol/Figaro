@@ -16,7 +16,7 @@ import { calculateBonds, calculateResolution } from "../src/bonds.js";
 const FIXTURE = path.resolve(__dirname, "..", "..", "test", "fixtures", "kernel-transition-vectors.json");
 const vectors = JSON.parse(readFileSync(FIXTURE, "utf8")) as Record<string, unknown>;
 
-interface Order { buyer: string; seller: string; payment: string; expectedCumulativeValue: string }
+interface Order { buyer: string; seller: string; payment: string; runningTotal: string }
 interface Party { address: string; deposit: string; payout: string }
 interface Scenario { name: string; resolve: string; orderCount: string; partyCount: string; [k: string]: unknown }
 
@@ -41,7 +41,7 @@ describe("SDK bonds and payouts equal what FigaroCore pulled and paid", () => {
 
             for (const o of orders) {
                 const payment = BigInt(o.payment);
-                const bonds = calculateBonds(BigInt(o.expectedCumulativeValue), payment);
+                const bonds = calculateBonds(BigInt(o.runningTotal), payment);
                 add(deposit, o.buyer, bonds.buyerBond);
                 add(deposit, o.seller, bonds.sellerBond);
                 if (resolved) {

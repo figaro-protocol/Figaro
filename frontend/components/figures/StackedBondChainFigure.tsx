@@ -50,10 +50,10 @@ const PAPER_CAPTION = (
 );
 
 // FigaroCore bond/payout math (src/core/kernel/FigaroCore.sol, verified against
-// docs/CONTRACTS.md): root sellerBond = 2×payment (== 2×cumulativeValue,
-// since a root order's expectedCumulativeValue must equal its payment);
-// sub-order sellerBond = 2×cumulativeValue; buyerBond = 2×payment on every
-// order; resolution sellerPayout = 2×cumulativeValue + payment, buyerPayout
+// docs/CONTRACTS.md): root sellerBond = 2×payment (== 2×runningTotal,
+// since a root order's runningTotal must equal its payment);
+// sub-order sellerBond = 2×runningTotal; buyerBond = 2×payment on every
+// order; resolution sellerPayout = 2×runningTotal + payment, buyerPayout
 // = payment.
 function buildNodes(legs: readonly StackedBondChainLeg[]) {
     let cumulative = 0;

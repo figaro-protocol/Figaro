@@ -4,7 +4,7 @@
  "tlc": "-simulate num=96 -depth 20 -seed 1 -workers 1",
  "parties": ["b1", "b2", "s1", "s2"],
  "initialBalance": 30,
- "columns": ["action (0 CommitRoot, 1 CommitSub, 2 ResolveProcess)", "pid", "buyer", "seller", "payment", "cumulativeValue", "wallets[b1]", "wallets[b2]", "wallets[s1]", "wallets[s2]", "contractBalance", "processes[1].cumulativeValue", "processes[1].activeCount", "processes[2].cumulativeValue", "processes[2].activeCount"],
+ "columns": ["action (0 CommitRoot, 1 CommitSub, 2 ResolveProcess)", "pid", "buyer", "seller", "payment", "runningTotal", "wallets[b1]", "wallets[b2]", "wallets[s1]", "wallets[s2]", "contractBalance", "processes[1].runningTotal", "processes[1].activeCount", "processes[2].runningTotal", "processes[2].activeCount"],
  "traceCount": 96,
  "traces": [
   {"source":"trace_0_0","rows":[[0,1,1,3,3,3,30,24,30,24,12,3,1,0,0],[0,2,1,2,2,2,30,20,26,24,20,3,1,2,1],[1,2,1,3,2,4,30,16,26,16,32,3,1,4,2],[1,2,1,3,1,5,30,14,26,6,44,3,1,5,3],[1,1,1,2,3,6,30,8,14,6,62,6,2,5,3],[1,1,1,2,1,7,30,6,0,6,78,7,3,5,3],[2,1,1,0,0,7,30,13,30,15,32,7,0,5,3],[2,2,1,0,0,5,30,18,36,36,0,7,0,5,0]]},

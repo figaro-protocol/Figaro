@@ -91,7 +91,7 @@ contract MembersRegistry {
     // ── Errors ──────────────────────────────────────────────────────────
     error AlreadyRegistered();
     error NotRegistered();
-    error InsufficientDeposit();
+    error WrongStake();
     error NothingPending();
     error CooldownActive(uint256 releaseAt);
     error TransferFailed();
@@ -141,7 +141,7 @@ contract MembersRegistry {
     /// @param metadataURI  IPFS or HTTPS URI pointing to the member's metadata JSON.
     function register(string calldata metadataURI) external payable {
         if (_registered[msg.sender]) revert AlreadyRegistered();
-        if (msg.value != registrationDeposit) revert InsufficientDeposit();
+        if (msg.value != registrationDeposit) revert WrongStake();
 
         _registered[msg.sender] = true;
 

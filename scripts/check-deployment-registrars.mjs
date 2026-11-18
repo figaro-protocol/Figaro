@@ -1,6 +1,6 @@
 // Who registered each reference agreement and assembly the expectations file
 // names — the part of scripts/check-deployment.mjs that reads
-// AgreementRegistry.bindings(key) and AssemblyRegistry.bindings(key), as the
+// AgreementRegistry.bindings(key) and ProcessRegistry.bindings(key), as the
 // clause part reads ClauseRegistry.depositOf(key). Its own module so
 // scripts/test-check-deployment-registrars.mjs can run it against a stand-in
 // chain read; check-deployment.mjs is a command and cannot be imported.
@@ -17,7 +17,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { agreementHashOf, assemblyHashOf, fillDeployTimeCurrency } from "../sdk/dist/index.js";
+import { agreementHashOf, processDesignHashOf, fillDeployTimeCurrency } from "../sdk/dist/index.js";
 import {
     ASSEMBLIES_DIR, loadAuthoredAgreements, loadAuthoredSpecs, readBuiltAssembly,
 } from "../frontend/scripts/populate-clauses.mjs";
@@ -40,7 +40,7 @@ export function plannedRegistrations(plan) {
         if (!plan.assemblyToken) { errors.push(`assemblies/${name}: not decided — registrations.assemblyToken is not named, and the key depends on it`); continue; }
         const built = readBuiltAssembly(file, authored, agreementsByName);
         const assembly = fillDeployTimeCurrency(built.assembly, plan.assemblyToken, authored);
-        assemblies.push({ name, key: assemblyHashOf(assembly), wallet });
+        assemblies.push({ name, key: processDesignHashOf(assembly), wallet });
     }
     return { agreements, assemblies, errors };
 }

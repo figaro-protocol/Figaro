@@ -49,8 +49,8 @@ export function deriveSignState(
 
     const myBondAmount = (() => {
         if (!commitment) return 0n;
-        if (isSeller) return calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
-        if (isBuyer) return calculateBonds(commitment.expectedCumulativeValue, commitment.payment).buyerBond;
+        if (isSeller) return calculateBonds(commitment.runningTotal, commitment.payment).sellerBond;
+        if (isBuyer) return calculateBonds(commitment.runningTotal, commitment.payment).buyerBond;
         return 0n;
     })();
 

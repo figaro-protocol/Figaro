@@ -7,7 +7,7 @@ const assembliesMock = vi.fn();
 const membersMock = vi.fn();
 vi.mock("@/lib/protocol/useClauseRegistry", () => ({ useAllRegisteredClauses: () => clausesMock() }));
 vi.mock("@/lib/protocol/useAgreementRegistry", () => ({ usePublishedAgreements: () => ({ read: { status: "present", value: [] } }) }));
-vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
+vi.mock("@/lib/protocol/useProcessRegistry", () => ({
     getAssemblyLoadError: () => undefined, usePublishedAssemblies: () => assembliesMock() }));
 vi.mock("@/lib/member/useRegisteredMembers", () => ({ useRegisteredMembers: () => membersMock() }));
 vi.mock("next/link", () => ({
@@ -24,7 +24,7 @@ const SDK_README = "https://github.com/figaro-protocol/Figaro/blob/main/sdk/READ
 describe("RegistryCountLink — one component owns the registry scaffolding all three families shared", () => {
     beforeEach(() => {
         clausesMock.mockReturnValue({ read: { status: "present", value: [clause(), clause(), clause(true)] } });
-        assembliesMock.mockReturnValue({ read: { status: "present", value: [{ assemblyHash: "0x1" }] } });
+        assembliesMock.mockReturnValue({ read: { status: "present", value: [{ processDesignHash: "0x1" }] } });
         membersMock.mockReturnValue({ read: { status: "present", value: [member(), member(true)] } });
     });
 
@@ -56,7 +56,7 @@ describe("RegistryCountLink — one component owns the registry scaffolding all 
         expect(screen.getByTestId("registry-count-assemblies").textContent).toContain("1 assembly is registered");
         const body = document.body.textContent ?? "";
         expect(body).toContain("There is no static roster of assemblies");
-        expect(body).toContain("AssemblyRegistered");
+        expect(body).toContain("ProcessRegistered");
         expect(body).not.toContain("ClauseRegistry");
         const hrefs = Array.from(document.querySelectorAll("a")).map((a) => a.getAttribute("href"));
         expect(hrefs).toContain("https://github.com/figaro-protocol/Figaro/tree/main/assemblies");

@@ -148,7 +148,7 @@ describe.skipIf(!ALIVE)(ALIVE ? "SDK Integration (Anvil)" : `SDK Integration (An
 
     it("full lifecycle: commit → reconstruct → resolve → verify", async () => {
         const PAYMENT = 100n * 10n ** 18n;
-        // For root orders, cumulativeValue = payment after commit
+        // For root orders, runningTotal = payment after commit
         // So both bonds are 2 × payment
         const bonds = calculateBonds(PAYMENT, PAYMENT);
 
@@ -202,11 +202,11 @@ describe.skipIf(!ALIVE)(ALIVE ? "SDK Integration (Anvil)" : `SDK Integration (An
                 processId: "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex,
                 buyer: buyerAccount.address,
                 seller: sellerAccount.address,
-                currency: tokenAddress,
+                token: tokenAddress,
                 payment: PAYMENT,
-                expectedCumulativeValue: PAYMENT,
+                runningTotal: PAYMENT,
                 checkoutHash,
-                deadline: chainNow + 3600n,
+                commitDeadline: chainNow + 3600n,
             },
             domain,
         );

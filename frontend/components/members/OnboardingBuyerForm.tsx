@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/hooks/useMounted";
 import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
 import type {
-    BuyerAssemblySubscription,
+    BuyerProcessSubscription,
 } from "@/lib/member/memberProfileMetadata";
 import { type AssemblyChoice, useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
@@ -27,8 +27,8 @@ import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type Onboardin
  * member's own catalog.
  */
 
-function buildSubscriptions(subscribedHashes: Set<string>): BuyerAssemblySubscription[] {
-    return [...subscribedHashes].map((h) => ({ assemblyHash: h as `0x${string}` }));
+function buildSubscriptions(subscribedHashes: Set<string>): BuyerProcessSubscription[] {
+    return [...subscribedHashes].map((h) => ({ processDesignHash: h as `0x${string}` }));
 }
 
 export interface OnboardingBuyerFormProps extends OnboardingStepChromeProps {
@@ -36,7 +36,7 @@ export interface OnboardingBuyerFormProps extends OnboardingStepChromeProps {
      * Edit-mode override. When provided, the submit handler calls
      * `onSave(subscriptions)` instead of routing to the next wizard step.
      */
-    onSave?: (subscriptions: BuyerAssemblySubscription[]) => Promise<void>;
+    onSave?: (subscriptions: BuyerProcessSubscription[]) => Promise<void>;
 }
 
 export function OnboardingBuyerForm({
@@ -63,7 +63,7 @@ export function OnboardingBuyerForm({
 
     useEffect(() => {
         if (hydrated || !loaded) return;
-        setSubscribed(new Set((state.buyerAssemblies ?? []).map((s) => s.assemblyHash)));
+        setSubscribed(new Set((state.buyerAssemblies ?? []).map((s) => s.processDesignHash)));
         markHydrated();
     }, [hydrated, loaded, markHydrated, state.buyerAssemblies]);
 
@@ -74,8 +74,8 @@ export function OnboardingBuyerForm({
         });
     }, [subscribed, hydrated, update]);
 
-    function toggle(assemblyHash: string) {
-        setSubscribed((prev) => toggledSet(prev, assemblyHash));
+    function toggle(processDesignHash: string) {
+        setSubscribed((prev) => toggledSet(prev, processDesignHash));
     }
 
     function handleNext(e: React.FormEvent) {
@@ -110,13 +110,13 @@ export function OnboardingBuyerForm({
 
             <div className="space-y-3">
                 {choices.map((choice) => {
-                    const isSubscribed = subscribed.has(choice.assemblyHash);
+                    const isSubscribed = subscribed.has(choice.processDesignHash);
                     return (
                         <AssemblyChoiceRow
                             key={choice.slug}
                             choice={choice}
                             checked={isSubscribed}
-                            onToggle={() => toggle(choice.assemblyHash)}
+                            onToggle={() => toggle(choice.processDesignHash)}
                             testIdPrefix="buyer-assembly"
                         />
                     );

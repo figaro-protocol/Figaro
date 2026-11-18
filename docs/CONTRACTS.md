@@ -27,10 +27,10 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
                                ▲                                          └──▶ (Uniswap router)
                                │
                           UsageCounter ──▶ MembersRegistry
-                            ▲   ▲     └──▶ ClauseRegistry, AgreementRegistry, AssemblyRegistry
+                            ▲   ▲     └──▶ ClauseRegistry, AgreementRegistry, ProcessRegistry
                  hands uses │   │ reads accrual
                             │   │
-          FigaroBatchVerifier   RpgfMinter ──▶ ClauseRegistry, AgreementRegistry, AssemblyRegistry, MembersRegistry
+          FigaroBatchVerifier   RpgfMinter ──▶ ClauseRegistry, AgreementRegistry, ProcessRegistry, MembersRegistry
               │        │            │              (designer of record)
               ▼        ▼            ▼
        (SP1 verifier) ClauseRegistry   FlorinToken
@@ -63,27 +63,27 @@ a process when its buyer calls it.
   bytes sellerSig)` and `resolveProcess(bytes32 processId, Commitment[]
   commitments)`.
 - Two mappings: `processes` (`ProcessState{rootBuyer, currency,
-  cumulativeValue, activeOrderCount}`) and `orderStatus` (`uint8`: 0 unknown,
+  runningTotal, activeOrderCount}`) and `orderStatus` (`uint8`: 0 unknown,
   1 committed, 2 resolved).
 - `commit` verifies both EIP-712 signatures over `c`, then pulls `2 × payment`
-  from the buyer and `2 × expectedCumulativeValue` from the seller. A root
+  from the buyer and `2 × runningTotal` from the seller. A root
   order (`c.processId == 0`) opens a process; any other order extends one and
-  must carry `c.buyer == process.rootBuyer` and `expectedCumulativeValue`
+  must carry `c.buyer == process.rootBuyer` and `runningTotal`
   equal to the live accumulator plus `payment` (`CumulativeValueMismatch`).
 - `resolveProcess` requires `msg.sender == rootBuyer` (`NotProcessBuyer`) and
   the complete active-order list (`IncompleteOrderList`), then pays every order
-  at once: seller `2 × expectedCumulativeValue + payment`, buyer `payment`.
+  at once: seller `2 × runningTotal + payment`, buyer `payment`.
   Every deposited token leaves; `FigaroCore` never holds a withdrawable balance.
 - Decentralized and permissionless: no admin, no pause, no upgrade, no timeout, no third entry point.
   `ReentrancyGuard` on both functions.
 
 **`src/core/kernel/CommitmentTypes.sol`** — The `Commitment` struct and its EIP-712
-hashing: `{processId, buyer, seller, currency, payment, expectedCumulativeValue,
-checkoutHash, salt, deadline}`. `salt` makes repeat orders hash distinctly;
-`deadline` bounds the window in which an unconsummated pair of signatures can
+hashing: `{processId, buyer, seller, token, payment, runningTotal,
+checkoutHash, salt, commitDeadline}`. `salt` makes repeat orders hash distinctly;
+`commitDeadline` bounds the window in which an unconsummated pair of signatures can
 be committed (`DeadlineExpired`) — a signature cannot be revoked, so it ages
 out; nothing expires after commit. `DESIGN_DECISIONS.md` §12 owns the
-reasoning. It also holds the agreement format's one leaf, `clauseLeaf(key, dataHash)` = `keccak256(keccak256(key ‖ dataHash))`, which `AttestationCoordinator` and `UsageCounter` open every inclusion proof against; an assembly's tree has its own leaf shape, with a domain, which the Core never builds (`UsageCounter._assemblyLeaf`).
+reasoning. It also holds the agreement format's one leaf, `clauseLeaf(key, dataHash)` = `keccak256(keccak256(key ‖ dataHash))`, which `AttestationCoordinator` and `UsageCounter` open every inclusion proof against; an assembly's tree has its own leaf shape, with a domain, which the Core never builds (`UsageCounter._processLeaf`).
 
 ### `src/core/attestation/` — `AttestationCoordinator`
 
@@ -135,7 +135,7 @@ The proof-based path that resolves batches of processes beside the direct
   the stream carries in the wallet-code form (`0x04`, bytes the buyer's own code validates — the
   batched equivalent of a `resolveProcess` call made by code the buyer's
   wallet installed while it held its key): it derives the
-  `ResolveProcess(processId, cumulativeValue)` digest under its own domain
+  `ResolveProcess(processId, runningTotal)` digest under its own domain
   from the process and the listed payments, refuses a buyer with no code
   (`BuyerHasNoCode`), and calls `isValidSignature` (ERC-1271) with the bytes,
   reverting the whole batch on any answer word but the magic value's
@@ -240,7 +240,7 @@ designer composes an assembly from.
   `clauses` maps each clause key to
   the designer's fills for that clause — value-free and with no topology,
   because who follows whom is set by each assembly that places the agreement
-  (`AssemblyAgreement.follows`, `sdk/src/assembly.ts`). The
+  (`ProcessDesignAgreement.follows`, `sdk/src/assembly.ts`). The
   pinned document is the agreement (`RegisteredAgreement { name?,
   summary?, description?, clauses }`); the editorial fields are excluded from
   the key. A reader fetches the document from `contentURI`, parses it, and
@@ -252,7 +252,7 @@ designer composes an assembly from.
   (`WrongDeposit(provided, required)`); refuses the zero key
   (`ZeroAgreementHash`), either reserved key of the agreement format — its
   public constants `PROVENANCE_LEAF_KEY = keccak256("figaro-agreement-provenance")`
-  and `ASSEMBLY_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms")` —
+  and `PROCESS_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms")` —
   (`ReservedKeyIsNotARegistration(key)`), an
   empty URI (`EmptyContentURI`) and a second registration
   (`AgreementAlreadyRegistered(agreementHash)`); emits
@@ -269,21 +269,21 @@ designer composes an assembly from.
   registeredAt, depositWithdrawn, contentURI}`. No admin, no transfer, no
   removal, no edge to any other registry. The contract validates no content.
 - Deployment: every full deploy script (`LOCAL_DEV.md` § "Deployment scripts")
-  deploys it beside `AssemblyRegistry` and passes it to `UsageCounter` and
+  deploys it beside `ProcessRegistry` and passes it to `UsageCounter` and
   `RpgfMinter`; the deployment record names it `agreementRegistry`, one of the
   fifteen address fields the checkout fingerprint covers.
 
-**`src/registries/AssemblyRegistry.sol`** — Permissionless assembly
+**`src/registries/ProcessRegistry.sol`** — Permissionless assembly
 anchoring under a stake.
-- Identity is the composition: `assemblyHash` is a merkle root over the
+- Identity is the composition: `processDesignHash` is a merkle root over the
   assembly's agreements, built with the assembly tree's own leaf convention
-  (`leaf = keccak256(keccak256(assemblyLeafDomain ‖ key ‖ keccak256(bytes)))`,
-  `assemblyLeafDomain = keccak256("figaro-assembly-leaf")`, sorted-pair hashing; the
+  (`leaf = keccak256(keccak256(processLeafDomain ‖ key ‖ keccak256(bytes)))`,
+  `processLeafDomain = keccak256("figaro-assembly-leaf")`, sorted-pair hashing; the
   agreement format's leaf has no domain, so the two trees never share a shape): one leaf per agreement `i`, keyed by the agreement's
   `agreementHash`, whose bytes are the canonical JSON
-  `{"clauses":{…},"follows":[…],"slot":i}` (the agreement's own fills and
+  `{"agreement":i,"clauses":{…},"follows":[…]}` (the agreement's own fills and
   the labels of the agreements it follows); and one
-  assembly terms leaf, keyed by `ASSEMBLY_TERMS_LEAF_KEY =
+  assembly terms leaf, keyed by `PROCESS_TERMS_LEAF_KEY =
   keccak256("figaro-assembly-terms")`, whose bytes are the canonical JSON of
   the assembly-scoped clauses, present only when any are composed. Order
   the agreements are ordered, so one registered agreement may sit in two positions. Membership of
@@ -291,14 +291,14 @@ anchoring under a stake.
   the root, never a lookup. The contract checks nothing about an agreement's
   agreement: whether it is registered is the agreements registry's fact. Editorial prose is excluded; identical compositions
   collapse to one binding; no caller-chosen name exists on-chain. The
-  human-readable slug is derived off-chain (`deriveAssemblySlug`).
-- `registerAssembly(assemblyHash, contentURI)` — first-write-wins, requires
-  exactly `registrationDeposit`, emits `AssemblyRegistered`.
-- `withdrawDeposit(assemblyHash)` — the registering wallet only, once, no
+  human-readable slug is derived off-chain (`deriveProcessDesignSlug`).
+- `registerProcess(processDesignHash, contentURI)` — first-write-wins, requires
+  exactly `registrationDeposit`, emits `ProcessRegistered`.
+- `withdrawDeposit(processDesignHash)` — the registering wallet only, once, no
   time lock; refunds the stake and emits `DepositWithdrawn`. The binding is
   permanent: buyers and sellers that reference the assembly rely on its content
   staying stable.
-- State: `bindings: assemblyHash → AssemblyBinding{registeredBy,
+- State: `bindings: processDesignHash → ProcessBinding{registeredBy,
   registeredAt, depositWithdrawn, contentURI}`. No admin, no transfer, no
   removal. The contract validates no content.
 
@@ -329,11 +329,11 @@ Constructor `(core, members, clauses, assemblies, agreements, batchVerifier,
 minSellers, periodEnd)`, every argument fixed at deploy; no setter exists.
 
 Every accrual, count and score is keyed by (kind, key), kind
-`KIND_CLAUSE = 0`, `KIND_ASSEMBLY = 1` or `KIND_AGREEMENT = 2`, and each kind's
+`KIND_CLAUSE = 0`, `KIND_PROCESS = 1` or `KIND_AGREEMENT = 2`, and each kind's
 gate reads only its own registry (`DESIGN_DECISIONS.md` § 23).
 
 Three permissionless functions and one proof-gated writer:
-- `recordClauseUsage(order, clauseOrAssembly, clauseDataHash, proof)` — proves
+- `recordClauseUsage(order, clauseOrProcess, clauseDataHash, proof)` — proves
   the order is RESOLVED (`core.orderStatus == 2`) and that the clause was
   committed in that order's signed agreement (merkle inclusion against
   `checkoutHash`). Fingerprint only, never the preimage. The same check
@@ -341,37 +341,37 @@ Three permissionless functions and one proof-gated writer:
   attestation is evidence during an open process; usage is counted once it
   has resolved. Recording is opt-in and gas-paid by whoever benefits. It
   counts under the clause kind and checks `ClauseRegistry` only.
-- `recordAgreementUsage(order, agreementHash, assemblyHash, proof)` —
+- `recordAgreementUsage(order, agreementHash, processDesignHash, proof)` —
   credits a registered agreement. Agreement leaves are keyed by clause, so
   neither key is ever a leaf key; what is a leaf is the agreement format's
   reserved provenance leaf, whose committed content is exactly
-  `{"agreementHash":"0x<lowercase>","assemblyHash":"0x<lowercase>"}`,
+  `{"agreementHash":"0x<lowercase>","processDesignHash":"0x<lowercase>"}`,
   written at checkout from the agreement the order instantiates. The contract
   rebuilds those bytes from both keys and proves that one leaf under
   `order.checkoutHash`; a wrong key derives a leaf that is not in the tree.
   The leaf's key is the public constant `provenanceLeaf =
   keccak256("figaro-agreement-provenance")`, a constant of the agreement
   format registered nowhere. It counts under the agreement kind and checks
-  `AgreementRegistry` only (`ClauseAgreementOrAssemblyNotRegistered` when the agreement
+  `AgreementRegistry` only (`ClauseAgreementOrProcessNotRegistered` when the agreement
   holds no live binding). The counter exposes the registry it reads as
-  `agreements()` and the terms constant as `assemblyTermsLeaf()`.
-- `recordAssemblyUsage(order, assemblyHash, agreementHash, slotContentHash,
+  `agreements()` and the terms constant as `processTermsLeaf()`.
+- `recordProcessDesignUsage(order, processDesignHash, agreementHash, agreementContentHash,
   leafProof, membershipProof)` — credits an assembly. It proves the
   provenance leaf the same way (`leafProof`), refuses an `agreementHash` equal
   to either reserved key (the assembly terms leaf is not an agreement), then
   proves the agreement's leaf
-  `keccak256(keccak256(assemblyLeafDomain ‖ agreementHash ‖ slotContentHash))` under
-  `assemblyHash` (`membershipProof`, else `InvalidMembershipProof`, distinct
+  `keccak256(keccak256(processLeafDomain ‖ agreementHash ‖ agreementContentHash))` under
+  `processDesignHash` (`membershipProof`, else `InvalidMembershipProof`, distinct
   from the leaf's `InvalidInclusionProof`), so the agreement the order names is
   a member of the assembly it names. It counts under the assembly kind and
-  checks `AssemblyRegistry` only. An agreement that names no assembly carries
+  checks `ProcessRegistry` only. An agreement that names no assembly carries
   no provenance leaf, and no process under it credits an agreement or an
   assembly designer.
 - `applyBatchAccrual(period, claimedProvenanceLeaf, uses)` — callable
   only by `batchVerifier` (immutable). A proof-gated writer, not an admin: the
   caller has no discretion, only uses an immutable vkey committed
   (`DESIGN_DECISIONS.md` §15). Each use is `BatchUse{bytes32
-  clauseOrAssembly, uint8 kind, bytes32 processId, address seller}` — a
+  clauseOrProcess, uint8 kind, bytes32 processId, address seller}` — a
   resolved batch-path process that used the key, and the seller of the order
   the guest proved it through, one per (kind, key, process) in the batch. The
   open period (`PeriodMismatch`) and the proved leaf key against
@@ -403,10 +403,10 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   the one tally, so a seller counts toward it once whichever route carried
   their trade.
 - **The two reserved keys earn nothing:** the provenance key
-  (`provenanceLeaf`) and the assembly terms key (`assemblyTermsLeaf =
+  (`provenanceLeaf`) and the assembly terms key (`processTermsLeaf =
   keccak256("figaro-assembly-terms")`) are refused at accrual on every kind by
   comparison with the constants, whatever a registry holds at either key (the
-  clause and assembly registries take any `bytes32`) — `_accrue` reverts on
+  clause and process registries take any `bytes32`) — `_accrue` reverts on
   the direct path (`ReservedKeyIsNotARegistration`),
   the guest refuses a batch claim keyed on either (`apply_usage_claims`), and
   `applyBatchAccrual` skips both before the registration gate. Every
@@ -423,7 +423,7 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   reached the chain. Both routes count through `_count` into `accrualOf`, the
   same `processCounted` set and the same per-period `sellerSeen` set, so `c`
   counts each process once and `d` each seller once across both routes;
-  `scoreOf(kind, clauseOrAssembly, period)` is `accrualOf.score`, and
+  `scoreOf(kind, clauseOrProcess, period)` is `accrualOf.score`, and
   `RpgfMinter` reads it. Both routes emit `UsageRecorded` (one use, with its
   process and seller), so an indexer folds one stream.
 - **Idempotence is global:** a process counts once ever per (kind, key), in
@@ -463,12 +463,12 @@ over years 1–2, 30% over 3–5, 55% over 6–9, split equally within each grou
 `DESIGNER_REWARDS.md` owns the schedule's reasoning and the boundary;
 `DATA_LAYER.md` owns what the stake does and does not do.
 
-**`src/rewards/RpgfMinter.sol`** — `claim(periodId, clausesOrAssemblies)` mints
+**`src/rewards/RpgfMinter.sol`** — `claim(periodId, clausesOrProcesses)` mints
 `periodAmount · callerScore / totalScoreInPeriod`, where `callerScore` sums
 the listed keys not yet claimed in the period. Each key is rewarded once per
 period (`claimed[periodId][kind][key]`), whichever call names it: a wallet may
 pass its clauses, agreements and assemblies in one call or in several, each as
-a `ClauseOrAssemblyKey{uint8 kind, bytes32 key}`, and claiming some forfeits
+a `ClauseOrProcessKey{uint8 kind, bytes32 key}`, and claiming some forfeits
 none of the rest. A list that names a claimed key again mints for the others; one
 whose unclaimed keys score nothing reverts `NothingToClaim`. The constructor
 takes the members registry after the counter, and the agreements registry
@@ -481,12 +481,12 @@ after the assemblies registry.
   same registry for the seller of record; `claimable` quotes a non-member zero.
   Membership ends at the withdrawal request; a wallet that registers again is
   paid again.
-- The list must be duplicate-free in (kind, key) (`DuplicateClauseOrAssembly`);
+- The list must be duplicate-free in (kind, key) (`DuplicateClauseOrProcess`);
   with distinct entries `score ≤ total` holds structurally.
 - `_isAuthor(kind, key, account)` verifies each entry against the one
   registry its kind names, with a live stake — the clause kind reads
   `ClauseRegistry.depositOf` (`registeredBy == caller` and not withdrawn), the
-  assembly kind `AssemblyRegistry.bindings` and the agreement kind
+  assembly kind `ProcessRegistry.bindings` and the agreement kind
   `AgreementRegistry.bindings` (each `registeredBy == caller` and not
   withdrawn), and a kind above 2 reverts `UnknownKind`; the score is read
   from the counter's slot for the same kind. This registration stake and
@@ -543,7 +543,7 @@ the party's own address, then calls `FigaroCore.commit`.
 - `FigaroCore` pulls each bond from the named party and never checks
   `msg.sender`, so the coordinator supplies the party in place and never becomes
   a counterparty; the commitment stays bilaterally signed.
-- Bond amounts derive from `c` (`2·payment`, `2·expectedCumulativeValue`),
+- Bond amounts derive from `c` (`2·payment`, `2·runningTotal`),
   never from calldata; a leg reverts `OutputBelowBond` if the swap yields less.
 - The witness binds `{router, inputToken, maxInput, keccak256(swapData),
   commitmentHash, role}` into a `SwapWitness` the party signs
@@ -685,7 +685,7 @@ no per-clause validator contracts, and a never-seen clause is attestable and
 batch-resolvable with zero per-clause code (`CLAUSES.md`). A use for designer
 rewards is counted by a call made after its process resolves: on the direct
 path a separate transaction to `UsageCounter` (`recordClauseUsage`,
-`recordAgreementUsage`, `recordAssemblyUsage`, each refusing an order the Core
+`recordAgreementUsage`, `recordProcessDesignUsage`, each refusing an order the Core
 has not resolved), on the batch path `applyBatchAccrual`, which
 `FigaroBatchVerifier` calls after the batch's resolutions. There is no posted
 root, no reward bond, no challenge window, and no reward referee. Clause-tier arbitration

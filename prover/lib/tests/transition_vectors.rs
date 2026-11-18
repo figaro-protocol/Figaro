@@ -20,7 +20,7 @@ use figaro_kernel::eip712::*;
 use figaro_kernel::kernel::{
     apply_batch_with_state, apply_guest, apply_operations, derive_commitment_ids, guest_input,
 };
-use figaro_kernel::operation_stream::resolved_cumulative_value;
+use figaro_kernel::operation_stream::resolved_running_total;
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
 
@@ -93,12 +93,12 @@ fn commitment(o: &serde_json::Value) -> Commitment {
         process_id: b256(&o["commitmentProcessId"]),
         buyer: addr(&o["buyer"]),
         seller: addr(&o["seller"]),
-        currency: addr(&o["currency"]),
+        token: addr(&o["token"]),
         payment: u256(&o["payment"]),
-        expected_cumulative_value: u256(&o["expectedCumulativeValue"]),
+        running_total: u256(&o["runningTotal"]),
         checkout_hash: b256(&o["checkoutHash"]),
         salt: u256(&o["salt"]),
-        deadline: u256(&o["deadline"]),
+        commit_deadline: u256(&o["commitDeadline"]),
     }
 }
 
@@ -163,13 +163,12 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
             for process_id in &process_order {
                 let commitments = by_process[process_id].clone();
                 let buyer = commitments[0].buyer;
-                let cumulative_value =
-                    resolved_cumulative_value(&commitments).expect("payments fit");
+                let running_total = resolved_running_total(&commitments).expect("payments fit");
                 let digest =
-                    typed_data_hash(&domain, &resolve_struct_hash(process_id, &cumulative_value));
+                    typed_data_hash(&domain, &resolve_struct_hash(process_id, &running_total));
                 ops.push(KernelOp::Resolve {
                     process_id: *process_id,
-                    cumulative_value,
+                    running_total,
                     commitments,
                     buyer_sig: sign_digest(&keys[&buyer], &digest),
                 });
@@ -304,8 +303,8 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
                 .get(&pid)
                 .unwrap_or_else(|| panic!("{name}: process {pr} missing from the mirror"));
             assert_eq!(
-                ps.cumulative_value,
-                u256(&p["cumulativeValue"]),
+                ps.running_total,
+                u256(&p["runningTotal"]),
                 "{name}: cumulative value"
             );
             assert_eq!(
@@ -387,15 +386,12 @@ fn again_resolvable(first: &BatchInput, state: &KernelState) -> BatchInput {
         unreachable!()
     };
     let (_, process_id) = derive_commitment_ids(&domain, commitment);
-    let cumulative_value = commitment.expected_cumulative_value;
-    let digest = typed_data_hash(
-        &domain,
-        &resolve_struct_hash(&process_id, &cumulative_value),
-    );
+    let running_total = commitment.running_total;
+    let digest = typed_data_hash(&domain, &resolve_struct_hash(&process_id, &running_total));
     BatchInput {
         operations: vec![KernelOp::Resolve {
             process_id,
-            cumulative_value,
+            running_total,
             commitments: vec![commitment.clone()],
             buyer_sig: sign_digest(&keys[&commitment.buyer], &digest),
         }],

@@ -97,7 +97,7 @@ export function serializeCommitmentPayload(p: CommitmentPayload): string {
 export function deserializeCommitmentPayload(json: string): CommitmentPayload {
     const raw = JSON.parse(json, strippingReviver);
     const c = raw.commitment;
-    for (const f of ["payment", "salt", "deadline", "expectedCumulativeValue"]) {
+    for (const f of ["payment", "salt", "commitDeadline", "runningTotal"]) {
         if (typeof c[f] === "string" && c[f].startsWith("0x")) c[f] = BigInt(c[f]);
     }
     const funding = raw.buyerFunding;

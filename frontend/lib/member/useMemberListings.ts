@@ -5,12 +5,12 @@
  * registered members from the on-chain `MembersRegistry` (via
  * event logs), fetches each member's profile JSON from IPFS,
  * CROSS-CHECKS each profile's claimed assembly bindings against the
- * AssemblyRegistry (the registry is the authority — only members with
+ * ProcessRegistry (the registry is the authority — only members with
  * ≥1 anchored binding surface, and only their anchored bindings render),
  * and projects them into the generic `Listing` shape consumed by
  * `MemberDiscovery`. The listings are a `NetworkRead`: `present([])` when no
  * member is registered (the consumer renders its plain empty state);
- * `absent` when the MembersRegistry read, or the AssemblyRegistry read the
+ * `absent` when the MembersRegistry read, or the ProcessRegistry read the
  * bindings are checked against, failed, or no registry is configured — the
  * consumer renders nothing for it.
  */
@@ -26,7 +26,7 @@ import { getActiveMembers } from "@/lib/protocol/membersRegistryIndexer";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import type { PublicClient } from "viem";
 import { CONTRACTS } from "@/lib/core/contracts";
-import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
+import { usePublishedAssemblies } from "@/lib/protocol/useProcessRegistry";
 import { ABSENT, PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 
 function isRegistryConfigured(): boolean {
@@ -43,7 +43,7 @@ async function fetchProfileAsListing(
     if (!profile) return null;
     const listing = profileToListing(profile, address);
     // Cross-check the profile's CLAIMED bindings against the
-    // AssemblyRegistry — the registry is the authority, the profile is an
+    // ProcessRegistry — the registry is the authority, the profile is an
     // assertion. Only anchored bindings survive; a member with none does
     // not surface on discover at all (no member
     // without a properly anchored assembly).
@@ -69,7 +69,7 @@ export function useMemberListings(): { read: NetworkRead<Listing[]> } {
     const [read, setRead] = useState<NetworkRead<Listing[]>>(PENDING);
     const client = usePublicClient();
     const chainId = useChainId();
-    // The AssemblyRegistry read the profile bindings are cross-checked
+    // The ProcessRegistry read the profile bindings are cross-checked
     // against. Pending is pending and absent is absent: the unchecked member
     // list is never rendered, and a failed assembly read never rejects every
     // binding into "nothing is registered".
@@ -84,7 +84,7 @@ export function useMemberListings(): { read: NetworkRead<Listing[]> } {
             setRead(publishedAssemblies);
             return;
         }
-        const publishedHashes = new Set(publishedAssemblies.value.map((a) => a.assemblyHash.toLowerCase()));
+        const publishedHashes = new Set(publishedAssemblies.value.map((a) => a.processDesignHash.toLowerCase()));
 
         let canceled = false;
         void readNetwork("useMemberListings", () => listFromRegistry(client, chainId, publishedHashes)).then((next) => {

@@ -17,7 +17,7 @@ import {
     type SubOrderPricing,
 } from "@figaro-protocol/sdk";
 import { displayNameForAddress } from "@/lib/member/memberListing";
-import { assemblyFollows } from "@/lib/shared/assembly";
+import { processDesignFollows } from "@/lib/shared/assembly";
 import {
     clauseCatalogFills,
     clauseDesignFills,
@@ -243,7 +243,7 @@ export function deriveAgreementGroups(args: {
         // The agreement's clauses: its registered agreement's, with the
         // entry's own fills merged over them.
         const order = { id: entry.id, clauses: agreementClauses(hydrated, entry) };
-        const isRoot = assemblyFollows(entry).length === 0;
+        const isRoot = processDesignFollows(entry).length === 0;
         const assigned = isRoot ? leadAddress : sellerOf.get(String(order.id));
         // Fold the assigned seller's PROFILE master data (dimweight's
         // divisor, a declared credential id) onto the preview leaves —

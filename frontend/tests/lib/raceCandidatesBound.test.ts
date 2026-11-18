@@ -9,7 +9,7 @@
  * discovered profile (`bindsAssembly`).
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { assemblyHashOf, type Hex, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { processDesignHashOf, type Hex, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { primeClauseSpecs, referenceAssembly, keyOf } from "./primeClauseSpecs";
 import type { MemberCatalog } from "@/lib/member/types";
 import { bindsAssembly } from "@/lib/member/memberListing";
@@ -23,8 +23,8 @@ const BOUND_B = "0x90F79bf6EB2c4f870365E785982E1f101E93b906" as Hex;
 const NOT_BINDING = "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65" as Hex;
 const OTHER_ASSEMBLY = `0x${"77".repeat(32)}` as Hex;
 
-let hydrated: HydratedAssembly;
-let assemblyHash: Hex;
+let hydrated: HydratedProcessDesign;
+let processDesignHash: Hex;
 
 function catalog(address: Hex, price: string, boundTo: Hex[]): MemberCatalog {
     return {
@@ -33,7 +33,7 @@ function catalog(address: Hex, price: string, boundTo: Hex[]): MemberCatalog {
         description: "",
         specialty: "",
         items: [{ id: "service", name: "Service", description: "Service", price, available: true }],
-        assemblyBindings: boundTo.map((h, i) => ({ bindingId: `b-${i}`, subjectAddress: address, assemblyHash: h })),
+        processBindings: boundTo.map((h, i) => ({ bindingId: `b-${i}`, subjectAddress: address, processDesignHash: h })),
     } as MemberCatalog;
 }
 
@@ -61,7 +61,7 @@ describe("bindsAssembly — the member's discovered profile decides", () => {
         const h = `0x${"ab".repeat(32)}` as Hex;
         expect(bindsAssembly(catalog(BOUND_A, "1", [h]), h.toUpperCase().replace("0X", "0x") as Hex)).toBe(true);
         expect(bindsAssembly(catalog(BOUND_A, "1", [OTHER_ASSEMBLY]), h)).toBe(false);
-        expect(bindsAssembly({ assemblyBindings: undefined }, h)).toBe(false);
+        expect(bindsAssembly({ processBindings: undefined }, h)).toBe(false);
     });
 });
 
@@ -69,15 +69,15 @@ describe("the buyer offers only sellers that bound the assembly", () => {
     beforeAll(async () => {
         await primeClauseSpecs();
         hydrated = referenceAssembly("local-commerce.json");
-        assemblyHash = assemblyHashOf(hydrated.assembly);
+        processDesignHash = processDesignHashOf(hydrated.assembly);
     });
 
     it("a race draws its candidates only from members whose profiles bind the assembly", () => {
         const sellerCatalogs = [
-            catalog(LEAD, "5", [assemblyHash]),
+            catalog(LEAD, "5", [processDesignHash]),
             catalog(NOT_BINDING, "1", [OTHER_ASSEMBLY]), // cheapest, but binds another assembly: never raced
-            catalog(BOUND_B, "3", [assemblyHash]),
-            catalog(BOUND_A, "2", [OTHER_ASSEMBLY, assemblyHash]),
+            catalog(BOUND_B, "3", [processDesignHash]),
+            catalog(BOUND_A, "2", [OTHER_ASSEMBLY, processDesignHash]),
         ];
         const candidates = pricedRaceCandidates({
             checkout: { buyer: BUYER, assembly: bound([]), sellerCatalogs, tokenDecimals: 0 },
@@ -89,7 +89,7 @@ describe("the buyer offers only sellers that bound the assembly", () => {
     it("withBoundCoSellers keeps a designated co-seller only when its own profile binds the assembly", () => {
         const sellerCatalogs = [
             catalog(NOT_BINDING, "1", [OTHER_ASSEMBLY]),
-            catalog(BOUND_A, "1", [assemblyHash]),
+            catalog(BOUND_A, "1", [processDesignHash]),
         ];
         const kept = withBoundCoSellers(bound([NOT_BINDING, BOUND_A]), sellerCatalogs);
         expect(kept.coSellerBindings).toEqual([{ clauseKey: keyOf("figaro-courier-process"), addresses: [BOUND_A] }]);

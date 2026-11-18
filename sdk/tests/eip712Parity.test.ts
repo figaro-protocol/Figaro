@@ -63,26 +63,26 @@ const ROOT: Commitment = {
     processId: "0x0000000000000000000000000000000000000000000000000000000000000000",
     buyer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
     seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
-    currency: "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
+    token: "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
     payment: 100_000_000_000_000_000_000n,
-    expectedCumulativeValue: 100_000_000_000_000_000_000n,
+    runningTotal: 100_000_000_000_000_000_000n,
     checkoutHash: keccak256(toBytes("root-agreement")),
     salt: 42n,
-    deadline: 2000n,
+    commitDeadline: 2000n,
 };
 
 // A sub-order: processId is a real (non-zero) value the party targets, so the
 // order hash uses that processId directly rather than the derived digest.
 const SUB: Commitment = {
-    processId: "0xa809fe3f6ab3509a130c6cd20bf910767b4ccafce5d46f8ad99d0e62f367c83b",
+    processId: "0x218b062c3f37a305b72333c552ba4b9533f40af565e315b35d7d48e47c3d033c",
     buyer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
     seller: "0xC22667C5926d1C9af6C0fa8Cedc4ea3e489F6F70",
-    currency: "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
+    token: "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
     payment: 50_000_000_000_000_000_000n,
-    expectedCumulativeValue: 150_000_000_000_000_000_000n,
+    runningTotal: 150_000_000_000_000_000_000n,
     checkoutHash: keccak256(toBytes("sub-agreement")),
     salt: 43n,
-    deadline: 2000n,
+    commitDeadline: 2000n,
 };
 
 function commitmentToJson(c: Commitment) {
@@ -90,12 +90,12 @@ function commitmentToJson(c: Commitment) {
         processId: c.processId,
         buyer: c.buyer,
         seller: c.seller,
-        currency: c.currency,
+        token: c.token,
         payment: c.payment.toString(),
-        expectedCumulativeValue: c.expectedCumulativeValue.toString(),
+        runningTotal: c.runningTotal.toString(),
         checkoutHash: c.checkoutHash,
         salt: c.salt.toString(),
-        deadline: c.deadline.toString(),
+        commitDeadline: c.commitDeadline.toString(),
     };
 }
 
@@ -150,7 +150,7 @@ function batchVectors() {
     const contentRef = keccak256(toBytes("batch-content"));
     // The cumulative value the buyer accepts: a word past 2^128, so the
     // guest's big-endian uint256 encoding is exercised beyond one limb.
-    const resolve = { processId, cumulativeValue: 2n ** 130n + 1_500n };
+    const resolve = { processId, runningTotal: 2n ** 130n + 1_500n };
     const authorizations = [1, 0, 255].flatMap((stage) => {
         const seller = { orderHash, clauseId, stage, contentRef };
         const buyer = { processId, orderHash, clauseId, stage, contentRef };
@@ -175,7 +175,7 @@ function batchVectors() {
         authorizations: [
             {
                 type: "ResolveProcess",
-                message: { processId, cumulativeValue: resolve.cumulativeValue.toString() },
+                message: { processId, runningTotal: resolve.runningTotal.toString() },
                 structHash: hashStruct({ types: RESOLVE_PROCESS_TYPES, primaryType: "ResolveProcess", data: resolve }),
                 digest: hashTypedData({ domain, types: RESOLVE_PROCESS_TYPES, primaryType: "ResolveProcess", message: resolve }),
             },
@@ -208,13 +208,13 @@ describe("EIP-712 parity vectors — the cross-language lock", () => {
             chainId: number;
             batch: {
                 verifyingContract: Hex;
-                authorizations: { type: string; message: { processId: Hex; cumulativeValue: string }; digest: Hex }[];
+                authorizations: { type: string; message: { processId: Hex; runningTotal: string }; digest: Hex }[];
             };
         };
         const v = frozen.batch.authorizations.find((x) => x.type === "ResolveProcess");
         expect(v, "the fixture carries a ResolveProcess vector").toBeDefined();
         expect(
-            hashResolveProcess(v!.message.processId, BigInt(v!.message.cumulativeValue), {
+            hashResolveProcess(v!.message.processId, BigInt(v!.message.runningTotal), {
                 chainId: frozen.chainId,
                 core: frozen.batch.verifyingContract,
             }),

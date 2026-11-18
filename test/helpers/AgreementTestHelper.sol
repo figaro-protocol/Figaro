@@ -14,7 +14,7 @@ import {Vm} from "forge-std/Vm.sol";
 ///         `checkoutHash` is a real merkle root and attestations can carry
 ///         valid inclusion proofs, and by the reward tests for an assembly's
 ///         tree: the same leaf convention and root over the entry leaves and
-///         the terms leaf, whose root is the assemblyHash.
+///         the terms leaf, whose root is the processDesignHash.
 library AgreementTestHelper {
     Vm private constant VM = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -22,19 +22,23 @@ library AgreementTestHelper {
     bytes32 internal constant PROVENANCE_LEAF_KEY = keccak256("figaro-agreement-provenance");
 
     /// @dev The key of an assembly tree's terms leaf (the assembly-scoped clauses).
-    bytes32 internal constant ASSEMBLY_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms");
+    bytes32 internal constant PROCESS_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms");
 
     /// @dev The provenance leaf's canonical-JSON bytes: the registered
     ///      agreement an order instantiates and the assembly it came from,
     ///      both as 0x-prefixed lowercase hex (keys sorted, as canonical JSON
     ///      sorts them).
-    function provenanceLeaf(bytes32 agreementHash, bytes32 assemblyHash) internal pure returns (bytes memory) {
+    function provenanceLeaf(bytes32 agreementHash, bytes32 processDesignHash) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            '{"agreementHash":"', VM.toString(agreementHash), '","assemblyHash":"', VM.toString(assemblyHash), '"}'
+            '{"agreementHash":"',
+            VM.toString(agreementHash),
+            '","processDesignHash":"',
+            VM.toString(processDesignHash),
+            '"}'
         );
     }
 
-    /// @dev An agreement leaf's canonical-JSON bytes: `{"clauses":{…},"follows":[…],"slot":i}`
+    /// @dev An agreement leaf's canonical-JSON bytes: `{"agreement":i,"clauses":{…},"follows":[…]}`
     ///      — the agreement's own clause fills, the labels of the entries it
     ///      follows, and its index (the SDK's `agreementLeafBytes`).
     ///      `clausesJson` is the fills as canonical JSON (e.g. `{}`);
@@ -45,7 +49,7 @@ library AgreementTestHelper {
         returns (bytes memory)
     {
         return abi.encodePacked(
-            '{"clauses":', clausesJson, ',"follows":', followsJson, ',"slot":', VM.toString(entry), "}"
+            '{"agreement":', VM.toString(entry), ',"clauses":', clausesJson, ',"follows":', followsJson, "}"
         );
     }
 
@@ -55,13 +59,13 @@ library AgreementTestHelper {
     }
 
     /// @dev The assembly tree's leaf domain, `keccak256("figaro-assembly-leaf")` —
-    ///      the counter's `assemblyLeafDomain`, the SDK's `ASSEMBLY_LEAF_DOMAIN`.
-    bytes32 internal constant ASSEMBLY_LEAF_DOMAIN = keccak256("figaro-assembly-leaf");
+    ///      the counter's `processLeafDomain`, the SDK's `PROCESS_LEAF_DOMAIN`.
+    bytes32 internal constant PROCESS_LEAF_DOMAIN = keccak256("figaro-assembly-leaf");
 
-    /// @dev A leaf of an assembly's tree: `keccak256(keccak256(ASSEMBLY_LEAF_DOMAIN ‖ key ‖ keccak256(bytes)))`
+    /// @dev A leaf of an assembly's tree: `keccak256(keccak256(PROCESS_LEAF_DOMAIN ‖ key ‖ keccak256(bytes)))`
     ///      — an agreement's position keyed by its agreementHash, or the terms leaf.
     function assemblyLeafFor(bytes32 key, bytes memory leafBytes) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encodePacked(ASSEMBLY_LEAF_DOMAIN, key, keccak256(leafBytes)))));
+        return keccak256(bytes.concat(keccak256(abi.encodePacked(PROCESS_LEAF_DOMAIN, key, keccak256(leafBytes)))));
     }
 
     /// @dev Compute the agreement merkle root for an ordered list of leaves.

@@ -16,7 +16,7 @@
  * (`draftToAssembly` — the one walk publish uses).
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { agreementHashOf, buildOrderAgreement, serializeAssembly } from "@figaro-protocol/sdk";
+import { agreementHashOf, buildOrderAgreement, serializeProcessDesign } from "@figaro-protocol/sdk";
 import {
     discardPublishedDraft,
     loadAutosave,
@@ -73,7 +73,7 @@ describe("syntheticDesignStore round-trip", () => {
         expect(loaded!.orders[1].follows).toEqual([root.order.orderHash]);
         // Drafts are value-free: the value fields hydrate as zeros, whatever
         // an older stored draft carried.
-        expect(loaded!.orders[0].cumulativeValue).toBe(0n);
+        expect(loaded!.orders[0].runningTotal).toBe(0n);
         expect(loaded!.orders[0].sellerBond).toBe(0n);
     });
 
@@ -83,7 +83,7 @@ describe("syntheticDesignStore round-trip", () => {
         const nonSerializable = Object.entries(order).filter(
             ([key, v]) =>
                 typeof v === "bigint" &&
-                !["cumulativeValue", "payment", "sellerBond", "buyerBond", "salt", "deadline"].includes(key),
+                !["runningTotal", "payment", "sellerBond", "buyerBond", "salt", "deadline"].includes(key),
         );
         // Any hit here is a field the store's serializer doesn't know — it
         // would throw inside JSON.stringify and be silently swallowed.
@@ -96,7 +96,7 @@ describe("syntheticDesignStore round-trip", () => {
  * disclosure regime (`figaro-data-terms`, `block.design.fills: ["disclosure"]`)
  * because it is the case the ruling turns on: the regime is composed at design
  * time, what the canvas control writes is the clause's design fill, and the
- * fill is part of the assemblyHash — so regime variants are SIBLING
+ * fill is part of the processDesignHash — so regime variants are SIBLING
  * assemblies, not a setting on one assembly (the shipped `aerial-survey` /
  * `aerial-survey-open-data` pair is exactly this difference).
  *
@@ -164,7 +164,7 @@ describe("design fills are the composition's identity — the disclosure regime"
             expect(composed, `${regime} is composed onto the agreement`).toEqual({ [FIELD]: regime });
             expect(agreementHashOf(agreements[agreementHash])).toBe(agreementHash);
             // And it is in the CANONICAL bytes, not just the in-memory object.
-            const { json } = serializeAssembly(assembly);
+            const { json } = serializeProcessDesign(assembly);
             expect(JSON.parse(json).agreements[0].agreementHash).toBe(agreementHash);
         }
     });
@@ -176,9 +176,9 @@ describe("design fills are the composition's identity — the disclosure regime"
         }));
         for (const i of identities) {
             expect(i.error, `${i.regime} derives an identity`).toBeNull();
-            expect(i.assemblyHash).toMatch(/^0x[0-9a-f]{64}$/u);
+            expect(i.processDesignHash).toMatch(/^0x[0-9a-f]{64}$/u);
         }
-        const hashes = identities.map((i) => i.assemblyHash);
+        const hashes = identities.map((i) => i.processDesignHash);
         expect(new Set(hashes).size, "one assembly hash per regime").toBe(hashes.length);
         // The slug is a pure function of the hash, so siblings never collide
         // on the published route either.
@@ -191,15 +191,15 @@ describe("design fills are the composition's identity — the disclosure regime"
         // filled one, so it can never be confused for one.
         const unfilled = snapshotAssemblyIdentity(draft({}));
         expect(unfilled.error).toBeNull();
-        const filled = regimeValues().map((r) => snapshotAssemblyIdentity(draft({ [FIELD]: r })).assemblyHash);
-        expect(filled).not.toContain(unfilled.assemblyHash);
+        const filled = regimeValues().map((r) => snapshotAssemblyIdentity(draft({ [FIELD]: r })).processDesignHash);
+        expect(filled).not.toContain(unfilled.processDesignHash);
     });
 
     it("editorial prose is excluded — renaming leaves the identity unmoved", () => {
         const regime = regimeValues()[0];
         const a = snapshotAssemblyIdentity(draft({ [FIELD]: regime }, "One name"));
         const b = snapshotAssemblyIdentity(draft({ [FIELD]: regime }, "A completely different name"));
-        expect(b.assemblyHash).toBe(a.assemblyHash);
+        expect(b.processDesignHash).toBe(a.processDesignHash);
     });
 
     it("the identity survives the draft's save → load round-trip unchanged", () => {
@@ -212,7 +212,7 @@ describe("design fills are the composition's identity — the disclosure regime"
         // A design fill dropped by the persistence layer would show up here as
         // a MOVED hash — the composition the designer reopens would publish as
         // a different assembly than the one they saved.
-        expect(snapshotAssemblyIdentity(loaded!).assemblyHash).toBe(before.assemblyHash);
+        expect(snapshotAssemblyIdentity(loaded!).processDesignHash).toBe(before.processDesignHash);
     });
 
     it("a clause with NO design fills contributes no values — its identity is fill-blind", () => {
@@ -240,8 +240,8 @@ describe("design fills are the composition's identity — the disclosure regime"
             ...base,
             clausesByOrderId: { [root.order.orderHash]: { [dimweight]: { unit: "cm-kg" } } },
         };
-        expect(snapshotAssemblyIdentity(withStrayValues).assemblyHash)
-            .toBe(snapshotAssemblyIdentity(base).assemblyHash);
+        expect(snapshotAssemblyIdentity(withStrayValues).processDesignHash)
+            .toBe(snapshotAssemblyIdentity(base).processDesignHash);
     });
 });
 

@@ -1,8 +1,8 @@
 /**
  * lib/protocol/assemblyChoices.ts — READING published assemblies.
  *
- * The enrichment layer over the on-chain `AssemblyRegistry` hooks
- * (`@/lib/protocol/useAssemblyRegistry`): every published assembly, enriched with
+ * The enrichment layer over the on-chain `ProcessRegistry` hooks
+ * (`@/lib/protocol/useProcessRegistry`): every published assembly, enriched with
  * its lazily-fetched assembly (name, agreement count, clause set), projected into
  * the selectable/inspectable `AssemblyChoice` shape. Consumed by every
  * reading surface — the designer's published list, the member-profile
@@ -15,20 +15,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { activeChain } from "@/lib/shared/chains";
 import { clauseIsProcessLog, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { agreementClauses, assemblyComposedClauseKeys, type HydratedAssembly } from "@figaro-protocol/sdk";
-import { assemblyFollows } from "@/lib/shared/assembly";
+import { agreementClauses, processDesignComposedClauseKeys, type HydratedProcessDesign } from "@figaro-protocol/sdk";
+import { processDesignFollows } from "@/lib/shared/assembly";
 import { chainById } from "@/lib/shared/chains";
 import { scheduleContentRetry } from "@/lib/shared/ipfsService";
 import {
     usePublishedAssemblies,
-    fetchHydratedAssembly, getAssemblyLoadError } from "@/lib/protocol/useAssemblyRegistry";
+    fetchHydratedAssembly, getAssemblyLoadError } from "@/lib/protocol/useProcessRegistry";
 import { mapRead, type NetworkRead } from "@/lib/shared/networkRead";
 
 /**
  * The `networkTargets` value of an on-chain-registered assembly: the name of
  * the chain its registry lives on, from viem's registry of EVM networks
  * (`chainById`), never a list this build keeps. Derived rather than stored —
- * the AssemblyRegistry is per-deployment, so its chain IS the network target.
+ * the ProcessRegistry is per-deployment, so its chain IS the network target.
  */
 function chainIdToNetworkTarget(chainId: number): string {
     return chainById(chainId)?.name ?? `chain ${chainId}`;
@@ -51,10 +51,10 @@ function chainIdToNetworkTarget(chainId: number): string {
  *
  *  Root order is excluded — the rootBuyer is the connected wallet at
  *  checkout, not designated by the seller's profile. */
-export function requiredCoSellerClauses(hydrated: HydratedAssembly): string[] {
+export function requiredCoSellerClauses(hydrated: HydratedProcessDesign): string[] {
     const clauses = new Set<string>();
     for (const entry of hydrated.assembly.agreements) {
-        if (assemblyFollows(entry).length === 0) continue; // root has no co-seller
+        if (processDesignFollows(entry).length === 0) continue; // root has no co-seller
         for (const clauseKey of Object.keys(agreementClauses(hydrated, entry))) {
             if (clauseIsProcessLog(clauseKey)) clauses.add(clauseKey);
         }
@@ -91,7 +91,7 @@ type AssemblyFetchState = "loading" | "loaded" | "error";
 export interface AssemblyChoice {
     slug: string;
     registeredBy: `0x${string}`;
-    assemblyHash: `0x${string}`;
+    processDesignHash: `0x${string}`;
     contentURI: string;
     blockNumber: bigint;
     networkTargets: readonly string[];
@@ -109,10 +109,10 @@ export interface AssemblyChoice {
     /** Available when state === "loaded". Sorted, deduped clause keys. */
     clauses: readonly string[] | null;
     /** The hydrated assembly when state === "loaded": the assembly verified
-     *  against `assemblyHash` and every agreement's registered agreement
+     *  against `processDesignHash` and every agreement's registered agreement
      *  verified against its key. Avoids re-fetching from consumers that need
      *  it (e.g. fork). */
-    hydratedAssembly: HydratedAssembly | null;
+    hydratedAssembly: HydratedProcessDesign | null;
     /** True when the registering wallet has withdrawn the stake — present only
      *  on reads that opted in to withdrawn rows (or wallet-scoped reads). */
     stakeWithdrawn: boolean;
@@ -139,7 +139,7 @@ export function useAssemblyChoices(
     // — and undefined on the marketing tier where no provider is mounted.
     const chainId = activeChain.id;
     const [hydratedState, setHydratedState] = useState<
-        Map<string, { state: AssemblyFetchState; hydratedAssembly: HydratedAssembly | null }>
+        Map<string, { state: AssemblyFetchState; hydratedAssembly: HydratedProcessDesign | null }>
     >(new Map());
     /** Hashes whose fetch has already been kicked off. A ref (not state)
      *  because we want to guard against double-fetch without retriggering
@@ -159,12 +159,12 @@ export function useAssemblyChoices(
          *  pin exactly like an unreachable one (absence, by its contract), so
          *  absence is re-checked the same way. */
         const read = (event: (typeof events)[number], attempt: number) => {
-            fetchHydratedAssembly(event.contentURI, event.assemblyHash).then(
+            fetchHydratedAssembly(event.contentURI, event.processDesignHash).then(
                 (hydratedAssembly) => {
                     setHydratedState((prev) => {
                         const next = new Map(prev);
                         next.set(
-                            event.assemblyHash,
+                            event.processDesignHash,
                             hydratedAssembly
                                 ? { state: "loaded", hydratedAssembly }
                                 : { state: "error", hydratedAssembly: null },
@@ -174,26 +174,26 @@ export function useAssemblyChoices(
                     // A served document that is not the one its root anchors —
                     // or a entry whose agreement failed the same way — never
                     // resolves: no re-read, the row says so.
-                    if (!hydratedAssembly && !getAssemblyLoadError(event.assemblyHash)) schedule(event, attempt);
+                    if (!hydratedAssembly && !getAssemblyLoadError(event.processDesignHash)) schedule(event, attempt);
                 },
                 () => {
                     setHydratedState((prev) => {
                         const next = new Map(prev);
-                        next.set(event.assemblyHash, { state: "error", hydratedAssembly: null });
+                        next.set(event.processDesignHash, { state: "error", hydratedAssembly: null });
                         return next;
                     });
-                    if (!getAssemblyLoadError(event.assemblyHash)) schedule(event, attempt);
+                    if (!getAssemblyLoadError(event.processDesignHash)) schedule(event, attempt);
                 },
             );
         };
         const schedule = (event: (typeof events)[number], attempt: number) =>
             scheduleContentRetry(timers, attempt, () => read(event, attempt + 1));
         for (const event of events) {
-            if (inFlightRef.current.has(event.assemblyHash)) continue;
-            inFlightRef.current.add(event.assemblyHash);
+            if (inFlightRef.current.has(event.processDesignHash)) continue;
+            inFlightRef.current.add(event.processDesignHash);
             setHydratedState((prev) => {
                 const next = new Map(prev);
-                next.set(event.assemblyHash, { state: "loading", hydratedAssembly: null });
+                next.set(event.processDesignHash, { state: "loading", hydratedAssembly: null });
                 return next;
             });
             read(event, 0);
@@ -218,7 +218,7 @@ export function useAssemblyChoices(
     const read = useMemo<NetworkRead<AssemblyChoice[]>>(() => mapRead(eventsRead, (events) => {
         const networkTarget = chainIdToNetworkTarget(chainId);
         return events.flatMap((event): AssemblyChoice[] => {
-            const entry = hydratedState.get(event.assemblyHash);
+            const entry = hydratedState.get(event.processDesignHash);
             const state = entry?.state ?? "loading";
             // A row whose document failed to read is not surfaced.
             if (state === "error") return [];
@@ -227,7 +227,7 @@ export function useAssemblyChoices(
             return [{
                 slug: event.slug,
                 registeredBy: event.registeredBy,
-                assemblyHash: event.assemblyHash,
+                processDesignHash: event.processDesignHash,
                 contentURI: event.contentURI,
                 blockNumber: event.blockNumber,
                 stakeWithdrawn: event.stakeWithdrawn,
@@ -238,7 +238,7 @@ export function useAssemblyChoices(
                 name: assembly?.name ?? event.slug,
                 summary: assembly?.summary ?? assembly?.description ?? null,
                 agreementCount: assembly ? assembly.agreements.length : null,
-                clauses: hydratedAssembly ? assemblyComposedClauseKeys(hydratedAssembly.assembly, hydratedAssembly.agreements) : null,
+                clauses: hydratedAssembly ? processDesignComposedClauseKeys(hydratedAssembly.assembly, hydratedAssembly.agreements) : null,
                 hydratedAssembly,
             }];
         });

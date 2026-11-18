@@ -26,7 +26,7 @@ function orderFor(agreement: Agreement): Order {
     return {
         orderHash: `0x${"cd".repeat(32)}`, processId: `0x${"ab".repeat(32)}`,
         buyer: BUYER, seller: SELLER, currency: `0x${"33".repeat(20)}`,
-        cumulativeValue: 1n, payment: 1n, state: OrderState.Active,
+        runningTotal: 1n, payment: 1n, state: OrderState.Active,
         sellerBond: 2n, buyerBond: 2n, salt: 1n, deadline: 0n,
         checkoutHash: computeCheckoutHash(agreement),
     };
@@ -46,7 +46,7 @@ const leavesOf = (agreement: Agreement) =>
 
 describe("buildHashAppendix — every leaf under the root", () => {
     it("lists the provenance leaf beside the clauses — the listed leaves are the tree's leaves", () => {
-        const agreement: Agreement = { ...base, provenance: { agreementHash: AGREEMENT_HASH, assemblyHash: COMPOSITION } };
+        const agreement: Agreement = { ...base, provenance: { agreementHash: AGREEMENT_HASH, processDesignHash: COMPOSITION } };
         const leaves = leavesOf(agreement);
         expect(leaves.filter((a) => a.kind === "agreement-provenance-leaf").map((a) => a.hash))
             .toEqual([computeProvenanceLeaf(AGREEMENT_HASH, COMPOSITION)]);
@@ -56,7 +56,7 @@ describe("buildHashAppendix — every leaf under the root", () => {
 
     it("lists the topology leaf from the agreement's own follows — the listed leaves still rebuild the root", () => {
         const parent = `0x${"7e".repeat(32)}` as `0x${string}`;
-        const agreement: Agreement = { ...base, provenance: { agreementHash: AGREEMENT_HASH, assemblyHash: COMPOSITION }, follows: [parent] };
+        const agreement: Agreement = { ...base, provenance: { agreementHash: AGREEMENT_HASH, processDesignHash: COMPOSITION }, follows: [parent] };
         const leaves = leavesOf(agreement);
         const topology = leaves.filter((a) => a.kind === "agreement-topology-leaf");
         expect(topology.map((a) => a.hash)).toEqual([computeTopologyLeaf([parent])]);

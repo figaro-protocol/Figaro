@@ -18,7 +18,7 @@ const order: Order = {
     buyer: BUYER,
     seller: SELLER,
     currency: `0x${"33".repeat(20)}`,
-    cumulativeValue: 3n,
+    runningTotal: 3n,
     payment: 3n,
     state: OrderState.Resolved,
     sellerBond: 6n,
@@ -66,7 +66,7 @@ describe("what resolution refunds on a sub-order whose running total is not its 
         orderHash: `0x${"ef".repeat(32)}`,
         seller: SUB_SELLER,
         payment: 2n,
-        cumulativeValue: 5n,
+        runningTotal: 5n,
         sellerBond: subBonds.sellerBond,
         buyerBond: subBonds.buyerBond,
     };

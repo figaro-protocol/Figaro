@@ -26,7 +26,7 @@
  *              exact-match cumulative accumulator enforces the sequence); the
  *              lead + supplier accept plain on /orders, the COURIER accepts
  *              with a SWAP-FUNDED bond on /sign — the sub-order funding
- *              regression (the funded quote must be 2×cumulativeValue, not
+ *              regression (the funded quote must be 2×runningTotal, not
  *              2×payment); after EVERY commit the exact bond deltas are
  *              asserted for every party (buyer 2× payment per order, each
  *              seller 2× its cumulative value, escrow up by both)
@@ -157,8 +157,8 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         expect(single, 'a single-order assembly is anchored (the seed)').toBeTruthy();
         const chainSlug = chain!.slug;
         const singleSlug = single!.slug;
-        const chainHash = chain!.assemblyHash;
-        const singleHash = single!.assemblyHash;
+        const chainHash = chain!.processDesignHash;
+        const singleHash = single!.processDesignHash;
 
         // ── GATE (idempotent): the LEAD binds both assemblies + designates the
         //    chain co-sellers THROUGH THE WIZARD. Mainnet semantics: register
@@ -356,7 +356,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
                 .toBe(seller.toLowerCase());
             test.info().annotations.push({
                 type: 'OrderCommitted',
-                description: `${label}: order=${event.args.orderHash} payment=${event.args.payment} cumulativeValue=${event.args.cumulativeValue} tx=${event.transactionHash}`,
+                description: `${label}: order=${event.args.orderHash} payment=${event.args.payment} runningTotal=${event.args.runningTotal} tx=${event.transactionHash}`,
             });
             return event;
         };
@@ -366,7 +366,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         const processId = rootEvent.args.processId!;
         expect(rootEvent.args.payment, 'root payment = the lead catalog price').toBe(parseEther('1'));
         {
-            const { buyerBond, sellerBond } = calculateBonds(rootEvent.args.cumulativeValue!, rootEvent.args.payment!);
+            const { buyerBond, sellerBond } = calculateBonds(rootEvent.args.runningTotal!, rootEvent.args.payment!);
             const [b, l, c] = await Promise.all([balanceOf(BUYER), balanceOf(LEAD.address), balanceOf(core)]);
             expect(buyer0 - b, 'after root: buyer down by its buyer bond').toBe(buyerBond);
             expect(lead0 - l, 'after root: lead down by its seller bond').toBe(sellerBond);
@@ -377,7 +377,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         // courier bonds against the CUMULATIVE value through its own link, not just its own payment
         // cut — and accepts WITH A SWAP-FUNDED BOND on /sign. This is the
         // sub-order funding regression (the swapped-calculateBonds-args bug):
-        // the funded quote must be 2×cumulativeValue, not 2×payment, or the
+        // the funded quote must be 2×runningTotal, not 2×payment, or the
         // coordinator's swap under-produces and swapAndCommit reverts. The
         // plain sub-order accept path stays covered by the supplier below and
         // by kit-diamond.
@@ -404,7 +404,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             // its collapse label, which only the effect's run renders.
             const fundingPanel = page.getByTestId('swap-funding-panel');
             const fundingToggle = page.getByTestId('seller-funding-toggle');
-            const courierBond = calculateBonds(rootEvent.args.cumulativeValue! + parseEther('1'), parseEther('1')).sellerBond;
+            const courierBond = calculateBonds(rootEvent.args.runningTotal! + parseEther('1'), parseEther('1')).sellerBond;
             const courierShort = (await balanceOf(COURIER)) < courierBond;
             if (courierShort) {
                 await expect(fundingToggle, 'the balance read auto-opened the funding panel (short of the bond)')
@@ -459,11 +459,11 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         expect(courierEvent.args.payment, "courier payment = the courier's own catalog price").toBe(parseEther('1'));
         // THE regression condition: a sub-order's cumulative value exceeds its
         // own payment — the two calculateBonds args are NOT interchangeable here.
-        expect(courierEvent.args.cumulativeValue! > courierEvent.args.payment!,
+        expect(courierEvent.args.runningTotal! > courierEvent.args.payment!,
             'the courier order is a true sub-order: cumulative value > own payment').toBe(true);
-        const rootBonds = calculateBonds(rootEvent.args.cumulativeValue!, rootEvent.args.payment!);
+        const rootBonds = calculateBonds(rootEvent.args.runningTotal!, rootEvent.args.payment!);
         {
-            const { buyerBond, sellerBond } = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
+            const { buyerBond, sellerBond } = calculateBonds(courierEvent.args.runningTotal!, courierEvent.args.payment!);
             const [b, c2, c, c2Permit] = await Promise.all([
                 balanceOf(BUYER), balanceOf(COURIER), balanceOf(core), balanceOfPermit(COURIER),
             ]);
@@ -478,8 +478,8 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         const supplierEvent = await acceptAs(SUPPLIER, 'supplier');
         expect(supplierEvent.args.processId, 'the supplier order extends the SAME process').toBe(processId);
         expect(supplierEvent.args.payment, "supplier payment = the supplier's own catalog price").toBe(parseEther('1'));
-        const courierBonds = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
-        const supplierBonds = calculateBonds(supplierEvent.args.cumulativeValue!, supplierEvent.args.payment!);
+        const courierBonds = calculateBonds(courierEvent.args.runningTotal!, courierEvent.args.payment!);
+        const supplierBonds = calculateBonds(supplierEvent.args.runningTotal!, supplierEvent.args.payment!);
         {
             const [b, s, c] = await Promise.all([balanceOf(BUYER), balanceOf(SUPPLIER), balanceOf(core)]);
             expect(buyer0 - b, 'after supplier: buyer down by all three buyer bonds')
@@ -548,7 +548,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         // bond + payment IN the denomination: the two token legs must close to
         // a net of exactly the courier's payment (the 1:1 venue makes the
         // wealth identity exact).
-        const courierBondsF = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
+        const courierBondsF = calculateBonds(courierEvent.args.runningTotal!, courierEvent.args.payment!);
         expect(courierF - courier0, 'courier denomination up by payment + its returned bond').toBe(parseEther('1') + courierBondsF.sellerBond);
         expect(courierPermit0 - courierPermitF, 'courier MPMT down by exactly the bond it swap-funded').toBe(courierBondsF.sellerBond);
         expect((courierF - courier0) - (courierPermit0 - courierPermitF),

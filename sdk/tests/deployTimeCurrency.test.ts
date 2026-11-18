@@ -14,12 +14,12 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-    assembleAuthored,
-    assemblyHashOf,
+    composeAuthoredProcessDesign,
+    processDesignHashOf,
     composeAuthoredAgreements,
     fillDeployTimeCurrency,
-    specIsAssemblyScoped,
-    type BuiltAssembly,
+    specIsProcessScoped,
+    type BuiltProcessDesign,
     type RegisteredAgreement,
 } from "../src/index.js";
 import { validateContent } from "../src/clauses/index.js";
@@ -36,17 +36,17 @@ const AGREEMENTS: Record<string, RegisteredAgreement> = Object.fromEntries(
         SPECS,
     )).map(([name, { document }]) => [name, document]),
 );
-const built = (file: string): BuiltAssembly => assembleAuthored(readJson(path.join(ROOT, "assemblies", file)), AGREEMENTS, SPECS);
+const built = (file: string): BuiltProcessDesign => composeAuthoredProcessDesign(readJson(path.join(ROOT, "assemblies", file)), AGREEMENTS, SPECS);
 
 const TOKEN = "0x6Bb43E3C52dd24CEeD652B9069A97cc9E21c99EB" as const;
 const OTHER = "0x0000000000000000000000000000000000000002" as const;
 
 /** The assembly-scoped denomination clauses an assembly composes, with the
  *  designer-filled address fields each declares — read from the specs. */
-function denominationPins(assembly: BuiltAssembly["assembly"]): { clauseKey: string; fields: string[] }[] {
+function denominationPins(assembly: BuiltProcessDesign["assembly"]): { clauseKey: string; fields: string[] }[] {
     return Object.keys(assembly.assemblyClauses ?? {}).flatMap((clauseKey) => {
         const spec = SPECS.get(clauseKey as `0x${string}`);
-        if (!spec || !specIsAssemblyScoped(spec) || spec.hints?.article !== "denomination") return [];
+        if (!spec || !specIsProcessScoped(spec) || spec.hints?.article !== "denomination") return [];
         const fills = spec.hints?.designFills ?? [];
         return [{ clauseKey, fields: spec.fields.filter((f) => f.type === "string" && f.format === "address-hex" && fills.includes(f.name)).map((f) => f.name) }];
     });
@@ -87,9 +87,9 @@ describe("fillDeployTimeCurrency — the deployment's token, read by the spec's 
 
     it("the anchored identity is the FILLED assembly's: the written file's hash never matches it, and the token picks the hash", () => {
         const { assembly } = built("equipment-hire.json");
-        const withToken = assemblyHashOf(fillDeployTimeCurrency(assembly, TOKEN, SPECS));
-        const withOther = assemblyHashOf(fillDeployTimeCurrency(assembly, OTHER, SPECS));
-        expect(withToken).not.toBe(assemblyHashOf(assembly));
+        const withToken = processDesignHashOf(fillDeployTimeCurrency(assembly, TOKEN, SPECS));
+        const withOther = processDesignHashOf(fillDeployTimeCurrency(assembly, OTHER, SPECS));
+        expect(withToken).not.toBe(processDesignHashOf(assembly));
         expect(withToken).not.toBe(withOther);
     });
 
@@ -98,7 +98,7 @@ describe("fillDeployTimeCurrency — the deployment's token, read by the spec's 
         const once = fillDeployTimeCurrency(assembly, TOKEN, SPECS);
         const twice = fillDeployTimeCurrency(once, OTHER, SPECS);
         expect(twice).toBe(once);
-        expect(assemblyHashOf(twice)).toBe(assemblyHashOf(once));
+        expect(processDesignHashOf(twice)).toBe(processDesignHashOf(once));
     });
 
     it("an assembly with no denomination pin is returned as it was", () => {

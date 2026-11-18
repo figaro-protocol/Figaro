@@ -21,7 +21,7 @@ import { isZeroBlindingValue, withFreshBlinding } from "../projection.js";
 import { assertOrderFitsResolveCap } from "../gasCeilings.js";
 import { restoreSignedProcessId } from "../commitments.js";
 import type { Agreement } from "../agreement.js";
-import type { Assembly } from "../assembly.js";
+import type { ProcessDesign } from "../assembly.js";
 import { buildUsageClaims, fetchUsageClaimContext, usageClaimKindCode, usageKeyId } from "../rpgf/index.js";
 import { isBytes32Hex, type Hex, type Address, type FigaroAddresses, type Commitment } from "../types.js";
 import type { ProposedAction, ResolveProcessAction } from "./proposer.js";
@@ -111,7 +111,7 @@ export async function resolveProcess(
 export interface UsageRecordingEntry {
     commitment: Commitment;
     agreement: Agreement;
-    assembly?: Assembly;
+    assembly?: ProcessDesign;
 }
 
 export interface UsageRecordingReport {
@@ -145,7 +145,7 @@ export interface UsageRecordingReport {
  * clauses stay off-chain), and the agreement's provenance leaf
  * (`Agreement.provenance`, the registered agreement and the assembly it
  * instantiated) gets the INDEPENDENT AGREEMENT leg (`recordAgreementUsage`)
- * and ASSEMBLY leg (`recordAssemblyUsage`, with the agreement's membership
+ * and ASSEMBLY leg (`recordProcessDesignUsage`, with the agreement's membership
  * proof) — the counter reproduces the leaf from the two keys. A key is
  * counted once per process, so a key two orders carry is sent once.
  * Tolerate-the-revert per leg; the report says what landed.
@@ -166,7 +166,7 @@ export async function recordProcessUsage(
         fetchUsageClaimContext(publicClient, usageCounter),
     ]);
     const report: UsageRecordingReport = { attempted: 0, recorded: 0, assemblyRecorded: false, agreementRecorded: false, failures: [] };
-    const send = async (functionName: "recordClauseUsage" | "recordAgreementUsage" | "recordAssemblyUsage", args: readonly unknown[]) => {
+    const send = async (functionName: "recordClauseUsage" | "recordAgreementUsage" | "recordProcessDesignUsage", args: readonly unknown[]) => {
         const hash = await walletClient.writeContract({
             chain: walletClient.chain ?? null, account, address: usageCounter,
             abi: USAGE_COUNTER_ABI, functionName, args: args as never,
@@ -198,19 +198,19 @@ export async function recordProcessUsage(
         }
         for (const claim of claims) {
             // Counted once per (kind, key, process): the families never share a entry.
-            const key = usageKeyId(usageClaimKindCode(claim), claim.clause_or_assembly);
-            if ("Assembly" in claim.kind) {
-                const { agreement_hash, slot_content_hash, membership_proof } = claim.kind.Assembly;
+            const key = usageKeyId(usageClaimKindCode(claim), claim.clause_or_process);
+            if ("Process" in claim.kind) {
+                const { agreement_hash, agreement_content_hash, membership_proof } = claim.kind.Process;
                 if (report.assemblyRecorded || sent.has(key)) continue;
                 sent.add(key);
                 try {
-                    await send("recordAssemblyUsage", [
-                        commitment, claim.clause_or_assembly, agreement_hash, slot_content_hash,
+                    await send("recordProcessDesignUsage", [
+                        commitment, claim.clause_or_process, agreement_hash, agreement_content_hash,
                         claim.inclusion_proof, membership_proof,
                     ]);
                     report.assemblyRecorded = true;
                 } catch (error) {
-                    report.failures.push(`assembly ${claim.clause_or_assembly}: ${error instanceof Error ? error.message : String(error)}`);
+                    report.failures.push(`assembly ${claim.clause_or_process}: ${error instanceof Error ? error.message : String(error)}`);
                 }
                 continue;
             }
@@ -219,11 +219,11 @@ export async function recordProcessUsage(
                 sent.add(key);
                 try {
                     await send("recordAgreementUsage", [
-                        commitment, claim.clause_or_assembly, claim.kind.Agreement.assembly_hash, claim.inclusion_proof,
+                        commitment, claim.clause_or_process, claim.kind.Agreement.process_design_hash, claim.inclusion_proof,
                     ]);
                     report.agreementRecorded = true;
                 } catch (error) {
-                    report.failures.push(`agreement ${claim.clause_or_assembly}: ${error instanceof Error ? error.message : String(error)}`);
+                    report.failures.push(`agreement ${claim.clause_or_process}: ${error instanceof Error ? error.message : String(error)}`);
                 }
                 continue;
             }
@@ -231,10 +231,10 @@ export async function recordProcessUsage(
             sent.add(key);
             report.attempted++;
             try {
-                await send("recordClauseUsage", [commitment, claim.clause_or_assembly, claim.kind.Clause.clause_data_hash, claim.inclusion_proof]);
+                await send("recordClauseUsage", [commitment, claim.clause_or_process, claim.kind.Clause.clause_data_hash, claim.inclusion_proof]);
                 report.recorded++;
             } catch (error) {
-                report.failures.push(`clause ${claim.clause_or_assembly}: ${error instanceof Error ? error.message : String(error)}`);
+                report.failures.push(`clause ${claim.clause_or_process}: ${error instanceof Error ? error.message : String(error)}`);
             }
         }
     }

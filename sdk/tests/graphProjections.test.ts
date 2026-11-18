@@ -31,7 +31,7 @@ function mkCommit(overrides: Partial<OrderCommittedEvent> = {}): OrderCommittedE
         seller: SELLER,
         currency: TOKEN,
         payment: 100n,
-        cumulativeValue: 100n,
+        runningTotal: 100n,
         checkoutHash: "0x" as Hex,
         salt: 1n,
         deadline: 999999999n,
@@ -51,7 +51,7 @@ function resolvedChainEvents(): CoreEvents {
                 buyer: SELLER,
                 seller: SELLER2,
                 payment: 150n,
-                cumulativeValue: 250n,
+                runningTotal: 250n,
                 blockNumber: 2,
             }),
         ],
@@ -83,7 +83,7 @@ describe("projectResolutionGraph", () => {
         expect(chain.currency).toBe(TOKEN);
         expect(chain.resolved).toBe(true);
         // Linear, in accumulator order — FigaroCore's own chain.
-        expect(chain.orders.map((o) => o.cumulativeValue)).toEqual([100n, 250n]);
+        expect(chain.orders.map((o) => o.runningTotal)).toEqual([100n, 250n]);
 
         const [root, sub] = chain.orders;
         expect(root.locked).toEqual({ sellerBond: 200n, buyerBond: 200n, totalLocked: 400n });
@@ -115,7 +115,7 @@ describe("projectValueFlow", () => {
             mkEvents({
                 orderCommitted: [
                     mkCommit(),
-                    mkCommit({ orderHash: OHASH2, processId: PID2, currency: TOKEN2, payment: 40n, cumulativeValue: 40n }),
+                    mkCommit({ orderHash: OHASH2, processId: PID2, currency: TOKEN2, payment: 40n, runningTotal: 40n }),
                 ],
                 orderResolved: [
                     { orderHash: OHASH, processId: PID, sellerPayout: 300n, buyerPayout: 100n, blockNumber: 5 },
@@ -189,10 +189,10 @@ describe("marketShape", () => {
                 buyer: SELLER,
                 seller: SELLER2,
                 payment: 150n,
-                cumulativeValue: 250n,
+                runningTotal: 250n,
                 blockNumber: 2,
             }),
-            mkCommit({ orderHash: OHASH3, processId: PID2, payment: 70n, cumulativeValue: 70n, blockNumber: 9 }),
+            mkCommit({ orderHash: OHASH3, processId: PID2, payment: 70n, runningTotal: 70n, blockNumber: 9 }),
         ],
         orderResolved: [
             { orderHash: OHASH, processId: PID, sellerPayout: 300n, buyerPayout: 100n, blockNumber: 5 },
@@ -224,8 +224,8 @@ describe("marketShape", () => {
         const fanOut = mkEvents({
             orderCommitted: [
                 mkCommit({ blockNumber: 1 }),
-                mkCommit({ orderHash: OHASH2, seller: SELLER2, payment: 50n, cumulativeValue: 150n, blockNumber: 2 }),
-                mkCommit({ orderHash: OHASH3, seller: SELLER2, payment: 25n, cumulativeValue: 175n, blockNumber: 3 }),
+                mkCommit({ orderHash: OHASH2, seller: SELLER2, payment: 50n, runningTotal: 150n, blockNumber: 2 }),
+                mkCommit({ orderHash: OHASH3, seller: SELLER2, payment: 25n, runningTotal: 175n, blockNumber: 3 }),
             ],
         });
         const parents = new Map<Hex, Hex[]>([
@@ -246,7 +246,7 @@ describe("marketShape", () => {
         const twoOrders = mkEvents({
             orderCommitted: [
                 mkCommit({ blockNumber: 1 }),
-                mkCommit({ orderHash: OHASH2, seller: SELLER2, payment: 50n, cumulativeValue: 150n, blockNumber: 2 }),
+                mkCommit({ orderHash: OHASH2, seller: SELLER2, payment: 50n, runningTotal: 150n, blockNumber: 2 }),
             ],
         });
         // The root's leaf is known ([]); the sub-order's is not (undefined).

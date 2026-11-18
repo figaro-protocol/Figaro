@@ -187,7 +187,7 @@ function oneLoadedAssembly() {
         read: {
             status: "present" as const,
             value: [{
-                assemblyHash: MARKET, name: MARKET_NAME, state: "loaded",
+                processDesignHash: MARKET, name: MARKET_NAME, state: "loaded",
                 hydratedAssembly: {
                     assembly: { agreements: [{ id: "agreement-0", agreementHash: AGREEMENT }] },
                     agreements: { [AGREEMENT]: { clauses: {} } },

@@ -96,7 +96,7 @@ fn apply_commit(
     tracker: &mut TokenTracker,
 ) -> Result<(B256, B256), KernelError> {
     // ── Pre-checks ──
-    if c.deadline < U256::from(timestamp) {
+    if c.commit_deadline < U256::from(timestamp) {
         return Err(KernelError::DeadlineExpired);
     }
     if c.payment.is_zero() {
@@ -132,15 +132,15 @@ fn apply_commit(
         if state.process(&process_id)?.is_some() {
             return Err(KernelError::ProcessAlreadyExists);
         }
-        if c.expected_cumulative_value != c.payment {
+        if c.running_total != c.payment {
             return Err(KernelError::InvalidRootCumulativeValue);
         }
         state.insert_process(
             process_id,
             ProcessState {
                 root_buyer: c.buyer,
-                currency: c.currency,
-                cumulative_value: c.payment,
+                currency: c.token,
+                running_total: c.payment,
                 active_order_count: 1,
             },
         )?;
@@ -155,20 +155,20 @@ fn apply_commit(
         if c.buyer != ps.root_buyer {
             return Err(KernelError::NotProcessBuyer);
         }
-        if c.currency != ps.currency {
+        if c.token != ps.currency {
             return Err(KernelError::CurrencyMismatch);
         }
         let actual = ps
-            .cumulative_value
+            .running_total
             .checked_add(c.payment)
             .ok_or(KernelError::Overflow)?;
-        if c.expected_cumulative_value != actual {
+        if c.running_total != actual {
             return Err(KernelError::CumulativeValueMismatch {
-                expected: c.expected_cumulative_value,
+                expected: c.running_total,
                 actual,
             });
         }
-        ps.cumulative_value = actual;
+        ps.running_total = actual;
         ps.active_order_count += 1;
     }
 
@@ -185,14 +185,14 @@ fn apply_commit(
         .payment
         .checked_mul(U256::from(2))
         .ok_or(KernelError::Overflow)?;
-    // Seller bond = 2 × expectedCumulativeValue.
+    // Seller bond = 2 × runningTotal.
     let seller_bond = c
-        .expected_cumulative_value
+        .running_total
         .checked_mul(U256::from(2))
         .ok_or(KernelError::Overflow)?;
 
-    tracker.deposit(c.currency, c.buyer, buyer_bond)?;
-    tracker.deposit(c.currency, c.seller, seller_bond)?;
+    tracker.deposit(c.token, c.buyer, buyer_bond)?;
+    tracker.deposit(c.token, c.seller, seller_bond)?;
 
     Ok((process_id, order_hash))
 }
@@ -211,7 +211,7 @@ fn apply_resolve(
     state: &mut KernelState,
     domain: &B256,
     process_id: &B256,
-    cumulative_value: &U256,
+    running_total: &U256,
     commitments: &[Commitment],
     buyer_sig: Option<&Signature>,
     tracker: &mut TokenTracker,
@@ -222,7 +222,7 @@ fn apply_resolve(
 
     // ── Buyer authorization via EIP-712 signature ──
     if let Some(buyer_sig) = buyer_sig {
-        let resolve_hash = resolve_struct_hash(process_id, cumulative_value);
+        let resolve_hash = resolve_struct_hash(process_id, running_total);
         let digest = typed_data_hash(domain, &resolve_hash);
         let recovered = recover_signer(&digest, buyer_sig)?;
         if recovered != ps.root_buyer {
@@ -240,10 +240,10 @@ fn apply_resolve(
     // The cumulative value rises at every commit, so the signed value names
     // one prefix of the process: the one the buyer signed for, or, signed
     // ahead, the one its own later commits bring the process to.
-    if *cumulative_value != ps.cumulative_value {
+    if *running_total != ps.running_total {
         return Err(KernelError::StaleResolveAuthorization {
-            signed: *cumulative_value,
-            current: ps.cumulative_value,
+            signed: *running_total,
+            current: ps.running_total,
         });
     }
     if commitments.len() as u64 != ps.active_order_count {
@@ -288,7 +288,7 @@ fn apply_resolve(
 /// The two payout legs one order releases at resolution — the batch-path
 /// equivalent of `FigaroCore.OrderResolved(sellerPayout, buyerPayout)`.
 ///
-/// Seller payout = `expectedCumulativeValue × 2 + payment` (the seller's
+/// Seller payout = `runningTotal × 2 + payment` (the seller's
 /// own 2× bond back, plus what the buyer pays). Buyer payout = `payment`
 /// (the remainder of the buyer's 2× bond).
 ///
@@ -297,7 +297,7 @@ fn apply_resolve(
 /// caller, so the published figure and the resolved figure cannot drift.
 pub fn resolution_payouts(c: &Commitment) -> Result<(U256, U256), KernelError> {
     let seller_payout = c
-        .expected_cumulative_value
+        .running_total
         .checked_mul(U256::from(2))
         .ok_or(KernelError::Overflow)?
         .checked_add(c.payment)
@@ -336,7 +336,7 @@ fn require_known_active_commitment(
     match state.order_status_of(&order_hash)? {
         0 => Err(KernelError::UnknownOrder),
         1 => Ok((order_hash, process_id)),
-        _ => Err(KernelError::OrderResolved),
+        _ => Err(KernelError::OrderAlreadyResolved),
     }
 }
 
@@ -350,18 +350,18 @@ fn require_known_active_commitment(
 /// credits anything under it. Every leaf of an agreement is
 /// `keccak256(keccak256(key ‖ keccak256(clauseData)))` (`docs/CLAUSES.md`
 /// § "Every clause is a merkle leaf"); this one's clauseData is
-/// `{"agreementHash":"0x<64 lowercase hex>","assemblyHash":"0x<64 lowercase hex>"}`.
+/// `{"agreementHash":"0x<64 lowercase hex>","processDesignHash":"0x<64 lowercase hex>"}`.
 /// `UsageCounter.provenanceLeaf` holds the same constant on chain.
 pub const PROVENANCE_LEAF_KEY: B256 =
     b256!("26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6");
 
 /// The key of an assembly root's terms leaf,
 /// `keccak256("figaro-assembly-terms")` — the leaf over the assembly-scoped
-/// clauses, beside one leaf per order slot. A constant of the format, never
+/// clauses, beside one leaf per agreement. A constant of the format, never
 /// a registration and never an agreementHash, so the terms leaf can never
-/// pass as an order slot. `UsageCounter.assemblyTermsLeaf` holds the same
+/// pass as an agreement's leaf. `UsageCounter.processTermsLeaf` holds the same
 /// constant on chain.
-pub const ASSEMBLY_TERMS_LEAF_KEY: B256 =
+pub const PROCESS_TERMS_LEAF_KEY: B256 =
     b256!("efe0eaa5bce6c7b996059fedd6d0e4827f99c474563f43ff55e6e593e5915860");
 
 /// The domain mixed into every leaf of an assembly's tree,
@@ -369,23 +369,23 @@ pub const ASSEMBLY_TERMS_LEAF_KEY: B256 =
 /// `keccak256(keccak256(domain ‖ key ‖ content_hash))` where the agreement
 /// format's leaf is `keccak256(keccak256(key ‖ content_hash))`, so a tree over
 /// agreements never shares a shape with a tree over clauses.
-/// `UsageCounter.assemblyLeafDomain` and the SDK's `ASSEMBLY_LEAF_DOMAIN` hold
+/// `UsageCounter.processLeafDomain` and the SDK's `PROCESS_LEAF_DOMAIN` hold
 /// the same constant.
-pub const ASSEMBLY_LEAF_DOMAIN: B256 =
+pub const PROCESS_LEAF_DOMAIN: B256 =
     b256!("b44cab2cf6dbf97cfe57060c8f30ee31552bc93f52859b4f32bd145f2882dfc6");
 
 /// Whether `key` is one of the format's two reserved leaf keys, refused
 /// wherever a key is taken: as a usage claim's key of any kind, and as the
 /// agreementHash of an assembly claim's agreement position.
 pub fn is_reserved_key(key: &B256) -> bool {
-    *key == PROVENANCE_LEAF_KEY || *key == ASSEMBLY_TERMS_LEAF_KEY
+    *key == PROVENANCE_LEAF_KEY || *key == PROCESS_TERMS_LEAF_KEY
 }
 
 /// The agreement format's rule for a plaintext attestation of the reserved
 /// provenance leaf. The leaf's content is fixed by the format, so the
 /// guest REPRODUCES it rather than validating it against a spec: the
 /// committed bytes must be exactly `provenance_leaf_bytes` of the
-/// agreementHash and assemblyHash they carry, `content_ref` must be their keccak (as a
+/// agreementHash and processDesignHash they carry, `content_ref` must be their keccak (as a
 /// clause's clauseDataHash), and the leaf over them must open against the
 /// signed `checkout_hash`. `spec_json`, `content_json` and `content_kind`
 /// are not consulted, and no spec binding is emitted: there is no registry
@@ -400,7 +400,7 @@ fn validate_provenance_attestation(
         return Err(KernelError::ProvenanceLeafNotCanonical);
     }
     let first = PROVENANCE_AGREEMENT_PREFIX.len();
-    let second = first + 64 + PROVENANCE_ASSEMBLY_INFIX.len();
+    let second = first + 64 + PROVENANCE_PROCESS_DESIGN_INFIX.len();
     let word = |at: usize| {
         alloy_primitives::hex::decode(&bytes[at..at + 64])
             .ok()
@@ -408,8 +408,8 @@ fn validate_provenance_attestation(
             .ok_or(KernelError::ProvenanceLeafNotCanonical)
     };
     let agreement_hash = word(first)?;
-    let assembly_hash = word(second)?;
-    if provenance_leaf_bytes(&agreement_hash, &assembly_hash) != bytes {
+    let process_design_hash = word(second)?;
+    if provenance_leaf_bytes(&agreement_hash, &process_design_hash) != bytes {
         return Err(KernelError::ProvenanceLeafNotCanonical);
     }
 
@@ -434,9 +434,10 @@ fn validate_provenance_attestation(
 ///     `keccak256` of its bytes, hashed verbatim as carried, equals the
 ///     op's `clause_id` — a clause key IS the hash of the canonical spec
 ///     without `block`, the bytes the witness carries; the spec's own
-///     `clauseId` and `version` are words inside it and key nothing. The binding `SpecBinding { clause_id }` is returned for
-///     the public-values commitment; the on-chain verifier accepts the
-///     batch only if `ClauseRegistry.registered(clause_id)` — so the constraint set is
+///     `clauseId` and `version` are words inside it and key nothing. The binding `(clause_id, keccak256(spec_json))`, both
+///     fields equal, is returned for the public-values commitment; the
+///     on-chain verifier accepts the batch only if they are equal and
+///     `ClauseRegistry.registered(clause_id)` — so the constraint set is
 ///     anchored by the registry, not by anything compiled in, and a caller
 ///     cannot weaken validation with a permissive spec.
 ///   Gate C — content: for a `RuntimeWitness`, `content_json` validates
@@ -700,7 +701,7 @@ pub fn compute_spec_bindings_hash(bindings: &[SpecBinding]) -> B256 {
 ///
 /// ```text
 /// period(1) ++ provenanceLeaf(32)
-///   ++ len(uses)(8) ++ [clauseOrAssembly(32) ++ kind(1) ++ processId(32) ++ seller(20)]*
+///   ++ len(uses)(8) ++ [clauseOrProcess(32) ++ kind(1) ++ processId(32) ++ seller(20)]*
 /// ```
 ///
 /// Span `41 + 85n` for n uses.
@@ -710,7 +711,7 @@ pub fn compute_usage_accrual_hash(period: u8, provenance_leaf: &B256, uses: &[Ba
     data.extend_from_slice(provenance_leaf.as_slice());
     data.extend_from_slice(&(uses.len() as u64).to_be_bytes());
     for u in uses {
-        data.extend_from_slice(u.clause_or_assembly.as_slice());
+        data.extend_from_slice(u.clause_or_process.as_slice());
         data.push(u.kind);
         data.extend_from_slice(u.process_id.as_slice());
         data.extend_from_slice(u.seller.as_slice());
@@ -720,24 +721,24 @@ pub fn compute_usage_accrual_hash(period: u8, provenance_leaf: &B256, uses: &[Ba
 
 /// The provenance leaf's bytes before the agreementHash's hex digits.
 const PROVENANCE_AGREEMENT_PREFIX: &[u8] = b"{\"agreementHash\":\"0x";
-/// The bytes between the agreementHash's digits and the assemblyHash's.
-const PROVENANCE_ASSEMBLY_INFIX: &[u8] = b"\",\"assemblyHash\":\"0x";
-/// The bytes after the assemblyHash's digits.
+/// The bytes between the agreementHash's digits and the processDesignHash's.
+const PROVENANCE_PROCESS_DESIGN_INFIX: &[u8] = b"\",\"processDesignHash\":\"0x";
+/// The bytes after the processDesignHash's digits.
 const PROVENANCE_SUFFIX: &[u8] = b"\"}";
 /// The provenance leaf's one length: two 64-digit words and the frame.
 const PROVENANCE_LEAF_LEN: usize = PROVENANCE_AGREEMENT_PREFIX.len()
     + 64
-    + PROVENANCE_ASSEMBLY_INFIX.len()
+    + PROVENANCE_PROCESS_DESIGN_INFIX.len()
     + 64
     + PROVENANCE_SUFFIX.len();
 
 /// The canonical-JSON bytes of the reserved provenance leaf's clause data,
-/// `{"agreementHash":"0x…","assemblyHash":"0x…"}` with lowercase hex and
+/// `{"agreementHash":"0x…","processDesignHash":"0x…"}` with lowercase hex and
 /// the keys in that order, reproduced from the two keys alone — the Rust
 /// twin of `UsageCounter._toLowerHexString`'s use in `recordAgreementUsage`
-/// and `recordAssemblyUsage`. Reproduction, never parsing: a wrong key on
+/// and `recordProcessDesignUsage`. Reproduction, never parsing: a wrong key on
 /// either side derives a leaf that is simply not in the tree.
-pub fn provenance_leaf_bytes(agreement_hash: &B256, assembly_hash: &B256) -> Vec<u8> {
+pub fn provenance_leaf_bytes(agreement_hash: &B256, process_design_hash: &B256) -> Vec<u8> {
     const HEX: &[u8; 16] = b"0123456789abcdef";
     let mut out = Vec::with_capacity(PROVENANCE_LEAF_LEN);
     let push_word = |out: &mut Vec<u8>, word: &B256| {
@@ -748,8 +749,8 @@ pub fn provenance_leaf_bytes(agreement_hash: &B256, assembly_hash: &B256) -> Vec
     };
     out.extend_from_slice(PROVENANCE_AGREEMENT_PREFIX);
     push_word(&mut out, agreement_hash);
-    out.extend_from_slice(PROVENANCE_ASSEMBLY_INFIX);
-    push_word(&mut out, assembly_hash);
+    out.extend_from_slice(PROVENANCE_PROCESS_DESIGN_INFIX);
+    push_word(&mut out, process_design_hash);
     out.extend_from_slice(PROVENANCE_SUFFIX);
     out
 }
@@ -765,12 +766,12 @@ fn format_leaf(key: &B256, content_hash: &B256) -> B256 {
 }
 
 /// A leaf of an assembly's tree,
-/// `keccak256(keccak256(ASSEMBLY_LEAF_DOMAIN ‖ key ‖ content_hash))` — the
+/// `keccak256(keccak256(PROCESS_LEAF_DOMAIN ‖ key ‖ content_hash))` — the
 /// convention for an agreement's position in an assembly's root and for the
 /// assembly-terms leaf, distinct in shape from the agreement format's leaf.
 pub fn assembly_leaf(key: &B256, content_hash: &B256) -> B256 {
     let mut preimage = [0u8; 96];
-    preimage[..32].copy_from_slice(ASSEMBLY_LEAF_DOMAIN.as_slice());
+    preimage[..32].copy_from_slice(PROCESS_LEAF_DOMAIN.as_slice());
     preimage[32..64].copy_from_slice(key.as_slice());
     preimage[64..].copy_from_slice(content_hash.as_slice());
     keccak256(keccak256(preimage))
@@ -779,14 +780,14 @@ pub fn assembly_leaf(key: &B256, content_hash: &B256) -> B256 {
 /// Credit designer-reward usage for orders the BATCH path has resolved.
 ///
 /// Every claim is proved, never trusted — the same facts the counter's
-/// `recordClauseUsage`, `recordAgreementUsage` and `recordAssemblyUsage`
+/// `recordClauseUsage`, `recordAgreementUsage` and `recordProcessDesignUsage`
 /// prove on the direct path:
 ///   1. the order is real and RESOLVED in this batch's post-state,
 ///   2. the clause, or the provenance leaf naming the agreement and the
 ///      assembly, was committed in the agreement both parties signed
 ///      (merkle inclusion against `checkout_hash`), and
 ///   3. for an assembly, the order-slot leaf of the named agreement is a leaf of
-///      the assemblyHash (merkle membership against the assembly root).
+///      the processDesignHash (merkle membership against the assembly root).
 ///
 /// What the guest CANNOT prove is live chain state, and the counter
 /// checks it as it checks a direct call: whether the seller holds a live
@@ -815,12 +816,12 @@ fn apply_usage_claims(
         //    whatever a registry holds at that bytes32. Nor is either ever
         //    the agreementHash of an agreement position — the terms leaf is not an
         //    agreement position. The counter refuses both by the same constants.
-        if is_reserved_key(&claim.clause_or_assembly) {
+        if is_reserved_key(&claim.clause_or_process) {
             return Err(KernelError::ReservedKeyIsNotARegistration(
-                claim.clause_or_assembly,
+                claim.clause_or_process,
             ));
         }
-        if let UsageClaimKind::Assembly { agreement_hash, .. } = &claim.kind {
+        if let UsageClaimKind::Process { agreement_hash, .. } = &claim.kind {
             if is_reserved_key(agreement_hash) {
                 return Err(KernelError::ReservedKeyIsNotARegistration(*agreement_hash));
             }
@@ -838,24 +839,26 @@ fn apply_usage_claims(
         // 2. The key was committed in the signed agreement. A clause
         //    proves its own leaf; an agreement and an assembly prove the
         //    PROVENANCE leaf, whose clause content is reproduced from the
-        //    agreementHash and the assemblyHash together, under the format's
+        //    agreementHash and the processDesignHash together, under the format's
         //    own key: no batch input names it (blind audit F-7).
         let (leaf_key, clause_data_hash) = match &claim.kind {
             UsageClaimKind::Clause { clause_data_hash } => {
-                (claim.clause_or_assembly, *clause_data_hash)
+                (claim.clause_or_process, *clause_data_hash)
             }
-            UsageClaimKind::Agreement { assembly_hash } => (
+            UsageClaimKind::Agreement {
+                process_design_hash,
+            } => (
                 PROVENANCE_LEAF_KEY,
                 keccak256(provenance_leaf_bytes(
-                    &claim.clause_or_assembly,
-                    assembly_hash,
+                    &claim.clause_or_process,
+                    process_design_hash,
                 )),
             ),
-            UsageClaimKind::Assembly { agreement_hash, .. } => (
+            UsageClaimKind::Process { agreement_hash, .. } => (
                 PROVENANCE_LEAF_KEY,
                 keccak256(provenance_leaf_bytes(
                     agreement_hash,
-                    &claim.clause_or_assembly,
+                    &claim.clause_or_process,
                 )),
             ),
         };
@@ -868,19 +871,19 @@ fn apply_usage_claims(
         }
 
         // 2b. An assembly also proves the agreement is one of its own
-        //     agreements: the agreement's leaf opens under the assemblyHash with the same
+        //     agreements: the agreement's leaf opens under the processDesignHash with the same
         //     sorted-pair verifier. A failed membership proof refuses the
         //     claim as a failed inclusion proof does.
-        if let UsageClaimKind::Assembly {
+        if let UsageClaimKind::Process {
             agreement_hash,
-            slot_content_hash,
+            agreement_content_hash,
             membership_proof,
         } = &claim.kind
         {
             if !crate::merkle::verify_inclusion(
                 membership_proof,
-                claim.clause_or_assembly,
-                assembly_leaf(agreement_hash, slot_content_hash),
+                claim.clause_or_process,
+                assembly_leaf(agreement_hash, agreement_content_hash),
             ) {
                 return Err(KernelError::UsageInvalidInclusionProof);
             }
@@ -888,9 +891,9 @@ fn apply_usage_claims(
 
         // 3. One use per (kind, key, process) in the batch: the first claim
         //    names the seller, as the first direct call does.
-        if seen.insert((kind, claim.clause_or_assembly, process_id)) {
+        if seen.insert((kind, claim.clause_or_process, process_id)) {
             uses.push(BatchUse {
-                clause_or_assembly: claim.clause_or_assembly,
+                clause_or_process: claim.clause_or_process,
                 kind,
                 process_id,
                 seller: claim.order.seller,
@@ -970,7 +973,7 @@ pub fn apply_operations(
             }
             KernelOp::Resolve {
                 process_id,
-                cumulative_value,
+                running_total,
                 commitments,
                 buyer_sig,
             } => {
@@ -978,7 +981,7 @@ pub fn apply_operations(
                     state,
                     &domain,
                     process_id,
-                    cumulative_value,
+                    running_total,
                     commitments,
                     Some(buyer_sig),
                     &mut tracker,
@@ -986,7 +989,7 @@ pub fn apply_operations(
             }
             KernelOp::ResolveByWalletCode {
                 process_id,
-                cumulative_value,
+                running_total,
                 commitments,
                 ..
             } => {
@@ -994,7 +997,7 @@ pub fn apply_operations(
                     state,
                     &domain,
                     process_id,
-                    cumulative_value,
+                    running_total,
                     commitments,
                     None,
                     &mut tracker,

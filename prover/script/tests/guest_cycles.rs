@@ -28,7 +28,7 @@ async fn the_guests_cycles_do_not_grow_with_the_stored_state() {
                 ProcessState {
                     root_buyer: Address::repeat_byte(1),
                     currency: Address::repeat_byte(2),
-                    cumulative_value: U256::from(100u64),
+                    running_total: U256::from(100u64),
                     active_order_count: 0,
                 },
             ));

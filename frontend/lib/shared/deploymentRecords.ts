@@ -42,7 +42,7 @@ export function buildRecord(chainId: number): DeploymentRecord {
         attestationCoordinator: address(process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR),
         clauseRegistry: address(process.env.NEXT_PUBLIC_CLAUSE_REGISTRY),
         membersRegistry: address(process.env.NEXT_PUBLIC_MEMBERS_REGISTRY),
-        assemblyRegistry: address(process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY),
+        processRegistry: address(process.env.NEXT_PUBLIC_PROCESS_REGISTRY),
         agreementRegistry: address(process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY),
         florinToken: address(process.env.NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS),
         usageCounter: address(process.env.NEXT_PUBLIC_USAGE_COUNTER),
@@ -65,7 +65,7 @@ export function missingBuildRecordVariables(): string[] {
     if (!process.env.NEXT_PUBLIC_FIGARO_CORE) missing.push("NEXT_PUBLIC_FIGARO_CORE");
     if (!process.env.NEXT_PUBLIC_CLAUSE_REGISTRY) missing.push("NEXT_PUBLIC_CLAUSE_REGISTRY");
     if (!process.env.NEXT_PUBLIC_MEMBERS_REGISTRY) missing.push("NEXT_PUBLIC_MEMBERS_REGISTRY");
-    if (!process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY) missing.push("NEXT_PUBLIC_ASSEMBLY_REGISTRY");
+    if (!process.env.NEXT_PUBLIC_PROCESS_REGISTRY) missing.push("NEXT_PUBLIC_PROCESS_REGISTRY");
     if (!process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY) missing.push("NEXT_PUBLIC_AGREEMENT_REGISTRY");
     return missing;
 }

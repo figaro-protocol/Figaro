@@ -39,13 +39,13 @@ contract MembersRegistryTest is Test {
 
     function test_register_reverts_insufficient_fee() public {
         vm.prank(alice);
-        vm.expectRevert(MembersRegistry.InsufficientDeposit.selector);
+        vm.expectRevert(MembersRegistry.WrongStake.selector);
         reg.register{value: REG_DEPOSIT - 1}("ipfs://x");
     }
 
     function test_register_reverts_excess_deposit() public {
         vm.prank(alice);
-        vm.expectRevert(MembersRegistry.InsufficientDeposit.selector);
+        vm.expectRevert(MembersRegistry.WrongStake.selector);
         reg.register{value: REG_DEPOSIT + 1}("ipfs://x");
     }
 

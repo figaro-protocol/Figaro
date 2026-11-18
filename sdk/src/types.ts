@@ -45,7 +45,7 @@ export interface Order {
     seller: Address;
     currency: Address;
     payment: bigint;
-    cumulativeValue: bigint;
+    runningTotal: bigint;
     checkoutHash: Hex;
     /** Salt from the commitment (for full reconstruction at resolution). */
     salt: bigint;
@@ -73,7 +73,7 @@ export interface Process {
     processId: Hex;
     rootBuyer: Address;
     currency: Address;
-    cumulativeValue: bigint;
+    runningTotal: bigint;
     orders: Map<Hex, Order>;
     resolved: boolean;
 }
@@ -87,7 +87,7 @@ export interface OrderCommittedEvent {
     seller: Address;
     currency: Address;
     payment: bigint;
-    cumulativeValue: bigint;
+    runningTotal: bigint;
     checkoutHash: Hex;
     salt: bigint;
     deadline: bigint;
@@ -177,10 +177,10 @@ export interface MemberWithdrawnEvent {
     logIndex: number;
 }
 
-/** AssemblyRegistry `AssemblyRegistered`. Identity IS `assemblyHash`; the
- *  human slug is derived off-chain (AssemblyRegistry.sol:16-21). */
-export interface AssemblyRegisteredEvent {
-    assemblyHash: Hex;
+/** ProcessRegistry `ProcessRegistered`. Identity IS `processDesignHash`; the
+ *  human slug is derived off-chain (ProcessRegistry.sol:16-21). */
+export interface ProcessRegisteredEvent {
+    processDesignHash: Hex;
     registeredBy: Address;
     contentURI: string;
     blockNumber: number;
@@ -189,9 +189,9 @@ export interface AssemblyRegisteredEvent {
     transactionHash: Hex | null;
 }
 
-/** AssemblyRegistry `DepositWithdrawn` — keyed by `assemblyHash` directly. */
-export interface AssemblyWithdrawnEvent {
-    assemblyHash: Hex;
+/** ProcessRegistry `DepositWithdrawn` — keyed by `processDesignHash` directly. */
+export interface ProcessWithdrawnEvent {
+    processDesignHash: Hex;
     registeredBy: Address;
     blockNumber: number;
     logIndex: number;
@@ -241,8 +241,8 @@ export interface RegisteredMember {
     metadataURI: string;
 }
 
-export interface RegisteredAssembly {
-    assemblyHash: Hex;
+export interface RegisteredProcessDesign {
+    processDesignHash: Hex;
     registeredBy: Address;
     contentURI: string;
 }
@@ -270,12 +270,12 @@ export interface Commitment {
     processId: Hex;
     buyer: Address;
     seller: Address;
-    currency: Address;
+    token: Address;
     payment: bigint;
-    expectedCumulativeValue: bigint;
+    runningTotal: bigint;
     checkoutHash: Hex;
     salt: bigint;
-    deadline: bigint;
+    commitDeadline: bigint;
 }
 
 export interface EIP712Domain {
@@ -293,7 +293,7 @@ export interface FigaroAddresses {
     attestationCoordinator?: Address;
     clauseRegistry?: Address;
     membersRegistry?: Address;
-    assemblyRegistry?: Address;
+    processRegistry?: Address;
     agreementRegistry?: Address;
     /** FigaroBatchVerifier — batch-resolved clause content verification (batch path only). */
     batchVerifier?: Address;
@@ -327,7 +327,7 @@ export interface FigaroAddresses {
  *  record (mirrors `.deployments/*.json` and the `/spec` route-key table:
  *  FigaroCore, registries, and coordinators/routers/RPGF surface); core reads
  *  require only the six — `figaroCore`, `tokenAddress`, `attestationCoordinator`,
- *  `clauseRegistry`, `membersRegistry`, `assemblyRegistry`. The rest are optional
+ *  `clauseRegistry`, `membersRegistry`, `processRegistry`. The rest are optional
  *  and pass through only when present. */
 export interface FigaroDeploymentRecord {
     /** The chain the deployment is on. With `figaroCore` it is the
@@ -350,7 +350,7 @@ export interface FigaroDeploymentRecord {
     attestationCoordinator?: Address;
     clauseRegistry?: Address;
     membersRegistry?: Address;
-    assemblyRegistry?: Address;
+    processRegistry?: Address;
     agreementRegistry?: Address;
     batchVerifier?: Address;
     usageCounter?: Address;
@@ -376,7 +376,7 @@ export function addressesFromDeploymentRecord(record: FigaroDeploymentRecord): F
         ...(record.attestationCoordinator ? { attestationCoordinator: record.attestationCoordinator } : {}),
         ...(record.clauseRegistry ? { clauseRegistry: record.clauseRegistry } : {}),
         ...(record.membersRegistry ? { membersRegistry: record.membersRegistry } : {}),
-        ...(record.assemblyRegistry ? { assemblyRegistry: record.assemblyRegistry } : {}),
+        ...(record.processRegistry ? { processRegistry: record.processRegistry } : {}),
         ...(record.agreementRegistry ? { agreementRegistry: record.agreementRegistry } : {}),
         ...(record.batchVerifier ? { batchVerifier: record.batchVerifier } : {}),
         ...(record.usageCounter ? { usageCounter: record.usageCounter } : {}),
@@ -392,7 +392,7 @@ export function addressesFromDeploymentRecord(record: FigaroDeploymentRecord): F
 // ── Bond breakdown ──────────────────────────────────────────────────────────
 
 export interface BondBreakdown {
-    /** Seller bond = 2× cumulativeValue. */
+    /** Seller bond = 2× runningTotal. */
     sellerBond: bigint;
     /** Buyer bond = 2× payment. */
     buyerBond: bigint;
@@ -415,7 +415,7 @@ export interface AgentProcessContext {
     processId: Hex;
     rootBuyer: Address;
     currency: Address;
-    cumulativeValue: bigint;
+    runningTotal: bigint;
     activeOrderCount: number;
     resolved: boolean;
     orders: AgentOrderContext[];
@@ -426,6 +426,6 @@ export interface AgentOrderContext {
     buyer: Address;
     seller: Address;
     payment: bigint;
-    cumulativeValue: bigint;
+    runningTotal: bigint;
     state: "Active" | "Resolved";
 }

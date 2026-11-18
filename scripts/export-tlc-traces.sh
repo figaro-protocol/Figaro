@@ -114,7 +114,7 @@ def observed(state):
         "wallets": dict(sorted(state["wallets"].items())),
         "contractBalance": state["contractBalance"],
         "processes": [
-            {"rootBuyer": p["rootBuyer"], "cumulativeValue": p["cumulativeValue"], "activeCount": p["activeCount"]}
+            {"rootBuyer": p["rootBuyer"], "runningTotal": p["runningTotal"], "activeCount": p["activeCount"]}
             for p in state["processes"]
         ],
     }
@@ -125,12 +125,12 @@ def action(before, after):
         oid = before["nextOrdId"]
         o = after["orderRecords"][oid - 1]
         return {"action": "CommitRoot", "pid": o["processId"], "oid": oid, "buyer": o["buyer"],
-                "seller": o["seller"], "payment": o["payment"], "cumulativeValue": o["cumulativeValue"]}
+                "seller": o["seller"], "payment": o["payment"], "runningTotal": o["runningTotal"]}
     if after["nextOrdId"] == before["nextOrdId"] + 1:
         oid = before["nextOrdId"]
         o = after["orderRecords"][oid - 1]
         return {"action": "CommitSub", "pid": o["processId"], "oid": oid, "buyer": o["buyer"],
-                "seller": o["seller"], "payment": o["payment"], "cumulativeValue": o["cumulativeValue"]}
+                "seller": o["seller"], "payment": o["payment"], "runningTotal": o["runningTotal"]}
     closed = [i + 1 for i, (b, a) in enumerate(zip(before["processes"], after["processes"]))
               if b["activeCount"] > 0 and a["activeCount"] == 0]
     assert len(closed) == 1, "a step that is none of the model's three actions"
@@ -145,11 +145,11 @@ def row(step, parties):
     a = step["after"]
     r = [ACTIONS[step["action"]], step["pid"], parties.index(step["buyer"]),
          parties.index(step["seller"]) if "seller" in step else 0,
-         step.get("payment", 0), step.get("cumulativeValue", a["processes"][step["pid"] - 1]["cumulativeValue"])]
+         step.get("payment", 0), step.get("runningTotal", a["processes"][step["pid"] - 1]["runningTotal"])]
     r += [a["wallets"][p] for p in parties]
     r.append(a["contractBalance"])
     for proc in a["processes"]:
-        r += [proc["cumulativeValue"], proc["activeCount"]]
+        r += [proc["runningTotal"], proc["activeCount"]]
     return r
 
 files = sorted(glob.glob(os.path.join(work, "trace_*")), key=lambda p: [int(x) for x in re.findall(r"\d+", os.path.basename(p))])
@@ -174,8 +174,8 @@ for path in files:
     traces.append({"source": os.path.basename(path), "rows": rows})
 
 columns = (["action (0 CommitRoot, 1 CommitSub, 2 ResolveProcess)", "pid", "buyer", "seller", "payment",
-            "cumulativeValue"] + [f"wallets[{p}]" for p in parties] + ["contractBalance"]
-           + [f"processes[{i + 1}].{f}" for i in range(len(initial["processes"])) for f in ("cumulativeValue", "activeCount")])
+            "runningTotal"] + [f"wallets[{p}]" for p in parties] + ["contractBalance"]
+           + [f"processes[{i + 1}].{f}" for i in range(len(initial["processes"])) for f in ("runningTotal", "activeCount")])
 doc = {
     "model": "formal/FigaroCore.tla via formal/MC.tla + formal/MC.cfg",
     "generator": "scripts/export-tlc-traces.sh",

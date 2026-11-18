@@ -192,7 +192,7 @@ interface PageRow {
 const ORDER = orderFromSdk({
     orderHash: `0x${"0d".repeat(32)}`, processId: PROCESS, buyer: "0x00000000000000000000000000000000000000b1",
     seller: "0x00000000000000000000000000000000000000a1", currency: "0x00000000000000000000000000000000000000c1",
-    payment: 7n, cumulativeValue: 7n, checkoutHash: `0x${"cd".repeat(32)}`, salt: 1n, deadline: 2_000_000_000n,
+    payment: 7n, runningTotal: 7n, checkoutHash: `0x${"cd".repeat(32)}`, salt: 1n, deadline: 2_000_000_000n,
     state: OrderState.Active, blockNumber: 4,
 } as unknown as SdkOrder);
 

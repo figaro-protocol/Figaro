@@ -11,7 +11,7 @@
  *   1. SITE  — every sitemap route's HTML and machine-facing index.txt,
  *              plus /llms.txt and /_headers.
  *   2. PINS  — every contentURI registered in ClauseRegistry /
- *              AssemblyRegistry / MembersRegistry (event enumeration from
+ *              ProcessRegistry / MembersRegistry (event enumeration from
  *              deploymentBlock), fetched through the IPFS gateway.
  *
  * Read-only everywhere. Exit 1 on any hit so the end-of-session hygiene turn
@@ -34,7 +34,7 @@ import { fileURLToPath } from "node:url";
 import { createPublicClient, http } from "viem";
 import {
     CLAUSE_REGISTRY_ABI,
-    ASSEMBLY_REGISTRY_ABI,
+    PROCESS_REGISTRY_ABI,
     AGREEMENT_REGISTRY_ABI,
     MEMBERS_REGISTRY_ABI,
 } from "@figaro-protocol/sdk";
@@ -141,8 +141,8 @@ if (process.env.ESTATE_SKIP_PINS !== "1") {
         ["agreement", record.agreementRegistry,
             eventItem(AGREEMENT_REGISTRY_ABI, "AgreementRegistered"),
             (l) => l.args.contentURI],
-        ["assembly", record.assemblyRegistry,
-            eventItem(ASSEMBLY_REGISTRY_ABI, "AssemblyRegistered"),
+        ["assembly", record.processRegistry,
+            eventItem(PROCESS_REGISTRY_ABI, "ProcessRegistered"),
             (l) => l.args.contentURI],
         ["member", record.membersRegistry,
             eventItem(MEMBERS_REGISTRY_ABI, "MemberRegistered"),

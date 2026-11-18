@@ -32,7 +32,7 @@ export function designReader(ctx, hydrate) {
     return async (provenance) => {
         await ctx.sync();
         const registered = ctx.getAssemblies()
-            .find((a) => a.assemblyHash.toLowerCase() === provenance.assemblyHash.toLowerCase());
+            .find((a) => a.processDesignHash.toLowerCase() === provenance.processDesignHash.toLowerCase());
         return registered ? hydrate(registered) : null;
     };
 }
@@ -47,21 +47,21 @@ async function pinJson(ipfsApiUrl, doc) {
 }
 
 /**
- * The seller binds `assemblyHash` in its own member profile — skipped when
+ * The seller binds `processDesignHash` in its own member profile — skipped when
  * its profile already binds it. The profile it already has is kept and the
  * binding added; a wallet with none publishes a profile that names it and
  * binds the assembly. Returns once `MembersRegistry` points at the new pin.
  */
-export async function bindAssemblyAsSeller({ pub, wallet, membersRegistry, assemblyHash, ipfsApiUrl, readProfile, name }) {
+export async function bindAssemblyAsSeller({ pub, wallet, membersRegistry, processDesignHash, ipfsApiUrl, readProfile, name }) {
     const seller = wallet.account.address;
     const current = await readProfile(seller);
-    if ((current?.assemblyBindings ?? []).some((b) => b.assemblyHash.toLowerCase() === assemblyHash.toLowerCase())) return false;
+    if ((current?.processBindings ?? []).some((b) => b.processDesignHash.toLowerCase() === processDesignHash.toLowerCase())) return false;
     const profile = {
         ...(current ?? { name }),
         subjectAddress: seller,
-        assemblyBindings: [
-            ...(current?.assemblyBindings ?? []),
-            { bindingId: `binding:${seller.toLowerCase()}:${assemblyHash}`, subjectAddress: seller, assemblyHash },
+        processBindings: [
+            ...(current?.processBindings ?? []),
+            { bindingId: `binding:${seller.toLowerCase()}:${processDesignHash}`, subjectAddress: seller, processDesignHash },
         ],
     };
     const metadataURI = await pinJson(ipfsApiUrl, profile);

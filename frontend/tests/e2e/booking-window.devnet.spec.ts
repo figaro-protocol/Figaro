@@ -31,7 +31,7 @@ import {
     waitForConnected,
     keyOf,
     primeRegisteredClauseSpecs,
-    anchoredAssemblyHash,
+    anchoredProcessDesignHash,
     isBindingOf,
     expectRelayedOrder,
     composeCommerceOn,
@@ -200,13 +200,13 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
             expect(slug, 'the published booking assembly is discoverable by shape').toBe(published);
         }
 
-        const assemblyHash = await anchoredAssemblyHash(slug!);
+        const processDesignHash = await anchoredProcessDesignHash(slug!);
 
         // ── ONBOARD (idempotent): the lead (fixed price) binds + designates the
         //    provider; the provider (RATE item, booking-window source) binds. ──
         const leadConformant = async (): Promise<boolean> => {
             const bindings = await memberProfileBindings(LEAD);
-            const binding = bindings.find((b) => isBindingOf(b, assemblyHash));
+            const binding = bindings.find((b) => isBindingOf(b, processDesignHash));
             return !!binding && (binding.coSellerBindings ?? []).some(
                 (cb) => cb.clauseKey.toLowerCase() === PROCESS_CLAUSE
                     && cb.addresses.some((a) => a.toLowerCase() === PROVIDER.toLowerCase()),
@@ -226,7 +226,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
                 timeout: 60000, message: "the lead's pinned profile carries the binding + provider designation",
             }).toBe(true);
         }
-        if (!(await memberProfileBindings(PROVIDER)).some((b) => isBindingOf(b, assemblyHash))) {
+        if (!(await memberProfileBindings(PROVIDER)).some((b) => isBindingOf(b, processDesignHash))) {
             await onboardSeller(page, {
                 wallet: PROVIDER,
                 name: 'Booking Test Consultancy',
@@ -240,7 +240,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
                 },
             });
             await expect.poll(async () =>
-                (await memberProfileBindings(PROVIDER)).some((b) => isBindingOf(b, assemblyHash)), {
+                (await memberProfileBindings(PROVIDER)).some((b) => isBindingOf(b, processDesignHash)), {
                 timeout: 60000, message: "the provider's pinned profile carries the binding",
             }).toBe(true);
         }

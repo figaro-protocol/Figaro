@@ -444,7 +444,7 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
                 ),
                 keccak256(
                     abi.encode(
-                        keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)"),
+                        keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"),
                         keccak256("process"),
                         uint256(1 ether)
                     )

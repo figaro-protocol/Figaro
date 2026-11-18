@@ -8,11 +8,11 @@ import {
     RPGF_SCORE_SCALE,
     RPGF_MIN_SELLERS,
     type UsagePeriodAccrual,
-    type ClauseOrAssemblyAccrual,
+    type ClauseOrProcessAccrual,
     type UsageRecord,
     type UsageKind,
     USAGE_KIND_CLAUSE,
-    USAGE_KIND_ASSEMBLY,
+    USAGE_KIND_PROCESS,
     USAGE_KIND_AGREEMENT,
     usageKeyId,
     usageClaimKindCode,
@@ -35,12 +35,12 @@ import type { SequencerUsageClaim } from "../src/agent/sequencer.js";
 import { computeCommitmentProcessId } from "../src/commitments.js";
 import { FIRST, PROCESS, SECOND, attestEntry, claimEntry, commitEntry, rep, resolveEntry } from "./operationStreamWriter.js";
 import {
-    ASSEMBLY_LEAF_DOMAIN,
-    computeAssemblyLeaf,
-    ASSEMBLY_TERMS_LEAF_KEY,
+    PROCESS_LEAF_DOMAIN,
+    computeProcessLeaf,
+    PROCESS_TERMS_LEAF_KEY,
     buildAgreementInclusionProof,
-    assemblyHashOf,
-    type Assembly,
+    processDesignHashOf,
+    type ProcessDesign,
 } from "../src/assembly.js";
 import { keyOf } from "./specFixtures.js";
 
@@ -122,7 +122,7 @@ const CLAUSE_A = "0x000000000000000000000000000000000000000000000000000000000000
 const CLAUSE_B = "0x00000000000000000000000000000000000000000000000000000000000000b2" as Hex;
 const ASSEMBLY = "0x00000000000000000000000000000000000000000000000000000000000000c3" as Hex;
 /** The fixtures' kind: ASSEMBLY is an assembly key, every other a clause key. */
-const kindOf = (key: Hex): UsageKind => (key === ASSEMBLY ? USAGE_KIND_ASSEMBLY : USAGE_KIND_CLAUSE);
+const kindOf = (key: Hex): UsageKind => (key === ASSEMBLY ? USAGE_KIND_PROCESS : USAGE_KIND_CLAUSE);
 /** The mirror's map key for a fixture key under its own kind. */
 const id = (key: Hex): string => usageKeyId(kindOf(key), key);
 
@@ -136,7 +136,7 @@ const sellerOf = (s: string): Address => `0x${keccak256(encodePacked(["string"],
 
 let logCounter = 0;
 function record(
-    clauseOrAssembly: Hex,
+    clauseOrProcess: Hex,
     processId: string,
     seller: Address,
     overrides: Partial<UsageRecord> = {},
@@ -146,8 +146,8 @@ function record(
     return {
         blockNumber: 100n,
         logIndex: logCounter++,
-        kind: kindOf(clauseOrAssembly),
-        clauseOrAssembly,
+        kind: kindOf(clauseOrProcess),
+        clauseOrProcess,
         period: 0,
         processId: seed(processId),
         seller,
@@ -168,8 +168,8 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_B, "p1", s1),
         ], 1n);
         const period = accruals.get(0)!;
-        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 2n, d: 2n });
-        expect(period.byClauseOrAssembly.get(id(CLAUSE_B))!).toMatchObject({ c: 1n, d: 1n });
+        expect(period.byClauseOrProcess.get(id(CLAUSE_A))!).toMatchObject({ c: 2n, d: 2n });
+        expect(period.byClauseOrProcess.get(id(CLAUSE_B))!).toMatchObject({ c: 1n, d: 1n });
         expect(period.totalScore).toBe(usageScore(2n, 2n, 1n) + usageScore(1n, 1n, 1n));
     });
 
@@ -183,14 +183,14 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "q2", s1),
             record(CLAUSE_A, "q3", s1),
         ], 1n);
-        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 3n, d: 1n });
+        expect(accruals.get(0)!.byClauseOrProcess.get(id(CLAUSE_A))!).toMatchObject({ c: 3n, d: 1n });
     });
 
     it("is idempotent per (clause or assembly, process) — a replay adds nothing", () => {
         const s1 = sellerOf("seller1");
         const once = computeUsageAccruals([record(CLAUSE_A, "p1", s1)], 1n);
         const twice = computeUsageAccruals([record(CLAUSE_A, "p1", s1), record(CLAUSE_A, "p1", s1)], 1n);
-        expect(twice.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))).toEqual(once.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A)));
+        expect(twice.get(0)!.byClauseOrProcess.get(id(CLAUSE_A))).toEqual(once.get(0)!.byClauseOrProcess.get(id(CLAUSE_A)));
     });
 
     it("counts a process ONCE EVER — re-recording it in a later period adds nothing", () => {
@@ -202,8 +202,8 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "px-0", s1, { period: 0 }),
             record(CLAUSE_A, "px-0", s1, { period: 1 }),
         ], 1n);
-        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 1n, d: 1n });
-        expect(accruals.get(1)?.byClauseOrAssembly.get(id(CLAUSE_A))).toBeUndefined();
+        expect(accruals.get(0)!.byClauseOrProcess.get(id(CLAUSE_A))!).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)?.byClauseOrProcess.get(id(CLAUSE_A))).toBeUndefined();
     });
 
     it("a later period counts only trade that is NEW to it", () => {
@@ -212,7 +212,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "py-old", sellerOf("seller1"), { period: 1 }),
             record(CLAUSE_A, "py-new", sellerOf("seller2"), { period: 1 }),
         ], 1n);
-        expect(accruals.get(1)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)!.byClauseOrProcess.get(id(CLAUSE_A))!).toMatchObject({ c: 1n, d: 1n });
     });
 
     it("counts every repeat process into c, but a seller is one unit of d", () => {
@@ -223,7 +223,7 @@ describe("computeUsageAccruals", () => {
             Array.from({ length: 8 }, (_, i) => record(CLAUSE_A, `pc-${i}`, repeat)),
             1n,
         );
-        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({
+        expect(accruals.get(0)!.byClauseOrProcess.get(id(CLAUSE_A))!).toMatchObject({
             c: 8n,
             d: 1n,
             score: usageScore(8n, 1n, 1n),
@@ -239,7 +239,7 @@ describe("computeUsageAccruals", () => {
             ...Array.from({ length: 7 }, (_, i) => record(CLAUSE_A, `pe-${i}`, repeat)),
             record(CLAUSE_A, "pe-fresh", fresh),
         ], 1n);
-        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({
+        expect(accruals.get(0)!.byClauseOrProcess.get(id(CLAUSE_A))!).toMatchObject({
             c: 8n,
             d: 2n,
         });
@@ -251,8 +251,8 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pf-0", s1, { period: 0 }),
             record(CLAUSE_A, "pf-1", s1, { period: 1 }),
         ], 1n);
-        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 1n, d: 1n });
-        expect(accruals.get(1)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(0)!.byClauseOrProcess.get(id(CLAUSE_A))!).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)!.byClauseOrProcess.get(id(CLAUSE_A))!).toMatchObject({ c: 1n, d: 1n });
     });
 
     it("scores uniformly — equal usage gives equal score, clause or assembly", () => {
@@ -261,7 +261,7 @@ describe("computeUsageAccruals", () => {
             1n,
         );
         const period = accruals.get(0)!;
-        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!.score).toBe(period.byClauseOrAssembly.get(id(CLAUSE_B))!.score);
+        expect(period.byClauseOrProcess.get(id(CLAUSE_A))!.score).toBe(period.byClauseOrProcess.get(id(CLAUSE_B))!.score);
     });
 
     it("reproduces the running score the chain emitted", () => {
@@ -273,7 +273,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "ph-0", s1, { c: 1n, d: 1n, score: usageScore(1n, 1n, 1n) }),
             record(CLAUSE_A, "ph-1", s2, { c: 2n, d: 2n, score: usageScore(2n, 2n, 1n) }),
         ];
-        const accrual = computeUsageAccruals(emitted, 1n).get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!;
+        const accrual = computeUsageAccruals(emitted, 1n).get(0)!.byClauseOrProcess.get(id(CLAUSE_A))!;
         const last = emitted[emitted.length - 1];
         expect(accrual).toMatchObject({ c: last.c, d: last.d, score: last.score });
     });
@@ -291,7 +291,7 @@ describe("computeUsageAccruals", () => {
             ],
             1n,
         ).get(0)!;
-        const entry = period.byClauseOrAssembly.get(id(CLAUSE_A))!;
+        const entry = period.byClauseOrProcess.get(id(CLAUSE_A))!;
         expect(entry).toMatchObject({ c: 2n, d: 1n, score: usageScore(2n, 1n, 1n) });
         expect(period.totalScore).toBe(entry.score);
     });
@@ -303,7 +303,7 @@ describe("computeUsageAccruals", () => {
         );
         const forward = computeUsageAccruals(records, 1n).get(0)!;
         const reversed = computeUsageAccruals([...records].reverse(), 1n).get(0)!;
-        expect(reversed.byClauseOrAssembly.get(id(CLAUSE_A))).toEqual(forward.byClauseOrAssembly.get(id(CLAUSE_A)));
+        expect(reversed.byClauseOrProcess.get(id(CLAUSE_A))).toEqual(forward.byClauseOrProcess.get(id(CLAUSE_A)));
         expect(reversed.totalScore).toBe(forward.totalScore);
     });
 
@@ -314,7 +314,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pf-a", sellerOf("s1")),
             record(CLAUSE_A, "pf-b", sellerOf("s2")),
         ], FLOOR);
-        expect(below.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 2n, d: 2n, score: 0n });
+        expect(below.get(0)!.byClauseOrProcess.get(id(CLAUSE_A))!).toMatchObject({ c: 2n, d: 2n, score: 0n });
         expect(below.get(0)!.totalScore).toBe(0n);
 
         const crossed = computeUsageAccruals([
@@ -322,7 +322,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pf-b", sellerOf("s2")),
             record(CLAUSE_A, "pf-c", sellerOf("s3")),
         ], FLOOR);
-        expect(crossed.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.score).toBe(usageScore(3n, 3n, FLOOR));
+        expect(crossed.get(0)!.byClauseOrProcess.get(id(CLAUSE_A))!.score).toBe(usageScore(3n, 3n, FLOOR));
         expect(crossed.get(0)!.totalScore).toBe(usageScore(3n, 3n, FLOOR));
     });
 
@@ -332,7 +332,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pp-b", sellerOf("s2")),
             record(CLAUSE_A, "pp-c", sellerOf("s3"), { blockNumber: 200n }),
         ], FLOOR).get(0)!;
-        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!.score).toBe(usageScore(3n, 3n, FLOOR));
+        expect(period.byClauseOrProcess.get(id(CLAUSE_A))!.score).toBe(usageScore(3n, 3n, FLOOR));
         expect(period.totalScore).toBe(usageScore(3n, 3n, FLOOR));
     });
 });
@@ -340,19 +340,19 @@ describe("computeUsageAccruals", () => {
 // ── The payout (RpgfMinter.claim, mirrored) ──────────────────────────
 
 function periodOf(entries: Array<[Hex, bigint]>): UsagePeriodAccrual {
-    const byClauseOrAssembly = new Map<string, ClauseOrAssemblyAccrual>();
+    const byClauseOrProcess = new Map<string, ClauseOrProcessAccrual>();
     let totalScore = 0n;
-    for (const [clauseOrAssembly, score] of entries) {
-        byClauseOrAssembly.set(id(clauseOrAssembly), {
-            kind: kindOf(clauseOrAssembly),
-            clauseOrAssembly,
+    for (const [clauseOrProcess, score] of entries) {
+        byClauseOrProcess.set(id(clauseOrProcess), {
+            kind: kindOf(clauseOrProcess),
+            clauseOrProcess,
             c: 1n,
             d: 1n,
             score,
         });
         totalScore += score;
     }
-    return { byClauseOrAssembly, totalScore };
+    return { byClauseOrProcess, totalScore };
 }
 
 describe("computeRpgfAllocations", () => {
@@ -364,13 +364,13 @@ describe("computeRpgfAllocations", () => {
 
     it("splits a period budget pro rata over the period's total score", () => {
         // Ten equal clauses or assemblies, ten authors: each takes 10%.
-        const clausesOrAssemblies = Array.from(
+        const clausesOrProcesses = Array.from(
             { length: 10 },
             (_, i) => `0x${(i + 1).toString(16).padStart(64, "0")}` as Hex,
         );
-        const period = periodOf(clausesOrAssemblies.map((clauseOrAssembly) => [clauseOrAssembly, 100n] as [Hex, bigint]));
+        const period = periodOf(clausesOrProcesses.map((clauseOrProcess) => [clauseOrProcess, 100n] as [Hex, bigint]));
         const tenAuthors = new Map<string, Address>(
-            clausesOrAssemblies.map((clauseOrAssembly, i) => [id(clauseOrAssembly), `0x${(i + 1).toString(16).padStart(40, "0")}` as Address]),
+            clausesOrProcesses.map((clauseOrProcess, i) => [id(clauseOrProcess), `0x${(i + 1).toString(16).padStart(40, "0")}` as Address]),
         );
         const out = computeRpgfAllocations(period, tenAuthors, 10_000n);
         expect(out.length).toBe(10);
@@ -439,17 +439,17 @@ describe("computeRpgfAllocations", () => {
             record(ASSEMBLY, "asm-2", sellerOf("s2")),
             { ...record(ASSEMBLY, "clause-1", sellerOf("s1")), kind: USAGE_KIND_CLAUSE },
         ], 1n).get(0)!;
-        const asAssembly = accruals.byClauseOrAssembly.get(usageKeyId(USAGE_KIND_ASSEMBLY, ASSEMBLY))!;
-        const asClause = accruals.byClauseOrAssembly.get(usageKeyId(USAGE_KIND_CLAUSE, ASSEMBLY))!;
+        const asAssembly = accruals.byClauseOrProcess.get(usageKeyId(USAGE_KIND_PROCESS, ASSEMBLY))!;
+        const asClause = accruals.byClauseOrProcess.get(usageKeyId(USAGE_KIND_CLAUSE, ASSEMBLY))!;
         expect(asAssembly).toMatchObject({ c: 2n, d: 2n });
         expect(asClause).toMatchObject({ c: 1n, d: 1n });
         const out = computeRpgfAllocations(accruals, new Map([
-            [usageKeyId(USAGE_KIND_ASSEMBLY, ASSEMBLY), DESIGNER],
+            [usageKeyId(USAGE_KIND_PROCESS, ASSEMBLY), DESIGNER],
             [usageKeyId(USAGE_KIND_CLAUSE, ASSEMBLY), SQUATTER],
         ]), 1_000_000n);
         const byAccount = new Map(out.map((x) => [x.account, x]));
         expect(byAccount.get(DESIGNER.toLowerCase() as Address)!.score).toBe(asAssembly.score);
-        expect(byAccount.get(DESIGNER.toLowerCase() as Address)!.claims).toEqual([{ kind: USAGE_KIND_ASSEMBLY, key: ASSEMBLY }]);
+        expect(byAccount.get(DESIGNER.toLowerCase() as Address)!.claims).toEqual([{ kind: USAGE_KIND_PROCESS, key: ASSEMBLY }]);
         expect(byAccount.get(SQUATTER.toLowerCase() as Address)!.score).toBe(asClause.score);
         expect(asClause.score).toBeLessThan(asAssembly.score);
     });
@@ -461,8 +461,8 @@ describe("computeRpgfAllocations", () => {
             { ...record(ASSEMBLY, "asm-1", sellerOf("s1")), kind: USAGE_KIND_AGREEMENT },
             { ...record(ASSEMBLY, "agr-2", sellerOf("s2")), kind: USAGE_KIND_AGREEMENT },
         ], 1n).get(0)!;
-        const asAgreement = accruals.byClauseOrAssembly.get(usageKeyId(USAGE_KIND_AGREEMENT, ASSEMBLY))!;
-        const asAssembly = accruals.byClauseOrAssembly.get(usageKeyId(USAGE_KIND_ASSEMBLY, ASSEMBLY))!;
+        const asAgreement = accruals.byClauseOrProcess.get(usageKeyId(USAGE_KIND_AGREEMENT, ASSEMBLY))!;
+        const asAssembly = accruals.byClauseOrProcess.get(usageKeyId(USAGE_KIND_PROCESS, ASSEMBLY))!;
         // The same process counts once per (kind, key), so kind 2 counts it beside kind 1.
         expect(asAssembly).toMatchObject({ c: 1n, d: 1n });
         expect(asAgreement).toMatchObject({ c: 2n, d: 2n });
@@ -473,7 +473,7 @@ describe("computeRpgfAllocations", () => {
     });
 
     it("returns nothing for a period with no score", () => {
-        expect(computeRpgfAllocations({ byClauseOrAssembly: new Map(), totalScore: 0n }, authors, 1_000n)).toEqual([]);
+        expect(computeRpgfAllocations({ byClauseOrProcess: new Map(), totalScore: 0n }, authors, 1_000n)).toEqual([]);
     });
 
     it("floors dust rather than over-allocating", () => {
@@ -490,29 +490,29 @@ describe("computeRpgfAllocations", () => {
 // ── Usage claims (the batch path's input) ────────────────────────────
 
 describe("buildUsageClaims", () => {
-    /** What `UsageCounter.provenanceLeaf()` / `assemblyTermsLeaf()` answer: the formats' reserved keys. */
-    const CONTEXT = { provenanceLeaf: PROVENANCE_LEAF_KEY, assemblyTermsLeaf: ASSEMBLY_TERMS_LEAF_KEY, assemblyLeafDomain: ASSEMBLY_LEAF_DOMAIN };
+    /** What `UsageCounter.provenanceLeaf()` / `processTermsLeaf()` answer: the formats' reserved keys. */
+    const CONTEXT = { provenanceLeaf: PROVENANCE_LEAF_KEY, processTermsLeaf: PROCESS_TERMS_LEAF_KEY, processLeafDomain: PROCESS_LEAF_DOMAIN };
     const AGREEMENT_HASH = keccak256(encodePacked(["string"], ["an-agreement"]));
     const OTHER_KEY = keccak256(encodePacked(["string"], ["another-agreement"]));
-    const ASSEMBLY: Assembly = {
+    const ASSEMBLY: ProcessDesign = {
         agreements: [
             { id: "agreement-0", agreementHash: OTHER_KEY, clauses: {} },
             { id: "agreement-1", agreementHash: AGREEMENT_HASH, clauses: {} },
         ],
     };
-    const COMPOSITION = assemblyHashOf(ASSEMBLY);
-    const PROVENANCE = { agreementHash: AGREEMENT_HASH, assemblyHash: COMPOSITION };
+    const COMPOSITION = processDesignHashOf(ASSEMBLY);
+    const PROVENANCE = { agreementHash: AGREEMENT_HASH, processDesignHash: COMPOSITION };
 
     const order: Commitment = {
         processId: `0x${"0".repeat(64)}` as Hex,
         buyer: "0x0000000000000000000000000000000000000B0B" as Address,
         seller: "0x0000000000000000000000000000000000005E11" as Address,
-        currency: "0x00000000000000000000000000000000000007ED" as Address,
+        token: "0x00000000000000000000000000000000000007ED" as Address,
         payment: 100n,
-        expectedCumulativeValue: 100n,
+        runningTotal: 100n,
         checkoutHash: `0x${"a".repeat(64)}` as Hex,
         salt: 1n,
-        deadline: 2n,
+        commitDeadline: 2n,
     };
 
     function agreementWith(clauseEntries: Agreement["clauses"], provenance?: Agreement["provenance"]): Agreement {
@@ -522,7 +522,7 @@ describe("buildUsageClaims", () => {
     const modalities = { clause: keyOf("figaro-modalities"), data: { modality: "pickup" } };
     const commerce = {
         clause: keyOf("figaro-commerce"),
-        data: { payment: "100", currency: order.currency, lineItems: [] },
+        data: { payment: "100", currency: order.token, lineItems: [] },
     };
 
     it("claims every clauseEntry, and carries the clause FINGERPRINT not the preimage", () => {
@@ -531,49 +531,49 @@ describe("buildUsageClaims", () => {
 
         expect(claims).toHaveLength(2);
         const modalityClaim = claims.find(
-            (c) => c.clause_or_assembly === keyOf("figaro-modalities"),
+            (c) => c.clause_or_process === keyOf("figaro-modalities"),
         )!;
         expect(modalityClaim.kind).toEqual({
             Clause: { clause_data_hash: hashClauseData(modalities) },
         });
         expect(usageClaimKindCode(modalityClaim)).toBe(USAGE_KIND_CLAUSE);
         // Wire shape: snake_case, string-encoded bigints — what Rust deserializes.
-        expect(modalityClaim.order.expected_cumulative_value).toBe("100");
+        expect(modalityClaim.order.running_total).toBe("100");
         expect(modalityClaim.order.checkout_hash).toBe(order.checkoutHash);
     });
 
     // The two designer credits ride the agreement format's provenance leaf,
     // not a clauseEntry: every clause still earns its clause leg, the agreement
     // leg credits the agreement hash, and the assembly leg credits the
-    // assemblyHash with the agreement's membership proof — never the
+    // processDesignHash with the agreement's membership proof — never the
     // reserved leaf key.
     it("credits the agreement's and the assembly's designers from agreement.provenance beside every clause leg", () => {
         const claims = buildUsageClaims(order, agreementWith([modalities, commerce], PROVENANCE), CONTEXT, ASSEMBLY);
 
         expect(claims.filter((c) => "Clause" in c.kind)).toHaveLength(2);
         const agreementClaim = claims.find((c) => "Agreement" in c.kind)!;
-        expect(agreementClaim.clause_or_assembly).toBe(AGREEMENT_HASH);
-        expect(agreementClaim.kind).toEqual({ Agreement: { assembly_hash: COMPOSITION } });
+        expect(agreementClaim.clause_or_process).toBe(AGREEMENT_HASH);
+        expect(agreementClaim.kind).toEqual({ Agreement: { process_design_hash: COMPOSITION } });
         expect(usageClaimKindCode(agreementClaim)).toBe(USAGE_KIND_AGREEMENT);
-        const assemblyClaim = claims.find((c) => "Assembly" in c.kind)!;
-        expect(assemblyClaim.clause_or_assembly).toBe(COMPOSITION);
-        expect(usageClaimKindCode(assemblyClaim)).toBe(USAGE_KIND_ASSEMBLY);
+        const assemblyClaim = claims.find((c) => "Process" in c.kind)!;
+        expect(assemblyClaim.clause_or_process).toBe(COMPOSITION);
+        expect(usageClaimKindCode(assemblyClaim)).toBe(USAGE_KIND_PROCESS);
         const membership = buildAgreementInclusionProof(ASSEMBLY, 1);
         expect(assemblyClaim.kind).toEqual({
-            Assembly: { agreement_hash: AGREEMENT_HASH, slot_content_hash: membership.slotContentHash, membership_proof: membership.proof },
+            Process: { agreement_hash: AGREEMENT_HASH, agreement_content_hash: membership.agreementContentHash, membership_proof: membership.proof },
         });
-        expect(claims.map((c) => c.clause_or_assembly)).not.toContain(PROVENANCE_LEAF_KEY);
+        expect(claims.map((c) => c.clause_or_process)).not.toContain(PROVENANCE_LEAF_KEY);
     });
 
-    it("the assembly claim's membership proof verifies under its assemblyHash and under no other root", () => {
+    it("the assembly claim's membership proof verifies under its processDesignHash and under no other root", () => {
         const claims = buildUsageClaims(order, agreementWith([modalities], PROVENANCE), CONTEXT, ASSEMBLY);
-        const assembly = claims.find((c) => "Assembly" in c.kind)!;
-        const { agreement_hash, slot_content_hash, membership_proof } = (assembly.kind as {
-            Assembly: { agreement_hash: Hex; slot_content_hash: Hex; membership_proof: Hex[] };
-        }).Assembly;
-        const leaf = computeAssemblyLeaf(agreement_hash, slot_content_hash);
+        const assembly = claims.find((c) => "Process" in c.kind)!;
+        const { agreement_hash, agreement_content_hash, membership_proof } = (assembly.kind as {
+            Process: { agreement_hash: Hex; agreement_content_hash: Hex; membership_proof: Hex[] };
+        }).Process;
+        const leaf = computeProcessLeaf(agreement_hash, agreement_content_hash);
         expect(verifyInclusionProof(COMPOSITION, leaf, membership_proof)).toBe(true);
-        const other = assemblyHashOf({ agreements: [...ASSEMBLY.agreements].reverse() });
+        const other = processDesignHashOf({ agreements: [...ASSEMBLY.agreements].reverse() });
         expect(verifyInclusionProof(other, leaf, membership_proof)).toBe(false);
     });
 
@@ -587,13 +587,13 @@ describe("buildUsageClaims", () => {
         expect(() => buildUsageClaims(order, agreement, CONTEXT)).toThrow(/assembly is needed/);
         expect(() => buildUsageClaims(order, agreement, CONTEXT, { agreements: [ASSEMBLY.agreements[1]] }))
             .toThrow(/does not hash to the provenance/);
-        const elsewhere = agreementWith([modalities], { agreementHash: keccak256(encodePacked(["string"], ["x"])), assemblyHash: COMPOSITION });
+        const elsewhere = agreementWith([modalities], { agreementHash: keccak256(encodePacked(["string"], ["x"])), processDesignHash: COMPOSITION });
         expect(() => buildUsageClaims(order, elsewhere, CONTEXT, ASSEMBLY)).toThrow(/no agreement/);
     });
 
     it("refuses a reserved key as the provenance's agreement hash", () => {
-        for (const reserved of [PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
-            const agreement = agreementWith([modalities], { agreementHash: reserved, assemblyHash: COMPOSITION });
+        for (const reserved of [PROVENANCE_LEAF_KEY, PROCESS_TERMS_LEAF_KEY]) {
+            const agreement = agreementWith([modalities], { agreementHash: reserved, processDesignHash: COMPOSITION });
             expect(() => buildUsageClaims(order, agreement, CONTEXT, ASSEMBLY)).toThrow(/reserved format key/);
         }
     });
@@ -605,15 +605,15 @@ describe("buildUsageClaims", () => {
             ...CONTEXT, provenanceLeaf: keyOf("figaro-modalities"),
         }, ASSEMBLY)).toThrow(/provenance leaf/);
         expect(() => buildUsageClaims(order, agreementWith([modalities]), {
-            ...CONTEXT, assemblyTermsLeaf: keyOf("figaro-modalities"),
+            ...CONTEXT, processTermsLeaf: keyOf("figaro-modalities"),
         })).toThrow(/assembly-terms leaf/);
         expect(() => buildUsageClaims(order, agreementWith([modalities]), {
-            ...CONTEXT, assemblyLeafDomain: keyOf("figaro-modalities"),
+            ...CONTEXT, processLeafDomain: keyOf("figaro-modalities"),
         })).toThrow(/assembly leaf domain/);
         // Case does not matter.
         expect(buildUsageClaims(order, agreementWith([modalities], PROVENANCE), {
             ...CONTEXT, provenanceLeaf: PROVENANCE_LEAF_KEY.toUpperCase().replace("0X", "0x") as Hex,
-        }, ASSEMBLY).some((c) => "Assembly" in c.kind)).toBe(true);
+        }, ASSEMBLY).some((c) => "Process" in c.kind)).toBe(true);
     });
 
     it("produces inclusion proofs that verify against the signed checkout hash", () => {
@@ -625,11 +625,11 @@ describe("buildUsageClaims", () => {
         for (const claim of claims) {
             const leaf =
                 "Clause" in claim.kind
-                    ? computeClauseLeaf(agreement.clauses.find((s) => s.clause === claim.clause_or_assembly)!)
+                    ? computeClauseLeaf(agreement.clauses.find((s) => s.clause === claim.clause_or_process)!)
                     : computeProvenanceLeaf(AGREEMENT_HASH, COMPOSITION);
             expect(
                 verifyInclusionProof(root, leaf, claim.inclusion_proof),
-                `proof for ${claim.clause_or_assembly}`,
+                `proof for ${claim.clause_or_process}`,
             ).toBe(true);
         }
     });
@@ -673,14 +673,14 @@ describe("fetchSkippedBatchUses — the uses a batch carried and the counter cou
     const REASON = `0x5f5b1b0c${"00".repeat(31)}01${"00".repeat(32)}` as Hex;
     const CLAUSE_CLAIM: SequencerUsageClaim = {
         order: FIRST,
-        clause_or_assembly: rep("80", 32),
+        clause_or_process: rep("80", 32),
         kind: { Clause: { clause_data_hash: rep("81", 32) } },
         inclusion_proof: [rep("82", 32)],
     };
     const ASSEMBLY_CLAIM: SequencerUsageClaim = {
         order: SECOND,
-        clause_or_assembly: rep("90", 32),
-        kind: { Assembly: { agreement_hash: rep("91", 32), slot_content_hash: rep("92", 32), membership_proof: [rep("93", 32)] } },
+        clause_or_process: rep("90", 32),
+        kind: { Process: { agreement_hash: rep("91", 32), agreement_content_hash: rep("92", 32), membership_proof: [rep("93", 32)] } },
         inclusion_proof: [],
     };
     /** Commits, a resolve, a wallet-code attestation, then the claims: the
@@ -723,7 +723,7 @@ describe("fetchSkippedBatchUses — the uses a batch carried and the counter cou
         } as unknown as PublicClient;
     }
     const usesOf = (claims: SequencerUsageClaim[], processIds: Hex[]) =>
-        claims.map((c, i) => ({ clauseOrAssembly: c.clause_or_assembly, kind: usageClaimKindCode(c), processId: processIds[i], seller: c.order.seller }));
+        claims.map((c, i) => ({ clauseOrProcess: c.clause_or_process, kind: usageClaimKindCode(c), processId: processIds[i], seller: c.order.seller }));
 
     it("a direct call: reads each skipped batch's period, claims and uses from the BatchOperations log of its transaction, and only the skipped batches", async () => {
         const client = stubClient([
@@ -761,8 +761,8 @@ describe("fetchSkippedBatchUses — the uses a batch carried and the counter cou
         // second batch are interleaved with the first's.
         const AGREEMENT_CLAIM: SequencerUsageClaim = {
             order: SECOND,
-            clause_or_assembly: rep("a1", 32),
-            kind: { Agreement: { assembly_hash: rep("a2", 32) } },
+            clause_or_process: rep("a1", 32),
+            kind: { Agreement: { process_design_hash: rep("a2", 32) } },
             inclusion_proof: [rep("a3", 32), rep("a4", 32)],
         };
         const OTHER = concatHex([commitEntry(FIRST), claimEntry(AGREEMENT_CLAIM)]);
@@ -805,9 +805,9 @@ describe("fetchSkippedBatchUses — the uses a batch carried and the counter cou
         const [skip] = await fetchSkippedBatchUses(client, VERIFIER, { fromBlock: 0n, toBlock: 10n });
         const rootProcess = computeCommitmentProcessId(
             {
-                processId: root.process_id, buyer: root.buyer, seller: root.seller, currency: root.currency,
-                payment: BigInt(root.payment), expectedCumulativeValue: BigInt(root.expected_cumulative_value),
-                checkoutHash: root.checkout_hash, salt: BigInt(root.salt), deadline: BigInt(root.deadline),
+                processId: root.process_id, buyer: root.buyer, seller: root.seller, token: root.token,
+                payment: BigInt(root.payment), runningTotal: BigInt(root.running_total),
+                checkoutHash: root.checkout_hash, salt: BigInt(root.salt), commitDeadline: BigInt(root.commit_deadline),
             },
             CHAIN_ID,
             VERIFIER,

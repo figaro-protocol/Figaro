@@ -409,7 +409,7 @@ fn filter_reorders_to_satisfy_dependencies() {
 #[test]
 fn filter_resolve_closes_the_evidence_window_for_late_attests() {
     // A same-drain resolve is applied as soon as its commit lands; any
-    // attestation still waiting is then poisoned by OrderResolved. This
+    // attestation still waiting is then poisoned by OrderAlreadyResolved. This
     // mirrors protocol semantics — buyer dominance closes the evidence
     // window at resolution — so the greedy fixpoint's behavior is the
     // correct one, and the dropped attests are dead-lettered, never
@@ -423,7 +423,7 @@ fn filter_resolve_closes_the_evidence_window_for_late_attests() {
     assert!(
         poison
             .iter()
-            .all(|(_, reason)| reason.contains("OrderResolved")),
+            .all(|(_, reason)| reason.contains("OrderAlreadyResolved")),
         "{poison:?}"
     );
 }
@@ -457,12 +457,12 @@ fn two_order_process() -> (KernelOp, KernelOp, Commitment, Commitment, B256, Sig
         process_id,
         buyer: root.buyer,
         seller: root.seller,
-        currency: root.currency,
+        token: root.token,
         payment,
-        expected_cumulative_value: root.payment + payment,
+        running_total: root.payment + payment,
         checkout_hash: root.checkout_hash,
         salt: root.salt + alloy_primitives::U256::from(1u64),
-        deadline: root.deadline,
+        commit_deadline: root.commit_deadline,
     };
     let sub_op = KernelOp::Commit {
         commitment: sub.clone(),
@@ -471,7 +471,7 @@ fn two_order_process() -> (KernelOp, KernelOp, Commitment, Commitment, B256, Sig
     };
     let resolve_digest = typed_data_hash(
         &domain,
-        &resolve_struct_hash(&process_id, &sub.expected_cumulative_value),
+        &resolve_struct_hash(&process_id, &sub.running_total),
     );
     let resolve_sig = sign_digest(&buyer_key, &resolve_digest);
     (root_op, sub_op, root, sub, process_id, resolve_sig)
@@ -540,7 +540,7 @@ fn filter_dead_letters_a_resolve_that_omits_an_order() {
 
     let short = KernelOp::Resolve {
         process_id,
-        cumulative_value: sub.expected_cumulative_value,
+        running_total: sub.running_total,
         commitments: vec![root.clone()],
         buyer_sig: resolve_sig.clone(),
     };
@@ -561,7 +561,7 @@ fn filter_dead_letters_a_resolve_that_omits_an_order() {
 
     let full = KernelOp::Resolve {
         process_id,
-        cumulative_value: sub.expected_cumulative_value,
+        running_total: sub.running_total,
         commitments: vec![root.clone(), sub.clone()],
         buyer_sig: resolve_sig,
     };
@@ -1012,7 +1012,7 @@ async fn mempool_queues_usage_claims_separately_from_ops() {
 async fn mempool_rejects_a_claim_with_no_clause_or_assembly() {
     let input = build_canonical_batch_input();
     let mut claim = input.usage_claims[0].clone();
-    claim.clause_or_assembly = B256::ZERO;
+    claim.clause_or_process = B256::ZERO;
     let err = mempool()
         .submit_usage_claim(claim)
         .await
@@ -1155,7 +1155,7 @@ async fn a_use_its_batch_left_uncounted_rides_a_later_batch() {
     );
     assert_eq!(events2.usage_period, next_period);
     let (u1, u2) = (&events1.uses[0], &events2.uses[0]);
-    assert_eq!(u2.clause_or_assembly, u1.clause_or_assembly);
+    assert_eq!(u2.clause_or_process, u1.clause_or_process);
     assert_eq!(u2.kind, u1.kind);
     assert_eq!(u2.process_id, u1.process_id);
     assert_eq!(u2.seller, u1.seller);
@@ -1208,7 +1208,7 @@ async fn mempool_at_cap_evicts_the_newcomer() {
         .submit_usage_claim(input.usage_claims[0].clone())
         .await
         .is_ok());
-    other.clause_or_assembly = B256::repeat_byte(0x42);
+    other.clause_or_process = B256::repeat_byte(0x42);
     let err = mp.submit_usage_claim(other).await.unwrap_err();
     assert_eq!(err, SubmitError::Full);
 }
@@ -1426,12 +1426,12 @@ fn canonical_resolve() -> (B256, alloy_primitives::U256, Vec<Commitment>, Signat
     match &canonical_ops()[3] {
         KernelOp::Resolve {
             process_id,
-            cumulative_value,
+            running_total,
             commitments,
             buyer_sig,
         } => (
             *process_id,
-            *cumulative_value,
+            *running_total,
             commitments.clone(),
             buyer_sig.clone(),
         ),
@@ -1444,12 +1444,9 @@ async fn mempool_resolve_signed_by_a_stranger_does_not_take_the_buyers_slot() {
     // Anyone can sign a resolve for any process id; `Mempool::submit` does not
     // check the root buyer (the door's `refuse_unknown` does). A stranger's
     // resolve must not make the buyer's a duplicate.
-    let (process_id, cumulative_value, commitments, buyer_sig) = canonical_resolve();
+    let (process_id, running_total, commitments, buyer_sig) = canonical_resolve();
     let domain = domain_separator(CHAIN_ID, CORE);
-    let digest = typed_data_hash(
-        &domain,
-        &resolve_struct_hash(&process_id, &cumulative_value),
-    );
+    let digest = typed_data_hash(&domain, &resolve_struct_hash(&process_id, &running_total));
     let stranger_sig = sign_digest(&make_signing_key(SELLER1_KEY), &digest);
 
     let mp = mempool();
@@ -1457,7 +1454,7 @@ async fn mempool_resolve_signed_by_a_stranger_does_not_take_the_buyers_slot() {
     let squat = mp
         .submit(KernelOp::Resolve {
             process_id,
-            cumulative_value,
+            running_total,
             commitments: commitments.clone(),
             buyer_sig: stranger_sig,
         })
@@ -1466,7 +1463,7 @@ async fn mempool_resolve_signed_by_a_stranger_does_not_take_the_buyers_slot() {
     let real = mp
         .submit(KernelOp::Resolve {
             process_id,
-            cumulative_value,
+            running_total,
             commitments,
             buyer_sig,
         })
@@ -1492,12 +1489,12 @@ async fn mempool_resolve_with_another_order_list_does_not_take_the_slot() {
     // The buyer signs the process id and its cumulative value; the order
     // list rides unsigned. The buyer's signature replayed over a list the
     // proof refuses must not make the complete resolve a duplicate.
-    let (process_id, cumulative_value, commitments, buyer_sig) = canonical_resolve();
+    let (process_id, running_total, commitments, buyer_sig) = canonical_resolve();
     let mp = mempool();
     let squat = mp
         .submit(KernelOp::Resolve {
             process_id,
-            cumulative_value,
+            running_total,
             commitments: vec![],
             buyer_sig: buyer_sig.clone(),
         })
@@ -1506,7 +1503,7 @@ async fn mempool_resolve_with_another_order_list_does_not_take_the_slot() {
     let real = mp
         .submit(KernelOp::Resolve {
             process_id,
-            cumulative_value,
+            running_total,
             commitments,
             buyer_sig,
         })
@@ -1801,7 +1798,7 @@ fn commit_from(base: &Commitment, salt: u64, payment: u64) -> PendingOp {
     let c = Commitment {
         salt: alloy_primitives::U256::from(salt),
         payment: alloy_primitives::U256::from(payment),
-        expected_cumulative_value: alloy_primitives::U256::from(payment),
+        running_total: alloy_primitives::U256::from(payment),
         ..base.clone()
     };
     PendingOp {
@@ -1841,13 +1838,13 @@ fn funding_is_allocated_across_a_wallets_commits_in_order() {
     );
     let mut funds = HashMap::new();
     funds.insert(
-        (base.currency, base.buyer),
+        (base.token, base.buyer),
         (
             alloy_primitives::U256::from(40u64),
             alloy_primitives::U256::from(1_000u64),
         ),
     );
-    funds.insert((base.currency, base.seller), rich);
+    funds.insert((base.token, base.seller), rich);
     let ops = vec![
         commit_from(&base, 1, 10),
         commit_from(&base, 2, 10),
@@ -1872,7 +1869,7 @@ fn funding_is_allocated_across_a_wallets_commits_in_order() {
     // The allowance binds the same way as the balance.
     let mut low_allowance = funds.clone();
     low_allowance.insert(
-        (base.currency, base.buyer),
+        (base.token, base.buyer),
         (
             alloy_primitives::U256::from(1_000u64),
             alloy_primitives::U256::from(25u64),
@@ -1894,7 +1891,7 @@ fn funding_is_allocated_across_a_wallets_commits_in_order() {
     same.seller = same.buyer;
     let mut one = HashMap::new();
     one.insert(
-        (base.currency, base.buyer),
+        (base.token, base.buyer),
         (
             alloy_primitives::U256::from(30u64),
             alloy_primitives::U256::from(1_000u64),
@@ -2114,8 +2111,8 @@ fn a_commit_that_would_grow_a_process_past_one_settle_is_dropped_at_formation() 
         process,
         ProcessState {
             root_buyer: c.buyer,
-            currency: c.currency,
-            cumulative_value: c.payment,
+            currency: c.token,
+            running_total: c.payment,
             active_order_count: 2,
         },
     ));
@@ -2129,7 +2126,7 @@ fn a_commit_that_would_grow_a_process_past_one_settle_is_dropped_at_formation() 
         key: B256::with_last_byte(99),
         op: KernelOp::Resolve {
             process_id: process,
-            cumulative_value: alloy_primitives::U256::ZERO,
+            running_total: alloy_primitives::U256::ZERO,
             commitments: vec![],
             buyer_sig: Signature {
                 r: B256::ZERO,
@@ -2259,7 +2256,7 @@ fn a_two_order_resolve_replays_from_its_stream_to_the_same_root() {
             sub_op,
             KernelOp::Resolve {
                 process_id,
-                cumulative_value: sub.expected_cumulative_value,
+                running_total: sub.running_total,
                 commitments: vec![root.clone(), sub.clone()],
                 buyer_sig: resolve_sig,
             },
@@ -2277,18 +2274,13 @@ fn a_two_order_resolve_replays_from_its_stream_to_the_same_root() {
     );
     let (operations, _, _) = decode_operation_stream(&stream).expect("the stream decodes");
     match &operations[2] {
-        KernelOp::Resolve {
-            cumulative_value, ..
-        } => {
+        KernelOp::Resolve { running_total, .. } => {
             assert_eq!(
-                *cumulative_value,
+                *running_total,
                 root.payment + sub.payment,
                 "the sum of the listed payments"
             );
-            assert_ne!(
-                *cumulative_value, sub.payment,
-                "not the last order's payment"
-            );
+            assert_ne!(*running_total, sub.payment, "not the last order's payment");
         }
         other => panic!("expected the resolve, got {other:?}"),
     }
@@ -2648,7 +2640,7 @@ async fn a_dropped_usage_claim_is_counted_apart_from_operations() {
     let failures = FailureLog::default();
     let batch = build_canonical_batch_input();
     let claim = UsageClaim {
-        clause_or_assembly: B256::with_last_byte(9),
+        clause_or_process: B256::with_last_byte(9),
         ..batch
             .usage_claims
             .first()
@@ -2736,7 +2728,7 @@ async fn a_permanent_kernel_refusal_is_dead_lettered_at_once_and_a_missing_depen
     assert_eq!(refused.len(), 4);
     assert!(reasons[0].contains("ProcessAlreadyExists"), "{reasons:?}");
     assert!(
-        reasons[1].contains("OrderResolved") && reasons[2].contains("OrderResolved"),
+        reasons[1].contains("OrderAlreadyResolved") && reasons[2].contains("OrderAlreadyResolved"),
         "{reasons:?}"
     );
     assert!(reasons[3].contains("NoActiveOrders"), "{reasons:?}");
@@ -2823,7 +2815,7 @@ fn a_refusal_is_classified_on_the_fields_it_carries() {
     // An order list shorter than the active orders only grows shorter.
     let short = KernelOp::Resolve {
         process_id,
-        cumulative_value: sub.expected_cumulative_value,
+        running_total: sub.running_total,
         commitments: vec![root.clone()],
         buyer_sig: resolve_sig.clone(),
     };
@@ -2847,7 +2839,7 @@ fn a_refusal_is_classified_on_the_fields_it_carries() {
     );
     let stale = KernelOp::Resolve {
         process_id,
-        cumulative_value: root.payment,
+        running_total: root.payment,
         commitments: vec![root.clone(), sub.clone()],
         buyer_sig: root_sig.clone(),
     };
@@ -2860,7 +2852,7 @@ fn a_refusal_is_classified_on_the_fields_it_carries() {
     // reached waits for the order that may bring it.
     let ahead = KernelOp::Resolve {
         process_id,
-        cumulative_value: sub.expected_cumulative_value,
+        running_total: sub.running_total,
         commitments: vec![root.clone(), sub.clone()],
         buyer_sig: resolve_sig.clone(),
     };
@@ -2871,14 +2863,14 @@ fn a_refusal_is_classified_on_the_fields_it_carries() {
     // reached, wait for the orders that may complete them.
     let long = KernelOp::Resolve {
         process_id,
-        cumulative_value: root.payment,
+        running_total: root.payment,
         commitments: vec![root.clone(), sub.clone()],
         buyer_sig: root_sig.clone(),
     };
     let fifth = alloy_primitives::U256::from(5u64);
     let later = Commitment {
         payment: fifth,
-        expected_cumulative_value: sub.expected_cumulative_value + fifth,
+        running_total: sub.running_total + fifth,
         salt: sub.salt + alloy_primitives::U256::from(1u64),
         ..sub.clone()
     };
@@ -2899,13 +2891,13 @@ fn a_refusal_is_classified_on_the_fields_it_carries() {
     };
     let foreign = KernelOp::Resolve {
         process_id,
-        cumulative_value: root.payment,
+        running_total: root.payment,
         commitments: vec![elsewhere],
         buyer_sig: root_sig.clone(),
     };
     let own = KernelOp::Resolve {
         process_id,
-        cumulative_value: root.payment,
+        running_total: root.payment,
         commitments: vec![sub.clone()],
         buyer_sig: root_sig,
     };
@@ -2919,19 +2911,19 @@ fn a_refusal_is_classified_on_the_fields_it_carries() {
     // is refused for good, never deferred as a value still to come.
     let full = KernelOp::Resolve {
         process_id,
-        cumulative_value: sub.expected_cumulative_value,
+        running_total: sub.running_total,
         commitments: vec![root.clone(), sub.clone()],
         buyer_sig: resolve_sig.clone(),
     };
     let resolved = landed_after(vec![root_op.clone(), sub_op.clone(), full]);
-    let beyond_value = sub.expected_cumulative_value + fifth;
+    let beyond_value = sub.running_total + fifth;
     let beyond_sig = sign_digest(
         &make_signing_key(BUYER_KEY),
         &typed_data_hash(&domain, &resolve_struct_hash(&process_id, &beyond_value)),
     );
     let beyond = KernelOp::Resolve {
         process_id,
-        cumulative_value: beyond_value,
+        running_total: beyond_value,
         commitments: vec![root.clone(), sub.clone()],
         buyer_sig: beyond_sig,
     };
@@ -2947,13 +2939,13 @@ fn what_was_built_on_a_permanently_refused_operation_is_dead_lettered_at_once() 
     // A root whose deadline the chain has passed, and a sub-order of its
     // process whose own deadline has not.
     let expired_root = Commitment {
-        deadline: alloy_primitives::U256::from(1200u64),
+        commit_deadline: alloy_primitives::U256::from(1200u64),
         ..root.clone()
     };
     let (_, expired_process) = derive_commitment_ids(&domain, &expired_root);
     let behind = Commitment {
         process_id: expired_process,
-        deadline: alloy_primitives::U256::from(5000u64),
+        commit_deadline: alloy_primitives::U256::from(5000u64),
         ..sub.clone()
     };
     // An unrelated operation waiting on an order of its own.
@@ -3104,7 +3096,7 @@ async fn mempool_refuses_a_resolve_listing_an_order_twice() {
     let refused = mp
         .submit(KernelOp::Resolve {
             process_id,
-            cumulative_value: sub.expected_cumulative_value,
+            running_total: sub.running_total,
             commitments: vec![root.clone(), root],
             buyer_sig: resolve_sig,
         })
@@ -3384,7 +3376,7 @@ fn never_applying_resolve(process_id: B256, n: u8) -> PendingOp {
         key: B256::with_last_byte(200 + n),
         op: KernelOp::Resolve {
             process_id,
-            cumulative_value: alloy_primitives::U256::ZERO,
+            running_total: alloy_primitives::U256::ZERO,
             commitments: vec![],
             buyer_sig: Signature {
                 r: B256::ZERO,
@@ -3474,7 +3466,7 @@ async fn a_sub_order_filtered_behind_a_deferred_sub_order_is_dead_lettered_with_
     let third = Commitment {
         process_id,
         payment,
-        expected_cumulative_value: sub.expected_cumulative_value + payment,
+        running_total: sub.running_total + payment,
         salt: sub.salt + alloy_primitives::U256::from(1u64),
         ..sub.clone()
     };
@@ -3483,7 +3475,7 @@ async fn a_sub_order_filtered_behind_a_deferred_sub_order_is_dead_lettered_with_
     let beside = Commitment {
         process_id,
         payment,
-        expected_cumulative_value: root.payment + payment,
+        running_total: root.payment + payment,
         salt: sub.salt + alloy_primitives::U256::from(2u64),
         ..sub.clone()
     };
@@ -3572,7 +3564,7 @@ fn padded(mut landed: KernelStateSnapshot, n: u32) -> KernelStateSnapshot {
             ProcessState {
                 root_buyer: Address::repeat_byte(1),
                 currency: Address::repeat_byte(2),
-                cumulative_value: alloy_primitives::U256::from(1u64),
+                running_total: alloy_primitives::U256::from(1u64),
                 active_order_count: 1,
             },
         ));
@@ -3640,7 +3632,7 @@ fn a_chain_of_99_sub_orders_behind_an_unread_one_is_marked_within_the_cap() {
     for i in 0..98u64 {
         let next = Commitment {
             payment,
-            expected_cumulative_value: prev.expected_cumulative_value + payment,
+            running_total: prev.running_total + payment,
             salt: sub.salt + alloy_primitives::U256::from(10 + i),
             ..sub.clone()
         };
@@ -3967,7 +3959,7 @@ fn wallet_code_resolve_from_the_wire(
     serde_json::from_value(serde_json::json!({
         "ResolveByWalletCode": {
             "process_id": process_id,
-            "cumulative_value": value,
+            "running_total": value,
             "commitments": commitments,
             "authorization": "0x677561726469616e2d617070726f76616c",
         }
@@ -3982,7 +3974,7 @@ async fn a_wallet_code_resolve_is_admitted_from_the_wire_and_replays_to_the_same
     let (root_op, sub_op, root, sub, process_id, _resolve_sig) = two_order_process();
     let resolve = wallet_code_resolve_from_the_wire(
         process_id,
-        sub.expected_cumulative_value,
+        sub.running_total,
         &[root.clone(), sub.clone()],
     );
     let KernelOp::ResolveByWalletCode { authorization, .. } = &resolve else {
@@ -4033,7 +4025,7 @@ async fn mempool_refuses_a_wallet_code_authorization_longer_than_the_relay_plans
     let (_, _, root, _, process_id, _) = two_order_process();
     let op = KernelOp::ResolveByWalletCode {
         process_id,
-        cumulative_value: root.payment,
+        running_total: root.payment,
         commitments: vec![root],
         authorization: alloy_primitives::Bytes::from(vec![
             1u8;
@@ -4052,7 +4044,7 @@ fn the_relay_asks_the_buyers_code_the_verifiers_question() {
     let (_, _, root, sub, process_id, _) = two_order_process();
     let op = wallet_code_resolve_from_the_wire(
         process_id,
-        sub.expected_cumulative_value,
+        sub.running_total,
         &[root.clone(), sub.clone()],
     );
     let verifier = Address::repeat_byte(0x77);
@@ -4090,7 +4082,7 @@ fn an_unnamed_refusal_dead_letters_the_wallet_code_resolves_alone() {
         key: B256::with_last_byte(90),
         op: wallet_code_resolve_from_the_wire(
             process_id,
-            sub.expected_cumulative_value,
+            sub.running_total,
             &[root.clone(), sub.clone()],
         ),
         deferred_since: None,
@@ -4182,7 +4174,7 @@ fn what_the_refusal_leaves_to_retry_keeps_the_batch_s_order() {
         key: B256::with_last_byte(4),
         op: wallet_code_resolve_from_the_wire(
             process_id,
-            sub.expected_cumulative_value,
+            sub.running_total,
             &[root.clone(), sub.clone()],
         ),
         deferred_since: None,
@@ -4499,7 +4491,7 @@ async fn admission_refuses_an_operation_on_a_process_or_order_the_relay_neither_
     let sub = Commitment {
         process_id: process,
         salt: alloy_primitives::U256::from(77u64),
-        expected_cumulative_value: root.payment + root.payment,
+        running_total: root.payment + root.payment,
         ..root.clone()
     };
     for (op, what) in [
@@ -4539,14 +4531,11 @@ async fn admission_refuses_a_resolve_not_signed_by_the_root_buyer() {
     let app = api::router(state.clone(), ApiConfig::default());
     let ops = canonical_ops();
     assert_eq!(submit_status(&app, &ops[0]).await.0, StatusCode::OK);
-    let (process_id, cumulative_value, commitments, _) = canonical_resolve();
-    let digest = typed_data_hash(
-        &domain(),
-        &resolve_struct_hash(&process_id, &cumulative_value),
-    );
+    let (process_id, running_total, commitments, _) = canonical_resolve();
+    let digest = typed_data_hash(&domain(), &resolve_struct_hash(&process_id, &running_total));
     let stranger = KernelOp::Resolve {
         process_id,
-        cumulative_value,
+        running_total,
         commitments,
         buyer_sig: sign_digest(&make_signing_key(SELLER1_KEY), &digest),
     };

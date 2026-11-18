@@ -35,7 +35,7 @@
             "internalType": "address"
           },
           {
-            "name": "currency",
+            "name": "token",
             "type": "address",
             "internalType": "address"
           },
@@ -45,7 +45,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "expectedCumulativeValue",
+            "name": "runningTotal",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -60,7 +60,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "deadline",
+            "name": "commitDeadline",
             "type": "uint256",
             "internalType": "uint256"
           }
@@ -120,7 +120,7 @@
             "internalType": "address"
           },
           {
-            "name": "currency",
+            "name": "token",
             "type": "address",
             "internalType": "address"
           },
@@ -130,7 +130,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "expectedCumulativeValue",
+            "name": "runningTotal",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -145,7 +145,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "deadline",
+            "name": "commitDeadline",
             "type": "uint256",
             "internalType": "uint256"
           }
@@ -259,7 +259,7 @@
   },
   {
     "type": "error",
-    "name": "OrderResolved",
+    "name": "OrderAlreadyResolved",
     "inputs": []
   },
   {

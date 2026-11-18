@@ -16,7 +16,7 @@ import { derivePricedFields } from "../src/checkoutPlan.js";
 import type { Address, Hex } from "../src/types.js";
 import { hydrateAuthored, profileBinding } from "./hydrate.js";
 import { forgeBuyerOffer } from "./forgeOffer.js";
-import { assemblyHashOf, deriveAssemblySlug } from "../src/assembly.js";
+import { processDesignHashOf, deriveProcessDesignSlug } from "../src/assembly.js";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
@@ -149,10 +149,10 @@ describe("verifyRaceReply", () => {
             types: {
                 Commitment: [
                     { name: "processId", type: "bytes32" }, { name: "buyer", type: "address" },
-                    { name: "seller", type: "address" }, { name: "currency", type: "address" },
-                    { name: "payment", type: "uint256" }, { name: "expectedCumulativeValue", type: "uint256" },
+                    { name: "seller", type: "address" }, { name: "token", type: "address" },
+                    { name: "payment", type: "uint256" }, { name: "runningTotal", type: "uint256" },
                     { name: "checkoutHash", type: "bytes32" }, { name: "salt", type: "uint256" },
-                    { name: "deadline", type: "uint256" },
+                    { name: "commitDeadline", type: "uint256" },
                 ],
             },
             primaryType: "Commitment",
@@ -214,7 +214,7 @@ describe("buildQuoteRequest + substitutePricedValue", () => {
         expect(req.buyerSig).toBeUndefined();
         expect(req.sellerSig).toBeUndefined();
         expect(req.commitment.payment).toBe(CEILING);
-        expect(req.commitment.expectedCumulativeValue).toBe(CEILING);
+        expect(req.commitment.runningTotal).toBe(CEILING);
         expect(req.quoteRequest?.pricedFields).toEqual(PRICED);
         const commerce = req.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!;
         expect(commerce.data).not.toHaveProperty("payment");
@@ -238,7 +238,7 @@ describe("quoteDraft (real signatures, no chain)", () => {
         const reply = await quoteDraft(courierAW, req, CTX, SPECS, () => 700n, quotePolicy, assembly, BOUND);
         expect(reply?.sellerSig).toBeDefined();
         expect(reply?.commitment.payment).toBe(700n);
-        expect(reply?.commitment.expectedCumulativeValue).toBe(700n);
+        expect(reply?.commitment.runningTotal).toBe(700n);
         const commerce = reply!.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!;
         expect(commerce.data).not.toHaveProperty("payment");
         expect((commerce.data.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe("700");
@@ -289,7 +289,7 @@ describe("verifyQuoteReply — the reconstruction gate", () => {
                     : s),
         };
         const commitment = {
-            ...req.commitment, payment: 700n, expectedCumulativeValue: 700n,
+            ...req.commitment, payment: 700n, runningTotal: 700n,
             checkoutHash: computeCheckoutHash(doctored),
         };
         const reply: CommitmentPayload = { commitment, agreement: doctored, sellerSig: await signedBy(courierAW, commitment) };
@@ -302,7 +302,7 @@ describe("verifyQuoteReply — the reconstruction gate", () => {
         const req = requestFor(COURIER_A.address);
         const agreement = substitutePricedValue(req.agreement, PRICED, CEILING + 500n);
         const commitment = {
-            ...req.commitment, payment: CEILING + 500n, expectedCumulativeValue: CEILING + 500n,
+            ...req.commitment, payment: CEILING + 500n, runningTotal: CEILING + 500n,
             checkoutHash: computeCheckoutHash(agreement),
         };
         const reply: CommitmentPayload = { commitment, agreement, sellerSig: await signedBy(courierAW, commitment) };
@@ -498,8 +498,8 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
         const agreement = { ...payload.agreement, clauses: payload.agreement.clauses.filter((s) => s.clause !== keyOf("figaro-commerce")) };
         return { ...payload, agreement, commitment: { ...payload.commitment, checkoutHash: computeCheckoutHash(agreement) } };
     }
-    const draftHash = assemblyHashOf(assembly.assembly);
-    const missing = new RegExp(`figaro-commerce clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(draftHash)} \\(${draftHash}\\) composes`);
+    const draftHash = processDesignHashOf(assembly.assembly);
+    const missing = new RegExp(`figaro-commerce clause: the order does not carry this clause, which assembly ${deriveProcessDesignSlug(draftHash)} \\(${draftHash}\\) composes`);
 
     it("validateDraft, counterSignDraft and quoteDraft refuse a draft missing a clause of the registered agreement it names", async () => {
         const offer = await buildBuyerOffer(buyerW, {
@@ -522,9 +522,9 @@ describe("the seller's bound assemblies — the race and quote legs refuse a dra
     const elsewhere = hydrateAuthored({
         agreements: [{ id: "agreement-0", clauses: {}, follows: [] }],
     });
-    const draftHash = assemblyHashOf(assembly.assembly);
+    const draftHash = processDesignHashOf(assembly.assembly);
     const NOT_BINDING = profileBinding(elsewhere);
-    const named = new RegExp(`has not bound assembly ${deriveAssemblySlug(draftHash)} \\(${draftHash}\\)`);
+    const named = new RegExp(`has not bound assembly ${deriveProcessDesignSlug(draftHash)} \\(${draftHash}\\)`);
 
     it("validateDraft refuses a draft under an assembly the candidate has not bound, and one whose profile is unreadable", async () => {
         const draft = await draftFor(COURIER_A.address, 1000n);

@@ -23,7 +23,7 @@
         "internalType": "address"
       },
       {
-        "name": "_assemblies",
+        "name": "_processDesigns",
         "type": "address",
         "internalType": "address"
       },
@@ -55,7 +55,7 @@
   },
   {
     "type": "function",
-    "name": "KIND_ASSEMBLY",
+    "name": "KIND_CLAUSE",
     "inputs": [],
     "outputs": [
       {
@@ -68,7 +68,7 @@
   },
   {
     "type": "function",
-    "name": "KIND_CLAUSE",
+    "name": "KIND_PROCESS",
     "inputs": [],
     "outputs": [
       {
@@ -94,19 +94,6 @@
   },
   {
     "type": "function",
-    "name": "assemblies",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IAssemblyAuthor"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "claim",
     "inputs": [
       {
@@ -115,9 +102,9 @@
         "internalType": "uint8"
       },
       {
-        "name": "clausesOrAssemblies",
+        "name": "clausesOrProcesses",
         "type": "tuple[]",
-        "internalType": "struct RpgfMinter.ClauseOrAssemblyKey[]",
+        "internalType": "struct RpgfMinter.ClauseOrProcessKey[]",
         "components": [
           {
             "name": "kind",
@@ -150,9 +137,9 @@
         "internalType": "address"
       },
       {
-        "name": "clausesOrAssemblies",
+        "name": "clausesOrProcesses",
         "type": "tuple[]",
-        "internalType": "struct RpgfMinter.ClauseOrAssemblyKey[]",
+        "internalType": "struct RpgfMinter.ClauseOrProcessKey[]",
         "components": [
           {
             "name": "kind",
@@ -309,6 +296,19 @@
     "stateMutability": "view"
   },
   {
+    "type": "function",
+    "name": "processDesigns",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IProcessAuthor"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "type": "event",
     "name": "Claimed",
     "inputs": [
@@ -357,7 +357,7 @@
   },
   {
     "type": "error",
-    "name": "DuplicateClauseOrAssembly",
+    "name": "DuplicateClauseOrProcess",
     "inputs": [
       {
         "name": "kind",
@@ -365,7 +365,7 @@
         "internalType": "uint8"
       },
       {
-        "name": "clauseOrAssembly",
+        "name": "clauseOrProcess",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -373,7 +373,7 @@
   },
   {
     "type": "error",
-    "name": "NoClausesOrAssemblies",
+    "name": "NoClausesOrProcesses",
     "inputs": []
   },
   {
@@ -386,7 +386,7 @@
         "internalType": "uint8"
       },
       {
-        "name": "clauseOrAssembly",
+        "name": "clauseOrProcess",
         "type": "bytes32",
         "internalType": "bytes32"
       },

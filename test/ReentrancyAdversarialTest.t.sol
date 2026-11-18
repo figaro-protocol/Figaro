@@ -73,12 +73,12 @@ contract ReentrancyAdversarialTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: keccak256("reentry-agreement"),
             salt: 1,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
     }
 
@@ -110,7 +110,7 @@ contract ReentrancyAdversarialTest is Test {
         );
 
         // The outer commit still completed correctly, exactly once: buyer bonds
-        // 2×payment, seller bonds 2×cumulativeValue — no double-pull.
+        // 2×payment, seller bonds 2×runningTotal — no double-pull.
         assertEq(buyerBefore - token.balanceOf(buyer), 100 ether, "buyer bonds 2x payment, once");
         assertEq(sellerBefore - token.balanceOf(seller), 100 ether, "seller bonds 2x cumulative, once");
     }

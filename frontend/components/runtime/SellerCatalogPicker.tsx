@@ -15,7 +15,7 @@
  *
  * Either way: the address resolves the seller's catalog, and the buyer
  * selects an item from its published price list — only from a seller whose
- * profile binds the order's assembly (`assemblyHash`): every seller in a
+ * profile binds the order's assembly (`processDesignHash`): every seller in a
  * process must have bound it, so a seller that has not is never offered.
  *
  * Catalogs come from `useRegisteredCatalogs` — the discovered member
@@ -33,7 +33,7 @@ import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 import { Input } from "@/components/ui/Input";
 import { bindsAssembly } from "@/lib/member/memberListing";
-import { deriveAssemblySlug } from "@/lib/shared/assembly";
+import { deriveProcessDesignSlug } from "@/lib/shared/assembly";
 
 export interface SellerSelection {
     seller: `0x${string}`;
@@ -48,14 +48,14 @@ interface Props {
     tokenSymbol: string;
     /** The assembly hash of the assembly the order instantiates — the
      *  picked seller's profile must bind it. */
-    assemblyHash: `0x${string}`;
+    processDesignHash: `0x${string}`;
     /** Reports the completed selection, or `null` while incomplete. */
     onSelect: (selection: SellerSelection | null) => void;
 }
 
 const FIELD = "rounded focus-visible:border-transparent";
 
-export function SellerCatalogPicker({ tokenSymbol, assemblyHash, onSelect }: Props) {
+export function SellerCatalogPicker({ tokenSymbol, processDesignHash, onSelect }: Props) {
     const [selectedSellerAddress, setSelectedSellerAddress] = useState("");
     const [selectedItemId, setSelectedItemId] = useState("");
 
@@ -72,7 +72,7 @@ export function SellerCatalogPicker({ tokenSymbol, assemblyHash, onSelect }: Pro
     // free-form seller label, never a closed tag the picker may branch on (the
     // coordination context comes from the order's coordination clause, not from
     // an item's category string).
-    const sellerHasNotBound = !!memberCatalog && !bindsAssembly(memberCatalog, assemblyHash);
+    const sellerHasNotBound = !!memberCatalog && !bindsAssembly(memberCatalog, processDesignHash);
     const catalogItems = useMemo(
         () => (memberCatalog && !sellerHasNotBound ? memberCatalog.items : []),
         [memberCatalog, sellerHasNotBound],
@@ -122,7 +122,7 @@ export function SellerCatalogPicker({ tokenSymbol, assemblyHash, onSelect }: Pro
             )}
             {sellerHasNotBound && (
                 <p className="text-xs text-ink-muted" data-testid="seller-not-bound">
-                    This seller has not bound this assembly ({deriveAssemblySlug(assemblyHash)}), so it would
+                    This seller has not bound this assembly ({deriveProcessDesignSlug(processDesignHash)}), so it would
                     refuse the order. Pick a seller that has.
                 </p>
             )}

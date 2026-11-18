@@ -7,7 +7,7 @@
  * available item prices it, as before.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
+import { planProcessOrders } from "@/lib/checkout/assemblyCheckout";
 import { deriveKitBreakdown } from "@/lib/checkout/checkoutDerivations";
 import { requiredCoSellerClauses } from "@/lib/protocol/assemblyChoices";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
@@ -57,7 +57,7 @@ const breakdown = (assembly: BoundAssembly, items: typeof ITEMS) => deriveKitBre
     sellerSelection: null,
 });
 
-const plan = (assembly: BoundAssembly, items: typeof ITEMS) => planAssemblyOrders(
+const plan = (assembly: BoundAssembly, items: typeof ITEMS) => planProcessOrders(
     {
         buyer: BUYER,
         leadSellerAddress: LEAD,

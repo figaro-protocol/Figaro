@@ -130,7 +130,7 @@ contract WitnessSwapAndCommitCoordinator is ReentrancyGuard {
     }
 
     /// @notice The role whose bond a leg pays: the buyer's bond (2·payment) or the
-    ///         seller's (2·expectedCumulativeValue).
+    ///         seller's (2·runningTotal).
     uint8 internal constant BUYER_ROLE = 0;
     uint8 internal constant SELLER_ROLE = 1;
 
@@ -220,12 +220,12 @@ contract WitnessSwapAndCommitCoordinator is ReentrancyGuard {
         bytes32 commitmentHash = CommitmentTypes.hashStruct(c);
 
         // Bond amounts mirror FigaroCore's pulls exactly: 2·payment from the buyer,
-        // 2·expectedCumulativeValue from the seller (FigaroCore.commit).
+        // 2·runningTotal from the seller (FigaroCore.commit).
         if (buyerFunding.enabled) {
-            _fund(c.buyer, c.currency, c.payment * 2, commitmentHash, BUYER_ROLE, buyerFunding);
+            _fund(c.buyer, c.token, c.payment * 2, commitmentHash, BUYER_ROLE, buyerFunding);
         }
         if (sellerFunding.enabled) {
-            _fund(c.seller, c.currency, c.expectedCumulativeValue * 2, commitmentHash, SELLER_ROLE, sellerFunding);
+            _fund(c.seller, c.token, c.runningTotal * 2, commitmentHash, SELLER_ROLE, sellerFunding);
         }
 
         (processId, orderHash) = figaroCore.commit(c, buyerSig, sellerSig);

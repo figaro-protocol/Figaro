@@ -57,7 +57,7 @@ export interface ResolutionEntry {
     /** The order's value-added — the net transfer at resolution. */
     payment: bigint;
     /** The accumulator at this link — what the seller's bond scales to. */
-    cumulativeValue: bigint;
+    runningTotal: bigint;
     /** Bonds locked at commit (2× invariants), via `calculateBonds`. */
     locked: BondBreakdown;
     /** The payouts FigaroCore determines at resolution, via `calculateResolution` —
@@ -79,7 +79,7 @@ export interface ResolutionChain {
     /** The process's one denomination (`currency` is a signed field of every
      *  commitment; a process is monotoken by FigaroCore construction). */
     currency: Address;
-    cumulativeValue: bigint;
+    runningTotal: bigint;
     resolved: boolean;
     /** Orders in cumulative-value order — FigaroCore's own linear chain. */
     orders: ResolutionEntry[];
@@ -106,18 +106,18 @@ export function projectResolutionGraph(events: CoreEvents): ResolutionGraph {
     for (const process of topology.processes.values()) {
         const orders = [...process.orders.values()]
             .sort((a, b) =>
-                a.cumulativeValue === b.cumulativeValue
+                a.runningTotal === b.runningTotal
                     ? a.blockNumber - b.blockNumber
-                    : a.cumulativeValue < b.cumulativeValue ? -1 : 1,
+                    : a.runningTotal < b.runningTotal ? -1 : 1,
             )
             .map((o): ResolutionEntry => {
-                const locked = calculateBonds(o.cumulativeValue, o.payment);
+                const locked = calculateBonds(o.runningTotal, o.payment);
                 return {
                     orderHash: o.orderHash,
                     buyer: o.buyer,
                     seller: o.seller,
                     payment: o.payment,
-                    cumulativeValue: o.cumulativeValue,
+                    runningTotal: o.runningTotal,
                     locked,
                     atResolution: calculateResolution(o.payment, locked.sellerBond, locked.buyerBond),
                     state: o.state,
@@ -129,7 +129,7 @@ export function projectResolutionGraph(events: CoreEvents): ResolutionGraph {
         chains.set(process.processId, {
             processId: process.processId,
             currency: process.currency,
-            cumulativeValue: process.cumulativeValue,
+            runningTotal: process.runningTotal,
             resolved: process.resolved,
             orders,
         });

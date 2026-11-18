@@ -120,9 +120,9 @@ export {
     DEFAULT_MAX_DEADLINE_SECONDS,
 } from "./originate.js";
 export type {
-    Assembly,
-    HydratedAssembly,
-    AssemblyAgreement,
+    ProcessDesign,
+    HydratedProcessDesign,
+    ProcessDesignAgreement,
     InstantiateParams,
     BuildOfferParams,
     OfferCheck,

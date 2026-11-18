@@ -6,7 +6,7 @@ const SELLER = "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 const mkOrder = (o: Partial<Order> & Pick<Order, "orderHash" | "seller">): Order => ({
     processId: "0xPROC", buyer: "0xBUYER", currency: "0xTOKEN",
-    cumulativeValue: 0n, payment: 0n, state: OrderState.Active,
+    runningTotal: 0n, payment: 0n, state: OrderState.Active,
     sellerBond: 0n, buyerBond: 0n, salt: 0n, deadline: 0n, ...o,
 });
 

@@ -5,9 +5,9 @@
  * Covers the SDK's two encode/decode pairs:
  *   - `serializeCommitmentPayload` / `deserializeCommitmentPayload` (the agent
  *     offer envelope; bigints → hex strings → bigints)
- *   - `serializeAssembly` (canonical JSON) / `JSON.parse` — the pinned
+ *   - `serializeProcessDesign` (canonical JSON) / `JSON.parse` — the pinned
  *     assembly document's reader path, whose integrity check is recomputing
- *     `assemblyHashOf` from the parsed document.
+ *     `processDesignHashOf` from the parsed document.
  *
  * Complements (never replaces) the pinned golden vectors in
  * `commitmentPayload.test.ts` and the EIP-712 parity hard gate.
@@ -19,8 +19,8 @@ import {
     serializeCommitmentPayload,
     type CommitmentPayload,
 } from "../src/agent/coordination.js";
-import { serializeAssembly } from "../src/projection.js";
-import { assemblyHashOf, type Assembly } from "../src/assembly.js";
+import { serializeProcessDesign } from "../src/projection.js";
+import { processDesignHashOf, type ProcessDesign } from "../src/assembly.js";
 import {
     addressArb,
     agreementArb,
@@ -95,14 +95,14 @@ describe("CommitmentPayload codec — property round-trip", () => {
 });
 
 describe("Assembly document — property round-trip", () => {
-    it("JSON.parse(serialize(t).json) deep-equals t, and the reader's recomputed assemblyHash matches", () => {
+    it("JSON.parse(serialize(t).json) deep-equals t, and the reader's recomputed processDesignHash matches", () => {
         fc.assert(
             fc.property(assemblyArb, (assembly) => {
-                const { json, assemblyHash } = serializeAssembly(assembly);
-                const parsed = JSON.parse(json) as Assembly;
+                const { json, processDesignHash } = serializeProcessDesign(assembly);
+                const parsed = JSON.parse(json) as ProcessDesign;
                 expect(parsed).toEqual(assembly);
                 // Reader-side integrity check: recompute from the fetched doc.
-                expect(assemblyHashOf(parsed)).toBe(assemblyHash);
+                expect(processDesignHashOf(parsed)).toBe(processDesignHash);
             }),
         );
     });
@@ -110,12 +110,12 @@ describe("Assembly document — property round-trip", () => {
     it("identity is composition-derived: editorial prose never forks the hash; the composition always does", () => {
         fc.assert(
             fc.property(assemblyArb, fc.string({ maxLength: 16 }), (assembly, prose) => {
-                const { assemblyHash } = serializeAssembly(assembly);
+                const { processDesignHash } = serializeProcessDesign(assembly);
                 // Renaming never forks the slug…
                 const renamed = { ...assembly, name: prose, description: prose };
-                expect(serializeAssembly(renamed).assemblyHash).toBe(assemblyHash);
+                expect(serializeProcessDesign(renamed).processDesignHash).toBe(processDesignHash);
                 // …but touching the composition always does.
-                const grown: Assembly = {
+                const grown: ProcessDesign = {
                     ...assembly,
                     agreements: assembly.agreements.map((a, i) =>
                         i === 0
@@ -123,7 +123,7 @@ describe("Assembly document — property round-trip", () => {
                             : a,
                     ),
                 };
-                expect(serializeAssembly(grown).assemblyHash).not.toBe(assemblyHash);
+                expect(serializeProcessDesign(grown).processDesignHash).not.toBe(processDesignHash);
             }),
         );
     });

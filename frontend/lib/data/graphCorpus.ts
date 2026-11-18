@@ -104,7 +104,7 @@ export interface GraphCorpus {
     overlays: OverlayGraph[];
     /** The fifth-noun projection: denominations, pins, and venue corridors. */
     valueFlow: ValueFlowGraph;
-    /** Per-assembly aggregates, keyed by declared assemblyHash. */
+    /** Per-assembly aggregates, keyed by declared processDesignHash. */
     market: MarketShape;
     /** How much attested substance this pass recovered, and how much it tried. */
     substance: { attempted: number; recovered: number; total: number };
@@ -112,7 +112,7 @@ export interface GraphCorpus {
     tokenMeta: Map<string, TokenMeta>;
     /** The composed swap venue this deployment records, or null. */
     venue: string | null;
-    /** assemblyHash (lowercased) → registered assembly name. */
+    /** processDesignHash (lowercased) → registered assembly name. */
     assemblyNames: Map<string, string>;
     /** processId (lowercased) → the attribution key an attested provenance
      *  overlay declared for it. A process absent from this map is the honest
@@ -125,7 +125,7 @@ export interface GraphCorpus {
  *  (the assembly-scoped set, where a denomination pin composes once, and each
  *  agreement's own set), each keyed by clause key. */
 interface CorpusAssembly {
-    assemblyHash: `0x${string}`;
+    processDesignHash: `0x${string}`;
     /** The registered agreement each agreement binds, in assembly order. */
     agreementHashes: readonly `0x${string}`[];
     name: string;
@@ -215,7 +215,7 @@ async function readCommitFundingLegs(
  * attributes a process without holding anyone's agreement body. The graph is
  * the one the SDK marks `provenanceLeaf` (the format constant, never a clause
  * name or a spec field). An entry attributes by its decoded
- * `{ agreementHash, assemblyHash }` when its bytes recovered, else by its
+ * `{ agreementHash, processDesignHash }` when its bytes recovered, else by its
  * fingerprint matching `provenanceContentRef` of an (agreement hash,
  * assembly root) pair the page loaded — an agreement of a loaded
  * assembly; the bytes are reproducible from the two keys, so the match is
@@ -223,16 +223,16 @@ async function readCommitFundingLegs(
  */
 export function attributionFromOverlays(
     overlays: readonly OverlayGraph[],
-    assemblies: readonly { assemblyHash: Hex; agreementHashes: readonly Hex[] }[],
+    assemblies: readonly { processDesignHash: Hex; agreementHashes: readonly Hex[] }[],
 ): Map<string, string> {
     const hashByContentRef = new Map<string, string>();
-    for (const { assemblyHash, agreementHashes } of assemblies) {
-        if (!isBytes32Hex(assemblyHash)) continue;
+    for (const { processDesignHash, agreementHashes } of assemblies) {
+        if (!isBytes32Hex(processDesignHash)) continue;
         for (const agreementHash of agreementHashes) {
             if (!isBytes32Hex(agreementHash)) continue;
             hashByContentRef.set(
-                provenanceContentRef(agreementHash, assemblyHash).toLowerCase(),
-                assemblyHash.toLowerCase(),
+                provenanceContentRef(agreementHash, processDesignHash).toLowerCase(),
+                processDesignHash.toLowerCase(),
             );
         }
     }
@@ -240,7 +240,7 @@ export function attributionFromOverlays(
     for (const graph of overlays) {
         if (!graph.provenanceLeaf) continue;
         for (const entry of graph.entries) {
-            const value = entry.decoded?.["assemblyHash"];
+            const value = entry.decoded?.["processDesignHash"];
             const attributed = isBytes32Hex(value)
                 ? value.toLowerCase()
                 : hashByContentRef.get(entry.contentRef.toLowerCase());
@@ -338,7 +338,7 @@ async function readGraphCorpus(deps?: {
 
     const assemblyNames = new Map<string, string>();
     for (const assembly of deps?.assemblies ?? []) {
-        assemblyNames.set(assembly.assemblyHash.toLowerCase(), assembly.name);
+        assemblyNames.set(assembly.processDesignHash.toLowerCase(), assembly.name);
     }
 
     return {
@@ -406,7 +406,7 @@ export function useGraphCorpus(): NetworkRead<GraphCorpus> {
             (choices ?? [])
                 .flatMap((a) => (a.hydratedAssembly === null ? [] : [{ a, hydrated: a.hydratedAssembly }]))
                 .map(({ a, hydrated }) => ({
-                    assemblyHash: a.assemblyHash,
+                    processDesignHash: a.processDesignHash,
                     agreementHashes: hydrated.assembly.agreements.map((entry) => entry.agreementHash),
                     name: a.name,
                     clauseSets: [

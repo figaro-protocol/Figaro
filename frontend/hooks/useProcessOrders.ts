@@ -20,7 +20,7 @@
  *
  * FigaroCore uses a unified `commit()` (no separate offer/accept), and
  * OrderCommitted events carry salt + deadline rather than bond + timestamp;
- * bonds are derived from payment and cumulativeValue at read time.
+ * bonds are derived from payment and runningTotal at read time.
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";

@@ -20,7 +20,7 @@
 ROOT order.</p>
 <p>FigaroCore pulls the FULL bonds on every commit (FigaroCore <code>_pullExact</code>):
 Buyer:  2 × payment
-Seller: 2 × cumulativeValue  (== 2 × payment on a root order)</p>
+Seller: 2 × runningTotal  (== 2 × payment on a root order)</p>
 <p>There is no incremental approval anywhere in FigaroCore — sub-orders
 pull full per-order bonds too; use <code>calculateSubOrderApproval</code>.</p>
 </div>

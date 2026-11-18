@@ -192,7 +192,7 @@ rule attestationCannotChangeOrderStatus(bytes32 watchedOrder, method f)
 // ═══════════════════════════════════════════════════════════════════
 // RULE 4: No AttestationCoordinator call can change FigaroCore process state
 //
-// rootBuyer, currency, cumulativeValue, and activeOrderCount are all owned by
+// rootBuyer, currency, runningTotal, and activeOrderCount are all owned by
 // FigaroCore. AC cannot modify them.
 // ═══════════════════════════════════════════════════════════════════
 

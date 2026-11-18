@@ -33,7 +33,7 @@ import {
     holdIpfsApi,
     keyOf,
     primeRegisteredClauseSpecs,
-    anchoredAssemblyHash,
+    anchoredProcessDesignHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
@@ -82,7 +82,7 @@ const BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
  *  anvil-held so the fixture can drive its accept). */
 const POS_SELLER = ANVIL_ACCOUNTS[31] as Hex;
 async function findPosAssembly(): Promise<string> {
-    // Identify pos.json by IDENTITY (its assemblyHash → slug), NOT by a
+    // Identify pos.json by IDENTITY (its processDesignHash → slug), NOT by a
     // clause-shape heuristic. The old filter (single-order + has-modalities +
     // no-content-handoff) is closed-world AND ambiguous — it also matched other
     // single-order compositions (e.g. the aerial-survey assemblies), so `.find()`
@@ -95,8 +95,8 @@ async function findPosAssembly(): Promise<string> {
 }
 async function ensurePosSeller(token: Hex): Promise<Hex> {
     const slug = await findPosAssembly();
-    const assemblyHash = await anchoredAssemblyHash(slug);
-    const bound = (await memberProfileBindings(POS_SELLER)).some((b) => isBindingOf(b, assemblyHash));
+    const processDesignHash = await anchoredProcessDesignHash(slug);
+    const bound = (await memberProfileBindings(POS_SELLER)).some((b) => isBindingOf(b, processDesignHash));
     if (!bound) {
         const { uri: catalogURI } = await pinJSONToIPFS({
             subjectAddress: POS_SELLER,
@@ -120,16 +120,16 @@ async function ensurePosSeller(token: Hex): Promise<Hex> {
                 catalogURI,
                 acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
                 defaultTokenAddress: token,
-                assemblyBindings: [{
+                processBindings: [{
                     bindingId: 'pos-reference',
                     subjectAddress: POS_SELLER,
-                    assemblyHash,
+                    processDesignHash,
                     coSellerBindings: [],
                 }],
             },
         });
         await expect.poll(async () =>
-            (await memberProfileBindings(POS_SELLER)).some((b) => isBindingOf(b, assemblyHash)), {
+            (await memberProfileBindings(POS_SELLER)).some((b) => isBindingOf(b, processDesignHash)), {
             timeout: 60000, message: "the POS seller's pinned profile carries the pos binding",
         }).toBe(true);
     }
@@ -279,13 +279,13 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         // Surface the event + receipt as the proof artifact (not just a UI pass).
         test.info().annotations.push({
             type: 'OrderCommitted',
-            description: `order=${event.args.orderHash} payment=${event.args.payment} cumulativeValue=${event.args.cumulativeValue} tx=${receipt.transactionHash} block=${receipt.blockNumber} gasUsed=${receipt.gasUsed}`,
+            description: `order=${event.args.orderHash} payment=${event.args.payment} runningTotal=${event.args.runningTotal} tx=${receipt.transactionHash} block=${receipt.blockNumber} gasUsed=${receipt.gasUsed}`,
         });
 
         // ── Funds actually moved (the real test): buyer↓ buyerBond, seller↓
         //    sellerBond, FigaroCore escrow↑ both. Exact deltas — gas is paid in ETH,
         //    so the payment-token deltas are the bonds only. ──
-        const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+        const { buyerBond, sellerBond } = calculateBonds(event.args.runningTotal!, event.args.payment!);
         // The approval landed inside the accept flow, after the confirm, and
         // was exactly the seller bond the Core pulled: an allowance that
         // already covered it was spent down by the bond and nothing was

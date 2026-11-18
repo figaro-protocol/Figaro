@@ -38,7 +38,7 @@ const order: Order = {
     buyer: BUYER,
     seller: SELLER,
     currency: `0x${"33".repeat(20)}`,
-    cumulativeValue: 3n,
+    runningTotal: 3n,
     payment: 3n,
     state: OrderState.Active,
     sellerBond: 6n,
@@ -143,7 +143,7 @@ describe("re-assert committed clauses — one card per party per order", () => {
 describe("re-assert committed clauses — the provenance leaf", () => {
     const COMPOSITION = `0x${"9a".repeat(32)}` as `0x${string}`;
     const AGREEMENT_HASH = `0x${"8b".repeat(32)}` as `0x${string}`;
-    const withProvenance: Agreement = { ...agreement, provenance: { agreementHash: AGREEMENT_HASH, assemblyHash: COMPOSITION } };
+    const withProvenance: Agreement = { ...agreement, provenance: { agreementHash: AGREEMENT_HASH, processDesignHash: COMPOSITION } };
     const cardsWith = (address: string, attestations: RuntimeAttestation[] = [], state = OrderState.Active) =>
         deriveProcessModelFromRuntime(
             summary,
@@ -166,7 +166,7 @@ describe("re-assert committed clauses — the provenance leaf", () => {
             kind: "attest-provenance-leaf",
             orderHash: ORDER_HASH,
             agreementHash: AGREEMENT_HASH,
-            assemblyHash: COMPOSITION,
+            processDesignHash: COMPOSITION,
             party: "buyer",
         });
     });
@@ -203,7 +203,7 @@ describe("re-assert committed clauses — several orders in one process", () => 
         ...order,
         orderHash: ORDER_B,
         seller: SELLER_B,
-        cumulativeValue: 5n,
+        runningTotal: 5n,
         payment: 2n,
         sellerBond: 10n,
         buyerBond: 4n,
@@ -256,7 +256,7 @@ describe("witness-stage cards — several orders in one process", () => {
         ...order,
         orderHash: ORDER_B,
         seller: SELLER_B,
-        cumulativeValue: 5n,
+        runningTotal: 5n,
         payment: 2n,
         sellerBond: 10n,
         buyerBond: 4n,

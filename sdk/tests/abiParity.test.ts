@@ -20,7 +20,7 @@ import path from "node:path";
 import type { Abi, AbiParameter } from "viem";
 import {
     CORE_ABI, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI,
-    ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, FLORIN_TOKEN_ABI, USAGE_COUNTER_ABI, RPGF_MINTER_ABI, BATCH_VERIFIER_ABI,
+    PROCESS_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, FLORIN_TOKEN_ABI, USAGE_COUNTER_ABI, RPGF_MINTER_ABI, BATCH_VERIFIER_ABI,
 } from "../src/abis.js";
 
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -74,7 +74,7 @@ const PAIRS: [string, Abi, string, (() => Abi)?][] = [
     ["ATTESTATION_COORDINATOR_ABI", ATTESTATION_COORDINATOR_ABI, "AttestationCoordinator"],
     ["CLAUSE_REGISTRY_ABI", CLAUSE_REGISTRY_ABI, "ClauseRegistry"],
     ["MEMBERS_REGISTRY_ABI", MEMBERS_REGISTRY_ABI, "MembersRegistry"],
-    ["ASSEMBLY_REGISTRY_ABI", ASSEMBLY_REGISTRY_ABI, "AssemblyRegistry"],
+    ["PROCESS_REGISTRY_ABI", PROCESS_REGISTRY_ABI, "ProcessRegistry"],
     ["AGREEMENT_REGISTRY_ABI", AGREEMENT_REGISTRY_ABI, "AgreementRegistry"],
     ["FLORIN_TOKEN_ABI", FLORIN_TOKEN_ABI, "FlorinToken"],
     ["USAGE_COUNTER_ABI", USAGE_COUNTER_ABI, "UsageCounter"],
@@ -175,12 +175,12 @@ const CLAIM_GAME = /post|bond|challenge|dispute|slash|finali[sz]e|propos|referee
 
 describe("designer rewards: nothing to post, nothing to bond, nothing to dispute — the count is final when it is made", () => {
     it("UsageCounter changes state only by counting a use: the three direct records and the proved batch's accrual", () => {
-        // recordClauseUsage / recordAgreementUsage / recordAssemblyUsage prove
+        // recordClauseUsage / recordAgreementUsage / recordProcessDesignUsage prove
         // the order resolved and the key is committed in its agreement;
         // applyBatchAccrual takes the uses a proof committed, from the
         // verifier alone (src/rewards/UsageCounter.sol, `batchVerifier`).
         expect(stateChanging(compiled("UsageCounter"))).toEqual([
-            "applyBatchAccrual", "recordAgreementUsage", "recordAssemblyUsage", "recordClauseUsage",
+            "applyBatchAccrual", "recordAgreementUsage", "recordClauseUsage", "recordProcessDesignUsage",
         ]);
     });
 
@@ -305,9 +305,9 @@ const DYNAMIC_ALLOWED: Record<string, Record<string, string>> = {
         "event AgreementRegistered(contentURI): string": "the same pointer, logged for readers",
         "function bindings(out.contentURI): string": "the same pointer, stored with the binding",
     },
-    AssemblyRegistry: {
-        "function registerAssembly(in.contentURI): string": "the pointer to the pinned assembly document, which the assemblyHash verifies",
-        "event AssemblyRegistered(contentURI): string": "the same pointer, logged for readers",
+    ProcessRegistry: {
+        "function registerProcess(in.contentURI): string": "the pointer to the pinned assembly document, which the processDesignHash verifies",
+        "event ProcessRegistered(contentURI): string": "the same pointer, logged for readers",
         "function bindings(out.contentURI): string": "the same pointer, stored with the binding",
     },
     MembersRegistry: {

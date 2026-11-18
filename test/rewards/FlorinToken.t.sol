@@ -54,13 +54,13 @@ contract FlorinTokenTest is Test {
 
     function test_OnlyDeployerCanRegisterMinter() public {
         vm.prank(alice);
-        vm.expectRevert(FlorinToken.NotMinter.selector);
+        vm.expectRevert(FlorinToken.NotDeployer.selector);
         florin.registerMinter(address(0xBEEF), 1 ether);
     }
 
     function test_OnlyDeployerCanRenounce() public {
         vm.prank(alice);
-        vm.expectRevert(FlorinToken.NotMinter.selector);
+        vm.expectRevert(FlorinToken.NotDeployer.selector);
         florin.renounceDeployerMint();
     }
 

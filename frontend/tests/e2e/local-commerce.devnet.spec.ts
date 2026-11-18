@@ -14,7 +14,7 @@
  *              hand-off clause (face-to-face), the proximity policy nested
  *              under it (a single zone-wifi band — the hand-off witness),
  *              and geolocation with its public geohash cells — drawn, never
- *              spawned) and published to the AssemblyRegistry. Idempotent:
+ *              spawned) and published to the ProcessRegistry. Idempotent:
  *              the composition is content-addressed, so a re-run discovers
  *              the anchored assembly by SHAPE and consumes it.
  *   bind     → the merchant (Meridian Books, a pre-populated seller) pins the
@@ -95,7 +95,7 @@ import {
     ladderLabelsOf,
     readLocalDeploymentConfig,
     memberProfileBindings,
-    anchoredAssemblyHash,
+    anchoredProcessDesignHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
@@ -213,7 +213,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    the shape; a re-run adopts the anchored one (content-addressed,
         //    first-write-wins — the mainnet ensure-exists semantics). ──
         const deliverySlug = await ensureDeliveryAssembly(page);
-        const deliveryHash = await anchoredAssemblyHash(deliverySlug);
+        const deliveryHash = await anchoredProcessDesignHash(deliverySlug);
 
         // The registry explorer carries it — author → pin → anchor → visible.
         await page.goto('/registries?family=assemblies&e2e=devnet', { waitUntil: 'domcontentloaded' });
@@ -387,7 +387,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
                 .toBe(seller.toLowerCase());
             test.info().annotations.push({
                 type: 'OrderCommitted',
-                description: `${label}: order=${event.args.orderHash} payment=${event.args.payment} cumulativeValue=${event.args.cumulativeValue} tx=${event.transactionHash}`,
+                description: `${label}: order=${event.args.orderHash} payment=${event.args.payment} runningTotal=${event.args.runningTotal} tx=${event.transactionHash}`,
             });
             return event;
         };
@@ -395,8 +395,8 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         const merchantEvent = await acceptAs(MERCHANT, 'merchant');
         const processId = merchantEvent.args.processId!;
         expect(merchantEvent.args.payment, "item payment = the merchant's catalog price").toBe(parseEther('1'));
-        expect(merchantEvent.args.cumulativeValue, 'root cumulative = its own payment').toBe(parseEther('1'));
-        const merchantBonds = calculateBonds(merchantEvent.args.cumulativeValue!, merchantEvent.args.payment!);
+        expect(merchantEvent.args.runningTotal, 'root cumulative = its own payment').toBe(parseEther('1'));
+        const merchantBonds = calculateBonds(merchantEvent.args.runningTotal!, merchantEvent.args.payment!);
         {
             const [b, m, c] = await Promise.all([balanceOf(BUYER), balanceOf(MERCHANT), balanceOf(core)]);
             expect(buyer0 - b, 'after the item commit: buyer down by its buyer bond').toBe(merchantBonds.buyerBond);
@@ -407,8 +407,8 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         const courierEvent = await acceptAs(COURIER, 'courier');
         expect(courierEvent.args.processId, 'the courier order extends the SAME process').toBe(processId);
         expect(courierEvent.args.payment, "delivery payment = the courier's own catalog price").toBe(parseEther('1'));
-        expect(courierEvent.args.cumulativeValue, 'courier cumulative = item + delivery').toBe(parseEther('2'));
-        const courierBonds = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
+        expect(courierEvent.args.runningTotal, 'courier cumulative = item + delivery').toBe(parseEther('2'));
+        const courierBonds = calculateBonds(courierEvent.args.runningTotal!, courierEvent.args.payment!);
         {
             const [b, cr, c] = await Promise.all([balanceOf(BUYER), balanceOf(COURIER), balanceOf(core)]);
             expect(buyer0 - b, 'after the delivery commit: buyer down by both buyer bonds')

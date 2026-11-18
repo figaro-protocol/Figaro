@@ -16,7 +16,7 @@ vi.mock("wagmi", () => ({
 // effect proceeds; the discovery service is injected below. Stable reference
 // so it does not itself re-trigger the effect on every render.
 const PUBLISHED = { read: { status: "present", value: [] as unknown[] } };
-vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
+vi.mock("@/lib/protocol/useProcessRegistry", () => ({
     getAssemblyLoadError: () => undefined,
     usePublishedAssemblies: () => PUBLISHED,
 }));

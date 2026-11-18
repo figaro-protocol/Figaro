@@ -8,16 +8,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { encodePacked, keccak256, type Address, type Hex } from "viem";
 import {
-    ASSEMBLY_LEAF_DOMAIN,
-    ASSEMBLY_TERMS_LEAF_KEY,
+    PROCESS_LEAF_DOMAIN,
+    PROCESS_TERMS_LEAF_KEY,
     PROVENANCE_LEAF_KEY,
     agreementHashOf,
     buildAgreementInclusionProof,
     provenanceContentRef,
     provenanceLeafBytes,
-    assemblyHashOf,
+    processDesignHashOf,
     type Agreement,
-    type Assembly,
+    type ProcessDesign,
     type Commitment,
     type UsageClaimContext,
 } from "@figaro-protocol/sdk";
@@ -38,23 +38,23 @@ const MODALITIES = keccak256(encodePacked(["string"], ["a modalities spec's byte
 // The registered agreement the agreement binds, and the one-entry assembly
 // whose root is the assembly hash the provenance names.
 const AGREEMENT_HASH = agreementHashOf({ clauses: { [COMMERCE]: {}, [MODALITIES]: {} } });
-const ASSEMBLY: Assembly = { agreements: [{ id: "agreement-0", agreementHash: AGREEMENT_HASH, clauses: {} }] };
-const COMPOSITION = assemblyHashOf(ASSEMBLY);
+const ASSEMBLY: ProcessDesign = { agreements: [{ id: "agreement-0", agreementHash: AGREEMENT_HASH, clauses: {} }] };
+const COMPOSITION = processDesignHashOf(ASSEMBLY);
 const BUYER = "0x0000000000000000000000000000000000000b0b" as Address;
 const CURRENCY = "0x00000000000000000000000000000000000007ed" as Address;
 const PROCESS = ZERO_BYTES32 as Hex;
 
-const CONTEXT: UsageClaimContext = { provenanceLeaf: PROVENANCE_LEAF_KEY, assemblyTermsLeaf: ASSEMBLY_TERMS_LEAF_KEY, assemblyLeafDomain: ASSEMBLY_LEAF_DOMAIN };
+const CONTEXT: UsageClaimContext = { provenanceLeaf: PROVENANCE_LEAF_KEY, processTermsLeaf: PROCESS_TERMS_LEAF_KEY, processLeafDomain: PROCESS_LEAF_DOMAIN };
 
 function commitment(salt: bigint, seller: Address): Commitment {
     return {
-        processId: PROCESS, buyer: BUYER, seller, currency: CURRENCY,
-        payment: 100n, expectedCumulativeValue: 100n * salt,
-        checkoutHash: `0x${salt.toString(16).padStart(64, "a")}` as Hex, salt, deadline: 2n,
+        processId: PROCESS, buyer: BUYER, seller, token: CURRENCY,
+        payment: 100n, runningTotal: 100n * salt,
+        checkoutHash: `0x${salt.toString(16).padStart(64, "a")}` as Hex, salt, commitDeadline: 2n,
     };
 }
 
-function agreement(seller: Address, provenance: unknown = { agreementHash: AGREEMENT_HASH, assemblyHash: COMPOSITION }, modalities: Hex = MODALITIES): Agreement {
+function agreement(seller: Address, provenance: unknown = { agreementHash: AGREEMENT_HASH, processDesignHash: COMPOSITION }, modalities: Hex = MODALITIES): Agreement {
     return {
         version: "a1", buyer: BUYER, seller,
         clauses: [
@@ -79,14 +79,14 @@ describe("planUsageRecords", () => {
         expect(writes.filter((w) => w.kind === "clause").map((w) => w.key.toLowerCase()).sort())
             .toEqual([COMMERCE.toLowerCase(), MODALITIES.toLowerCase()].sort());
         const agreementWrite = writes.find((w) => w.kind === "agreement");
-        expect(agreementWrite).toMatchObject({ key: AGREEMENT_HASH, assemblyHash: COMPOSITION });
+        expect(agreementWrite).toMatchObject({ key: AGREEMENT_HASH, processDesignHash: COMPOSITION });
     });
 
     it("carries the agreement's membership proof on the assembly write", () => {
         const { writes } = planUsageRecords([entry(1n, SELLER_A)]);
         const assembly = writes.find((w) => w.kind === "assembly");
-        const { proof, slotContentHash } = buildAgreementInclusionProof(ASSEMBLY, 0);
-        expect(assembly).toMatchObject({ key: COMPOSITION, agreementHash: AGREEMENT_HASH, slotContentHash, membershipProof: proof });
+        const { proof, agreementContentHash } = buildAgreementInclusionProof(ASSEMBLY, 0);
+        expect(assembly).toMatchObject({ key: COMPOSITION, agreementHash: AGREEMENT_HASH, agreementContentHash, membershipProof: proof });
     });
 
     it("says a provenance with no assembly out loud and plans nothing for that order", () => {
@@ -128,7 +128,7 @@ describe("planUsageRecords", () => {
     });
 
     it("refuses a counter whose provenance leaf is not the agreement format's", () => {
-        const foreign: UsageClaimContext = { provenanceLeaf: COMMERCE, assemblyTermsLeaf: ASSEMBLY_TERMS_LEAF_KEY, assemblyLeafDomain: ASSEMBLY_LEAF_DOMAIN };
+        const foreign: UsageClaimContext = { provenanceLeaf: COMMERCE, processTermsLeaf: PROCESS_TERMS_LEAF_KEY, processLeafDomain: PROCESS_LEAF_DOMAIN };
         const { writes, problems } = planUsageRecords([{ ...entry(1n, SELLER_A), context: foreign }]);
         expect(writes).toHaveLength(0);
         expect(problems.join("\n")).toMatch(/not the agreement format's/);
@@ -138,7 +138,7 @@ describe("planUsageRecords", () => {
         // A registry accepts any bytes32, so a clause may carry the very
         // bytes of the assembly's assembly hash; it plans as a clause
         // write AND the provenance plans as the assembly write.
-        const provenance = { agreementHash: AGREEMENT_HASH, assemblyHash: COMPOSITION };
+        const provenance = { agreementHash: AGREEMENT_HASH, processDesignHash: COMPOSITION };
         const { writes } = planUsageRecords([entry(1n, SELLER_A, agreement(SELLER_A, provenance, COMPOSITION))]);
         expect(writes.filter((w) => w.key.toLowerCase() === COMPOSITION.toLowerCase()).map((w) => w.kind).sort())
             .toEqual(["assembly", "clause"]);
@@ -153,8 +153,8 @@ function order(salt: bigint, seller: Address): Order {
     const c = commitment(salt, seller);
     return {
         orderHash: `order-${salt}`, processId: PROCESS, buyer: BUYER, seller, currency: CURRENCY,
-        checkoutHash: c.checkoutHash, cumulativeValue: c.expectedCumulativeValue, payment: c.payment,
-        state: OrderState.Active, sellerBond: 0n, buyerBond: 0n, salt: c.salt, deadline: c.deadline,
+        checkoutHash: c.checkoutHash, runningTotal: c.runningTotal, payment: c.payment,
+        state: OrderState.Active, sellerBond: 0n, buyerBond: 0n, salt: c.salt, deadline: c.commitDeadline,
     };
 }
 
@@ -277,7 +277,7 @@ describe("createCapabilityExecutors — the provenance leaf attestation", () => 
         const { deps: d } = deps();
         await createCapabilityExecutors(d).executorCallbacks.attestProvenanceLeaf({
             executionType: "transaction", kind: "attest-provenance-leaf",
-            orderHash: "order-1", agreementHash: AGREEMENT_HASH, assemblyHash: COMPOSITION, party: "buyer",
+            orderHash: "order-1", agreementHash: AGREEMENT_HASH, processDesignHash: COMPOSITION, party: "buyer",
         });
         expect(d.submitAttestation).toHaveBeenCalledWith("buyer", expect.objectContaining({
             orderHash: "order-1",

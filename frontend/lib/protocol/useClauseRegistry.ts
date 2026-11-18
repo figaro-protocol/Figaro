@@ -30,7 +30,7 @@ import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
 
 
 /** The ClauseRegistry address if it's a well-formed address, else null.
- *  Mirrors `getAssemblyRegistry` / `getMembersRegistry`. */
+ *  Mirrors `getProcessRegistry` / `getMembersRegistry`. */
 export function getClauseRegistry(): `0x${string}` | null {
     const a = CONTRACTS.clauseRegistry;
     return isValidAddress(a) ? a : null;

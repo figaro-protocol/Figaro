@@ -78,12 +78,12 @@ contract FigaroCoreTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller1,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: keccak256("root-agreement"),
             salt: salt,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
     }
 
@@ -106,12 +106,12 @@ contract FigaroCoreTest is Test {
             processId: processId,
             buyer: buyer,
             seller: seller,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: expectedCum,
+            runningTotal: expectedCum,
             checkoutHash: keccak256(abi.encodePacked("sub-agreement-", salt)),
             salt: salt,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
     }
 
@@ -144,7 +144,7 @@ contract FigaroCoreTest is Test {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 2: Sub-order with correct expectedCumulativeValue succeeds
+    // 2: Sub-order with correct runningTotal succeeds
     // ═══════════════════════════════════════════════════════════════
 
     function test_subOrder_correctCumulativeValue_succeeds() public {
@@ -161,7 +161,7 @@ contract FigaroCoreTest is Test {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 3: Sub-order with WRONG expectedCumulativeValue REVERTS
+    // 3: Sub-order with WRONG runningTotal REVERTS
     // ═══════════════════════════════════════════════════════════════
 
     function test_subOrder_wrongCumulativeValue_reverts() public {
@@ -293,12 +293,12 @@ contract FigaroCoreTest is Test {
             processId: processId,
             buyer: buyer,
             seller: seller2,
-            currency: address(otherToken),
+            token: address(otherToken),
             payment: 10 ether,
-            expectedCumulativeValue: 60 ether,
+            runningTotal: 60 ether,
             checkoutHash: keccak256("sub"),
             salt: 2,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         vm.expectRevert(FigaroCore.CurrencyMismatch.selector);
         core.commit(sub, _signCommitment(sub, BUYER_KEY), _signCommitment(sub, SELLER2_KEY));
@@ -323,12 +323,12 @@ contract FigaroCoreTest is Test {
             processId: processId,
             buyer: buyer,
             seller: seller2,
-            currency: address(otherToken),
+            token: address(otherToken),
             payment: 10 ether,
-            expectedCumulativeValue: 60 ether,
+            runningTotal: 60 ether,
             checkoutHash: keccak256("sub"),
             salt: 2,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         vm.expectRevert(FigaroCore.CurrencyMismatch.selector);
         core.commit(sub, _signCommitment(sub, BUYER_KEY), _signCommitment(sub, SELLER2_KEY));
@@ -357,7 +357,7 @@ contract FigaroCoreTest is Test {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 12: Root expectedCumulativeValue must equal payment
+    // 12: Root runningTotal must equal payment
     // ═══════════════════════════════════════════════════════════════
 
     function test_rootOrder_wrongExpectedCumulativeValue_reverts() public {
@@ -365,12 +365,12 @@ contract FigaroCoreTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller1,
-            currency: address(token),
+            token: address(token),
             payment: 50 ether,
-            expectedCumulativeValue: 99 ether,
+            runningTotal: 99 ether,
             checkoutHash: keccak256("root"),
             salt: 1,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         vm.expectRevert(FigaroCore.InvalidRootCumulativeValue.selector);
         core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
@@ -387,12 +387,12 @@ contract FigaroCoreTest is Test {
             processId: processId,
             buyer: outsider,
             seller: seller2,
-            currency: address(token),
+            token: address(token),
             payment: 10 ether,
-            expectedCumulativeValue: 60 ether,
+            runningTotal: 60 ether,
             checkoutHash: keccak256("sub"),
             salt: 2,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
         vm.expectRevert(FigaroCore.NotProcessBuyer.selector);
         core.commit(sub, _signCommitment(sub, OUTSIDER_KEY), _signCommitment(sub, SELLER2_KEY));
@@ -681,12 +681,12 @@ contract FigaroCoreTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: buyer,
-            currency: address(token),
+            token: address(token),
             payment: payment,
-            expectedCumulativeValue: payment,
+            runningTotal: payment,
             checkoutHash: keccak256("self-deal"),
             salt: 1,
-            deadline: block.timestamp + 1 hours
+            commitDeadline: block.timestamp + 1 hours
         });
 
         bytes memory sig = _signCommitment(c, BUYER_KEY);
@@ -731,7 +731,7 @@ contract FigaroCoreTest is Test {
         assertEq(activeCount, 0, "process resolved");
 
         // Attempt a sub-order on the resolved processId — must revert.
-        // cumulativeValue persists at 10 ether from the resolved round, so
+        // runningTotal persists at 10 ether from the resolved round, so
         // a sub-order paying 5 ether would expect cumulative 15 ether. The
         // gate trips before the cumulative-value check.
         CommitmentTypes.Commitment memory subC = _subCommitment(processId, seller2, 5 ether, 15 ether, 99);
@@ -914,7 +914,7 @@ contract FigaroCoreTest is Test {
         for (uint256 i = 0; i < at.length; i++) {
             CommitmentTypes.Commitment memory c = o[at[i]];
             vm.expectEmit(true, true, false, true, address(core));
-            emit FigaroCore.OrderResolved(h[at[i]], pid, 2 * c.expectedCumulativeValue + c.payment, c.payment);
+            emit FigaroCore.OrderResolved(h[at[i]], pid, 2 * c.runningTotal + c.payment, c.payment);
         }
         vm.prank(buyer);
         core.resolveProcess(pid, _pick(o, at));

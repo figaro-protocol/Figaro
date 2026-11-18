@@ -6,7 +6,7 @@
  * derives from the LIVE stake, so no reader folds one without the other).
  * `useRegisteredClausesByWallet` (`useRegisterClause.ts`) /
  * `useAllRegisteredClauses` (`useClauseRegistry.ts`) and `usePublishedAssemblies`
- * (`useAssemblyRegistry.ts`) each restated the same shape: read both streams
+ * (`useProcessRegistry.ts`) each restated the same shape: read both streams
  * through the event cache, narrow to a registering wallet client-side over
  * the ONE cached scan, decode with the SDK's per-family parser, sort, and
  * report. This factory is that one shared shape — the precedent set by

@@ -16,8 +16,8 @@ import { hexEqual } from "@/lib/shared/evm";
  * the primary.
  */
 interface ListingBinding {
-    /** `AssemblyRegistry` assembly hash of the assembly this binding
-     *  targets; a slug shown for it is derived (`deriveAssemblySlug`). */
+    /** `ProcessRegistry` assembly hash of the assembly this binding
+     *  targets; a slug shown for it is derived (`deriveProcessDesignSlug`). */
     assemblyHash: `0x${string}`;
 }
 
@@ -52,7 +52,7 @@ function safeURI(uri: string | undefined): string | undefined {
 /**
  * Project an on-chain-registered member's profile into a `Listing`.
  *
- * `assemblyBindings` from the profile JSON drives the `bindings` field —
+ * `processBindings` from the profile JSON drives the `bindings` field —
  * the wizard writes these from `OnboardingState.assemblies`, so a
  * freshly-registered member appears in the assembly-filter chips. Role
  * attribution within an assembly is event-derived, not declared on the
@@ -62,8 +62,8 @@ export function profileToListing(
     profile: MemberProfileMetadata,
     address: string,
 ): Listing {
-    const bindings: ListingBinding[] = (profile.assemblyBindings ?? []).map((b) => ({
-        assemblyHash: b.assemblyHash,
+    const bindings: ListingBinding[] = (profile.processBindings ?? []).map((b) => ({
+        assemblyHash: b.processDesignHash,
     }));
 
     return {
@@ -84,13 +84,13 @@ import { truncateHex } from "@/lib/shared/formatHex";
 
 /** Does this member's discovered profile bind the assembly with this
  *  assembly hash? The buyer-side reading of the rule every seller's accept
- *  gate enforces (`checkSellerBindsAssembly`): a seller is offered for an
+ *  gate enforces (`checkSellerBindsProcess`): a seller is offered for an
  *  order only under an assembly it has bound. */
 export function bindsAssembly(
-    member: { assemblyBindings?: readonly { assemblyHash: string }[] },
-    assemblyHash: string,
+    member: { processBindings?: readonly { processDesignHash: string }[] },
+    processDesignHash: string,
 ): boolean {
-    return (member.assemblyBindings ?? []).some((b) => hexEqual(b.assemblyHash, assemblyHash));
+    return (member.processBindings ?? []).some((b) => hexEqual(b.processDesignHash, processDesignHash));
 }
 
 /** Find a member listing by wallet address. Case-insensitive. Accepts any

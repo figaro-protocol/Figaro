@@ -7,7 +7,7 @@
  */
 import fc from "fast-check";
 import type { Agreement, AgreementClause } from "../src/agreement.js";
-import type { Assembly, RegisteredAgreement, AssemblyAgreement } from "../src/assembly.js";
+import type { ProcessDesign, RegisteredAgreement, ProcessDesignAgreement } from "../src/assembly.js";
 import type { Commitment } from "../src/types.js";
 
 /** Fixed-width lowercase hex string of `bytes` bytes (0x-prefixed). */
@@ -74,12 +74,12 @@ export const commitmentArb: fc.Arbitrary<Commitment> = fc.record({
     processId: bytes32Arb,
     buyer: addressArb,
     seller: addressArb,
-    currency: addressArb,
+    token: addressArb,
     payment: uint256Arb,
-    expectedCumulativeValue: uint256Arb,
+    runningTotal: uint256Arb,
     checkoutHash: bytes32Arb,
     salt: uint256Arb,
-    deadline: uint256Arb,
+    commitDeadline: uint256Arb,
 });
 
 /** A registered agreement's composed document: unique clause keys, JSON-safe
@@ -99,15 +99,15 @@ export const registeredAgreementArb: fc.Arbitrary<RegisteredAgreement> = fc.reco
  *  agreement hash (a key may repeat across agreements), each agreement
  *  after the root naming earlier agreements as parents through one
  *  topology-shaped fill, and optional assembly-scoped terms. */
-export const assemblyArb: fc.Arbitrary<Assembly> = fc.record({
+export const assemblyArb: fc.Arbitrary<ProcessDesign> = fc.record({
     topologyKey: bytes32Arb,
     keys: fc.array(bytes32Arb, { minLength: 1, maxLength: 6 }),
     edges: fc.array(fc.array(fc.nat(), { maxLength: 2 }), { minLength: 6, maxLength: 6 }),
     terms: fc.option(fc.dictionary(bytes32Arb, clauseDataArb, { minKeys: 1, maxKeys: 2 }), { nil: undefined }),
 }).map(({ topologyKey, keys, edges, terms }) => {
-    const agreements: AssemblyAgreement[] = keys.map((agreementHash, i) => {
+    const agreements: ProcessDesignAgreement[] = keys.map((agreementHash, i) => {
         const parents = i === 0 ? [] : [...new Set(edges[i].map((n) => `agreement-${n % i}`))];
         return { id: `agreement-${i}`, agreementHash, clauses: { [topologyKey]: { follows: parents } } };
     });
-    return { ...(terms ? { assemblyClauses: terms as Assembly["assemblyClauses"] } : {}), agreements };
+    return { ...(terms ? { assemblyClauses: terms as ProcessDesign["assemblyClauses"] } : {}), agreements };
 });

@@ -75,7 +75,7 @@ function buildRuntimeIndexes(
     // process's running cumulative value plus a non-zero payment, so the
     // cumulative value rises strictly in commit order and ranks the orders.
     const byChain = processOrders.slice().sort((left, right) =>
-        left.cumulativeValue < right.cumulativeValue ? -1 : left.cumulativeValue > right.cumulativeValue ? 1 : 0);
+        left.runningTotal < right.runningTotal ? -1 : left.runningTotal > right.runningTotal ? 1 : 0);
     const positionByOrder = new Map(byChain.map((order, i) => [order.orderHash.toString(), i + 1]));
 
     return { attestationsByOrder, childrenByOrder, parentsByOrder, positionByOrder };
@@ -294,7 +294,7 @@ function roleCapabilities(
                             kind: "attest-provenance-leaf",
                             orderHash: orderIdStr,
                             agreementHash: agreement.provenance.agreementHash,
-                            assemblyHash: agreement.provenance.assemblyHash,
+                            processDesignHash: agreement.provenance.processDesignHash,
                             party: "buyer",
                         },
                         mechanismId: "attestation-coordinator",

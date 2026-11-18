@@ -1,6 +1,6 @@
 /**
  * A two-order process for the readers that name a process's root. The root
- * is the order whose `cumulativeValue` equals its `payment`, as the
+ * is the order whose `runningTotal` equals its `payment`, as the
  * `OrderCommitted` event carries it on both paths; the sub-order's cumulative
  * value is the root's payment plus its own. The sub-order's hash sorts
  * before the root's, so a reader that takes "the first order with no edges"
@@ -54,7 +54,7 @@ export const rootOrder: Order = {
     orderHash: ROOT_HASH,
     seller: ROOT_SELLER,
     payment: 3n,
-    cumulativeValue: 3n,
+    runningTotal: 3n,
     sellerBond: 6n,
     buyerBond: 6n,
     checkoutHash: ROOT_CHECKOUT,
@@ -65,7 +65,7 @@ export const subOrder: Order = {
     orderHash: SUB_HASH,
     seller: SUB_SELLER,
     payment: 2n,
-    cumulativeValue: 5n,
+    runningTotal: 5n,
     sellerBond: 10n,
     buyerBond: 4n,
     checkoutHash: SUB_CHECKOUT,
