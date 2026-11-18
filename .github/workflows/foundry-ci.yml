@@ -287,9 +287,9 @@ jobs:
                       "Medium incorrect-equality src/registries/MembersRegistry.sol:MembersRegistry.withdraw :: unlockAt == 0",
                       "Medium reentrancy-no-eth src/core/verifier/FigaroBatchVerifier.sol:FigaroBatchVerifier.settleBatch :: _applyAccrual(usage) ; usageCounter.applyBatchAccrual(usage.period,usage.provenanceLeaf,usage.uses) ; newBatchId = ++ batchCount ; stateRoot = pv.newRoot",
                       "Medium unused-return src/rewards/RpgfMinter.sol:RpgfMinter._isAuthor :: (agreementRegisteredBy,None,agreementWithdrawn,None) = agreements.bindings(clauseOrProcess)",
-                      "Medium unused-return src/rewards/RpgfMinter.sol:RpgfMinter._isAuthor :: (assemblyRegisteredBy,None,depositWithdrawn,None) = assemblies.bindings(clauseOrProcess)",
+                      "Medium unused-return src/rewards/RpgfMinter.sol:RpgfMinter._isAuthor :: (assemblyRegisteredBy,None,depositWithdrawn,None) = processDesigns.bindings(clauseOrProcess)",
                       "Medium unused-return src/rewards/UsageCounter.sol:UsageCounter._agreementLive :: (registeredBy,registeredAt,depositWithdrawn,None) = agreements.bindings(agreementHash)",
-                      "Medium unused-return src/rewards/UsageCounter.sol:UsageCounter._processLive :: (registeredBy,registeredAt,depositWithdrawn,None) = assemblies.bindings(clauseOrProcess)",
+                      "Medium unused-return src/rewards/UsageCounter.sol:UsageCounter._processLive :: (registeredBy,registeredAt,depositWithdrawn,None) = processDesigns.bindings(clauseOrProcess)",
                   ])
                   if found != triaged:
                       print("Slither High/Medium results differ from docs/AUDITOR_HANDOVER.md § Static analysis:")
