@@ -150,7 +150,10 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///         a batch is proven then submitted, so a few minutes of lag is
     ///         normal — while keeping the guest's deadline gate meaningful: a
     ///         caller cannot pick an arbitrary past time to bond an
-    ///         already-expired signed commitment.
+    ///         already-expired signed commitment. The deadline itself is
+    ///         checked again here against this block, as `FigaroCore.commit`
+    ///         checks it (`DeadlineExpired`, in `_walkOperations`), so the lag
+    ///         this bound admits never bonds a commitment past its deadline.
     uint64 public constant MAX_BATCH_STALENESS = 1 hours;
 
     /// @notice The length of the public values, in bytes: ten 32-byte words.
@@ -264,7 +267,8 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///         reward on purpose: a reward-tier gate must never unwind
     ///         another party's trade. The uses stay uncounted, so a later batch
     ///         may prove them again; until one does, the reward under-pays,
-    ///         never over-pays.
+    ///         never over-pays. A call its submitter starved of gas is not
+    ///         skipped: it reverts the batch (`AccrualStarvedOfGas`).
     /// @param batchId The batch whose accrual was skipped.
     /// @param reason  The low-level revert data from the counter (for indexers).
     event BatchAccrualSkipped(uint64 indexed batchId, bytes reason);
@@ -293,6 +297,13 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     error MalformedOperationStream();
     error VerifierNotPinned();
     error BatchTimestampOutOfRange(uint64 committed, uint64 current);
+    /// @dev A commit entry of the stream names a deadline before this
+    ///      block's timestamp: `FigaroCore.commit`'s refusal, by its name.
+    error DeadlineExpired();
+    /// @dev The accrual call failed having consumed the gas it was handed:
+    ///      its submitter's gas limit starved it, never a gate of the counter.
+    ///      Landing the batch would leave its uses uncounted for want of gas.
+    error AccrualStarvedOfGas();
     error PublicValuesLengthMismatch(uint256 expected, uint256 actual);
     /// @dev The proof validated content against a spec whose key the
     ///      registry has never registered.
@@ -465,6 +476,8 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         //    yes emits its `Attestation`); any refusal of either reverts the
         //    batch. Both are asked against the state before the batch moves
         //    a token: the state the relay's own check read, never a payout's.
+        //    The same walk refuses a commit whose deadline is before this
+        //    block (`DeadlineExpired`), as `FigaroCore.commit` does.
         _walkOperations(operations, false);
 
         // ── 5. Execute token transfers ────────────────────────────
@@ -500,15 +513,11 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         //    contract (`UsageCounterNotBoundToThis`), however the pair was
         //    deployed. `NotBatchVerifier` is therefore unreachable at runtime.
         //    A revert that reaches this catch is a whole-call accrual gate
-        //    (the period, the provenance leaf), or an inner call its submitter
-        //    starved of gas; either way no use of the batch is counted, a later
-        //    batch may prove them again, and the event carries the reason.
-        try usageCounter.applyBatchAccrual(usage.period, usage.provenanceLeaf, usage.uses) {
-        // uses counted
-        }
-        catch (bytes memory reason) {
-            emit BatchAccrualSkipped(batchCount + 1, reason);
-        }
+        //    (the period, the provenance leaf), or a call its submitter
+        //    starved of gas. A gate skips: no use of the batch is counted, a
+        //    later batch may prove them again, and the event carries the
+        //    reason. A starved call reverts the batch (`_applyAccrual`).
+        _applyAccrual(usage);
 
         // ── 8. Advance state ──────────────────────────────────────
         stateRoot = pv.newRoot;
@@ -516,6 +525,31 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
         emit BatchOperations(newBatchId, pv.blockTimestamp, usage.period, usage.provenanceLeaf, operations);
         emit BatchSettled(newBatchId, pv.prevRoot, pv.newRoot, positions.length);
+    }
+
+    /// @dev Hand the batch's uses to the counter (step 7). The call receives
+    ///      at most 63/64 of the gas left at it (EIP-150), and the counter's
+    ///      whole-call gates (the writer, the period, the provenance leaf)
+    ///      are read before its loop, at a cost of a few thousand gas. So a
+    ///      call that failed and handed back less than 1/32 of the gas this
+    ///      frame held before it consumed what it was given: its submitter's
+    ///      gas limit starved it (in its own frame, or in a registry read one
+    ///      frame down, which hands the counter back at most 1/64 of its
+    ///      remainder). The batch reverts then, so no gas limit lands a batch
+    ///      with its uses dropped for want of gas; only a gate the counter
+    ///      itself refuses is skipped. A gate's refusal in a frame of a few
+    ///      thousand gas, where the gates' cost exceeds 31/32 of the frame,
+    ///      reverts the batch alike; a frame that small cannot pay for the
+    ///      tail of `settleBatch` either.
+    function _applyAccrual(BatchUsageData calldata usage) private {
+        uint256 gasBefore = gasleft();
+        try usageCounter.applyBatchAccrual(usage.period, usage.provenanceLeaf, usage.uses) {
+        // uses counted
+        }
+        catch (bytes memory reason) {
+            if (gasleft() < gasBefore / 32) revert AccrualStarvedOfGas();
+            emit BatchAccrualSkipped(batchCount + 1, reason);
+        }
     }
 
     // ── Decode helper ─────────────────────────────────────────────
@@ -721,14 +755,19 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     // authorized by the attesting party's wallet code; a commitment is 252
     // packed bytes, a signature 65, a count or a length a big-endian uint16.
     // A proven batch's stream is well-formed by construction (the proof bound
-    // its hash); the refusal below is the decoder's, never a judgment. The
-    // judgments the stream carries to this contract are the wallet code's:
-    // the buyer's code on a wallet-code resolve (`_checkWalletCode`) and the
-    // attesting party's code on a wallet-code attestation
-    // (`_attestByWalletCode`); a refusal of either reverts the batch.
+    // its hash); the malformed-stream refusal below is the decoder's, never a
+    // judgment. The judgments the stream carries to this contract are the
+    // wallet code's: the buyer's code on a wallet-code resolve
+    // (`_checkWalletCode`) and the attesting party's code on a wallet-code
+    // attestation (`_attestByWalletCode`); a refusal of either reverts the
+    // batch. One check is the chain's own: each commit's deadline against
+    // this block (`DeadlineExpired`).
 
     uint256 private constant COMMITMENT_BYTES = 252;
     uint256 private constant SIGNATURE_BYTES = 65;
+    /// @dev The deadline's offset in a packed commitment, its last word
+    ///      (`_readCommitment`).
+    uint256 private constant COMMITMENT_DEADLINE_OFFSET = 220;
 
     /// @dev The batch path's resolve authorization, the type the guest's
     ///      `resolve_struct_hash` hashes (`prover/lib/src/eip712.rs`).
@@ -747,7 +786,8 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     /// @dev Walk the stream. With `publish` false (step 4), ask the buyer's
     ///      code about every `0x04` entry and the attesting party's code about
     ///      every `0x05` entry, emitting the `Attestation` of each `0x05` its
-    ///      code validates and nothing else; with `publish` true (step 6), emit
+    ///      code validates and nothing else, and refuse any `0x01` entry whose
+    ///      deadline is before this block; with `publish` true (step 6), emit
     ///      the Core's events for every commit and resolution.
     function _walkOperations(bytes calldata s, bool publish) internal {
         uint256 p = 0;
@@ -756,7 +796,19 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             uint256 tag = _byteAt(s, p);
             p += 1;
             if (tag == 0x01) {
-                if (publish) _emitCommitted(_readCommitment(s, p));
+                // A cut entry is the decoder's refusal before its deadline is read.
+                if (p + COMMITMENT_BYTES + 2 * SIGNATURE_BYTES > n) revert MalformedOperationStream();
+                if (publish) {
+                    _emitCommitted(_readCommitment(s, p));
+                } else if (uint256(_wordAt(s, p + COMMITMENT_DEADLINE_OFFSET)) < block.timestamp) {
+                    // `FigaroCore.commit`'s first gate, against this block:
+                    // the guest checked the deadline against the proven
+                    // clock, which may trail this block by up to
+                    // `MAX_BATCH_STALENESS`; a commitment whose deadline has
+                    // passed here is refused, as the Core refuses it, before
+                    // any token moves.
+                    revert DeadlineExpired();
+                }
                 p += COMMITMENT_BYTES + 2 * SIGNATURE_BYTES;
             } else if (tag == 0x02) {
                 bytes32 processId = _wordAt(s, p);
@@ -981,7 +1033,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         c.expectedCumulativeValue = uint256(_wordAt(s, p + 124));
         c.checkoutHash = _wordAt(s, p + 156);
         c.salt = uint256(_wordAt(s, p + 188));
-        c.deadline = uint256(_wordAt(s, p + 220));
+        c.deadline = uint256(_wordAt(s, p + COMMITMENT_DEADLINE_OFFSET));
     }
 
     /// @dev The ids FigaroCore derives at commit, under this contract's domain:

@@ -628,6 +628,11 @@
   },
   {
     "type": "error",
+    "name": "AccrualStarvedOfGas",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "AttestationHashMismatch",
     "inputs": []
   },
@@ -705,6 +710,11 @@
         "internalType": "bytes32"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "DeadlineExpired",
+    "inputs": []
   },
   {
     "type": "error",

@@ -706,19 +706,20 @@ every use of a batch whose call reverts (a period boundary crossed in flight), s
 and a later batch may prove it again — conservative under-pay, never over-pay. The sequencer
 additionally pre-filters the claims the counter would skip, so a batch carries few.
 
-**The gas leg, measured.** The catch-all also covers an accrual its submitter starved of gas: the
-verifier forwards at most 63/64 of what remains (EIP-150) and keeps 1/64, which finishes the batch
-only when it covers the tail after the call (the root write, the batch id, the events). The probe
+**The gas leg: a starved accrual is not skipped.** The catch covers the counter's gates only. The
+verifier forwards at most 63/64 of what remains (EIP-150) and keeps 1/64, and at sixty-four uses
+that 1/64 covers the tail after the call (the root write, the batch id, the events), so without a
+check a band of gas limits would land the batch with its accrual starved and its uses uncounted.
+The counter reads its whole-call gates (the writer, the period, the provenance leaf) before its
+loop, for a few thousand gas; a failed call that hands back less than 1/32 of the gas the frame
+held before it therefore consumed what it was given, and `settleBatch` reverts
+(`AccrualStarvedOfGas`, `_applyAccrual`). The 1/32 leaves room for a registry read one frame down,
+which hands the counter back at most 1/64 of its remainder. The probe
 `test_settleBatch_gasStarvationProbe` (`test/core/verifier/FigaroBatchVerifierTest.t.sol`) walks
-the gas limit down from a full run. At one use (a full run of about 264k gas) and at sixteen (about
-1.11M) no limit lands the batch with the accrual starved: below the gas the accrual needs, the whole
-call reverts and nothing moves. At sixty-four uses (about 3.88M) a band of about 1.4M gas does land
-it: from about 2.43M to about 3.84M the accrual runs out of gas, `BatchAccrualSkipped` is emitted,
-the root advances and every payout transfers. A submitter can therefore land a large batch without
-its uses counted, and no smaller one. The effect is the one this section accepts: no use is counted,
-the uses stay provable by a later batch, no trade is held hostage, and the submitter gains nothing
-by it, since the reward is the designers' and counting earns a relay nothing. The probe
-asserts both shapes, so a repricing that moves them moves this paragraph.
+the gas limit down from a full run at one, sixteen and sixty-four uses and asserts that no limit
+lands the batch with `BatchAccrualSkipped`; `test_settleBatch_aStarvedAccrualRevertsTheBatch`
+lands sixty-four uses at 95% of a full run, inside the band that landed them uncounted before the
+check, and holds the revert by name.
 
 ## 20. The member-stake gate on the seller of record is retroactive — usage must be recorded while the stake is live
 
@@ -1444,7 +1445,7 @@ registry anchors is refused on counter-sign and on broadcast, with no
 | 16 | Recorded usage can score zero (`minSellers` floor) | reward-path | Real resolved trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; the floor reads the one tally both routes feed, and a seller counts toward it once |
 | 17 | No per-recording charge or burn | reward-path | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed charge inserts an institution + usage-coupled revenue into an identity-free mechanism |
 | 18 | Usage needs a live clause, agreement or assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |
-| 19 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a skipped use stays uncounted and may be proved again in a later batch (conservative under-pay); the sequencer pre-filters what the counter would skip |
+| 19 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a skipped use stays uncounted and may be proved again in a later batch (conservative under-pay); the sequencer pre-filters what the counter would skip; an accrual starved of gas reverts the batch, never skips |
 | 20 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal stops resolved-but-uncounted trades counting — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is read when a use is counted; counting at resolution closes the normal window; an uncounted use counts in whichever period is open once its seller stakes again, lost only after the last period closes; residual grief is self-limiting (griefer forfeits own eligibility while unstaked) |
 | 21 | Batch resolve: nonce-less, deadline-less `ResolveProcess(processId, cumulativeValue)` authorization, by the buyer's key or its wallet code | batch-path | The canonical EIP-712 replay shape | The authorization binds a cumulative value, so it pays exactly the prefix of the process that value names and a later commit invalidates it; resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; a wallet-code attestation's refusal reverts the batch by name, a call that ran out of gas included, so no gas limit lands a batch without it, and the relay dead-letters it alone |
 | 22 | Pinata pin key in the public site bundle | site/pinning | A credential in a public bundle reads as a leaked secret | The testnet key is pin-only (dashboard-confirmed: unpin, list, data and every V3 resource inactive) and disposable; every registry read is digest-checked against the on-chain anchor, so a hostile pin never verifies; testnet only — per-party pinning at mainnet, the keys revoked at the account split |
