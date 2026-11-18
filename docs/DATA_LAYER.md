@@ -40,6 +40,11 @@ When that format is geohash, `validateContent` (`sdk/src/clauses/validate.ts`,
 with the cap in `sdk/src/clauses/grain.ts`) refuses a public value longer than
 6 characters and a private one longer than 12; a standard it carries no grain
 knowledge of is bounded by `maxLength` only.
+A member profile's location is the member's own publication, read as written:
+the SDK's profile parser (`sdk/src/memberProfile.ts`, `parseLocation`) applies
+no cap, so a profile already published stays readable, and the reference
+profile form (`frontend/components/members/OnboardingProfileForm.tsx`,
+`clampPublicGeohash`) clamps the geohash to 6 characters when a member writes one.
 The sign gate (`assertAgreementSignable`) runs that validation, so a party whose
 tool uses the SDK refuses to sign a finer value. The limit of the rule: the
 chain holds a fingerprint, so two parties whose tools skip this validation can
