@@ -76,6 +76,7 @@ export default function RootLayout({
     return (
         <html
             lang="en"
+            data-scroll-behavior="smooth"
             className={`${inter.variable} ${notoSansJP.variable} ${jetbrainsMono.variable}`}
         >
             <body>

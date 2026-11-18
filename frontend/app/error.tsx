@@ -46,6 +46,7 @@ export default function Error({
                         Try again
                     </Button>
 
+                    {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a full page load leaves the failed client state behind */}
                     <a
                         href="/"
                         className="px-6 py-3 bg-paper border border-default text-ink-primary font-semibold rounded-lg hover:bg-subtle transition-colors"

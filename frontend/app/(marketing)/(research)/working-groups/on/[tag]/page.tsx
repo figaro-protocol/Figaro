@@ -12,8 +12,8 @@ export function generateStaticParams() {
     return tagIndex(KIND).map((t) => ({ tag: t.slug }));
 }
 
-export function generateMetadata({ params }: { params: { tag: string } }): Metadata {
-    const { tag } = params;
+export async function generateMetadata({ params }: { params: Promise<{ tag: string }> }): Promise<Metadata> {
+    const { tag } = await params;
     const entry = tagEntry(KIND, tag);
     const label = entry?.label ?? tag;
     return withOg({
@@ -22,7 +22,7 @@ export function generateMetadata({ params }: { params: { tag: string } }): Metad
     });
 }
 
-export default function Page({ params }: { params: { tag: string } }) {
-    const { tag } = params;
+export default async function Page({ params }: { params: Promise<{ tag: string }> }) {
+    const { tag } = await params;
     return <TagPage kind={KIND} slug={tag} />;
 }

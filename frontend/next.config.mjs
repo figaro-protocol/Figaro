@@ -21,7 +21,7 @@ const PHASE_PRODUCTION_BUILD = 'phase-production-build';
 // never sets that escape, so a stray test flag aborts the build.
 // The gate binds to the PRODUCTION-BUILD PHASE only: `next build` is the sole
 // invocation that compiles env flags into a bundle. Other config loads in a
-// production NODE_ENV (`next lint`, `next start`) inline nothing and pass.
+// production NODE_ENV (`next start`) inline nothing and pass.
 function assertNoTestFlagsInProductionBuild() {
     const TEST_FLAGS = [
         'NEXT_PUBLIC_ENABLE_TEST_HELPERS',
@@ -150,10 +150,7 @@ const nextConfig = {
 };
 
 export default function config(phase) {
-    // `next lint` loads the config under the production-build phase too, but
-    // compiles nothing into a bundle — the gate must not block it.
-    const invokedAsLint = process.argv.includes('lint');
-    if (phase === PHASE_PRODUCTION_BUILD && !invokedAsLint) {
+    if (phase === PHASE_PRODUCTION_BUILD) {
         assertNoTestFlagsInProductionBuild();
         assertXmtpNetworkNamedInProductionBuild();
     }

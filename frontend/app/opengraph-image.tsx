@@ -14,6 +14,9 @@ import { colorTokens } from "@/lib/shared/designTokenValues";
 // replaces the resolved parent block wholesale — pages relying on the file
 // convention alone shipped no `og:image` at all. Palette + type follow
 // docs/DESIGN_TOKENS.md (canvas / ink ramp / tawny-amber heading).
+// Static export: the card is rendered once at build time (Next 15 and later
+// no longer treat a metadata route as static unless it says so).
+export const dynamic = "force-static";
 export const alt = "My word is my bond";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";

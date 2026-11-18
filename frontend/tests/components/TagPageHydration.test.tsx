@@ -27,7 +27,7 @@ import { TagPage } from "@/app/(marketing)/(research)/working-groups/_components
 import { tagIndex } from "@/app/(marketing)/_lib/paperGroups";
 
 /** Hydrate `node` against its own server markup, parsed by the browser, and
- *  return everything React logged. Empty = the server HTML and the client
+ *  return everything React logged or reported. Empty = the server HTML and the client
  *  tree agree.
  *
  *  `renderToString`, never `renderToStaticMarkup`: the prerender ships the
@@ -42,8 +42,13 @@ async function hydrationErrors(node: React.ReactElement): Promise<string[]> {
     const spy = vi
         .spyOn(console, "error")
         .mockImplementation((...args: unknown[]) => logged.push(args.map(String).join(" ")));
+    // React 19 reports the mismatch it recovers from through
+    // `onRecoverableError` (by default `reportError`, an uncaught error), not
+    // `console.error`; it is collected beside the console here.
     await act(async () => {
-        hydrateRoot(container, node);
+        hydrateRoot(container, node, {
+            onRecoverableError: (error: unknown) => logged.push(String(error)),
+        });
     });
     spy.mockRestore();
     container.remove();
