@@ -9,8 +9,10 @@
 //! disagree on fails one of them.
 
 use alloy_primitives::{Address, B256, U256};
-use figaro_kernel::operation_stream::encode_operation_stream;
-use figaro_kernel::types::{Commitment, KernelOp, Signature, UsageClaim, UsageClaimKind};
+use figaro_kernel::operation_stream::{encode_operation_stream, wallet_code_attestations};
+use figaro_kernel::types::{
+    AttestationWitness, AttesterRole, Commitment, KernelOp, Signature, UsageClaim, UsageClaimKind,
+};
 use serde_json::{json, Value};
 
 fn fixture_path() -> std::path::PathBuf {
@@ -62,7 +64,11 @@ fn commitment_json(c: &Commitment) -> Value {
 /// resolved by its buyer's wallet code, with authorizations of 17, 0 and 300
 /// bytes (the length's low byte alone, none, and its high byte); a
 /// claim-bearing stream
-/// whose claims the chain parses and skips.
+/// whose claims the chain parses and skips; and a stream that carries an
+/// attestation authorized by wallet code in each role (the seller's on an
+/// order of a named process, with 17 bytes; the buyer's on a root order,
+/// whose process id the verifier derives, with none) and an agreement claim
+/// whose inclusion proof has two words.
 fn vectors() -> Value {
     let process = B256::repeat_byte(0xAA);
     let root = commitment(1, B256::ZERO, 100);
@@ -85,6 +91,29 @@ fn vectors() -> Value {
             membership_proof: vec![B256::repeat_byte(0x93), B256::repeat_byte(0x94)],
         },
         inclusion_proof: vec![],
+    };
+    let agreement_claim = UsageClaim {
+        order: second.clone(),
+        clause_or_assembly: B256::repeat_byte(0xA1),
+        kind: UsageClaimKind::Agreement {
+            assembly_hash: B256::repeat_byte(0xA2),
+        },
+        inclusion_proof: vec![B256::repeat_byte(0xA3), B256::repeat_byte(0xA4)],
+    };
+    let attest_by_wallet_code = |role: AttesterRole, target: &Commitment, seed: u8, authorization: Vec<u8>| {
+        KernelOp::AttestByWalletCode {
+            role,
+            target: target.clone(),
+            clause_id: B256::repeat_byte(0xD0 + seed),
+            stage: seed,
+            content_ref: B256::repeat_byte(0xE0 + seed),
+            authorization: alloy_primitives::Bytes::from(authorization),
+            // The witness never enters the stream.
+            proof: AttestationWitness::HashOnly {
+                clause_data_hash: B256::repeat_byte(0xF0 + seed),
+                inclusion_proof: vec![],
+            },
+        }
     };
     let streams = vec![
         (
@@ -169,6 +198,19 @@ fn vectors() -> Value {
             }],
             vec![claim, assembly_claim],
         ),
+        (
+            "walletCodeAttestationsAndAnAgreementClaim",
+            vec![
+                KernelOp::Commit {
+                    commitment: root.clone(),
+                    buyer_sig: signature(1),
+                    seller_sig: signature(2),
+                },
+                attest_by_wallet_code(AttesterRole::Seller, &first, 1, b"seller-guardian-1".to_vec()),
+                attest_by_wallet_code(AttesterRole::Buyer, &root, 2, vec![]),
+            ],
+            vec![agreement_claim],
+        ),
     ];
     let mut out = Vec::new();
     for (name, ops, claims) in streams {
@@ -190,6 +232,21 @@ fn vectors() -> Value {
                 })),
                 _ => {}
             }
+        }
+        // The `0x05` entries follow every commit and resolve in the stream.
+        for a in wallet_code_attestations(&ops) {
+            entries.push(json!({
+                "kind": "attestByWalletCode",
+                "role": match a.role {
+                    AttesterRole::Seller => "seller",
+                    AttesterRole::Buyer => "buyer",
+                },
+                "target": commitment_json(&a.target),
+                "clauseId": format!("{:#x}", a.clause_id),
+                "stage": a.stage,
+                "contentRef": format!("{:#x}", a.content_ref),
+                "authorization": format!("{:#x}", a.authorization),
+            }));
         }
         out.push(json!({
             "name": name,

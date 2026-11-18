@@ -1,17 +1,19 @@
 /**
  * A test-side writer of the operation stream's layout
- * (prover/lib/src/operation_stream.rs:53-75), for the streams the Rust
- * fixture `test/fixtures/operation-stream-vectors.json` does not carry: a
- * `0x05` entry, an agreement claim, a claim on a root order, a stream fed to
+ * (prover/lib/src/operation_stream.rs:53-75), for streams the Rust fixture
+ * `test/fixtures/operation-stream-vectors.json` does not carry: a stream
+ * that mixes every entry kind, a claim on a root order, a stream fed to
  * `fetchSkippedBatchUses`. `operationStream.test.ts` holds this writer to the
- * encoder's bytes on the fixture's claim-bearing stream.
+ * encoder's bytes, entry for entry, on the fixture's two claim-bearing
+ * streams: its commit, `0x05` (both roles) and claim (all three kinds)
+ * entries.
  */
 import { concatHex, getAddress, numberToHex, type Hex } from "viem";
 import type { SequencerCommitment, SequencerUsageClaim } from "../src/agent/sequencer.js";
 
 export const rep = (byte: string, n: number) => `0x${byte.repeat(n)}` as Hex;
 
-/** `commitment(seed, process_id, cumulative)` of operation_stream_vectors.rs:23. */
+/** `commitment(seed, process_id, cumulative)` of operation_stream_vectors.rs:26. */
 export function vectorCommitment(seed: number, processId: Hex, cumulative: bigint): SequencerCommitment {
     return {
         process_id: processId,
@@ -45,8 +47,18 @@ export const resolveEntry = (processId: Hex, cs: SequencerCommitment[]): Hex =>
     concatHex(["0x02", processId, sig("63"), u16(cs.length), ...cs.map(packCommitment)]);
 export const walletResolveEntry = (processId: Hex, authorization: Hex, cs: SequencerCommitment[]): Hex =>
     concatHex(["0x04", processId, bytesWithLength(authorization), u16(cs.length), ...cs.map(packCommitment)]);
-export const attestEntry = (role: number, target: SequencerCommitment, authorization: Hex): Hex =>
-    concatHex(["0x05", numberToHex(role, { size: 1 }), packCommitment(target), rep("d1", 32), "0x01", rep("d2", 32), bytesWithLength(authorization)]);
+/** What a `0x05` entry says beside its target: the clause id, the stage and the content reference. */
+export interface AttestedContent { clauseId: Hex; stage: number; contentRef: Hex }
+export const attestEntry = (
+    role: number,
+    target: SequencerCommitment,
+    authorization: Hex,
+    { clauseId, stage, contentRef }: AttestedContent = { clauseId: rep("d1", 32), stage: 1, contentRef: rep("d2", 32) },
+): Hex =>
+    concatHex([
+        "0x05", numberToHex(role, { size: 1 }), packCommitment(target),
+        clauseId, numberToHex(stage, { size: 1 }), contentRef, bytesWithLength(authorization),
+    ]);
 export function claimEntry(claim: SequencerUsageClaim): Hex {
     const k = claim.kind;
     const kindBytes: Hex =

@@ -20,8 +20,12 @@ import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
 ///         accepts, and the verifier must emit, for every commit and resolve
 ///         entry, the events `FigaroCore` emits for the same commitment:
 ///         the same fields, and ids derived under THIS verifier's domain
-///         (the one the batch's signatures were made under). A byte the two
-///         readers disagree on fails here or in the Rust test.
+///         (the one the batch's signatures were made under), and for every
+///         attestation authorized by wallet code (`0x05`) the coordinator's
+///         `Attestation` event, emitted only after the party's code, etched
+///         as `MockERC1271Wallet`, validated the entry's bytes for the
+///         digest the verifier derives. A byte the two readers disagree on
+///         fails here or in the Rust test.
 contract OperationStreamVectorsTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
@@ -164,23 +168,17 @@ contract OperationStreamVectorsTest is Test {
         for (uint256 s = 0; s < streams; s++) {
             string memory sb = string.concat(".streams[", vm.toString(s), "]");
             bytes memory stream = vm.parseJsonBytes(json, string.concat(sb, ".stream"));
-            uint256 entries = vm.parseJsonUint(json, string.concat(sb, ".entryCount"));
-            // A wallet-code resolve's buyer carries code that validates the
-            // entry's bytes for the digest the verifier derives: set before
-            // the expectations, which bind the next call (the settle).
+            uint256 entries = _approveFixtureWalletCode(json, sb);
+            // Step 4 emits each wallet-code attestation's `Attestation` before
+            // step 6 emits the Core's events, so those are expected first.
             for (uint256 e = 0; e < entries; e++) {
                 string memory eb = string.concat(sb, ".entries[", vm.toString(e), "]");
-                if (
-                    keccak256(bytes(vm.parseJsonString(json, string.concat(eb, ".kind"))))
-                        == keccak256("resolveByWalletCode")
-                ) {
-                    _approveWalletCode(json, eb);
-                }
+                if (_kindIs(json, eb, "attestByWalletCode")) _expectFixtureAttestation(json, eb);
             }
             for (uint256 e = 0; e < entries; e++) {
                 string memory eb = string.concat(sb, ".entries[", vm.toString(e), "]");
-                string memory kind = vm.parseJsonString(json, string.concat(eb, ".kind"));
-                if (keccak256(bytes(kind)) == keccak256("commit")) {
+                if (_kindIs(json, eb, "attestByWalletCode")) continue;
+                if (_kindIs(json, eb, "commit")) {
                     _expectCommitted(_commitment(json, string.concat(eb, ".commitment")));
                 } else {
                     bytes32 processId = vm.parseJsonBytes32(json, string.concat(eb, ".processId"));
@@ -204,6 +202,99 @@ contract OperationStreamVectorsTest is Test {
                 string.concat("stream landed: ", vm.parseJsonString(json, string.concat(sb, ".name")))
             );
         }
+    }
+
+    function _kindIs(string memory json, string memory eb, string memory kind) internal pure returns (bool) {
+        return keccak256(bytes(vm.parseJsonString(json, string.concat(eb, ".kind")))) == keccak256(bytes(kind));
+    }
+
+    /// @dev Etch and approve the code of every party a fixture stream's
+    ///      entries name as authorizing by wallet code: each wallet-code
+    ///      resolve's buyer and each wallet-code attestation's party. Set
+    ///      before any expectation, since an expectation binds the next call.
+    ///      Returns the stream's entry count.
+    function _approveFixtureWalletCode(string memory json, string memory sb) internal returns (uint256 entries) {
+        entries = vm.parseJsonUint(json, string.concat(sb, ".entryCount"));
+        for (uint256 e = 0; e < entries; e++) {
+            string memory eb = string.concat(sb, ".entries[", vm.toString(e), "]");
+            if (_kindIs(json, eb, "resolveByWalletCode")) {
+                _approveWalletCode(json, eb);
+            } else if (_kindIs(json, eb, "attestByWalletCode")) {
+                (, address party, bytes32 digest) = _fixtureAttestation(json, eb);
+                vm.etch(party, type(MockERC1271Wallet).runtimeCode);
+                MockERC1271Wallet(party).approve(digest, vm.parseJsonBytes(json, string.concat(eb, ".authorization")));
+            }
+        }
+    }
+
+    /// @dev A fixture `0x05` entry's target, its party (the role's) and the
+    ///      `AttestSeller` / `AttestBuyer` digest under the verifier's domain.
+    function _fixtureAttestation(string memory json, string memory eb)
+        internal
+        view
+        returns (CommitmentTypes.Commitment memory c, address party, bytes32 digest)
+    {
+        c = _commitment(json, string.concat(eb, ".target"));
+        bool asSeller = keccak256(bytes(vm.parseJsonString(json, string.concat(eb, ".role")))) == keccak256("seller");
+        party = asSeller ? c.seller : c.buyer;
+        (bytes32 orderHash, bytes32 processId) = _ids(c);
+        digest = _attestDigest(
+            asSeller,
+            orderHash,
+            processId,
+            vm.parseJsonBytes32(json, string.concat(eb, ".clauseId")),
+            uint8(vm.parseJsonUint(json, string.concat(eb, ".stage"))),
+            vm.parseJsonBytes32(json, string.concat(eb, ".contentRef"))
+        );
+    }
+
+    function _expectFixtureAttestation(string memory json, string memory eb) internal {
+        (CommitmentTypes.Commitment memory c, address party,) = _fixtureAttestation(json, eb);
+        (bytes32 orderHash, bytes32 processId) = _ids(c);
+        vm.expectEmit(true, true, true, true, address(verifier));
+        emit FigaroBatchVerifier.Attestation(
+            orderHash,
+            processId,
+            party,
+            vm.parseJsonBytes32(json, string.concat(eb, ".clauseId")),
+            uint8(vm.parseJsonUint(json, string.concat(eb, ".stage"))),
+            vm.parseJsonBytes32(json, string.concat(eb, ".contentRef"))
+        );
+    }
+
+    /// @dev The digest a party's code validates for a wallet-code attestation:
+    ///      `AttestSeller` or `AttestBuyer` under the verifier's domain.
+    function _attestDigest(
+        bool asSeller,
+        bytes32 orderHash,
+        bytes32 processId,
+        bytes32 clauseId,
+        uint8 stage,
+        bytes32 contentRef
+    ) internal view returns (bytes32) {
+        bytes32 structHash = asSeller
+            ? keccak256(
+                abi.encode(
+                    keccak256("AttestSeller(bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)"),
+                    orderHash,
+                    clauseId,
+                    stage,
+                    contentRef
+                )
+            )
+            : keccak256(
+                abi.encode(
+                    keccak256(
+                        "AttestBuyer(bytes32 processId,bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)"
+                    ),
+                    processId,
+                    orderHash,
+                    clauseId,
+                    stage,
+                    contentRef
+                )
+            );
+        return keccak256(abi.encodePacked("\x19\x01", _domainSeparator(), structHash));
     }
 
     /// @dev `ResolveProcess` over the entry's process and the sum of its listed
@@ -437,31 +528,9 @@ contract OperationStreamVectorsTest is Test {
             emit FigaroBatchVerifier.Attestation(orderHash, processId, party, clauseId, stage, contentRef);
         }
         if (validate) {
-            bytes32 structHash = asSeller
-                ? keccak256(
-                    abi.encode(
-                        keccak256("AttestSeller(bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)"),
-                        orderHash,
-                        clauseId,
-                        stage,
-                        contentRef
-                    )
-                )
-                : keccak256(
-                    abi.encode(
-                        keccak256(
-                            "AttestBuyer(bytes32 processId,bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)"
-                        ),
-                        processId,
-                        orderHash,
-                        clauseId,
-                        stage,
-                        contentRef
-                    )
-                );
             vm.etch(party, type(MockERC1271Wallet).runtimeCode);
             MockERC1271Wallet(party)
-                .approve(keccak256(abi.encodePacked("\x19\x01", _domainSeparator(), structHash)), authorization);
+                .approve(_attestDigest(asSeller, orderHash, processId, clauseId, stage, contentRef), authorization);
         }
         return bytes.concat(
             abi.encodePacked(hex"05", uint8(asSeller ? 0 : 1), _packCommitment(c)),
