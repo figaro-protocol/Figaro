@@ -24,9 +24,10 @@ export interface UseApproveThenActArgs {
  * awaitable form the accept and commit flows run after their confirm, so a
  * party who declines has approved nothing. If the
  * current allowance already covers the
- * amount, the action runs immediately; otherwise a 10×-buffered approval is
- * submitted and the action is PENDED until `isApproveSuccess` flips (a prior
- * max approval just makes `needsApproval` false — no-op).
+ * amount, the action runs immediately; otherwise an approval of exactly that
+ * amount, the total the page shows, is submitted and the action is PENDED
+ * until `isApproveSuccess` flips (a prior larger approval just makes
+ * `needsApproval` false — no-op).
  *
  * A failed or refused approval clears the pending action, so it never fires
  * on some LATER, unrelated approval's success. wagmi reports a wallet
@@ -64,7 +65,8 @@ export function useApproveThenAct({ needsApproval, approve, isApproveSuccess, is
         }
         try {
             pendingAction.current = act;
-            approve(amount * 10n);
+            // Exactly the amount the page shows: the party authorizes what it read.
+            approve(amount);
         } catch (err) {
             pendingAction.current = null;
             throw err;

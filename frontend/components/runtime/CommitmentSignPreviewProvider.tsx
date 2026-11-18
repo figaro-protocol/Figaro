@@ -38,6 +38,7 @@ export function CommitmentSignPreviewProvider() {
             agreement={pending.agreement}
             intent={pending.intent}
             swap={pending.swap ?? null}
+            carriedSwaps={pending.carriedSwaps ?? []}
             onConfirm={confirmPendingSign}
             onCancel={cancelPendingSign}
         />

@@ -127,3 +127,76 @@ describe("AgreementPreviewModal — the swap-funded leg, shown read-only", () =>
         expect(screen.queryByTestId("preview-swap")).toBeNull();
     });
 });
+
+/**
+ * Confirm opens the wallet for the swap's maximum input, so it is not
+ * clickable until that figure shows: while the funding token's decimals are
+ * unread, no figure shows and Confirm stays disabled.
+ */
+describe("AgreementPreviewModal — Confirm waits for the max input", () => {
+    beforeEach(() => {
+        balance.read = { status: "present", value: 5_000_000_000n };
+        token.decimals = { [INPUT]: 6, [CURRENCY]: 18 };
+        token.symbols = { [INPUT]: "USDC" };
+    });
+
+    const withConfirm = (onConfirm: () => void, props: Partial<React.ComponentProps<typeof AgreementPreviewModal>> = {}) => (
+        <AgreementPreviewModal commitment={{} as never} agreement={null} intent="sign" swap={SWAP} onConfirm={onConfirm} onCancel={() => {}} {...props} />
+    );
+
+    it("keeps Confirm disabled while the swap's max input is not shown", () => {
+        token.decimals = { [CURRENCY]: 18 };
+        const onConfirm = vi.fn();
+        render(withConfirm(onConfirm));
+        expect(screen.queryByTestId("preview-swap-max-input")).toBeNull();
+        expect(screen.getByTestId("preview-confirm")).toBeDisabled();
+        screen.getByTestId("preview-confirm").click();
+        expect(onConfirm).not.toHaveBeenCalled();
+    });
+
+    it("enables Confirm once the max input shows", () => {
+        const onConfirm = vi.fn();
+        render(withConfirm(onConfirm));
+        expect(screen.getByTestId("preview-swap-max-input")).toBeInTheDocument();
+        expect(screen.getByTestId("preview-confirm")).toBeEnabled();
+        screen.getByTestId("preview-confirm").click();
+        expect(onConfirm).toHaveBeenCalledTimes(1);
+    });
+
+    it("enables Confirm at once when no swap leg is shown", () => {
+        token.decimals = {};
+        render(withConfirm(() => {}, { swap: null }));
+        expect(screen.getByTestId("preview-confirm")).toBeEnabled();
+    });
+});
+
+/**
+ * A leg already signed, which the send carries (the buyer's leg relayed with
+ * the order), is shown in the same confirm with its party, its max input and
+ * its tokens, and Confirm waits for its figure as for the party's own.
+ */
+describe("AgreementPreviewModal — the legs the send carries", () => {
+    const BUYER = `0x${"0b".repeat(20)}` as const;
+    const CARRIED = { inputToken: INPUT, currency: CURRENCY, maxInput: 2_050_000_000n, party: BUYER };
+
+    beforeEach(() => {
+        balance.read = { status: "present", value: 5_000_000_000n };
+        token.decimals = { [INPUT]: 6, [CURRENCY]: 18 };
+        token.symbols = { [INPUT]: "USDC" };
+    });
+
+    it("shows a carried leg's party and max input, and no margin it does not carry", () => {
+        render(<AgreementPreviewModal commitment={{} as never} agreement={null} intent="commit" carriedSwaps={[CARRIED]} onConfirm={() => {}} onCancel={() => {}} />);
+        const carried = screen.getByTestId("preview-carried-swap");
+        expect(carried).toHaveTextContent(BUYER);
+        expect(screen.getByTestId("preview-swap-max-input")).toHaveTextContent(/^2050 USDC$/);
+        expect(screen.queryByTestId("preview-swap-margin")).toBeNull();
+        expect(screen.getByTestId("preview-confirm")).toBeEnabled();
+    });
+
+    it("keeps Confirm disabled while a carried leg's max input is not shown", () => {
+        token.decimals = {};
+        render(<AgreementPreviewModal commitment={{} as never} agreement={null} intent="commit" carriedSwaps={[CARRIED]} onConfirm={() => {}} onCancel={() => {}} />);
+        expect(screen.getByTestId("preview-confirm")).toBeDisabled();
+    });
+});

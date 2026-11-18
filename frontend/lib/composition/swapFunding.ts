@@ -23,8 +23,10 @@ import { parseAbi, parseUnits, type PublicClient } from "viem";
 import {
     buildSwapWitnessTypedData,
     generateSalt,
+    type Commitment,
     type Hex,
     type SwapFundingLeg,
+    type SwapWitnessTypedDataArgs,
 } from "@figaro-protocol/sdk";
 import {
     getPermit2,
@@ -176,10 +178,12 @@ export async function quoteFundingLeg(
 }
 
 /** Witness-sign a previously quoted leg. The signature binds the quote's exact
- *  route + `maxInput`, so the relayer is untrusted by construction and the
- *  party signs precisely what the confirm gate showed. */
+ *  route + `maxInput`, the one commitment whose bond the leg pays and the party's role
+ *  in it, so the relayer is untrusted by construction, the leg pays for no other
+ *  order, and the party signs precisely what the confirm gate showed. */
 export async function signFundingLeg(
     quote: FundingQuote,
+    binding: { commitment: Commitment; role: SwapWitnessTypedDataArgs["role"] },
     signTypedData: (typedData: ReturnType<typeof buildSwapWitnessTypedData>) => Promise<Hex>,
 ): Promise<SwapFundingLeg> {
     const permitSignature = await signTypedData(
@@ -193,6 +197,8 @@ export async function signFundingLeg(
             nonce: quote.nonce,
             deadline: quote.deadline,
             swapData: quote.swapData,
+            commitment: binding.commitment,
+            role: binding.role,
         }),
     );
     return {

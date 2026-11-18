@@ -87,14 +87,14 @@ describe("YourTurnCard accept — the seller's bond is approved after the terms 
         expect(typeof onAccept.mock.calls[0][0]).toBe("function");
     });
 
-    it("the step handed to the flow approves the seller bond, 2 × cumulative value, with the 10× buffer", () => {
+    it("the step handed to the flow approves the seller bond, 2 × cumulative value, exactly the bond shown", () => {
         const onAccept = renderCard();
         expect(screen.getByText("Your seller bond:")).toBeTruthy();
         fireEvent.click(screen.getByTestId("btn-accept-order"));
         const beforeBroadcast = onAccept.mock.calls[0][0] as () => Promise<void>;
         void beforeBroadcast();
         const { sellerBond } = calculateBonds(CUMULATIVE, PAYMENT);
-        expect(approval.approve).toHaveBeenCalledWith(sellerBond * 10n);
+        expect(approval.approve).toHaveBeenCalledWith(sellerBond);
     });
 
     it("an allowance that already covers the bond sends no approval, and the step resolves", async () => {
@@ -117,7 +117,7 @@ describe("YourTurnCard accept as the buyer — a seller-initiated order pulls th
         approval.approve = vi.fn();
     });
 
-    it("names the bond as the buyer's and approves 2 × payment with the 10× buffer", () => {
+    it("names the bond as the buyer's and approves exactly 2 × payment, the bond shown", () => {
         const onAccept = renderCard(vi.fn(), SELLER_INITIATED);
         expect(screen.getByText("Your buyer bond:")).toBeTruthy();
         expect(screen.queryByText("Your seller bond:")).toBeNull();
@@ -126,7 +126,7 @@ describe("YourTurnCard accept as the buyer — a seller-initiated order pulls th
         void beforeBroadcast();
         const { buyerBond, sellerBond } = calculateBonds(CUMULATIVE, PAYMENT);
         expect(buyerBond).not.toBe(sellerBond);
-        expect(approval.approve).toHaveBeenCalledWith(buyerBond * 10n);
+        expect(approval.approve).toHaveBeenCalledWith(buyerBond);
     });
 });
 
@@ -164,13 +164,13 @@ describe("YourTurnCard submit — the seller's bond is approved after the commit
         expect(typeof onSubmit.mock.calls[0][0]).toBe("function");
     });
 
-    it("the step handed to the flow approves the seller bond, 2 × cumulative value, with the 10× buffer", () => {
+    it("the step handed to the flow approves the seller bond, 2 × cumulative value, exactly the bond shown", () => {
         const onSubmit = renderReady();
         fireEvent.click(screen.getByTestId("btn-submit-ready-order"));
         const beforeBroadcast = onSubmit.mock.calls[0][0] as () => Promise<void>;
         void beforeBroadcast();
         const { sellerBond } = calculateBonds(CUMULATIVE, PAYMENT);
-        expect(approval.approve).toHaveBeenCalledWith(sellerBond * 10n);
+        expect(approval.approve).toHaveBeenCalledWith(sellerBond);
     });
 
     it("an allowance that already covers the bond sends no approval, and the step resolves", async () => {

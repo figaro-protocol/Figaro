@@ -787,12 +787,15 @@ const swapData = encodeFunctionData({
   }],
 });
 
-// The witness binds { router, inputToken, maxInput, keccak256(swapData) } into
-// the digest, so a relayer cannot substitute the swap route and skim the
-// slippage. `coordinator` is Permit2's spender (it performs the pull).
+// The witness binds { router, inputToken, maxInput, keccak256(swapData),
+// commitmentHash, role } into the digest, so a relayer cannot substitute the
+// swap route and skim the slippage, and no one can spend the leg on another
+// commitment naming you or in the other party's place. `commitment` is the
+// one this leg funds (its EIP-712 struct hash is bound); `role` is "buyer" or
+// "seller". `coordinator` is Permit2's spender (it performs the pull).
 const typedData = buildSwapWitnessTypedData({
   chainId, permit2, coordinator, router, inputToken,
-  maxInput, nonce, deadline, swapData,
+  maxInput, nonce, deadline, swapData, commitment, role: "buyer",
 });
 const permitSignature = await walletClient.signTypedData({ account, ...typedData });
 

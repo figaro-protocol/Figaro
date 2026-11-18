@@ -74,12 +74,17 @@ interface IPermit2WitnessTransfer {
 ///
 ///      THE FIX: this coordinator calls `permitWitnessTransferFrom`, binding the
 ///      swap route into a Permit2 witness. The witness commits to
-///      `{router, inputToken, maxInput, keccak256(swapData)}`, so the owner's
-///      signature COVERS the exact route. Substitute any of those and the
-///      recomputed witness no longer matches the signed digest — Permit2's own
-///      signature check reverts before a single token moves. The bond currency
-///      and bond amount are NOT re-bound in the witness: they derive from `c`,
-///      which is already bilaterally EIP-712-signed and enforced by FigaroCore.
+///      `{router, inputToken, maxInput, keccak256(swapData), commitmentHash,
+///      role}`, so the owner's signature COVERS the exact route, the one
+///      commitment whose bond the leg pays (its EIP-712 struct hash) and the party's
+///      place in it. Substitute any of those and the recomputed witness no
+///      longer matches the signed digest — Permit2's own signature check
+///      reverts before a single token moves. So a leg signed for an order that
+///      never committed cannot fund another commitment naming the same party,
+///      whoever calls, and a leg signed as buyer cannot fund the seller's bond
+///      of an order where one wallet holds both places. The bond currency and
+///      bond amount are NOT re-bound in the witness: they derive from `c`,
+///      whose struct hash the witness carries.
 ///
 ///      The frozen FigaroCore is untouched. The coordinator carries only the commit
 ///      call, so it holds no resolution-time discretion. No owner/admin/pause —
@@ -108,18 +113,31 @@ contract WitnessSwapAndCommitCoordinator is ReentrancyGuard {
 
     /// @notice EIP-712 type of the swap witness the party signs. Binds every
     ///         economically-meaningful parameter of the leg that the party
-    ///         authorizes: the venue, the input token, the input ceiling, and a
-    ///         hash of the exact swap calldata (the route).
+    ///         authorizes: the venue, the input token, the input ceiling, a
+    ///         hash of the exact swap calldata (the route), the EIP-712 struct
+    ///         hash of the one commitment whose bond the leg pays
+    ///         (`CommitmentTypes.hashStruct`), and the party's role in it.
+    /// @dev The struct hash carries no domain. Permit2's own domain pins the
+    ///      chain, its `spender` pins this coordinator, and this coordinator's
+    ///      immutable `figaroCore` pins the Core the commitment is sent to.
     struct SwapWitness {
         address router;
         address inputToken;
         uint256 maxInput;
         bytes32 swapDataHash;
+        bytes32 commitmentHash;
+        uint8 role;
     }
 
+    /// @notice The role whose bond a leg pays: the buyer's bond (2·payment) or the
+    ///         seller's (2·expectedCumulativeValue).
+    uint8 internal constant BUYER_ROLE = 0;
+    uint8 internal constant SELLER_ROLE = 1;
+
     /// @dev keccak256 of the `SwapWitness` EIP-712 type.
-    bytes32 internal constant SWAP_WITNESS_TYPEHASH =
-        keccak256("SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash)");
+    bytes32 internal constant SWAP_WITNESS_TYPEHASH = keccak256(
+        "SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash,bytes32 commitmentHash,uint8 role)"
+    );
 
     /// @dev The witness type string Permit2 appends to its own
     ///      `PermitWitnessTransferFrom(...` stub to reconstruct the full typed
@@ -127,7 +145,7 @@ contract WitnessSwapAndCommitCoordinator is ReentrancyGuard {
     ///      declare the `SwapWitness` and `TokenPermissions` sub-types in
     ///      alphabetical order, per the Permit2 witness convention.
     string internal constant WITNESS_TYPE_STRING =
-        "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash)TokenPermissions(address token,uint256 amount)";
+        "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash,bytes32 commitmentHash,uint8 role)TokenPermissions(address token,uint256 amount)";
 
     /// @notice Per-party instruction to fund a bond from a swapped input token.
     ///         `enabled == false` skips this leg — the party self-funds the bond
@@ -139,8 +157,9 @@ contract WitnessSwapAndCommitCoordinator is ReentrancyGuard {
     ///      before the call. The bond amount is never supplied here — it is derived
     ///      from the commitment — so a caller cannot under-fund FigaroCore's pull.
     ///      `permitSignature` must be the party's Permit2 WITNESS signature over
-    ///      `swapWitness(inputToken, maxInput, swapData)`; a signature over any
-    ///      other route is rejected by Permit2.
+    ///      `swapWitness(inputToken, maxInput, swapData, commitmentHash, role)`;
+    ///      a signature over any other route, commitment or role is rejected
+    ///      by Permit2.
     struct SwapFunding {
         bool enabled;
         address inputToken;
@@ -163,13 +182,23 @@ contract WitnessSwapAndCommitCoordinator is ReentrancyGuard {
 
     /// @notice Recompute the Permit2 witness a party must sign for a given leg.
     ///         Off-chain signers call this (or replicate it) so their signature
-    ///         commits to the exact swap route. `_fund` recomputes the identical
-    ///         value on-chain, so any deviation between the signed route and the
-    ///         submitted `swapData` flips the witness and fails verification.
+    ///         commits to the exact swap route, the commitment and the role.
+    ///         `_fund` recomputes the identical value on-chain from the
+    ///         submitted `swapData`, the submitted commitment's struct hash and
+    ///         the leg's place in the call, so any deviation flips the witness
+    ///         and fails verification.
     /// @dev `router` is the contract's immutable venue, so the party's signature
     ///      is also pinned to this coordinator's venue.
-    function swapWitness(address inputToken, uint256 maxInput, bytes calldata swapData) public view returns (bytes32) {
-        return keccak256(abi.encode(SWAP_WITNESS_TYPEHASH, router, inputToken, maxInput, keccak256(swapData)));
+    function swapWitness(
+        address inputToken,
+        uint256 maxInput,
+        bytes calldata swapData,
+        bytes32 commitmentHash,
+        uint8 role
+    ) public view returns (bytes32) {
+        return keccak256(
+            abi.encode(SWAP_WITNESS_TYPEHASH, router, inputToken, maxInput, keccak256(swapData), commitmentHash, role)
+        );
     }
 
     /// @notice Fund the enabled bond legs from swapped input tokens, then commit.
@@ -187,25 +216,37 @@ contract WitnessSwapAndCommitCoordinator is ReentrancyGuard {
     ) external nonReentrant returns (bytes32 processId, bytes32 orderHash) {
         if (!buyerFunding.enabled && !sellerFunding.enabled) revert NothingToFund();
 
+        // The one commitment each leg's witness must name.
+        bytes32 commitmentHash = CommitmentTypes.hashStruct(c);
+
         // Bond amounts mirror FigaroCore's pulls exactly: 2·payment from the buyer,
         // 2·expectedCumulativeValue from the seller (FigaroCore.commit).
         if (buyerFunding.enabled) {
-            _fund(c.buyer, c.currency, c.payment * 2, buyerFunding);
+            _fund(c.buyer, c.currency, c.payment * 2, commitmentHash, BUYER_ROLE, buyerFunding);
         }
         if (sellerFunding.enabled) {
-            _fund(c.seller, c.currency, c.expectedCumulativeValue * 2, sellerFunding);
+            _fund(c.seller, c.currency, c.expectedCumulativeValue * 2, commitmentHash, SELLER_ROLE, sellerFunding);
         }
 
         (processId, orderHash) = figaroCore.commit(c, buyerSig, sellerSig);
     }
 
-    function _fund(address party, address bondCurrency, uint256 bondAmount, SwapFunding calldata f) internal {
+    function _fund(
+        address party,
+        address bondCurrency,
+        uint256 bondAmount,
+        bytes32 commitmentHash,
+        uint8 role,
+        SwapFunding calldata f
+    ) internal {
         // 1. Pull the party's input token via their Permit2 WITNESS signature.
-        //    The witness binds {router, inputToken, maxInput, keccak256(swapData)}
-        //    into the digest the party signed, so a relayer cannot substitute a
-        //    different route: Permit2 recomputes the digest from the witness we
-        //    pass and reverts if it does not recover `party`.
-        bytes32 witness = swapWitness(f.inputToken, f.maxInput, f.swapData);
+        //    The witness binds {router, inputToken, maxInput, keccak256(swapData),
+        //    commitmentHash, role} into the digest the party signed, so a
+        //    relayer cannot substitute a different route, and no caller can
+        //    spend the leg on another commitment or in the other role: Permit2
+        //    recomputes the digest from the witness we pass and reverts if it
+        //    does not recover `party`.
+        bytes32 witness = swapWitness(f.inputToken, f.maxInput, f.swapData, commitmentHash, role);
         permit2.permitWitnessTransferFrom(
             IPermit2WitnessTransfer.PermitTransferFrom({
                 permitted: IPermit2WitnessTransfer.TokenPermissions({token: f.inputToken, amount: f.maxInput}),

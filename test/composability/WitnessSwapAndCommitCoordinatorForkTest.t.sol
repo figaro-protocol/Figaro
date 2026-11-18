@@ -126,11 +126,12 @@ contract WitnessSwapAndCommitCoordinatorForkTest is Test {
     /// @dev The witness digest, built with REAL Permit2's live DOMAIN_SEPARATOR —
     ///      the reconstruction under proof.
     function _permitDigest(uint256 maxInput, uint256 deadline, bytes memory swapData) internal view returns (bytes32) {
-        bytes32 witness = coord.swapWitness(address(buyerInput), maxInput, swapData);
+        // The buyer's leg (role 0) of the suite's one root commitment.
+        bytes32 witness = coord.swapWitness(address(buyerInput), maxInput, swapData, _rootCommitment().hashStruct(), 0);
         bytes32 typeHash = keccak256(
             abi.encodePacked(
                 "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,",
-                "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash)TokenPermissions(address token,uint256 amount)"
+                "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash,bytes32 commitmentHash,uint8 role)TokenPermissions(address token,uint256 amount)"
             )
         );
         bytes32 tokenPermissionsHash = keccak256(
@@ -366,11 +367,12 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is Test {
     /// @dev The witness digest against REAL Permit2's live DOMAIN_SEPARATOR —
     ///      same reconstruction the mainnet suite proves.
     function _permitDigest(uint256 maxInput, uint256 deadline, bytes memory swapData) internal view returns (bytes32) {
-        bytes32 witness = coord.swapWitness(address(WETH), maxInput, swapData);
+        // The buyer's leg (role 0) of the suite's one root commitment.
+        bytes32 witness = coord.swapWitness(address(WETH), maxInput, swapData, _rootCommitment().hashStruct(), 0);
         bytes32 typeHash = keccak256(
             abi.encodePacked(
                 "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,",
-                "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash)TokenPermissions(address token,uint256 amount)"
+                "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash,bytes32 commitmentHash,uint8 role)TokenPermissions(address token,uint256 amount)"
             )
         );
         bytes32 tokenPermissionsHash =

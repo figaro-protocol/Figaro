@@ -46,6 +46,7 @@ export {
     DISABLED_SWAP_FUNDING_LEG,
     SWAP_FUNDING_BIGINT_FIELDS,
     SWAP_WITNESS_PERMIT_TYPES,
+    SWAP_WITNESS_ROLE,
     buildSwapWitnessTypedData,
     type SwapFundingLeg,
     type SwapWitnessTypedDataArgs,
