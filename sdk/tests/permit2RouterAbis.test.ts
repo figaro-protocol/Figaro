@@ -3,7 +3,7 @@
  * bond path composes with: Permit2's witness transfer surface (the
  * coordinator's on-chain pull — `WitnessSwapAndCommitCoordinator._fund`) and
  * the Uniswap SwapRouter02 / QuoterV2 pair the venue seam
- * (`frontend/lib/composition/swapVenue.ts`) encodes against. These are curated
+ * (`frontend/lib/composability/swapVenue.ts`) encodes against. These are curated
  * constants for EXTERNAL contracts (not Figaro's), same rationale as
  * `ERC20_ABI` — so no FigaroCore/registry-style behavioral test applies. This file
  * pins the function surfaces with their expected arity, so a future edit can't
