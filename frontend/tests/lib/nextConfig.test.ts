@@ -46,6 +46,27 @@ describe("next.config: a build for a public chain names no IPFS node", () => {
         expect(() => config(BUILD)).not.toThrow();
     });
 
+    it("refuses a deploy build that names the local XMTP broker", () => {
+        deployEnv({ NEXT_PUBLIC_XMTP_ENV: "local", NEXT_PUBLIC_XMTP_API_URL: "http://localhost:5050" });
+        expect(() => config(BUILD)).toThrow(/NEXT_PUBLIC_XMTP_ENV is "local"/);
+    });
+
+    it("refuses a deploy build that moves the e2e sessions onto XMTP", () => {
+        deployEnv({ NEXT_PUBLIC_E2E_HANDOFF_CHANNEL: "xmtp" });
+        expect(() => config(BUILD)).toThrow(/NEXT_PUBLIC_E2E_HANDOFF_CHANNEL/);
+    });
+
+    it("passes the e2e harness's build over the local broker, which opts in with FIGARO_ALLOW_TEST_HELPERS=1", () => {
+        deployEnv({
+            FIGARO_ALLOW_TEST_HELPERS: "1",
+            NEXT_PUBLIC_XMTP_ENV: "local",
+            NEXT_PUBLIC_XMTP_API_URL: "http://localhost:5050",
+            NEXT_PUBLIC_E2E_HANDOFF_CHANNEL: "xmtp",
+            NEXT_PUBLIC_IPFS_API_URL: "http://127.0.0.1:5001",
+        });
+        expect(() => config(BUILD)).not.toThrow();
+    });
+
     it("checks nothing outside the production-build phase", () => {
         deployEnv({ NEXT_PUBLIC_CHAIN: "sepolia", NEXT_PUBLIC_IPFS_API_URL: "http://127.0.0.1:5001" });
         expect(() => config("phase-production-server")).not.toThrow();

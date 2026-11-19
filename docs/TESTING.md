@@ -971,9 +971,19 @@ select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
   as an annotation, unchecked; the production build makes them, and
   `npm run check:paper-pdfs` checks a real build.
 - **`smoke`** — MAINTAINER-MANUAL smokes over real external transports the devnet
-  suite deliberately mocks (the XMTP hosted `dev` network); never part of any
-  suite run — explicitly `npx playwright test --project=smoke`; pass/fail is a
-  maintainer observation, not a CI gate.
+  suite runs over its mock bus by default (the XMTP hosted `dev` network); never
+  part of any suite run — explicitly `npx playwright test --project=smoke`;
+  pass/fail is a maintainer observation, not a CI gate. The devnet sessions
+  cross a real XMTP broker when the build's `.env.local` carries
+  `NEXT_PUBLIC_E2E_HANDOFF_CHANNEL=xmtp`, `NEXT_PUBLIC_XMTP_ENV=local`,
+  `NEXT_PUBLIC_XMTP_API_URL` (the broker's node) and
+  `NEXT_PUBLIC_XMTP_GATEWAY_HOST` (its gateway): `lib/data/handoff/channel.ts`
+  then opens the real channel in place of the mock, and registers each
+  wallet's inbox on the empty broker. `next.config.mjs` refuses both settings
+  in a deploy build. `content-delivery.devnet.spec.ts` asserts it in that mode:
+  both inboxes on the broker, read from its node out of band, and nothing on
+  the mock bus. The `devnet-xmtp-local` job of `on-demand-docker` runs it
+  against a local xmtpd.
 - **`sepolia`** — MAINTAINER-MANUAL: the PUBLIC rehearsal,
   `frontend/tests/e2e/live-order.sepolia.spec.ts` — one trade through
   the real UI against the live Sepolia deployment (wizard registration → discover →
@@ -1314,11 +1324,15 @@ Per workflow, what it runs and when:
   still reach the maintainer's inbox (GitHub never e-mails an actor about
   their own actions; a mention from the bot always does). One comment per
   issue, guarded by a marker.
-- **`on-demand-docker`** — `workflow_dispatch` ONLY, never push/schedule. Two
-  independent jobs: the xmtpd stack proof (hermetic broker bring-up) and the
-  Linux sandbox variant (the signer runtime's container deny cases and the
-  launcher's RPC relay: a JSON-RPC POST through the proxy's relay path reaches
-  the node behind it, and no answer names the endpoint's URL).
+- **`on-demand-docker`** — `workflow_dispatch` ONLY, never push/schedule. Three
+  independent jobs, picked by the `job` input (`all` by default): the xmtpd
+  stack proof (hermetic broker bring-up); the Linux sandbox variant (the signer
+  runtime's container deny cases and the launcher's RPC relay: a JSON-RPC POST
+  through the proxy's relay path reaches the node behind it, and no answer
+  names the endpoint's URL); and `devnet-xmtp-local`, which brings up the same
+  broker with its gateway, then the devnet stack as `devnet-e2e-ci` does, and
+  runs `content-delivery.devnet.spec.ts` with its order and sealed content
+  over that broker (`gh workflow run on-demand-docker.yml -f job=devnet-xmtp-local`).
 - **`sequencer-release`** — publishes the prebuilt `figaro-sequencer` relay
   binary as a GitHub Release artifact (pinned toolchains + the computed vkey,
   refused unless it is the `programVKey` in every deployment file

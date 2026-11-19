@@ -82,4 +82,50 @@ describe("getHandoffChannel single-flight", () => {
         await getHandoffChannel(addr, signMessage);
         expect(createXmtpChannelMock).not.toHaveBeenCalled();
     });
+
+    it("the signer-less floor is not cached: a caller that comes back WITH the signer reaches the wallet's inbox", async () => {
+        const channel = { tag: "five" } as unknown as HandoffChannel;
+        createXmtpChannelMock.mockResolvedValue(channel);
+        const addr = "0xEeEe000000000000000000000000000000000005";
+        const floor = await getHandoffChannel(addr);
+        expect(floor).not.toBe(channel);
+        expect(await getHandoffChannel(addr, signMessage)).toBe(channel);
+        expect(createXmtpChannelMock).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("getHandoffChannel in an e2e build that runs devnet sessions over XMTP", () => {
+    /** The factory reads the setting when its module loads, as the build
+     *  inlines it; each case loads a fresh copy under a devnet session. */
+    async function loadWith(handoffChannel: string) {
+        vi.resetModules();
+        vi.stubEnv("NEXT_PUBLIC_E2E_HANDOFF_CHANNEL", handoffChannel);
+        vi.doMock("@/lib/shared/e2e", () => ({
+            isE2EMockSession: () => false,
+            isE2EDevnetSession: () => true,
+        }));
+        const mod = await import("@/lib/data/handoff/channel");
+        vi.unstubAllEnvs();
+        return mod.getHandoffChannel;
+    }
+
+    beforeEach(() => {
+        createXmtpChannelMock.mockReset();
+        walletHasXmtpInboxMock.mockClear();
+    });
+
+    it("without the setting, a devnet session keeps the mock bus", async () => {
+        const get = await loadWith("");
+        const ch = await get("0xF1F1000000000000000000000000000000000006", signMessage);
+        expect(createXmtpChannelMock).not.toHaveBeenCalled();
+        expect(typeof ch.onAnyCommitmentPayload).toBe("function");
+    });
+
+    it("with it, the session crosses XMTP and registers the inbox without the probe (the broker starts empty)", async () => {
+        const channel = { tag: "six" } as unknown as HandoffChannel;
+        createXmtpChannelMock.mockResolvedValue(channel);
+        const get = await loadWith("xmtp");
+        expect(await get("0xF2F2000000000000000000000000000000000007", signMessage)).toBe(channel);
+        expect(walletHasXmtpInboxMock).not.toHaveBeenCalled();
+    });
 });

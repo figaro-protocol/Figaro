@@ -34,11 +34,23 @@
  * effect; full-cycle resolution is permissionless-clause's assertion.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + populate-test-data + Kubo + :3100.
+ *
+ * The channel: by default the order and the sealed content cross the mock
+ * bus every devnet session uses. A build whose .env.local carries
+ * NEXT_PUBLIC_E2E_HANDOFF_CHANNEL=xmtp, NEXT_PUBLIC_XMTP_ENV=local and
+ * NEXT_PUBLIC_XMTP_API_URL (the `devnet-xmtp-local` job of
+ * .github/workflows/on-demand-docker.yml) sends them over a real local XMTP
+ * broker instead. Then the spec also reads, out of band from the broker's
+ * node, that both wallets hold an inbox there, and that the mock bus carried
+ * nothing.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, createWalletClient, defineChain, http, keccak256, parseAbi, parseEther, type Hex } from 'viem';
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs, composeCommerceOn } from './devnet-helpers';
+import {
+    readLocalDeploymentConfig, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs, composeCommerceOn,
+    E2E_HANDOFF_OVER_XMTP, xmtpInboxOnLocalBroker,
+} from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
 import { calculateBonds, ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
@@ -186,6 +198,19 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         await page.getByTestId('review-confirm-publish').click();
         await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i })).toBeVisible({ timeout: 60000 });
 
+        // Over a real broker the buyer can open a conversation only with a
+        // wallet that already holds an inbox there. The seller's page opens
+        // its channel with the wallet's signer, which registers the inbox;
+        // the broker's node is read until it holds it.
+        if (E2E_HANDOFF_OVER_XMTP) {
+            await gotoAsWallet(page, SELLER, '/orders?e2e=devnet');
+            await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
+            await waitForConnected(page);
+            await expect.poll(() => xmtpInboxOnLocalBroker(SELLER), {
+                timeout: 120000, message: 'the local XMTP broker holds an inbox for the seller',
+            }).toBeTruthy();
+        }
+
         // ── COMMIT: the buyer picks the ENCRYPTED-TRANSFER mode at checkout
         //    (a transaction particular on the spec-routed fill surface),
         //    places, relays; the seller accepts; bonds move. ──
@@ -221,6 +246,14 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         await page.getByTestId('buyer-share-panel').waitFor({ timeout: 60000 });
         await page.getByTestId('send-commitment-xmtp').click();
         await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30000 });
+        if (E2E_HANDOFF_OVER_XMTP) {
+            // The same test id carries the channel's error; over a real
+            // broker only the sent line counts.
+            await expect(page.getByTestId('commitment-xmtp-status')).toContainText(/sent over XMTP/);
+            await expect.poll(() => xmtpInboxOnLocalBroker(BUYER), {
+                timeout: 60000, message: 'the local XMTP broker holds an inbox for the buyer',
+            }).toBeTruthy();
+        }
 
         await gotoAsWallet(page, SELLER, '/orders?e2e=devnet');
         await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
@@ -338,5 +371,16 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         const download = page.waitForEvent('download');
         await page.getByTestId('interaction-content-download').click();
         expect((await download).suggestedFilename(), 'the buyer saves what it paid for').toBe(ARTIFACT_NAME);
+
+        // Over a real broker, the content the buyer decrypted crossed it: the
+        // mock bus, which persists every message it carries in this origin's
+        // localStorage, carried none.
+        if (E2E_HANDOFF_OVER_XMTP) {
+            const mockBus = await page.evaluate(
+                (key) => window.localStorage.getItem(key),
+                '__FIGARO_COORDINATION_MOCK_MESSAGES__',
+            );
+            expect(JSON.parse(mockBus ?? '[]'), 'the mock bus carried no message').toEqual([]);
+        }
     });
 });
