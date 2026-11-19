@@ -312,8 +312,8 @@ export const ROUTES = {
 import { mkdirSync, writeFileSync } from "node:fs";
 import { parseEther } from "viem";
 import {
-    planProcessOrders, planSubOrderSellers, fillDerivedClauses, parseMemberCatalogDocument,
-    computeDeadline, readChainTimestamp, calculateBonds, CORE_ABI,
+    planProcessOrders, planSubOrderSellers, fillDerivedClauses, fillPricedLines, specPricedLines,
+    parseMemberCatalogDocument, computeDeadline, readChainTimestamp, calculateBonds, CORE_ABI,
 } from "@figaro-protocol/sdk";
 import { InProcessChannel, makeSellerOfferHandler, originateChain, serializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
 import {
@@ -383,8 +383,13 @@ for (const planned of planProcessOrders(hydrated)) {
         if (Object.keys(fill).length) overrides[key] = fill;
     }
     // The payment and the token are the commitment's; the clause carries the line only.
-    overrides[clauseDeclaring(base, "lineItems")] = {
-        lineItems: [{ itemId: line.itemId, name: line.name, quantity: 1, unitPrice: line.unitPrice }] };
+    // The line goes in the clause whose spec marks its priced lines, under the field
+    // the mark names: found by the mark, never by a field name.
+    const priced = fillPricedLines(base, specs, [line]);
+    for (const key of Object.keys(base)) {
+        const mark = specs.get(key) && specPricedLines(specs.get(key));
+        if (mark && priced[key] !== base[key]) overrides[key] = { ...overrides[key], [mark.field]: priced[key][mark.field] };
+    }
     nodes.push({ nodeId: planned.nodeId, seller, payment, overrides });
 }
 

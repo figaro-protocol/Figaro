@@ -115,6 +115,10 @@ export async function deployBatchStack(
     publicClient: PublicClient,
     deployerWallet: Wallet,
     witness: { specJson: string; clauseKey: Hex },
+    /** The counter's period ends, in seconds after the chain's clock at the
+     *  counter's deployment, strictly ascending. One period, ending an hour
+     *  later, when omitted. */
+    periodEndsAfter: readonly bigint[] = [3600n],
 ): Promise<BatchStack> {
     const deployer = deployerWallet.account.address;
 
@@ -226,6 +230,7 @@ export async function deployBatchStack(
         await publicClient.waitForTransactionReceipt({ hash: agreementRegistryHash })
     ).contractAddress!;
 
+    const chainNow = await readChainTimestamp(publicClient);
     const deployerNonce = await publicClient.getTransactionCount({
         address: deployer,
     });
@@ -251,9 +256,9 @@ export async function deployBatchStack(
             // proven in UsageCounterTest's floor clause and driven at the
             // mainnet value by rpgf-rewards.devnet.spec.ts.
             1n,
-            // The period ends an hour after the chain's clock, which
+            // Each period ends at its offset after the chain's clock, which
             // UsageCounter compares against block.timestamp.
-            [(await readChainTimestamp(publicClient)) + 3600n],
+            periodEndsAfter.map((after) => chainNow + after),
         ],
     });
     const usageCounterAddress = (

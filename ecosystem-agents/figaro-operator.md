@@ -218,14 +218,22 @@ id is an open set, and a hardcoded one silently skips whatever the designer actu
 composed:
 
 ```ts
+import { fillPricedLines, specPricedLines } from "@figaro-protocol/sdk";
+
 const overrides = {};
 const root = assembly.assembly.agreements[0];
-for (const clauseKey of Object.keys(agreementClauses(assembly, root))) {
-  const fields = specs.get(clauseKey)?.fields ?? [];
-  if (fields.some((f) => f.name === "lineItems"))          // the line items, by field
-    overrides[clauseKey] = { lineItems };                    // payment and token: the commitment's
-  if (fields.some((f) => f.name === "modality"))            // a modality clause, if composed
-    overrides[clauseKey] = { modality: "virtual" };         // the BUYER's request
+const base = agreementClauses(assembly, root);
+// The order's lines go where a spec MARKS its priced lines
+// (`block.checkout.pricedLines`), under the field the mark names, never a
+// field name; payment and token stay the commitment's.
+const priced = fillPricedLines(base, specs, lineItems);
+for (const clauseKey of Object.keys(base)) {
+  const spec = specs.get(clauseKey);
+  const mark = spec && specPricedLines(spec);
+  if (mark && priced[clauseKey] !== base[clauseKey])       // the lines, by the mark
+    overrides[clauseKey] = { ...overrides[clauseKey], [mark.field]: priced[clauseKey][mark.field] };
+  if (spec?.fields.some((f) => f.name === "modality"))    // a modality clause, if composed
+    overrides[clauseKey] = { ...overrides[clauseKey], modality: "virtual" }; // the BUYER's request
 }
 ```
 
@@ -404,7 +412,7 @@ hash comparison cannot see:
   agreement can carry a clause the designer composed and the buyer never filled; the gate
   refuses to sign it rather than committing an empty term.
 - **A clause that restates the token or the payment.** `currency` and `payment` are the
-  commitment's fields and nothing else's: `figaro-commerce` declares only `lineItems`, so
+  commitment's fields and nothing else's: `figaro-commerce` declares only its priced lines, so
   a clause carrying either beside its declared fields breaks its own spec and is refused.
 - **A broken pin.** Where the assembly composes a denomination pin (an
   assembly-scoped clause declaring `currency` as a designer fill), the gate asserts

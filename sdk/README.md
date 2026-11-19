@@ -432,6 +432,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `parseMemberProfileDocument` | root | Strict parse of a pinned profile document; throws on malformed input. |
 | `parseProjectionHints` | root | Read a spec's `block` projection hints — design fills, checkout fills, article. |
 | `specIsProcessLog` | root | Whether a spec's `block.design.article` is `"attestations"`, a process log a frontend presents as a lifecycle; presentation only, never what the clause signs. |
+| `specPricedLines` | root | A clause spec's priced-lines mark (`block.checkout.pricedLines`), only when the spec's own fields bear it out: the marked field an array of objects with `quantity` an integer and `unitPrice` a bigint. Undefined for a clause with no mark or a mark the fields contradict. |
 | `planSubOrderSellers` | root | Topologically order an assembly's sub-orders and resolve each one's bound seller. |
 | `parseAgreementRegistryLogs` | root | Decode `AgreementRegistry` logs into registrations and stake withdrawals, keyed by `agreementHash`. |
 | `planProcessOrders` | root | A hydrated assembly's agreements in commit order, each with its clause bag (keyed by clause key). |
@@ -1202,8 +1203,8 @@ const race = await requestCounterSignatures(channel, drafts, { chainId, core });
 // by RECONSTRUCTION: the same substitution applied to their OWN draft must
 // reproduce the reply hash-for-hash — a quote can change the price and
 // nothing else. Cheapest verified quote wins; the buyer signs exactly one.
-import { buildQuoteRequest, requestQuotes, makeSellerQuoteHandler } from "@figaro-protocol/sdk/agent";
-import { computeClauseKey } from "@figaro-protocol/sdk";
+import { buildQuoteRequest, requestQuotes, makeSellerQuoteHandler, instantiateRootAgreement } from "@figaro-protocol/sdk/agent";
+import { derivePricedFields } from "@figaro-protocol/sdk";
 channel.register(courierAddr, makeSellerQuoteHandler(courierWallet, { chainId, core }, {
     chainClient: publicClient,                     // required, as for the race handler
     quote: (draft) => myPriceFor(draft),           // null declines; > ceiling declines
@@ -1215,11 +1216,13 @@ channel.register(courierAddr, makeSellerQuoteHandler(courierWallet, { chainId, c
 // `derivePricedFields(clauseEntries, specs)` derives the list from each clause
 // whose spec marks priced lines (`block.checkout.pricedLines`), and
 // `buildQuoteRequest` refuses a list that leaves one of them out; an agreement
-// with no priced lines quotes with [].
-const commerceKey = computeClauseKey(commerceSpec); // the spec you fetched and verified
+// with no priced lines quotes with []. The list is read from the buyer's own
+// root agreement, its fills applied: no clause key and no path is written here.
+const pricedFields = derivePricedFields(
+    instantiateRootAgreement(assembly, { buyer, seller: candidates[0], overrides }).clauses, specs);
 const drafts = candidates.map((seller) => buildQuoteRequest({
     assembly, buyer, seller, currency, ceiling, chainId, core,
-    pricedFields: [{ clause: commerceKey, path: "lineItems.0.unitPrice" }],
+    pricedFields,
     overrides,
     specs,                                         // required: each private clause's blinding value is drawn here, once
 }));
@@ -2066,7 +2069,7 @@ can still produce a signable-looking object with content that violates its own
 clause specs.
 
 ```ts
-import { buildOrderAgreement, assertAgreementSignable, clauseByField } from "@figaro-protocol/sdk";
+import { buildOrderAgreement, assertAgreementSignable, readPricedLines } from "@figaro-protocol/sdk";
 
 // clauses: clauseKey → field values (design-time ∪ runtime fill). Each clause
 // reads the spec its key names.
@@ -2076,9 +2079,10 @@ const { agreement, checkoutHash } = buildOrderAgreement(buyer, seller, clauses, 
 // for an agreement naming none). The last argument is the label used in the error.
 assertAgreementSignable(agreement, checkoutHash, specs, commitment, hydrated, "checkout"); // throws on any validation issue
 
-// Read clauses by DECLARED FIELD, never by clause id — any registered clause
-// carrying the field participates.
-const commerce = clauseByField(agreement, "lineItems", specs);
+// Read the committed lines by the spec's MARK (`block.checkout.pricedLines`),
+// never by clause id or field name — any registered clause whose spec marks
+// priced lines participates, one entry per such clause.
+const priced = readPricedLines(agreement.clauses, specs); // [{ clause, lines: [{ itemId, name, quantity, unitPrice }] }]
 ```
 
 ## Registered agreements — compose, register, hydrate, prove
@@ -2196,8 +2200,20 @@ signature — the caller signs each node's `typedData` (per node via `onOrder`).
 
 ```ts
 import {
-  reconstructOrdersFromProcessDesign, planProcessOrders,
+  reconstructOrdersFromProcessDesign, planProcessOrders, fillPricedLines, specPricedLines,
 } from "@figaro-protocol/sdk";
+
+// The order's lines as an override: written into the composed clause whose
+// spec MARKS its priced lines (`block.checkout.pricedLines`), under the field
+// the mark names. Empty for an order whose clause bag holds no such clause.
+const linesOverride = (clauses, lineItems) => {
+  const priced = fillPricedLines(clauses, specs, lineItems);
+  return Object.fromEntries(Object.keys(clauses).flatMap((key) => {
+    const spec = specs.get(key);
+    const mark = priced[key] !== clauses[key] && spec ? specPricedLines(spec) : undefined;
+    return mark ? [[key, { [mark.field]: priced[key][mark.field] }]] : [];
+  }));
+};
 
 // 1. Hydrate the adopted assembly (the section above): `assembly` is a
 //    HydratedProcessDesign — the anchored assembly beside each agreement's
@@ -2223,12 +2239,12 @@ const orders = await reconstructOrdersFromProcessDesign(assembly, {
     // is `payment` here: neither enters a clause. A pinned assembly's token
     // comes from its denomination clause (`readUtilityTokenPin` resolves it);
     // otherwise it is the buyer's pick from the seller's accepted tokens,
-    // else the seller's default. Where the design composes a clause
-    // declaring `lineItems`, the lines go there. The override is passed only
-    // for an order whose clause bag holds that clause: an override adds its
-    // key to the order, and the sign gate refuses an order carrying a clause
-    // its design does not compose.
-    overrides: commerceKey in node.clauses ? { [commerceKey]: { lineItems } } : {},
+    // else the seller's default. Where the design composes a clause whose
+    // spec marks priced lines, the lines go there. The override names only a
+    // clause the order's bag holds: an override adds its key to the order,
+    // and the sign gate refuses an order carrying a clause its design does
+    // not compose.
+    overrides: linesOverride(node.clauses, lineItems),
   }),
   // Per-node seam, invoked in commit order as each order is realized — sign,
   // pin the party-private agreement, share, or compose here. SHARING is
@@ -2668,9 +2684,11 @@ rather than someone else's, a data-terms clause composes into that process
 instead, fixing the disclosure regime the parties co-sign.
 
 ```ts
-const clauses = {
+// The lines are written by the line-items clause's mark (`fillPricedLines`),
+// under the field its spec names; the price is the commitment's payment.
+const clauses = fillPricedLines({
   // Keyed by clause key — the keys of the specs your SpecSource holds.
-  [commerceKey]: { lineItems },        // the price is the commitment's payment
+  [commerceKey]: {},                   // the clause whose spec marks priced lines
   [licenseKey]:  {
     licenseScope:   "Flight telemetry — 2026 Q3 survey window",
     purpose:        "internal analytics only; model training excluded",
@@ -2679,7 +2697,7 @@ const clauses = {
     sourceProcesses: [processIdA, processIdB],  // the provenance anchors — §3
   },
   [handoffKey]:  { contentHandoff: ["encrypted-transfer"] },
-};
+}, specs, lineItems);
 const { agreement, checkoutHash } = buildOrderAgreement(buyer, seller, clauses, specs);
 assertAgreementSignable(agreement, checkoutHash, specs, commitment, hydrated, "data sale");
 
