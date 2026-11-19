@@ -47243,6 +47243,30 @@
     "format": "s2",
     "disposition": "public"
    },
+   "value": "4",
+   "ok": false
+  },
+  {
+   "group": "s2, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "s2",
+    "disposition": "public"
+   },
+   "value": "40",
+   "ok": false
+  },
+  {
+   "group": "s2, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "s2",
+    "disposition": "public"
+   },
    "value": "X",
    "ok": false
   },

@@ -226,7 +226,9 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
         //    against a half-warm cache, so "Place order" then came back as a
         //    validator path ("$.acceptanceBasis: required field is missing") for
         //    fields the form never offered. The expected COUNT is derived from
-        //    the anchored assembly, never written down here. ──
+        //    the anchored assembly, never written down here. A text field's
+        //    control is its input; an enum's (geocodeStandard) is its radio
+        //    group, one per order, whatever the count of its values. ──
         const composingOrders = (clauseKey: Hex) =>
             (anchored.agreements as Array<{ clauses: Record<string, unknown> }>)
                 .filter((o) => clauseKey in (o.clauses ?? {})).length;
@@ -242,7 +244,8 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
             await expect
                 .poll(
                     () => page.locator(
-                        `input[data-testid^="checkout-field-"][data-testid$="-${clauseKey}-${field}"]`,
+                        `input[data-testid^="checkout-field-"][data-testid$="-${clauseKey}-${field}"], `
+                        + `div[data-testid^="checkout-field-"][data-testid$="-${clauseKey}-${field}-group"]`,
                     ).count(),
                     {
                         timeout: 30000,

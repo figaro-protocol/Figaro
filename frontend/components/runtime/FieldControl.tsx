@@ -32,7 +32,8 @@
  * declares `formatFromField`) fills here even though it carries a default —
  * otherwise the party filling the sibling is locked into the one standard the
  * default names (figaro-geolocation's `geocodeStandard` fixed at `geohash`,
- * leaving a party with no device location no way to state an origin at all).
+ * leaving a party no way to state an origin as an H3, S2 or Open Location
+ * Code cell, the other standards its enum lists).
  *
  * What a control SAYS about itself is spec-read too: the label is the spec's own
  * `label` (the same one `describeClause` uses on the read side), a required

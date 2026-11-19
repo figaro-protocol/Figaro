@@ -130,7 +130,9 @@ fn h3_resolution(value: &str) -> Option<usize> {
 
 /// An S2 cell token's level: the token is the cell id in hex with its
 /// trailing zeros dropped; the id is 3 face bits (under 6), 2 bits a level,
-/// then a 1 bit and zeros. The level is 30 less half the trailing zero bits.
+/// then a 1 bit and zeros. The level is 30 less half the trailing zero bits,
+/// so the lowest set bit is at most bit 60, the level-0 cell's: an id whose
+/// lowest set bit is higher (the token `4`) is no cell id.
 fn s2_level(value: &str) -> Option<usize> {
     let digits = hex_word(value)?;
     let id = digits << (4 * (16 - value.len() as u32));
@@ -138,7 +140,7 @@ fn s2_level(value: &str) -> Option<usize> {
         return None;
     }
     let zeros = id.trailing_zeros() as usize;
-    if zeros % 2 != 0 {
+    if zeros % 2 != 0 || zeros > 60 {
         return None;
     }
     Some(30 - zeros / 2)

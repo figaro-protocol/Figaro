@@ -95,8 +95,8 @@ export function getFieldFormatInput(
  * `resolveInputFormat` (`@figaro-protocol/sdk/clauses`): the field a sibling reads its format from must be
  * editable by whoever fills that sibling, so a form renders it even when it
  * carries a spec `default` (figaro-geolocation's `geocodeStandard` defaults to
- * `geohash`; a party with no device location states an origin by switching the
- * standard to a jurisdiction code the clause's open axis already admits).
+ * `geohash`; a party may choose another of the standards its enum lists, H3,
+ * S2 or Open Location Code, and the sibling's input follows that choice).
  * Clause-agnostic: it reads only spec-declared field names.
  */
 export function isSiblingFormatSource(

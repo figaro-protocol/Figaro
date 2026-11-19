@@ -459,6 +459,8 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
             "89c259b1", // level 14, one past
             "89c259b2", // the lowest set bit at an odd position
             "c", // face 6
+            "4", // the lowest set bit above bit 60, no level
+            "40", // the same id, a trailing zero kept
             "X",
             "",
         ],
