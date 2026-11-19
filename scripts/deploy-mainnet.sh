@@ -20,9 +20,19 @@ set -e
 #   - refuses to run without an explicit MAINNET_DEPLOY_CONFIRM=yes
 #   - reads the target RPC's chain id back and refuses to broadcast unless
 #     it is 1 (Ethereum mainnet) — this script has exactly one target chain
-#   - --verify is always wired to the foundry.toml [etherscan] "mainnet"
-#     entry (added alongside "sepolia"), so ETHERSCAN_API_KEY is required
-#     too, not optional the way deploy-local.sh's VERIFY flag is
+#   - writes the record FIRST, then verifies every contract it names on
+#     Etherscan (scripts/verify-etherscan.mjs, Etherscan's multichain API, constructor
+#     arguments read from forge's broadcast file), so ETHERSCAN_API_KEY is
+#     required too. A verification that fails after the transactions landed
+#     leaves the record written and exits 1; VERIFY_ONLY=1 then verifies the
+#     deployment the record names, sending no transaction:
+#
+#       VERIFY_ONLY=1 ETHERSCAN_API_KEY=... ./scripts/deploy-mainnet.sh
+#
+#   - SKIP_VERIFY=1 is the fork rehearsal only (an Anvil fork of mainnet keeps
+#     chain id 1): no verification, and the record is diverted to
+#     ${TMPDIR:-/tmp}/figaro-rehearsal-deployments so deployments/1.json is
+#     never written by a rehearsal. RECORD_DIR names the directory instead.
 #
 # Usage:
 #   MAINNET_DEPLOY_CONFIRM=yes \
@@ -38,6 +48,29 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DEPLOY_DIR="$REPO_ROOT/deployments"
 MAINNET_CHAIN_ID=1
+
+# ── Verify only: the deployment the record names, no transaction ────────────
+verify_record() { # <record path>
+  echo ""
+  echo "🔎 Verifying every contract $1 names on Etherscan ..."
+  if node "$REPO_ROOT/scripts/verify-etherscan.mjs" "$1" --artifacts "$REPO_ROOT/out"; then
+    echo "✅ Every contract verified."
+  else
+    echo "❌ Verification did not complete. The record stands at $1;"
+    echo "   rerun only the verification, which sends no transaction:"
+    echo "   VERIFY_ONLY=1 RECORD_DIR=$(dirname "$1") ETHERSCAN_API_KEY=... $0"
+    exit 1
+  fi
+}
+if [ "${VERIFY_ONLY:-}" = "1" ]; then
+  : "${ETHERSCAN_API_KEY:?VERIFY_ONLY needs ETHERSCAN_API_KEY}"
+  RECORD="${RECORD_DIR:-$DEPLOY_DIR}/${MAINNET_CHAIN_ID}.json"
+  [ -f "$RECORD" ] || { echo "❌ no record at $RECORD to verify"; exit 1; }
+  # The artifacts must reproduce the deployed creation code: the deploy's own build.
+  (cd "$REPO_ROOT" && forge build --via-ir) || exit 1
+  verify_record "$RECORD"
+  exit 0
+fi
 
 # ── Guard 1: explicit confirmation ──────────────────────────────────────────
 if [ "${MAINNET_DEPLOY_CONFIRM:-}" != "yes" ]; then
@@ -65,11 +98,15 @@ export PERMIT2="${PERMIT2:-0x000000000022D473030F116dDEE9F6B43aC78BA3}"
 #   RPC_URL                 — mainnet RPC endpoint; no default (unlike
 #                              deploy-local.sh's Anvil default — there is no
 #                              safe default for "mainnet")
-#   ETHERSCAN_API_KEY       — --verify always runs; foundry.toml's
-#                              [etherscan] "mainnet" entry reads this exact key
+#   ETHERSCAN_API_KEY       — verification always runs after the record is
+#                              written, unless SKIP_VERIFY=1 (fork rehearsal)
+REQUIRED=(PRIVATE_KEY FOUNDER_WALLET SUPPORTERS_WALLET DAO_WALLET RPGF_GENESIS \
+          SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL SWAP_ROUTER)
+if [ "${SKIP_VERIFY:-}" != "1" ]; then
+  REQUIRED+=(ETHERSCAN_API_KEY)
+fi
 MISSING=()
-for var in PRIVATE_KEY FOUNDER_WALLET SUPPORTERS_WALLET DAO_WALLET RPGF_GENESIS \
-           SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL ETHERSCAN_API_KEY SWAP_ROUTER; do
+for var in "${REQUIRED[@]}"; do
   if [ -z "${!var:-}" ]; then
     MISSING+=("$var")
   fi
@@ -129,8 +166,9 @@ DEPLOYMENT_BLOCK=$(cast block-number --rpc-url "$RPC_URL")
 echo "📝 Running forge script (deployment block $DEPLOYMENT_BLOCK)..."
 # --slow: wait for each transaction's receipt before sending the next — see
 # deploy-local.sh's identical rationale (nonce-tracking race under
-# pipelined broadcast). --verify: always on for mainnet, using the
-# foundry.toml [etherscan] "mainnet" entry.
+# pipelined broadcast). Verification runs after the record is written
+# (verify_record), never inside forge: a verification failure must not lose
+# the record of transactions that landed.
 # The output is printed whether forge succeeds or fails: under `set -e` a
 # failing forge would otherwise exit this script with its output unseen.
 # FORGE_GAS_MULTIPLIER (percent) widens forge's gas limits: forge sizes each
@@ -145,7 +183,7 @@ echo "📝 Running forge script (deployment block $DEPLOYMENT_BLOCK)..."
 # per-transaction gas cap.
 FORGE_OUT=$(forge script script/DeployMainnet.s.sol:DeployMainnet \
     --rpc-url "$RPC_URL" \
-    --broadcast --slow --via-ir --verify \
+    --broadcast --slow --via-ir \
     ${FORGE_GAS_MULTIPLIER:+--gas-estimate-multiplier "$FORGE_GAS_MULTIPLIER"} ${FORGE_SKIP_SIMULATION:+--skip-simulation} 2>&1) || { echo "$FORGE_OUT"; echo "❌ forge script failed — see its output above"; exit 1; }
 echo "$FORGE_OUT"
 
@@ -199,7 +237,7 @@ expect_eq "usageCounter.batchVerifier()"   "$(read_call "$USAGE_COUNTER_ADDR" 'b
 expect_eq "usageCounter.core()"            "$(read_call "$USAGE_COUNTER_ADDR" 'core()(address)')"            "$CORE_ADDR"
 expect_eq "usageCounter.members()"         "$(read_call "$USAGE_COUNTER_ADDR" 'members()(address)')"         "$MEMBERS_ADDR"
 expect_eq "usageCounter.clauses()"         "$(read_call "$USAGE_COUNTER_ADDR" 'clauses()(address)')"         "$CLAUSE_ADDR"
-expect_eq "usageCounter.assemblies()"      "$(read_call "$USAGE_COUNTER_ADDR" 'assemblies()(address)')"      "$ASSEMBLY_ADDR"
+expect_eq "usageCounter.processDesigns()"  "$(read_call "$USAGE_COUNTER_ADDR" 'processDesigns()(address)')"      "$ASSEMBLY_ADDR"
 expect_eq "usageCounter.agreements()"      "$(read_call "$USAGE_COUNTER_ADDR" 'agreements()(address)')"      "$AGREEMENT_ADDR"
 expect_eq "attestation.core()"             "$(read_call "$ATTESTATION_ADDR" 'core()(address)')"              "$CORE_ADDR"
 expect_eq "swapCoordinator.figaroCore()"   "$(read_call "$SWAP_COORD_ADDR" 'figaroCore()(address)')"         "$CORE_ADDR"
@@ -208,7 +246,7 @@ expect_eq "swapCoordinator.router()"       "$(read_call "$SWAP_COORD_ADDR" 'rout
 expect_eq "rpgfMinter.florin()"            "$(read_call "$RPGF_MINTER_ADDR" 'florin()(address)')"            "$FLORIN_TOKEN_ADDR"
 expect_eq "rpgfMinter.counter()"           "$(read_call "$RPGF_MINTER_ADDR" 'counter()(address)')"           "$USAGE_COUNTER_ADDR"
 expect_eq "rpgfMinter.clauses()"           "$(read_call "$RPGF_MINTER_ADDR" 'clauses()(address)')"           "$CLAUSE_ADDR"
-expect_eq "rpgfMinter.assemblies()"        "$(read_call "$RPGF_MINTER_ADDR" 'assemblies()(address)')"        "$ASSEMBLY_ADDR"
+expect_eq "rpgfMinter.processDesigns()"    "$(read_call "$RPGF_MINTER_ADDR" 'processDesigns()(address)')"        "$ASSEMBLY_ADDR"
 expect_eq "rpgfMinter.agreements()"        "$(read_call "$RPGF_MINTER_ADDR" 'agreements()(address)')"        "$AGREEMENT_ADDR"
 expect_eq "florin.deployerMintRenounced()" "$(read_call "$FLORIN_TOKEN_ADDR" 'deployerMintRenounced()(bool)')" "true"
 expect_eq "florin.balanceOf(founder)"      "$(read_call "$FLORIN_TOKEN_ADDR" 'balanceOf(address)(uint256)' "$FOUNDER_WALLET" | awk '{print $1}')"    "70000000000000000000000000"
@@ -233,6 +271,13 @@ fi
 # MockTreasuryMultisig/MockDisperse — mainnet uses real wallets and no mocks).
 # See deployments/README.md: this is the machine-readable address-publication
 # channel, source-of-truth from the first public deploy onward.
+if [ "${SKIP_VERIFY:-}" = "1" ]; then
+  DEPLOY_DIR="${RECORD_DIR:-${TMPDIR:-/tmp}/figaro-rehearsal-deployments}"
+  echo ""
+  echo "ℹ️  Fork rehearsal — record diverted to $DEPLOY_DIR (deployments/ untouched)"
+else
+  DEPLOY_DIR="${RECORD_DIR:-$DEPLOY_DIR}"
+fi
 echo ""
 echo "✍️  Writing $DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json ..."
 mkdir -p "$DEPLOY_DIR"
@@ -275,6 +320,11 @@ if [ -n "$RECORD_RPC_URL" ]; then
   jq --arg url "$RECORD_RPC_URL" '. + {rpcUrl: $url}' "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json.tmp"
   mv "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json.tmp" "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json"
 fi
+echo "   record written: $DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json"
+
+# The record stands before any verification: a failure below leaves it, and
+# VERIFY_ONLY=1 resumes the verification alone.
+[ "${SKIP_VERIFY:-}" = "1" ] || verify_record "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json"
 
 echo ""
 echo "✅ Deployment complete!"

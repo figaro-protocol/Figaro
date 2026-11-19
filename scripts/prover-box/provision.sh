@@ -8,7 +8,17 @@
 # Reconstructed from the first box's requirements (its scripts
 # lived only on the deleted host); the build/run scripts beside this one are
 # verbatim from that session.
+#
+#   ./provision.sh <release-commit>        (or RELEASE_COMMIT=<sha> ./provision.sh)
+#
+# The checkout is put at the release commit the maintainer names
+# (checkout-release.sh), never at `main`: the verification key is a function
+# of the guest's bytes, and the SP1 release below is read from that commit's
+# prover/Cargo.lock.
 set -euxo pipefail
+
+RELEASE_COMMIT="${1:-${RELEASE_COMMIT:-}}"
+[ -n "$RELEASE_COMMIT" ] || { echo "usage: provision.sh <release-commit> (or RELEASE_COMMIT=<sha>)"; exit 1; }
 
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -19,7 +29,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 
-git clone https://github.com/figaro-protocol/Figaro "$HOME/Figaro"
+bash "$(dirname "${BASH_SOURCE[0]}")/checkout-release.sh" "$RELEASE_COMMIT" "$HOME/Figaro"
 
 # SP1 (cargo prove + the succinct toolchain), at the release the lock names:
 # the verification key is a function of the toolchain release, and a bare

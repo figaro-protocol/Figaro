@@ -17,10 +17,16 @@ On a fresh Ubuntu x86_64 host (16 cores / 30 GB RAM / 150 GB disk is the
 proven sizing):
 
 ```sh
-./provision.sh          # toolchains, repo clone, sp1 image, 48G swapfile
+./provision.sh <release-commit>   # toolchains, the repo at that commit, sp1 image, 48G swapfile
 ./build-guest.sh        # docker-reproducible ELF + inject + print the vkey
 ./build-sequencer.sh    # sequencer release binary + guest drift tests
 ```
+
+The checkout ends detached at the release commit the maintainer names
+(`checkout-release.sh`, which `provision.sh` calls and which a box left from an
+earlier session runs alone): the key is a function of the guest's bytes, so the
+box never builds whatever `main` holds that day. `test-checkout-release.sh`
+holds its behavior.
 
 `build-guest.sh` prints `SP1_PROGRAM_VKEY=…` — this MUST equal the deployed
 `FigaroBatchVerifier.programVKey()` (recorded as `programVKey` in
@@ -40,11 +46,15 @@ SEQUENCER_PRIVATE_KEY=<key> BATCH_VERIFIER=<addr> USAGE_COUNTER=<addr> \
   ./run-sequencer.sh
 ```
 
-**Layer 3 — live** (same launcher, live RPC and the committed record's pair):
+`run-sequencer.sh` reads every address from the deployment record of the chain
+`RPC_TARGET` answers for (`DEPLOYMENT_RECORD`, default
+`deployments/<chainId>.json`); `BATCH_VERIFIER` and `USAGE_COUNTER` override the
+pair it names, for a fork-deployed validation pair.
+
+**Layer 3 — live** (same launcher, live RPC and the pair the committed deployment record names):
 
 ```sh
-SEQUENCER_PRIVATE_KEY=<key> BATCH_VERIFIER=<record> USAGE_COUNTER=<record> \
-  RPC_TARGET=https://ethereum-sepolia-rpc.publicnode.com ./run-sequencer.sh
+SEQUENCER_PRIVATE_KEY=<key> RPC_TARGET=<the chain's RPC> ./run-sequencer.sh
 ```
 
 The driver runs on the **laptop** against either target, through an SSH
@@ -56,6 +66,21 @@ cd frontend && RPC_URL=<chain rpc or http://127.0.0.1:18546> \
   SEQUENCER_URL=http://127.0.0.1:13001 \
   BATCH_BUYER_KEY=… BATCH_SELLER_KEY=… npm run batch:drive
 ```
+
+**The walkaway test** — the process is opened through this relay, then every
+project relay is stopped and its state deleted, and a stranger's machine
+proves and lands the resolve with its own key, from the chain alone:
+
+```sh
+cd frontend && WALKAWAY=1 RPC_URL=<chain rpc> SEQUENCER_URL=http://127.0.0.1:13001 \
+  BATCH_BUYER_KEY=… BATCH_SELLER_KEY=… STRANGER_KEY=… \
+  RELAY_BINARY=<a relay build whose guest the verifier pins> \
+  RELAY_STOP_CMD="ssh root@<box> 'pkill -x sequencer; rm -f ~/sequencer-state-*.json'" \
+  SP1_PROVER=cpu SP1_PROOF_MODE=groth16 npm run batch:drive
+```
+
+The driver refuses to resolve until `SEQUENCER_URL` stops answering; its header
+documents the mode.
 
 ## Lessons the first run paid for
 
@@ -74,8 +99,8 @@ cd frontend && RPC_URL=<chain rpc or http://127.0.0.1:18546> \
   dead-lettered (never re-proved), and `/status` reports `dead_lettered_ops` +
   `last_settle_error` — a polling driver sees a dead batch without tailing the log.
 - **Deleting the box deletes the relay archive** — the batched orders' only
-  off-chain publication. The parties' own persisted records
-  (`frontend/batch-records/`) are the custody that survives it.
+  off-chain publication. The parties' own persisted copies of what they signed
+  (`frontend/batch-records/`) are what survives it.
 
 Sequencer environment reference: `prover/sequencer/README.md`. Driver
 environment reference: the header of `frontend/scripts/drive-live-batch.mjs`.
