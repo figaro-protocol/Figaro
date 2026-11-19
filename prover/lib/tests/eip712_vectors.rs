@@ -5,8 +5,8 @@
 //! reproduces the commitment vectors. This file asserts the guest reproduces
 //! them too, and the three authorizations that exist on the batch path only
 //! — `ResolveProcess`, `AttestSeller`, `AttestBuyer` — where a signature
-//! stands for the direct path's `msg.sender`. Those three have no Solidity
-//! counterpart: the SDK's hash, computed by viem from the type string alone,
+//! stands for the direct path's `msg.sender`. The verifier's tests hold its
+//! typehashes to the same strings; the SDK's hash, computed by viem from them,
 //! is the one independent statement of what a wallet signs.
 use std::str::FromStr;
 

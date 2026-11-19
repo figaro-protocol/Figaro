@@ -32,8 +32,8 @@ interface IFigaroCore {
 ///      order.
 ///      - attestAsSeller:    `msg.sender == target.seller` authorizes the call.
 ///      - attestAsBuyer:     `msg.sender == target.buyer` authorizes the call
-///                           (`c.buyer == processes[c.processId].rootBuyer` by
-///                           commit invariant).
+///                           (by commit invariant, the `rootBuyer` of the
+///                           process the order was committed under).
 ///
 /// @dev Agreement binding (mandatory):
 ///      Every `attest*` call carries an inclusion proof showing the attestation's
@@ -121,10 +121,10 @@ contract AttestationCoordinator {
     // ── Buyer attestations ──────────────────────────────────────────
 
     /// @notice Attest as the buyer of the target order.
-    /// @dev `msg.sender` must equal `target.buyer`. By commit invariant,
-    ///      `target.buyer == processes[target.processId].rootBuyer` for every
-    ///      committed order: the buyer is a party to every order of its
-    ///      process, and attests on each by passing that order's commitment.
+    /// @dev `msg.sender` must equal `target.buyer`, by commit invariant the `rootBuyer` of the process
+    ///      stored under the id `_requireKnownCommitment` derives: `target.processId` for a sub-order,
+    ///      the root commitment's digest for a root order, whose `processId` is zero. The buyer is a
+    ///      party to every order of its process, and attests on each by passing that order's commitment.
     function attestAsBuyer(
         CommitmentTypes.Commitment calldata target,
         bytes32 clauseId,

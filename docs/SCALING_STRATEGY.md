@@ -13,7 +13,10 @@ Which networks carry a deployment is stated by the deployment records in
 
 ## `FigaroCore`'s Shape
 
-FigaroCore has two external functions: `commit` and `resolveProcess`. No
+FigaroCore has six external functions, and two of them change state:
+`commit` and `resolveProcess`. The other four are views: `DOMAIN_SEPARATOR`,
+`eip712Domain` (from OpenZeppelin's `EIP712`), and the getters of its two
+mappings, `processes` and `orderStatus` (`src/core/kernel/FigaroCore.sol`). No
 admin, no timeout, no cancel, no escape hatches.
 
 `FigaroCore` is small and correct. Scaling must preserve it exactly. Any
@@ -575,7 +578,7 @@ signatures, verified inside the zkVM). It cannot keep a new process out
 the batch path resolves only through a batch built on the state behind the
 verifier's root, which any relay rebuilds from the verifier's logs
 (§ "Operational requirements"). It cannot collect
-anything (`FigaroCore` takes no cut and offers no MEV surface).
+anything (`FigaroCore` takes no cut, and the relay's order chooses only among what the parties authorized).
 
 ### Operation lifecycle
 
@@ -637,8 +640,21 @@ uses to `UsageCounter.applyBatchAccrual`; advances the state root.
   resolve instead, with a relay of its own started on the state rebuilt from
   the chain (`proveAndSettle`, `@figaro-protocol/sdk/relay`), proving with a
   prover of its choice (§ "Operational requirements" 4).
-- **Order within a batch** — harmless: `FigaroCore`'s transitions are
-  deterministic and order-independent within a batch; there is no MEV surface.
+- **Order within a batch** — the relay places the operations, and where two
+  signed operations conflict, its order decides which one the guest applies.
+  The guest refuses a commit placed after its process's resolve
+  (`ProcessAlreadyResolved`, `prover/lib/src/kernel.rs` `apply_commit`), the
+  second of two sub-orders signed against one running total
+  (`RunningTotalMismatch`), a resolve placed after a commit that moved the
+  value it was signed over (`StaleResolveAuthorization`, `apply_resolve`),
+  and an attestation placed after its process's resolve
+  (`OrderAlreadyResolved`). Every operation the relay orders is one a party
+  signed or its wallet code authorized, so its order chooses among what the
+  parties authorized and adds nothing they did not; the same choice falls to
+  a block builder on the direct path. A buyer that will not leave the choice
+  to a relay signs no resolve while a commit of its process is pending, and no
+  two sub-orders over one running total; a seller's attestation races the
+  buyer's resolve on either path (`docs/DESIGN_DECISIONS.md` § 6).
 - **Refuse service** — same mitigation as delay.
 
 **What the sequencer CANNOT do:**

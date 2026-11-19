@@ -1631,6 +1631,61 @@ exceeds its period total and requires the revert.
 
 ---
 
+## 39. The buyer's attestation type signs `processId` beside `orderHash`; the seller's does not
+
+**Pattern**: The batch path authorizes an attestation by an EIP-712 message
+in one of two types. The seller signs
+`AttestSeller(bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)`;
+the buyer signs
+`AttestBuyer(bytes32 processId,bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)`
+(`prover/lib/src/eip712.rs:94` and `:115`;
+`src/core/verifier/FigaroBatchVerifier.sol:779-782`). The guest recovers the
+signer over the role's type (`apply_attestation`,
+`prover/lib/src/kernel.rs:637-652`), and the verifier asks a wallet's code
+about the same digest (`_attestDigest`,
+`src/core/verifier/FigaroBatchVerifier.sol:945`).
+
+**Why it looks wrong**: Two parties attest about the same order, yet their
+messages differ by one field. The difference reads as a field the seller's
+message is missing, so that a seller's signature might be applied to an
+order of another process.
+
+**Why it is correct**: The order hash already binds the process.
+`orderHash = keccak256(processId ‖ structHash)` on every path:
+`compute_order_hash` (`prover/lib/src/eip712.rs:157`),
+`_requireKnownCommitment` (`src/core/attestation/AttestationCoordinator.sol:183`)
+and `_attestTarget` (`src/core/verifier/FigaroBatchVerifier.sol:927-928`). The
+guest (`derive_commitment_ids`, `prover/lib/src/kernel.rs:314`) and the
+verifier (`_attestTarget`, `src/core/verifier/FigaroBatchVerifier.sol:920`)
+both derive the two ids from the one target commitment, so a
+relay cannot pair a signed `orderHash` with any other `processId`, and the
+attestation is refused unless that order is committed and unresolved. An
+`orderHash` of one process cannot equal one of another without a keccak
+collision, and the domain pins the chain and the verifier. So the seller's
+message is bound to one order of one process, and the buyer's `processId` is
+a second statement of a fact `orderHash` already fixes: it can neither widen
+nor narrow what the signature authorizes. Changing either type would change
+every signature, the guest's bytes, and so the verification key, the verifier
+and the SDK's parity vectors (`sdk/tests/eip712Parity.test.ts`,
+`prover/lib/tests/eip712_vectors.rs`), for no gain in what is bound.
+
+The difference comes from the Version 5 baseline (commit `74005ba36`). There
+the direct path's `attestAsBuyer` took `processId` and `orderHash` as its
+arguments, and `attestAsSeller` took the seller's commitment and `orderHash`;
+each batch type listed the ids its direct call named. Commit `6acabf95c`
+gave the buyer's call the target commitment in place of the ids, and the
+seller's a role and a target commitment; commit `2d7d03260` left the seller
+only the target (`src/core/attestation/AttestationCoordinator.sol:106` and
+`:128`). The two signed types kept their shape (`schemaId` since named
+`clauseId`).
+
+**Tests**: `prover/lib/tests/eip712_vectors.rs` and
+`sdk/tests/eip712Parity.test.ts` hold both types' digests equal in the guest
+and the SDK; `FigaroBatchVerifierTest` and `OperationStreamVectorsTest` hold
+the verifier's `_attestDigest` to the same type strings.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -1673,3 +1728,4 @@ exceeds its period total and requires the revert.
 | 36 | A stage-0 attestation is not the signed content | evidence/reader | Stage 0 reads as the signing stage, so a reader takes any stage-0 attestation for the signed content | The stage is a `uint8` the attester picks and a `"0"` stage key validates stage-0 content over `stages["0"]`; only `contentRef` equal to the leaf's data hash makes a re-assertion, and the reader compares the two |
 | 37 | The grain cap is as firm as the sibling's allowed values | spec format/data | One word in the sibling lifts a privacy cap | The engine knows one standard's grain and no closed list of the others; a designer makes the cap firm with an `enum` or `pattern` sibling; the filler of the field fills the sibling, and the counterparty reads both before it signs |
 | 38 | `RpgfMinter.claim` checks the period budget consistent counter data already bounds | reward-path | A check that cannot fire reads as dead code | A backstop like § 28: it states the budget in the minter, so a fault in the counter's tally is refused rather than minted from other designers' share |
+| 39 | `AttestBuyer` signs `processId` beside `orderHash`; `AttestSeller` does not | batch-path/evidence | The seller's message looks one field short | `orderHash = keccak256(processId ‖ structHash)` binds the process on every path, and both ids derive from the one target commitment; the buyer's extra field adds nothing to what is bound, and changing a type changes every signature and the verification key |
