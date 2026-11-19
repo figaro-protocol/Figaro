@@ -310,8 +310,8 @@ its manual.
   except geohash's, which stops at 12 characters. Under one of these formats,
   a value finer than its disposition's cap is refused, and so is a value that
   is no code of the standard (an H3 index whose mode is not a cell, an S2
-  token whose lowest set bit is at an odd position, an Open Location Code
-  with odd padding), because no grain can be read from it. The field's
+  token whose lowest set bit is at an odd position or above bit 60, an Open
+  Location Code with odd padding), because no grain can be read from it. The field's
   `maxLength` stays the structural ceiling. An array whose item spec declares
   one of these formats caps each item by the array field's disposition. A
   standard it carries no grain knowledge of is bounded by `maxLength` only. The

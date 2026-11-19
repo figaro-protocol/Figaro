@@ -131,8 +131,8 @@ describe("grainOf and grainCapOf (the grade each capped standard writes in its c
         expect(grainOf(S2_FORMAT, "89c259b1e3d47a4b")).toBe(30);
     });
 
-    it("refuses an S2 value that is no cell token: an odd lowest bit, face 6, the none token", () => {
-        for (const v of ["89c259b2", "c", "X", "", "89c259b1e3d47a4b0"]) expect(grainOf(S2_FORMAT, v), v).toBeNull();
+    it("refuses an S2 value that is no cell token: an odd lowest bit, a lowest bit above bit 60, face 6, the none token", () => {
+        for (const v of ["89c259b2", "4", "40", "c", "X", "", "89c259b1e3d47a4b0"]) expect(grainOf(S2_FORMAT, v), v).toBeNull();
     });
 
     it("reads an Open Location Code's length: padded, full and short codes", () => {

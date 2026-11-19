@@ -147,7 +147,9 @@ function h3Resolution(value: string): number | null {
  * An S2 cell token's level. An S2 cell id is 3 face bits (a face under 6),
  * then 2 bits a level, then a 1 bit and zeros; its token is the id in hex
  * with the trailing zeros dropped, 1 to 16 digits. The level is 30 less half
- * the count of trailing zero bits. `null` when the value is no cell token.
+ * the count of trailing zero bits, so the lowest set bit is at most bit 60,
+ * the level-0 cell's: an id whose lowest set bit is higher (the token `4`)
+ * is no cell id. `null` when the value is no cell token.
  */
 function s2Level(value: string): number | null {
     if (!HEX_WORD.test(value)) return null;
@@ -155,7 +157,7 @@ function s2Level(value: string): number | null {
     if (id === 0n || id >> 61n > 5n) return null;
     let zeros = 0;
     while (((id >> BigInt(zeros)) & 1n) === 0n) zeros++;
-    if (zeros % 2 !== 0) return null;
+    if (zeros % 2 !== 0 || zeros > 60) return null;
     return 30 - zeros / 2;
 }
 
