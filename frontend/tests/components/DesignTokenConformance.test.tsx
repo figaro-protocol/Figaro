@@ -13,6 +13,8 @@
  * And the tree-wide rules the references stand on:
  *
  * - `ink.muted` clears WCAG 1.4.3 as text on every ground prose sits on (§1);
+ * - `warning-fg` clears WCAG 1.4.3 on `bg-warning/10` and `/20` over those
+ *   grounds (§1 Status);
  * - a field's focus indicator is the `focus` token, never the CTA-only
  *   accent (§1 Focus, §1 Accent);
  * - the base side-padding rule pads the page container only, so a
@@ -118,6 +120,25 @@ describe("ink.muted and ink.heading — §1, WCAG 1.4.3 text contrast", () => {
     );
     it.each(cases)("ink.%s clears 4.5:1 on %s", (ink, ground) => {
         expect(contrast(colorTokens.ink[ink], colorTokens[ground])).toBeGreaterThanOrEqual(4.5);
+    });
+});
+
+/** `#rrggbb` of `fill` at `alpha` composited over the opaque `ground`. */
+function over(fill: string, alpha: number, ground: string): string {
+    const channel = (hex: string, i: number) => parseInt(hex.slice(i, i + 2), 16);
+    return `#${[1, 3, 5]
+        .map((i) => Math.round(alpha * channel(fill, i) + (1 - alpha) * channel(ground, i)))
+        .map((c) => c.toString(16).padStart(2, "0"))
+        .join("")}`;
+}
+
+describe("warning-fg on its own tint — §1 Status, WCAG 1.4.3 text contrast", () => {
+    const cases = ([0.1, 0.2] as const).flatMap((alpha) =>
+        (["canvas", "paper", "subtle"] as const).map((ground) => [alpha, ground] as const),
+    );
+    it.each(cases)("clears 4.5:1 on bg-warning at %s over %s", (alpha, ground) => {
+        const surface = over(colorTokens.warning, alpha, colorTokens[ground]);
+        expect(contrast(colorTokens["warning-fg"], surface)).toBeGreaterThanOrEqual(4.5);
     });
 });
 
