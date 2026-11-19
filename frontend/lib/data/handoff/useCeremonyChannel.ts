@@ -30,7 +30,7 @@
  * memoize them (useCallback) or the ceremony re-decrypts every render.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { getHandoffChannel } from "@/lib/data/handoff/channel";
 import {
@@ -54,6 +54,10 @@ export interface UseCeremonyChannelOptions<T> {
     address: `0x${string}` | undefined;
     /** False while the wallet is no party to this order — everything idles. */
     enabled: boolean;
+    /** The wallet's message signer, once wagmi hands it over. A real XMTP
+     *  channel opens only with it; without it the channel is the links-only
+     *  floor, and the subscription opens again when the signer arrives. */
+    signMessage?: (message: string) => Promise<`0x${string}`>;
     /**
      * The channel topic both parties publish on — the order hash itself
      * (address ceremony) or an id derived from it (content ceremony).
@@ -106,8 +110,15 @@ export interface UseCeremonyChannelResult<T> {
 export function useCeremonyChannel<T>(
     options: UseCeremonyChannelOptions<T>,
 ): UseCeremonyChannelResult<T> {
-    const { address, enabled, ceremonyId, orderHash, counterparty, decrypt, expectedAnchor } = options;
+    const { address, enabled, ceremonyId, orderHash, counterparty, decrypt, expectedAnchor, signMessage } = options;
     const chainId = useChainId();
+    // The subscription opens again when the signer arrives, never on every
+    // render in between (the signer's identity changes with each render).
+    const signMessageRef = useRef(signMessage);
+    useEffect(() => {
+        signMessageRef.current = signMessage;
+    }, [signMessage]);
+    const hasSigner = !!signMessage;
     const publicClient = usePublicClient();
 
     // Every received or verified value is tagged with the ceremony it belongs
@@ -149,7 +160,7 @@ export function useCeremonyChannel<T>(
             if (!hexEqual(msg.senderAddress, counterparty)) return false;
             return verifyEcdhMessageAuth(msg);
         };
-        void getHandoffChannel(address).then((ch) => {
+        void getHandoffChannel(address, signMessageRef.current).then((ch) => {
             if (disposed) return;
             setChannel({ key, value: ch });
             unsubs.push(ch.onEcdhPubkey(ceremonyId, (msg) => {
@@ -170,7 +181,7 @@ export function useCeremonyChannel<T>(
             disposed = true;
             for (const u of unsubs) u();
         };
-    }, [address, enabled, ceremonyId, counterparty, ceremonyKey]);
+    }, [address, enabled, ceremonyId, counterparty, ceremonyKey, hasSigner]);
 
     // Decrypt once both halves arrived, then poll the expected fingerprint
     // against the on-chain anchor until it lands.
@@ -281,8 +292,12 @@ export function useCeremonyPanel<T>(options: UseCeremonyPanelOptions<T>) {
             decryptBlob({ ...args, orderId: orderHash }),
         [decryptBlob, orderHash],
     );
+    const signMessage = useMemo(
+        () => (walletClient ? (message: string) => walletClient.signMessage({ message }) : undefined),
+        [walletClient],
+    );
     const ceremony = useCeremonyChannel<T>({
-        address, enabled: role !== null, ceremonyId, orderHash, counterparty, decrypt, expectedAnchor,
+        address, enabled: role !== null, ceremonyId, orderHash, counterparty, decrypt, expectedAnchor, signMessage,
     });
     const { channel, peerPubKey, markRequested } = ceremony;
 

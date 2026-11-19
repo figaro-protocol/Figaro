@@ -257,7 +257,12 @@ NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL=
 # the DEVNET build only; empty = dev under `next dev`) or `production` (TESTNET and
 # MAINNET — the testnet rehearses mainnet's network). A production `next build`
 # refuses to run unless it is named (frontend/next.config.mjs; the e2e harness's
-# FIGARO_ALLOW_TEST_HELPERS=1 builds excepted). Anything else is refused at first
+# FIGARO_ALLOW_TEST_HELPERS=1 builds excepted). `local` is the e2e harness's: a
+# broker on this machine, named by NEXT_PUBLIC_XMTP_API_URL (its node) and
+# NEXT_PUBLIC_XMTP_GATEWAY_HOST (its gateway); a deploy build refuses it, and
+# `dev` or `production` refuse either URL. NEXT_PUBLIC_E2E_HANDOFF_CHANNEL=xmtp
+# moves the e2e devnet sessions off the mock bus onto that broker
+# (docs/TESTING.md, the `smoke` project). Anything else is refused at first
 # use. The dev-only installation housekeeping runs only on `dev`.
 NEXT_PUBLIC_XMTP_ENV=
 ```

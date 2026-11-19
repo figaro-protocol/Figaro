@@ -8,10 +8,19 @@
  *     has an XMTP inbox (`walletHasXmtpInbox`, a signature-free probe)
  *   - Null: inert links-only floor (no signer, or no inbox)
  *   - Mock: in-memory message bus for e2e tests
+ *
+ * One test setting picks the transport: an e2e build that carries
+ * `NEXT_PUBLIC_E2E_HANDOFF_CHANNEL=xmtp` runs its devnet sessions over the
+ * real XMTP channel against the broker `NEXT_PUBLIC_XMTP_ENV` names (a local
+ * one in CI). `next.config.mjs` refuses the setting in a deploy build.
  */
 
 import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
 import { isE2EMockSession, isE2EDevnetSession } from "@/lib/shared/e2e";
+
+/** The e2e build's devnet sessions cross the real XMTP channel, not the mock
+ *  bus. Read as a literal so the build inlines it. */
+const E2E_OVER_XMTP = process.env.NEXT_PUBLIC_E2E_HANDOFF_CHANNEL === "xmtp";
 
 /** Cached channel instances keyed by address. */
 const channelCache = new Map<string, HandoffChannel>();
@@ -46,7 +55,8 @@ function sharedCreate(key: string, create: () => Promise<HandoffChannel>): Promi
  * Get or create a HandoffChannel for the given wallet.
  *
  * In test mode (e2e mock or devnet) returns the mock channel so we
- * never hit the XMTP network in automated tests.
+ * never hit the XMTP network in automated tests, unless the e2e build
+ * runs its devnet sessions over XMTP (`E2E_OVER_XMTP`).
  *
  * @param address  Wallet address (checksummed or lowercase).
  * @param signMessage  Wallet signing capability for XMTP auth.
@@ -62,7 +72,8 @@ export async function getHandoffChannel(
     // In any e2e mode fall back to the mock channel. Uses the shared,
     // sessionStorage-backed detector so the mode survives param-dropping
     // <Link> navigations (e.g. browse → /checkout), not just the entry URL.
-    if (isE2EMockSession() || isE2EDevnetSession()) {
+    const devnetOverXmtp = E2E_OVER_XMTP && isE2EDevnetSession();
+    if (isE2EMockSession() || (isE2EDevnetSession() && !devnetOverXmtp)) {
         return sharedCreate(key, async () => {
             const { createMockChannel } = await import("./mockChannel");
             return createMockChannel(address);
@@ -78,11 +89,14 @@ export async function getHandoffChannel(
     // on the links-only floor (the share/receive URI flow: no push
     // transport, no broker, always works). In-app inbox CREATION is a
     // deliberate future flow, an action rather than a setting.
+    //
+    // The signer-less floor is never cached: wagmi hands the wallet client
+    // over after the first render, and a cached floor would answer the
+    // caller that comes back WITH the signer, so the wallet would never
+    // reach its own XMTP inbox.
     if (!signMessage) {
-        return sharedCreate(key, async () => {
-            const { createNullChannel } = await import("./nullChannel");
-            return createNullChannel();
-        });
+        const { createNullChannel } = await import("./nullChannel");
+        return createNullChannel();
     }
     // ONE flight covers probe + creation: the derived-transport probe is an
     // async gap, and a probe outside the gate would let two concurrent
@@ -93,7 +107,9 @@ export async function getHandoffChannel(
     // server bundle.
     return sharedCreate(key, async () => {
         const { walletHasXmtpInbox, createXmtpChannel } = await import("@/lib/data/handoff/xmtpChannel");
-        if (!(await walletHasXmtpInbox(address))) {
+        // An e2e run starts on an empty broker, where the probe answers no
+        // for every wallet: there the channel registers the inbox itself.
+        if (!devnetOverXmtp && !(await walletHasXmtpInbox(address))) {
             const { createNullChannel } = await import("./nullChannel");
             return createNullChannel();
         }

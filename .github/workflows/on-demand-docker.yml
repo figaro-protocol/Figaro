@@ -1,22 +1,23 @@
 name: On-Demand Docker Proofs
 
-# Two Docker-hosted proofs that were waiting for a Linux machine with a
-# container runtime (the authoring host is macOS; ubuntu runners have Docker).
-# Both are on-demand and potentially long — workflow_dispatch ONLY, never
-# push/schedule. The jobs are independent; each can be watched alone.
+# Three Docker-hosted proofs that need a Linux machine with a container
+# runtime (the development host is macOS; ubuntu runners have Docker). All are
+# on-demand and potentially long — workflow_dispatch ONLY, never
+# push/schedule. The jobs are independent; the `job` input runs one of them
+# alone, or all three.
 #
-# Job 1 — xmtpd stack proof. A hermetic XMTP e2e suite does NOT exist in this
-# repo: the devnet suite deliberately mocks the XMTP channel, and the only
-# real-path test is the maintainer-manual smoke against XMTP's HOSTED dev
-# network (frontend/tests/e2e/xmtp-relay.smoke.spec.ts; docs/TESTING.md
-# § Playwright, `smoke` project). The frontend admits only the dev|production
-# networks (frontend/lib/data/handoff/xmtpChannel.ts — xmtpNetworkEnv throws on
-# anything else), so nothing here can yet point at a local broker. This job
-# therefore proves THE STACK, not a suite: bring up the full local xmtpd
-# broker (upstream's own dev harness — postgres, the contracts chain,
-# mls-validation-service, redis, then the Go node registered against that
-# chain) and assert the registered node actually serves its gRPC surface.
-# De-mocking the frontend relay against this broker is a separate, later step.
+# Job 1 — xmtpd stack proof. It proves THE STACK, not a suite: bring up the
+# full local xmtpd broker (upstream's own dev harness — postgres, the
+# contracts chain, mls-validation-service, redis, then the Go node registered
+# against that chain) and assert the registered node serves its gRPC surface.
+#
+# Job 3 — the content-delivery spec over that broker. The devnet suite runs
+# its sessions over the mock bus (frontend/lib/data/handoff/mockChannel.ts).
+# This job brings the broker up as Job 1 does, adds its gateway, then runs the
+# devnet stack as devnet-e2e-ci.yml does and builds the frontend with
+# NEXT_PUBLIC_XMTP_ENV=local and NEXT_PUBLIC_E2E_HANDOFF_CHANNEL=xmtp, so
+# frontend/tests/e2e/content-delivery.devnet.spec.ts sends the signed order
+# and the sealed content over the real XMTP channel to the local broker.
 #
 # Job 2 — the Linux sandbox variant. ecosystem-agents/runtime documents a
 # container-equivalent of run-sandboxed.mjs (README § "The Linux variant")
@@ -29,6 +30,12 @@ name: On-Demand Docker Proofs
 
 on:
     workflow_dispatch:
+        inputs:
+            job:
+                description: "all = every job; or one job by its id"
+                type: choice
+                options: [all, xmtpd-stack, linux-sandbox, devnet-xmtp-local]
+                default: all
 
 permissions:
     contents: read
@@ -37,6 +44,7 @@ jobs:
     # ── Job 1: the local xmtpd broker, brought up and answering ─────────────
     xmtpd-stack:
         name: xmtpd stack proof (hermetic broker bring-up)
+        if: inputs.job == 'all' || inputs.job == 'xmtpd-stack'
         runs-on: ubuntu-24.04
         timeout-minutes: 40
 
@@ -123,6 +131,7 @@ jobs:
     # ── Job 2: the container-equivalent sandbox, deny cases inside ──────────
     linux-sandbox:
         name: Linux sandbox variant (container deny cases)
+        if: inputs.job == 'all' || inputs.job == 'linux-sandbox'
         runs-on: ubuntu-24.04
         timeout-minutes: 15
 
@@ -396,3 +405,162 @@ jobs:
               run: |
                   docker rm -f figaro-sbx-proxy 2>/dev/null || true
                   docker network rm figaro-sbx-net 2>/dev/null || true
+
+    # ── Job 3: content delivery over the local XMTP broker ─────────────────
+    devnet-xmtp-local:
+        name: content-delivery spec over a local XMTP broker
+        if: inputs.job == 'all' || inputs.job == 'devnet-xmtp-local'
+        runs-on: ubuntu-24.04
+        # The broker bring-up (about 10 minutes, Job 1), the devnet stack and
+        # one export build (about 15), and the spec with its devnet-authoring
+        # dependency (the wizard, then a 7-minute test budget, one retry).
+        timeout-minutes: 75
+
+        steps:
+            # Figaro first: a checkout cleans the workspace, so the broker's
+            # repository goes into its own path after it.
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  submodules: recursive
+
+            # ── The broker, as Job 1 brings it up ───────────────────────
+            - name: Checkout xmtp/xmtpd (pinned release)
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  repository: xmtp/xmtpd
+                  ref: v1.3.0
+                  path: xmtpd
+                  fetch-depth: 0
+
+            - name: Setup Go (xmtpd's toolchain)
+              uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+              with:
+                  go-version-file: xmtpd/go.mod
+                  cache-dependency-path: xmtpd/go.sum
+
+            - name: Start backing services + register the node
+              working-directory: xmtpd
+              run: |
+                  dev/docker/up single
+                  dev/gen/env
+
+            # The node (dev/run: API at :5050, from dev/local.env) and the
+            # gateway that publishes for clients (dev/run-gateway: API at
+            # :5152). The client reads from the node and writes through the
+            # gateway.
+            - name: Run the xmtpd node and gateway
+              working-directory: xmtpd
+              run: |
+                  go mod download
+                  nohup dev/run > /tmp/xmtpd.log 2>&1 &
+                  nohup dev/run-gateway > /tmp/xmtpd-gateway.log 2>&1 &
+
+            - name: Wait for the node and the gateway to serve
+              run: |
+                  go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.9.3
+                  GRPCURL="$(go env GOPATH)/bin/grpcurl"
+                  for port in 5050 5152; do
+                      for _ in $(seq 1 150); do
+                          if "$GRPCURL" -plaintext "127.0.0.1:$port" list >/dev/null 2>&1; then break; fi
+                          sleep 2
+                      done
+                      echo "── gRPC services on :$port ──"
+                      "$GRPCURL" -plaintext "127.0.0.1:$port" list | tee "/tmp/grpc-$port.txt"
+                      grep -qi "xmtp" "/tmp/grpc-$port.txt" || { echo "no xmtp service on :$port"; exit 1; }
+                  done
+
+            # ── The devnet stack, as devnet-e2e-ci.yml runs it ──────────
+            - name: Install Foundry
+              uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
+              with:
+                  version: v1.5.1
+
+            - name: Setup Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version-file: .nvmrc
+
+            - name: Start Kubo (IPFS)
+              run: |
+                  docker run -d --name figaro-ipfs -p 5001:5001 -p 8080:8080 ipfs/kubo:v0.42.0
+                  for _ in $(seq 1 60); do
+                      if curl -s -X POST http://127.0.0.1:5001/api/v0/version >/dev/null 2>&1; then break; fi
+                      sleep 1
+                  done
+                  docker exec figaro-ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin \
+                      '["http://localhost:3000","http://localhost:3100","http://127.0.0.1:3000","http://127.0.0.1:3100"]'
+                  docker exec figaro-ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods \
+                      '["PUT","POST","GET"]'
+                  docker restart figaro-ipfs
+                  for _ in $(seq 1 60); do
+                      if curl -s -X POST http://127.0.0.1:5001/api/v0/version >/dev/null 2>&1; then break; fi
+                      sleep 1
+                  done
+                  curl -s -X POST http://127.0.0.1:5001/api/v0/version
+
+            - name: Build SDK
+              run: npm ci --workspace sdk && npm run build --workspace sdk
+
+            - name: Install frontend dependencies
+              run: cd frontend && npm ci
+
+            - name: Install Playwright (chromium)
+              run: cd frontend && npx playwright install --with-deps chromium
+
+            # Port 8545: the broker's own chain is on 7545, so the two never meet.
+            - name: Start Anvil
+              run: |
+                  anvil --port 8545 --accounts 47 >/tmp/anvil.log 2>&1 &
+                  for _ in $(seq 1 60); do
+                      if cast block-number --rpc-url http://127.0.0.1:8545 >/dev/null 2>&1; then break; fi
+                      sleep 0.5
+                  done
+                  cast block-number --rpc-url http://127.0.0.1:8545
+
+            # The export inlines these at build time. deploy-local.sh keeps a
+            # value already present (default_env), so the broker settings
+            # stand after it appends the contract addresses. The e2e build
+            # opts in with FIGARO_ALLOW_TEST_HELPERS=1 (playwright.config.ts),
+            # which is what lets next.config.mjs pass `local`.
+            - name: Seed base .env.local (test helpers + the local broker)
+              run: |
+                  cat > frontend/.env.local <<'EOF'
+                  NEXT_PUBLIC_ENABLE_TEST_HELPERS=true
+                  NEXT_PUBLIC_E2E_HANDOFF_CHANNEL=xmtp
+                  NEXT_PUBLIC_XMTP_ENV=local
+                  NEXT_PUBLIC_XMTP_API_URL=http://localhost:5050
+                  NEXT_PUBLIC_XMTP_GATEWAY_HOST=http://localhost:5152
+                  EOF
+
+            - name: Deploy protocol stack (+ clauses, agreements, reference assemblies)
+              run: bash scripts/deploy-local.sh
+
+            # The preflight and the seed, then the one spec; the `devnet`
+            # project runs its `devnet-authoring` dependency first.
+            - name: Run content-delivery over the local broker
+              run: |
+                  cd frontend
+                  node scripts/verify-devnet-deployment.mjs
+                  node scripts/populate-test-data.mjs
+                  npx playwright test tests/e2e/content-delivery.devnet.spec.ts --project=devnet --workers=1
+              env:
+                  CI: true
+                  FIGARO_E2E_CONSOLE: /tmp/e2e-console.log
+
+            - name: Upload Playwright report
+              if: failure()
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: devnet-xmtp-local-playwright-report
+                  path: frontend/playwright-report/
+                  retention-days: 7
+
+            - name: Logs on failure
+              if: failure()
+              run: |
+                  docker ps -a
+                  tail -200 /tmp/xmtpd.log || true
+                  tail -200 /tmp/xmtpd-gateway.log || true
+                  tail -300 /tmp/e2e-console.log || true
+                  tail -100 /tmp/anvil.log || true

@@ -29,6 +29,9 @@ function assertNoTestFlagsInProductionBuild() {
         'NEXT_PUBLIC_USE_TEST_SIGNER',
         'NEXT_PUBLIC_TEST_PRIVATE_KEY',
         'NEXT_PUBLIC_DEV_ADDRESS',
+        // Moves the e2e devnet sessions off the mock bus onto a real XMTP
+        // broker (lib/data/handoff/channel.ts); harness-only.
+        'NEXT_PUBLIC_E2E_HANDOFF_CHANNEL',
     ];
     const allowed = process.env.FIGARO_ALLOW_TEST_HELPERS === '1';
     if (!allowed) {
@@ -50,15 +53,19 @@ function assertNoTestFlagsInProductionBuild() {
 // `dev` (XMTP's public dev network, whose inboxes every developer on earth
 // shares) or `production` (testnet and mainnet). Unset, the running code reads
 // `dev` — right for `next dev`, silently wrong for a deploy. So a production
-// build must name it. The e2e harness builds (FIGARO_ALLOW_TEST_HELPERS=1)
-// coordinate over the mock bus or name it themselves, and are not deploys.
+// build must name it. The third value the code takes, `local` (a broker on the
+// build machine, with NEXT_PUBLIC_XMTP_API_URL naming it), is the e2e
+// harness's: a deploy build that names it is refused here like any other test
+// setting. The e2e harness builds (FIGARO_ALLOW_TEST_HELPERS=1) coordinate over
+// the mock bus or name the network themselves, and are not deploys.
 function assertXmtpNetworkNamedInProductionBuild() {
     if (process.env.FIGARO_ALLOW_TEST_HELPERS === '1') return;
     const env = (process.env.NEXT_PUBLIC_XMTP_ENV ?? '').trim();
     if (env !== 'dev' && env !== 'production') {
         throw new Error(
             `Refusing to build: NEXT_PUBLIC_XMTP_ENV is ${env ? `"${env}"` : 'unset'}. A production build names the XMTP ` +
-            `network it coordinates over — "production" for testnet and mainnet, "dev" for a build that is not a deploy.`,
+            `network it coordinates over — "production" for testnet and mainnet, "dev" for a build that is not a deploy. ` +
+            `"local" is the e2e harness's (FIGARO_ALLOW_TEST_HELPERS=1).`,
         );
     }
 }

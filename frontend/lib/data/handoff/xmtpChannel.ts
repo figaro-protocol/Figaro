@@ -39,18 +39,45 @@ const XMTP_MESSAGE_FETCH_LIMIT = 50n;
 /**
  * The XMTP network this deployment coordinates over — DEPLOYMENT CONFIG, not
  * code: `NEXT_PUBLIC_XMTP_ENV` = `dev` (XMTP's public dev network — the DEVNET
- * build only; inboxes there are shared by every developer on earth) or
+ * build only; inboxes there are shared by every developer on earth),
  * `production` (TESTNET and MAINNET — the testnet rehearses mainnet, so it
- * coordinates over the same network mainnet will). `||`, not `??`: an EMPTY
- * env value (a devnet .env.local read by `next build`) means the default.
- * Anything else is refused at first use rather than silently sent to the
- * wrong network.
+ * coordinates over the same network mainnet will), or `local` (a broker run
+ * on the same machine, for the e2e harness only: `next.config.mjs` refuses it
+ * in a deploy build). `local` names its broker: `NEXT_PUBLIC_XMTP_API_URL` is
+ * the node, and `NEXT_PUBLIC_XMTP_GATEWAY_HOST` the gateway that publishes for
+ * it, where the broker runs one. `||`, not `??`: an EMPTY env value (a devnet
+ * .env.local the build reads) means the default. Anything else, or a broker
+ * URL beside `dev` or `production`, is refused at first use rather than
+ * silently sent to the wrong network.
  */
-export type XmtpNetworkEnv = "dev" | "production";
-export function xmtpNetworkEnv(): XmtpNetworkEnv {
-    const raw = (process.env.NEXT_PUBLIC_XMTP_ENV || "dev").trim();
-    if (raw === "dev" || raw === "production") return raw;
-    throw new Error(`NEXT_PUBLIC_XMTP_ENV must be "dev" or "production", got "${raw}"`);
+export type XmtpNetworkEnv = "local" | "dev" | "production";
+export interface XmtpNetwork {
+    env: XmtpNetworkEnv;
+    apiUrl?: string;
+    gatewayHost?: string;
+}
+export function xmtpNetwork(): XmtpNetwork {
+    const env = (process.env.NEXT_PUBLIC_XMTP_ENV || "dev").trim();
+    const apiUrl = (process.env.NEXT_PUBLIC_XMTP_API_URL || "").trim();
+    const gatewayHost = (process.env.NEXT_PUBLIC_XMTP_GATEWAY_HOST || "").trim();
+    if (env === "dev" || env === "production") {
+        if (apiUrl || gatewayHost) {
+            throw new Error(`NEXT_PUBLIC_XMTP_API_URL and NEXT_PUBLIC_XMTP_GATEWAY_HOST name a local broker; the "${env}" network takes neither`);
+        }
+        return { env };
+    }
+    if (env === "local") {
+        if (!apiUrl) throw new Error(`NEXT_PUBLIC_XMTP_ENV "local" needs NEXT_PUBLIC_XMTP_API_URL, the broker's node`);
+        return gatewayHost ? { env, apiUrl, gatewayHost } : { env, apiUrl };
+    }
+    throw new Error(`NEXT_PUBLIC_XMTP_ENV must be "dev", "production" or "local", got "${env}"`);
+}
+
+/** The network as the SDK's static calls take it: a backend built from the
+ *  same options `Client.create` gets, so a local broker's URLs reach them too. */
+async function xmtpBackend(network: XmtpNetwork) {
+    const { createBackend } = await import("@xmtp/browser-sdk");
+    return createBackend(network);
 }
 
 /** Retry an async operation with exponential backoff. */
@@ -95,7 +122,7 @@ export async function walletHasXmtpInbox(address: string): Promise<boolean> {
         const { Client, IdentifierKind } = await import("@xmtp/browser-sdk");
         const result = await Client.canMessage(
             [{ identifier: address.toLowerCase(), identifierKind: IdentifierKind.Ethereum }],
-            xmtpNetworkEnv(),
+            await xmtpBackend(xmtpNetwork()),
         );
         return result.get(address.toLowerCase()) === true;
     } catch {
@@ -132,9 +159,13 @@ export async function createXmtpChannel(
     // (ephemeral) minted a NEW installation keypair on every page session
     // and exhausted the inbox's 10-installation network cap within a day
     // of dev use.
-    const env = xmtpNetworkEnv();
+    const network = xmtpNetwork();
+    const { env } = network;
     const createClient = () => Client.create(signer, {
-        env,
+        ...network,
+        // A local broker runs no history-sync service; device sync would
+        // reach for one that is not there.
+        ...(env === "local" ? { disableDeviceSync: true } : {}),
         disableAutoRegister: false,
         dbEncryptionKey,
     } as Parameters<typeof Client.create>[1]);
@@ -149,11 +180,12 @@ export async function createXmtpChannel(
         // a fresh installation is created right after, and ephemeral-era
         // installations have no surviving local state worth keeping).
         const inboxId = await generateInboxId(signer.getIdentifier());
-        const [state] = await Client.fetchInboxStates([inboxId], env);
+        const backend = await xmtpBackend(network);
+        const [state] = await Client.fetchInboxStates([inboxId], backend);
         const installationIds = (state?.installations ?? []).map((inst) => inst.bytes);
         if (installationIds.length === 0) throw err;
         console.warn(`[xmtp] installation cap hit — revoking ${installationIds.length} stale installations for inbox ${inboxId}`);
-        await Client.revokeInstallations(signer, inboxId, installationIds, env);
+        await Client.revokeInstallations(signer, inboxId, installationIds, backend);
         client = await withRetry(createClient);
     }
 

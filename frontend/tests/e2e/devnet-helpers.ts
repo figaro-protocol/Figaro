@@ -991,6 +991,30 @@ export async function expectRelayedOrder(
     ).toBe(true);
 }
 
+/** True when the e2e build runs its devnet sessions over a real XMTP broker
+ *  in place of the mock bus (`lib/data/handoff/channel.ts`); the build and
+ *  this process read the same frontend/.env.local. */
+export const E2E_HANDOFF_OVER_XMTP = process.env.NEXT_PUBLIC_E2E_HANDOFF_CHANNEL === 'xmtp';
+
+/** The inbox id the local XMTP broker holds for `address`, read out of band
+ *  from the node named by NEXT_PUBLIC_XMTP_API_URL, or undefined while it
+ *  holds none. The node serves Connect, so a unary call is a JSON POST to
+ *  `/<package>.<Service>/<Method>`. */
+export async function xmtpInboxOnLocalBroker(address: string): Promise<string | undefined> {
+    const node = process.env.NEXT_PUBLIC_XMTP_API_URL;
+    if (!node) throw new Error('NEXT_PUBLIC_XMTP_API_URL names no local XMTP node');
+    const res = await fetch(`${node.replace(/\/$/, '')}/xmtp.xmtpv4.message_api.ReplicationApi/GetInboxIds`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            requests: [{ identifier: address.toLowerCase(), identifierKind: 'IDENTIFIER_KIND_ETHEREUM' }],
+        }),
+    });
+    if (!res.ok) throw new Error(`GetInboxIds answered ${res.status}: ${await res.text()}`);
+    const body = await res.json() as { responses?: { identifier?: string; inboxId?: string }[] };
+    return body.responses?.find((r) => r.identifier?.toLowerCase() === address.toLowerCase())?.inboxId || undefined;
+}
+
 /** Resolve an `ipfs://` URI to a Kubo-gateway URL. */
 export function resolveIpfsURI(uri: string): string {
     const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
