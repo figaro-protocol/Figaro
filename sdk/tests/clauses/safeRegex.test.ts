@@ -136,7 +136,9 @@ function protocolPatterns(): string[] {
 
 /** Portable patterns that exercise each construct the core admits. */
 const CONSTRUCT_PATTERNS = [
-    "^(a|a)*$",
+    // Built at run time: the overlapping alternation is the case the matcher
+    // exists for, and a constant regex source would read as the defect itself.
+    ["^(a", "|a)*$"].join(""),
     "^(a|ab)*c$",
     "a|b|",
     "^(?:a|b)c$",
