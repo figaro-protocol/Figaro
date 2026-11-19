@@ -887,3 +887,138 @@ The Ethereum Foundation's Mandate asks that, for every affordance with an interm
 | Permit2 and the swap router (`src/composability/`, `WitnessSwapAndCommitCoordinator`) | direct only (a bond paid through a swap) | Fail the swap and revert the commit; an unlimited Permit2 approval of the input token exposes that token (`LIST.md` C-2, a draft) | Hold the bond token and commit on the Core directly: no swap is needed. The coordinator's tests run against mocks; the fork suites are skipped (§ 14, "owed"). | Direct commit: the Core's tests. The swap against the live Permit2 and router: not proven |
 
 That the Core has neither an owner function, nor a pause function, nor an upgrade function is held by `sdk/tests/abiParity.test.ts` ("the Core has no third action"), not by Certora or Halmos.
+
+## 16) The security program's result, layer by layer
+
+This section is the written result of the in-house security program (`RELEASE_READINESS.md` Task 2), which stands in place of an external audit. It is organized by the six layers of the protocol, then the relay and the proof program, then the parts that stand beside the layers. Each line names one review or one tool, what it read, where its last result is kept, and its status on the code at `a09f9e9f`.
+
+How a status is read:
+
+- **pass at the code** — the check ran on a commit whose code under review equals the code at `a09f9e9f`. Nothing under `src/`, `prover/`, `test/`, `certora/` or `formal/` changes from `470ef10e` to `a09f9e9f` (`git diff --name-only 470ef10e a09f9e9f`).
+- **pass at an earlier commit** — the check ran and passed, and the code under review changed after it. The benches of § 14 ran at `1d39092c` to `04611ead`; from `04611ead` to `a09f9e9f`, 20 files under `src/` change, with behavior lines in `FigaroCore`, `FigaroBatchVerifier`, `UsageCounter` and `RpgfMinter`. Such a result is not proven for the code at `a09f9e9f`.
+- **not run** — no run of the check over this code exists in the repository, in the CI history or in § 14.
+- **not proven** — the claim rests on a reading of the code, on a document, or on a whole suite passing, never on a check of that one claim.
+
+The CI results are read with `gh run list --workflow <file> --branch main --limit 3` and `gh run view <run id> --log`. The agent audits under `work/audit/` are agent-written and untracked (`work/` is in `.gitignore`); they are kept on the maintainer's machine only.
+
+### 16.1 Core (`src/core/`)
+
+| Check | What it read | Last result, and where it is kept | Status |
+|---|---|---|---|
+| Blind agent audit of the batch path | the batch verifier, the Core, the guest and the relay, read with no project context, static only | 13 findings (1 HIGH, 5 MEDIUM, 6 LOW, 1 INFO), tree `7320632b`; `work/audit/blind-audit.md` | read at `7320632b` |
+| Informed agent audit of the batch path | the same surface, read with the project's documents | 11 findings (1 HIGH, 5 MEDIUM, 3 LOW, 2 INFO), tree `7320632b`; `work/audit/informed-audit.md` | read at `7320632b` |
+| The two audits' fixes | the findings checked at the source for this section: the verifier pulls every net deposit before it pays any payout (`_executePositions` `FigaroBatchVerifier.sol:722`); a buyer's resolve signs the process's running total (`ResolveProcess` `FigaroBatchVerifier.sol:775`, `prover/lib/src/eip712.rs:74`) | `CoreBatchEquivalenceTest.test_aBatchThatPaysBeforeItPullsLandsAsTheCoreDoes` and `prover/lib/tests/parity.rs` (`a_resolve_signed_before_a_later_commit_is_refused`), in `foundry-ci` run 44508926270 and `prover-ci` run 44508926137 at `470ef10e`; the fixes are commits `8d11344ae`, `663c95778`, `99c024afc`, `f9b3c10f9`, `442362a4c` | the two fixes named: pass at the code. Every other finding closed or on the punch-list: not proven, one by one |
+| Foundry, the whole suite | every contract's behavior on concrete runs | 538 passed, 0 failed, 3 skipped (the fork tests, run in their own job); `foundry-ci` run 44508926270 at `470ef10e` | pass at the code |
+| Halmos | `HalmosFigaroCore`, 7 properties | 7 passed, in two passes; `foundry-ci` run 44508926270 at `470ef10e` | pass at the code |
+| Slither 0.11.3 | `src/` without mocks, harnesses and tests | 55 results; the 8 High and Medium results equal the triaged set, so the gate passes; `foundry-ci` run 44508926270, job "Static Analysis" | pass at the code |
+| Semgrep `p/smart-contracts` | `src/core`, `src/registries`, `src/rewards`, `src/composability` | 33 rules, 14 files, 0 findings; `foundry-ci` run 44508926270 | pass at the code |
+| Differential fuzz | the Core and the coordinator against the guest's mirror, over random operation streams | four rounds, seeds 44508926137 to 44508926140, no divergence; `prover-ci` run 44508926137 at `470ef10e` | pass at the code |
+| The SDK and guest parity vectors | the transition, attestation, operation-stream and EIP-712 vectors, replayed by the guest and by the SDK | `prover-ci` run 44508926137 (cargo test) and `sdk-ci` run 44516786781 at `f26ca2f5` (76 test files passed, 1 skipped) | pass at the code |
+| Certora | `FigaroCore.spec`, `TokenOpsVerification.spec`, `AttestationCoordinator.spec`, `BatchVerifierTokenOps.spec`, `BatchVerifierStateRoot.spec` | § 14, at `20abb088`, `1d39092c` and `7e0b3b43`; it needs the maintainer's key and never runs in CI | pass at an earlier commit |
+| Echidna | `EchidnaFuzzer`, 7 properties | § 14, at `1d39092c`; never runs in CI | pass at an earlier commit |
+| TLA+ | `formal/FigaroCore.tla`, `formal/ResolutionUniverses.tla` | § 14, at `b75fec07`; never runs in CI | pass at an earlier commit (a model, not the code) |
+| Lean 4 | `FigaroEquilibrium.lean` (the best responses), `FigaroMerkle.lean` (the merkle binding) | § 14, at `1d39092c` and `5a70b1c8`; never runs in CI | pass at an earlier commit (a model, not the code) |
+| Mutation, `mewt` 4.0.0 | the contracts then in scope | 912 mutants, 904 caught, at `f62b71cf` (`AUDITOR_HANDOVER.md` § "Verification evidence") | pass at an earlier commit |
+| Mythril | by hand only (`scripts/mythril-docker.sh`) | no result is kept | not run |
+| A proof that the guest implements the Core | — | § 14, "owed" | not run |
+
+### 16.2 Registries (`src/registries/`)
+
+| Check | What it read | Last result, and where it is kept | Status |
+|---|---|---|---|
+| Foundry | `ClauseRegistryTest`, `AgreementRegistryTest`, `ProcessRegistryTest`, `MembersRegistryTest` | within the whole suite, `foundry-ci` run 44508926270 at `470ef10e` | pass at the code |
+| Halmos | the three designer registries (6 properties each) and `HalmosMembersRegistry` (7) | 6, 6, 6 and 7 passed; `foundry-ci` run 44508926270 | pass at the code |
+| Slither and Semgrep | `src/registries` within the scans of § 16.1 | as § 16.1 | pass at the code |
+| Mutation, `mewt` | three registries; `AgreementRegistry` not run | at `f62b71cf` | pass at an earlier commit; `AgreementRegistry` not run |
+| Certora, Echidna, TLA+ | no spec, harness or model reads a registry alone | — | not run |
+| An agent audit of the registries | the two agent audits read the batch path only | — | not run |
+
+### 16.3 Designer rewards (`src/rewards/`)
+
+| Check | What it read | Last result, and where it is kept | Status |
+|---|---|---|---|
+| Foundry | `UsageCounterTest`, `RpgfMinterTest`, `RpgfIntegrationTest`, `FlorinTokenTest`, `TreasuryProcurementTest` | within the whole suite, `foundry-ci` run 44508926270 at `470ef10e` | pass at the code |
+| Halmos | `HalmosUsageCounter`, 9 properties | 9 passed; `foundry-ci` run 44508926270 | pass at the code |
+| Slither and Semgrep | `src/rewards` within the scans of § 16.1 | as § 16.1 | pass at the code |
+| Certora | `RpgfMinter.spec`, `RpgfMinterAuthor.spec`, `FlorinToken.spec` | § 14, at `98a1e953` and `1d39092c` | pass at an earlier commit |
+| Echidna | `EchidnaFlorinToken`, 8 properties | § 14, at `1d39092c` | pass at an earlier commit |
+| TLA+ | `formal/FlorinToken.tla`; `formal/ResolutionUniverses.tla` for the one tally across both paths | § 14, at `fd393b2a` and `b75fec07` | pass at an earlier commit (a model, not the code) |
+| Mutation, `mewt` | the three contracts | at `f62b71cf` | pass at an earlier commit |
+| The florin against the standard ERC-20 properties (`crytic/properties`) | — | — | not run |
+| An agent audit of the rewards layer | — | — | not run |
+
+### 16.4 UI (`frontend/app/`, `frontend/components/`)
+
+| Check | What it read | Last result, and where it is kept | Status |
+|---|---|---|---|
+| Frontend Vitest | components, hooks, semantic derivation | 267 test files passed; `frontend-ci` run 44504164652 at `79b32dbc`. `frontend/lib/composition/useRpgfRewards.ts` changes after it | pass at an earlier commit |
+| Playwright, the whole `devnet` project | UI action to UI reaction against a local chain | 69 passed, 1 skipped, and the mobile project 2 passed; the nightly `devnet-e2e-ci` run 44301277072 at `850bb8b8` | pass at an earlier commit |
+| CodeQL, JavaScript and TypeScript | the frontend, the SDK and the agent runtime | the last finished run, `codeql` run 44508926305 at `470ef10e`. Nine alerts stand open, none triaged: two path injections in `frontend/scripts/serve-export.mjs`, a tag filter in `frontend/scripts/csp-inline-hashes.mjs`, four in test files, and the two of § 16.9 | not proven: the open alerts are not triaged |
+| `npm audit`, production dependencies, high and critical | the root, the frontend and the docs-site | no high or critical advisory but those the workflow sets aside; `guards-ci` run 44516806606 at `a09f9e9f` | pass at the code |
+| The test-coverage audit by agents | whether each test reads real code, and which code has no test | 364 test files read, 66 with a finding, 5 high; `work/audit/test-coverage-audit.md` | read; each finding's closure is not proven |
+| Mutation testing of the frontend's tests, a formal proof of the frontend | — | — | not run |
+
+### 16.5 Data (`frontend/lib/data/`, `frontend/lib/handoff/`, `frontend/lib/audit/`, `sdk/src/handoff`)
+
+| Check | What it read | Last result, and where it is kept | Status |
+|---|---|---|---|
+| Lean 4 | `FigaroMerkle.lean`, which proves that a leaf opens against a root only if the root was built from it, and `FigaroStateTree.lean` for the batch state tree | § 14, at `5a70b1c8` | pass at an earlier commit (a model, not the code) |
+| SDK Vitest | `handoff.test.ts`, the sealed content to the counterparty | within `sdk-ci` run 44516786781 at `f26ca2f5` | pass at the code; the sealing's secrecy: not proven |
+| Frontend Vitest | the handoff, persistence and data-explorer tests in `frontend/tests/lib/` | within `frontend-ci` run 44504164652 at `79b32dbc` | pass at an earlier commit |
+| A review of the sealing and of what each party can read | — | — | not run |
+
+### 16.6 Composability (`src/composability/`)
+
+| Check | What it read | Last result, and where it is kept | Status |
+|---|---|---|---|
+| Foundry, against mocks | `WitnessSwapAndCommitCoordinatorTest` | within the whole suite, `foundry-ci` run 44508926270 at `470ef10e` | pass at the code |
+| Foundry, against the live Permit2 and SwapRouter02 | the fork tests (§ 14 lists them as owed) | 3 passed, 0 skipped, against public mainnet and Sepolia nodes; `foundry-ci` run 44508926270, job "Fork tests" | pass at the code |
+| Slither and Semgrep | `src/composability` within the scans of § 16.1 | as § 16.1 | pass at the code |
+| Certora | `SwapCoordinatorTokenOps.spec` | § 14, at `41c4f367` | pass at an earlier commit |
+| TLA+ | `formal/WitnessSwapAndCommitCoordinator.tla` | § 14, at `b75fec07` | pass at an earlier commit (a model, not the code) |
+| Mutation, `mewt` | the coordinator | at `f62b71cf` | pass at an earlier commit |
+
+### 16.7 The proof program (`prover/program`, `prover/lib`, `prover/clause`)
+
+| Check | What it read | Last result, and where it is kept | Status |
+|---|---|---|---|
+| The two agent audits | the guest and the clause engine's pattern surface | as § 16.1; the blind audit reads `prover/clause` in part only | read at `7320632b` |
+| `cargo test` | the guest against the Core, the clause engine, the parity vectors | `prover-ci` run 44508926137 at `470ef10e`, 0 failed | pass at the code |
+| Differential fuzz | the mirror against the Core and the SDK, the Rust clause engine against the SDK | as § 16.1 | pass at the code |
+| Clippy, correctness and suspicious groups denied | `figaro-clause`, `figaro-kernel` | `prover-ci` run 44508926137 | pass at the code |
+| Semgrep `p/rust` | `prover/program/src`, `prover/lib/src`, `prover/clause/src`, `prover/sequencer/src` | `prover-ci` run 44508926137 | pass at the code |
+| CodeQL, Rust | the prover workspace | `codeql` run 44508926305 at `470ef10e`; no open Rust alert | pass at the code |
+| `cargo audit` | `prover/Cargo.lock` | no advisory but the five `prover/.cargo/audit.toml` sets aside; `guards-ci` run 44516806606 at `a09f9e9f` | pass at the code |
+| The SP1 advisories | SP1's five published advisories are not in RustSec, so `cargo audit` cannot read them; no check reads them | — | not run |
+| Mutation, `cargo-mutants` | `figaro-kernel`, `figaro-clause` | 617 mutants, 12 survivors read as equivalent, at `f62b71cf` | pass at an earlier commit |
+| A Groth16 proof from this tree's key, accepted on chain | — | § 14, "owed"; two proofs of an earlier guest at `cf6ba4ab` on a Sepolia fork | not run |
+| A proof that the guest implements the model | — | § 14, "owed" | not run |
+
+### 16.8 The relay (`prover/sequencer`)
+
+| Check | What it read | Last result, and where it is kept | Status |
+|---|---|---|---|
+| The two agent audits | the whole relay | as § 16.1; the relay's findings fixed in `8d11344ae` and `f9b3c10f9` | read at `7320632b` |
+| `cargo test -p figaro-sequencer -p figaro-prove-test` | admission, capacity, deferral, rebuild from the chain | `prover-ci` run 44508926137 at `470ef10e`, 0 failed | pass at the code |
+| The batch end to end on a local chain | `sdk/tests/batch-e2e.test.ts` and `sdk/tests/batch-revoke-e2e.test.ts`, SDK to relay to verifier, with a stand-in proof verifier | 7 of 7; `prover-ci` run 44508926137 | pass at the code, on a stand-in verifier |
+| Clippy, Semgrep `p/rust`, CodeQL Rust, `cargo audit` | the relay's crate | as § 16.7 | pass at the code |
+| TLA+ | `formal/RelayState.tla`, five configurations | § 14, at `b75fec07` | pass at an earlier commit (a model, not the code) |
+| Mutation testing of the relay | — | — | not run |
+
+### 16.9 Beside the layers: the SDK and its signer, the agents, the deployment
+
+| Check | What it read | Last result, and where it is kept | Status |
+|---|---|---|---|
+| SDK Vitest | the encoders, bonds, parity, the signer's policy gate | 76 test files passed, 1 skipped (`integration.test.ts` with no chain); `sdk-ci` run 44516786781 at `f26ca2f5` | pass at the code; the Ledger on a mock transport only |
+| The agent runtime's tests | the data-channel envelope, the sandbox | `sdk-ci` run 44516786781, job "Agent runtime tests" | pass at the code |
+| CodeQL, JavaScript and TypeScript, over the agents | `ecosystem-agents/runtime` | two open alerts, none triaged: a request forgery (critical) at `egress-proxy.mjs:205`, a stack trace exposure at `figaro-analyst.mjs:256` | not proven: the open alerts are not triaged |
+| CodeQL, GitHub Actions | `.github/workflows/` | `codeql` run 44508926305 at `470ef10e`; no open Actions alert | pass at the code |
+| The deployment's wiring | `DeployWiringTest` | within the whole suite, `foundry-ci` run 44508926270 | pass at the code |
+| The public deployment's watcher | the Sepolia contracts' events, daily | `monitor` run 44490365975 at `2e7bb5f0` | ran; it alerts, it proves nothing |
+| The read-back on a live chain (`scripts/check-deployment.mjs`) | — | § 14, "owed" | not run |
+| `zizmor` over the workflows, the OpenSSF Scorecard over the repository | — | — | not run |
+| Mutation testing of the SDK's tests, a formal proof of the SDK or the signer | — | § 14, "owed" | not run |
+
+### 16.10 What is left
+
+The tools of Task 2's checklist that have not run are Medusa, `crytic/properties`, Aderyn, `necessist`, Gambit, Kontrol, Kani, `cargo-fuzz`, `cargo-deny`, `cargo-vet`, `zizmor`, the OpenSSF Scorecard, the SP1 advisory check and OpenZeppelin Monitor. The gate benches (Certora, Echidna, TLA+, Lean, `mewt`, `cargo-mutants`) have not run on the code at `a09f9e9f`. The nine open CodeQL alerts are not triaged. No agent audit has read the registries, the designer rewards, the data layer or the SDK as its scope.

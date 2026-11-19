@@ -153,6 +153,10 @@ Task numbers are stable; missing numbers are closed tasks — `git log` has each
 No audit firm is engaged; the security work is the project's own, at every
 layer, with the bug bounty; a new handover is written when an audit is engaged.
 
+The written result, layer by layer, is `docs/VERIFICATION_MAP.md` § 16. What is left
+is to run the checklist's tools that have not run, rerun the gate benches on the
+current code, and triage the open CodeQL alerts (§ 16.10).
+
 1. every layer named with its tooling and its evidence — the Solidity (Foundry
    invariants, Halmos, Certora, Echidna, Slither, Semgrep, mutation), the Rust
    (the mirror, mutation, differential fuzz), the SDK and the signer, the
