@@ -26,6 +26,11 @@ instructions) **travels the per-order channel** (`@figaro-protocol/sdk/handoff`)
 a dispute forum by the party who holds it, verifiable against the anchor, and
 crypto-shreddable until then.
 
+**The rule sorts each datum by who needs it, so no party lacks a datum its
+trade needs.** A datum the mechanism needs is public; a datum the
+counterparty needs travels sealed to the counterparty. A sealed field is
+privacy against outsiders, never a datum kept from a party to the order.
+
 Evidence follows the same pattern: the public artifact carries the coarsest
 mechanism-sufficient grain (the geohash cell, hashed device identifiers) plus
 the hash of the raw capture; full fidelity stays party-held for dispute-time
@@ -65,8 +70,9 @@ the designer-rewards counter `UsageCounter`, whose `UsageRecorded` a resolution
 causes. Each row says who reads the field and where in the code, and the grain the
 chain carries it at. A reader cell names the code that reads the field; where the
 only reader found is one of the order's own two parties, the cell says so; where no
-code reads the field, the cell says "no reader found", and the field is an open
-question under the rule above, whatever a contract's NatSpec says it is for. The
+code of ours reads the field, the cell says "no reader found" and names the
+question the field answers for a stranger's reader, read from the contract that
+emits it (`docs/DESIGN_DECISIONS.md` § 29). The
 events `FigaroCore` and `FigaroBatchVerifier` share have the same fields and the
 same readers, since a reader folds the two paths by address. `sdk/tests/abiParity.test.ts`
 ("data: every field an event carries has a row") fails when a compiled event gains,
@@ -91,9 +97,9 @@ loses, moves or retypes a field and this table does not move with it.
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 2 | `sellerPayout` | `uint256` | Any reader of the resolution graph (`sdk/src/state.ts:192`); a forum's timeline (`frontend/lib/audit/processTimeline.ts:281`) | The exact amount |
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 3 | `buyerPayout` | `uint256` | The same readers (`sdk/src/state.ts:193`, `frontend/lib/audit/processTimeline.ts:282`) | The exact amount |
 | `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 0 | `processId` | `bytes32 indexed` | Any reader marks the process resolved (`sdk/src/state.ts:197`); a party waits on it after a batched resolution (`sdk/src/relay/index.ts:149`) | A fingerprint |
-| `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 1 | `buyer` | `address indexed` | no reader found: decoded (`sdk/src/events.ts:90`) and never read | The wallet's address, repeated from `OrderCommitted` |
-| `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 2 | `orderCount` | `uint256` | no reader found: decoded (`sdk/src/events.ts:91`) and never read | A count |
-| `FigaroCore`, `FigaroBatchVerifier` | `EIP712DomainChanged` | — | — | — | no reader found: OpenZeppelin's `EIP712` declares the event and nothing in `src/` emits it | No field |
+| `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 1 | `buyer` | `address indexed` | no reader found: decoded (`sdk/src/events.ts:90`) and never read. It answers a stranger's question: which processes did this wallet close as buyer? A filter on the indexed topic finds them without reading any order (`src/core/kernel/FigaroCore.sol:291`) | The wallet's address, repeated from `OrderCommitted` |
+| `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 2 | `orderCount` | `uint256` | no reader found: decoded (`sdk/src/events.ts:91`) and never read. It answers a stranger's question: how many orders did this one call pay? A reader checks it against the `OrderResolved` events it holds (`src/core/kernel/FigaroCore.sol:291`, `src/core/verifier/FigaroBatchVerifier.sol:825`) | A count |
+| `FigaroCore`, `FigaroBatchVerifier` | `EIP712DomainChanged` | — | — | — | no reader found: OpenZeppelin's `EIP712` declares the event and nothing in `src/` emits it. It answers the question ERC-5267 asks: did the signing domain change? The domain is fixed at construction, so the answer is never (`src/core/kernel/FigaroCore.sol:27`) | No field |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 0 | `orderHash` | `bytes32 indexed` | Any reader groups attestations by order (`sdk/src/derive/attestation.ts:41`) | A fingerprint |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 1 | `processId` | `bytes32 indexed` | Any reader: attestations by process (`sdk/src/derive/attestation.ts:31`); the data explorer attributes a process to its assembly (`frontend/lib/data/graphCorpus.ts:246`) | A fingerprint |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 2 | `attester` | `address indexed` | The data explorer counts distinct attesters per clause (`frontend/lib/data/explorer.ts:344`); a forum's evidence file names the attester (`frontend/lib/audit/processLogsExtract.ts:104`) | The wallet's address |
@@ -108,7 +114,7 @@ loses, moves or retypes a field and this table does not move with it.
 | `FigaroBatchVerifier` | `BatchSettled` | 0 | `batchId` | `uint64 indexed` | A party waiting on its batched resolution (`sdk/src/relay/index.ts:167`); a rebuilding relay (`prover/sequencer/src/rebuild.rs:91`) | A counter |
 | `FigaroBatchVerifier` | `BatchSettled` | 1 | `prevStateRoot` | `bytes32 indexed` | A rebuilding relay checks the chain of roots (`prover/sequencer/src/rebuild.rs:94`) | A fingerprint: a state root |
 | `FigaroBatchVerifier` | `BatchSettled` | 2 | `newStateRoot` | `bytes32 indexed` | The same relay (`prover/sequencer/src/rebuild.rs:110`) | A fingerprint: a state root |
-| `FigaroBatchVerifier` | `BatchSettled` | 3 | `positionCount` | `uint256` | no reader found | A count |
+| `FigaroBatchVerifier` | `BatchSettled` | 3 | `positionCount` | `uint256` | no reader found. It answers a stranger's question: how many net token positions did this batch move, each with at most one transfer? (`src/core/verifier/FigaroBatchVerifier.sol:527`) | A count |
 | `FigaroBatchVerifier` | `BatchAccrualSkipped` | 0 | `batchId` | `uint64 indexed` | A party finding the uses a batch left uncounted, to send them again, reads the claims and uses from the `BatchOperations` log of the same transaction and batch id, on every call route (`fetchSkippedBatchUses`, `sdk/src/rpgf/index.ts:447`); the Sepolia monitor (`scripts/monitor-sepolia.mjs:145`) | A counter |
 | `FigaroBatchVerifier` | `BatchAccrualSkipped` | 1 | `reason` | `bytes` | The same reader passes it on unread (`sdk/src/rpgf/index.ts:434`); the Sepolia monitor reports it (`scripts/monitor-sepolia.mjs:149`) | The counter's revert data |
 | `UsageCounter` | `UsageRecorded` | 0 | `kind` | `uint8` | A designer's reward accrual keys each use by kind and key (`sdk/src/rpgf/index.ts:207`) | A small number |
@@ -116,9 +122,9 @@ loses, moves or retypes a field and this table does not move with it.
 | `UsageCounter` | `UsageRecorded` | 2 | `period` | `uint8 indexed` | The same accrual (`sdk/src/rpgf/index.ts:208`) | A period number |
 | `UsageCounter` | `UsageRecorded` | 3 | `processId` | `bytes32 indexed` | The same accrual counts a process once (`sdk/src/rpgf/index.ts:211`) | A fingerprint |
 | `UsageCounter` | `UsageRecorded` | 4 | `seller` | `address` | The same accrual counts distinct sellers (`sdk/src/rpgf/index.ts:213`) | The wallet's address |
-| `UsageCounter` | `UsageRecorded` | 5 | `c` | `uint64` | no reader found: decoded (`sdk/src/rpgf/index.ts:318`); the accrual counts it again from the events | A count |
-| `UsageCounter` | `UsageRecorded` | 6 | `d` | `uint64` | no reader found: decoded (`sdk/src/rpgf/index.ts:319`); the accrual counts it again from the events | A count |
-| `UsageCounter` | `UsageRecorded` | 7 | `score` | `uint256` | no reader found: decoded (`sdk/src/rpgf/index.ts:320`); the accrual computes it again from the events | A score |
+| `UsageCounter` | `UsageRecorded` | 5 | `c` | `uint64` | no reader found: decoded (`sdk/src/rpgf/index.ts:318`); the accrual counts it again from the events. It answers a stranger's question: how many distinct processes has this key counted in the period, after this one? A reader checks its own count against it without replaying the period (`src/rewards/UsageCounter.sol:783`) | A count |
+| `UsageCounter` | `UsageRecorded` | 6 | `d` | `uint64` | no reader found: decoded (`sdk/src/rpgf/index.ts:319`); the accrual counts it again from the events. It answers a stranger's question: how many distinct staked sellers has this key counted in the period, after this one? (`src/rewards/UsageCounter.sol:783`) | A count |
+| `UsageCounter` | `UsageRecorded` | 7 | `score` | `uint256` | no reader found: decoded (`sdk/src/rpgf/index.ts:320`); the accrual computes it again from the events. It answers a stranger's question: what is this key's score in the period after this count? A designer reads its standing from its latest event alone (`src/rewards/UsageCounter.sol:783`) | A score |
 
 ## The sealed side is the owner's asset
 
