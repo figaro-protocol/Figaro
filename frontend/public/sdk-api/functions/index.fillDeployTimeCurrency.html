@@ -24,8 +24,10 @@ seeding fills it before anchoring: the anchored <code>processDesignHash</code> i
 filled assembly, never the written one. Unfilled, the pin is what the format
 reads it as, a required field missing, so the written file signs nothing as
 it stands. Read by the spec's shape, never by a clause or field name: every
-ASSEMBLY-SCOPED clause of the denomination article (<code>block.design.article: &quot;denomination&quot;</code>) has each designer-filled <code>address-hex</code> field the file left
-unfilled set to <code>tokenAddress</code>. A field already filled is never overwritten;
+clause whose spec declares a denomination pin (<code>specDenominationPinField</code>:
+assembly-scoped, of the denomination article, with exactly one
+designer-filled <code>address-hex</code> field) has that field, when the file left it
+unfilled, set to <code>tokenAddress</code>. A field already filled is never overwritten;
 an assembly with no such field is returned as it was. Seed time only.</p>
 </div>
 <section class="tsd-panel">
@@ -40,7 +42,7 @@ an assembly with no such field is returned as it was. Seed time only.</p>
 <li><span><span class="tsd-kind-parameter">specs</span>: <a href="../interfaces/index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a class="tsd-signature-type tsd-kind-type-parameter" href="#filldeploytimecurrencyt">T</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L1374">projection.ts:1374</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L1624">projection.ts:1624</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

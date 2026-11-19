@@ -40,6 +40,7 @@ import { checkDeadlineCap, checkOfferPolicy, checkPayloadTerms, checkSellerSigna
 // One owner for the reply check: the offer loops and the race both use it.
 export { verifyRaceReply };
 import { assertAgreementSignable, type SpecSource } from "../projection.js";
+import { derivePricedFields } from "../checkoutPlan.js";
 import type { HydratedProcessDesign } from "../assembly.js";
 import type { MemberProfileReader } from "../memberProfile.js";
 
@@ -239,15 +240,38 @@ export interface BuildQuoteRequestParams {
 }
 
 /**
+ * The unit prices of the agreement's priced lines (`derivePricedFields`, read
+ * from each spec's `block.checkout.pricedLines` mark) that `pricedFields`
+ * leaves out. A quote moves the payment and every priced field named; a
+ * line's unit price left out would keep the figure the request was drafted
+ * with beside a payment the quote moved.
+ */
+function unpricedLineFields(
+    agreement: Agreement,
+    pricedFields: readonly PricedField[],
+    specs: SpecSource,
+): PricedField[] {
+    return derivePricedFields(agreement.clauses, specs).filter((line) =>
+        !pricedFields.some((f) => f.clause.toLowerCase() === line.clause.toLowerCase() && f.path === line.path));
+}
+
+/**
  * Build an RFQ quote-request draft — UNSIGNED (a draft binds nobody), priced
  * at the buyer's ceiling through the SAME substitution the quote will use.
  * Root-order scope, like the origination handshake; a chain-position request
- * is the same payload shape built from the chain walk.
+ * is the same payload shape built from the chain walk. Throws when
+ * `pricedFields` leaves out the unit price of any priced line the agreement
+ * commits (`unpricedLineFields`).
  */
 export function buildQuoteRequest(params: BuildQuoteRequestParams): CommitmentPayload {
+    const specs = requireSpecs(params.specs, "buildQuoteRequest");
     const instantiated = withAgreementBlinding(instantiateRootAgreement(params.assembly, {
         buyer: params.buyer, seller: params.seller, overrides: params.overrides,
-    }), requireSpecs(params.specs, "buildQuoteRequest"), params.overrides);
+    }), specs, params.overrides);
+    const unpriced = unpricedLineFields(instantiated, params.pricedFields, specs);
+    if (unpriced.length > 0) {
+        throw new Error(`buildQuoteRequest: pricedFields leaves out the unit price of ${unpriced.length} priced line(s) (${unpriced.map((f) => `${f.clause} ${f.path}`).join(", ")}); name every one, or the quote moves the payment and leaves those lines at the drafted figure`);
+    }
     const agreement = substitutePricedValue(instantiated, params.pricedFields, params.ceiling);
     const domain = buildDomain(params.chainId, params.core);
     const { commitment } = buildCommitment({

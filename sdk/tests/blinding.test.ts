@@ -58,6 +58,9 @@ const PRIVATE_KEY = PRIVATE.clauseKey;
 const SPECS = specSourceWithRegistrations(specSourceFromFixtures(["figaro-commerce", "figaro-merchant-process"]), [PRIVATE]);
 const COMMERCE = keyOf("figaro-commerce");
 const LINE = { lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }] };
+/** The line's unit price, named as a priced field: a quote request names
+ *  every priced line its clauses mark (`buildQuoteRequest`). */
+const PRICED_LINE = [{ clause: COMMERCE, path: "lineItems.0.unitPrice" }];
 
 const isBlindingValue = (v: unknown): boolean => typeof v === "string" && /^0x[0-9a-f]{64}$/.test(v);
 
@@ -170,7 +173,7 @@ describe("the agent paths draw the blinding value where they collect the buyer's
     it("buildQuoteRequest draws it once, and the counter-draft keeps the draft's value, so the buyer reproduces the quoted checkoutHash", () => {
         const request = () => buildQuoteRequest({
             assembly, buyer: BUYER.address, seller: SELLER.address, currency: CURRENCY, ceiling: 1000n,
-            chainId: CHAIN, core: CORE, pricedFields: [], deadline: 1_900_000_000n, overrides, specs: SPECS,
+            chainId: CHAIN, core: CORE, pricedFields: PRICED_LINE, deadline: 1_900_000_000n, overrides, specs: SPECS,
         });
         const one = request();
         const two = request();
@@ -282,7 +285,7 @@ describe("a blinding value that comes from the design is never kept and never si
     it("buildQuoteRequest's draft carries a value of its own, never the design's", () => {
         const request = buildQuoteRequest({
             assembly: design, buyer: BUYER.address, seller: SELLER.address, currency: CURRENCY, ceiling: 1000n,
-            chainId: CHAIN, core: CORE, pricedFields: [], deadline: 1_900_000_000n, overrides, specs: SPECS,
+            chainId: CHAIN, core: CORE, pricedFields: PRICED_LINE, deadline: 1_900_000_000n, overrides, specs: SPECS,
         });
         const drawn = clauseOf(request.agreement, PRIVATE_KEY).data?.blinding;
         expect(isBlindingValue(drawn)).toBe(true);

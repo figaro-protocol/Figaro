@@ -58,6 +58,8 @@ const COMMITMENT: Commitment = {
     commitDeadline: 0n,
 };
 const OTHER_COMMITMENT: Commitment = { ...COMMITMENT, token: OTHER_TOKEN };
+/** A commitment joining an open process: its `processId` names the process. */
+const JOINING_COMMITMENT: Commitment = { ...COMMITMENT, processId: `0x${"9a".repeat(32)}` };
 
 const SPECS = specSourceFromFixtures([
     "figaro-commerce",
@@ -910,8 +912,11 @@ describe("the sign gate's design check — the designer's values against the des
         };
         const commerceOnly = { [keyOf("figaro-commerce")]: commerceData() };
         const withLog = { ...commerceOnly, [LOG]: {} };
+        // An order that follows another joins its process; one that follows
+        // none is signed here as the opening order.
+        const commitmentOf = (o: { signed: Agreement }) => (o.signed.follows?.length ? JOINING_COMMITMENT : COMMITMENT);
         const issuesOf = (o: { signed: Agreement; root: `0x${string}` }) =>
-            validateCommitmentAgreement(o.signed, o.root, SPECS, COMMITMENT, picked).issues;
+            validateCommitmentAgreement(o.signed, o.root, SPECS, commitmentOf(o), picked).issues;
 
         // The design's edge count for each entry passes: commerce alone is the
         // root with none or the grandchild with two; the child has one.
@@ -930,9 +935,109 @@ describe("the sign gate's design check — the designer's values against the des
             const issues = issuesOf(o);
             expect(issues.map((i) => `${i.clause}:${i.path}`)).toEqual(["(topology):follows"]);
             expect(issues[0].message).toMatch(new RegExp(`follows ${follows.length} order`));
-            expect(() => assertAgreementSignable(o.signed, o.root, SPECS, COMMITMENT, picked))
+            expect(() => assertAgreementSignable(o.signed, o.root, SPECS, commitmentOf(o), picked))
                 .toThrow(/\(topology\) follows: .*the design gives/);
         }
+    });
+
+    it("refuses a commitment that opens a process (processId zero) and names any order it follows", () => {
+        const built = buildProcessDesign({
+            orders: [
+                { orderHash: "root", follows: [] },
+                { orderHash: "child", follows: ["root"] },
+            ],
+            clausesByOrderId: { root: COMMERCE, child: COMMERCE },
+            specs: SPECS,
+        });
+        const [, childEntry] = built.assembly.agreements;
+        const picked: HydratedProcessDesign = { assembly: built.assembly, agreements: built.agreements };
+        const { agreement } = buildOrderAgreement(BUYER, SELLER, { [keyOf("figaro-commerce")]: commerceData() }, SPECS);
+        const signed: Agreement = {
+            ...agreement,
+            provenance: { agreementHash: childEntry.agreementHash, processDesignHash: processDesignHashOf(built.assembly) },
+            follows: [`0x${"a1".repeat(32)}`],
+        };
+        const root = computeCheckoutHash(signed);
+        // Joining the process, the edge matches the child's entry.
+        expect(validateCommitmentAgreement(signed, root, SPECS, JOINING_COMMITMENT, picked).issues).toEqual([]);
+        // Opening one, any edge is refused, with no design in hand as with one.
+        const opening = validateCommitmentAgreement(signed, root, SPECS, COMMITMENT, picked).issues;
+        expect(opening.map((i) => `${i.clause}:${i.path}`)).toEqual(["(topology):follows"]);
+        expect(opening[0].message).toMatch(/opens a process \(processId zero\).*names 1/);
+        expect(() => assertAgreementSignable(signed, root, SPECS, COMMITMENT, picked)).toThrow(/opens a process/);
+        const bare: Agreement = { ...agreement, follows: [`0x${"a1".repeat(32)}`] };
+        expect(validateCommitmentAgreement(bare, computeCheckoutHash(bare), SPECS, COMMITMENT, null).issues.map((i) => i.message).join(" "))
+            .toMatch(/opens a process/);
+        expect(validateCommitmentAgreement(bare, computeCheckoutHash(bare), SPECS, JOINING_COMMITMENT, null).issues).toEqual([]);
+    });
+
+    describe("followedOrderIssues — the counter-signer's own read of the orders an agreement follows", () => {
+        // root → child → grandchild, the grandchild following both. The root
+        // and the grandchild bind commerce alone; the child binds commerce
+        // with a process log.
+        const LOG = keyOf("figaro-merchant-process");
+        const built = buildProcessDesign({
+            orders: [
+                { orderHash: "root", follows: [] },
+                { orderHash: "child", follows: ["root"] },
+                { orderHash: "grandchild", follows: ["root", "child"] },
+            ],
+            clausesByOrderId: { root: COMMERCE, child: { ...COMMERCE, [LOG]: {} }, grandchild: COMMERCE },
+            specs: SPECS,
+        });
+        const [rootEntry, childEntry, grandchildEntry] = built.assembly.agreements;
+        const design: HydratedProcessDesign = { assembly: built.assembly, agreements: built.agreements };
+        const processDesignHash = processDesignHashOf(built.assembly);
+        const PROCESS = JOINING_COMMITMENT.processId;
+        const ROOT_ORDER = `0x${"01".repeat(32)}` as const;
+        const CHILD_ORDER = `0x${"02".repeat(32)}` as const;
+        const STRAY_ORDER = `0x${"03".repeat(32)}` as const;
+        const instantiating = (agreementHash: `0x${string}`, follows: `0x${string}`[] = [], hash = processDesignHash): Agreement => ({
+            version: "a1", buyer: BUYER, seller: SELLER, clauses: [],
+            provenance: { agreementHash, processDesignHash: hash }, follows,
+        });
+        const reads = [
+            { orderHash: ROOT_ORDER, processId: PROCESS, agreement: instantiating(rootEntry.agreementHash) },
+            { orderHash: CHILD_ORDER, processId: PROCESS, agreement: instantiating(childEntry.agreementHash, [ROOT_ORDER]) },
+        ];
+        const grandchild = (follows: `0x${string}`[]) => instantiating(grandchildEntry.agreementHash, follows);
+
+        it("passes edges that name the design entry's parents, in its order, in the process the order joins", () => {
+            expect(sdk.followedOrderIssues(grandchild([ROOT_ORDER, CHILD_ORDER]), JOINING_COMMITMENT, design, reads)).toEqual([]);
+            expect(sdk.followedOrderIssues(instantiating(childEntry.agreementHash, [ROOT_ORDER]), JOINING_COMMITMENT, design, reads)).toEqual([]);
+        });
+
+        it("refuses an order whose edges differ from its design entry's", () => {
+            const swapped = sdk.followedOrderIssues(grandchild([CHILD_ORDER, ROOT_ORDER]), JOINING_COMMITMENT, design, reads);
+            expect(swapped.map((i) => i.path)).toEqual(["follows.0", "follows.1"]);
+            expect(swapped[0].message).toMatch(/the design's entry follows agreement-0 at this place/);
+            // A child naming the grandchild's sibling place: the child follows the child.
+            const self = sdk.followedOrderIssues(instantiating(childEntry.agreementHash, [CHILD_ORDER]), JOINING_COMMITMENT, design, reads);
+            expect(self.map((i) => i.path)).toEqual(["follows.0"]);
+        });
+
+        it("refuses an edge the chain records as no order, an order of another process, and one whose agreement was not read", () => {
+            const unknown = sdk.followedOrderIssues(grandchild([ROOT_ORDER, STRAY_ORDER]), JOINING_COMMITMENT, design, reads);
+            expect(unknown.map((i) => i.message).join(" ")).toMatch(/records as no committed order/);
+            const elsewhere = [...reads, { orderHash: STRAY_ORDER, processId: `0x${"ee".repeat(32)}` as `0x${string}`, agreement: reads[1].agreement }];
+            expect(sdk.followedOrderIssues(grandchild([ROOT_ORDER, STRAY_ORDER]), JOINING_COMMITMENT, design, elsewhere).map((i) => i.message).join(" "))
+                .toMatch(/committed in process 0xee.*joins process/);
+            const unread = [reads[0], { ...reads[1], agreement: null }];
+            expect(sdk.followedOrderIssues(grandchild([ROOT_ORDER, CHILD_ORDER]), JOINING_COMMITMENT, design, unread).map((i) => i.message).join(" "))
+                .toMatch(/agreement was not read/);
+        });
+
+        it("refuses an edge naming an order of another assembly", () => {
+            const foreign = [reads[0], { ...reads[1], agreement: instantiating(childEntry.agreementHash, [ROOT_ORDER], `0x${"cd".repeat(32)}`) }];
+            expect(sdk.followedOrderIssues(grandchild([ROOT_ORDER, CHILD_ORDER]), JOINING_COMMITMENT, design, foreign).map((i) => i.message).join(" "))
+                .toMatch(/instantiates assembly 0xcdcd/);
+        });
+
+        it("leaves to the sign gate what it holds: no design, no provenance, a count no entry has", () => {
+            expect(sdk.followedOrderIssues(grandchild([STRAY_ORDER, STRAY_ORDER]), JOINING_COMMITMENT, null, [])).toEqual([]);
+            expect(sdk.followedOrderIssues({ ...grandchild([STRAY_ORDER]), provenance: undefined }, JOINING_COMMITMENT, design, [])).toEqual([]);
+            expect(sdk.followedOrderIssues(grandchild([STRAY_ORDER, STRAY_ORDER, STRAY_ORDER]), JOINING_COMMITMENT, design, [])).toEqual([]);
+        });
     });
 
     it("refuses an order carrying a clause the design does not compose — a registered one with content, and an unregistered one withheld", () => {

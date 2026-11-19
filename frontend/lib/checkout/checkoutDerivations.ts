@@ -255,12 +255,6 @@ export function deriveAgreementGroups(args: {
             assigned ? profileValuesFor(assigned, sellerCatalogs) : undefined,
             specSource(),
         );
-        // Fields the checkout walk fills MECHANICALLY (the line items,
-        // the dimweight, …) — a buyer input the walk
-        // would overwrite is a false affordance, so a clause whose
-        // declared fields are ALL mechanical is not fillable. Derived
-        // from the planner's own fill set, never a clause id.
-        const mechanicalFields = mechanicallyFilledFieldNames(previewClauses, specSource());
         return {
             key: String(order.id ?? i),
             label: assigned ? nameOf(assigned) : "(to be assigned)",
@@ -281,7 +275,12 @@ export function deriveAgreementGroups(args: {
                     // fields ARE fillable — the composition surface collects
                     // only its block.runtime.fields runtime params, never its
                     // content.
-                    const buyerFields = buyerAuthoredFields(clauseKey, mechanicalFields);
+                    // Less the fields the checkout walk fills MECHANICALLY (the
+                    // priced lines a spec marks, the fields it derives): a buyer
+                    // input the walk would overwrite is a false affordance, so a
+                    // clause whose declared fields are ALL mechanical is not
+                    // fillable. Read from this key's spec, never a field name.
+                    const buyerFields = buyerAuthoredFields(clauseKey, mechanicallyFilledFieldNames(specSource().get(clauseKey)));
                     return {
                         clauseKey,
                         values: clauseValueSummary(fields),

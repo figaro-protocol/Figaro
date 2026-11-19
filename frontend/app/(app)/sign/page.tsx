@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { deriveSignState } from "@/lib/checkout/signState";
-import { readSigningInputs, useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
+import { readFollowedOrders, readSigningInputs, useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
@@ -25,7 +25,7 @@ import {
 import { hexEqual } from "@/lib/shared/evm";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { validateCommitmentAgreement, type HydratedProcessDesign } from "@figaro-protocol/sdk";
+import { followedOrderIssues, validateCommitmentAgreement, type FollowedOrderRead, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
 import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
@@ -35,7 +35,7 @@ import useTokenBalance from "@/hooks/useTokenBalance";
 import { useMemberProfile } from "@/lib/member/useMembersRegistry";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
-import { AgreementReview, commerceLineItems } from "@/components/runtime/AgreementReview";
+import { AgreementReview, pricedLineItems } from "@/components/runtime/AgreementReview";
 import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
@@ -277,13 +277,16 @@ function SignPageContent() {
     // never reported as unloaded.
     const publicClient = usePublicClient();
     const chainId = useChainId();
-    const [designRead, setDesignRead] = useState<{ agreement: unknown; design: HydratedProcessDesign | null } | null>(null);
+    const [designRead, setDesignRead] = useState<{ agreement: unknown; design: HydratedProcessDesign | null; followed: FollowedOrderRead[] } | null>(null);
     useEffect(() => {
         const agreement = parsed?.agreement;
-        if (!agreement) return;
+        if (!parsed || !agreement) return;
         let live = true;
-        void readSigningInputs(agreement, publicClient, chainId).then((design) => {
-            if (live) setDesignRead({ agreement, design });
+        void Promise.all([
+            readSigningInputs(agreement, publicClient, chainId),
+            readFollowedOrders(parsed, publicClient, chainId),
+        ]).then(([design, followed]) => {
+            if (live) setDesignRead({ agreement, design, followed });
         });
         return () => { live = false; };
     }, [parsed, publicClient, chainId]);
@@ -304,13 +307,19 @@ function SignPageContent() {
             ? check.issues.find((issue) => issue.clause === "(provenance)" && issue.path === "processDesignHash")
             : undefined;
         const unreadDesign = unreadIssue ? parsed.agreement.provenance?.processDesignHash ?? null : null;
-        const issues = check.issues.filter((issue) => issue !== unreadIssue);
+        // A seller accepting a signed order checks the orders it follows
+        // against the design, as its accept does (`followedOrderIssues`); a
+        // draft is countersigned before those orders commit, so it is not.
+        const followedIssues = isSeller && parsed.buyerSig
+            ? followedOrderIssues(parsed.agreement, commitment, designRead.design, designRead.followed)
+            : [];
+        const issues = [...check.issues.filter((issue) => issue !== unreadIssue), ...followedIssues];
         // The validator compares the merkle root only when no other issue
         // stands, so only a `(merkle)` issue says the terms do not match the
         // signed checkoutHash.
         const mismatch = issues.some((issue) => issue.clause === "(merkle)");
-        return { ok: check.ok, unreadDesign, issues, mismatch };
-    }, [parsed, commitment, designRead]);
+        return { ok: check.ok && followedIssues.length === 0, unreadDesign, issues, mismatch };
+    }, [parsed, commitment, designRead, isSeller]);
 
     // The seller's own listed prices beside the amounts it is asked to sign,
     // when the denomination is not the token its catalog is priced in: the
@@ -325,7 +334,7 @@ function SignPageContent() {
     const listedInAnotherToken = !!listedToken && !!approvalCurrency && !hexEqual(listedToken, approvalCurrency);
     const { data: listedSymbol } = useTokenSymbol(listedInAnotherToken ? listedToken : "");
     const listedBeside = listedInAnotherToken && sellerCatalog
-        ? commerceLineItems(parsed?.agreement ?? null).map((line) => ({
+        ? pricedLineItems(parsed?.agreement ?? null).lines.map((line) => ({
             ...line,
             listedPrice: sellerCatalog.items.find((it) => it.id === line.itemId)?.price,
         }))

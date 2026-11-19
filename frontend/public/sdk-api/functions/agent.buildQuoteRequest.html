@@ -19,7 +19,9 @@
 <div class="tsd-comment tsd-typography"><p>Build an RFQ quote-request draft — UNSIGNED (a draft binds nobody), priced
 at the buyer's ceiling through the SAME substitution the quote will use.
 Root-order scope, like the origination handshake; a chain-position request
-is the same payload shape built from the chain walk.</p>
+is the same payload shape built from the chain walk. Throws when
+<code>pricedFields</code> leaves out the unit price of any priced line the agreement
+commits (<code>unpricedLineFields</code>).</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -27,7 +29,7 @@ is the same payload shape built from the chain walk.</p>
 <li><span><span class="tsd-kind-parameter">params</span>: <a href="../interfaces/agent.BuildQuoteRequestParams.html" class="tsd-signature-type tsd-kind-interface">BuildQuoteRequestParams</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/agent.CommitmentPayload.html" class="tsd-signature-type tsd-kind-interface">CommitmentPayload</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/dispatchRace.ts#L247">agent/dispatchRace.ts:247</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/dispatchRace.ts#L266">agent/dispatchRace.ts:266</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

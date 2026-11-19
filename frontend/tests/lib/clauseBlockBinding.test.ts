@@ -114,6 +114,26 @@ describe("parseBlockBinding — clause block-binding (sectioned UI half)", () =>
         expect(badCombine.errors.some((e) => e.path === "$.block.checkout.catalogueMeasures.massGrams.combine")).toBe(true);
     });
 
+    it("preserves checkout.pricedLines and checkout.derives, and reads their absence as none", () => {
+        const pricedLines = { field: "rows", quantity: "count", unitPrice: "each" };
+        const derives = { chargeable: { rule: "dimensional-weight", inputs: { mass: { from: "grossGrams", combine: "sum" }, divisor: { field: "factor" } } } };
+        const { block } = parse({ design: { article: "billing" }, checkout: { pricedLines, derives } });
+        expect(block?.checkout.pricedLines).toEqual(pricedLines);
+        expect(block?.checkout.derives).toEqual(derives);
+        const bare = parse({ design: { article: "billing" } }).block;
+        expect(bare?.checkout.pricedLines).toBeNull();
+        expect(bare?.checkout.derives).toEqual({});
+    });
+
+    it("rejects a pricedLines mark missing a role, and a derives entry with a malformed input", () => {
+        const noPrice = parse({ design: { article: "billing" }, checkout: { pricedLines: { field: "rows", quantity: "count" } } });
+        expect(noPrice.block).toBeNull();
+        expect(noPrice.errors.some((e) => e.path === "$.block.checkout.pricedLines")).toBe(true);
+        const badInput = parse({ design: { article: "billing" }, checkout: { derives: { chargeable: { rule: "r", inputs: { mass: { from: "g", combine: "average" } } } } } });
+        expect(badInput.block).toBeNull();
+        expect(badInput.errors.some((e) => e.path === "$.block.checkout.derives")).toBe(true);
+    });
+
     // The drawer's cross-clause nesting (e.g. a proximity policy under the hand-off
     // clause's `handoff` field) is read from design.nestsUnder — it MUST round-trip.
     it("preserves design.nestsUnder", () => {

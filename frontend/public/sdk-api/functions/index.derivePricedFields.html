@@ -17,12 +17,13 @@
 <div class="tsd-signature tsd-anchor-link" id="derivepricedfields"><span class="tsd-kind-call-signature">derivePricedFields</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">clauseEntries</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-symbol">{</span><br/>        <span class="tsd-kind-property">clause</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">data</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">specs</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">clause</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span><a href="#derivepricedfields" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>The RFQ's priced fields inside the clauses, DERIVED from an agreement by
-declared field — each committed line's <code>unitPrice</code> in the clause declaring
-<code>lineItems</code>. The quoted figure itself is the commitment's payment, which
-the quote always moves; these are only the copies of it a clause carries.
-Spec-routed like every fill, naming no clause; empty when no clause
-declaring <code>lineItems</code> is composed or the spec cache is cold, and an empty
-list still quotes (the commitment's payment alone moves).</p>
+the spec's mark — the unit price of each committed line of every carried
+clause whose spec marks its priced lines (<code>block.checkout.pricedLines</code>,
+read through <code>specPricedLines</code>). The quoted figure itself is the
+commitment's payment, which the quote always moves; these are only the
+copies of it a clause carries. Empty when no carried clause marks priced
+lines or the spec cache is cold, and an empty list still quotes (the
+commitment's payment alone moves).</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -31,7 +32,7 @@ list still quotes (the commitment's payment alone moves).</p>
 <li><span><span class="tsd-kind-parameter">specs</span>: <a href="../interfaces/index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">clause</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L93">checkoutPlan.ts:93</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L98">checkoutPlan.ts:98</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

@@ -28,7 +28,7 @@ import {
     assertAgreementSignable,
     hashCommitmentStruct,
     profileValuesFor,
-    fillCommerceClause,
+    fillPricedLines,
     fillDerivedClauses,
     generateSalt,
     missingCatalogueMeasures,
@@ -38,6 +38,8 @@ import {
     resolveSubOrderPricing,
     agreementClauses,
     processDesignFollows,
+    publicForm,
+    type Agreement,
     type ProcessCheckoutLineItem,
     type HydratedProcessDesign,
     type PlannedProcessOrder,
@@ -183,7 +185,7 @@ export interface AssemblyCheckoutParams {
      *  node id — fills sub-orders the adopting seller's profile leaves
      *  unbound (buyer-assigned coordination). The price is the picker's
      *  resolved figure and `item` the picked catalog item (it becomes
-     *  the sub-order's commerce line item). Checkout-phase data, like the
+     *  the sub-order's priced line). Checkout-phase data, like the
      *  cart — never design-time clause activation. */
     subOrderSelections?: Record<string, {
         seller: `0x${string}`;
@@ -297,11 +299,23 @@ export async function executeAssemblyCheckout(
     // built; a race-formed one carries the winner's countersignature.
     const subOrders: { preview: OrderPreview; sellerSig?: `0x${string}` }[] = [];
 
-    const previewOf = (order: ReconstructedOrder): OrderPreview => ({
-        agreement: order.agreement,
-        checkoutHash: order.checkoutHash,
-        commitment: order.commitment,
-    });
+    // Each order's agreement in its public form, by order hash (lowercased):
+    // a sub-order's preview carries those of the orders it follows, so its
+    // seller can check its edges against the design (`followedOrderIssues`).
+    // The walk realizes parents before children, so each is here in time.
+    const publicByOrderHash = new Map<string, Agreement>();
+    const previewOf = (order: ReconstructedOrder): OrderPreview => {
+        publicByOrderHash.set(order.orderHash.toLowerCase(), publicForm(order.agreement, specs));
+        const followed = (order.agreement.follows ?? [])
+            .map((edge) => publicByOrderHash.get(edge.toLowerCase()))
+            .filter((a): a is Agreement => a !== undefined);
+        return {
+            agreement: order.agreement,
+            checkoutHash: order.checkoutHash,
+            commitment: order.commitment,
+            ...(followed.length > 0 && { followed }),
+        };
+    };
 
     await reconstructOrdersFromProcessDesign(hydrated, {
         buyer,
@@ -400,7 +414,7 @@ function checkoutNodes(
             // cart's line items, where a clause declaring them is composed.
             // The payment (the cart total) and the token go into the
             // commitment only.
-            const filled = fillCommerceClause(
+            const filled = fillPricedLines(
                 fillDerivedClauses(
                     { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) },
                     lineItems, specs,
@@ -466,7 +480,7 @@ function checkoutNodes(
             : translatedUnit !== undefined
                 ? translatedUnit * BigInt(pricing!.billedQuantity)
                 : pricing!.payment;
-        // Where a clause declaring `lineItems` is composed, the sub-order
+        // Where a clause marking priced lines (`block.checkout.pricedLines`) is composed, the sub-order
         // commits WHAT the payment buys: the contributor's resolved catalog
         // item (the same item the payment was priced from), or the buyer's
         // picked item on the unbound path. Rate items commit their
@@ -493,7 +507,7 @@ function checkoutNodes(
         // composing none (e.g. a service leg) → G7 absence. The topology
         // is the agreement format's leaf, which the WALK writes
         // (assembly-local parent ids → real order hashes), never a clause.
-        const filled = fillCommerceClause(
+        const filled = fillPricedLines(
             fillDerivedClauses(
                 { ...nodeClauses },
                 subLineItems ?? [], specs,

@@ -56,6 +56,15 @@ export interface CommitmentPayload {
      *  every other payload (a race draft prices at the candidate's posted
      *  figure; an offer is already priced). */
     quoteRequest?: QuoteRequestTerms;
+    /** The agreements of the orders this order follows (`agreement.follows`),
+     *  in their public form (`publicForm`: a private clause withheld, the
+     *  merkle root unchanged), carried by the party that built the edges so
+     *  the counter-signer can read each one's place in the design. Content,
+     *  never a claim: the counter-signer takes one only when its merkle root
+     *  equals the `checkoutHash` the chain records for that order, and checks
+     *  the edges itself (`followedOrderIssues`). Absent where the order
+     *  follows none, or the sender carries none. */
+    followed?: Agreement[];
 }
 
 /** A field inside the agreement's clauses that carries a copy of the quoted
