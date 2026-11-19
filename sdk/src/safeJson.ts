@@ -21,3 +21,26 @@ export function strippingReviver(key: string, value: unknown): unknown {
     if (DANGEROUS_KEYS.has(key)) return undefined;
     return value;
 }
+
+/**
+ * The path of the first `__proto__`, `constructor` or `prototype` key at any
+ * depth of `value` (`$.fields[0].constructor`), or `null` when it carries
+ * none. A document hashed with such a key hashes bytes no reader parsing with
+ * `strippingReviver` reproduces.
+ */
+export function strippedKeyPath(value: unknown, path = "$"): string | null {
+    if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i++) {
+            const found = strippedKeyPath(value[i], `${path}[${i}]`);
+            if (found !== null) return found;
+        }
+        return null;
+    }
+    if (value === null || typeof value !== "object") return null;
+    for (const key of Object.keys(value)) {
+        if (DANGEROUS_KEYS.has(key)) return `${path}.${key}`;
+        const found = strippedKeyPath((value as Record<string, unknown>)[key], `${path}.${key}`);
+        if (found !== null) return found;
+    }
+    return null;
+}

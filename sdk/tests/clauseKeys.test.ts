@@ -11,7 +11,8 @@ import { describe, expect, it } from "vitest";
 import { keccak256, toBytes, type Hex } from "viem";
 import { agreementLeaves, canonicalize } from "../src/agreement.js";
 import { agreementHashOf, resolveAuthoredClauseKeys, type RegisteredAgreement } from "../src/assembly.js";
-import { computeClauseKey } from "../src/discovery.js";
+import { anchorClauseSpec } from "../src/anchored.js";
+import { clauseKeyPreimage, computeClauseKey } from "../src/discovery.js";
 import { buildOrderAgreement } from "../src/projection.js";
 import { rawSpecOf, specSourceOf, viewOf } from "./specFixtures.js";
 
@@ -122,5 +123,33 @@ describe("the clause key covers the protocol half of a spec and leaves `block` o
         const { block: _block, ...protocol } = original[1];
         expect(before.keys[1]).toBe(keccak256(toBytes(canonicalize(protocol))));
         expect(before.keys[1]).not.toBe(keccak256(toBytes(canonicalize(original[1]))));
+    });
+});
+
+// Every reader parses a fetched spec with `__proto__`, `constructor` and
+// `prototype` keys stripped (`strippingReviver`, `anchorClauseSpec`), while a
+// plain `JSON.parse` keeps them and `canonicalize` writes them. A key computed
+// over such a spec is one no reader anchors, so the SDK refuses the spec where
+// a registrant computes its key or its preimage.
+describe("clause keys — a spec carrying a key every reader strips is refused", () => {
+    const text = (top: string, extra = ""): string =>
+        `{"clauseId":"figaro-x","version":1,"title":"X","description":"d","fields":[{"name":"x","type":"string","required":true${extra}}]${top}}`;
+    const spec = (top: string, extra = ""): unknown => JSON.parse(text(top, extra));
+
+    it.each([
+        ["a top-level constructor", spec(',"constructor":{"a":1}'), "$.constructor"],
+        ["a top-level __proto__", spec(',"__proto__":{"a":1}'), "$.__proto__"],
+        ["a prototype inside a field", spec("", ',"prototype":1'), "$.fields[0].prototype"],
+    ])("%s: computeClauseKey and clauseKeyPreimage throw, naming the key", (_label, raw, at) => {
+        expect(() => computeClauseKey(raw)).toThrow(`clause spec carries the key ${at}`);
+        expect(() => clauseKeyPreimage(raw)).toThrow(`clause spec carries the key ${at}`);
+    });
+
+    it("the same key inside `block` is outside the clause key and is not refused", () => {
+        expect(computeClauseKey(spec(',"block":{"design":{"constructor":1}}'))).toBe(computeClauseKey(spec("")));
+    });
+
+    it("a reader's stripped parse of the same bytes is not refused, and anchors the key of the spec without that key", () => {
+        expect(anchorClauseSpec(text(',"constructor":{"a":1}'), computeClauseKey(spec("")))).not.toBeNull();
     });
 });

@@ -1686,6 +1686,69 @@ the verifier's `_attestDigest` to the same type strings.
 
 ---
 
+## 40. The reference frontend reads a clause spec only when its bytes hash to the CID in the registered URI
+
+**Pattern**: `ClauseRegistry` stores a clause key and a `contentURI`, once, by
+whoever registers the key first (§ 7). The key is the hash of the spec without
+its `block` (`computeClauseKey`, `sdk/src/discovery.ts:102`), so a reader's key
+check (`anchorClauseSpec`, `sdk/src/anchored.ts:65`) accepts any `block`. The
+reference frontend's default fetcher (`defaultClauseSpecFetcher` in
+`frontend/lib/shared/clauseSpecSource.ts`) therefore checks a second hash
+before the key check: it recomputes the CID of the fetched bytes in the form
+the URI's CID states (`checkContentAddress`,
+`frontend/lib/shared/contentAddress.ts`) and accepts the bytes only on a match.
+Bytes that do not match, and a URI whose CID form it cannot recompute, are a
+permanent load failure (`getClauseSpecLoadError`), and every surface leaves the
+clause's place empty (CLAUDE.md § "Open world").
+
+The forms it recomputes are the ones the project's pinning produces: Kubo's
+`add` with its defaults (`pinBlob` and `pinJSON` in
+`frontend/lib/shared/ipfsService.ts`, `pinForm` in
+`frontend/scripts/populate-clauses.mjs`), which gives a CIDv0 over UnixFS
+dag-pb blocks under sha2-256; `add --cid-version=1`, which gives a raw block
+or a UnixFS root with raw leaves; and `block/put` with the raw codec under
+sha2-256 or keccak-256. A UnixFS file is rebuilt with Kubo's default import,
+262144-byte chunks under one balanced root of at most 174 links. Any other
+hash function, codec, chunker, a deeper tree, a path below the CID, a base36
+CID and an `http(s)://` locator are refused, never trusted.
+
+**Why it looks wrong**: The key already anchors every byte a party signs and
+every hash the chain or the proof program reads, and a hostile `block` cannot
+change any of them (§ 7). A second hash over presentation looks redundant, and
+refusing a `contentURI` the reader cannot verify looks harsher than the
+registry, which accepts any string.
+
+**Why it is correct**: The key leaves the `block` out so that a designer may
+change presentation without changing the clause; it does not make the `block`
+anyone's to change in transit. Without the CID check, the `block` the
+frontend reads is whatever the gateway or any transport between it and the
+reader serves: a field's label, its article and the reference tooling's rules
+for collecting the data (`docs/CLAUSES.md` § "Clause-spec format"). With it,
+the `block` is the one the registrant pinned, so a gateway is an untrusted
+transport, as it is for the key-anchored half. The check binds the bytes to
+the registrant's choice, not to an honest registrant: a first registrant
+chooses its own `block`, and § 7 states that residual. The check is the
+reference frontend's; the Core, the registries and the SDK read no `block`,
+and another frontend chooses its own rule. A URI form the frontend cannot
+recompute is refused rather than read, because a `block` read from such a URI
+is exactly the unchecked transport the check closes.
+
+A lying gateway makes the clause unreadable for the session, even when
+another gateway in the chain would serve the pinned bytes: the gateway chain
+(`walkGatewayChain` in `frontend/lib/shared/ipfsService.ts`) falls through on
+a failed read only, and the check runs after it.
+
+**Tests**: `frontend/tests/lib/contentAddress.test.ts` checks each form
+against the CID Kubo 0.42 reports for the same bytes (one chunk and three
+chunks, CIDv0 and CIDv1, sha2-256 and keccak-256, base32, base16 and
+base58btc), a changed byte as a mismatch, and each refused form as
+unverifiable. `frontend/tests/components/RegistryExplorerContentState.test.tsx`
+serves a spec with a swapped `block` under its registered CID through the
+default fetcher and holds that the registry page shows no row for the clause
+and no failure text.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -1729,3 +1792,4 @@ the verifier's `_attestDigest` to the same type strings.
 | 37 | The grain cap is as firm as the sibling's allowed values | spec format/data | One word in the sibling lifts a privacy cap | The engine knows one standard's grain and no closed list of the others; a designer makes the cap firm with an `enum` or `pattern` sibling; the filler of the field fills the sibling, and the counterparty reads both before it signs |
 | 38 | `RpgfMinter.claim` checks the period budget consistent counter data already bounds | reward-path | A check that cannot fire reads as dead code | A backstop like § 28: it states the budget in the minter, so a fault in the counter's tally is refused rather than minted from other designers' share |
 | 39 | `AttestBuyer` signs `processId` beside `orderHash`; `AttestSeller` does not | batch-path/evidence | The seller's message looks one field short | `orderHash = keccak256(processId ‖ structHash)` binds the process on every path, and both ids derive from the one target commitment; the buyer's extra field adds nothing to what is bound, and changing a type changes every signature and the verification key |
+| 40 | The reference frontend reads a clause spec only when its bytes hash to the CID in the registered URI | frontend/reader | The key already anchors everything a party signs, and the registry accepts any URI | The key leaves the `block` out, so without the CID the `block` read is the transport's choice; with it, the registrant's; a URI form the frontend cannot recompute is the unchecked transport, so it is refused |
