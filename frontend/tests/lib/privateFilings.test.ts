@@ -16,6 +16,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
 import { encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import {
+    PRIVATE_FILINGS_MAX_BLOB_CHARS,
     PRIVATE_FILINGS_MAX_BYTES,
     PRIVATE_FILINGS_MAX_COUNT,
     decryptPrivateFilings,
@@ -49,6 +50,9 @@ const sellerSign = (message: string) => SELLER_ACCOUNT.signMessage({ message });
 const buyerSign = (message: string) => BUYER_ACCOUNT.signMessage({ message });
 const ORDER = `0x${"cd".repeat(32)}` as Hex;
 const OTHER_ORDER = `0x${"ce".repeat(32)}` as Hex;
+/** The two wallets as holders of kept copies, on the devnet chain. */
+const AS_SELLER = { address: SELLER, chainId: 31337 };
+const AS_BUYER = { address: BUYER, chainId: 31337 };
 
 /** A clause no file in `clauses/` holds: two private witness stages, each
  *  with its blinding field. */
@@ -144,21 +148,21 @@ describe("what the receiver's page counts as a private filing", () => {
     });
 
     it("a filing whose clause's spec declares the set private counts", () => {
-        expect(privateFilingsNotHeld(ORDER, at(PRIVATE.clauseKey), SELLER)).toBe(1);
-        expect(privateFilingsInPlay(ORDER, at(PRIVATE.clauseKey), BUYER, SELLER)).toBe(true);
+        expect(privateFilingsNotHeld(ORDER, at(PRIVATE.clauseKey), SELLER, AS_BUYER)).toBe(1);
+        expect(privateFilingsInPlay(ORDER, at(PRIVATE.clauseKey), AS_BUYER, SELLER)).toBe(true);
     });
 
     it("a public filing does not count", () => {
-        expect(privateFilingsNotHeld(ORDER, at(PUBLIC.clauseKey), SELLER)).toBe(0);
-        expect(privateFilingsInPlay(ORDER, at(PUBLIC.clauseKey), BUYER, SELLER)).toBe(false);
+        expect(privateFilingsNotHeld(ORDER, at(PUBLIC.clauseKey), SELLER, AS_BUYER)).toBe(0);
+        expect(privateFilingsInPlay(ORDER, at(PUBLIC.clauseKey), AS_BUYER, SELLER)).toBe(false);
     });
 
     it("a filing whose clause's spec is not loaded, or whose read failed, does not count", () => {
         expect(getClauseSpec(UNREAD)).toBeUndefined();
         expect(getClauseSpec(FAILED.clauseKey)).toBeUndefined();
         for (const key of [UNREAD, FAILED.clauseKey]) {
-            expect(privateFilingsNotHeld(ORDER, at(key), SELLER)).toBe(0);
-            expect(privateFilingsInPlay(ORDER, at(key), BUYER, SELLER)).toBe(false);
+            expect(privateFilingsNotHeld(ORDER, at(key), SELLER, AS_BUYER)).toBe(0);
+            expect(privateFilingsInPlay(ORDER, at(key), AS_BUYER, SELLER)).toBe(false);
         }
     });
 });
@@ -174,12 +178,12 @@ describe("the private-filings ceremony", () => {
         const a = filingAt(1, "41.2");
         const b = filingAt(2, "39.8");
         const elsewhere = filingAt(1, "12.0", OTHER_ORDER);
-        for (const f of [a, b, elsewhere]) keepPrivateWitnessContent({ orderHash: f.orderHash, clauseId: f.clauseId, stage: f.stage, content: f.content });
+        for (const f of [a, b, elsewhere]) keepPrivateWitnessContent(AS_SELLER, { orderHash: f.orderHash, clauseId: f.clauseId, stage: f.stage, content: f.content });
         const events = [a, b, elsewhere].map((f) => ({ orderHash: f.orderHash, clauseId: f.clauseId, stage: f.stage, contentRef: f.contentRef, attester: SELLER }));
-        const own = heldOwnPrivateFilings(ORDER, events, SELLER);
+        const own = heldOwnPrivateFilings(ORDER, events, AS_SELLER);
         expect(own.map((f) => f.contentRef).sort()).toEqual([a.contentRef, b.contentRef].sort());
         // Another wallet's filings are not this wallet's to send.
-        expect(heldOwnPrivateFilings(ORDER, events, BUYER)).toEqual([]);
+        expect(heldOwnPrivateFilings(ORDER, events, AS_BUYER)).toEqual([]);
     });
 
     it("request, send and unseal round-trip two filings; each is kept once its attestation by the sender is on the chain", async () => {
@@ -206,13 +210,13 @@ describe("the private-filings ceremony", () => {
         })));
 
         // The second attestation is not on the chain yet: only the first is kept.
-        expect(keepConfirmedPrivateFilings(received!, [true, false])).toBe(1);
-        expect(readKeptWitnessContent(filings[0])).toBe(filings[0].content);
-        expect(readKeptWitnessContent(filings[1])).toBeNull();
+        expect(keepConfirmedPrivateFilings(AS_BUYER, received!, [true, false])).toBe(1);
+        expect(readKeptWitnessContent(AS_BUYER, filings[0])).toBe(filings[0].content);
+        expect(readKeptWitnessContent(AS_BUYER, filings[1])).toBeNull();
         // Once it appears, the second is kept too.
-        expect(keepConfirmedPrivateFilings(received!, [true, true])).toBe(2);
+        expect(keepConfirmedPrivateFilings(AS_BUYER, received!, [true, true])).toBe(2);
         for (const f of filings) {
-            const held = readHeldWitness(f);
+            const held = readHeldWitness(AS_BUYER, f);
             expect(held?.content).toBe(f.content);
             // The copy says it was received from the counterparty.
             expect(held?.received).toBe(true);
@@ -222,8 +226,8 @@ describe("the private-filings ceremony", () => {
 
     it("a copy received never stands for the attester's own: the attester's own copy is not marked received", () => {
         const f = filingAt(1, "41.2");
-        keepPrivateWitnessContent({ orderHash: f.orderHash, clauseId: f.clauseId, stage: f.stage, content: f.content });
-        expect(readHeldWitness(f)?.received).toBe(false);
+        keepPrivateWitnessContent(AS_SELLER, { orderHash: f.orderHash, clauseId: f.clauseId, stage: f.stage, content: f.content });
+        expect(readHeldWitness(AS_SELLER, f)?.received).toBe(false);
     });
 
     it("never sends an entry kept for another order", async () => {
@@ -245,9 +249,9 @@ describe("the private-filings ceremony", () => {
         const received = await sealRaw(JSON.stringify({ filings: [good, { ...bad, content: flipped }] }));
         expect(received!.filings).toEqual([good]);
         expect(received!.dropped).toBe(1);
-        expect(keepConfirmedPrivateFilings(received!, [true])).toBe(1);
-        expect(readKeptWitnessContent(good)).toBe(good.content);
-        expect(readKeptWitnessContent(bad)).toBeNull();
+        expect(keepConfirmedPrivateFilings(AS_BUYER, received!, [true])).toBe(1);
+        expect(readKeptWitnessContent(AS_BUYER, good)).toBe(good.content);
+        expect(readKeptWitnessContent(AS_BUYER, bad)).toBeNull();
     });
 
     it("an entry that names another order is dropped and the other is kept", async () => {
@@ -261,7 +265,7 @@ describe("the private-filings ceremony", () => {
     it("an entry not yet attested on the chain is kept nowhere", async () => {
         const f = filingAt(1, "41.2");
         const received = await sealRaw(JSON.stringify({ filings: [f] }));
-        expect(keepConfirmedPrivateFilings(received!, [false])).toBe(0);
+        expect(keepConfirmedPrivateFilings(AS_BUYER, received!, [false])).toBe(0);
         expect(Object.keys(window.localStorage).filter((k) => k.startsWith(KEPT_WITNESS_STORAGE_KEY))).toEqual([]);
     });
 
@@ -285,22 +289,48 @@ describe("the private-filings ceremony", () => {
         expect(refusedBytes!.refusal).toMatch(/at most/);
     });
 
+    it("a sealed message longer than any delivery within the bound is refused before it is opened", async () => {
+        // Not even ciphertext: a blob that would not decrypt reads as absence
+        // once opened, so a refusal here proves it was never opened.
+        const oversized = "A".repeat(PRIVATE_FILINGS_MAX_BLOB_CHARS + 1);
+        const { buyerPub } = await buyerAsks();
+        const received = await decryptPrivateFilings({ myAddress: BUYER, orderId: ORDER, senderPubKeyHex: buyerPub, blobB64: oversized });
+        expect(received).not.toBeNull();
+        expect(received!.filings).toEqual([]);
+        expect(received!.refusal).toMatch(/larger than any such delivery, so it was not opened/);
+    });
+
+    it("a delivery at the bound, the most filings and nearly the most content, seals under the length the receiver opens", async () => {
+        const { channel, sent, buyerPub } = await buyerAsks();
+        // 64 filings of 2016 encoded bytes each: 126 KiB of content in all.
+        const full = Array.from({ length: PRIVATE_FILINGS_MAX_COUNT }, (_, i) => filingAt(1, `${i}`.padEnd(1920, "x")));
+        expect(full.reduce((n, f) => n + (f.content.length - 2) / 2, 0)).toBeLessThanOrEqual(PRIVATE_FILINGS_MAX_BYTES);
+        const { blobB64 } = await sendPrivateFilings(channel, {
+            myAddress: SELLER, recipientAddress: BUYER, orderId: ORDER, recipientPubKeyHex: buyerPub, filings: full, signAuth: sellerSign,
+        });
+        expect(blobB64.length).toBeLessThanOrEqual(PRIVATE_FILINGS_MAX_BLOB_CHARS);
+        const sellerPub = sent.find((m) => m.kind === "pubkey" && m.value !== buyerPub)!.value;
+        const received = await decryptPrivateFilings({ myAddress: BUYER, orderId: ORDER, senderPubKeyHex: sellerPub, blobB64 });
+        expect(received!.refusal).toBeNull();
+        expect(received!.filings).toHaveLength(PRIVATE_FILINGS_MAX_COUNT);
+    });
+
     it("a received copy is never forwarded: it is no wallet's own filing in the browser that received it", () => {
         const f = filingAt(1, "41.2");
-        expect(keepReceivedWitnessContent(f)).toBe("kept");
+        expect(keepReceivedWitnessContent(AS_BUYER, f)).toBe("kept");
         const events = [{ orderHash: ORDER, clauseId: f.clauseId, stage: f.stage, contentRef: f.contentRef, attester: SELLER }];
         // Not even with the attester's own wallet connected in the receiver's browser.
-        expect(heldOwnPrivateFilings(ORDER, events, SELLER)).toEqual([]);
-        expect(heldOwnPrivateFilings(ORDER, events, BUYER)).toEqual([]);
+        expect(heldOwnPrivateFilings(ORDER, events, AS_SELLER)).toEqual([]);
+        expect(heldOwnPrivateFilings(ORDER, events, AS_BUYER)).toEqual([]);
     });
 
     it("a received entry never overwrites the copy this browser kept when it filed", () => {
         const f = filingAt(1, "41.2");
-        keepPrivateWitnessContent({ orderHash: f.orderHash, clauseId: f.clauseId, stage: f.stage, content: f.content });
-        expect(keepReceivedWitnessContent(f)).toBe("kept");
-        expect(readHeldWitness(f)?.received).toBe(false);
-        expect(keepConfirmedPrivateFilings({ filings: [f], dropped: 0, refusal: null }, [true])).toBe(1);
-        expect(readHeldWitness(f)?.received).toBe(false);
+        keepPrivateWitnessContent(AS_SELLER, { orderHash: f.orderHash, clauseId: f.clauseId, stage: f.stage, content: f.content });
+        expect(keepReceivedWitnessContent(AS_SELLER, f)).toBe("kept");
+        expect(readHeldWitness(AS_SELLER, f)?.received).toBe(false);
+        expect(keepConfirmedPrivateFilings(AS_SELLER, { filings: [f], dropped: 0, refusal: null }, [true])).toBe(1);
+        expect(readHeldWitness(AS_SELLER, f)?.received).toBe(false);
     });
 
     it("a payload that parses but holds no list of filings unseals to absence", async () => {
@@ -333,7 +363,7 @@ describe("the private-filings ceremony", () => {
         const received = await sealRaw(JSON.stringify({ filings: [a, a, b, { ...a, contentRef: a.contentRef.toUpperCase().replace("0X", "0x") }] }));
         expect(received!.filings).toEqual([a, b]);
         expect(received!.dropped).toBe(2);
-        expect(keepConfirmedPrivateFilings(received!, [true, true])).toBe(2);
+        expect(keepConfirmedPrivateFilings(AS_BUYER, received!, [true, true])).toBe(2);
     });
 
     it("a wrong key or a payload that does not parse unseals to absence", async () => {

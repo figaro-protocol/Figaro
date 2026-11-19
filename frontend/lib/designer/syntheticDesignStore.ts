@@ -169,6 +169,20 @@ function deserializeSnapshot(s: SerializedSnapshot): DesignSnapshot {
     return { ...s, orders: s.orders.map(deserializeOrder) };
 }
 
+/** The snapshot stored under `key`; null where none is stored, and null
+ *  where the stored value does not read as a snapshot of this shape: a
+ *  draft written under an earlier shape (an order whose fields have since
+ *  been renamed) is skipped, never thrown into the designer. */
+function readSnapshot(key: string): DesignSnapshot | null {
+    const data = readJsonStorage<SerializedSnapshot | null>(key, null);
+    if (!data || typeof data !== "object" || !Array.isArray(data.orders)) return null;
+    try {
+        return deserializeSnapshot(data);
+    } catch {
+        return null;
+    }
+}
+
 /** Whether two snapshots hold the same design: every field but the slug and
  *  the two timestamps, an absent map read as an empty one. */
 function sameDesign(a: DesignSnapshot, b: DesignSnapshot): boolean {
@@ -220,8 +234,7 @@ export function loadAutosave(owner: AutosaveOwner): DesignSnapshot | null {
             removeStorage(UNOWNED_AUTOSAVE_KEY);
         }
     }
-    const data = readJsonStorage<SerializedSnapshot | null>(autosaveKey(owner), null);
-    return data ? deserializeSnapshot(data) : null;
+    return readSnapshot(autosaveKey(owner));
 }
 
 export function clearAutosave(owner: AutosaveOwner): void {
@@ -269,12 +282,13 @@ export function saveNamedDraft(snap: DesignSnapshot): void {
 }
 
 export function loadNamedDraft(slug: string): DesignSnapshot | null {
-    const data = readJsonStorage<SerializedSnapshot | null>(`${DRAFT_PREFIX}${slug}`, null);
-    return data ? deserializeSnapshot(data) : null;
+    return readSnapshot(`${DRAFT_PREFIX}${slug}`);
 }
 
+/** The named drafts this browser can open: an index entry whose draft does
+ *  not read (`readSnapshot`) is left out of the list. */
 export function listNamedDrafts(): DraftIndexEntry[] {
-    return readIndex();
+    return readIndex().filter((e) => loadNamedDraft(e.slug) !== null);
 }
 
 /** Remove a named draft, its index entry and its autosave. */
@@ -307,7 +321,9 @@ export function discardPublishedDraft(published: DesignSnapshot): void {
  */
 export function uniqueDraftSlug(base: string, excludeSlug?: string | null): string {
     const taken = new Set(
-        listNamedDrafts()
+        // Every slug the index holds, an unreadable draft's included, so a
+        // new draft never takes the key of one this browser still keeps.
+        readIndex()
             .map((d) => d.slug)
             .filter((s) => s !== excludeSlug),
     );

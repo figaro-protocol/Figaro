@@ -8,7 +8,8 @@ import type { Agreement } from "@figaro-protocol/sdk";
 import { getAttestationsByOrder, type AttestationRecord } from "@/lib/composition/indexer";
 import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import { extractClauseData } from "@/lib/audit/clauseDataExtract";
-import { readHeldWitness, resolveHeldWitnessContent } from "@/lib/composition/witnessContent";
+import { heldWitnessReader, resolveHeldWitnessContent } from "@/lib/composition/witnessContent";
+import { useWitnessHolder } from "@/lib/composition/useWitnessHolder";
 import { decodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import { WitnessPinErasure } from "@/components/runtime/WitnessPinErasure";
 import {
@@ -135,6 +136,8 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
     // `describeAttestation`) resolve every clause's spec — INCLUDING a clause this
     // code has never seen. `version` bumps as specs land; it drives the recompute.
     const { version: clauseSpecsVersion } = useClauseSpecs();
+    // Whose kept copies this page reads: the wallet connected, on this chain.
+    const holder = useWitnessHolder();
 
     const checkoutHashes = useMemo(
         () => orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
@@ -243,7 +246,7 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                     const placeKey = `${att.orderHash.toLowerCase()}:${key}`;
                     let pending = contentByRef.get(placeKey);
                     if (!pending) {
-                        pending = resolveHeldWitnessContent(att);
+                        pending = resolveHeldWitnessContent(holder, att);
                         contentByRef.set(placeKey, pending);
                     }
                     jobs.push(pending.then((content) => {
@@ -265,7 +268,7 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
         })();
         return () => { canceled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [attestationsByOrder, clauseSpecsVersion]);
+    }, [attestationsByOrder, clauseSpecsVersion, holder]);
 
     // Per-order evidence: committed clause data (from the agreement) + the
     // sovereign process-log timelines (from the attestations). Both via the
@@ -274,7 +277,7 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
         return orders.map((order) => {
             const agreement = order.checkoutHash ? agreements.get(order.checkoutHash) : undefined;
             const clauseData = agreement ? extractClauseData(order, agreement) : null;
-            const processLogs = extractProcessLogs(order, attestationsByOrder.get(order.orderHash) ?? [], readHeldWitness);
+            const processLogs = extractProcessLogs(order, attestationsByOrder.get(order.orderHash) ?? [], heldWitnessReader(holder));
             // An agreement still in flight holds its order's block open, with
             // the loading line in the clauses' place.
             const agreementPending = !!order.checkoutHash && agreementReads.get(order.checkoutHash)?.status === "pending";
@@ -282,7 +285,7 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
         }).filter(({ clauseData, processLogs, agreementPending }) =>
             agreementPending || (clauseData && clauseData.clauses.length > 0) || processLogs.logs.length > 0,
         );
-    }, [orders, agreements, agreementReads, attestationsByOrder, clauseSpecsVersion]);
+    }, [orders, agreements, agreementReads, attestationsByOrder, clauseSpecsVersion, holder]);
 
     // What this evidence lacks, stated beside it, each part once. An agreement
     // still in flight is not listed: its order's loading line stands for it.
@@ -324,10 +327,10 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
             // The same held-content reader the evidence file passes: what
             // this browser holds is shown as held, and only what it does not
             // hold is named missing.
-            parts.push(...extractProcessLogs(order, attestationsByOrder.get(order.orderHash) ?? [], readHeldWitness).missing);
+            parts.push(...extractProcessLogs(order, attestationsByOrder.get(order.orderHash) ?? [], heldWitnessReader(holder)).missing);
         }
         return parts;
-    }, [orders, agreements, agreementReads, signaturesByOrder, attestationsRead.status, attestationsByOrder, clauseSpecsVersion]);
+    }, [orders, agreements, agreementReads, signaturesByOrder, attestationsRead.status, attestationsByOrder, clauseSpecsVersion, holder]);
 
     return (
         <section data-testid="audit-clause-evidence" className="space-y-6">

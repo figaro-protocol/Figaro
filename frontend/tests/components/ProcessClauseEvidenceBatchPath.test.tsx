@@ -24,7 +24,8 @@ vi.mock("@/lib/composition/indexer", () => ({ getAttestationsByOrder: (...a: unk
 vi.mock("@/lib/audit/signatureVerdicts", () => ({
     verifyOrderCommitSignatures: async () => ({ buyer: "valid", seller: "valid", transactionHash: null, batch: null }),
 }));
-vi.mock("@/lib/composition/witnessContent", () => ({ fetchWitnessContent: async () => null, resolveHeldWitnessContent: async () => null, readHeldWitness: () => null }));
+vi.mock("@/lib/composition/witnessContent", () => ({ fetchWitnessContent: async () => null, resolveHeldWitnessContent: async () => null, heldWitnessReader: () => () => null }));
+vi.mock("@/lib/composition/useWitnessHolder", () => ({ useWitnessHolder: () => null }));
 vi.mock("@/components/runtime/WitnessPinErasure", () => ({ WitnessPinErasure: () => null }));
 vi.mock("@/components/runtime/CredentialVerifyButton", () => ({ CredentialVerifyButton: () => null }));
 

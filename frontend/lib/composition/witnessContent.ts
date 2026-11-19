@@ -23,22 +23,28 @@
  * The private half: content whose encoded set is private is never pinned, so
  * its attester keeps the bytes (the blinding value is inside them) before
  * the attestation is sent (`keepPrivateWitnessContent`, called by the one
- * submitter every filing goes through, `useAttestationCoordinatorActions`). It is kept where a
- * party's device keeps its other raw evidence for a forum
- * (`deviceEvidence.ts`'s retained captures): localStorage through the one
- * storage seam, outliving the tab, one entry per witness under a key that
- * names its order, clause, stage and content reference. It is read back
- * only when the bytes hash to the reference (`readKeptWitnessContent`), and
- * its values are decoded from those checked bytes (`readKeptWitnessValues`).
- * The counterparty receives a copy only by asking for it, sealed to a key
- * that lives in its own tab (`lib/handoff/privateFilings.ts`); that copy is
- * kept in the same entry, marked `received` (`keepReceivedWitnessContent`).
- * The pages of this browser and the evidence file read it
- * (`resolveHeldWitnessContent`, `readHeldWitness`); no public reader does.
- * The copy belongs to the browser profile, not to a wallet: whoever opens
- * this profile reads it, with any wallet connected or none. A party that
- * clears its browser's storage loses it: the content is its own to keep and
- * export.
+ * submitter every filing goes through, `useAttestationCoordinatorActions`).
+ * It is kept in localStorage through the one storage seam, outliving the
+ * tab, one entry per witness under a key that names its holder (the chain
+ * and the wallet, `WitnessHolder`) and its place (order, clause, stage and
+ * content reference). It is read back only for that holder, the same wallet
+ * connected on the same chain, and only when the bytes hash to the
+ * reference (`readKeptWitnessContent`); its values are decoded from those
+ * checked bytes (`readKeptWitnessValues`). With no wallet connected, nothing
+ * is read and nothing is kept, so a filing is not sent. The counterparty
+ * receives a copy only by asking for it, sealed to a key that lives in its
+ * own tab (`lib/handoff/privateFilings.ts`); that copy is kept under the
+ * receiving wallet, marked `received` (`keepReceivedWitnessContent`). The
+ * holder's pages and evidence file read it (`resolveHeldWitnessContent`,
+ * `readHeldWitness`); no public reader does. The copy has no expiry: an open
+ * process has no timeout, and the content is evidence for as long as it
+ * stays open. The holder carries it out by its own export
+ * (`exportKeptWitnessContent`), brings it back into a browser by import
+ * (`importKeptWitnessContent`, each entry checked again) and removes it from
+ * the browser (`forgetHeldWitnessContent`). The bytes sit in the profile's
+ * storage as written: no page shows them to another wallet, but whoever
+ * inspects the profile's storage reads them, so on a shared device the
+ * holder exports and removes them (`docs/DATA_LAYER.md`).
  *
  * Erasure mirrors `profileErasure`/`unpinAgreement` (wallet pins → wallet
  * erases): best-effort unpin of the derived CID, idempotent, never throwing —
@@ -59,7 +65,7 @@ import {
 } from "@/lib/shared/ipfsService";
 import { attestationContentFields, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { hexEqual, isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
-import { readJsonStorage, removeStorage, writeJsonStorage } from "@/lib/shared/storage";
+import { listStorageKeys, readJsonStorage, removeStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 export interface PublishWitnessContentParams {
     /** The clause attested — its clause key, the hash of the canonical spec
@@ -186,12 +192,31 @@ export interface WitnessPlace {
     contentRef: Hex | string;
 }
 
-/** The storage key of one kept witness: the prefix, then its place. Every
+/** Whose copies a read or a write touches: the wallet connected, on the
+ *  chain the page shows. Null or undefined where no wallet is connected:
+ *  nothing is read then, and nothing is kept. */
+export interface WitnessHolder {
+    address: string;
+    chainId: number;
+}
+
+/** The holder's part of a storage key: the prefix, the chain, the wallet. */
+function holderPrefix(holder: WitnessHolder): string {
+    return [KEPT_WITNESS_STORAGE_KEY, holder.chainId, holder.address.toLowerCase(), ""].join(":");
+}
+
+/** The storage key of one kept witness: the holder, then its place. Every
  *  reader looks an entry up by a place an Attestation event carries, so an
  *  entry left by a rejected or reverted transaction is never shown:
  *  no event names its place. */
-function keptKey(place: WitnessPlace): string {
-    return [KEPT_WITNESS_STORAGE_KEY, place.orderHash, place.clauseId, place.stage, place.contentRef].map((p) => String(p).toLowerCase()).join(":");
+function keptKey(holder: WitnessHolder, place: WitnessPlace): string {
+    return holderPrefix(holder) + [place.orderHash, place.clauseId, place.stage, place.contentRef].map((p) => String(p).toLowerCase()).join(":");
+}
+
+/** A holder with a usable address and chain id; null otherwise. */
+function usableHolder(holder: WitnessHolder | null | undefined): WitnessHolder | null {
+    if (!holder || typeof holder.address !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(holder.address)) return null;
+    return Number.isSafeInteger(holder.chainId) && holder.chainId > 0 ? holder : null;
 }
 
 /** Whether the set a witness's content is encoded from holds a private
@@ -218,26 +243,29 @@ function encodedSetIsPrivate(clauseId: Hex | string, stage: number): boolean {
  * included, could open the attestation afterwards. Only the bytes are kept:
  * the values, the blinding value included, are decoded from them. Returns
  * `"public"` when the encoded set holds no private field (its bytes publish
- * at their reference, so nothing is kept), `"kept"` once stored, and
- * `"refused"` when the browser refuses the write: the caller then sends
- * nothing.
+ * at their reference, so nothing is kept), `"kept"` once stored under the
+ * holder, and `"refused"` when no wallet is connected or the browser refuses
+ * the write: the caller then sends nothing.
  */
-export function keepPrivateWitnessContent(params: {
+export function keepPrivateWitnessContent(holder: WitnessHolder | null | undefined, params: {
     orderHash: Hex | string;
     clauseId: Hex | string;
     stage: number;
     content: Hex;
 }): "public" | "kept" | "refused" {
     if (!encodedSetIsPrivate(params.clauseId, params.stage)) return "public";
-    const place = { ...params, contentRef: keccak256(params.content) };
-    return writeJsonStorage(keptKey(place), { content: params.content }) ? "kept" : "refused";
+    const owner = usableHolder(holder);
+    if (!owner) return "refused";
+    const place = { orderHash: params.orderHash, clauseId: params.clauseId, stage: params.stage, contentRef: keccak256(params.content) };
+    return writeJsonStorage(keptKey(owner, place), { content: params.content }) ? "kept" : "refused";
 }
 
-/** Remove the kept copy of one witness. The submitter calls it where the
- *  attestation the copy was kept for never got a transaction hash, so no
- *  event can ever name its place. */
-export function forgetKeptWitnessContent(place: WitnessPlace): void {
-    removeStorage(keptKey(place));
+/** Remove the holder's kept copy of one witness. The submitter calls it
+ *  where the attestation the copy was kept for never got a transaction hash,
+ *  so no event can ever name its place. */
+export function forgetKeptWitnessContent(holder: WitnessHolder | null | undefined, place: WitnessPlace): void {
+    const owner = usableHolder(holder);
+    if (owner) removeStorage(keptKey(owner, place));
 }
 
 /**
@@ -248,45 +276,54 @@ export function forgetKeptWitnessContent(place: WitnessPlace): void {
  * `received: true`: a forum reading the evidence file is told that this
  * copy came from the attester and was not filed from this browser. The
  * caller has checked that an Attestation event by the counterparty names
- * this place. Returns `"kept"` once stored, or when this browser already
- * holds a copy (which is never overwritten), and `"refused"` when the bytes
- * do not hash to the reference or the browser refuses the write.
+ * this place. Returns `"kept"` once stored under the receiving holder, or
+ * when it already holds a copy (which is never overwritten), and
+ * `"refused"` when no wallet is connected, the bytes do not hash to the
+ * reference or the browser refuses the write.
  */
-export function keepReceivedWitnessContent(place: WitnessPlace & { content: Hex }): "kept" | "refused" {
+export function keepReceivedWitnessContent(holder: WitnessHolder | null | undefined, place: WitnessPlace & { content: Hex }): "kept" | "refused" {
+    const owner = usableHolder(holder);
+    if (!owner) return "refused";
     if (!isBytes32Hex(place.contentRef) || !anchorAttestationContent(place.content, place.contentRef)) return "refused";
-    if (readKeptEntry(place)) return "kept";
-    return writeJsonStorage(keptKey(place), { content: place.content, received: true }) ? "kept" : "refused";
+    if (readKeptEntry(owner, place)) return "kept";
+    return writeJsonStorage(keptKey(owner, place), { content: place.content, received: true }) ? "kept" : "refused";
 }
 
-/** One kept entry, its bytes checked against the reference; null where this
- *  browser keeps none, or where the entry does not parse or its bytes do not
- *  hash to the reference. `received` is true only for a copy received from
- *  the counterparty (`keepReceivedWitnessContent`). */
-function readKeptEntry(place: WitnessPlace): { content: Anchored<Hex>; received: boolean } | null {
-    if (!isBytes32Hex(place.contentRef)) return null;
-    const entry = readJsonStorage<unknown>(keptKey(place), null);
-    if (!entry || typeof entry !== "object") return null;
+/** One kept entry's stored value, its bytes checked against the reference;
+ *  null where the value does not parse or its bytes do not hash to it. */
+function checkedEntry(entry: unknown, contentRef: Hex | string): { content: Anchored<Hex>; received: boolean } | null {
+    if (!isBytes32Hex(contentRef) || !entry || typeof entry !== "object") return null;
     const { content, received } = entry as { content?: unknown; received?: unknown };
     if (typeof content !== "string" || !/^0x([0-9a-fA-F]{2})*$/.test(content)) return null;
-    const anchored = anchorAttestationContent(content as Hex, place.contentRef);
+    const anchored = anchorAttestationContent(content as Hex, contentRef);
     return anchored ? { content: anchored, received: received === true } : null;
 }
 
-/** The kept bytes of a witness, checked against its content reference
- *  (`anchorAttestationContent`); null where this browser keeps none, or
- *  where the entry does not parse or its bytes do not hash to the
- *  reference. Only the bytes and the `received` mark are read; any other
- *  field an entry carries is never read. */
-export function readKeptWitnessContent(place: WitnessPlace): Anchored<Hex> | null {
-    return readKeptEntry(place)?.content ?? null;
+/** One entry the holder keeps, its bytes checked against the reference;
+ *  null where it keeps none, or where the entry does not parse or its bytes
+ *  do not hash to the reference. `received` is true only for a copy
+ *  received from the counterparty (`keepReceivedWitnessContent`). */
+function readKeptEntry(holder: WitnessHolder | null | undefined, place: WitnessPlace): { content: Anchored<Hex>; received: boolean } | null {
+    const owner = usableHolder(holder);
+    if (!owner || !isBytes32Hex(place.contentRef)) return null;
+    return checkedEntry(readJsonStorage<unknown>(keptKey(owner, place), null), place.contentRef);
+}
+
+/** The holder's kept bytes of a witness, checked against its content
+ *  reference (`anchorAttestationContent`); null where no wallet is
+ *  connected, where it keeps none, or where the entry does not parse or its
+ *  bytes do not hash to the reference. Only the bytes and the `received`
+ *  mark are read; any other field an entry carries is never read. */
+export function readKeptWitnessContent(holder: WitnessHolder | null | undefined, place: WitnessPlace): Anchored<Hex> | null {
+    return readKeptEntry(holder, place)?.content ?? null;
 }
 
 /** The values of a kept witness, the blinding value included, decoded from
  *  its checked bytes through the set they were encoded from (`stages[stage]`
  *  where declared, else the top-level fields: `attestationContentFields`); null unless the bytes check against the
  *  reference and decode under the clause's spec. */
-export function readKeptWitnessValues(place: WitnessPlace): Record<string, unknown> | null {
-    const content = readKeptWitnessContent(place);
+export function readKeptWitnessValues(holder: WitnessHolder | null | undefined, place: WitnessPlace): Record<string, unknown> | null {
+    const content = readKeptWitnessContent(holder, place);
     const spec = content ? getClauseSpec(String(place.clauseId)) : undefined;
     if (!content || !spec) return null;
     try {
@@ -296,22 +333,126 @@ export function readKeptWitnessValues(place: WitnessPlace): Record<string, unkno
     }
 }
 
-/** The content this browser holds for one attestation, checked against its
+/** The content the holder keeps for one attestation, checked against its
  *  reference, with its decoded values and whether the copy was received from
- *  the counterparty (`received`) or kept by its attester: the reader the
- *  evidence file and the audit page share (`HeldWitnessReader`), so the two
- *  name the same pieces missing. Null where this browser keeps none. */
-export function readHeldWitness(place: WitnessPlace): { content: Anchored<Hex>; values: Record<string, unknown> | null; received: boolean } | null {
-    const entry = readKeptEntry(place);
-    return entry ? { content: entry.content, values: readKeptWitnessValues(place), received: entry.received } : null;
+ *  the counterparty (`received`) or kept by its attester. Null where it
+ *  keeps none. */
+export function readHeldWitness(holder: WitnessHolder | null | undefined, place: WitnessPlace): { content: Anchored<Hex>; values: Record<string, unknown> | null; received: boolean } | null {
+    const entry = readKeptEntry(holder, place);
+    return entry ? { content: entry.content, values: readKeptWitnessValues(holder, place), received: entry.received } : null;
+}
+
+/** `readHeldWitness` bound to one holder: the reader the evidence file and
+ *  the audit page share (`HeldWitnessReader`), so the two name the same
+ *  pieces missing. */
+export function heldWitnessReader(holder: WitnessHolder | null | undefined): (place: WitnessPlace) => ReturnType<typeof readHeldWitness> {
+    return (place) => readHeldWitness(holder, place);
 }
 
 /**
- * A witness's bytes for its holder's own pages: the copy this browser kept,
+ * A witness's bytes for its holder's own pages: the copy the holder kept,
  * else the public pin (`fetchWitnessContent`). Both are checked against the
  * reference. Null where neither resolves; the page then shows nothing in
  * their place.
  */
-export async function resolveHeldWitnessContent(place: WitnessPlace, options: CappedFetchOptions = {}): Promise<Anchored<Hex> | null> {
-    return readKeptWitnessContent(place) ?? fetchWitnessContent(place.contentRef, options);
+export async function resolveHeldWitnessContent(holder: WitnessHolder | null | undefined, place: WitnessPlace, options: CappedFetchOptions = {}): Promise<Anchored<Hex> | null> {
+    return readKeptWitnessContent(holder, place) ?? fetchWitnessContent(place.contentRef, options);
+}
+
+// ── The holder's export, import and removal ──
+
+/** The format an export names, so an import reads only its own files. */
+export const KEPT_WITNESS_EXPORT_FORMAT = "figaro-kept-witness-content/1";
+
+/** One exported entry: its place, its bytes and how the holder came by it. */
+interface ExportedWitness extends WitnessPlace {
+    content: Hex;
+    received: boolean;
+}
+
+/** Every entry the holder keeps whose bytes check against its reference. */
+function heldEntries(holder: WitnessHolder): ExportedWitness[] {
+    const prefix = holderPrefix(holder);
+    const out: ExportedWitness[] = [];
+    for (const key of listStorageKeys(prefix)) {
+        const [orderHash, clauseId, stage, contentRef] = key.slice(prefix.length).split(":");
+        const checked = checkedEntry(readJsonStorage<unknown>(key, null), contentRef);
+        if (!checked || !isBytes32Hex(orderHash) || !isBytes32Hex(clauseId) || !/^\d{1,3}$/.test(stage)) continue;
+        out.push({ orderHash, clauseId, stage: Number(stage), contentRef, content: checked.content, received: checked.received });
+    }
+    return out;
+}
+
+/** How many private witnesses the holder keeps in this browser. */
+export function countHeldWitnessContent(holder: WitnessHolder | null | undefined): number {
+    const owner = usableHolder(holder);
+    return owner ? heldEntries(owner).length : 0;
+}
+
+/**
+ * The holder's own export of every private witness it keeps in this
+ * browser, as JSON text: the chain, the wallet, and each entry's place,
+ * bytes and `received` mark. Null where no wallet is connected or it keeps
+ * none. The file holds the content and its blinding values in plaintext:
+ * it is the holder's to keep.
+ */
+export function exportKeptWitnessContent(holder: WitnessHolder | null | undefined): string | null {
+    const owner = usableHolder(holder);
+    const entries = owner ? heldEntries(owner) : [];
+    if (!owner || entries.length === 0) return null;
+    return JSON.stringify({ format: KEPT_WITNESS_EXPORT_FORMAT, chainId: owner.chainId, address: owner.address.toLowerCase(), entries }, null, 2);
+}
+
+/**
+ * Bring an export back into this browser for the holder that made it. The
+ * file must name this format, this chain and this wallet; each entry is
+ * checked again (its place, and its bytes against its reference) and kept
+ * with its `received` mark. A copy the holder already keeps is never
+ * overwritten. Returns how many entries the holder now keeps from the file,
+ * how many it leaves out, and the refusal of a file that is not this
+ * holder's (no entry is read then).
+ */
+export function importKeptWitnessContent(
+    holder: WitnessHolder | null | undefined,
+    text: string,
+): { kept: number; dropped: number; refusal: string | null } {
+    const owner = usableHolder(holder);
+    if (!owner) return { kept: 0, dropped: 0, refusal: "Connect the wallet that exported this file." };
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(text);
+    } catch {
+        return { kept: 0, dropped: 0, refusal: "This file is not an export of private filings." };
+    }
+    const file = (parsed && typeof parsed === "object" ? parsed : {}) as { format?: unknown; chainId?: unknown; address?: unknown; entries?: unknown };
+    if (file.format !== KEPT_WITNESS_EXPORT_FORMAT || !Array.isArray(file.entries)) {
+        return { kept: 0, dropped: 0, refusal: "This file is not an export of private filings." };
+    }
+    if (file.chainId !== owner.chainId || typeof file.address !== "string" || !hexEqual(file.address, owner.address)) {
+        return { kept: 0, dropped: 0, refusal: "This file was exported by another wallet or on another chain." };
+    }
+    let kept = 0;
+    for (const raw of file.entries) {
+        const e = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+        const stage = e.stage;
+        if (!isBytes32Hex(e.orderHash) || !isBytes32Hex(e.clauseId) || typeof stage !== "number" || !Number.isInteger(stage) || stage < 0 || stage > 255) continue;
+        const place = { orderHash: e.orderHash as Hex, clauseId: e.clauseId as Hex, stage, contentRef: e.contentRef as string };
+        const checked = checkedEntry({ content: e.content, received: e.received }, place.contentRef);
+        if (!checked) continue;
+        if (readKeptEntry(owner, place)) { kept += 1; continue; }
+        const value = checked.received ? { content: checked.content, received: true } : { content: checked.content };
+        if (writeJsonStorage(keptKey(owner, place), value)) kept += 1;
+    }
+    return { kept, dropped: file.entries.length - kept, refusal: null };
+}
+
+/** Remove from this browser every private witness the holder keeps. Returns
+ *  how many entries it deletes. The content is then gone from this
+ *  browser: its export, where the holder made one, is the copy left. */
+export function forgetHeldWitnessContent(holder: WitnessHolder | null | undefined): number {
+    const owner = usableHolder(holder);
+    if (!owner) return 0;
+    const keys = listStorageKeys(holderPrefix(owner));
+    for (const key of keys) removeStorage(key);
+    return keys.length;
 }

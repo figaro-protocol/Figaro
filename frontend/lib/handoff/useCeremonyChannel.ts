@@ -86,7 +86,13 @@ export interface UseCeremonyChannelResult<T> {
     peerPubKey: string | null;
     /** True once this session has sent a request (keypair in sessionStorage). */
     requested: boolean;
-    setRequested: (requested: boolean) => void;
+    /** True once this page sent the request. A request found only by its
+     *  keypair was sent by an earlier load of this tab, or by the tab this
+     *  one was duplicated from (a browser copies session storage into a
+     *  duplicated tab): the page may then send it again, with the same key. */
+    requestedHere: boolean;
+    /** Mark the request sent from this page. */
+    markRequested: () => void;
     /** The counterparty's decrypted payload, once both halves arrived. */
     received: T | null;
     /** The on-chain anchor verdict for `received`: verified once every
@@ -117,6 +123,11 @@ export function useCeremonyChannel<T>(
     const [peerTagged, setPeerPubKey] = useState<Tagged<string>>(null);
     const [blobTagged, setBlob] = useState<Tagged<string>>(null);
     const [requested, setRequested] = useState(false);
+    const [requestedHere, setRequestedHere] = useState(false);
+    const markRequested = useCallback(() => {
+        setRequested(true);
+        setRequestedHere(true);
+    }, []);
     const [receivedTagged, setReceived] = useState<Tagged<T | null>>(null);
     const [anchoredTagged, setAnchored] = useState<Tagged<readonly boolean[]>>(null);
     const channel = current(channelTagged, null);
@@ -154,6 +165,7 @@ export function useCeremonyChannel<T>(
         });
         // A keypair in sessionStorage marks a request already sent this session.
         setRequested(getOrderEcdhKeypair(address, ceremonyId) !== null);
+        setRequestedHere(false);
         return () => {
             disposed = true;
             for (const u of unsubs) u();
@@ -195,7 +207,7 @@ export function useCeremonyChannel<T>(
         };
     }, [enabled, address, peerPubKey, blob, orderHash, counterparty, publicClient, chainId, decrypt, expectedAnchor, ceremonyKey]);
 
-    return { channel, peerPubKey, requested, setRequested, received, anchored, anchoredEach };
+    return { channel, peerPubKey, requested, requestedHere, markRequested, received, anchored, anchoredEach };
 }
 
 /** How long a receiver waits before it reads the order's attestations again. */
@@ -272,7 +284,7 @@ export function useCeremonyPanel<T>(options: UseCeremonyPanelOptions<T>) {
     const ceremony = useCeremonyChannel<T>({
         address, enabled: role !== null, ceremonyId, orderHash, counterparty, decrypt, expectedAnchor,
     });
-    const { channel, peerPubKey, setRequested } = ceremony;
+    const { channel, peerPubKey, markRequested } = ceremony;
 
     const handleRequest = useCallback(async () => {
         if (!channel || !address || !walletClient) return;
@@ -285,13 +297,13 @@ export function useCeremonyPanel<T>(options: UseCeremonyPanelOptions<T>) {
                 orderId: orderHash,
                 signAuth: (message) => walletClient.signMessage({ message }),
             });
-            setRequested(true);
+            markRequested();
         } catch (e) {
             setError(extractErrorMessage(e, "Request failed."));
         } finally {
             setBusy(false);
         }
-    }, [channel, address, walletClient, counterparty, orderHash, setRequested, request]);
+    }, [channel, address, walletClient, counterparty, orderHash, markRequested, request]);
 
     const deliver = useCallback(async <R,>(
         failureMessage: string,

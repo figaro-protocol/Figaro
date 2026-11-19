@@ -26,6 +26,7 @@ import { decodeContentFromSpec, declaredStageFields } from "@figaro-protocol/sdk
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import { resolveHeldWitnessContent } from "@/lib/composition/witnessContent";
+import { useWitnessHolder } from "@/lib/composition/useWitnessHolder";
 import {
     compareStageContent,
     groupAttestationsByStage,
@@ -64,6 +65,8 @@ function verdictText(comparison: StageComparison, labelOf: (name: string) => str
 
 export function StageAttestationComparison({ attestations }: Props) {
     const { version: clauseSpecsVersion } = useClauseSpecs();
+    // Whose kept copies this page reads: the wallet connected, on this chain.
+    const holder = useWitnessHolder();
 
     const groups = useMemo(
         () => groupAttestationsByStage(attestations, takesPart),
@@ -83,9 +86,9 @@ export function StageAttestationComparison({ attestations }: Props) {
                 if (next.has(key)) return;
                 next.set(key, null);
                 const spec = getClauseSpec(att.clauseId);
-                // The copy this browser kept of its own private filing, else
+                // The copy the holder kept of a private filing, else
                 // the public pin; a filing neither holds shows nothing.
-                const content = spec ? await resolveHeldWitnessContent(att) : null;
+                const content = spec ? await resolveHeldWitnessContent(holder, att) : null;
                 if (!spec || !content) return;
                 try {
                     next.set(key, decodeContentFromSpec(spec, content, { stage: att.stage }));
@@ -96,7 +99,7 @@ export function StageAttestationComparison({ attestations }: Props) {
             if (!canceled) setContents(next);
         })();
         return () => { canceled = true; };
-    }, [groups]);
+    }, [groups, holder]);
 
     if (groups.length === 0) return null;
 

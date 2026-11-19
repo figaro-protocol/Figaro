@@ -26,10 +26,11 @@ vi.mock("@/lib/audit/signatureVerdicts", () => ({ verifyOrderCommitSignatures: a
 vi.mock("@/lib/composition/witnessContent", () => ({
     resolveHeldWitnessContent: async () => null,
     // This device holds the content of one attestation only.
-    readHeldWitness: (place: { contentRef: string }) =>
+    heldWitnessReader: () => (place: { contentRef: string }) =>
         place.contentRef === HELD_REF ? { content: "0x00", values: { reading: "7" } } : null,
 }));
 vi.mock("@/components/runtime/WitnessPinErasure", () => ({ WitnessPinErasure: () => null }));
+vi.mock("@/lib/composition/useWitnessHolder", () => ({ useWitnessHolder: () => ({ address: "0x0000000000000000000000000000000000000002", chainId: 31337 }) }));
 vi.mock("@/components/runtime/CredentialVerifyButton", () => ({ CredentialVerifyButton: () => null }));
 
 import { ProcessClauseEvidence } from "@/app/(app)/audit/_components/ProcessClauseEvidence";

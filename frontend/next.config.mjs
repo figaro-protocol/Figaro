@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import * as viemChains from "viem/chains";
 // `next/constants` has no ESM export map entry in this Next version, so the
 // phase is matched by its documented literal value.
 const PHASE_PRODUCTION_BUILD = 'phase-production-build';
@@ -62,7 +63,40 @@ function assertXmtpNetworkNamedInProductionBuild() {
     }
 }
 
-// STATIC EXPORT. The frontend is a protocol surface with ZERO server routes —
+// The IPFS node a build names (`NEXT_PUBLIC_IPFS_API_URL`) is compiled in, so
+// every visitor of that build would pin through that one node. The devnet and
+// the e2e harness name their local Kubo; a build for a public chain names
+// none: each wallet pins through its own node or a service it chooses
+// (`lib/shared/ipfsService.ts` `activePublishTarget`). The chain is told as
+// `lib/shared/chains.ts` `chainNamed` tells it: `NEXT_PUBLIC_CHAIN` unset is
+// the devnet, and a name is a key of viem's registry. A registry chain whose
+// RPC is the loopback (anvil, foundry, hardhat, localhost) is a local chain;
+// every other is public. The e2e harness (FIGARO_ALLOW_TEST_HELPERS=1) is not
+// a deploy and keeps its local node.
+function isPublicChainBuild() {
+    const name = (process.env.NEXT_PUBLIC_CHAIN ?? '').trim();
+    if (!name) return false;
+    const chain = viemChains[name];
+    // A name the registry does not hold is refused by `chainNamed` when the
+    // bundle loads; here it is not a local chain, so it counts as public.
+    if (typeof chain !== 'object' || chain === null || !('id' in chain)) return true;
+    const rpcs = chain.rpcUrls?.default?.http ?? [];
+    return !rpcs.some((u) => /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(u));
+}
+
+function assertNoIpfsNodeInPublicChainBuild() {
+    if (process.env.FIGARO_ALLOW_TEST_HELPERS === '1') return;
+    const node = (process.env.NEXT_PUBLIC_IPFS_API_URL ?? '').trim();
+    if (node && isPublicChainBuild()) {
+        throw new Error(
+            `Refusing to build: NEXT_PUBLIC_IPFS_API_URL is "${node}" in a build for the public chain ` +
+            `"${process.env.NEXT_PUBLIC_CHAIN}". Every visitor would pin through that one node; a public build names ` +
+            `none, and each wallet pins through its own node or a service it chooses. Unset it for this build.`,
+        );
+    }
+}
+
+// STATIC EXPORT.The frontend is a protocol surface with ZERO server routes —
 // every page reads chain + IPFS client-side (reads-at-edge). `output: 'export'`
 // prerenders each route to static HTML at build time (real content for
 // curl/crawlers) and ships it as a plain file tree in `out/`, servable from any
@@ -153,6 +187,7 @@ export default function config(phase) {
     if (phase === PHASE_PRODUCTION_BUILD) {
         assertNoTestFlagsInProductionBuild();
         assertXmtpNetworkNamedInProductionBuild();
+        assertNoIpfsNodeInPublicChainBuild();
     }
     return nextConfig;
 }

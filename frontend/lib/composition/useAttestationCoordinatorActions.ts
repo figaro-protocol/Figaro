@@ -20,7 +20,7 @@ import {
     hashClauseData,
     type Commitment,
 } from "@figaro-protocol/sdk";
-import { forgetKeptWitnessContent, keepPrivateWitnessContent, publishWitnessContent, readKeptWitnessContent } from "@/lib/composition/witnessContent";
+import { forgetKeptWitnessContent, keepPrivateWitnessContent, publishWitnessContent, readKeptWitnessContent, type WitnessHolder } from "@/lib/composition/witnessContent";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
 
@@ -163,8 +163,12 @@ export function useAttestationCoordinatorActions() {
         // returns a hash the copy stays, whether the transaction lands,
         // reverts or its outcome is unknown.
         let keptUnsent: { orderHash: Hex; clauseId: Hex; stage: number; contentRef: Hex } | null = null;
+        // The copy is kept for the attesting wallet on the chain the order
+        // is read from (`loadCommitment` refuses where there is none).
+        let holder: WitnessHolder | null = null;
         try {
             const target = await loadCommitment(orderHash);
+            holder = publicClient?.chain ? { address: account, chainId: publicClient.chain.id } : null;
             const { clauseDataHash, proof } = await buildReceipt(target.checkoutHash as Hex, clauseId);
             // Re-assert (content omitted) ⇒ contentRef IS the committed clause's
             // fingerprint; otherwise bind the runtime content by its hash. The
@@ -182,8 +186,8 @@ export function useAttestationCoordinatorActions() {
             // A copy this browser held before the filing began is never
             // removed by it.
             const place = { orderHash, clauseId, stage, contentRef };
-            const heldBefore = content !== undefined && readKeptWitnessContent(place) !== null;
-            const kept = content ? keepPrivateWitnessContent({ orderHash, clauseId, stage, content }) : "public";
+            const heldBefore = content !== undefined && readKeptWitnessContent(holder, place) !== null;
+            const kept = content ? keepPrivateWitnessContent(holder, { orderHash, clauseId, stage, content }) : "public";
             if (kept === "refused") {
                 const title = getClauseSpec(clauseId)?.title ?? "clause";
                 throw new Error(`This browser could not keep the private content of this ${title} attestation, so it was not sent: without that copy no one could open the attestation later.`);
@@ -218,7 +222,7 @@ export function useAttestationCoordinatorActions() {
                 failureMessage,
             });
         } catch (cause: unknown) {
-            if (keptUnsent) forgetKeptWitnessContent(keptUnsent);
+            if (keptUnsent) forgetKeptWitnessContent(holder, keptUnsent);
             const message = extractErrorMessage(cause, failureMessage);
             setError(message);
             throw new Error(message);

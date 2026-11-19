@@ -60,7 +60,7 @@ export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: Inte
 
     // Both parties send ECDH pubkeys on the order id itself.
     const {
-        role, channel, peerPubKey, requested, received: detail, anchored, busy, error, handleRequest, deliver, waitingLabel, requestLabel,
+        role, channel, peerPubKey, requested, requestedHere, received: detail, anchored, busy, error, handleRequest, deliver, waitingLabel, requestLabel,
     } = useCeremonyPanel<AddresseeBlock>({
         ceremonyId: orderHash, orderHash, buyer, seller, decryptBlob: decryptAddressDetail, expectedAnchor,
         request: requestAddressDetail,
@@ -113,7 +113,7 @@ export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: Inte
             {/* Ask for the counterparty's detail. */}
             {!detail && (
                 <CeremonyRequestButton
-                    label={requestLabel} waitingLabel={waitingLabel} requested={requested} busy={busy}
+                    label={requestLabel} waitingLabel={waitingLabel} requested={requested} requestedHere={requestedHere} busy={busy}
                     ready={!!channel} onRequest={handleRequest} testId="interaction-address-request"
                 />
             )}

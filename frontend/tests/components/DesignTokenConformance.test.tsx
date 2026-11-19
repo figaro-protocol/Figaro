@@ -26,7 +26,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { colorTokens } from "@/lib/shared/designTokenValues";
 
 const accountMock = vi.fn(() => ({ address: undefined as string | undefined }));
-vi.mock("wagmi", () => ({ useAccount: () => accountMock() }));
+vi.mock("wagmi", () => ({ useAccount: () => accountMock(), useChainId: () => 31337 }));
 
 const workspaceMock = vi.fn();
 vi.mock("@/hooks/useSemanticProcessWorkspace", () => ({ useSemanticProcessWorkspace: () => workspaceMock() }));

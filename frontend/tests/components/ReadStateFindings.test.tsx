@@ -35,6 +35,7 @@ const m = vi.hoisted(() => ({
 vi.mock("wagmi", () => ({
     useAccount: () => ({ address: WALLET, isConnected: true }),
     usePublicClient: () => m.client,
+    useChainId: () => 31337,
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => undefined, replace: (h: string) => m.replace(h) }) }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));

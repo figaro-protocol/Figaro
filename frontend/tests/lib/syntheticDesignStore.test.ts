@@ -19,10 +19,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { agreementHashOf, buildOrderAgreement, serializeProcessDesign } from "@figaro-protocol/sdk";
 import {
     discardPublishedDraft,
+    listNamedDrafts,
     loadAutosave,
     loadNamedDraft,
+    resumeNamedDraft,
     saveAutosave,
     saveNamedDraft,
+    uniqueDraftSlug,
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import {
@@ -320,5 +323,44 @@ describe("syntheticDesignStore — publishing a draft removes its autosaves", ()
         discardPublishedDraft(published);
         expect(designerKeys()).toEqual(["figaro:designer:autosave:new", "figaro:designer:drafts"]);
         expect(loadAutosave(null)!.name).toBe("Other work");
+    });
+});
+
+describe("syntheticDesignStore — a draft saved under an earlier shape", () => {
+    beforeEach(() => window.localStorage.clear());
+
+    /** A draft whose order carries the fields as they were named before
+     *  the renaming: `currency` and `deadline`, no `token`, no `commitDeadline`. */
+    const earlierDraft = (slug: string) => ({
+        slug, name: "Earlier", processId: `0x${"11".repeat(32)}`, nextOrderIndex: 1, nextSellerIndex: 1,
+        orders: [{
+            orderHash: `0x${"22".repeat(32)}`, processId: `0x${"11".repeat(32)}`,
+            buyer: `0x${"00".repeat(20)}`, seller: `0x${"00".repeat(20)}`,
+            currency: `0x${"33".repeat(20)}`, deadline: "0", payment: "0", state: 0, salt: "0",
+        }],
+        createdAt: 1, updatedAt: 1,
+    });
+
+    it("loading it skips it quietly, and a readable draft beside it still opens and lists", () => {
+        window.localStorage.setItem("figaro:designer:drafts:earlier", JSON.stringify(earlierDraft("earlier")));
+        window.localStorage.setItem("figaro:designer:autosave:new", JSON.stringify(earlierDraft("new")));
+        window.localStorage.setItem("figaro:designer:autosave:drafts:earlier", JSON.stringify(earlierDraft("earlier")));
+        window.localStorage.setItem("figaro:designer:drafts", JSON.stringify([{ slug: "earlier", name: "Earlier", updatedAt: 1, orderCount: 1 }]));
+        const session = startSyntheticSession();
+        const root = createSyntheticRootOrder(session);
+        saveNamedDraft({
+            slug: "current", name: "Current", processId: session.processId,
+            nextOrderIndex: session.nextOrderIndex, nextSellerIndex: session.nextSellerIndex,
+            orders: [root.order], createdAt: 2, updatedAt: 2,
+        });
+
+        expect(() => loadNamedDraft("earlier")).not.toThrow();
+        expect(loadNamedDraft("earlier")).toBeNull();
+        expect(loadAutosave(null)).toBeNull();
+        expect(resumeNamedDraft("earlier")).toBeNull();
+        expect(loadNamedDraft("current")?.orders[0].orderHash).toBe(root.order.orderHash);
+        expect(listNamedDrafts().map((d) => d.slug)).toEqual(["current"]);
+        // The unreadable draft's slug stays taken: a new draft never writes over it.
+        expect(uniqueDraftSlug("earlier")).toBe("earlier-2");
     });
 });

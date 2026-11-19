@@ -240,6 +240,9 @@ NEXT_PUBLIC_DEPLOYMENT_BLOCK=
 # (scripts/deploy-local.sh). A public build names none: each publishing wallet
 # pins through its own node or a pinning service it chose, set in the browser
 # at /members/edit/endpoints. Unset or empty, a browser with neither publishes nothing.
+# `next build` refuses it for a public chain (NEXT_PUBLIC_CHAIN set to a chain whose
+# RPC is not the loopback) unless FIGARO_ALLOW_TEST_HELPERS=1, the e2e harness's opt-in
+# (`assertNoIpfsNodeInPublicChainBuild` in frontend/next.config.mjs).
 NEXT_PUBLIC_IPFS_API_URL=http://127.0.0.1:5001
 NEXT_PUBLIC_IPFS_GATEWAY_URL=http://127.0.0.1:8080
 # Optional second gateway for READS: tried when the primary fails a read (non-OK
