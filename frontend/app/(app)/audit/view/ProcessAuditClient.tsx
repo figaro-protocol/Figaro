@@ -51,10 +51,10 @@ function ProcessDispute({ processId, orders }: { processId: string; orders: Orde
 }
 
 /** The page body: the `process` query parameter through `QueryParamPage`, which
- *  renders nothing for a missing or malformed process id. */
+ *  says in one line that a missing or malformed process id names none. */
 export function ProcessAuditClient() {
     return (
-        <QueryParamPage param="process" validate={processIdParam}>
+        <QueryParamPage param="process" validate={processIdParam} shows="the evidence file of one process">
             {(processId) => <ProcessAudit processId={processId} />}
         </QueryParamPage>
     );

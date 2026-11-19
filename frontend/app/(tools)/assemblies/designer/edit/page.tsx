@@ -13,11 +13,12 @@ import { EditAssemblyClient } from "./EditAssemblyClient";
  * which spawns a new local draft under a fresh slug before routing here.
  *
  * The slug is an open-world id, so it rides in a query param
- * (`QueryParamPage`); a missing slug renders nothing.
+ * (`QueryParamPage`); a missing slug names no assembly, and the page says so
+ * in one line.
  */
 export default function Page() {
     return (
-        <QueryParamPage param="slug" validate={slugParam}>
+        <QueryParamPage param="slug" validate={slugParam} shows="one assembly on the design canvas">
             {(slug) => <EditAssemblyClient slug={slug} />}
         </QueryParamPage>
     );
