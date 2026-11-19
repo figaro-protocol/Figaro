@@ -26,6 +26,13 @@ describe("withInlineScriptPolicy", () => {
         expect(out).toContain(sha("b()"));
     });
 
+    it("hashes a script in either case, and one whose end tag carries an attribute, as a browser ends it", () => {
+        const out = withInlineScriptPolicy(page(`<SCRIPT SRC="/_next/b.js"></SCRIPT>`, `<SCRIPT>d()</SCRIPT><script>e()</script foo="bar">`));
+        expect(out).toContain(sha("d()"));
+        expect(out).toContain(sha("e()"));
+        expect(out).not.toContain(sha(""));
+    });
+
     it("is idempotent: a second pass replaces the policy, never stacks a second one", () => {
         const once = withInlineScriptPolicy(page("", "<script>c()</script>"));
         const twice = withInlineScriptPolicy(once);

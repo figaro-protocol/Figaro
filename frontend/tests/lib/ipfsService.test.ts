@@ -590,7 +590,7 @@ describe("ipfsService", () => {
             const res = await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmFresh111111111111111111111111111111111111111/spec.json", {
                 fetch: async (u) => {
                     seen.push(u);
-                    return u.startsWith("https://public.example") ? okResponse("{}") : failedResponse(504);
+                    return new URL(u).origin === "https://public.example" ? okResponse("{}") : failedResponse(504);
                 },
             });
             expect(res.ok).toBe(true);
@@ -611,7 +611,7 @@ describe("ipfsService", () => {
         it("returns the LAST outcome when every gateway fails — callers' !ok branch is unchanged", async () => {
             vi.stubEnv("NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL", "https://public.example");
             const res = await fetchCappedContent("http://127.0.0.1:8080/ipfs/QmMissing1111111111111111111111111111111111111", {
-                fetch: async (u) => failedResponse(u.startsWith("https://public.example") ? 404 : 504),
+                fetch: async (u) => failedResponse(new URL(u).origin === "https://public.example" ? 404 : 504),
             });
             expect(res.ok).toBe(false);
             expect(res.status).toBe(404);

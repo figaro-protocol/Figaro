@@ -25,9 +25,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-
-const ROOT = path.resolve(process.argv[2] || process.env.SERVE_DIR || "out");
-const PORT = Number(process.argv[3] || process.env.PORT || 3000);
+import { fileURLToPath } from "node:url";
 
 const MIME = {
     ".html": "text/html; charset=utf-8",
@@ -51,27 +49,32 @@ const MIME = {
     ".wasm": "application/wasm",
 };
 
-// Resolve a request pathname to an on-disk file, or null if none exists.
-// Order: exact file → `.html` → `/index.html`.
-function resolveFile(pathname) {
+/**
+ * Resolve a request pathname to a file under `root`, or null if none exists.
+ * Order: exact file → `.html` → `/index.html`. A path that resolves outside
+ * `root` (a `..`, an encoded `%2e%2e`, a sibling directory sharing `root`'s
+ * name as a prefix) is never read.
+ */
+export function resolveFile(root, pathname) {
+    const base = path.resolve(root);
     let rel;
     try {
         rel = decodeURIComponent(pathname);
     } catch {
         return null;
     }
-    // Normalize and confine to ROOT (block path traversal).
-    const abs = path.normalize(path.join(ROOT, rel));
-    if (abs !== ROOT && !abs.startsWith(ROOT + path.sep)) return null;
-
+    const abs = path.join(base, rel);
     const candidates =
         rel === "/" || rel === ""
-            ? [path.join(ROOT, "index.html")]
+            ? [path.join(base, "index.html")]
             : [abs, abs + ".html", path.join(abs, "index.html")];
 
     for (const c of candidates) {
+        // Each candidate is resolved and confined to the root before the disk is read.
+        const file = path.resolve(c);
+        if (!file.startsWith(base + path.sep)) continue;
         try {
-            if (fs.statSync(c).isFile()) return c;
+            if (fs.statSync(file).isFile()) return file;
         } catch {
             // not this candidate
         }
@@ -95,27 +98,32 @@ function sendFile(req, res, file, status) {
     stream.pipe(res);
 }
 
-const server = http.createServer((req, res) => {
-    const pathname = (req.url || "/").split("?")[0];
-    const file = resolveFile(pathname);
-    if (file) {
-        sendFile(req, res, file, 200);
-        return;
-    }
-    const notFound = path.join(ROOT, "404.html");
-    if (fs.existsSync(notFound)) {
-        sendFile(req, res, notFound, 404);
-    } else {
-        res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-        res.end("Not found");
-    }
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+    const ROOT = path.resolve(process.argv[2] || process.env.SERVE_DIR || "out");
+    const PORT = Number(process.argv[3] || process.env.PORT || 3000);
 
-// A stray socket/stream error must never take the process down.
-server.on("clientError", (_err, socket) => {
-    if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
-});
+    const server = http.createServer((req, res) => {
+        const pathname = (req.url || "/").split("?")[0];
+        const file = resolveFile(ROOT, pathname);
+        if (file) {
+            sendFile(req, res, file, 200);
+            return;
+        }
+        const notFound = path.join(ROOT, "404.html");
+        if (fs.existsSync(notFound)) {
+            sendFile(req, res, notFound, 404);
+        } else {
+            res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+            res.end("Not found");
+        }
+    });
 
-server.listen(PORT, () => {
-    console.log(`serve-export: hosting ${ROOT} at http://127.0.0.1:${PORT}`);
-});
+    // A stray socket/stream error must never take the process down.
+    server.on("clientError", (_err, socket) => {
+        if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
+    });
+
+    server.listen(PORT, () => {
+        console.log(`serve-export: hosting ${ROOT} at http://127.0.0.1:${PORT}`);
+    });
+}

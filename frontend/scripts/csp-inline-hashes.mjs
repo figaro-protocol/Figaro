@@ -20,7 +20,9 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { paperExportDir } from "./paper-latex.mjs";
 
-const SCRIPT = /<script(\s[^>]*)?>([\s\S]*?)<\/script\s*>/g;
+// A script element as a browser reads one: either case, and an end tag that may carry whitespace
+// or stray attributes before its `>`.
+const SCRIPT = /<script(\s[^>]*)?>([\s\S]*?)<\/script\b[^>]*>/gi;
 const POLICY_META = /<meta http-equiv="Content-Security-Policy" content="[^"]*"\/>/g;
 
 const hashOf = (body) => `'sha256-${createHash("sha256").update(body, "utf8").digest("base64")}'`;
@@ -31,7 +33,7 @@ export function withInlineScriptPolicy(html) {
     const bare = html.replace(POLICY_META, "");
     const hashes = new Set();
     for (const [, attrs = "", body] of bare.matchAll(SCRIPT)) {
-        if (/\ssrc\s*=/.test(attrs)) continue;
+        if (/\ssrc\s*=/i.test(attrs)) continue;
         hashes.add(hashOf(body));
     }
     const policy = ["script-src 'self' 'wasm-unsafe-eval'", ...[...hashes].sort()].join(" ");

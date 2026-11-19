@@ -14,7 +14,7 @@ import * as net from "node:net";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { egressOrigins, originAllowed, rpcRelayUrl, startEgressProxy } from "../egress-proxy.mjs";
+import { allowedOrigin, egressOrigins, originAllowed, rpcRelayUrl, startEgressProxy } from "../egress-proxy.mjs";
 import {
     applyAllowReads, canonical, defaultDenyReads, renderProfile, runtimeReadRoots, scrubEnv, valueCarriesUrlCredential,
 } from "../sandboxProfile.mjs";
@@ -106,6 +106,37 @@ test("absolute-URI forwarding refuses every scheme but http: cleanly, and checks
         const ok = await forward(`http://127.0.0.1:${port}/`);
         assert.equal(ok.status, 200);
         assert.equal(ok.body, "reached", "the proxy still answers after every refusal");
+    } finally {
+        await proxy.close();
+        await new Promise((r) => echo.close(r));
+    }
+});
+
+test("the proxy forwards to the allowlist entry's own host and port; the client supplies only path and query", async () => {
+    const origins = egressOrigins({ egress: ["http://127.0.0.1:8545", "https://ipfs.io"] });
+    const entry = allowedOrigin(origins, { host: "127.0.0.1", port: 8545, protocol: "http:" });
+    assert.ok(origins.includes(entry), "the decision returns the policy's own entry");
+    assert.equal(allowedOrigin(origins, { host: "127.0.0.1.evil.example", port: 8545, protocol: "http:" }), undefined);
+    assert.equal(allowedOrigin(origins, { host: "ipfs.io", port: 443, protocol: "http:" }), undefined);
+
+    const seen = [];
+    const echo = http.createServer((req, res) => { seen.push({ url: req.url, host: req.headers.host }); res.end("reached"); });
+    await new Promise((r) => echo.listen(0, "127.0.0.1", r));
+    const port = echo.address().port;
+    const proxy = await startEgressProxy({ policy: { egress: [`http://127.0.0.1:${port}`], rpcUrl: "https://ipfs.io" }, port: 0 });
+    const forward = (target) => new Promise((resolve, reject) => {
+        const req = http.request({ host: "127.0.0.1", port: proxy.port, method: "GET", path: target }, (res) => {
+            res.resume();
+            res.on("end", () => resolve(res.statusCode));
+        });
+        req.on("error", reject);
+        req.end();
+    });
+    try {
+        assert.equal(await forward(`http://127.0.0.1:${port}/a/b?c=1`), 200);
+        assert.equal(await forward(`http://127.0.0.1.evil.example:${port}/`), 403);
+        assert.equal(await forward(`http://user@evil.example:${port}/`), 403);
+        assert.deepEqual(seen, [{ url: "/a/b?c=1", host: `127.0.0.1:${port}` }]);
     } finally {
         await proxy.close();
         await new Promise((r) => echo.close(r));

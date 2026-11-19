@@ -742,6 +742,27 @@ test("/status and trade-story name held and rejected agreements only to the bear
     } finally { await close(); }
 });
 
+test("a route that fails answers 500 with a fixed text — the error and its stack stay on the host", async () => {
+    const config = { enabled: true, apiKey: "k", model: "m", apiUrl: "https://stub" };
+    const secret = "upstream https://provider.example/v1?key=sk-secret at /home/host/analyst.mjs:1:1";
+    const runPromptImpl = async () => { throw new Error(secret); };
+    const { base, close } = await serve(fixtureCorpus(), config, { runPromptImpl });
+    const logged = [];
+    const consoleError = console.error;
+    console.error = (...args) => { logged.push(args.join(" ")); };
+    try {
+        const res = await fetch(`${base}/prompt`, {
+            method: "POST", headers: AUTH, body: JSON.stringify({ question: "q" }),
+        });
+        assert.equal(res.status, 500);
+        const text = await res.text();
+        assert.ok(!text.includes("sk-secret"), "the error's message reached the client");
+        assert.ok(!text.includes("analyst.mjs"), "a stack frame reached the client");
+        assert.deepEqual(JSON.parse(text), { error: "the analyst could not answer this request" });
+        assert.ok(logged.some((line) => line.includes("sk-secret")), "the host's stderr lost the error");
+    } finally { console.error = consoleError; await close(); }
+});
+
 test("a handler built without a token is closed, not open", async () => {
     const config = { enabled: true, apiKey: "k", model: "m", apiUrl: "https://stub" };
     const server = http.createServer(makeAnalystHandler(() => fixtureCorpus(), config, {
