@@ -18,7 +18,7 @@
 import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { projectAllFinancialStatements } from "@/lib/data/audit/documentProjection";
 import { DownloadAuditBundleButton } from "@/components/runtime/DownloadAuditBundleButton";
-import { DocumentView } from "./DocumentView";
+import { DocumentView, type DocumentBacking } from "./DocumentView";
 import type { Order } from "@/lib/core/store";
 
 interface Props {
@@ -34,6 +34,13 @@ export function ProcessFinancialsView({ processId }: Props) {
     }
     return <ProcessFinancials processId={processId} orders={read.value} />;
 }
+
+/** Every statement is projected from the process's orders alone: the commit
+ *  and resolve events the Core emits on either path (`projectFinancialStatements`). */
+const STATEMENT_BACKING: DocumentBacking = {
+    boundary: "protocol-enforced",
+    source: "derived at read time from the order events",
+};
 
 function ProcessFinancials({ processId, orders }: { processId: string; orders: Order[] }) {
     const statements = projectAllFinancialStatements(orders, processId);
@@ -84,7 +91,7 @@ function ProcessFinancials({ processId, orders }: { processId: string; orders: O
                 </p>
             ) : (
                 statements.map((document, i) => (
-                    <DocumentView key={`${document.genre}-${i}`} document={document} />
+                    <DocumentView key={`${document.genre}-${i}`} document={document} backing={STATEMENT_BACKING} />
                 ))
             )}
         </div>

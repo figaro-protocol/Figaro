@@ -20,6 +20,10 @@
  * ends the timeline with "order completed", and offers the "Your data"
  * link; with `OrderCommitted` alone it shows none of these.
  *
+ * Proves, on each path: every timeline row names what backs it (`RowBoundary`):
+ * the commit and the resolution are protocol-enforced, an attestation is
+ * protocol-derived, each derived at read time from its event.
+ *
  * Proves, for the seller, on each path: once the order is resolved, the page
  * offers the payout split, and a split typed there is handed to the payout
  * hook in the order's token; while the order is only committed, no split is
@@ -31,11 +35,12 @@
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { orderCommittedLog, orderResolvedLog, processResolvedLog, word, type FixtureLog } from "../lib/__fixtures__/coreLogs";
 
-const { cachedGetLogsMock, routeTokenPayoutMock, account, CORE, VERIFIER, CLIENT, BUYER } = vi.hoisted(() => ({
+const { cachedGetLogsMock, routeTokenPayoutMock, account, attestations, CORE, VERIFIER, CLIENT, BUYER } = vi.hoisted(() => ({
     cachedGetLogsMock: vi.fn(),
+    attestations: [] as unknown[],
     routeTokenPayoutMock: vi.fn(async () => `0x${"ab".repeat(32)}` as `0x${string}`),
     account: { address: "0x00000000000000000000000000000000000000b1" as `0x${string}` | undefined },
     CORE: "0x1111111111111111111111111111111111111111",
@@ -63,9 +68,10 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => ({
 vi.mock("@/lib/shared/publicClient", () => ({ publicClient: CLIENT }));
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 
-// The agreement body is party-private and not witnessed here; the attestation log is empty.
+// The agreement body is party-private and not witnessed here; the attestation
+// log is empty unless a test fills it.
 vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => new Map() }));
-vi.mock("@/lib/core/attestationIndexer", () => ({ getAttestationsByProcess: async () => [] }));
+vi.mock("@/lib/core/attestationIndexer", () => ({ getAttestationsByProcess: async () => attestations }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
 vi.mock("@/lib/registries/useMemberListings", () => ({ useMemberListings: () => ({ read: { status: "present", value: [] } }) }));
 vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => null }));
@@ -126,6 +132,7 @@ describe.each([
     ["the batch path", VERIFIER],
 ])("/orders/view over %s", (_path, emitter) => {
     beforeEach(() => {
+        attestations.splice(0, attestations.length);
         cachedGetLogsMock.mockReset();
         routeTokenPayoutMock.mockClear();
         account.address = BUYER;
@@ -162,6 +169,32 @@ describe.each([
         expect(screen.getByTestId("order-timeline").textContent).toMatch(/order completed/);
         expect(container.textContent).toMatch(/Read-only — your wallet is neither buyer nor seller on this order/);
         expect(container.textContent).not.toMatch(CONNECT_PROMPT);
+    });
+
+    it("every timeline row names what backs it: the commit and the resolution are the Core's, an attestation is anchored by its event", async () => {
+        const CLAUSE_KEY = word(0xc1a5);
+        attestations.push({
+            orderHash: ORDER, processId: PROCESS, attester: SELLER, clauseId: CLAUSE_KEY, stage: 1,
+            contentRef: word(0xfeed), transactionHash: null, blockNumber: 6, universe: emitter === CORE ? "direct" : "batch",
+        });
+        const { committed, resolved, closed } = logsAt(emitter);
+        emits(emitter, { OrderCommitted: [committed], OrderResolved: [resolved], ProcessResolved: [closed] });
+        render(<OrderTimelineView processId={PROCESS} />);
+
+        const pill = await screen.findByTestId("order-status-pill", {}, { timeout: 5000 });
+        await waitFor(() => expect(pill.textContent).toBe("Completed"));
+        const timeline = screen.getByTestId("order-timeline");
+        const rows = Array.from(timeline.children) as HTMLElement[];
+        // order placed, the one attestation, order completed.
+        expect(rows).toHaveLength(3);
+        const expected = ["protocol-enforced", "protocol-derived", "protocol-enforced"];
+        rows.forEach((row, i) => {
+            const labels = within(row).getAllByTestId("row-boundary");
+            expect(labels).toHaveLength(1);
+            expect(labels[0].textContent).toBe(expected[i]);
+            expect(within(row).getByTestId("row-source").textContent).toMatch(/derived at read time/);
+        });
+        expect(within(rows[1]).getByTestId("row-source").textContent).toMatch(/Attestation event/);
     });
 
     it("an order only committed there reads as active, with no resolution shown", async () => {

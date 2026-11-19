@@ -106,7 +106,7 @@ describe("the evidence file — its financial statements carry the SDK's bonds a
         const data = await buildAuditBundleData(PROCESS, orders(state), undefined, 31337, new Map(), { includeTimeline: false });
         const doc = data.documents.find(which);
         expect(doc).toBeDefined();
-        return render(<DocumentView document={doc!} />).container;
+        return render(<DocumentView document={doc!} backing={{ boundary: "protocol-enforced", source: "derived at read time from the order events" }} />).container;
     }
     const consolidated = (d: RenderedDocument) => d.genre === "financial-statements-process";
 

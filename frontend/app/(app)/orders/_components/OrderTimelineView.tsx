@@ -42,6 +42,7 @@ import { useWitnessHolder } from "@/lib/core/useWitnessHolder";
 import { encodedSetPrivacy } from "@/lib/core/witnessContent";
 import { attestationPathLabel } from "@/lib/core/attestationPath";
 import { StageAttestationComparison } from "@/components/runtime/StageAttestationComparison";
+import { RowBoundary } from "@/components/data/RowBoundary";
 import { useSemanticProcessWorkspace } from "@/hooks/useSemanticProcessWorkspace";
 import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
 import { useMemberListings } from "@/lib/registries/useMemberListings";
@@ -267,13 +268,14 @@ export function OrderTimelineView({ processId }: Props) {
             <section className="space-y-3">
                 <p className="text-xs font-semibold text-ink-muted">Timeline</p>
                 <ol className="space-y-2" data-testid="order-timeline">
-                    <li className="flex items-start gap-3 rounded-tile border border-default bg-paper p-3">
+                    <li className="flex items-start gap-3 rounded-tile border border-default bg-paper p-3" data-testid="timeline-placed">
                         <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-success border-success" />
                         <div className="flex-1">
                             <p className="text-sm font-semibold text-ink-primary">order placed</p>
                             <p className="text-xs text-ink-muted">
                                 {role === "buyer" ? `You committed to ${sellerDisplayName}.` : `${buyerDisplayName} committed.`}
                             </p>
+                            <RowBoundary boundary="protocol-enforced" source="derived at read time from the order events" />
                         </div>
                     </li>
                     {(workspace.processAttestations ?? []).map((att) => {
@@ -296,16 +298,23 @@ export function OrderTimelineView({ processId }: Props) {
                                             {att.universe} path
                                         </span>
                                     </p>
+                                    {/* The row reads the event alone: its clause key, stage
+                                        and block, named from the clause's registered spec. */}
+                                    <RowBoundary
+                                        boundary="protocol-derived"
+                                        source="derived at read time from the Attestation event, named from the clause's registered spec"
+                                    />
                                 </div>
                             </li>
                         );
                     })}
                     {isResolved && (
-                        <li className="flex items-start gap-3 rounded-tile border border-default bg-paper p-3">
+                        <li className="flex items-start gap-3 rounded-tile border border-default bg-paper p-3" data-testid="timeline-completed">
                             <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-success border-success" />
                             <div className="flex-1">
                                 <p className="text-sm font-semibold text-ink-primary">order completed</p>
                                 <p className="text-xs text-ink-muted">Bonds refunded.</p>
+                                <RowBoundary boundary="protocol-enforced" source="derived at read time from the order events" />
                             </div>
                         </li>
                     )}

@@ -12,9 +12,18 @@
  * assembly / projector in `lib/data/audit/` — this renderer never changes.
  */
 
+import type { TruthBoundary } from "@figaro-protocol/sdk/derive";
 import type { RenderedDocument } from "@/lib/data/audit/documentProjection";
+import { RowBoundary } from "@/components/data/RowBoundary";
 
-export function DocumentView({ document }: { document: RenderedDocument }) {
+/** What backs every line and every entry of one document: the caller names it,
+ *  since it knows what the document was projected from. */
+export interface DocumentBacking {
+    boundary: TruthBoundary;
+    source: string;
+}
+
+export function DocumentView({ document, backing }: { document: RenderedDocument; backing: DocumentBacking }) {
     return (
         <section className="space-y-4" data-testid={`document-${document.genre}`}>
             <header className="space-y-1">
@@ -37,9 +46,12 @@ export function DocumentView({ document }: { document: RenderedDocument }) {
                         {s.label}
                     </h4>
                     {s.entries.map((e) => (
-                        <div key={e.key} className="flex items-baseline justify-between gap-3 text-xs">
-                            <span className="text-ink-body">{e.key}</span>
-                            <span className="font-mono text-ink-body">{e.value}</span>
+                        <div key={e.key} className="text-xs" data-testid="document-entry">
+                            <div className="flex items-baseline justify-between gap-3">
+                                <span className="text-ink-body">{e.key}</span>
+                                <span className="font-mono text-ink-body">{e.value}</span>
+                            </div>
+                            <RowBoundary boundary={backing.boundary} source={backing.source} />
                         </div>
                     ))}
                 </div>
@@ -58,11 +70,12 @@ export function DocumentView({ document }: { document: RenderedDocument }) {
                                         {c}
                                     </th>
                                 ))}
+                                <th className="px-3 py-2 font-medium text-left">backed by</th>
                             </tr>
                         </thead>
                         <tbody>
                             {document.lines.rows.map((row, ri) => (
-                                <tr key={ri} className="border-t border-default">
+                                <tr key={ri} className="border-t border-default" data-testid="document-line">
                                     {row.map((cell, ci) => (
                                         <td
                                             key={ci}
@@ -71,6 +84,9 @@ export function DocumentView({ document }: { document: RenderedDocument }) {
                                             {cell || "—"}
                                         </td>
                                     ))}
+                                    <td className="px-3 py-2 text-left">
+                                        <RowBoundary boundary={backing.boundary} source={backing.source} />
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -81,6 +97,9 @@ export function DocumentView({ document }: { document: RenderedDocument }) {
                                         {document.lines.total.label}
                                     </td>
                                     <td className="px-3 py-2 text-right font-mono">{document.lines.total.value}</td>
+                                    <td className="px-3 py-2 text-left">
+                                        <RowBoundary boundary={backing.boundary} source={backing.source} />
+                                    </td>
                                 </tr>
                             </tfoot>
                         )}

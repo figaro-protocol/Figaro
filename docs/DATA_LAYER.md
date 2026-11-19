@@ -443,6 +443,17 @@ countersigns a draft before those orders exist, so the check does not run
 there, and the buyer, which built the edges from its own walk, does not run
 it.
 
+The check knows a design entry only by the registered agreement it binds: an
+order's provenance names an `agreementHash`, never an entry, so the entries an
+order may instantiate are those that bind its agreement
+(`sdk/src/projection.ts:968`), and a followed order sits at the place an entry
+names when its agreement is the one that entry binds
+(`sdk/src/projection.ts:990`). Two parentless entries that bind the same
+agreement are therefore one entry to the check: an order that should follow
+the first passes when it follows an order of the second, and the counter-signer
+cannot tell which of the two the followed order fills. A designer who wants
+each parentless entry told apart gives each its own registered agreement.
+
 **What it cannot see is *where*.** The must-haves show *that* value was added and
 *by whom* — never the **physical or virtual flow** of the work: where a pickup
 happened, where a hand-off occurred, which zones a service covers, how goods and

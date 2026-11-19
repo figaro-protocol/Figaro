@@ -11,6 +11,8 @@ import { DocumentView } from "@/app/(app)/audit/_components/DocumentView";
 import { FINANCIAL_STATEMENT_LEGEND, projectFinancialStatements } from "@/lib/data/audit/documentProjection";
 import { OrderState, type Order } from "@/lib/core/store";
 
+const BACKING = { boundary: "protocol-enforced", source: "derived at read time from the order events" } as const;
+
 const ORDER: Order = {
     orderHash: "0xA", processId: "0xPROC", buyer: "0xBUYER", seller: "0xSELLER", token: "0xToKeN",
     runningTotal: 100n, payment: 100n, state: OrderState.Active,
@@ -20,7 +22,7 @@ const ORDER: Order = {
 describe("DocumentView legend", () => {
     it("renders each label the statement emits beside its description", () => {
         const document = projectFinancialStatements([ORDER], "process", "0xPROC");
-        render(<DocumentView document={document} />);
+        render(<DocumentView document={document} backing={BACKING} />);
         const legend = screen.getByTestId("document-legend-financial-statements-process");
         expect(within(legend).getByText("Legend")).toBeTruthy();
         for (const { key, description } of document.legend!) {
@@ -34,7 +36,7 @@ describe("DocumentView legend", () => {
     });
 
     it("a document without a legend draws none", () => {
-        render(<DocumentView document={{ genre: "packing-list", title: "Packing list", header: [] }} />);
+        render(<DocumentView document={{ genre: "packing-list", title: "Packing list", header: [] }} backing={BACKING} />);
         expect(screen.queryByTestId("document-legend-packing-list")).toBeNull();
         expect(screen.queryByText("Legend")).toBeNull();
     });
