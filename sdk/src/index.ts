@@ -260,6 +260,7 @@ export {
     composeAuthoredAgreements,
     composeAuthoredProcessDesign,
     fillDeployTimeCurrency,
+    deployTimeCurrencyOf,
     specDeclaresField,
     specDeclaresContentField,
     specDeclaresDesignFill,

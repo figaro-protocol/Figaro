@@ -108,6 +108,7 @@ vault_owners() {
 
 populate() { # <script> — the registries from the record, run from frontend/
   export RPC_URL
+  export DEPLOYMENT_RECORD="$RECORD"   # a reference that pins an address of the deployment (deployTimeCurrency) reads it here
   export NEXT_PUBLIC_CLAUSE_REGISTRY="$(rec clauseRegistry)"
   export NEXT_PUBLIC_PROCESS_REGISTRY="$(rec processRegistry)"
   export NEXT_PUBLIC_AGREEMENT_REGISTRY="$(rec agreementRegistry)"
@@ -163,7 +164,7 @@ case "$STEP" in
     unset REGISTRAR_VAULT SEED_CLAUSES
     export ASSEMBLY_TOKEN_ADDRESS="$(plan --get assembly-token)"
     if [ "$#" -gt 0 ]; then export SEED_ASSEMBLIES="$(IFS=,; echo "$*")"; else unset SEED_ASSEMBLIES; fi
-    echo "   assemblies: ${SEED_ASSEMBLIES:-every one still missing}; token $ASSEMBLY_TOKEN_ADDRESS"
+    echo "   assemblies: ${SEED_ASSEMBLIES:-every one still missing}; token $ASSEMBLY_TOKEN_ADDRESS, or the record's entry a file names (deployTimeCurrency)"
     populate populate-clauses.mjs ;;
 
   member)

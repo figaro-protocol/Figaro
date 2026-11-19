@@ -54,11 +54,11 @@ function writtenPlan(expected, record) {
     lines.push(`Registration plan for chain ${record.chainId} (${expected.registrations ? "from the expectations file" : "the expectations file names none"})`);
     lines.push("", "Clauses — key, spec, registrar:");
     for (const c of clausePlan(expected)) lines.push(`  ${c.key}  ${c.ref}  ${c.wallet} ${addr(c.wallet)}`);
-    const r = plannedRegistrations(expected.registrations ?? {});
+    const r = plannedRegistrations(expected.registrations ?? {}, record);
     lines.push("", "Agreements — key, file, registrar:");
     for (const a of r.agreements) lines.push(`  ${a.key}  agreements/${a.name}.json  ${a.wallet} ${addr(a.wallet)}`);
-    lines.push("", `Assemblies — key, file, registrar (denomination pin filled with ${expected.registrations?.assemblyToken ?? "(no token named)"}):`);
-    for (const a of r.assemblies) lines.push(`  ${a.key}  assemblies/${a.name}.json  ${a.wallet} ${addr(a.wallet)}`);
+    lines.push("", `Assemblies — key, file, registrar, the token its denomination pin is filled with (registrations.assemblyToken ${expected.registrations?.assemblyToken ?? "(not named)"}, or the record's entry the file names):`);
+    for (const a of r.assemblies) lines.push(`  ${a.key}  assemblies/${a.name}.json  ${a.wallet} ${addr(a.wallet)}  ${a.token}`);
     const m = plannedMembers(expected.registrations ?? {});
     lines.push("", "Member profiles — file, wallet (each registers from its own wallet):");
     for (const x of m.members) lines.push(`  members/${x.name}.json  ${x.wallet} ${addr(x.wallet)}`);

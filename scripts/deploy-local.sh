@@ -306,6 +306,7 @@ echo "📎 Populating clauses, agreements and reference assemblies (pin → IPFS
     NEXT_PUBLIC_AGREEMENT_REGISTRY="$AGREEMENT_ADDR" \
     NEXT_PUBLIC_PROCESS_REGISTRY="$ASSEMBLY_ADDR" \
     ASSEMBLY_TOKEN_ADDRESS="$TOKEN_ADDR" \
+    DEPLOYMENT_RECORD="$CORE_DEPLOYMENT" \
     node scripts/populate-clauses.mjs)
 
 # ── What must hold, checked against the chain ────────────────────────────────
