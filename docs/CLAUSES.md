@@ -745,6 +745,21 @@ Two structural notes that no single spec can carry:
   membership proof under `processDesignHash`. The leaf earns
   nothing itself: it is refused at accrual by comparison with the constant,
   whatever a registry holds at that key (above).
+- A value that names a thing an outside contract numbers per chain names it
+  by the outside party's own name for it, never by one chain's number, so the
+  spec reads the same on every chain. The number is read on the chain where
+  it is used, when it is used. `figaro-arbitration-kleros` names each Kleros
+  court by the name its policy carries in Kleros's PolicyRegistry: Kleros
+  numbers its courts per deployment, and the "Non-Technical" court is number 2
+  on Ethereum mainnet while number 2 on Ethereum Sepolia is another court. The
+  tooling that raises a dispute reads the arbitrator's court list and its
+  PolicyRegistry on that chain, finds the court of that name, and puts its
+  number into the arbitrator's extraData. A chain with no court of that name
+  has no court for the value; no other court stands in for it, and KlerosLiquid
+  would otherwise read a number past its list as the General Court. An enum's
+  position is only its encoding in the agreement (`sdk/src/clauses/encode.ts`).
+  `sdk/tests/clauses/klerosCourts.test.ts` holds the clause against Kleros's
+  court list on each target chain (`test/fixtures/kleros-courts.json`).
 
 ## When something deserves a clause — payload vs anchor
 

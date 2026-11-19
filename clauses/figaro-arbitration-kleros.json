@@ -2,7 +2,7 @@
     "clauseId": "figaro-arbitration-kleros",
     "version": 1,
     "title": "Kleros decentralized arbitration",
-    "description": "Off-chain dispute resolution via Kleros, the decentralized juror court. Selects a Kleros subcourt and a minimum juror count for any dispute escalated from this process. This clause names one forum; another forum is another clause. Compose with `figaro-applicable-law` to name the governing law beside it. CHOSEN BY THE BUYER AT CHECKOUT, once for every agreement of the process: the designer composes the clause at assembly scope with no values (no field is a design fill); the buyer chooses the subcourt at checkout, and may set the minimum juror count, 3 when left empty; checkout writes the values into every order's agreement; each seller accepts them by counter-signing its order. Once composed, the subcourt is required and carries no default — the buyer chooses it, and an agreement with the subcourt empty fails the sign gate on both sides. The court set, its value ordering and its position-as-index encoding follow the Kleros developer documentation; the court enum is the declared subset, extended by editing the spec.",
+    "description": "Off-chain dispute resolution via Kleros, the decentralized juror court. Selects a Kleros subcourt and a minimum juror count for any dispute escalated from this process. This clause names one forum; another forum is another clause. Compose with `figaro-applicable-law` to name the governing law beside it. CHOSEN BY THE BUYER AT CHECKOUT, once for every agreement of the process: the designer composes the clause at assembly scope with no values (no field is a design fill); the buyer chooses the subcourt at checkout, and may set the minimum juror count, 3 when left empty; checkout writes the values into every order's agreement; each seller accepts them by counter-signing its order. Once composed, the subcourt is required and carries no default — the buyer chooses it, and an agreement with the subcourt empty fails the sign gate on both sides. Each court value names a Kleros court by the name its policy carries in Kleros's PolicyRegistry, never by a court number: Kleros numbers its courts per deployment, so the number differs from chain to chain. The court number and the minimum juror count go into the arbitrator's extraData on the chain where the dispute is raised, and the number is read there at that time, from the arbitrator's court list and its PolicyRegistry. A chain whose Kleros deployment has no court of that name has no court for the value, and no other court stands in for it. The court enum is the declared subset, extended by editing the spec.",
     "fields": [
         {
             "name": "klerosCourt",
@@ -21,7 +21,7 @@
             },
             "required": true,
             "label": "Subcourt",
-            "description": "Kleros subcourt, encoded position-as-index: general = 0 (the catch-all); blockchain-nontechnical = 1 / blockchain-technical = 2 (on-chain-agreement disputes); english-language = 3 (disputes hinging on English-language interpretation). To pre-agree no specific forum, omit this whole clause — there is no placeholder court to select."
+            "description": "The Kleros court, named as its policy in Kleros's PolicyRegistry names it: general = \"General Court\" (the catch-all, the root of the court tree); blockchain-nontechnical = \"Non-Technical\" under \"Blockchain\" and blockchain-technical = \"Technical\" under \"Blockchain\" (disputes over on-chain agreements); english-language = \"English Language\" (disputes that turn on the reading of English). A value's position in this list is only how the field is encoded in the agreement; it is not a Kleros court number. To pre-agree no specific forum, omit this whole clause — there is no placeholder court to select."
         },
         {
             "name": "klerosMinJurors",
@@ -31,7 +31,7 @@
             "default": 3,
             "required": false,
             "label": "Minimum jurors",
-            "description": "Minimum jurors for the Kleros subcourt, set by the buyer at checkout; 3 when left empty."
+            "description": "The minimum number of jurors for the first round in the Kleros court, set by the buyer at checkout; 3 when left empty, which is also the count Kleros's arbitrator applies when none is given."
         }
     ],
     "stages": {},
