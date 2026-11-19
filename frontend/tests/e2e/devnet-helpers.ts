@@ -35,6 +35,7 @@ import {
     composeAuthoredAgreements,
     agreementHashOf,
     processDesignHashOf,
+    readUtilityTokenPin,
     tryParseMemberProfileDocument,
     verifyCommitmentSignature,
     type ProcessDesign,
@@ -881,6 +882,16 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
     return out;
 }
 
+/** The token an anchored assembly's designer pins (its assembly-scoped
+ *  utility-token term, read by the clause's declared field); undefined for a
+ *  design open to any token. A shape finder for a scenario that trades in the
+ *  devnet's own token keeps to the open designs: a pinned twin composes the
+ *  same agreements (the florin-gated `*-florin` references) and shares the
+ *  shape. Callers prime the clause specs first (`primeRegisteredClauseSpecs`). */
+export function designerPinnedToken(a: DiscoveredAssembly): Hex | undefined {
+    return readUtilityTokenPin(a.hydrated.assembly.assemblyClauses ?? {}, specSource()) as Hex | undefined;
+}
+
 /** The pinned BYTES behind a registration's content URI: Kubo's `cat` for an
  *  `ipfs://` locator (the gateway when the API refuses), the URL otherwise.
  *  The cache parses them and checks the spec, without its `block`, against
@@ -1190,7 +1201,8 @@ export async function authorizeFundingToken(page: Page): Promise<void> {
 /** The delivery assembly's SHAPE — how every consumer recognizes it on-chain
  *  without a hardcoded slug: exactly two orders, the sub-order carrying the
  *  courier process clause, the hand-off clause (the QR-interaction declarer),
- *  geolocation, AND the proximity policy (the hand-off witness). Internal —
+ *  geolocation, AND the proximity policy (the hand-off witness) — and no
+ *  token pinned by its designer (`designerPinnedToken`). Internal —
  *  consumers go through `ensureDeliveryAssembly`. */
 async function findDeliveryAssembly(): Promise<string | undefined> {
     await primeRegisteredClauseSpecs();
@@ -1198,6 +1210,7 @@ async function findDeliveryAssembly(): Promise<string | undefined> {
     const assemblies = await discoverAnchoredAssemblies();
     return assemblies.find(
         (t) => t.agreements.length === 2
+            && designerPinnedToken(t) === undefined
             && t.agreements.some((o) => {
                 const clauses = Object.keys(o.clauses ?? {});
                 return clauses.includes(DELIVERY_CLAUSES.courier)

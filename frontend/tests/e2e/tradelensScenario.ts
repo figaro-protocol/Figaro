@@ -16,6 +16,7 @@ import { mnemonicToAccount } from 'viem/accounts';
 import { parseUnits, type Hex } from 'viem';
 import {
     discoverAnchoredAssemblies,
+    designerPinnedToken,
     latestMemberProfileURI,
     pinJSONToIPFS,
     resolveIpfsURI,
@@ -92,11 +93,14 @@ export const DEVICE = { lat: 51.9244, lon: 4.4777, destination: 'u15pk4' } as co
 
 /** THE SHAPE — how every consumer recognizes the assembly on-chain without a
  *  slug: exactly six orders, one composing BOTH cold-chain AND
- *  chain-of-custody (the reefer carrier — no other anchored assembly does). */
+ *  chain-of-custody (the reefer carrier — no other anchored assembly does),
+ *  and no token pinned by its designer (`designerPinnedToken`: the
+ *  florin-gated twin shares the rest of the shape). */
 export async function findTradelensAssembly(): Promise<string | undefined> {
     const assemblies = await discoverAnchoredAssemblies();
     return assemblies.find((t) =>
         t.agreements.length === 6
+        && designerPinnedToken(t) === undefined
         && t.agreements.some((o) => {
             const clauses = Object.keys(o.clauses ?? {});
             return clauses.includes(C.coldChain) && clauses.includes(C.custody);

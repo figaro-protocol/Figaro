@@ -58,6 +58,7 @@ import {
     readLocalDeploymentConfig,
     seedRegisteredMember,
     waitForConnected,
+    designerPinnedToken,
     type DiscoveredAssembly,
 } from './devnet-helpers';
 
@@ -148,6 +149,10 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
         type Forged = { found: DiscoveredAssembly; clauseKey: Hex; field: string; order: Awaited<ReturnType<typeof rootOrder>>['order']; hydrated: HydratedProcessDesign; onlyDesigner: boolean };
         let forgedCase: Forged | undefined;
         for (const found of assemblies) {
+            // The seller bonds in the devnet's token: a design whose designer
+            // pins another token (the florin-gated twins) is not this case.
+            const pinned = designerPinnedToken(found);
+            if (pinned !== undefined && pinned.toLowerCase() !== token.toLowerCase()) continue;
             const [root] = planProcessOrders(found.hydrated);
             for (const [clauseKey, data] of Object.entries(root.clauses) as [Hex, Record<string, unknown>][]) {
                 const spec = specSource().get(clauseKey);
