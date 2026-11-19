@@ -9,7 +9,7 @@ import {
     type RaceReply,
 } from "../src/agent/dispatchRace.js";
 import { InProcessChannel, type CommitmentPayload, type PricedField } from "../src/agent/coordination.js";
-import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
+import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceOf, viewOf } from "./specFixtures.js";
 import { buildDomain, hashCommitmentStruct, COMMITMENT_TYPES } from "../src/commitments.js";
 import { computeCheckoutHash } from "../src/agreement.js";
 import { derivePricedFields } from "../src/checkoutPlan.js";
@@ -220,6 +220,43 @@ describe("buildQuoteRequest + substitutePricedValue", () => {
         expect(commerce.data).not.toHaveProperty("payment");
         expect((commerce.data.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe(CEILING.toString());
         expect((await validateDraft(req, COURIER_A.address, undefined, undefined, null, BOUND)).ok).toBe(true);
+    });
+
+    it("refuses a request whose pricedFields leaves out a priced line the spec marks, under the stranger's own field names", () => {
+        // A stranger's clause: lines under `rows`, each `count` × `each`, marked
+        // as priced lines in its spec's block.
+        const stranger = viewOf({
+            clauseId: "a-strangers-bill", version: 1, title: "A stranger's bill", description: "Rows of a bill.",
+            fields: [{ name: "rows", type: "array", required: true, minItems: 0, items: { name: "row", type: "object", required: true, fields: [
+                { name: "count", type: "integer", required: true, min: 1 },
+                { name: "each", type: "bigint", required: true, min: "0" },
+            ] } }],
+            stages: {},
+            block: { design: { article: "billing" }, checkout: { pricedLines: { field: "rows", quantity: "count", unitPrice: "each" } } },
+        });
+        const strangerAssembly = hydrateAuthored({ agreements: [{ id: "agreement-0", clauses: { [stranger.clauseKey]: {} }, follows: [] }] });
+        const request = (pricedFields: readonly PricedField[]) => buildQuoteRequest({
+            assembly: strangerAssembly, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
+            ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields, deadline: 1_900_000_000n, specs: specSourceOf([stranger]),
+            overrides: { [stranger.clauseKey]: { rows: [{ count: 1, each: "0" }, { count: 2, each: "0" }] } },
+        });
+        expect(() => request([])).toThrow(/leaves out the unit price of 2 priced line\(s\).*rows\.0\.each.*rows\.1\.each/);
+        expect(() => request([{ clause: stranger.clauseKey, path: "rows.0.each" }])).toThrow(/rows\.1\.each/);
+        const priced = request([
+            { clause: stranger.clauseKey, path: "rows.0.each" },
+            { clause: stranger.clauseKey, path: "rows.1.each" },
+        ]);
+        expect(priced.agreement.clauses[0].data).toEqual({ rows: [{ count: 1, each: CEILING.toString() }, { count: 2, each: CEILING.toString() }] });
+        // The commerce clause with no mark prices no line: a field named
+        // lineItems carries no meaning, so an empty list builds.
+        const raw = rawSpecOf("figaro-commerce") as { block: { checkout: Record<string, unknown> } };
+        const { pricedLines: _mark, ...checkout } = raw.block.checkout;
+        const unmarked = specSourceOf([viewOf({ ...raw, block: { ...raw.block, checkout } })]);
+        expect(buildQuoteRequest({
+            assembly, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
+            ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: [], deadline: 1_900_000_000n, specs: unmarked,
+            overrides: { [keyOf("figaro-commerce")]: { lineItems: [{ itemId: "job", name: "Bespoke job", quantity: 1, unitPrice: "0" }] } },
+        }).quoteRequest).toEqual({ pricedFields: [] });
     });
 
     it("throws when a priced path does not exist — substitution never invents structure", () => {

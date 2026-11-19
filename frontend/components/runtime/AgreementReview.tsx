@@ -14,17 +14,17 @@
  *
  * Consumers: the pre-sign/pre-commit confirm gate (`AgreementPreviewModal`
  * via `CommitmentSignPreviewProvider`) and the `/sign` counter-party page.
- * Rendering here is identity-blind — clauses are read structurally
- * (`lineItems` array) or by the spec's own `block.design.article`, never by
+ * Rendering here is identity-blind — clauses are read through their specs' own declarations — the
+ * priced-lines mark (`block.checkout.pricedLines`) and `block.design.article` — never by
  * clause name, so a never-seen third-party clause gets the same surface.
  */
 
 import { formatToken } from "@/lib/shared/utils";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
-import { calculateBonds, type Commitment, type Agreement, type AgreementClause } from "@figaro-protocol/sdk";
+import { calculateBonds, pricedLinesSum, readPricedLines, type Commitment, type Agreement, type AgreementClause } from "@figaro-protocol/sdk";
 import { ZERO_BYTES32 } from "@figaro-protocol/sdk";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
-import { describeClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { describeClause, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
 
 interface Props {
@@ -44,32 +44,29 @@ function formatPayment(payment: bigint, decimals: number): string {
     }
 }
 
-export function commerceLineItems(agreement: Agreement | null): Array<{
-    itemId: string | undefined;
-    name: string;
-    quantity: string;
-    unitPrice: string;
-}> {
-    if (!agreement) return [];
-    // Structural, not nominal: the line-item table renders from EVERY clause
-    // that carries a `lineItems` array — no clause is named, so a third-party
-    // commerce-equivalent clause gets the same rendering. All such clauses are
-    // flattened (not just the first): the table is a readability layer, and the
-    // exhaustive JSON dump below is what guarantees nothing signed is hidden.
-    return agreement.clauses.flatMap((s) => {
-        const items = s.data?.lineItems;
-        if (!Array.isArray(items)) return [];
-        return items.map((item: Record<string, unknown>) => ({
-            itemId: typeof item.itemId === "string" ? item.itemId : undefined,
-            name: typeof item.name === "string" ? item.name : "(unnamed item)",
-            quantity: typeof item.quantity === "string" || typeof item.quantity === "number"
-                ? String(item.quantity)
-                : "?",
-            unitPrice: typeof item.unitPrice === "string" || typeof item.unitPrice === "number"
-                ? String(item.unitPrice)
-                : "?",
-        }));
-    });
+/** The priced lines the agreement commits, as the review shows them, and
+ *  their sum. Read through each clause spec's priced-lines mark
+ *  (`block.checkout.pricedLines`, `readPricedLines`), never by a field name,
+ *  so a stranger's clause with its own field names gets the same table. Every
+ *  marked clause is flattened (not just the first): the table is a
+ *  readability layer, and the exhaustive JSON dump below is what guarantees
+ *  nothing signed is hidden. `sum` is Σ quantity × unit price over every
+ *  line, null when there is no line or any line cannot be read. */
+export function pricedLineItems(agreement: Agreement | null): {
+    lines: Array<{ itemId: string | undefined; name: string; quantity: string; unitPrice: string }>;
+    sum: bigint | null;
+} {
+    if (!agreement) return { lines: [], sum: null };
+    const read = readPricedLines(agreement.clauses, specSource()).flatMap((c) => c.lines);
+    return {
+        lines: read.map((line) => ({
+            itemId: line.itemId,
+            name: line.name ?? "(unnamed item)",
+            quantity: line.quantity?.toString() ?? "?",
+            unitPrice: line.unitPrice?.toString() ?? "?",
+        })),
+        sum: read.length > 0 ? pricedLinesSum(read) ?? null : null,
+    };
 }
 
 /**
@@ -77,7 +74,7 @@ export function commerceLineItems(agreement: Agreement | null): Array<{
  * that closes the "sign what you didn't see" gap. The pretty line-item table
  * and the consent-terms block are additive readability layers ON TOP of this;
  * this dump is the guarantee that no author-controlled key (an extra field on
- * a commerce clause, a second `lineItems`-bearing clause) can suppress
+ * a commerce clause, a second clause marking priced lines) can suppress
  * merkle-committed content from the review. Do NOT filter by clause shape:
  * the whole `clauseEntry.data` is bound into `checkoutHash`
  * (`getClauseDataBytes` hashes every key), so the whole `clauseEntry.data` is
@@ -124,7 +121,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
     const figure = (amount: bigint) => decimals !== undefined ? formatPayment(amount, decimals) : "(token decimals loading)";
     const isRoot = commitment.processId === ZERO_BYTES32;
     const bonds = calculateBonds(commitment.runningTotal, commitment.payment);
-    const lineItems = commerceLineItems(agreement);
+    const { lines: lineItems, sum: linesSum } = pricedLineItems(agreement);
     const dumpedClauses = fullDumpClauses(agreement);
     const consented = consentClauses(agreement);
     const hasAgreement = agreement !== null;
@@ -160,6 +157,24 @@ export function AgreementReview({ commitment, agreement }: Props) {
                     <dd className="text-ink-primary" data-testid="preview-payment">
                         {figure(commitment.payment)} <span className="text-ink-muted text-xs">(raw: {commitment.payment.toString()})</span>
                     </dd>
+                    {lineItems.length > 0 && (
+                        <>
+                            <dt className="text-ink-muted">Line items</dt>
+                            <dd className="text-ink-primary" data-testid="preview-line-items-sum">
+                                {linesSum === null ? (
+                                    <>The sum of the line items cannot be read: a line&apos;s quantity or unit price is not a whole number.</>
+                                ) : (
+                                    <>
+                                        {figure(linesSum)} <span className="text-ink-muted text-xs">(raw: {linesSum.toString()} — the sum of quantity × unit price)</span>
+                                    </>
+                                )}
+                                <span className="block text-ink-muted text-xs" data-testid="preview-line-items-not-held-equal">
+                                    Nothing holds the line items equal to the amount: the amount is what the commitment signs and what moves.
+                                    {linesSum !== null && linesSum !== commitment.payment && " Here the two differ."}
+                                </span>
+                            </dd>
+                        </>
+                    )}
                     <dt className="text-ink-muted">Deadline</dt>
                     <dd className="text-ink-primary">
                         {formatBlockTimestamp(commitment.commitDeadline)} <span className="text-ink-muted text-xs">(unix {commitment.commitDeadline.toString()})</span>

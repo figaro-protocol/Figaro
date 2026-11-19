@@ -35,7 +35,33 @@
             "profileFills": [
                 "divisor"
             ],
-            "catalogueMeasures": {}
+            "catalogueMeasures": {},
+            "derives": {
+                "billedMassGrams": {
+                    "rule": "dimensional-weight",
+                    "inputs": {
+                        "mass": {
+                            "from": "massGrams",
+                            "combine": "sum"
+                        },
+                        "length": {
+                            "from": "lengthMm",
+                            "combine": "single-unit"
+                        },
+                        "width": {
+                            "from": "widthMm",
+                            "combine": "single-unit"
+                        },
+                        "height": {
+                            "from": "heightMm",
+                            "combine": "single-unit"
+                        },
+                        "divisor": {
+                            "field": "divisor"
+                        }
+                    }
+                }
+            }
         },
         "runtime": {
             "interaction": null,

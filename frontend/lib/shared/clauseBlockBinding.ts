@@ -38,7 +38,13 @@
  */
 
 import { parseFieldSpec, type SpecParseError, type FieldSpec } from "@figaro-protocol/sdk/clauses";
-import type { CatalogueMeasure } from "@figaro-protocol/sdk";
+import {
+    parseCheckoutDerivations,
+    parsePricedLinesMark,
+    type CatalogueMeasure,
+    type CheckoutDerivation,
+    type PricedLinesMark,
+} from "@figaro-protocol/sdk";
 
 /** Drawer article a clause composes into on the designer canvas. A free-form
  *  string read straight from the spec — the set of articles and their grouping
@@ -114,6 +120,17 @@ interface ClauseBlockCheckout {
      *  from a one-unit order). Seller-sourced like `catalogueFills`, so never
      *  the buyer's. */
     catalogueMeasures: Readonly<Record<string, CatalogueMeasure>>;
+    /** The field that carries the order's PRICED LINES, and which field of
+     *  each line plays each role (`PricedLinesMark`: quantity and unit price,
+     *  and optionally the catalog item's id and name). The checkout writes the
+     *  lines there, a quote request prices each line's unit price, and a
+     *  review reads them through this mark, never through a field name. Null
+     *  for a clause that carries no priced lines. */
+    pricedLines: PricedLinesMark | null;
+    /** The content fields (by name, the map's keys) the checkout COMPUTES,
+     *  each by a rule of the open derivation registry over its declared
+     *  inputs (`CheckoutDerivation`). Never the buyer's. */
+    derives: Readonly<Record<string, CheckoutDerivation>>;
 }
 
 /** The `runtime` section — read by the capability rail while the process runs. */
@@ -283,6 +300,8 @@ export function parseBlockBinding(
     let catalogueFills: readonly string[] = [];
     let profileFills: readonly string[] = [];
     let catalogueMeasures: Readonly<Record<string, CatalogueMeasure>> = {};
+    let pricedLines: PricedLinesMark | null = null;
+    let derives: Readonly<Record<string, CheckoutDerivation>> = {};
     if (raw.checkout !== undefined) {
         if (!isObject(raw.checkout)) {
             errors.push({ path: `${path}.checkout`, message: "checkout section must be an object when present" });
@@ -297,6 +316,24 @@ export function parseBlockBinding(
         const parsedMeasures = parseCatalogueMeasures(raw.checkout.catalogueMeasures, `${path}.checkout.catalogueMeasures`, errors);
         if (parsedMeasures === null) return null;
         catalogueMeasures = parsedMeasures;
+        // The SDK's parsers are the one reading of these two attributes;
+        // here a present value they cannot read is malformed.
+        if (raw.checkout.pricedLines !== undefined && raw.checkout.pricedLines !== null) {
+            pricedLines = parsePricedLinesMark(raw.checkout.pricedLines) ?? null;
+            if (pricedLines === null) {
+                errors.push({ path: `${path}.checkout.pricedLines`, message: "pricedLines must name its field, quantity and unitPrice (and item and name, when present) as non-empty strings" });
+                return null;
+            }
+        }
+        if (raw.checkout.derives !== undefined) {
+            const entries = isObject(raw.checkout.derives) ? Object.keys(raw.checkout.derives).length : -1;
+            const parsedDerives = parseCheckoutDerivations(raw.checkout.derives) ?? {};
+            if (entries < 0 || Object.keys(parsedDerives).length !== entries) {
+                errors.push({ path: `${path}.checkout.derives`, message: "derives must map each content field to { rule, inputs }, every input { field } or { from, combine }" });
+                return null;
+            }
+            derives = parsedDerives;
+        }
     }
 
     // ── runtime ─────────────────────────────────────────────────────────
@@ -337,7 +374,7 @@ export function parseBlockBinding(
 
     return {
         design: { article: rawDesign.article as ClauseArticle, scope, nestsUnder, fills: designFills, composes },
-        checkout: { catalogueFills, profileFills, catalogueMeasures },
+        checkout: { catalogueFills, profileFills, catalogueMeasures, pricedLines, derives },
         runtime: { interaction, fields: runtimeFields },
     };
 }

@@ -16,11 +16,11 @@
  * regardless: no layout carries clause-specific knowledge.
  */
 
-import { calculateResolution } from "@figaro-protocol/sdk";
+import { calculateResolution, readPricedLines } from "@figaro-protocol/sdk";
 import type { Agreement } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/core/store";
 import { OrderState } from "@/lib/core/store";
-import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
+import { clauseDeclaresField, specSource } from "@/lib/shared/clauseSpecSource";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { topologyFollows } from "@/lib/semantic/processTopology";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
@@ -39,13 +39,14 @@ export type ValueRef =
     | { currency: true }                                  // the commitment's token, from its OrderCommitted event
     | { resolvedDate: true }                              // ISO date of resolution, or "—"
     | { leafField: { byField: string; field: string } }  // leaf declaring `byField` → its `field`
-    | { lineItemNames: true }                             // commerce lineItems → names joined
+    | { lineItemNames: true }                             // the priced lines a spec marks → names joined
     | { sumPayments: true };                              // Σ payment over the unit's orders
 
 /** When a document applies — a declarative predicate over the committed data. */
 export type Predicate =
     | { always: true }
     | { hasLeafField: string }          // some committed leaf declares this field
+    | { hasPricedLines: true }          // some committed leaf's spec marks priced lines (`block.checkout.pricedLines`)
     | { followsAnOrder: true }          // the committed topology names a parent order
     | { all: readonly Predicate[] };    // every one of these holds
 
@@ -133,9 +134,11 @@ function resolve(ref: ValueRef, order: Order, unit: Unit): string {
         return v === undefined || v === null ? "" : String(v);
     }
     if ("lineItemNames" in ref) {
-        const items = leafByField(agreementOf(order, unit.agreements), "lineItems")?.lineItems as { name?: string; quantity?: number }[] | undefined;
-        return (items ?? [])
-            .map((li) => (li.quantity && li.quantity > 1 ? `${li.name} ×${li.quantity}` : li.name))
+        // Read through each spec's priced-lines mark, never a field name.
+        const agreement = agreementOf(order, unit.agreements);
+        const lines = agreement ? readPricedLines(agreement.clauses, specSource()).flatMap((c) => c.lines) : [];
+        return lines
+            .map((li) => (li.quantity !== undefined && li.quantity > 1n ? `${li.name} ×${li.quantity}` : li.name))
             .filter(Boolean)
             .join(", ");
     }
@@ -147,6 +150,7 @@ function appliesTo(pred: Predicate, agreement: Agreement | undefined): boolean {
     if (!agreement) return false;
     if ("always" in pred) return true;
     if ("hasLeafField" in pred) return agreement.clauses.some((s) => clauseDeclaresField(s.clause, pred.hasLeafField));
+    if ("hasPricedLines" in pred) return readPricedLines(agreement.clauses, specSource()).length > 0;
     if ("followsAnOrder" in pred) return (topologyFollows(agreement) ?? []).length > 0;
     return pred.all.every((p) => appliesTo(p, agreement));
 }

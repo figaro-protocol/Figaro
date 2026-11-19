@@ -94,6 +94,44 @@ export interface ProjectionHints {
      *  (by name) it lists, the catalog-item field it is read from and how the
      *  order's lines combine it (`CatalogueMeasure`). */
     catalogueMeasures?: Readonly<Record<string, CatalogueMeasure>>;
+    /** The spec's `block.checkout.pricedLines` — the field that carries the
+     *  order's priced lines and the role of each of its items' fields
+     *  (`PricedLinesMark`). */
+    pricedLines?: PricedLinesMark;
+    /** The spec's `block.checkout.derives` — for each content field (by
+     *  name) it lists, the rule the checkout computes it by and that rule's
+     *  inputs (`CheckoutDerivation`). */
+    derives?: Readonly<Record<string, CheckoutDerivation>>;
+}
+
+/** The mark a spec puts on its PRICED LINES (`block.checkout.pricedLines`):
+ *  the top-level array field that holds the order's lines, and which field
+ *  of each line item plays each role. `quantity` (an `integer` field) and
+ *  `unitPrice` (a `bigint` field, in the token's smallest unit) are
+ *  required; `item` (the catalog item's id) and `name` (its name, both
+ *  `string` fields) are optional, and a line carries only the roles the mark
+ *  names. The field names are the spec's own: code reads the mark, never a
+ *  field name (`specPricedLines`). */
+export interface PricedLinesMark {
+    field: string;
+    quantity: string;
+    unitPrice: string;
+    item?: string;
+    name?: string;
+}
+
+/** One input of a checkout derivation: a content field of the same clause,
+ *  read after the catalog and profile folds (`{ field }`), or a measure read
+ *  from the order's catalog items (`CatalogueMeasure`). */
+export type DerivationInput = { field: string } | CatalogueMeasure;
+
+/** A content field the checkout computes (`block.checkout.derives`): the
+ *  rule, by its name in the open derivation registry
+ *  (`registerCheckoutDerivation`), and the rule's inputs by the rule's own
+ *  input names. */
+export interface CheckoutDerivation {
+    rule: string;
+    inputs: Readonly<Record<string, DerivationInput>>;
 }
 
 /** One declared catalog measure: the catalog-item field (`from`, a field
@@ -148,8 +186,74 @@ export function parseProjectionHints(rawSpec: unknown): ProjectionHints {
         if (profile) hints.profileFills = profile;
         const measures = parseCatalogueMeasures(c.catalogueMeasures);
         if (measures) hints.catalogueMeasures = measures;
+        const priced = parsePricedLinesMark(c.pricedLines);
+        if (priced) hints.pricedLines = priced;
+        const derives = parseCheckoutDerivations(c.derives);
+        if (derives) hints.derives = derives;
     }
     return hints;
+}
+
+/** A non-empty string, or undefined. */
+function nonEmptyString(raw: unknown): string | undefined {
+    return typeof raw === "string" && raw.length > 0 ? raw : undefined;
+}
+
+/** A `block.checkout.pricedLines` mark, or undefined when it is absent or
+ *  malformed: `field`, `quantity` and `unitPrice` are non-empty strings, and
+ *  `item` and `name`, when present, are too. Whether the named fields exist,
+ *  with the types their roles need, is `specPricedLines`'s check against the
+ *  spec's own fields. */
+export function parsePricedLinesMark(raw: unknown): PricedLinesMark | undefined {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    const r = raw as Record<string, unknown>;
+    const field = nonEmptyString(r.field);
+    const quantity = nonEmptyString(r.quantity);
+    const unitPrice = nonEmptyString(r.unitPrice);
+    if (!field || !quantity || !unitPrice) return undefined;
+    if (r.item !== undefined && !nonEmptyString(r.item)) return undefined;
+    if (r.name !== undefined && !nonEmptyString(r.name)) return undefined;
+    return {
+        field, quantity, unitPrice,
+        ...(r.item !== undefined && { item: r.item as string }),
+        ...(r.name !== undefined && { name: r.name as string }),
+    };
+}
+
+/** The well-formed entries of a `block.checkout.derives` map, or undefined
+ *  when none is. An entry names its `rule` and an `inputs` map whose every
+ *  input is `{ field }` or a catalog measure (`{ from, combine }`); an entry
+ *  with any malformed input is skipped whole, as an absent attribute is. */
+export function parseCheckoutDerivations(raw: unknown): Readonly<Record<string, CheckoutDerivation>> | undefined {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    const out: Record<string, CheckoutDerivation> = {};
+    for (const [field, entry] of Object.entries(raw as Record<string, unknown>)) {
+        if (field.length === 0 || !entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+        const { rule, inputs } = entry as Record<string, unknown>;
+        if (!nonEmptyString(rule) || !inputs || typeof inputs !== "object" || Array.isArray(inputs)) continue;
+        const parsed: Record<string, DerivationInput> = {};
+        let ok = true;
+        for (const [name, input] of Object.entries(inputs as Record<string, unknown>)) {
+            const one = parseDerivationInput(input);
+            if (name.length === 0 || !one) { ok = false; break; }
+            parsed[name] = one;
+        }
+        if (ok) out[field] = { rule: rule as string, inputs: parsed };
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** One derivation input: `{ field }` alone, or a well-formed catalog measure. */
+function parseDerivationInput(raw: unknown): DerivationInput | undefined {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    const r = raw as Record<string, unknown>;
+    if (r.field !== undefined) {
+        const field = nonEmptyString(r.field);
+        return field && r.from === undefined && r.combine === undefined ? { field } : undefined;
+    }
+    const from = nonEmptyString(r.from);
+    if (!from || (r.combine !== "sum" && r.combine !== "single-unit")) return undefined;
+    return { from, combine: r.combine };
 }
 
 /** The well-formed entries of a `catalogueMeasures` map, or undefined when
@@ -311,6 +415,54 @@ export function specProfileFills(spec: ProjectionSpecView): readonly string[] {
  *  order's lines (`CatalogueMeasure`). Empty for clauses that declare none. */
 export function specCatalogueMeasures(spec: ProjectionSpecView): Readonly<Record<string, CatalogueMeasure>> {
     return spec.hints?.catalogueMeasures ?? {};
+}
+
+/** The PRICED-LINES mark of a clause (`block.checkout.pricedLines`), when
+ *  the spec's own fields bear it out: the marked field is a top-level array
+ *  whose items are objects declaring the role fields, `quantity` as an
+ *  `integer`, `unitPrice` as a `bigint`, and `item` and `name`, when marked,
+ *  as `string` fields. A mark the fields contradict marks nothing, so no
+ *  reader writes or reads lines the spec does not declare. Undefined for a
+ *  clause with no mark. */
+export function specPricedLines(spec: ProjectionSpecView): PricedLinesMark | undefined {
+    const mark = spec.hints?.pricedLines;
+    if (!mark) return undefined;
+    const list = spec.fields.find((f) => f.name === mark.field);
+    if (!list || list.type !== "array" || list.items.type !== "object") return undefined;
+    const itemFields = list.items.fields;
+    const has = (name: string | undefined, type: FieldSpec["type"]) =>
+        name === undefined || itemFields.some((f) => f.name === name && f.type === type);
+    if (!has(mark.quantity, "integer") || !has(mark.unitPrice, "bigint")) return undefined;
+    if (!has(mark.item, "string") || !has(mark.name, "string")) return undefined;
+    return mark;
+}
+
+/** The DERIVED fields of a clause (`block.checkout.derives`): each declared
+ *  content field the checkout computes, with its rule and inputs. A key the
+ *  spec does not declare as a field is left out, and so is an entry whose
+ *  input `{ field }` names no declared field. Empty for clauses that declare
+ *  none. */
+export function specCheckoutDerivations(spec: ProjectionSpecView): Readonly<Record<string, CheckoutDerivation>> {
+    const declared = new Set(spec.fields.map((f) => f.name));
+    return Object.fromEntries(
+        Object.entries(spec.hints?.derives ?? {}).filter(([field, derivation]) =>
+            declared.has(field)
+            && Object.values(derivation.inputs).every((input) => !("field" in input) || declared.has(input.field))),
+    );
+}
+
+/** The field of a clause that pins the COMPOSITION's denomination: the clause
+ *  is assembly-scoped (`block.design.scope: "assembly"`) under the
+ *  denomination article (`block.design.article: "denomination"`), and
+ *  declares exactly one designer-filled (`block.design.fills`) `string` field
+ *  of format `address-hex`; that field is the pin. Read by the spec's shape,
+ *  never by a field name, so a stranger's denomination clause pins under any
+ *  field name. Undefined for any other clause. */
+export function specDenominationPinField(spec: ProjectionSpecView): string | undefined {
+    if (!specIsProcessScoped(spec) || spec.hints?.article !== "denomination") return undefined;
+    const pins = spec.fields.filter((f) =>
+        f.type === "string" && f.format === "address-hex" && specDeclaresDesignFill(spec, f.name));
+    return pins.length === 1 ? pins[0]!.name : undefined;
 }
 
 /** An off-chain validation WARNING (never an error — the permissionless extension axiom:
@@ -495,16 +647,19 @@ function addressLeaf(clauseEntry: AgreementClause | undefined, field: string): `
     return isAddressHex(value) ? value : undefined;
 }
 
-/** The clause carrying the COMPOSITION's denomination pin: the composed
- *  clause declaring `currency` as a designer fill. */
-function currencyPinClause(
+/** The clause carrying the COMPOSITION's denomination pin, and its pin
+ *  field: the first carried clause whose spec declares one
+ *  (`specDenominationPinField`). */
+function denominationPin(
     agreement: Agreement,
     specs: SpecSource,
-): AgreementClause | undefined {
-    return agreement.clauses.find((s) => {
-        const spec = specs.get(s.clause);
-        return !!spec && specDeclaresDesignFill(spec, "currency");
-    });
+): { clauseEntry: AgreementClause; field: string } | undefined {
+    for (const clauseEntry of agreement.clauses) {
+        const spec = specs.get(clauseEntry.clause);
+        const field = spec ? specDenominationPinField(spec) : undefined;
+        if (field) return { clauseEntry, field };
+    }
+    return undefined;
 }
 
 /** One order the design gives a registered agreement: its clause bag, and
@@ -744,9 +899,13 @@ function designBlindingIssues(
 /** The topology check: an agreement built from a design (it names one in its
  *  provenance leaf) carries its topology leaf, an empty list for a root, and
  *  any topology an agreement carries is well formed — a list of 32-byte
- *  order hashes, none named twice (`topologyLeafBytes`). The number of edges
- *  against the design's entry is the design check's (`designIssues`). */
-function topologyIssues(agreement: Agreement): CommitmentAgreementIssue[] {
+ *  order hashes, none named twice (`topologyLeafBytes`). A commitment that
+ *  opens a process (`processId` zero) follows no order: the orders a leaf
+ *  names are orders of the process the order joins, and an order that opens
+ *  one has none before it. The number of edges against the design's entry
+ *  is the design check's (`designIssues`); which orders the edges name is the
+ *  counter-signer's own read (`followedOrderIssues`). */
+function topologyIssues(agreement: Agreement, commitment: Commitment): CommitmentAgreementIssue[] {
     if (agreement.follows === undefined) {
         return agreement.provenance === undefined ? [] : [{
             clause: "(topology)",
@@ -756,10 +915,97 @@ function topologyIssues(agreement: Agreement): CommitmentAgreementIssue[] {
     }
     try {
         topologyLeafBytes(agreement.follows);
-        return [];
     } catch (cause) {
         return [{ clause: "(topology)", path: "follows", message: cause instanceof Error ? cause.message : String(cause) }];
     }
+    if (isZeroProcessId(commitment.processId) && agreement.follows.length > 0) {
+        return [{
+            clause: "(topology)",
+            path: "follows",
+            message: `the commitment opens a process (processId zero), and an order that opens a process follows no order; this one names ${agreement.follows.length}`,
+        }];
+    }
+    return [];
+}
+
+/** Whether a commitment's `processId` is zero: the commitment opens a process. */
+function isZeroProcessId(processId: Hex): boolean {
+    return /^0x0{64}$/i.test(processId);
+}
+
+/** The counter-signer's own read of one order an agreement's topology leaf
+ *  names: the process the chain records it in (`OrderCommitted.processId`),
+ *  and its agreement, checked by the reader against the order's committed
+ *  `checkoutHash` (null when the reader could not read or check it). An
+ *  order the chain does not record is no read at all: the caller leaves it
+ *  out. */
+export interface FollowedOrderRead {
+    orderHash: Hex;
+    processId: Hex;
+    agreement: Agreement | null;
+}
+
+/**
+ * The counter-signer's check of the orders an agreement follows against the
+ * process design it names, over the counter-signer's own reads (`followed`).
+ * The pure sign gate holds the topology leaf's form and its number of edges
+ * (`validateCommitmentAgreement`); this check needs the chain, so it sits
+ * with the party that reads it, before that party signs: the seller at
+ * accept, once the orders before its own are committed.
+ *
+ * An order instantiates a design entry of the registered agreement its
+ * provenance names that follows as many entries as its leaf names orders.
+ * For that entry, each order the leaf names, in the entry's order: is
+ * recorded on the chain (a read in `followed`), in the process the
+ * commitment joins (`processId`), and its agreement, read and checked, names
+ * the same assembly and the registered agreement of the entry the design
+ * entry follows at that place. The first entry every edge matches passes;
+ * when none does, the first entry's issues are returned. An agreement with
+ * no provenance or no topology leaf, a design not in hand, and an agreement
+ * no entry matches by count are the sign gate's to refuse, and return no
+ * issue here.
+ */
+export function followedOrderIssues(
+    agreement: Agreement,
+    commitment: Commitment,
+    design: HydratedProcessDesign | null,
+    followed: readonly FollowedOrderRead[],
+): CommitmentAgreementIssue[] {
+    const provenance = agreement.provenance;
+    const follows = agreement.follows;
+    if (!provenance || !Array.isArray(follows) || design == null) return [];
+    const entries = design.assembly.agreements;
+    const byId = new Map(entries.map((entry) => [entry.id, entry]));
+    const candidates = entries.filter((entry) =>
+        entry.agreementHash.toLowerCase() === provenance.agreementHash.toLowerCase()
+        && processDesignFollows(entry).length === follows.length);
+    let first: CommitmentAgreementIssue[] | undefined;
+    for (const entry of candidates) {
+        const found: CommitmentAgreementIssue[] = [];
+        processDesignFollows(entry).forEach((parentId, i) => {
+            const edge = follows[i]!;
+            const issue = (message: string) => found.push({ clause: "(topology)", path: `follows.${i}`, message });
+            const read = followed.find((r) => r.orderHash.toLowerCase() === edge.toLowerCase());
+            if (!read) return issue(`the order follows ${edge}, which the chain records as no committed order`);
+            if (read.processId.toLowerCase() !== commitment.processId.toLowerCase()) {
+                return issue(`the order follows ${edge}, committed in process ${read.processId}; this commitment joins process ${commitment.processId}`);
+            }
+            const parentAgreement = read.agreement;
+            if (!parentAgreement?.provenance) {
+                return issue(`the order follows ${edge}, whose agreement was not read, so its place in the design cannot be checked`);
+            }
+            if (parentAgreement.provenance.processDesignHash.toLowerCase() !== provenance.processDesignHash.toLowerCase()) {
+                return issue(`the order follows ${edge}, which instantiates assembly ${parentAgreement.provenance.processDesignHash}; this order instantiates ${provenance.processDesignHash}`);
+            }
+            const parentEntry = byId.get(parentId);
+            if (!parentEntry || parentEntry.agreementHash.toLowerCase() !== parentAgreement.provenance.agreementHash.toLowerCase()) {
+                return issue(`the order follows ${edge}, which instantiates registered agreement ${parentAgreement.provenance.agreementHash}; the design's entry follows ${parentId} at this place, which binds ${parentEntry?.agreementHash ?? "no registered agreement"}`);
+            }
+        });
+        if (found.length === 0) return [];
+        first ??= found;
+    }
+    return first ?? [];
 }
 
 /** The private set's rules (`fieldSetRuleErrors`, the parser's own),
@@ -788,6 +1034,7 @@ function namedBlindingIssues(clause: string, spec: ProjectionSpecView): Commitme
         ["block.checkout.catalogueFills", specCatalogFills(spec)],
         ["block.checkout.profileFills", specProfileFills(spec)],
         ["block.checkout.catalogueMeasures", Object.keys(specCatalogueMeasures(spec))],
+        ["block.checkout.derives", Object.keys(specCheckoutDerivations(spec))],
     ];
     const issues: CommitmentAgreementIssue[] = [];
     for (const field of spec.fields) {
@@ -863,9 +1110,11 @@ function blindingValueIssues(
  * clause or changes a designer's value); and the `checkoutHash` about to be
  * signed equals the merkle root recomputed from the clauses. The agreement's
  * topology leaf is well formed, and present wherever a design is named
- * (`topologyIssues`), and it names as many orders as the matching design
- * entry follows entries (`designIssues`); which orders it names is not
- * checked, since no design carries an order hash. Each clause's spec keeps the private set's rules
+ * (`topologyIssues`), it names no order when the commitment opens a process
+ * (`processId` zero), and it names as many orders as the matching design
+ * entry follows entries (`designIssues`); which orders it names needs the
+ * chain, so it is the counter-signer's own check (`followedOrderIssues`),
+ * never this gate's. Each clause's spec keeps the private set's rules
  * (`fieldSetRuleErrors`, re-checked on the view in hand). A private clause's
  * blinding value blinds: no design the agreement names carries one, its spec
  * names the blinding field in no list another actor fills
@@ -947,19 +1196,19 @@ export function validateCommitmentAgreement(
     // The denomination pin (when composed) == the commitment's token. A
     // missing or malformed pin is already reported above (the field is
     // required by its spec), so only a pin that IS present is compared.
-    const pinClause = currencyPinClause(agreement, specs);
-    const pin = addressLeaf(pinClause, "currency");
-    if (pinClause && pin && pin.toLowerCase() !== commitment.token.toLowerCase()) {
+    const pinned = denominationPin(agreement, specs);
+    const pin = pinned ? addressLeaf(pinned.clauseEntry, pinned.field) : undefined;
+    if (pinned && pin && pin.toLowerCase() !== commitment.token.toLowerCase()) {
         issues.push({
-            clause: pinClause.clause,
-            path: "currency",
+            clause: pinned.clauseEntry.clause,
+            path: pinned.field,
             message: `this assembly is denominated by design (${pin}); the commitment currency ${commitment.token} contradicts the pinned term`,
         });
     }
 
     issues.push(...designIssues(agreement, specs, design));
     if (design != null) issues.push(...designBlindingIssues(agreement, specs, design));
-    issues.push(...topologyIssues(agreement));
+    issues.push(...topologyIssues(agreement, commitment));
 
     if (issues.length === 0) {
         let computed: `0x${string}` | null = null;
@@ -1366,9 +1615,10 @@ export function composeAuthoredProcessDesign(
  * filled assembly, never the written one. Unfilled, the pin is what the format
  * reads it as, a required field missing, so the written file signs nothing as
  * it stands. Read by the spec's shape, never by a clause or field name: every
- * ASSEMBLY-SCOPED clause of the denomination article (`block.design.article:
- * "denomination"`) has each designer-filled `address-hex` field the file left
- * unfilled set to `tokenAddress`. A field already filled is never overwritten;
+ * clause whose spec declares a denomination pin (`specDenominationPinField`:
+ * assembly-scoped, of the denomination article, with exactly one
+ * designer-filled `address-hex` field) has that field, when the file left it
+ * unfilled, set to `tokenAddress`. A field already filled is never overwritten;
  * an assembly with no such field is returned as it was. Seed time only.
  */
 export function fillDeployTimeCurrency<T extends { assemblyClauses?: Record<string, Record<string, unknown>> }>(
@@ -1383,17 +1633,12 @@ export function fillDeployTimeCurrency<T extends { assemblyClauses?: Record<stri
     let filledAny = false;
     const filled = Object.fromEntries(Object.entries(entries).map(([clauseKey, values]) => {
         const spec = specs.get(clauseKey as Hex);
-        if (!spec || !specIsProcessScoped(spec) || spec.hints?.article !== "denomination") return [clauseKey, values];
-        const next: Record<string, unknown> = { ...(values ?? {}) };
-        for (const field of spec.fields) {
-            if (field.type !== "string" || field.format !== "address-hex") continue;
-            if (!specDeclaresDesignFill(spec, field.name)) continue;
-            const current = next[field.name];
-            if (current !== undefined && current !== null && current !== "") continue;
-            next[field.name] = tokenAddress;
-            filledAny = true;
-        }
-        return [clauseKey, next];
+        const field = spec ? specDenominationPinField(spec) : undefined;
+        if (!field) return [clauseKey, values];
+        const current = values?.[field];
+        if (current !== undefined && current !== null && current !== "") return [clauseKey, values];
+        filledAny = true;
+        return [clauseKey, { ...(values ?? {}), [field]: tokenAddress }];
     }));
     return filledAny ? { ...assembly, assemblyClauses: filled } : assembly;
 }

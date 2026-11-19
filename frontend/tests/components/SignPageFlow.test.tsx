@@ -94,7 +94,7 @@ vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: "TKN" 
 vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => null }));
 vi.mock("@/lib/member/useMembersRegistry", () => ({ useMemberProfile: () => ({ read: { status: "absent" } }) }));
 vi.mock("@/lib/member/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => ({ read: { status: "absent" } }) }));
-vi.mock("@/components/runtime/AgreementReview", () => ({ AgreementReview: () => null, commerceLineItems: () => [] }));
+vi.mock("@/components/runtime/AgreementReview", () => ({ AgreementReview: () => null, pricedLineItems: () => ({ lines: [], sum: null }) }));
 vi.mock("@/components/runtime/TokenApprovalFlow", () => ({
     TokenApprovalFlow: ({ onApprovalComplete }: { onApprovalComplete: () => void }) => (
         <button type="button" onClick={onApprovalComplete}>approve the bond</button>

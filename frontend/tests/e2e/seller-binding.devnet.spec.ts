@@ -24,7 +24,7 @@ import {
     buildCommitment,
     buildDomain,
     deriveProcessDesignSlug,
-    fillCommerceClause,
+    fillPricedLines,
     planProcessOrders,
     readUtilityTokenPin,
     reconstructOrdersFromProcessDesign,
@@ -90,7 +90,7 @@ test.describe('a seller refuses an order under an assembly it has not bound (dev
         const [root] = planProcessOrders(notBound.hydrated);
         const currency = (readUtilityTokenPin(root.clauses, specs) ?? token) as Hex;
         const payment = 1_000_000n;
-        const filled = fillCommerceClause(root.clauses, specs, [
+        const filled = fillPricedLines(root.clauses, specs, [
             { itemId: 'seller-binding', name: 'Under an assembly the seller has not bound', quantity: 1, unitPrice: payment.toString() },
         ]);
         const chainNow = (await publicClient.getBlock({ blockTag: 'latest' })).timestamp;
