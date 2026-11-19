@@ -9,14 +9,22 @@
 set -euxo pipefail
 export PATH="$HOME/.sp1/bin:$HOME/.cargo/bin:$PATH"
 
+# The repository root is this script's own checkout, two levels up, so a box
+# reproduces the key from any checkout path. The host path does not enter the
+# ELF: `cargo prove build --docker` mounts the prover workspace at the fixed
+# in-container path /root/program and builds there (sp1-build's
+# `create_docker_command`), so only paths relative to the workspace reach the
+# compiler.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
 # The SP1 release the guest is built in is the lock's sp1-sdk version — the
 # read the CI workflows make — so the box, CI and the library agree.
-SP1_TAG=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' "$HOME/Figaro/prover/Cargo.lock")
+SP1_TAG=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' "$REPO_ROOT/prover/Cargo.lock")
 [ "$SP1_TAG" != "v" ] || { echo "could not read the sp1-sdk version from Cargo.lock"; exit 1; }
-cd "$HOME/Figaro/prover/program"
+cd "$REPO_ROOT/prover/program"
 cargo prove build --docker --tag "$SP1_TAG"
 
-cd "$HOME/Figaro/prover"
+cd "$REPO_ROOT/prover"
 sha256sum target/elf-compilation/docker/riscv64im-succinct-zkvm-elf/release/figaro-prover
 mkdir -p target/elf-compilation/riscv64im-succinct-zkvm-elf/release
 cp target/elf-compilation/docker/riscv64im-succinct-zkvm-elf/release/figaro-prover \
