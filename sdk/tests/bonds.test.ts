@@ -4,7 +4,6 @@ import {
     calculateResolution,
     calculateRootApproval,
     calculateSubOrderApproval,
-    validateBonds,
     assertApprovalCoversBond,
 } from "../src/bonds.js";
 
@@ -107,37 +106,5 @@ describe("assertApprovalCoversBond", () => {
         expect(() => assertApprovalCoversBond(calc, calc)).not.toThrow();
         const under = { buyerApproval: 50n, sellerApproval: 50n };
         expect(() => assertApprovalCoversBond(under, calc)).toThrow(/Buyer approval/);
-    });
-});
-
-describe("validateBonds", () => {
-    it("passes valid bonds", () => {
-        const result = validateBonds(100n, 100n, 200n, 200n);
-        expect(result.valid).toBe(true);
-        expect(result.reason).toBeUndefined();
-    });
-
-    it("rejects zero payment", () => {
-        const result = validateBonds(0n, 100n, 200n, 200n);
-        expect(result.valid).toBe(false);
-        expect(result.reason).toContain("positive");
-    });
-
-    it("rejects runningTotal < payment", () => {
-        const result = validateBonds(200n, 100n, 200n, 400n);
-        expect(result.valid).toBe(false);
-        expect(result.reason).toContain("runningTotal");
-    });
-
-    it("rejects wrong seller bond", () => {
-        const result = validateBonds(100n, 100n, 100n, 200n);
-        expect(result.valid).toBe(false);
-        expect(result.reason).toContain("sellerBond");
-    });
-
-    it("rejects wrong buyer bond", () => {
-        const result = validateBonds(100n, 100n, 200n, 100n);
-        expect(result.valid).toBe(false);
-        expect(result.reason).toContain("buyerBond");
     });
 });

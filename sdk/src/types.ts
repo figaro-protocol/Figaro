@@ -171,7 +171,7 @@ export interface MemberRegisteredEvent {
  *  `MemberWithdrawn`. Requesting clears the dedup guard immediately (the deposit
  *  stays locked for the cooldown), so this is what removes a member from the live
  *  set; a later re-registration re-surfaces them. */
-export interface MemberWithdrawnEvent {
+export interface MemberWithdrawalRequestedEvent {
     member: Address;
     blockNumber: number;
     logIndex: number;

@@ -38,9 +38,10 @@ pragma solidity 0.8.26;
 ///         axis, and every field it would divide (`acceptedTokens`,
 ///         `catalogURI`, location, branding) serves either side unchanged.
 ///
-///         The deposit exists for spam protection only — it does not gate
-///         metadata edits. `updateProfile` lets a registered member publish
-///         a new metadataURI without disturbing the deposit. Discovery
+///         The deposit exists for spam protection. `updateProfile` lets a
+///         member whose stake is live publish a new metadataURI without
+///         disturbing the deposit; once the member requests its withdrawal,
+///         `updateProfile` refuses it until it registers again. Discovery
 ///         indexers key off the most recent `MemberRegistered` or
 ///         `MemberProfileUpdated` event for an address.
 contract MembersRegistry {
@@ -61,9 +62,9 @@ contract MembersRegistry {
     ///      identity for the cooldown, and the capital cost of sustaining N
     ///      identities across a reward period P becomes `deposit · N · T / P`.
     ///
-    ///      The two ID-keyed registries (Clause, Assembly) need no equivalent:
-    ///      their withdrawal is one-shot per key and the key's binding is
-    ///      permanent, so there is nothing to recycle.
+    ///      The three key-addressed registries (Clause, Agreement, Process)
+    ///      need no equivalent: their withdrawal is one-shot per key and the
+    ///      key's binding is permanent, so there is nothing to recycle.
     uint256 public immutable withdrawalCooldown;
 
     /// @dev Dedup guard — prevents double-registration for the same address.
@@ -98,7 +99,7 @@ contract MembersRegistry {
 
     // ── Constructor ─────────────────────────────────────────────────────
 
-    /// @param _registrationDeposit Minimum ETH required to register (wei).
+    /// @param _registrationDeposit The exact stake `register` takes, in tokens (wei).
     /// @param _withdrawalCooldown  Seconds a requested withdrawal stays locked.
     constructor(uint256 _registrationDeposit, uint256 _withdrawalCooldown) {
         registrationDeposit = _registrationDeposit;

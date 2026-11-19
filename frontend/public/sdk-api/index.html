@@ -384,6 +384,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td>Build the <code>Commitment</code> struct and the EIP-712 typed data to sign.</td>
 </tr>
 <tr>
+<td><code>buildCommitmentSafe</code></td>
+<td>root</td>
+<td><code>buildCommitment</code> for a sub-order, its <code>runningTotal</code> read from <code>FigaroCore</code>'s process state plus the order's payment, so the struct matches what <code>commit</code> checks.</td>
+</tr>
+<tr>
 <td><code>buildDomain</code></td>
 <td>root</td>
 <td>The EIP-712 domain for a chain id + <code>FigaroCore</code> address.</td>
@@ -629,6 +634,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td>The single dispatch point for any <code>ProposedAction</code>; restores each root's signed <code>processId</code> for you.</td>
 </tr>
 <tr>
+<td><code>filterActions</code></td>
+<td><code>/agent</code></td>
+<td>The proposed actions of one type, typed to that type.</td>
+</tr>
+<tr>
 <td><code>extractOverlays</code></td>
 <td><code>/derive</code></td>
 <td>Group attestations into one overlay graph per clause family PRESENT — the open graph class.</td>
@@ -714,6 +724,21 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td>Narrow attestation events to one clause.</td>
 </tr>
 <tr>
+<td><code>filterByOrder</code></td>
+<td><code>/derive</code></td>
+<td>Narrow attestation events to one order hash.</td>
+</tr>
+<tr>
+<td><code>filterByProcess</code></td>
+<td><code>/derive</code></td>
+<td>Narrow attestation events to one process id.</td>
+</tr>
+<tr>
+<td><code>filterByStage</code></td>
+<td><code>/derive</code></td>
+<td>Narrow attestation events to one stage; the stage's meaning is in the clause spec.</td>
+</tr>
+<tr>
 <td><code>generateOrderKeypair</code></td>
 <td><code>/handoff</code></td>
 <td>A fresh ephemeral secp256k1 keypair for a single order's handoff.</td>
@@ -772,6 +797,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td><code>makeA2aOfferResponder</code></td>
 <td><code>/agent</code></td>
 <td>Turn a seller's <code>OfferHandler</code> into a framework-agnostic A2A responder.</td>
+</tr>
+<tr>
+<td><code>makeHttpOfferResponder</code></td>
+<td><code>/agent</code></td>
+<td>Turn a seller's <code>OfferHandler</code> into a framework-agnostic HTTP responder: request body in, status and body out.</td>
 </tr>
 <tr>
 <td><code>makeSellerOfferHandler</code></td>
@@ -837,6 +867,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td><code>parseProjectionHints</code></td>
 <td>root</td>
 <td>Read a spec's <code>block</code> projection hints — design fills, checkout fills, article.</td>
+</tr>
+<tr>
+<td><code>specIsProcessLog</code></td>
+<td>root</td>
+<td>Whether a spec's <code>block.design.article</code> is <code>&quot;attestations&quot;</code>, a process log a frontend presents as a lifecycle; presentation only, never what the clause signs.</td>
 </tr>
 <tr>
 <td><code>planSubOrderSellers</code></td>
@@ -1012,6 +1047,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td><code>socketSignerAccount</code></td>
 <td><code>/signer</code></td>
 <td>A viem account backed by the policy-signer daemon's socket.</td>
+</tr>
+<tr>
+<td><code>signerHealth</code></td>
+<td><code>/signer</code></td>
+<td>Ask a running policy-signer daemon which address it operates.</td>
 </tr>
 <tr>
 <td><code>strippingReviver</code></td>

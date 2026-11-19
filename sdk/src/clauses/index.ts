@@ -85,7 +85,6 @@ export {
 export type { EncodeOptions } from "./encode.js";
 
 export {
-    EMPTY_CONTENT,
     contentFieldsFor,
     encodeContentFromSpec,
     decodeContentFromSpec,

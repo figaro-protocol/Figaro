@@ -496,8 +496,12 @@ so it is the mirror image of an escape hatch, not an instance of one.
 ## 13. Committed `lineItems.name` and `cargo.marks` are public — accepted
 
 **Pattern**: `figaro-commerce.lineItems[].name` (and free-text `figaro-cargo.marks`)
-are committed public fields, so a wallet's purchase content is publicly linkable to
-that wallet in an immutable, IPFS-pinned agreement. There is no hash-only line-item
+are committed public fields: they are committed in the clear in the agreement
+body, never sealed, so whoever holds that body links the purchase content to the
+wallet, and the body is pinned on IPFS and cannot change. The chain carries only
+the body's `checkoutHash`, and the body's URI travels in the order's payload, never
+in an event (`frontend/lib/core/agreementFetch.ts`), so a stranger reads a line item
+only where a party or an attester publishes it. There is no hash-only line-item
 variant.
 
 **Why it looks wrong**: sensitive purchase categories leak by design; a privacy
@@ -505,7 +509,7 @@ audit reads this as a GDPR-shaped defect next to the ECDH address channel, which
 keeps its plaintext off-chain.
 
 **Why it is correct**: the public/confidential boundary rule
-(`DATA_LAYER.md` § "What Is Not Public") puts a datum on the committed side iff
+(`DATA_LAYER.md` § "The public side, and the rule that decides it") puts a datum on the committed side iff
 the mechanism needs it beyond the two endpoints — and line items are exactly that:
 invoices and audit documents derive from them, disputes verify against them, and
 bond/price checks read them. Mitigation is compositional, not mechanical: item
@@ -1174,6 +1178,8 @@ chain without trusting this project's software or documents.
 | `AgreementRegistry.PROVENANCE_LEAF_KEY()` and `PROCESS_TERMS_LEAF_KEY()` | The two reserved keys the registry refuses to register (`ReservedKeyIsNotARegistration`); the registry reads the constants itself, and the getters publish them | A stranger's software that builds agreements and assemblies, to check its own reserved leaf keys against the deployed registry (the SDK checks the counter's copies, `UsageCounter.provenanceLeaf()` and `processTermsLeaf()`) |
 | `MembersRegistry.MemberWithdrawn(member, amount)` | The receipt of the release: the stake left the registry, to which wallet, and how much. De-surfacing is `MemberWithdrawalRequested`, which the readers fold | The member, or anyone auditing the registry's balance against its stakes |
 | `UsageCounter.sellerSeen(kind, key, period, seller)` | Whether a seller already counted toward a key's breadth `d` in a period; the counter reads it to count each seller once | Anyone recomputing a key's score from `UsageRecorded` events and checking it against the counter's state |
+| `registeredAt` in `AgreementRegistry.bindings(agreementHash)` and `ProcessRegistry.bindings(processDesignHash)` | The block timestamp at which the key was registered, which our readers test only against zero | Anyone who asks whether an agreement or an assembly was on the chain before a given order committed, or who orders the registry's entries by age |
+| `amount` in `DepositWithdrawn` of `ClauseRegistry`, `AgreementRegistry` and `ProcessRegistry` | How much stake left the registry with this withdrawal, which the SDK's parsers skip | Anyone auditing a registry's balance against the stakes paid in and paid out, from the logs alone |
 
 A commit-time guard, `scripts/lint-contract-surface-read.sh`, holds this
 entry: it refuses a commit that leaves a public function, variable or event of
@@ -1597,6 +1603,34 @@ reference clause to each cap and refuses a standard outside its enum.
 
 ---
 
+## 38. `RpgfMinter.claim` checks the period budget although consistent counter data already bounds it
+
+**Pattern**: `claim` reverts with `PeriodBudgetExceeded` when
+`minted[periodId] + amount > periodAmount[periodId]`. On consistent data from
+`UsageCounter` the check cannot fire: `_entitlement` refuses a list with a
+repeated `(kind, key)`, pays each key only to the one wallet that registered it and
+only once per period (`claimed`), and `totalScoreIn` is the sum of every key's
+score in a closed period. So the scores claimed in a period sum to at most
+`totalScoreIn`, and the floored pro-rata amounts sum to at most the budget.
+
+**Why it looks wrong**: A check that cannot fire is dead code, and an
+unreachable revert in a minter reads as either a misunderstanding or a path
+someone means to open.
+
+**Why it is correct**: It is a backstop, the same shape as `FlorinToken`'s
+supply cap (§ 28). The minter trusts the counter's arithmetic for the bound;
+the check states the bound in the minter itself, at the one function that
+mints, so a fault in the counter's tally (a score above its own period
+total) is refused rather than minted from other designers' share of the
+period. It costs one storage read per claim and changes no outcome on
+consistent data.
+
+**Tests**: `test_budgetBackstopRefusesOverMintOnInconsistentCounterData`
+(`test/rewards/RpgfMinterTest.t.sol`) feeds the minter a counter whose score
+exceeds its period total and requires the revert.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -1629,7 +1663,7 @@ reference clause to each cap and refuses a standard outside its enum.
 | 26 | The attestation signature does not cover the witness form | batch-path/evidence | A relay can submit a plaintext operation hash-only, and the event is the same for both forms, so the in-proof check is not legible | The evidence a reader relies on (signer, open order, inclusion, `contentRef`) is identical on every path; the in-proof check assures the attesting party's own submission, not a reader |
 | 27 | A state-neutral batch's proof can land twice | batch-path/reward-path | A proof submitted twice is the replay shape, and `BatchSettled` repeats | A batch that moves no state has prev root == new root; its second landing moves no token, and the counter's once-ever `processCounted` skips every use, so nothing a reader relies on changes; a batch that moved the root cannot land twice |
 | 28 | `FlorinToken.mint` checks the supply cap the minters' caps already bound | token | A check that cannot fire reads as dead code | It states the billion bound in the token, at the one function that creates florins, where a stranger reads it; one storage read, no outcome changes |
-| 29 | Public pieces no code of ours reads | registry/reward-path/token | Surface nothing reads is surface to audit for nothing | Each answers a stranger's question of the chain: who may mint, which keys are reserved, where a stake went, which sellers counted |
+| 29 | Public pieces no code of ours reads | registry/reward-path/token | Surface nothing reads is surface to audit for nothing | Each answers a stranger's question of the chain: who may mint, which keys are reserved, when a key was registered, where a stake went and how much, which sellers counted |
 | 30 | Topology is not in the commitment struct | Core-critical | The process's shape reads as part of what is bonded, and the events alone do not show the graph of orders | The bonds are sized by the running total alone; the parties sign the edges through the `checkoutHash`; a wallet outside the trade reads the designed edges from the registered process design; the counter-signer checks a sub-order's edges before it signs; version 3 validated parent ids on the chain, version 4 signed them in the struct, version 5 moved them into the agreement |
 | 31 | The topology leaf has a shape of its own | agreement format/reward-path | The provenance leaf takes the clause-leaf shape under a reserved key, and a leaf no contract rebuilds reads as unprovable | A reserved key in the clause-leaf shape could be registered by anyone and earn on every order; a 96-byte inner preimage opens under no clause key, with no contract or verification key moved, and the edges have no stage after commit to attest |
 | 32 | A reader names the opening order from the chain, and the edges from the agreement | reader/frontend | A test on `runningTotal` in a reader of the process's shape reads as bond arithmetic deciding the graph | It decides no edge: it answers which order opened the process, the Core's own fact at commit; the edges come only from the agreement's topology leaf, and unknown edges are shown as none |
@@ -1638,3 +1672,4 @@ reference clause to each cap and refuses a standard outside its enum.
 | 35 | `resolveProcess` pays an order before it marks it resolved | Core-critical | An external call precedes the status write, against checks-effects-interactions | `nonReentrant` refuses a callback into `commit` or `resolveProcess`; the coordinator only emits and accepts no late evidence the window did not already allow; the counter counts only finished orders once; a revert takes every callback's effect with it |
 | 36 | A stage-0 attestation is not the signed content | evidence/reader | Stage 0 reads as the signing stage, so a reader takes any stage-0 attestation for the signed content | The stage is a `uint8` the attester picks and a `"0"` stage key validates stage-0 content over `stages["0"]`; only `contentRef` equal to the leaf's data hash makes a re-assertion, and the reader compares the two |
 | 37 | The grain cap is as firm as the sibling's allowed values | spec format/data | One word in the sibling lifts a privacy cap | The engine knows one standard's grain and no closed list of the others; a designer makes the cap firm with an `enum` or `pattern` sibling; the filler of the field fills the sibling, and the counterparty reads both before it signs |
+| 38 | `RpgfMinter.claim` checks the period budget consistent counter data already bounds | reward-path | A check that cannot fire reads as dead code | A backstop like § 28: it states the budget in the minter, so a fault in the counter's tally is refused rather than minted from other designers' share |

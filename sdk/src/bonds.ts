@@ -129,28 +129,3 @@ export function assertApprovalCoversBond(
         );
     }
 }
-
-/**
- * Verify that a bond configuration satisfies the protocol invariants.
- * Useful for agents to validate before signing.
- */
-export function validateBonds(
-    payment: bigint,
-    runningTotal: bigint,
-    sellerBond: bigint,
-    buyerBond: bigint,
-): { valid: boolean; reason?: string } {
-    if (payment <= 0n) {
-        return { valid: false, reason: "payment must be positive" };
-    }
-    if (runningTotal < payment) {
-        return { valid: false, reason: "runningTotal must be >= payment" };
-    }
-    if (sellerBond !== runningTotal * 2n) {
-        return { valid: false, reason: `sellerBond must be 2 × runningTotal (expected ${runningTotal * 2n}, got ${sellerBond})` };
-    }
-    if (buyerBond !== payment * 2n) {
-        return { valid: false, reason: `buyerBond must be 2 × payment (expected ${payment * 2n}, got ${buyerBond})` };
-    }
-    return { valid: true };
-}

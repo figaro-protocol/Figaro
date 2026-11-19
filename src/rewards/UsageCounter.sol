@@ -441,8 +441,8 @@ contract UsageCounter {
     /// @notice Count one resolved process's use of one CLAUSE, counted under
     ///         `KIND_CLAUSE` and gated by `ClauseRegistry` alone. Anyone may
     ///         call; the proof is what is trusted, never the caller. Recording
-    ///         is opt-in and gas-paid by whoever benefits — usually the clause's
-    ///         designer of record, since this is how their work is counted.
+    ///         is opt-in and gas-paid by the caller, who needs the signed order,
+    ///         the clause data hash and its proof: data the parties hold.
     ///
     /// @param order       The order's commitment struct, exactly as signed.
     /// @param clauseOrProcess    The clause key — the bytes32 key committed in the
@@ -465,7 +465,7 @@ contract UsageCounter {
 
         // 1. The order is real and RESOLVED. Usage is what a finished process
         //    leaves behind; an open process has not yet added any value.
-        (bytes32 orderHash, bytes32 processId) = _requireResolvedOrder(order);
+        (, bytes32 processId) = _requireResolvedOrder(order);
 
         // 2. The clause is committed in the agreement both parties signed.
         //    The agreement format's leaf, `CommitmentTypes.clauseLeaf` — the one

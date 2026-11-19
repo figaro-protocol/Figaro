@@ -334,6 +334,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `attestAsSeller` | `/agent` | Submit a seller attestation for one clause of a committed order. |
 | `buildChainOffers` | `/agent` | Buyer-sign a whole chain's offers, in commit order, through the one assembly walk. |
 | `buildCommitment` | root | Build the `Commitment` struct and the EIP-712 typed data to sign. |
+| `buildCommitmentSafe` | root | `buildCommitment` for a sub-order, its `runningTotal` read from `FigaroCore`'s process state plus the order's payment, so the struct matches what `commit` checks. |
 | `buildDomain` | root | The EIP-712 domain for a chain id + `FigaroCore` address. |
 | `buildOrderAgreement` | root | Build one order's agreement document and its merkle tree from its clause map. |
 | `withClauseBlinding` | root | One clause's committed values with the blinding value of its private set drawn (`blinding: true` in the spec), read by the clause key from a `SpecSource`; given the party's own data for the clause, it keeps only the value that data carries; a public clause, a process-log clause and an unloaded spec pass unchanged. |
@@ -383,6 +384,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `DISABLED_SWAP_FUNDING_LEG` | root | The inert swap-funding leg — pass it for the party that is not swapping. |
 | `encodeContentFromSpec` | `/clauses` | JSON clause content to canonical ABI bytes — one generic encoder, no per-clause path. |
 | `executeAction` | `/agent` | The single dispatch point for any `ProposedAction`; restores each root's signed `processId` for you. |
+| `filterActions` | `/agent` | The proposed actions of one type, typed to that type. |
 | `extractOverlays` | `/derive` | Group attestations into one overlay graph per clause family PRESENT — the open graph class. |
 | `extractServiceEndpoints` | `/agent` | Read a DID document's `service` entries — WHERE to reach the agent behind it. |
 | `fetchAttestationRecords` | root | Attestations from BOTH paths, address-filtered and tagged per row. |
@@ -400,6 +402,9 @@ definition) and `RPGF_*` constant is a **root** export.
 | `fillPricedLines` | root | Write the order's lines into the first composed clause whose spec marks priced lines (`block.checkout.pricedLines`), in the item shape the mark names; nothing when no such clause is composed. The payment and the token stay in the commitment. |
 | `fillProfileClauses` | root | Fold the seller's profile-filled clause values onto their leaves. |
 | `filterByClause` | `/derive` | Narrow attestation events to one clause. |
+| `filterByOrder` | `/derive` | Narrow attestation events to one order hash. |
+| `filterByProcess` | `/derive` | Narrow attestation events to one process id. |
+| `filterByStage` | `/derive` | Narrow attestation events to one stage; the stage's meaning is in the clause spec. |
 | `generateOrderKeypair` | `/handoff` | A fresh ephemeral secp256k1 keypair for a single order's handoff. |
 | `geohashesMatch` | `/derive` | Do two geohashes agree at a given precision? Default 6 characters. |
 | `getRateQuantityResolver` | root | Look up a registered rate-quantity resolver by its source name. |
@@ -412,6 +417,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `isBytes32Hex` | root | Is this value a 32-byte hex string? The one home for the bytes32-shape regex. |
 | `isProcessRoot` | root | Whether a committed order is its process's root, from its `OrderCommitted` fields: `runningTotal == payment`. Reads no agreement, so an absent or unread topology leaf never decides it. |
 | `makeA2aOfferResponder` | `/agent` | Turn a seller's `OfferHandler` into a framework-agnostic A2A responder. |
+| `makeHttpOfferResponder` | `/agent` | Turn a seller's `OfferHandler` into a framework-agnostic HTTP responder: request body in, status and body out. |
 | `makeSellerOfferHandler` | `/agent` | SELLER LOOP: validate, apply both refusal floors, approve the bond, counter-sign. |
 | `makeSellerQuoteHandler` | `/agent` | Mountable seller responder for the RFQ quote leg. |
 | `makeSellerRaceHandler` | `/agent` | Mountable candidate responder for the dispatch-race leg. |
@@ -425,6 +431,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `parseMemberCatalogDocument` | root | Strict parse of a pinned catalog document; throws on malformed input. |
 | `parseMemberProfileDocument` | root | Strict parse of a pinned profile document; throws on malformed input. |
 | `parseProjectionHints` | root | Read a spec's `block` projection hints — design fills, checkout fills, article. |
+| `specIsProcessLog` | root | Whether a spec's `block.design.article` is `"attestations"`, a process log a frontend presents as a lifecycle; presentation only, never what the clause signs. |
 | `planSubOrderSellers` | root | Topologically order an assembly's sub-orders and resolve each one's bound seller. |
 | `parseAgreementRegistryLogs` | root | Decode `AgreementRegistry` logs into registrations and stake withdrawals, keyed by `agreementHash`. |
 | `planProcessOrders` | root | A hydrated assembly's agreements in commit order, each with its clause bag (keyed by clause key). |
@@ -460,6 +467,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `selectRaceWinner` | `/agent` | Cheapest verified countersigner wins; ties break by arrival order. |
 | `SequencerClient` | `/agent` | HTTP client for a sequencer relay — submission (the batch path's entry point) and the relay's own status. |
 | `socketSignerAccount` | `/signer` | A viem account backed by the policy-signer daemon's socket. |
+| `signerHealth` | `/signer` | Ask a running policy-signer daemon which address it operates. |
 | `strippingReviver` | root | A `JSON.parse` reviver that drops `__proto__`/`constructor`/`prototype` keys. |
 | `tagAttestationUniverses` | root | The pure fold under `fetchAttestationRecords`: tag two address-filtered log streams and merge in block order. |
 | `serializeProcessDesign` | root | The pinned assembly's canonical JSON beside its `processDesignHash`. |
