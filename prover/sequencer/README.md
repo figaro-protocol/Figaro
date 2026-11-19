@@ -402,24 +402,31 @@ of losing the batch:
   whose cost rises between the node's estimate and inclusion would starve
   under a limit set at the estimate and revert the batch, so the
   `settleBatch` call is sent with `SETTLE_GAS_HEADROOM_PCT`
-  (25 percent) over the estimate, capped at the tick's budget
-  (`gas::settle_gas_limit`); gas a transaction does not use is not charged.
-  A node's estimate above that budget is refused before anything is sent, as
-  a deterministic refusal that names nobody (`submitter::submit_batch`). A
-  party's code can answer this relay's check within
-  `WALLET_CODE_EXECUTION_GAS` and burn far more in the node's estimate. A
-  limit set at such an estimate would make the relay pay past its budget for
-  every batch the code rides in. Above the most the node takes for one
+  (25 percent) over the estimate, capped at the batch's own ceiling
+  (`gas::settle_gas_limit`, `gas::settle_ceiling`); gas a transaction does
+  not use is not charged. The ceiling is the batch's plan with one more
+  planned transfer per net position, and a quarter over that, never past
+  the tick's budget; `submitter::submit_batch` reads the plan from the
+  batch it sends (`submitter::planned_settle_gas`). A node's estimate above
+  that ceiling is refused before anything is sent, as a deterministic
+  refusal that names nobody. A party's code can answer this relay's check
+  within `WALLET_CODE_EXECUTION_GAS` and burn far more in the node's
+  estimate. A limit set at such an estimate would make the relay pay past
+  its plan for every batch the code rides in. Above the most the node takes for one
   transaction, the node would refuse the send with an error that is not a
   revert; the relay would read it as transient and re-prove the batch until
   the re-queue cap dead-lettered every operation beside the wallet's. The
   refusal goes where every refusal that names nobody goes: the batch's
   wallet-code operations are dead-lettered alone and the rest re-queued, and
   a batch with no wallet-code operation (one whose token transfer costs more
-  than planned) is isolated (see Mempool bounds). Under the budget the
-  refusal does not apply: the verifier forwards the code all the gas left, so
-  code that burns it and then answers yes lands the batch at a cost up to the
-  budget, and nothing names that wallet.
+  than planned) is isolated (see Mempool bounds). The verifier forwards a
+  party's code, and a token's transfer, all the gas left, so code that burns
+  it and then answers yes lands the batch at more than it was planned at,
+  and nothing names that party. Held to its own ceiling, such a batch costs
+  the relay at most that ceiling: about two and a half times its plan when
+  every planned gas unit is a position's, and a quarter over its plan when
+  it has none. A batch in a token whose transfer costs up to twice what a
+  position is planned at still lands, and keeps the send's whole headroom.
 
 Without `BATCH_VERIFIER_ADDRESS` (the prove-only dry run)
 no funding is read; the chain id is read at startup in every mode. A read failure at the door refuses the submission (`503`,
@@ -545,6 +552,7 @@ chain without the cap gives about 410 at a 60M block and about 1,375 at
 Sepolia's 200M, and a rise in the limit flows through at the next tick
 with nothing set, while a fork that reprices the items is met by
 re-measuring them. The position constant assumes a plain ERC-20: a token
-whose transfer costs more is the parties' choice, and a batch whose estimate
-it drives above the tick's budget is refused before the send and isolated
-(see Mempool bounds), each operation re-submittable.
+whose transfer costs more is the parties' choice. Up to twice the planned
+figure a batch lands; a batch whose estimate the token drives above the
+batch's own ceiling (`gas::settle_ceiling`) is refused before the send and
+isolated (see Mempool bounds), each operation re-submittable.
