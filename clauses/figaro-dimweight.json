@@ -61,11 +61,13 @@
                         }
                     }
                 }
-            }
+            },
+            "pricedLines": null,
+            "heldValues": {},
+            "compositionFields": []
         },
         "runtime": {
-            "interaction": null,
-            "fields": []
+            "interaction": null
         }
     }
 }

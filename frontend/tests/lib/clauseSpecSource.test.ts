@@ -115,7 +115,7 @@ describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
             block: {
                 design: { article: "resolution", nestsUnder: null, fills: ["x"], composes: null },
                 checkout: { catalogueFills: ["x"], profileFills: [] },
-                runtime: { interaction: null, fields: [] },
+                runtime: { interaction: null },
             },
         });
         await loadClauseSpec(key, "ipfs://fake-fills");

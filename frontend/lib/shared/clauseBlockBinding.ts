@@ -6,16 +6,17 @@
  * registration, and the content `fields`/`stages` that become clauses of
  * signed agreements (merkle leaves under the on-chain `checkoutHash`).
  * `block` is the UI half: instructions to frontends, organized into PHASE
- * SECTIONS, each named for its reader —
+ * SECTIONS, each named for the phase whose actor it instructs —
  *
- *   - `design`   — read by the designer's canvas and agreement drawer,
- *   - `checkout` — read by the checkout fold,
- *   - `runtime`  — read by the capability rail.
+ *   - `design`   — the designer, composing clauses into agreements and assemblies,
+ *   - `checkout` — the seller binding and the buyer filling and signing,
+ *   - `runtime`  — the parties while the process runs, after commit.
  *
  * Nothing on-chain reads any of it; any frontend could present the same
- * clause differently. An attribute read in two phases is declared in the
- * section of its FIRST reader (`design.composes` is declared at design,
- * dispatched at runtime). The one verb `fills` recurs across sections and
+ * clause differently. A later phase may read an earlier section; no phase
+ * reads a section named for a later one. An attribute read in two phases is
+ * declared in the section of its FIRST reader (`design.composes` is declared
+ * at design, dispatched at checkout and runtime). The one verb `fills` recurs across sections and
  * always means the same thing: the content fields (by name) whose values that
  * phase's actor fills — the BUYER owns every content field named in no
  * fills list, filled at checkout (the default case; always derived as the
@@ -139,6 +140,14 @@ interface ClauseBlockCheckout {
      *  and a frontend that knows no reader for the standard offers none of
      *  the values. */
     heldValues: Readonly<Record<string, HeldValuesHint>>;
+    /** The composition's input field specs: values the buyer supplies at
+     *  checkout for the contract `design.composes` names (its opening
+     *  parameters). They are not the clause's content `fields`, so they are
+     *  not committed into the agreement at signing. ONE generic form renders
+     *  them; the surface reads no interface name. Same `FieldSpec` shape as
+     *  content fields: one parser, one renderer. Empty for a clause that
+     *  composes with nothing or takes no input. */
+    compositionFields: readonly FieldSpec[];
 }
 
 /** One `checkout.heldValues` entry. `reader` names a STANDARD (an open
@@ -166,14 +175,6 @@ interface ClauseBlockRuntime {
      *  affordance is progressive enhancement, the protocol never depends on
      *  it. Null for clauses whose tasks need no dedicated interaction. */
     interaction: { interface: string } | null;
-    /** Runtime-input field specs — values a party supplies at RUNTIME,
-     *  distinct from the clause's content `fields` (which are committed into
-     *  the agreement at signing). Rendered by ONE generic form; the surface
-     *  reads no interface name. Serves any runtime input: a composed
-     *  contract's parameters (paired with `design.composes`) or a runtime
-     *  attestation's witness. Same `FieldSpec` shape as content fields — one
-     *  parser, one renderer. Empty for clauses with no runtime input. */
-    fields: readonly FieldSpec[];
 }
 
 /**
@@ -379,6 +380,7 @@ export function parseBlockBinding(
     let pricedLines: PricedLinesMark | null = null;
     let derives: Readonly<Record<string, CheckoutDerivation>> = {};
     let heldValues: Readonly<Record<string, HeldValuesHint>> = {};
+    let compositionFields: readonly FieldSpec[] = [];
     if (raw.checkout !== undefined) {
         if (!isObject(raw.checkout)) {
             errors.push({ path: `${path}.checkout`, message: "checkout section must be an object when present" });
@@ -414,11 +416,25 @@ export function parseBlockBinding(
         const parsedHeld = parseHeldValues(raw.checkout.heldValues, `${path}.checkout.heldValues`, errors);
         if (parsedHeld === null) return null;
         heldValues = parsedHeld;
+        if (raw.checkout.compositionFields !== undefined) {
+            if (!Array.isArray(raw.checkout.compositionFields)) {
+                errors.push({ path: `${path}.checkout.compositionFields`, message: "compositionFields must be an array of field specs when present" });
+                return null;
+            }
+            // Reuse the SDK's field-spec parser: composition input fields are
+            // the SAME shape as a clause's content fields, so one parser drives both.
+            const parsed: FieldSpec[] = [];
+            for (let i = 0; i < raw.checkout.compositionFields.length; i++) {
+                const f = parseFieldSpec(raw.checkout.compositionFields[i], `${path}.checkout.compositionFields[${i}]`, errors);
+                if (f === null) return null;
+                parsed.push(f);
+            }
+            compositionFields = parsed;
+        }
     }
 
     // ── runtime ─────────────────────────────────────────────────────────
     let interaction: ClauseBlockRuntime["interaction"] = null;
-    let runtimeFields: readonly FieldSpec[] = [];
     if (raw.runtime !== undefined) {
         if (!isObject(raw.runtime)) {
             errors.push({ path: `${path}.runtime`, message: "runtime section must be an object when present" });
@@ -435,26 +451,11 @@ export function parseBlockBinding(
             }
             interaction = { interface: raw.runtime.interaction.interface };
         }
-        if (raw.runtime.fields !== undefined) {
-            if (!Array.isArray(raw.runtime.fields)) {
-                errors.push({ path: `${path}.runtime.fields`, message: "runtime.fields must be an array of field specs when present" });
-                return null;
-            }
-            // Reuse the SDK's field-spec parser — runtime input fields are the
-            // SAME shape as a clause's content fields, so one parser drives both.
-            const parsed: FieldSpec[] = [];
-            for (let i = 0; i < raw.runtime.fields.length; i++) {
-                const f = parseFieldSpec(raw.runtime.fields[i], `${path}.runtime.fields[${i}]`, errors);
-                if (f === null) return null;
-                parsed.push(f);
-            }
-            runtimeFields = parsed;
-        }
     }
 
     return {
         design: { article: rawDesign.article as ClauseArticle, scope, nestsUnder, fills: designFills, composes },
-        checkout: { catalogueFills, profileFills, catalogueMeasures, pricedLines, derives, heldValues },
-        runtime: { interaction, fields: runtimeFields },
+        checkout: { catalogueFills, profileFills, catalogueMeasures, pricedLines, derives, heldValues, compositionFields },
+        runtime: { interaction },
     };
 }

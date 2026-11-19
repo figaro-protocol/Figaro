@@ -315,7 +315,7 @@ describe("privacy is judged by the set the content was encoded from", () => {
     const BLOCK = (article: string) => ({
         design: { article, scope: "agreement", nestsUnder: null, fills: [], composes: null },
         checkout: { catalogueFills: [], profileFills: [] },
-        runtime: { interaction: null, fields: [] },
+        runtime: { interaction: null },
     });
     // A private ladder (top-level set) that also declares a public stages[1].
     const LADDER = pinSpec({

@@ -94,7 +94,7 @@ interface ListedPrice {
 }
 
 /** One order's on-network composition (external, on-chain composition): the composing clause, its
- *  standard interface, and the runtime `block.runtime.fields` the buyer fills. */
+ *  standard interface, and the `block.checkout.compositionFields` the buyer fills. */
 interface OrderComposition {
     nodeId: string;
     clauseKey: string;
@@ -259,8 +259,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     } = useCheckout(currency);
     // Nothing is priced, parsed or shown as a magnitude until the chain has answered decimals().
     const decimalsReady = tokenDecimals !== undefined;
-    // Runtime inputs for any order that composes an on-network contract — the
-    // clause's `block.runtime.fields`, filled at checkout (like the cart line items),
+    // Inputs for any order that composes an on-network contract — the
+    // clause's `block.checkout.compositionFields`, filled at checkout (like the cart line items),
     // keyed by assembly node id then field name. Interface-agnostic: the form
     // renders whatever fields the composing clause declares, naming no clause.
     const [compositionInputs, setCompositionInputs] = useState<Record<string, Record<string, unknown>>>({});
@@ -563,18 +563,18 @@ export function CheckoutView({ sellerAddress }: Props) {
     // composition — there is no coordination field.
     const unboundSubOrders = subOrderPlan.filter((p) => !p.seller);
     // Any order that composes an on-network contract (external, on-chain composition) —
-    // discovered by reading `block.design.composes` + `block.runtime.fields`
+    // discovered by reading `block.design.composes` + `block.checkout.compositionFields`
     // off the clause spec, naming no clause and no interface. Applies to ANY
     // order (root, sub, 136th), not just sub-orders. The buyer fills each
-    // composition's runtime input fields below.
+    // composition's input fields below.
     const orderCompositions = ((): OrderComposition[] => {
         if (!pickedAssembly) return [];
         const out: OrderComposition[] = [];
         for (const order of pickedAssembly.hydratedAssembly.assembly.agreements) {
             for (const cid of Object.keys(agreementClauses(pickedAssembly.hydratedAssembly, order))) {
                 const block = getClauseSpec(cid)?.block;
-                if (block?.design.composes && block.runtime.fields.length > 0) {
-                    out.push({ nodeId: order.id, clauseKey: cid, interface: block.design.composes.interface, fields: block.runtime.fields });
+                if (block?.design.composes && block.checkout.compositionFields.length > 0) {
+                    out.push({ nodeId: order.id, clauseKey: cid, interface: block.design.composes.interface, fields: block.checkout.compositionFields });
                     break; // one composition per order
                 }
             }
@@ -586,14 +586,14 @@ export function CheckoutView({ sellerAddress }: Props) {
     // buyer's pick, whether or not the order also composes.
     const buyerPickSubOrders = unboundSubOrders;
     const buyerChoosesCoSeller = buyerPickSubOrders.length > 0;
-    // Every composition's REQUIRED block.runtime.fields must be filled before
+    // Every composition's REQUIRED block.checkout.compositionFields must be filled before
     // placing — the same emptiness rule the general-clause fill gate applies.
     const compositionsReady = orderCompositions.every((c) =>
         c.fields.every((f) => !f.required || isFilledValue(compositionInputs[c.nodeId]?.[f.name])),
     );
     // Ready to place when a profile-bound assembly is resolved (chosen, when the
     // seller offers more than one), any buyer-chosen co-seller is selected,
-    // and every composition's runtime inputs are complete.
+    // and every composition's inputs are complete.
     const orderReady = !!pickedAssembly
         && !!currency
         && decimalsReady
@@ -1373,7 +1373,7 @@ export function CheckoutView({ sellerAddress }: Props) {
 
                         {/* On-network composition inputs (external, on-chain composition): any
                             order whose clause declares block.design.composes +
-                            block.runtime.fields gets those runtime fields
+                            block.checkout.compositionFields gets those fields
                             rendered here generically — one form, naming no
                             clause or interface — a novel composition surfaces
                             its own fields with zero code. */}

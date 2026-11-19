@@ -70,11 +70,13 @@
                         "english-language": ["English Language"]
                     }
                 }
-            }
+            },
+            "pricedLines": null,
+            "derives": {},
+            "compositionFields": []
         },
         "runtime": {
-            "interaction": null,
-            "fields": []
+            "interaction": null
         }
     }
 }

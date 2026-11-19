@@ -110,11 +110,14 @@
                     "from": "heightMm",
                     "combine": "single-unit"
                 }
-            }
+            },
+            "pricedLines": null,
+            "derives": {},
+            "heldValues": {},
+            "compositionFields": []
         },
         "runtime": {
-            "interaction": null,
-            "fields": []
+            "interaction": null
         }
     }
 }

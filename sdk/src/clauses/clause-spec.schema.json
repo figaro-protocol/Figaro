@@ -118,7 +118,7 @@
         },
         "block": {
             "type": "object",
-            "description": "The UI half of the spec — instructions to frontends about how the clause presents and composes, organized into PHASE SECTIONS, each named for its reader: `design` (the designer's canvas/drawer), `checkout` (the checkout fold), `runtime` (the capability rail). Nothing on-chain reads any of it; any frontend could present the same clause differently. An attribute read in two phases is declared in the section of its FIRST reader. The one verb `fills` recurs across sections and always means the same thing: the content fields (by name) whose values that phase's actor authors; the buyer owns every content field named in no fills list and no `checkout.catalogueMeasures` entry.",
+            "description": "The UI half of the spec — instructions to frontends about how the clause presents and composes, organized into PHASE SECTIONS, each named for the phase whose actor it instructs: `design` (the designer composing agreements and assemblies), `checkout` (the seller binding and the buyer filling and signing), `runtime` (the parties while the process runs, after commit). Nothing on-chain reads any of it; any frontend could present the same clause differently. A later phase may read an earlier section; no phase reads a section named for a later one. An attribute read in two phases is declared in the section of its FIRST reader. The one verb `fills` recurs across sections and always means the same thing: the content fields (by name) whose values that phase's actor authors; the buyer owns every content field named in no fills list and no `checkout.catalogueMeasures` entry.",
             "required": ["design"],
             "additionalProperties": true,
             "properties": {
@@ -129,7 +129,7 @@
         },
         "blockDesign": {
             "type": "object",
-            "description": "Read by the designer's canvas and agreement drawer at design time.",
+            "description": "Instructs the designer, who composes clauses into agreements and assemblies. Checkout and runtime may read it.",
             "required": ["article"],
             "additionalProperties": true,
             "properties": {
@@ -153,7 +153,7 @@
                 },
                 "composes": {
                     "type": ["object", "null"],
-                    "description": "Composition binding — the on-network contract or external forum this clause composes with (external, on-chain composition). `interface` names a STANDARD composition interface (chain-agnostic, read from spec — never a bundled clause-id switch in code); the concrete instance ADDRESS is chain-specific and comes at runtime, not here. `forumUrl` deep-links a provider's own web UI for URL-only compositions (https: only — it renders as a link). Declared here (the designer composes it); dispatched at runtime. Null for clauses that compose with nothing.",
+                    "description": "Composition binding — the on-network contract or external forum this clause composes with (external, on-chain composition). `interface` names a STANDARD composition interface (chain-agnostic, read from spec — never a bundled clause-id switch in code); the concrete instance ADDRESS is chain-specific and comes at runtime, not here. `forumUrl` deep-links a provider's own web UI for URL-only compositions (https: only — it renders as a link). Declared here (the designer composes it); its inputs are collected at checkout (checkout.compositionFields) and it is dispatched at runtime. Null for clauses that compose with nothing.",
                     "required": ["interface"],
                     "properties": {
                         "interface": { "type": "string", "minLength": 1 },
@@ -164,7 +164,7 @@
         },
         "blockCheckout": {
             "type": "object",
-            "description": "Read by the checkout fold: where declared values come from before the buyer signs. Any content field named in none of its lists — and not in design.fills — is the buyer's, authored at checkout (the default case; derived as the complement, never stored).",
+            "description": "Instructs the checkout's actors: the seller, who binds an assembly through its catalog and profile, and the buyer, who fills and signs. It says where declared values come from before the buyer signs. Any content field named in none of its lists — and not in design.fills — is the buyer's, filled at checkout (the default case; derived as the complement, never stored). Runtime may read it; design does not.",
             "additionalProperties": true,
             "properties": {
                 "catalogueFills": {
@@ -213,12 +213,64 @@
                         }
                     },
                     "description": "The enum content fields (by name, the map's keys) whose values a checkout offers only when the chain in use holds what each value names, read at checkout by the named reader from the contracts given for that chain. A presentation hint, read only by a frontend that knows the reader's standard: it changes nothing the parties sign, and another frontend may ignore it. On a chain the hint gives no contracts for, every value is offered; under a reader the frontend does not know, a failed read or an empty one, no value is. The addresses are part of the spec's registered bytes, so a chain added later needs a new spec version. Absent is read as {}."
+                },
+                "pricedLines": {
+                    "type": ["object", "null"],
+                    "required": ["field", "quantity", "unitPrice"],
+                    "properties": {
+                        "field": { "type": "string", "minLength": 1, "description": "The top-level array content field that holds the order's lines." },
+                        "quantity": { "type": "string", "minLength": 1, "description": "The field of each line item that carries its quantity (an integer field)." },
+                        "unitPrice": { "type": "string", "minLength": 1, "description": "The field of each line item that carries its unit price (a bigint field, in the token's smallest unit)." },
+                        "item": { "type": "string", "minLength": 1, "description": "The field of each line item that carries the catalog item's id (a string field)." },
+                        "name": { "type": "string", "minLength": 1, "description": "The field of each line item that carries the catalog item's name (a string field)." }
+                    },
+                    "description": "The mark on the order's PRICED LINES: the array field that holds them and which field of each line item plays each role. Code reads the mark, never a field name. The checkout writes the lines into the marked field, a quote request prices each line's unit price, and a review reads them through the mark. A mark the spec's own fields contradict marks nothing. Absent or null: the clause carries no priced lines."
+                },
+                "derives": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "required": ["rule", "inputs"],
+                        "properties": {
+                            "rule": { "type": "string", "minLength": 1, "description": "The rule's name in the open derivation registry (registerCheckoutDerivation), never a clause id." },
+                            "inputs": {
+                                "type": "object",
+                                "propertyNames": { "minLength": 1 },
+                                "additionalProperties": {
+                                    "oneOf": [
+                                        {
+                                            "type": "object",
+                                            "required": ["field"],
+                                            "properties": { "field": { "type": "string", "minLength": 1 } },
+                                            "not": { "anyOf": [{ "required": ["from"] }, { "required": ["combine"] }] }
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": ["from", "combine"],
+                                            "properties": {
+                                                "from": { "type": "string", "minLength": 1 },
+                                                "combine": { "enum": ["sum", "single-unit"] }
+                                            },
+                                            "not": { "required": ["field"] }
+                                        }
+                                    ]
+                                },
+                                "description": "The rule's inputs, by the rule's own input names: each one a content field of the same clause ({ field }, read after the catalog and profile folds) or a catalog measure ({ from, combine }, combined as catalogueMeasures combines)."
+                            }
+                        }
+                    },
+                    "description": "The content fields (by name, the map's keys) the checkout COMPUTES, each by a rule of the open derivation registry over its declared inputs. Never the buyer's. A rule the registry does not hold, or inputs it cannot derive from, leave the field as it was. Absent is read as {}."
+                },
+                "compositionFields": {
+                    "type": "array",
+                    "items": { "$ref": "#/$defs/field" },
+                    "description": "The composition's input field specs: values the buyer supplies at checkout for the contract design.composes names (its opening parameters). They are NOT content fields, so nothing commits them into the agreement. ONE generic form renders them; the form reads no interface name. Same field shape as content fields: one parser, one renderer. Reporting while the process runs is the witness stages (`stages`), never these. Express as [] when the clause takes no composition input."
                 }
             }
         },
         "blockRuntime": {
             "type": "object",
-            "description": "Read by the capability rail while the process runs.",
+            "description": "Instructs the parties while the process runs, after commit: the interactions their tasks use. No earlier phase reads it.",
             "additionalProperties": true,
             "properties": {
                 "interaction": {
@@ -228,11 +280,6 @@
                     "properties": {
                         "interface": { "type": "string", "minLength": 1 }
                     }
-                },
-                "fields": {
-                    "type": "array",
-                    "items": { "$ref": "#/$defs/field" },
-                    "description": "Runtime-input field specs — values a party supplies at RUNTIME that are NOT committed content (e.g. a composed contract's opening parameters, paired with design.composes). Rendered by ONE generic form; the surface reads no interface name. Same field shape as content fields — one parser, one renderer. Express as [] when the clause takes no runtime input."
                 }
             }
         }

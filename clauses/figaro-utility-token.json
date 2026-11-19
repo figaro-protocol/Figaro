@@ -26,11 +26,14 @@
         "checkout": {
             "catalogueFills": [],
             "profileFills": [],
-            "catalogueMeasures": {}
+            "catalogueMeasures": {},
+            "pricedLines": null,
+            "derives": {},
+            "heldValues": {},
+            "compositionFields": []
         },
         "runtime": {
-            "interaction": null,
-            "fields": []
+            "interaction": null
         }
     }
 }
