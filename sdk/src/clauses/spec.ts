@@ -104,8 +104,8 @@ export interface StringFieldSpec extends BaseFieldSpec {
      *  to plain text for standards this frontend registered no input for. A
      *  reader resolves it with {@link resolveInputFormat}, as
      *  `values[formatFromField] ?? <sibling default> ?? format`; content
-     *  validation applies the geohash grain cap to the resolved format, static
-     *  or named by a sibling (`grain.ts`). A stage field's sibling is a field
+     *  validation applies the grain cap of geohash, H3, S2 and Open Location
+     *  Code to the resolved format, static or named by a sibling (`grain.ts`). A stage field's sibling is a field
      *  of the same stage. */
     formatFromField?: string;
     minLength?: number;

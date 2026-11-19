@@ -17,8 +17,9 @@
 //!
 //! The two engines apply the same rules: the spec format's (the
 //! disposition, `formatFromField`, the private set's one blinding field of
-//! one shape, the enum's 256 values) and content validation's (the geohash
-//! grain cap by disposition, `grain.rs`, among them). The SDK's frozen
+//! one shape, the enum's 256 values) and content validation's (the grain cap
+//! of geohash, H3, S2 and Open Location Code by disposition, `grain.rs`,
+//! among them). The SDK's frozen
 //! vectors (`tests/engine_vectors.rs`) and its generated stream
 //! (`tests/fuzz_vectors.rs`) hold this engine to the SDK's verdict on every
 //! case, so a proof of a plaintext attestation attests the private set's
@@ -41,8 +42,9 @@ pub mod validate;
 
 pub use encode::{encode_content_from_spec, EncodeError, EncodeOptions};
 pub use grain::{
-    geohash_capture_precision, GEOHASH_FORMAT, PRIVATE_GEOHASH_MAX_PRECISION,
-    PUBLIC_GEOHASH_MAX_PRECISION,
+    cap_of_disposition, geohash_capture_precision, grain_cap_of, grain_of, GrainCap,
+    GEOHASH_FORMAT, H3_FORMAT, OLC_FORMAT, PRIVATE_GEOHASH_MAX_PRECISION,
+    PUBLIC_GEOHASH_MAX_PRECISION, S2_FORMAT,
 };
 pub use spec::{
     parse_clause_spec, parse_field_spec, parse_stage_key, ArrayFieldSpec, BaseFieldSpec,

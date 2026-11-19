@@ -207,8 +207,8 @@ describe("validateContent — the geohash grain cap, keyed on the spec's own att
 
     it("bounds a standard it carries no grain knowledge of by maxLength only", () => {
         const spec = stranger("public");
-        expect(validateContent({ grid: "s2", pickup: "x".repeat(40) }, spec).ok).toBe(true);
-        expect(validateContent({ grid: "s2", pickup: "x".repeat(41) }, spec).ok).toBe(false);
+        expect(validateContent({ grid: "maidenhead", pickup: "x".repeat(40) }, spec).ok).toBe(true);
+        expect(validateContent({ grid: "maidenhead", pickup: "x".repeat(41) }, spec).ok).toBe(false);
     });
 
     it("resolves the format from the sibling's default when the sibling is absent", () => {

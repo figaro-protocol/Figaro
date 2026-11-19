@@ -41,10 +41,19 @@ carries the structural ceiling (`maxLength`) and the attributes the cap reads:
 the field's `disposition`, and its resolved format, static or named by a
 sibling: the static `format`, or the value of the sibling `formatFromField`
 names, which is the standard (the `figaro-geolocation` spec in `clauses/`).
-When that format is geohash, `validateContent` (`sdk/src/clauses/validate.ts`,
-with the cap in `sdk/src/clauses/grain.ts`) refuses a public value longer than
-6 characters and a private one longer than 12; a standard it carries no grain
-knowledge of is bounded by `maxLength` only.
+When that format is one of the four standards whose grain the SDK reads,
+`validateContent` (`sdk/src/clauses/validate.ts`, with the caps in
+`sdk/src/clauses/grain.ts`) refuses a value finer than its disposition's cap,
+and a value that is no code of the standard. The public caps are neighborhood
+grade: a geohash of 6 characters, an H3 cell of resolution 8, an S2 cell of
+level 13, an Open Location Code of length 6. The private caps are 12
+characters, resolution 15, level 30 and length 15 (`docs/CLAUSES.md` gives the
+equivalence). A standard it carries no grain knowledge of is bounded by
+`maxLength` only. The `figaro-geolocation` spec names only the four in its
+`geocodeStandard` enum, so its public `origin` and `destination` are capped
+under every standard it admits; a clause whose standard is a free string
+accepts a standard the cap does not know (`docs/DESIGN_DECISIONS.md`, the entry
+on the grain cap's firmness).
 A member profile's location is the member's own publication, read as written:
 the SDK's profile parser (`sdk/src/memberProfile.ts`, `parseLocation`) applies
 no cap, so a profile already published stays readable, and the reference

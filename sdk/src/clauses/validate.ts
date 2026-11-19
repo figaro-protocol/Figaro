@@ -6,14 +6,15 @@
  * re-runs the validation inside the SP1 proof on the batched resolution path,
  * and the two engines apply the same rules: the spec format's (the
  * disposition, `formatFromField`, the private set's blinding field and its
- * one shape, the enum's 256 values) and content validation's (the geohash
- * grain cap by disposition, `validateGrain`, here, among them). They give the
+ * one shape, the enum's 256 values) and content validation's (the grain cap
+ * of geohash, H3, S2 and Open Location Code by disposition, `validateGrain`,
+ * here, among them). They give the
  * same verdict on every case of the shared vectors
  * (`test/fixtures/clause-engine-vectors.json`) and of the generated stream
  * (`tests/clauses/clauseFuzzVectors.test.ts`). A proof of a plaintext
  * attestation therefore attests that its spec keeps the private set's rules,
  * that a private set's content carries its blinding value, and that each
- * geohash keeps its disposition's grain. That check binds for the party that
+ * location code of a capped standard keeps its disposition's grain. That check binds for the party that
  * submitted the plaintext form; a reader of the chain cannot tell which form
  * an attestation took (`docs/DESIGN_DECISIONS.md` § 26). The DIRECT path validates no content
  * shape on-chain — the coordinator merkle-binds an attestation to its signed
@@ -36,7 +37,7 @@ import type {
 import { hasLoneSurrogate, ownValue, resolveFormatWith, resolveInputFormat, siblingDefaults } from "./spec.js";
 import { contentFieldsFor } from "./encode.js";
 import { safeRegexTest } from "./safeRegex.js";
-import { GEOHASH_FORMAT, geohashCapturePrecision } from "./grain.js";
+import { GEOHASH_FORMAT, capOfDisposition, grainCapOf, grainOf } from "./grain.js";
 import { isBytes32Hex, isAddressHex } from "../types.js";
 
 export interface ValidationError {
@@ -223,14 +224,16 @@ function validateObject(value: unknown, spec: ObjectFieldSpec, path: string, err
 }
 
 /**
- * The geohash grain cap, cap(disposition, geocodeStandard). The caller passes
+ * The grain cap, cap(disposition, geocodeStandard), for each standard
+ * `grain.ts` knows: geohash, H3, S2 and Open Location Code. The caller passes
  * the field's resolved format (`resolveInputFormat`: the static `format`, or
  * the value of the sibling `formatFromField` names, then that sibling's
  * default, then `format`) and the disposition that governs the value. When
- * the resolved format is geohash, a string longer than that disposition's cap
- * is refused; `maxLength` stays the structural ceiling. It keys on the spec's
- * own attributes, never on a clause id or a field name. A standard this reader
- * carries no grain knowledge of is bounded by `maxLength` only (`grain.ts`).
+ * the resolved format is one of those standards, a string that is no code of
+ * it, or whose grade is finer than that disposition's cap, is refused;
+ * `maxLength` stays the structural ceiling. It keys on the spec's own
+ * attributes, never on a clause id or a field name. A standard this reader
+ * carries no grain knowledge of is bounded by `maxLength` only.
  */
 function validateGrain(
     value: unknown,
@@ -239,12 +242,18 @@ function validateGrain(
     path: string,
     errors: ValidationError[],
 ): void {
-    if (resolvedFormat !== GEOHASH_FORMAT || typeof value !== "string") return;
-    const cap = geohashCapturePrecision(disposition);
-    if (value.length > cap) {
+    const cap = grainCapOf(resolvedFormat);
+    if (cap === undefined || resolvedFormat === undefined || typeof value !== "string") return;
+    const allowed = capOfDisposition(cap, disposition);
+    const grade = grainOf(resolvedFormat, value);
+    if (grade === null || grade === undefined) {
+        errors.push({ path, message: `not a ${resolvedFormat} code, so its grain cannot be read` });
+    } else if (grade > allowed) {
         errors.push({
             path,
-            message: `a ${disposition ?? "public"} geohash carries at most ${cap} characters; give the cell's first ${cap} characters`,
+            message: resolvedFormat === GEOHASH_FORMAT
+                ? `a ${disposition ?? "public"} geohash carries at most ${allowed} characters; give the cell's first ${allowed} characters`
+                : `a ${disposition ?? "public"} ${resolvedFormat} code carries at most ${cap.grade} ${allowed}; this one carries ${grade}`,
         });
     }
 }

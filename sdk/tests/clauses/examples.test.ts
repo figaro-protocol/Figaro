@@ -101,18 +101,19 @@ describe("example clause specs — parse + validate sample content", () => {
         }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-geolocation accepts a jurisdiction-grade pair under a declared standard (open axis — digital chains)", () => {
+    it("figaro-geolocation refuses a standard whose grain the engines do not cap", () => {
         const parsed = parseClauseSpec(geolocationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        // The standards axis is OPEN: iso3166-2 territory
-        // codes serve digital-delivery jurisdictions; off-chain validation checks shape
-        // (length caps), the standard's own grammar is the reader's per-
-        // standard knowledge — exactly the emissions-methodology pattern.
+        // The reference clause names only the standards the engines cap; a
+        // clause that needs another standard is a clause of its own
+        // (docs/DESIGN_DECISIONS.md, the entry on the grain cap's firmness).
+        const standard = parsed.spec.fields.find((f) => f.name === "geocodeStandard");
+        expect(standard?.type === "enum" && standard.values).toEqual(["geohash", "h3", "s2", "olc"]);
         expect(validateContent({
             geocodeStandard: "iso3166-2",
             origin: "DE-BY",
             destination: "US-NY",
-        }, parsed.spec).ok).toBe(true);
+        }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-geolocation rejects a code past the shape cap — the cap is the SPEC's, not a frontend's", () => {
@@ -189,21 +190,19 @@ describe("example clause specs — parse + validate sample content", () => {
         if (!finer.ok) expect(finer.errors.map((e) => e.path)).toEqual(["$.origin"]);
     });
 
-    it("figaro-geolocation under a standard other than geohash is bounded by maxLength only", () => {
+    it.each([
+        { standard: "h3", atCap: "8828308281fffff", past: "8928308280fffff" },
+        { standard: "s2", atCap: "89c259b4", past: "89c259b1" },
+        { standard: "olc", atCap: "8FVC9G00+", past: "8FVC9G8F+" },
+    ])("figaro-geolocation caps a public $standard code at the neighborhood, and refuses one grade finer", ({ standard, atCap, past }) => {
         const parsed = parseClauseSpec(geolocationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        // An Open Location Code of eleven characters, and a 32-character code
-        // under a standard this reader carries no grain knowledge of.
-        expect(validateContent({
-            geocodeStandard: "olc",
-            origin: "8FVC9G8F+6X",
-            destination: "x".repeat(32),
-        }, parsed.spec).ok).toBe(true);
-        expect(validateContent({
-            geocodeStandard: "olc",
-            origin: "x".repeat(33),
-            destination: "8FVC9G8F+6X",
-        }, parsed.spec).ok).toBe(false);
+        expect(validateContent({ geocodeStandard: standard, origin: atCap, destination: atCap }, parsed.spec).ok).toBe(true);
+        const finer = validateContent({ geocodeStandard: standard, origin: atCap, destination: past }, parsed.spec);
+        expect(finer.ok).toBe(false);
+        if (!finer.ok) expect(finer.errors.map((e) => e.path)).toEqual(["$.destination"]);
+        // A value that is no code of the standard has no grain to read, and is refused.
+        expect(validateContent({ geocodeStandard: standard, origin: atCap, destination: "x".repeat(8) }, parsed.spec).ok).toBe(false);
     });
 
     it("figaro-geolocation rejects missing required fields", () => {

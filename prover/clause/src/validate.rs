@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
-use crate::grain::{geohash_capture_precision, GEOHASH_FORMAT};
+use crate::grain::{cap_of_disposition, grain_cap_of, grain_of, GEOHASH_FORMAT};
 use crate::spec::{
     looks_like_decimal_integer, ArrayFieldSpec, BigintFieldSpec, ClauseSpec, DefaultValue,
     Disposition, EnumFieldSpec, FieldSpec, IntegerFieldSpec, ObjectFieldSpec, StringFieldSpec,
@@ -908,12 +908,13 @@ fn sibling_defaults(fields: &[FieldSpec]) -> Option<HashMap<&str, Option<&str>>>
     Some(defaults)
 }
 
-/// The geohash grain cap — the SDK's `validateGrain`. The caller passes the
+/// The grain cap — the SDK's `validateGrain` — for each standard `grain.rs`
+/// knows: geohash, H3, S2 and Open Location Code. The caller passes the
 /// field's resolved format and the disposition that governs the value. When
-/// the resolved format is geohash, a string longer than that disposition's
-/// cap (in UTF-16 units) is refused; `maxLength` stays the structural
-/// ceiling. It keys on the spec's own attributes, never on a clause id or a
-/// field name.
+/// the resolved format is one of those standards, a string that is no code
+/// of it, or whose grade is finer than that disposition's cap, is refused;
+/// `maxLength` stays the structural ceiling. It keys on the spec's own
+/// attributes, never on a clause id or a field name.
 fn validate_grain(
     value: &Value,
     resolved_format: Option<&str>,
@@ -921,22 +922,32 @@ fn validate_grain(
     path: &str,
     errors: &mut Vec<ValidationError>,
 ) {
-    let (Some(GEOHASH_FORMAT), Some(s)) = (resolved_format, value.as_str()) else {
+    let (Some(format), Some(s)) = (resolved_format, value.as_str()) else {
         return;
     };
-    let cap = geohash_capture_precision(disposition);
-    if utf16_len(s) > cap {
-        let named = match disposition {
-            Some(Disposition::Private) => "private",
-            _ => "public",
-        };
-        errors.push(ValidationError {
-            path: path.to_string(),
-            message: format!(
-                "a {named} geohash carries at most {cap} characters; give the cell's first {cap} characters"
-            ),
-        });
-    }
+    let (Some(cap), Some(grade)) = (grain_cap_of(format), grain_of(format, s)) else {
+        return;
+    };
+    let allowed = cap_of_disposition(cap, disposition);
+    let named = match disposition {
+        Some(Disposition::Private) => "private",
+        _ => "public",
+    };
+    let message = match grade {
+        None => format!("not a {format} code, so its grain cannot be read"),
+        Some(g) if g > allowed && format == GEOHASH_FORMAT => format!(
+            "a {named} geohash carries at most {allowed} characters; give the cell's first {allowed} characters"
+        ),
+        Some(g) if g > allowed => format!(
+            "a {named} {format} code carries at most {} {allowed}; this one carries {g}",
+            cap.grade
+        ),
+        Some(_) => return,
+    };
+    errors.push(ValidationError {
+        path: path.to_string(),
+        message,
+    });
 }
 
 fn validate_field(value: &Value, spec: &FieldSpec, path: &str, errors: &mut Vec<ValidationError>) {

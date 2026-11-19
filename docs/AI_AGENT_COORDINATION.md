@@ -187,9 +187,10 @@ Two things the Core does not hold, which no amount of querying will produce:
 **Committed content is read against the spec that declares it, never against a
 name.** A clause states the standard its values are in, and the reader takes that
 declaration first: `figaro-geolocation` commits `origin` and `destination` under a
-required `geocodeStandard`, and that axis is open — cell grids (geohash, h3, s2,
-olc) and jurisdiction codes (iso3166-1/-2, unlocode) are equally valid, geohash
-being one value of the field and the built frontend's default, never the model. A
+required `geocodeStandard`, an enum of the four cell grids whose grain the clause
+engines cap (geohash, h3, s2, olc), geohash being one value of the field and its
+default, never the model; another designer's clause may declare any other
+standard, a jurisdiction code among them (`docs/CLAUSES.md`, the grain cap). A
 reader that speaks one standard skips the leaves it cannot parse rather than
 misreading them. Where the declared standard is geohash the SDK ships the readers
 (`geohashCommonPrefix`, `geohashesMatch(a, b, precision)` — **the precision is the

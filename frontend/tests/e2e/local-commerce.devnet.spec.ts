@@ -295,12 +295,14 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         const geoControl = (field: string) =>
             page.locator(`input[data-testid^="checkout-field-"][data-testid$="-${GEO_CLAUSE}-${field}"]`);
 
-        // The standard the endpoints are WRITTEN IN is a control, carrying its
-        // spec default as the placeholder: the clause's standard axis is open,
-        // so a reader with no device location states a locality by changing it.
-        await expect(geoControl('geocodeStandard'), 'the geocode standard is editable, not a label')
-            .toBeEditable({ timeout: 20000 });
-        await expect(geoControl('geocodeStandard')).toHaveAttribute('placeholder', 'geohash');
+        // The standard the endpoints are WRITTEN IN is a control: one choice for
+        // each standard the clause's enum names, the standards whose grain the
+        // clause engines cap, so a reader with no device location writes a
+        // locality in any of them.
+        for (const standard of ['geohash', 'h3', 's2', 'olc']) {
+            await expect(geoControl(`geocodeStandard-${standard}`), `the geocode standard ${standard} is a choice, not a label`)
+                .toBeEnabled({ timeout: 20000 });
+        }
         // …and nothing the sign gate requires is described as optional.
         await expect(
             page.locator('[data-testid^="checkout-field-"][data-testid$="-geocodeStandard-deferred"]'),

@@ -283,7 +283,7 @@ its manual.
   (`docs/DESIGN_DECISIONS.md` § 26).
 - `validateContent(content, spec, { stage? })` — validates a value against a
   parsed spec; rejects unknown fields; applies `spec.stages[stage]` when a
-  stage is named. It applies the geohash grain cap, cap(disposition,
+  stage is named. It applies the grain cap, cap(disposition,
   geocodeStandard) (`sdk/src/clauses/grain.ts`), to the resolved format,
   static or named by a sibling (`resolveInputFormat`): a string field's
   static `format`, or, when it declares `formatFromField`, the named
@@ -292,14 +292,32 @@ its manual.
   resolves among that stage's fields only. When two fields share the
   sibling's name, the first gives the default. Each engine reads the
   defaults from a map it builds once per object, so a set of n fields costs
-  n lookups. The cap is as firm as the values the designer allows the
-  sibling: a sibling that names another standard lifts it, and an `enum` or
-  `pattern` sibling keeps it (`docs/DESIGN_DECISIONS.md` § 37). When the resolved format is
-  `geohash`, a `public` value carries at most 6 characters and a `private` one
-  at most 12, under the field's `maxLength`, which stays the structural
-  ceiling. An array whose item spec declares `format: "geohash"` caps each
-  item by the array field's disposition. A standard it carries no grain
-  knowledge of is bounded by `maxLength` only. The guest's engine
+  n lookups. The cap knows four standards, by
+  their format value, and reads the grain each one writes in its code:
+
+  | Format | The grain it reads | Public cap | Private cap |
+  |---|---|---|---|
+  | `geohash` | the length in characters | 6 | 12 |
+  | `h3` | the resolution of the cell index, written in hex | 8 | 15 |
+  | `s2` | the level of the cell token, written in hex | 13 | 30 |
+  | `olc` | the Open Location Code's length, its significant digits | 6 | 15 |
+
+  Each public cap is the finest grade whose cells are, on average, no
+  smaller than a six-character geohash cell at 45 degrees of latitude
+  (about 0.53 km²): H3 resolution 8 averages 0.74 km², S2 level 13 1.27 km²,
+  and an Open Location Code of length 6 is 0.05 degrees a side, where length 8
+  is about 0.05 km². Each private cap is the standard's own finest grade,
+  except geohash's, which stops at 12 characters. Under one of these formats,
+  a value finer than its disposition's cap is refused, and so is a value that
+  is no code of the standard (an H3 index whose mode is not a cell, an S2
+  token whose lowest set bit is at an odd position, an Open Location Code
+  with odd padding), because no grain can be read from it. The field's
+  `maxLength` stays the structural ceiling. An array whose item spec declares
+  one of these formats caps each item by the array field's disposition. A
+  standard it carries no grain knowledge of is bounded by `maxLength` only. The
+  reference clause `figaro-geolocation` declares `geocodeStandard` as an
+  `enum` of the four, so under it every public endpoint is capped
+  (`docs/DESIGN_DECISIONS.md` § 37). The guest's engine
   (`prover/clause/src/grain.rs`, `validate.rs`) applies the same cap through
   the same resolution, so a proof of a plaintext attestation attests the
   grain, for the party that submitted that form; a reader of the chain cannot
