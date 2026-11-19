@@ -362,14 +362,14 @@ fn the_guest_refuses_a_witness_missing_an_entry_or_carrying_a_wrong_value() {
         KernelError::DuplicateWitnessEntry
     ));
 
-    // A process entry carried with a currency the tree does not hold: the
+    // A process entry carried with a token the tree does not hold: the
     // resolve reads it without a check of its own, so only the witness's
     // check can refuse it.
     let mut wrong = guest_input(&again_resolvable(&first, &state)).unwrap();
     let Some((_, Some(ps))) = wrong.prev_witness.processes.first_mut() else {
         panic!("the resolve's witness carries its process");
     };
-    ps.currency = Address::repeat_byte(0x77);
+    ps.token = Address::repeat_byte(0x77);
     assert!(matches!(
         apply_guest(&wrong).unwrap_err(),
         KernelError::Witness(_)

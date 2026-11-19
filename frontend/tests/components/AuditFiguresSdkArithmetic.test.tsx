@@ -38,8 +38,8 @@ const TOKEN = "0x00000000000000000000000000000000000000c1" as const;
 /** The two orders of one process, as the event fold builds them. */
 function orders(state: OrderState): Order[] {
     const at = (orderHash: string, seller: string, payment: bigint, runningTotal: bigint, blockNumber: number) => orderFromSdk({
-        orderHash, processId: PROCESS, buyer: BUYER, seller, currency: TOKEN, payment, runningTotal,
-        checkoutHash: `0x${"cd".repeat(32)}`, salt: 1n, deadline: 2_000_000_000n, state, blockNumber,
+        orderHash, processId: PROCESS, buyer: BUYER, seller, token: TOKEN, payment, runningTotal,
+        checkoutHash: `0x${"cd".repeat(32)}`, salt: 1n, commitDeadline: 2_000_000_000n, state, blockNumber,
     } as unknown as SdkOrder);
     return [
         at(`0x${"01".repeat(32)}`, ROOT_SELLER, 3n, 3n, 4),

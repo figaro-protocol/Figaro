@@ -17,7 +17,7 @@ export interface Order {
     processId: string; // bytes32 from contract
     buyer: string;
     seller: string;
-    currency?: string;       // ERC-20 token address (from OrderCommitted event)
+    token?: string;          // ERC-20 token address (from OrderCommitted event)
     checkoutHash?: string;  // bytes32 — opaque off-chain agreement ref
     /** Design-time first-class topology edges: the orders this order follows —
      *  the assembly entry's `follows`. Set by the designer when edges
@@ -35,8 +35,8 @@ export interface Order {
     buyerBond: bigint;
     /** Salt from the commitment (for full reconstruction at resolution). */
     salt: bigint;
-    /** Deadline from the commitment (for full reconstruction at resolution). */
-    deadline: bigint;
+    /** commitDeadline from the commitment (for full reconstruction at resolution). */
+    commitDeadline: bigint;
     /** Block number when OrderCommitted was mined. */
     blockNumber?: number;
     /** Event-derived: block.timestamp from OrderResolved (seconds). */
@@ -59,7 +59,7 @@ export function orderFromSdk(order: SdkOrder): Order {
         processId: order.processId,
         buyer: order.buyer,
         seller: order.seller,
-        currency: order.currency,
+        token: order.token,
         checkoutHash: order.checkoutHash,
         payment: order.payment,
         runningTotal: order.runningTotal,
@@ -67,7 +67,7 @@ export function orderFromSdk(order: SdkOrder): Order {
         sellerBond,
         buyerBond,
         salt: order.salt,
-        deadline: order.deadline,
+        commitDeadline: order.commitDeadline,
         blockNumber: order.blockNumber,
     };
 }

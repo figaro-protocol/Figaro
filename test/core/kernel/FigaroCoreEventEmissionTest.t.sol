@@ -113,25 +113,25 @@ contract FigaroCore_EventEmission is Test {
     function _assertCommittedData(
         bytes memory data,
         address expectedSeller,
-        address expectedCurrency,
+        address expectedToken,
         uint256 expectedPayment,
         uint256 expectedCumValue,
         bytes32 expectedCheckoutHash
     ) internal pure {
         (
             address seller_,
-            address currency_,
+            address token_,
             uint256 payment_,
             uint256 cumValue_,
             bytes32 agreement_,, // salt
         ) =
-            abi.decode( // deadline
+            abi.decode( // commitDeadline
                 data,
                 (address, address, uint256, uint256, bytes32, uint256, uint256)
             );
 
         assertEq(seller_, expectedSeller, "seller");
-        assertEq(currency_, expectedCurrency, "currency");
+        assertEq(token_, expectedToken, "token");
         assertEq(payment_, expectedPayment, "payment");
         assertEq(cumValue_, expectedCumValue, "runningTotal");
         assertEq(agreement_, expectedCheckoutHash, "checkoutHash");
@@ -281,7 +281,7 @@ contract FigaroCore_EventEmission is Test {
     // TEST 5: Sub-order emits OrderCommitted with cumulative value
     // ═══════════════════════════════════════════════════════════════
 
-    function test_subOrder_emitsOrderCommittedWithCumulativeValue() public {
+    function test_subOrder_emitsOrderCommittedWithRunningTotal() public {
         uint256 rootPayment = 50 ether;
         (bytes32 processId,,) = _commitRoot(rootPayment, 1);
 

@@ -5,9 +5,9 @@ import { OrderState, type Order } from "@/lib/core/store";
 const SELLER = "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 const mkOrder = (o: Partial<Order> & Pick<Order, "orderHash" | "seller">): Order => ({
-    processId: "0xPROC", buyer: "0xBUYER", currency: "0xTOKEN",
+    processId: "0xPROC", buyer: "0xBUYER", token: "0xTOKEN",
     runningTotal: 0n, payment: 0n, state: OrderState.Active,
-    sellerBond: 0n, buyerBond: 0n, salt: 0n, deadline: 0n, ...o,
+    sellerBond: 0n, buyerBond: 0n, salt: 0n, commitDeadline: 0n, ...o,
 });
 
 describe("extractMembersRegistry — withdrawal-aware fold", () => {

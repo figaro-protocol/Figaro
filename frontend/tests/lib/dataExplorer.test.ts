@@ -308,7 +308,7 @@ describe("wallet record", () => {
         processId: `0x${"22".repeat(32)}`,
         buyer: WALLET,
         seller: OTHER,
-        currency: TOKEN_A,
+        token: TOKEN_A,
         payment: 7n,
         runningTotal: 7n,
         state: OrderState.Active,
@@ -337,7 +337,7 @@ describe("wallet record", () => {
     it("summarizes both sides and dedupes denominations", () => {
         const summary = walletRecordSummary(
             record({
-                ordersAsBuyer: [order({}), order({ currency: TOKEN_B, orderHash: `0x${"12".repeat(32)}` })],
+                ordersAsBuyer: [order({}), order({ token: TOKEN_B, orderHash: `0x${"12".repeat(32)}` })],
                 ordersAsSeller: [order({ buyer: OTHER, seller: WALLET, orderHash: `0x${"13".repeat(32)}` })],
             }),
         );
@@ -379,12 +379,12 @@ describe("processRows — the id a reader carries into the audit view", () => {
         processId: PROCESS_A,
         buyer: WALLET,
         seller: OTHER,
-        currency: TOKEN_A,
+        token: TOKEN_A,
         payment: 5n,
         runningTotal: 5n,
         checkoutHash: `0x${"99".repeat(32)}`,
         salt: 0n,
-        deadline: 0n,
+        commitDeadline: 0n,
         state: OrderState.Active,
         blockNumber: 4,
         ...over,
@@ -394,7 +394,7 @@ describe("processRows — the id a reader carries into the audit view", () => {
         ({
             processId,
             rootBuyer: WALLET,
-            currency: TOKEN_A,
+            token: TOKEN_A,
             runningTotal: 5n,
             orders: new Map([[`0x${"11".repeat(32)}`, order({ processId })]]),
             resolved: false,

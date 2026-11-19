@@ -100,7 +100,7 @@ process has accumulated through its own order, **its own payment included**:
 `Gᵢ = ∑_{j≤i} Pⱼ`, so the seller at order `i` bonds `2Gᵢ`. The figure is not a
 report. `commit` admits exactly one value — the payment itself at the root, the
 live accumulator plus the new payment for any extension — and refuses every
-other declaration (`CumulativeValueMismatch`), so the bond base at position `i`
+other declaration (`RunningTotalMismatch`), so the bond base at position `i`
 is `Gᵢ` by arithmetic before anything is locked, and a seller has no interest
 in declaring more, since the declaration is what it must lock. Splitting an
 order into smaller ones changes nothing: the later part is bonded against the

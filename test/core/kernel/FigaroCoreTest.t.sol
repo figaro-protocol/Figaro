@@ -147,7 +147,7 @@ contract FigaroCoreTest is Test {
     // 2: Sub-order with correct runningTotal succeeds
     // ═══════════════════════════════════════════════════════════════
 
-    function test_subOrder_correctCumulativeValue_succeeds() public {
+    function test_subOrder_correctRunningTotal_succeeds() public {
         uint256 rootPayment = 50 ether;
         (bytes32 processId,,) = _commitRoot(rootPayment, 1);
 
@@ -164,7 +164,7 @@ contract FigaroCoreTest is Test {
     // 3: Sub-order with WRONG runningTotal REVERTS
     // ═══════════════════════════════════════════════════════════════
 
-    function test_subOrder_wrongCumulativeValue_reverts() public {
+    function test_subOrder_wrongRunningTotal_reverts() public {
         uint256 rootPayment = 50 ether;
         (bytes32 processId,,) = _commitRoot(rootPayment, 1);
 
@@ -176,7 +176,7 @@ contract FigaroCoreTest is Test {
         bytes memory sSig = _signCommitment(sub, SELLER2_KEY);
 
         uint256 actualCum = rootPayment + subPayment;
-        vm.expectRevert(abi.encodeWithSelector(FigaroCore.CumulativeValueMismatch.selector, liedCumValue, actualCum));
+        vm.expectRevert(abi.encodeWithSelector(FigaroCore.RunningTotalMismatch.selector, liedCumValue, actualCum));
         core.commit(sub, bSig, sSig);
     }
 
@@ -200,7 +200,7 @@ contract FigaroCoreTest is Test {
     // 5: Seller bond scales with cumulative value
     // ═══════════════════════════════════════════════════════════════
 
-    function test_sellerBond_scalesWithCumulativeValue() public {
+    function test_sellerBond_scalesWithRunningTotal() public {
         (bytes32 processId,,) = _commitRoot(10 ether, 1);
 
         uint256 seller2Before = token.balanceOf(seller2);
@@ -272,13 +272,13 @@ contract FigaroCoreTest is Test {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 9: Process currency is set by root and immutable
+    // 9: Process token is set by root and immutable
     // ═══════════════════════════════════════════════════════════════
 
-    function test_processCurrency_isSetByRootAndImmutable() public {
+    function test_processToken_isSetByRootAndImmutable() public {
         (bytes32 processId,,) = _commitRoot(50 ether, 1);
-        (, IERC20 currency_,,) = core.processes(processId);
-        assertEq(address(currency_), address(token), "currency set by root");
+        (, IERC20 token_,,) = core.processes(processId);
+        assertEq(address(token_), address(token), "token set by root");
 
         // Sub-order with different token reverts
         MockPermitToken otherToken = new MockPermitToken();
@@ -300,15 +300,15 @@ contract FigaroCoreTest is Test {
             salt: 2,
             commitDeadline: block.timestamp + 1 hours
         });
-        vm.expectRevert(FigaroCore.CurrencyMismatch.selector);
+        vm.expectRevert(FigaroCore.TokenMismatch.selector);
         core.commit(sub, _signCommitment(sub, BUYER_KEY), _signCommitment(sub, SELLER2_KEY));
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 10: Sub-order currency mismatch reverts
+    // 10: Sub-order token mismatch reverts
     // ═══════════════════════════════════════════════════════════════
 
-    function test_subOrder_currencyMismatch_reverts() public {
+    function test_subOrder_tokenMismatch_reverts() public {
         (bytes32 processId,,) = _commitRoot(50 ether, 1);
 
         MockPermitToken otherToken = new MockPermitToken();
@@ -330,18 +330,18 @@ contract FigaroCoreTest is Test {
             salt: 2,
             commitDeadline: block.timestamp + 1 hours
         });
-        vm.expectRevert(FigaroCore.CurrencyMismatch.selector);
+        vm.expectRevert(FigaroCore.TokenMismatch.selector);
         core.commit(sub, _signCommitment(sub, BUYER_KEY), _signCommitment(sub, SELLER2_KEY));
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 11: Sub-order bonds use process currency
+    // 11: Sub-order bonds use process token
     // ═══════════════════════════════════════════════════════════════
 
-    function test_subOrder_bondsUseProcessCurrency() public {
+    function test_subOrder_bondsUseProcessToken() public {
         (bytes32 processId,,) = _commitRoot(50 ether, 1);
 
-        // Create a second token but commit sub in the correct currency
+        // Create a second token but commit sub in the correct token
         MockPermitToken otherToken = new MockPermitToken();
         otherToken.mint(buyer, INITIAL_BALANCE);
         otherToken.mint(seller2, INITIAL_BALANCE);
@@ -351,8 +351,8 @@ contract FigaroCoreTest is Test {
 
         _commitSub(processId, seller2, 20 ether, 70 ether, SELLER2_KEY, 2);
 
-        // Only process currency was pulled
-        assertEq(buyerTokenBefore - token.balanceOf(buyer), 40 ether, "process currency pulled");
+        // Only process token was pulled
+        assertEq(buyerTokenBefore - token.balanceOf(buyer), 40 ether, "process token pulled");
         assertEq(otherToken.balanceOf(buyer), buyerOtherBefore, "other token untouched");
     }
 
@@ -360,7 +360,7 @@ contract FigaroCoreTest is Test {
     // 12: Root runningTotal must equal payment
     // ═══════════════════════════════════════════════════════════════
 
-    function test_rootOrder_wrongExpectedCumulativeValue_reverts() public {
+    function test_rootOrder_wrongRunningTotal_reverts() public {
         CommitmentTypes.Commitment memory c = CommitmentTypes.Commitment({
             processId: bytes32(0),
             buyer: buyer,
@@ -372,7 +372,7 @@ contract FigaroCoreTest is Test {
             salt: 1,
             commitDeadline: block.timestamp + 1 hours
         });
-        vm.expectRevert(FigaroCore.InvalidRootCumulativeValue.selector);
+        vm.expectRevert(FigaroCore.InvalidRootRunningTotal.selector);
         core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
     }
 
@@ -606,7 +606,7 @@ contract FigaroCoreTest is Test {
     // 20: Stale cumulative value reverts (concurrent sub-orders)
     // ═══════════════════════════════════════════════════════════════
 
-    function test_subOrder_staleCumulativeValue_reverts() public {
+    function test_subOrder_staleRunningTotal_reverts() public {
         (bytes32 processId,,) = _commitRoot(50 ether, 1);
 
         // Prepare two sub-orders that both expect cum=80
@@ -617,7 +617,7 @@ contract FigaroCoreTest is Test {
         core.commit(sub1, _signCommitment(sub1, BUYER_KEY), _signCommitment(sub1, SELLER2_KEY));
 
         // Second fails — accumulator already at 80, actual would be 110
-        vm.expectRevert(abi.encodeWithSelector(FigaroCore.CumulativeValueMismatch.selector, 80 ether, 110 ether));
+        vm.expectRevert(abi.encodeWithSelector(FigaroCore.RunningTotalMismatch.selector, 80 ether, 110 ether));
         core.commit(sub2, _signCommitment(sub2, BUYER_KEY), _signCommitment(sub2, SELLER3_KEY));
     }
 

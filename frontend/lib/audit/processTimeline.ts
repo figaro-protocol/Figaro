@@ -211,7 +211,7 @@ export async function buildProcessTimeline(
 
     // One currency per process (the Core's rule), so one decimals() read covers every amount,
     // from whichever commit exists, direct or batched.
-    const processCurrency = (committedLogs[0]?.args as { currency?: `0x${string}` } | undefined)?.currency;
+    const processCurrency = (committedLogs[0]?.args as { token?: `0x${string}` } | undefined)?.token;
     let processDecimals: number | undefined;
     const missing: MissingPart[] = [];
     if (processCurrency) {
@@ -236,7 +236,7 @@ export async function buildProcessTimeline(
         const a = log.args as Partial<{
             buyer: string;
             seller: string;
-            currency: string;
+            token: string;
             payment: bigint;
             orderHash: string;
         }>;
@@ -257,7 +257,7 @@ export async function buildProcessTimeline(
             details: {
                 buyer: a.buyer ?? "",
                 seller: a.seller ?? "",
-                currency: a.currency ?? "",
+                currency: a.token ?? "",
                 payment: weiToDecimal(a.payment),
                 orderHash: a.orderHash ?? "",
             },

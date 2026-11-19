@@ -16,7 +16,7 @@ function order(payment: bigint, runningTotal: bigint): Order {
     return {
         orderHash: `0x${"01".repeat(32)}`, processId: `0x${"02".repeat(32)}`, buyer: BUYER, seller: SELLER,
         payment, runningTotal, state: OrderState.Active, sellerBond: 2n * runningTotal, buyerBond: 2n * payment,
-        salt: 1n, deadline: 1n,
+        salt: 1n, commitDeadline: 1n,
     } as Order;
 }
 function agreement(follows?: string[]): Agreement {

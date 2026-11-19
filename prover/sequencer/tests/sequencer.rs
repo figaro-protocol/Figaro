@@ -2111,7 +2111,7 @@ fn a_commit_that_would_grow_a_process_past_one_settle_is_dropped_at_formation() 
         process,
         ProcessState {
             root_buyer: c.buyer,
-            currency: c.token,
+            token: c.token,
             running_total: c.payment,
             active_order_count: 2,
         },
@@ -2828,7 +2828,7 @@ fn a_refusal_is_classified_on_the_fields_it_carries() {
     // A cumulative value the process has already passed never returns.
     let (d, r, _) = split_alone(1001, &both, vec![sub_op.clone()]);
     assert!(d.is_empty(), "{d:?}");
-    assert!(r[0].contains("CumulativeValueMismatch"), "{r:?}");
+    assert!(r[0].contains("RunningTotalMismatch"), "{r:?}");
 
     // A resolve authorization signed over a cumulative value the process has
     // already passed never returns.
@@ -2878,7 +2878,7 @@ fn a_refusal_is_classified_on_the_fields_it_carries() {
     assert!(r.is_empty(), "{r:?}");
     assert!(
         d[0].contains("IncompleteOrderList(required=1, provided=2)")
-            && d[1].contains("CumulativeValueMismatch"),
+            && d[1].contains("RunningTotalMismatch"),
         "{d:?}"
     );
 
@@ -3563,7 +3563,7 @@ fn padded(mut landed: KernelStateSnapshot, n: u32) -> KernelStateSnapshot {
             process,
             ProcessState {
                 root_buyer: Address::repeat_byte(1),
-                currency: Address::repeat_byte(2),
+                token: Address::repeat_byte(2),
                 running_total: alloy_primitives::U256::from(1u64),
                 active_order_count: 1,
             },

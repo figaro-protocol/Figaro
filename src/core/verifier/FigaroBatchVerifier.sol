@@ -230,12 +230,12 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         bytes32 indexed processId,
         address indexed buyer,
         address seller,
-        address currency,
+        address token,
         uint256 payment,
         uint256 runningTotal,
         bytes32 checkoutHash,
         uint256 salt,
-        uint256 deadline
+        uint256 commitDeadline
     );
     event OrderSeller(bytes32 indexed orderHash, address indexed seller);
     event OrderResolved(

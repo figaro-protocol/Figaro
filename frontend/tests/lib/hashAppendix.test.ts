@@ -25,9 +25,9 @@ const AGREEMENT_HASH = `0x${"8b".repeat(32)}` as `0x${string}`;
 function orderFor(agreement: Agreement): Order {
     return {
         orderHash: `0x${"cd".repeat(32)}`, processId: `0x${"ab".repeat(32)}`,
-        buyer: BUYER, seller: SELLER, currency: `0x${"33".repeat(20)}`,
+        buyer: BUYER, seller: SELLER, token: `0x${"33".repeat(20)}`,
         runningTotal: 1n, payment: 1n, state: OrderState.Active,
-        sellerBond: 2n, buyerBond: 2n, salt: 1n, deadline: 0n,
+        sellerBond: 2n, buyerBond: 2n, salt: 1n, commitDeadline: 0n,
         checkoutHash: computeCheckoutHash(agreement),
     };
 }

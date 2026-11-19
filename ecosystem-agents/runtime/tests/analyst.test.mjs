@@ -54,9 +54,9 @@ const CONTENT_REF = keccak256(SUBSTANCE);
 
 function fixtureCorpus({ recovered = true } = {}) {
     const committed = (orderHash, seller, payment, cumulative, blockNumber) => ({
-        orderHash, processId: PROCESS, buyer: BUYER, seller, currency: TOKEN,
+        orderHash, processId: PROCESS, buyer: BUYER, seller, token: TOKEN,
         payment, runningTotal: cumulative, checkoutHash: `0x${"ee".repeat(32)}`,
-        salt: 1n, deadline: 9_999_999_999n, blockNumber,
+        salt: 1n, commitDeadline: 9_999_999_999n, blockNumber,
     });
     const core = {
         orderCommitted: [
@@ -378,7 +378,7 @@ test("market-shape: the batched path's events read the same — an absent sub-or
         topics: encodeEventTopics({ abi: [event], eventName: "OrderCommitted", args: { orderHash: o.orderHash, processId: o.processId, buyer: o.buyer } }),
         data: encodeAbiParameters(
             event.inputs.filter((p) => !p.indexed),
-            [o.seller, o.currency, o.payment, o.runningTotal, o.checkoutHash, o.salt, o.deadline],
+            [o.seller, o.token, o.payment, o.runningTotal, o.checkoutHash, o.salt, o.commitDeadline],
         ),
     }));
     const client = {

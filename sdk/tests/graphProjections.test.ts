@@ -29,12 +29,12 @@ function mkCommit(overrides: Partial<OrderCommittedEvent> = {}): OrderCommittedE
         processId: PID,
         buyer: BUYER,
         seller: SELLER,
-        currency: TOKEN,
+        token: TOKEN,
         payment: 100n,
         runningTotal: 100n,
         checkoutHash: "0x" as Hex,
         salt: 1n,
-        deadline: 999999999n,
+        commitDeadline: 999999999n,
         blockNumber: 1,
         transactionHash: null,
         ...overrides,
@@ -80,7 +80,7 @@ describe("projectResolutionGraph", () => {
         const graph = projectResolutionGraph(resolvedChainEvents());
         expect(graph.boundary).toBe("protocol-enforced");
         const chain = graph.chains.get(PID)!;
-        expect(chain.currency).toBe(TOKEN);
+        expect(chain.token).toBe(TOKEN);
         expect(chain.resolved).toBe(true);
         // Linear, in accumulator order — FigaroCore's own chain.
         expect(chain.orders.map((o) => o.runningTotal)).toEqual([100n, 250n]);
@@ -115,7 +115,7 @@ describe("projectValueFlow", () => {
             mkEvents({
                 orderCommitted: [
                     mkCommit(),
-                    mkCommit({ orderHash: OHASH2, processId: PID2, currency: TOKEN2, payment: 40n, runningTotal: 40n }),
+                    mkCommit({ orderHash: OHASH2, processId: PID2, token: TOKEN2, payment: 40n, runningTotal: 40n }),
                 ],
                 orderResolved: [
                     { orderHash: OHASH, processId: PID, sellerPayout: 300n, buyerPayout: 100n, blockNumber: 5 },

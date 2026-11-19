@@ -12,9 +12,9 @@ import { FINANCIAL_STATEMENT_LEGEND, projectFinancialStatements } from "@/lib/au
 import { OrderState, type Order } from "@/lib/core/store";
 
 const ORDER: Order = {
-    orderHash: "0xA", processId: "0xPROC", buyer: "0xBUYER", seller: "0xSELLER", currency: "0xToKeN",
+    orderHash: "0xA", processId: "0xPROC", buyer: "0xBUYER", seller: "0xSELLER", token: "0xToKeN",
     runningTotal: 100n, payment: 100n, state: OrderState.Active,
-    sellerBond: 200n, buyerBond: 200n, salt: 0n, deadline: 0n,
+    sellerBond: 200n, buyerBond: 200n, salt: 0n, commitDeadline: 0n,
 };
 
 describe("DocumentView legend", () => {

@@ -155,7 +155,7 @@ export function marketShape(
         );
 
         const pairs = pairsOf.get(key)!;
-        const token = process.currency.toLowerCase();
+        const token = process.token.toLowerCase();
         let volume = group.volumeByDenomination.get(token);
         if (!volume) {
             volume = { committed: 0n, settled: 0n };

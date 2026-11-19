@@ -27,7 +27,7 @@
 // Complements:
 //   - Halmos (test/core/kernel/HalmosFigaroCore.t.sol): 4 symbolic properties on root
 //     orders only. These rules generalize to arbitrary sub-orders.
-//   - FigaroCore.spec: state-machine invariants (status, cumulative, buyer
+//   - FigaroCore.spec: state-machine invariants (status, running total, buyer
 //     dominance). No balance-flow coverage there.
 //
 // ═══════════════════════════════════════════════════════════════════
@@ -291,7 +291,7 @@ rule resolveSingleOrderPayout(
     assert !reverted
         => sellerAfter - sellerBefore
            == 2 * to_mathint(c.runningTotal) + to_mathint(c.payment),
-        "on successful resolve, seller payout = 2*cumulative + payment";
+        "on successful resolve, seller payout = 2*runningTotal + payment";
 
     assert !reverted
         => buyerAfter - buyerBefore == to_mathint(c.payment),
@@ -300,7 +300,7 @@ rule resolveSingleOrderPayout(
     assert !reverted
         => coreBefore - coreAfter
            == 2 * to_mathint(c.runningTotal) + 2 * to_mathint(c.payment),
-        "on successful resolve, FigaroCore payout = 2*cumulative + 2*payment";
+        "on successful resolve, FigaroCore payout = 2*runningTotal + 2*payment";
 }
 
 // ═══════════════════════════════════════════════════════════════════

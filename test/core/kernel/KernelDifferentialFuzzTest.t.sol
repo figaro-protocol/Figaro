@@ -88,8 +88,8 @@ contract KernelDifferentialFuzzTest is Test {
         bytes32 id;
         address buyer;
         uint256 buyerKey;
-        address currency;
-        uint256 cumulative;
+        address token;
+        uint256 runningTotal;
         bool resolved;
         uint256[] steps; // the stream steps whose commits this process holds
     }
@@ -208,9 +208,9 @@ contract KernelDifferentialFuzzTest is Test {
             processId: p.id,
             buyer: p.buyer,
             seller: wallets[s],
-            token: p.currency,
+            token: p.token,
             payment: payment,
-            runningTotal: p.cumulative + payment,
+            runningTotal: p.runningTotal + payment,
             checkoutHash: bytes32(_next()),
             salt: ++saltCounter,
             commitDeadline: timestamp + _next() % 1000
@@ -243,8 +243,8 @@ contract KernelDifferentialFuzzTest is Test {
                 d.c.processId = procs[pi].id;
                 d.c.buyer = procs[pi].buyer;
                 d.buyerSignerKey = procs[pi].buyerKey;
-                d.c.token = procs[pi].currency;
-                d.c.runningTotal = procs[pi].cumulative + d.c.payment;
+                d.c.token = procs[pi].token;
+                d.c.runningTotal = procs[pi].runningTotal + d.c.payment;
             }
         } else if (variant == 8) {
             uint256 b = _next() % KEY_COUNT; // another wallet extends as buyer
@@ -308,14 +308,14 @@ contract KernelDifferentialFuzzTest is Test {
             p.id = processId;
             p.buyer = c.buyer;
             p.buyerKey = _keyOf(c.buyer);
-            p.currency = c.token;
-            p.cumulative = c.payment;
+            p.token = c.token;
+            p.runningTotal = c.payment;
             p.steps.push(i);
             return;
         }
         for (uint256 k = 0; k < procs.length; k++) {
             if (procs[k].id == processId) {
-                procs[k].cumulative = c.runningTotal;
+                procs[k].runningTotal = c.runningTotal;
                 procs[k].steps.push(i);
                 return;
             }
@@ -857,14 +857,14 @@ contract KernelDifferentialFuzzTest is Test {
         if (sel == FigaroCore.ZeroPayment.selector) return "ZeroPayment";
         if (sel == FigaroCore.ProcessAlreadyExists.selector) return "ProcessAlreadyExists";
         if (sel == FigaroCore.UnknownProcess.selector) return "UnknownProcess";
-        if (sel == FigaroCore.CumulativeValueMismatch.selector) return "CumulativeValueMismatch";
+        if (sel == FigaroCore.RunningTotalMismatch.selector) return "RunningTotalMismatch";
         if (sel == FigaroCore.NotProcessBuyer.selector) return "NotProcessBuyer";
-        if (sel == FigaroCore.CurrencyMismatch.selector) return "CurrencyMismatch";
+        if (sel == FigaroCore.TokenMismatch.selector) return "TokenMismatch";
         if (sel == FigaroCore.OrderNotCommitted.selector) return "OrderNotCommitted";
         if (sel == FigaroCore.NoActiveOrders.selector) return "NoActiveOrders";
         if (sel == FigaroCore.IncompleteOrderList.selector) return "IncompleteOrderList";
         if (sel == FigaroCore.DuplicateCommitment.selector) return "DuplicateCommitment";
-        if (sel == FigaroCore.InvalidRootCumulativeValue.selector) return "InvalidRootCumulativeValue";
+        if (sel == FigaroCore.InvalidRootRunningTotal.selector) return "InvalidRootRunningTotal";
         if (sel == FigaroCore.ProcessAlreadyResolved.selector) return "ProcessAlreadyResolved";
         if (sel == AttestationCoordinator.UnknownOrder.selector) return "UnknownOrder";
         if (sel == AttestationCoordinator.OrderAlreadyResolved.selector) return "OrderAlreadyResolved";

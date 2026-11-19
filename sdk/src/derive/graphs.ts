@@ -76,12 +76,12 @@ export interface ResolutionEntry {
 /** One process's resolution chain — linear, in accumulator order. */
 export interface ResolutionChain {
     processId: Hex;
-    /** The process's one denomination (`currency` is a signed field of every
+    /** The process's one denomination (`token` is a signed field of every
      *  commitment; a process is monotoken by FigaroCore construction). */
-    currency: Address;
+    token: Address;
     runningTotal: bigint;
     resolved: boolean;
-    /** Orders in cumulative-value order — FigaroCore's own linear chain. */
+    /** Orders in running-total order — FigaroCore's own linear chain. */
     orders: ResolutionEntry[];
 }
 
@@ -128,7 +128,7 @@ export function projectResolutionGraph(events: CoreEvents): ResolutionGraph {
             });
         chains.set(process.processId, {
             processId: process.processId,
-            currency: process.currency,
+            token: process.token,
             runningTotal: process.runningTotal,
             resolved: process.resolved,
             orders,

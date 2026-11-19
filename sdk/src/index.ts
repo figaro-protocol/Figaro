@@ -162,7 +162,7 @@ export {
     generateSalt,
     computeDeadline,
     readChainTimestamp,
-    fetchCumulativeValue,
+    fetchRunningTotal,
     buildCommitment,
     buildCommitmentSafe,
     hashCommitmentStruct,

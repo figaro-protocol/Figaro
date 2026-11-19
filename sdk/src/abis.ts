@@ -29,11 +29,11 @@ export const CORE_ABI = parseAbi([
     `function resolveProcess(bytes32 processId, ${COMMITMENT_TUPLE}[] commitments) external`,
 
     // ── Process state views ─────────────────────────────────────────
-    "function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 runningTotal, uint256 activeOrderCount)",
+    "function processes(bytes32 processId) view returns (address rootBuyer, address token, uint256 runningTotal, uint256 activeOrderCount)",
     "function orderStatus(bytes32 orderHash) view returns (uint8)",
 
     // ── Events ──────────────────────────────────────────────────────
-    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 runningTotal, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
+    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address token, uint256 payment, uint256 runningTotal, bytes32 checkoutHash, uint256 salt, uint256 commitDeadline)",
     "event OrderSeller(bytes32 indexed orderHash, address indexed seller)",
     "event OrderResolved(bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout)",
     "event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount)",
@@ -49,15 +49,15 @@ export const CORE_ABI = parseAbi([
     "error ZeroPayment()",
     "error ProcessAlreadyExists()",
     "error UnknownProcess()",
-    "error CumulativeValueMismatch(uint256 expected, uint256 actual)",
+    "error RunningTotalMismatch(uint256 expected, uint256 actual)",
     "error NotProcessBuyer()",
-    "error CurrencyMismatch()",
+    "error TokenMismatch()",
     "error OrderNotCommitted(bytes32 orderHash)",
     "error NoActiveOrders()",
     "error IncompleteOrderList(uint256 required, uint256 provided)",
     "error DuplicateCommitment()",
     "error FeeOnTransferDetected()",
-    "error InvalidRootCumulativeValue()",
+    "error InvalidRootRunningTotal()",
     "error ProcessAlreadyResolved()",
 
     // ── Denomination-token errors (ERC-6093, OpenZeppelin ERC-20) ──────
@@ -88,7 +88,7 @@ export const CORE_ABI = parseAbi([
 // ── Individual event ABIs (for log filtering) ───────────────────────────────
 
 export const EV_ORDER_COMMITTED = parseAbiItem(
-    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 runningTotal, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
+    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address token, uint256 payment, uint256 runningTotal, bytes32 checkoutHash, uint256 salt, uint256 commitDeadline)",
 );
 
 export const EV_ORDER_SELLER = parseAbiItem(
@@ -538,7 +538,7 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     // ── The Core's own order and process events, emitted from the stream ──
     // Filter on the verifier's address beside FigaroCore's: the same events,
     // the same fields, ids derived under the verifier's EIP-712 domain.
-    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 runningTotal, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
+    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address token, uint256 payment, uint256 runningTotal, bytes32 checkoutHash, uint256 salt, uint256 commitDeadline)",
     "event OrderSeller(bytes32 indexed orderHash, address indexed seller)",
     "event OrderResolved(bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout)",
     "event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount)",

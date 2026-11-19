@@ -13,7 +13,7 @@ const ORDER_SOLD = `0x${"0a".repeat(32)}`;
 const CLAUSE = `0x${"cc".repeat(32)}`;
 
 const sold = {
-    args: { orderHash: ORDER_SOLD, processId: PROCESS, buyer: BUYER, seller: MEMBER, currency: `0x${"77".repeat(20)}`, payment: 1n },
+    args: { orderHash: ORDER_SOLD, processId: PROCESS, buyer: BUYER, seller: MEMBER, token: `0x${"77".repeat(20)}`, payment: 1n },
     blockNumber: 1n,
 };
 const attestation = (attester: string) => ({

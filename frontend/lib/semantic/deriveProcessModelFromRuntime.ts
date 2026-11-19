@@ -88,7 +88,7 @@ function roleCapabilities(
     _address?: string,
 ): CapabilityModel[] {
     const order = _order;
-    if (order.state !== OrderState.Active || !order.currency) return [];
+    if (order.state !== OrderState.Active || !order.token) return [];
 
     const normalized = _address?.toLowerCase();
     const isBuyer = hexEqual(order.buyer, normalized);
@@ -478,7 +478,7 @@ function deriveOrderNodeModelFromOrder(
         processId: order.processId,
         buyer: order.buyer as `0x${string}`,
         seller: order.seller as `0x${string}`,
-        currency: order.currency as `0x${string}` | undefined,
+        currency: order.token as `0x${string}` | undefined,
         payment: order.payment,
         state: OrderState[order.state],
         follows,
@@ -515,7 +515,7 @@ export function deriveProcessModelFromRuntime(
     return {
         processId: summary.processId,
         rootOrderId,
-        currency: processOrders[0]?.currency as `0x${string}` | undefined,
+        currency: processOrders[0]?.token as `0x${string}` | undefined,
         rootModality,
         orders: semanticOrders,
         capabilities: deriveProcessCapabilities(summary.processId, processOrders, address),

@@ -3,15 +3,15 @@
  *
  * A party that holds another token funds its bond through a swap-and-commit
  * coordinator: the coordinator pulls the party's input token, a venue swaps it
- * into the commitment's `currency`, the coordinator forwards the proceeds to
+ * into the commitment's `token`, the coordinator forwards the proceeds to
  * the party, and FigaroCore then pulls the bond from the party. The
  * coordinator emits nothing of its own; the ERC-20 `Transfer` logs in the
  * transaction's receipt are the trail, and this reader decides each leg from
  * their topology alone:
  *
- *   party → coordinator      in a token other than `currency`  the input
+ *   party → coordinator      in a token other than `token`     the input
  *   coordinator → V          in that token, V not the party    V is the venue
- *   coordinator → party      in `currency`                     the output
+ *   coordinator → party      in `token`                        the output
  *   coordinator → party      in the input token                the unspent input
  *
  * No venue address is known in advance: the venue is whichever address the
@@ -76,7 +76,7 @@ function decodeTransfer(log: ReceiptLogInput): Transfer | null {
  *
  * @param logs        the transaction receipt's logs, in log order
  * @param commitment  the parties and denomination the commitment names
- *                    (an `OrderCommitted` event's `buyer`, `seller`, `currency`)
+ *                    (an `OrderCommitted` event's `buyer`, `seller`, `token`)
  * @param coordinator the swap-and-commit coordinator's address (from the
  *                    deployment record)
  * @returns one `VenueEvent<FundingLeg>` per funded party, in the order the
@@ -84,11 +84,11 @@ function decodeTransfer(log: ReceiptLogInput): Transfer | null {
  */
 export function readFundingLegs(
     logs: readonly ReceiptLogInput[],
-    commitment: { buyer: Address; seller: Address; currency: Address },
+    commitment: { buyer: Address; seller: Address; token: Address },
     coordinator: Address,
 ): VenueEvent<FundingLeg>[] {
     const parties = new Set([key(commitment.buyer), key(commitment.seller)]);
-    const currency = key(commitment.currency);
+    const bondToken = key(commitment.token);
     const hub = key(coordinator);
 
     type Open = {
@@ -133,7 +133,7 @@ export function readFundingLegs(
 
         // The input: a party's own token, not the denomination, into the
         // coordinator. It opens the party's leg.
-        if (to === hub && parties.has(from) && token !== currency) {
+        if (to === hub && parties.has(from) && token !== bondToken) {
             close();
             open = {
                 party: from,
@@ -152,7 +152,7 @@ export function readFundingLegs(
         const leg: Open | null = open;
         if (!leg || from !== hub) continue;
         const sameToken = token === key(leg.tokenIn);
-        if (to === leg.party && token === currency && leg.amountOut === null) {
+        if (to === leg.party && token === bondToken && leg.amountOut === null) {
             // The output: the denomination, forwarded to the party.
             leg.tokenOut = t.token;
             leg.amountOut = t.value;

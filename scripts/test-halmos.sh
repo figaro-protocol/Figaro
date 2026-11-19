@@ -13,7 +13,7 @@
 #     check_resolutionPayouts             (run in isolation, see note below)
 #     check_orderStatusTransition
 #     check_buyerDominance_revert
-#     check_cumulativeValueMonotonic
+#     check_runningTotalMonotonic
 #
 # The run is split into two halmos processes:
 #

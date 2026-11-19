@@ -17,12 +17,12 @@ pub fn leaf_path(tag: u8, key: &B256) -> B256 {
     keccak256(data)
 }
 
-/// A process leaf's value hash: `keccak256(root buyer ‖ currency ‖
-/// cumulative value ‖ active order count)` — 20, 20, 32 and 8 bytes.
+/// A process leaf's value hash: `keccak256(root buyer ‖ token ‖
+/// running total ‖ active order count)` — 20, 20, 32 and 8 bytes.
 pub fn process_value_hash(ps: &ProcessState) -> B256 {
     let mut data = [0u8; 80];
     data[..20].copy_from_slice(ps.root_buyer.as_slice());
-    data[20..40].copy_from_slice(ps.currency.as_slice());
+    data[20..40].copy_from_slice(ps.token.as_slice());
     data[40..72].copy_from_slice(&ps.running_total.to_be_bytes::<32>());
     data[72..80].copy_from_slice(&ps.active_order_count.to_be_bytes());
     keccak256(data)

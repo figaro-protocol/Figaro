@@ -88,7 +88,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         [processOrders],
     );
     const processAgreements = useProcessAgreements(checkoutHashes);
-    const selectedCurrency = processOrders[0]?.currency as `0x${string}` | undefined;
+    const selectedCurrency = processOrders[0]?.token as `0x${string}` | undefined;
     // The active order's on-chain currency, or undefined — never a coined default.
     const approvalTokenAddress = selectedCurrency;
     // A token figure only once `decimals()` is read; the raw integer until then.

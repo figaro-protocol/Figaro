@@ -121,7 +121,7 @@ test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader
 
         // Value leg — the bond lock, read from the token contract.
         const { buyerBond, sellerBond } = calculateBonds(event.args.runningTotal!, event.args.payment!);
-        const currency = event.args.currency! as Hex;
+        const currency = event.args.token! as Hex;
         const at = event.blockNumber!;
         const [buyerBefore, sellerBefore, coreBefore, buyerAfter, sellerAfter, coreAfter] = await Promise.all([
             balanceAt(currency, BUYER, at - 1n), balanceAt(currency, SELLER, at - 1n), balanceAt(currency, core, at - 1n),

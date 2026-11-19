@@ -47,12 +47,12 @@ interface SerializedOrder {
     processId: string;
     buyer: string;
     seller: string;
-    currency?: string;
+    token?: string;
     checkoutHash?: string;
     payment: string;
     state: number;
     salt: string;
-    deadline: string;
+    commitDeadline: string;
     blockNumber?: number;
     timestamp?: number;
     resolvedAt?: number;
@@ -68,7 +68,7 @@ function serializeOrder(o: Order): SerializedOrder {
         ...rest,
         payment: o.payment.toString(),
         salt: o.salt.toString(),
-        deadline: o.deadline.toString(),
+        commitDeadline: o.commitDeadline.toString(),
     };
 }
 
@@ -77,7 +77,7 @@ function deserializeOrder(s: SerializedOrder): Order {
         ...s,
         payment: BigInt(s.payment),
         salt: BigInt(s.salt),
-        deadline: BigInt(s.deadline),
+        commitDeadline: BigInt(s.commitDeadline),
         // Value-free draft: the shared Order shape requires the fields. Also
         // overwrites the persisted strings in pre-cleanup drafts.
         runningTotal: 0n,

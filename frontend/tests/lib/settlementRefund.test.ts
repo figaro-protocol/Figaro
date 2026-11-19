@@ -17,14 +17,14 @@ const order: Order = {
     processId: PROCESS,
     buyer: BUYER,
     seller: SELLER,
-    currency: `0x${"33".repeat(20)}`,
+    token: `0x${"33".repeat(20)}`,
     runningTotal: 3n,
     payment: 3n,
     state: OrderState.Resolved,
     sellerBond: 6n,
     buyerBond: 6n,
     salt: 1n,
-    deadline: 0n,
+    commitDeadline: 0n,
 };
 
 const summary: ProcessSummary = {

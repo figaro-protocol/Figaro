@@ -261,7 +261,7 @@ export async function getSellerResolutionHistory(
 
     const valueByCurrency = new Map<string, bigint>();
     for (const log of sellerOrders) {
-        const currency = getStringArg(log, "currency")?.toLowerCase();
+        const currency = getStringArg(log, "token")?.toLowerCase();
         if (!currency) continue;
         valueByCurrency.set(currency, (valueByCurrency.get(currency) ?? 0n) + getBigIntArg(log, "payment"));
     }

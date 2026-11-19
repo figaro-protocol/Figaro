@@ -259,7 +259,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
             processResolved: parseProcessResolvedLogs(processResolved as unknown as SdkLogs),
         });
         const legs = readFundingLegs(receipt.logs, {
-            buyer: event.args.buyer!, seller: event.args.seller!, currency: event.args.currency!,
+            buyer: event.args.buyer!, seller: event.args.seller!, token: event.args.token!,
         }, coordinator);
         expect(legs, 'one funding leg in the commit transaction').toHaveLength(1);
         const [leg] = legs;
@@ -319,7 +319,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
 
         const { event, receipt, payment, buyerBond, sellerBond } = await committedEvent(committedBefore);
         expect(receipt.to?.toLowerCase(), 'no funding leg → the commit goes direct to FigaroCore').toBe(core.toLowerCase());
-        expect((event.args.currency as string).toLowerCase(), 'the denomination is the pick').toBe(defaultToken.toLowerCase());
+        expect((event.args.token as string).toLowerCase(), 'the denomination is the pick').toBe(defaultToken.toLowerCase());
         const listed = await pinnedCatalogPrice(itemId);
         expect(payment, 'the committed payment is the listed price, read from IPFS').toBe(listed.amount);
         expect(buyerBond, 'the buyer bonds twice the payment').toBe(2n * payment);
@@ -356,7 +356,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
         expect(receipt.to?.toLowerCase(), 'the funding leg routed through WitnessSwapAndCommitCoordinator')
             .toBe(coordinator.toLowerCase());
         // The invariants, in the denomination.
-        expect((event.args.currency as string).toLowerCase(), 'the denomination is the pick').toBe(pickedToken.toLowerCase());
+        expect((event.args.token as string).toLowerCase(), 'the denomination is the pick').toBe(pickedToken.toLowerCase());
         expect(formatToken(payment, 18), 'the payment is the amount the buyer signed').toBe(signed);
         expect(buyerBond, 'the buyer bonds twice the payment').toBe(2n * payment);
         expect(sellerBond, 'the seller bonds twice the cumulative value').toBe(2n * event.args.runningTotal!);
@@ -408,7 +408,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
         const { event, receipt, payment, buyerBond, sellerBond } = await committedEvent(committedBefore);
         expect(receipt.to?.toLowerCase(), 'the seller-funded accept routed through WitnessSwapAndCommitCoordinator')
             .toBe(coordinator.toLowerCase());
-        expect((event.args.currency as string).toLowerCase(), 'the denomination is the pick').toBe(pickedToken.toLowerCase());
+        expect((event.args.token as string).toLowerCase(), 'the denomination is the pick').toBe(pickedToken.toLowerCase());
         expect(formatToken(payment, 18), 'the payment is the amount both parties signed').toBe(signed);
         expect(buyerBond, 'the buyer bonds twice the payment').toBe(2n * payment);
         expect(sellerBond, 'the seller bonds twice the cumulative value').toBe(2n * event.args.runningTotal!);
@@ -468,7 +468,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
 
             const { event, receipt, payment, buyerBond, sellerBond } = await committedEvent(committedBefore);
             expect(receipt.to?.toLowerCase(), 'no funding leg → the commit goes direct to FigaroCore').toBe(core.toLowerCase());
-            expect((event.args.currency as string).toLowerCase(), 'the denomination is the pick').toBe(pickedToken.toLowerCase());
+            expect((event.args.token as string).toLowerCase(), 'the denomination is the pick').toBe(pickedToken.toLowerCase());
             expect(payment, 'the chain carries the amount the buyer signed').toBe(expectedQuote);
             expect(buyerBond, 'the buyer bonds twice the payment').toBe(2n * payment);
             expect(sellerBond, 'the seller bonds twice the cumulative value').toBe(2n * event.args.runningTotal!);

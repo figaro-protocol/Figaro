@@ -69,7 +69,7 @@ a process when its buyer calls it.
   from the buyer and `2 × runningTotal` from the seller. A root
   order (`c.processId == 0`) opens a process; any other order extends one and
   must carry `c.buyer == process.rootBuyer` and `runningTotal`
-  equal to the live accumulator plus `payment` (`CumulativeValueMismatch`).
+  equal to the live accumulator plus `payment` (`RunningTotalMismatch`).
 - `resolveProcess` requires `msg.sender == rootBuyer` (`NotProcessBuyer`) and
   the complete active-order list (`IncompleteOrderList`), then pays every order
   at once: seller `2 × runningTotal + payment`, buyer `payment`.

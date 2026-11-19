@@ -101,7 +101,7 @@ export function buildSyntheticOrder(params: {
         processId: params.processId,
         buyer: params.buyer,
         seller: params.seller,
-        currency: params.currency,
+        token: params.currency,
         checkoutHash,
         // First-class topology edges (the entry's `follows`) — read directly by
         // the topology deriver, never recovered from the agreement.
@@ -117,7 +117,7 @@ export function buildSyntheticOrder(params: {
         // Wall clock is ALLOWED here — the synthetic process is an offline
         // designer preview that is never signed or broadcast; no FigaroCore clock
         // ever judges it (the chain-time rule binds real commitments only).
-        deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
+        commitDeadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
     };
 
     return { order, checkoutHash };
@@ -156,7 +156,7 @@ export function createSyntheticSubOrder(
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;
     const sellerIndex = session.nextSellerIndex++;
-    const currency = (parent.currency ?? ZERO_ADDRESS) as `0x${string}`;
+    const currency = (parent.token ?? ZERO_ADDRESS) as `0x${string}`;
     const payment = parent.payment / 2n > 0n ? parent.payment / 2n : 1n;
 
     return buildSyntheticOrder({

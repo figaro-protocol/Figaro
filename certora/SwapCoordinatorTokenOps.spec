@@ -71,7 +71,7 @@ rule coordinatorTokenConservation(
     // The two tokens of the scene: a party swaps token A into the bond currency,
     // token B. An ERC-20 call on any other address would be dispatched to
     // either instance call by call, which no real token does.
-    require c.currency == tokenB;
+    require c.token == tokenB;
     require buyerFunding.inputToken == tokenA && sellerFunding.inputToken == tokenA;
 
     swapAndCommit(e, c, buyerSig, sellerSig, buyerFunding, sellerFunding);

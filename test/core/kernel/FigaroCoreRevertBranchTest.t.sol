@@ -135,11 +135,11 @@ contract FigaroCore_RevertBranch is Test {
         core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
     }
 
-    function test_commit_invalidRootCumulativeValue_reverts() public {
+    function test_commit_invalidRootRunningTotal_reverts() public {
         CommitmentTypes.Commitment memory c = _rootCommitment(50 ether, 1);
         c.runningTotal = 99 ether;
 
-        vm.expectRevert(FigaroCore.InvalidRootCumulativeValue.selector);
+        vm.expectRevert(FigaroCore.InvalidRootRunningTotal.selector);
         core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
     }
 
@@ -179,7 +179,7 @@ contract FigaroCore_RevertBranch is Test {
         core.commit(c, _signCommitment(c, OUTSIDER_KEY), _signCommitment(c, SELLER2_KEY));
     }
 
-    function test_commit_sub_currencyMismatch_reverts() public {
+    function test_commit_sub_tokenMismatch_reverts() public {
         (bytes32 processId,,) = _commitRoot(50 ether, 1);
         MockPermitToken otherToken = new MockPermitToken();
 
@@ -195,11 +195,11 @@ contract FigaroCore_RevertBranch is Test {
             commitDeadline: block.timestamp + 1 hours
         });
 
-        vm.expectRevert(FigaroCore.CurrencyMismatch.selector);
+        vm.expectRevert(FigaroCore.TokenMismatch.selector);
         core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER2_KEY));
     }
 
-    function test_commit_sub_cumulativeValueMismatch_reverts() public {
+    function test_commit_sub_runningTotalMismatch_reverts() public {
         (bytes32 processId,,) = _commitRoot(50 ether, 1);
 
         CommitmentTypes.Commitment memory c = CommitmentTypes.Commitment({
@@ -214,7 +214,7 @@ contract FigaroCore_RevertBranch is Test {
             commitDeadline: block.timestamp + 1 hours
         });
 
-        vm.expectRevert(abi.encodeWithSelector(FigaroCore.CumulativeValueMismatch.selector, 999 ether, 60 ether));
+        vm.expectRevert(abi.encodeWithSelector(FigaroCore.RunningTotalMismatch.selector, 999 ether, 60 ether));
         core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER2_KEY));
     }
 
@@ -383,7 +383,7 @@ contract FigaroCore_RevertBranch is Test {
         core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
     }
 
-    function test_commit_subReplay_preemptedByCumulativeValueMismatch() public {
+    function test_commit_subReplay_preemptedByRunningTotalMismatch() public {
         (bytes32 processId,,) = _commitRoot(10 ether, 1);
 
         CommitmentTypes.Commitment memory subC = CommitmentTypes.Commitment({
@@ -401,7 +401,7 @@ contract FigaroCore_RevertBranch is Test {
 
         // Identical struct: the accumulator has moved to 30, so the replay's
         // runningTotal (30) no longer matches 30 + 20 = 50.
-        vm.expectRevert(abi.encodeWithSelector(FigaroCore.CumulativeValueMismatch.selector, 30 ether, 50 ether));
+        vm.expectRevert(abi.encodeWithSelector(FigaroCore.RunningTotalMismatch.selector, 30 ether, 50 ether));
         core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
     }
 }

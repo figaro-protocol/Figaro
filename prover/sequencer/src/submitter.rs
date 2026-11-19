@@ -315,15 +315,15 @@ pub async fn filter_funded_commits(
     let mut funds = HashMap::new();
     if let Ok(url) = gate.rpc_url.parse() {
         let provider = ProviderBuilder::new().connect_http(url);
-        for (currency, who) in wallets {
-            let token = IERC20Funding::new(currency, &provider);
+        for (bond_token, who) in wallets {
+            let token = IERC20Funding::new(bond_token, &provider);
             let read = async {
                 let balance = token.balanceOf(who).call().await.ok()?;
                 let allowance = token.allowance(who, gate.verifier).call().await.ok()?;
                 Some((balance, allowance))
             };
             if let Some(f) = read.await {
-                funds.insert((currency, who), f);
+                funds.insert((bond_token, who), f);
             }
         }
     }

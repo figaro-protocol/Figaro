@@ -61,8 +61,8 @@
 //! role     := 0x00 the target's seller | 0x01 the target's buyer
 //! order    := the 0x01, 0x02 and 0x04 entries in the order applied, then
 //!             every 0x05, then every 0x03
-//! commitment := processId(32) buyer(20) seller(20) currency(20) payment(32)
-//!               runningTotal(32) checkoutHash(32) salt(32) deadline(32)
+//! commitment := processId(32) buyer(20) seller(20) token(20) payment(32)
+//!               runningTotal(32) checkoutHash(32) salt(32) commitDeadline(32)
 //! sig      := r(32) s(32) v(1)
 //! kind     := 0x00 clauseDataHash(32)                        (USAGE_KIND_CLAUSE)
 //!           | 0x01 agreementHash(32) agreementContentHash(32) proof (USAGE_KIND_PROCESS)

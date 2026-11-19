@@ -94,12 +94,12 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             processId: order.processId as Hex,
             buyer: order.buyer as Hex,
             seller: order.seller as Hex,
-            token: order.currency as Hex,
+            token: order.token as Hex,
             payment: order.payment,
             runningTotal: order.runningTotal,
             checkoutHash: order.checkoutHash as Hex,
             salt: order.salt,
-            commitDeadline: order.deadline,
+            commitDeadline: order.commitDeadline,
         }, chainId));
 
         // ── USAGE RECORDING, PLANNED BEFORE THE BUYER IS ASKED: the buyer's

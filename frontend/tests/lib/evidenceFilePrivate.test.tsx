@@ -60,7 +60,7 @@ beforeAll(async () => {
     order = {
         orderHash: `0x${"0a".repeat(32)}`, processId: `0x${"ab".repeat(32)}`, buyer: BUYER, seller: SELLER,
         checkoutHash: built.checkoutHash, runningTotal: 1n, payment: 1n, state: OrderState.Active,
-        sellerBond: 2n, buyerBond: 2n, salt: 1n, deadline: 1n,
+        sellerBond: 2n, buyerBond: 2n, salt: 1n, commitDeadline: 1n,
     } as Order;
     witnessValues = { reading: "41.2", blinding: `0x${"c7".repeat(32)}` };
     witness = encodeContentFromSpec(getClauseSpec(PRIVATE.clauseKey)!, witnessValues, { stage: 1 });

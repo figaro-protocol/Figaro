@@ -152,9 +152,9 @@ describe("planUsageRecords", () => {
 function order(salt: bigint, seller: Address): Order {
     const c = commitment(salt, seller);
     return {
-        orderHash: `order-${salt}`, processId: PROCESS, buyer: BUYER, seller, currency: CURRENCY,
+        orderHash: `order-${salt}`, processId: PROCESS, buyer: BUYER, seller, token: CURRENCY,
         checkoutHash: c.checkoutHash, runningTotal: c.runningTotal, payment: c.payment,
-        state: OrderState.Active, sellerBond: 0n, buyerBond: 0n, salt: c.salt, deadline: c.commitDeadline,
+        state: OrderState.Active, sellerBond: 0n, buyerBond: 0n, salt: c.salt, commitDeadline: c.commitDeadline,
     };
 }
 

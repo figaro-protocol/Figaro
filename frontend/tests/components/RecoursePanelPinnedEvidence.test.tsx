@@ -108,7 +108,7 @@ beforeAll(async () => {
 
 const ORDERS = [{
     orderHash: ORDER, processId: PROCESS, buyer: BUYER, seller: SELLER, checkoutHash: CHECKOUT,
-    runningTotal: 1n, payment: 1n, state: 0, sellerBond: 2n, buyerBond: 2n, salt: 0n, deadline: 0n,
+    runningTotal: 1n, payment: 1n, state: 0, sellerBond: 2n, buyerBond: 2n, salt: 0n, commitDeadline: 0n,
 }] as unknown as Order[];
 
 describe("RecoursePanel pins an evidence file with private content by its fingerprint only", () => {

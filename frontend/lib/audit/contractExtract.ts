@@ -139,7 +139,7 @@ export function extractContract(
     order: Order,
     agreement: Agreement,
 ): ContractDocument {
-    // Currency: the commitment's own, from the chain's event (`order.currency`).
+    // Currency: the commitment's own, from the chain's event (`order.token`).
     // A clause's copy of the token is never read here: a clause that names
     // another token than the commitment would show a token the chain did not move.
     return {
@@ -150,11 +150,11 @@ export function extractContract(
         buyer: order.buyer,
         seller: order.seller,
         parties: { buyer: order.buyer, seller: order.seller },
-        currency: order.currency ?? ZERO_ADDRESS,
+        currency: order.token ?? ZERO_ADDRESS,
         payment: order.payment,
         runningTotal: order.runningTotal,
         salt: order.salt,
-        deadline: order.deadline,
+        deadline: order.commitDeadline,
         clauses: agreement.clauses.map(contractClauseFrom),
         jurisdiction: extractJurisdictionSummary(agreement),
         topology: extractTopology(order, agreement),

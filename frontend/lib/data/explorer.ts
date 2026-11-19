@@ -255,12 +255,12 @@ function toProcessRow(process: Process): ProcessRow {
     return {
         processId: process.processId,
         rootBuyer: process.rootBuyer,
-        currency: process.currency,
+        currency: process.token,
         runningTotal: process.runningTotal,
         orderCount: orders.length,
         resolved: process.resolved,
         firstBlock: blocks.length > 0 ? Math.min(...blocks) : null,
-        text: [process.processId, process.rootBuyer, process.currency].join(" "),
+        text: [process.processId, process.rootBuyer, process.token].join(" "),
     };
 }
 
@@ -483,7 +483,7 @@ export interface WalletRecordSummary {
 export function walletRecordSummary(record: WalletRecord): WalletRecordSummary {
     const denominations = new Set<string>();
     for (const order of [...record.ordersAsBuyer, ...record.ordersAsSeller]) {
-        denominations.add(order.currency.toLowerCase());
+        denominations.add(order.token.toLowerCase());
     }
     return {
         wallet: record.wallet,
@@ -525,12 +525,12 @@ export function walletOrderRows(record: WalletRecord): WalletOrderRow[] {
                 processId: o.processId,
                 side,
                 counterparty: side === "buyer" ? o.seller : o.buyer,
-                currency: o.currency,
+                currency: o.token,
                 payment: o.payment,
                 runningTotal: o.runningTotal,
                 resolved: o.state === OrderState.Resolved,
                 blockNumber: o.blockNumber,
-                text: [o.orderHash, o.processId, o.buyer, o.seller, o.currency].join(" "),
+                text: [o.orderHash, o.processId, o.buyer, o.seller, o.token].join(" "),
             });
         }
     };

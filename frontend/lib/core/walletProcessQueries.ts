@@ -95,7 +95,7 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
                 rootOrderHash: order.orderHash,
                 counterparty: counterpartyOf(order),
                 payment: order.payment,
-                currency: order.currency,
+                currency: order.token,
                 blockNumber: order.blockNumber,
                 isResolved: order.state === OrderState.Resolved,
             });
