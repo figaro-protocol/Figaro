@@ -56,6 +56,26 @@ on:
             - "test/fixtures/clause-keys.json"
             - "scripts/test-cross-impl-fuzz.sh"
             - ".github/workflows/prover-ci.yml"
+            # What the `sp1` job's batch e2e step reads: its three spec files,
+            # the harness they share and the config that runs them one at a
+            # time; the SDK it builds and imports; the contracts the harness
+            # deploys from out/ (the Core's above, the four registries, the
+            # counter and two mocks) and the build settings behind out/; the
+            # dependencies `npm ci` installs.
+            - "sdk/tests/batch-e2e.test.ts"
+            - "sdk/tests/batch-revoke-e2e.test.ts"
+            - "sdk/tests/batch-accrual-skip-e2e.test.ts"
+            - "sdk/tests/batchHarness.ts"
+            - "sdk/vitest.config.ts"
+            - "sdk/src/**"
+            - "sdk/package.json"
+            - "sdk/tsconfig.json"
+            - "package-lock.json"
+            - "src/registries/**"
+            - "src/rewards/UsageCounter.sol"
+            - "src/mocks/MockERC20.sol"
+            - "src/mocks/MockSP1Verifier.sol"
+            - "foundry.toml"
     pull_request:
         branches: [main]
         paths:

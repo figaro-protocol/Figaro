@@ -6,7 +6,10 @@
 set -euxo pipefail
 export PATH="$HOME/.sp1/bin:$HOME/.cargo/bin:$PATH"
 
-cd "$HOME/Figaro/prover"
+# The repository root is this script's own checkout, two levels up, the same
+# read build-guest.sh makes.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT/prover"
 SP1_SKIP_PROGRAM_BUILD=true cargo build --release --locked -p figaro-sequencer --bin sequencer
 SP1_SKIP_PROGRAM_BUILD=true cargo test --release --locked -p figaro-prove-test
 ls -la target/release/sequencer
