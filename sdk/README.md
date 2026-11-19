@@ -119,7 +119,8 @@ What it does, in order:
    agreement's registered agreement read from `AgreementRegistry`'s binding and
    checked against its key (`hydrateProcessDesign`) — and taking the first
    single-order assembly — no hardcoded id — and locates the
-   commerce clause by the field it DECLARES (`lineItems`), never by clause name.
+   clause whose spec marks priced lines (`block.checkout.pricedLines`), never by
+   clause name or field name.
 2. **Registers the seller loop.** `makeSellerOfferHandler(…)` on an
    `InProcessChannel`, with both refusal floors filled in explicitly (an `accept`
    business rule plus an economic `policy` bounding currency and magnitude) and
@@ -373,7 +374,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `deriveProcessWithdrawGate` | `/derive` | Whether an assembly's stake is withdrawable: in-flight processes whose provenance names its assembly hash. |
 | `deriveClauseWithdrawGate` | `/derive` | Whether a clause's stake is withdrawable, and what still blocks it. |
 | `deriveInFlightOrders` | `/derive` | Every committed order whose process has not resolved. |
-| `derivePricedFields` | root | The copies of a quoted figure inside the clauses, read from the composed clauses' specs: each line's `unitPrice` in the clause declaring `lineItems`; empty when no such clause is composed or the specs are not cached. The quote itself moves the commitment's payment, so an empty list still quotes. |
+| `derivePricedFields` | root | The copies of a quoted figure inside the clauses, read from the composed clauses' specs: the unit price of each line of every clause whose spec marks priced lines (`block.checkout.pricedLines`); empty when no such clause is composed or the specs are not cached. The quote itself moves the commitment's payment, so an empty list still quotes. |
 | `deriveSharedSecretAsReceiver` | `/handoff` | ECDH shared secret from the sender's public key and your private key. |
 | `deriveSharedSecretAsSender` | `/handoff` | ECDH shared secret from your private key and the receiver's public key. |
 | `deserializeCommitmentPayload` | `/agent` | Parse a wire envelope back into a `CommitmentPayload`. |
@@ -394,9 +395,9 @@ definition) and `RPGF_*` constant is a **root** export.
 | `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalog and process set. |
 | `fillCatalogueMeasures` | root | Fold the measures each composed spec declares in `block.checkout.catalogueMeasures` from the lines' catalog items; a missing measure stays missing. |
 | `fillClassClauses` | root | Fold catalog-filled class values (freight class, hazmat, cold chain, …) onto their leaves. |
-| `fillCommerceClause` | root | Write the order's line items into the clause declaring `lineItems`; nothing when no such clause is composed. The payment and the token stay in the commitment. |
-| `fillDerivedClauses` | root | Run every logistics fill the order composes — catalog measures, class, profile, then dimweight. |
-| `fillDimweightClause` | root | Billed weight = max(gross mass, volumetric) onto the dimweight leaf. DERIVED, never hand-filled; skipped while the gross mass or a dimension is missing. |
+| `fillCheckoutDerivations` | root | Compute each field a composed spec derives (`block.checkout.derives`), by its declared rule over its declared inputs; a rule the registry does not hold, or inputs it cannot derive from, leave the field as it was. |
+| `fillDerivedClauses` | root | Run every fold the order composes — catalog measures, class, profile, then the derived fields (`fillCheckoutDerivations`). |
+| `fillPricedLines` | root | Write the order's lines into the first composed clause whose spec marks priced lines (`block.checkout.pricedLines`), in the item shape the mark names; nothing when no such clause is composed. The payment and the token stay in the commitment. |
 | `fillProfileClauses` | root | Fold the seller's profile-filled clause values onto their leaves. |
 | `filterByClause` | `/derive` | Narrow attestation events to one clause. |
 | `generateOrderKeypair` | `/handoff` | A fresh ephemeral secp256k1 keypair for a single order's handoff. |
@@ -437,7 +438,8 @@ definition) and `RPGF_*` constant is a **root** export.
 | `proposeInitiations` | `/agent` | Every process a wallet could START — one per live-staked assembly. |
 | `readChainTimestamp` | root | The chain's `block.timestamp`: the only clock a protocol deadline may be computed from. |
 | `readFundingLegs` | `/derive` | The swap legs one commit transaction carries, read from its receipt's ERC-20 transfers: one per party that funded its bond through the coordinator. |
-| `readUtilityTokenPin` | root | The designer's pinned denomination, read from a assembly's composed clauses. |
+| `readPricedLines` | root | The priced lines an agreement commits, read through each clause spec's `block.checkout.pricedLines` mark; `pricedLinesSum` sums quantity × unit price, which nothing holds equal to the payment. |
+| `readUtilityTokenPin` | root | The designer's pinned denomination, read from an assembly's composed clauses: the one designer-filled `address-hex` field of an assembly-scoped clause of the denomination article (`specDenominationPinField`). |
 | `reconstruct` | root | Rebuild the full process topology from parsed core events. |
 | `reconstructDiscovery` | root | Rebuild the live registry view; a member's current profile URI is EVENT-derived, not a getter. |
 | `reconstructOrdersFromProcessDesign` | root | THE hydrated-assembly→orders walk: root signs `processId = 0`, children carry the real order hashes of the orders they follow. |
@@ -1202,8 +1204,10 @@ channel.register(courierAddr, makeSellerQuoteHandler(courierWallet, { chainId, c
 }));
 // A priced field names its clause by KEY — the keccak256 of the canonical
 // spec without its `block`, the same key the agreement's clause entry carries — never by name.
-// `derivePricedFields(clauseEntries, specs)` derives the list from the clause
-// declaring `lineItems`; an agreement composing no line items quotes with [].
+// `derivePricedFields(clauseEntries, specs)` derives the list from each clause
+// whose spec marks priced lines (`block.checkout.pricedLines`), and
+// `buildQuoteRequest` refuses a list that leaves one of them out; an agreement
+// with no priced lines quotes with [].
 const commerceKey = computeClauseKey(commerceSpec); // the spec you fetched and verified
 const drafts = candidates.map((seller) => buildQuoteRequest({
     assembly, buyer, seller, currency, ceiling, chainId, core,
@@ -2266,21 +2270,22 @@ sub-order seller plan, live contributor pricing, and the open rate-quantity
 registry — are root exports (`dist/checkoutPlan.d.ts`). Everything here shapes
 COMMITTED bytes (agreement clauses the merkle root hashes) or the payment
 figures the commitments sign, so a second frontend must reproduce it exactly. **No
-clause is ever named**: clauses are found by their DECLARED FIELDS (`lineItems`,
-`massGrams`, `billedMassGrams`) or their spec hints
-(`catalogueFills`, `catalogueMeasures`) through the caller's `SpecSource` — a fill whose clause isn't
+clause and no field is ever named**: clauses are found by what their specs
+declare in `block` (`checkout.pricedLines`, `checkout.derives`,
+`checkout.catalogueFills`, `checkout.profileFills`, `checkout.catalogueMeasures`,
+and the denomination pin's shape) through the caller's `SpecSource` — a fill whose clause isn't
 composed is a no-op, so the same call serves the root and every sub-order.
 
 ```ts
 import {
-  fillCommerceClause, fillDerivedClauses,
+  fillPricedLines, fillDerivedClauses,
   fillCatalogueMeasures, missingCatalogueMeasures, fillClassClauses,
-  fillProfileClauses, fillDimweightClause, planSubOrderSellers, resolveSubOrderPricing, profileValuesFor,
+  fillProfileClauses, fillCheckoutDerivations, registerCheckoutDerivation, planSubOrderSellers, resolveSubOrderPricing, profileValuesFor,
   registerRateQuantitySource, getRateQuantityResolver, topologicalOrder,
 } from "@figaro-protocol/sdk";
 ```
 
-- **Clause fills** (by declared field): `fillCommerceClause` (the order's line items, where a clause declaring `lineItems` is composed; the payment and the token stay in the commitment), and the logistics
+- **Clause fills** (by what the spec declares): `fillPricedLines` (the order's lines, where a clause whose spec marks priced lines is composed, written in the item shape the mark names; the payment and the token stay in the commitment), and the
   fills `fillDerivedClauses` folds together — `fillCatalogueMeasures` (each
   field a spec declares in `block.checkout.catalogueMeasures`, read from the
   declared field of each line's `catalogItem`: summed × quantity, or taken from
@@ -2290,8 +2295,11 @@ import {
   `fillProfileClauses` (the seller's profile-filled master data — dimweight's
   divisor, a declared credential id — restricted to each spec's declared
   `block.checkout.profileFills` subset, with the registered agreement's committed terms winning),
-  and the DERIVED `fillDimweightClause` (`billed = max(gross, volumetric)`,
-  divisor read from the profile-folded leaf).
+  and `fillCheckoutDerivations` (each field a spec declares in
+  `block.checkout.derives`, computed by the named rule of an open registry,
+  `registerCheckoutDerivation`, over its declared inputs: a field of the same
+  clause or a catalog measure; the reference rule `dimensional-weight` bills
+  `max(gross, volumetric)`).
 - **Sub-order sellers**: `planSubOrderSellers({ hydratedAssembly, coSellerBindings })`
   topologically orders the non-root agreements and resolves each one's seller
   from the adopting seller's co-seller bindings (matched against the order
@@ -2340,7 +2348,7 @@ sub-order — looks like this:
 
 ```ts
 import {
-  reconstructOrdersFromProcessDesign, fillCommerceClause, fillClassClauses,
+  reconstructOrdersFromProcessDesign, fillPricedLines, fillClassClauses,
   fillProfileClauses, profileValuesFor,
   type ProcessCheckoutLineItem, type PlannedProcessOrder,
 } from "@figaro-protocol/sdk";
@@ -2368,7 +2376,7 @@ await reconstructOrdersFromProcessDesign(assembly, {
     // you build yourself.
     const filled = fillProfileClauses(
       fillClassClauses(
-        fillCommerceClause(planned.clauses, specs, lineItems),
+        fillPricedLines(planned.clauses, specs, lineItems),
         lineItems, specs,
       ),
       profileValuesFor(seller, memberCatalogs), specs,
@@ -2381,8 +2389,8 @@ await reconstructOrdersFromProcessDesign(assembly, {
 ```
 
 **The sequencing nuance the fold does NOT save you from.** Each fill above
-finds its target clause by DECLARED FIELD, searching only the keys of the map
-you pass it (`composedClauseDeclaring`, `checkoutPlan.ts`) — it never reads
+finds its target clause by what its spec declares, searching only the keys of the map
+you pass it (`composedClauseWhere`, `checkoutPlan.ts`) — it never reads
 `assembly.assemblyClauses` itself. So the fold's guarantee is scoped to
 `planned.clauses`, not to whatever local map your own code builds. The moment
 you have a reason to rebuild that map from the hydrated assembly yourself, you

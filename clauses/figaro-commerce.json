@@ -55,7 +55,14 @@
         "checkout": {
             "catalogueFills": [],
             "profileFills": [],
-            "catalogueMeasures": {}
+            "catalogueMeasures": {},
+            "pricedLines": {
+                "field": "lineItems",
+                "item": "itemId",
+                "name": "name",
+                "quantity": "quantity",
+                "unitPrice": "unitPrice"
+            }
         },
         "runtime": {
             "interaction": null,

@@ -340,20 +340,46 @@ Neutrality is achieved by the **stake, not by weighting.**
 **The must-haves see value, not place.** Every Figaro order carries **topology**
 (the chain — who comes before whom), a leaf the agreement format itself
 carries (`Agreement.follows`, never a clause), and its
-commitment says who pays whom, in what token, how much; the commerce clause, where
-a designer composes it, adds only the line items the payment buys. The chain emits one part of the trade's economic skeleton
+commitment says who pays whom, in what token, how much; a clause whose spec
+marks priced lines (`block.checkout.pricedLines`, `docs/CLAUSES.md`), where a
+designer composes one, adds only the lines the payment buys, and nothing holds
+their sum equal to the payment. The chain emits one part of the trade's economic skeleton
 itself: each order's buyer, seller, token, payment and running total, in the
 sequence the orders were committed (`OrderCommitted`), and each order's payouts
 at resolution (`OrderResolved`). The other part, the edges of who comes before
 whom, is read from the design: the edges sit in the agreement body, whose
 address no event carries (`frontend/lib/core/agreementFetch.ts`, header), so a
 reader takes them from the registered assembly or from an agreement body it
-holds. The sign gate (`designIssues`, `sdk/src/projection.ts`) holds one thing
-about them at each party's signature: an order names as many orders as its
-design entry follows. Which orders they are is the reader's to check, since no
-design carries an order hash. Together the two give who paid whom, in what denomination, for how much,
-who the parties in the value-added process are, and how value accumulates. That
-skeleton is complete on its own.
+holds. The sign gate (`validateCommitmentAgreement`, `sdk/src/projection.ts`)
+holds two things about them at each party's signature, from the agreement and
+the design alone: an order names as many orders as its design entry follows
+(`designIssues`), and a commitment that opens a process (`processId` zero)
+names none (`topologyIssues`). Which orders they are needs the chain, since no
+design carries an order hash, so it is the reader's to check. Together the two
+give who paid whom, in what denomination, for how much, who the parties in the
+value-added process are, and how value accumulates. That skeleton is complete
+on its own.
+
+**The counter-signer is the first reader of the edges, and checks them before
+it signs.** The check sits with the party that reads the chain, never in the
+pure sign gate: `followedOrderIssues` (`sdk/src/projection.ts`) takes the
+counter-signer's own reads, and for the design entry the order instantiates
+holds each edge, in the entry's order, to an order that the chain holds
+(`OrderCommitted`, on either path), in the process the commitment joins, whose
+agreement names the same assembly and the registered agreement of the entry
+the design entry follows at that place. The agreement of a followed order is
+content the counter-signer verifies, never a claim it trusts: the party that
+built the edges relays each one's public form beside the order
+(`CommitmentPayload.followed`; `publicForm` withholds a private clause and
+keeps the merkle root), and the counter-signer takes it only when its root
+equals the `checkoutHash` the chain holds for that order; a followed order
+whose agreement it cannot read is refused. In the reference frontend the seller
+runs it at accept (`acceptOrder` and `readFollowedOrders`,
+`frontend/lib/checkout/orderCommitmentFlow.ts`), once the orders before its own
+are committed, and `/sign` shows the same verdict. A race candidate
+countersigns a draft before those orders exist, so the check does not run
+there, and the buyer, which built the edges from its own walk, does not run
+it.
 
 **What it cannot see is *where*.** The must-haves show *that* value was added and
 *by whom* — never the **physical or virtual flow** of the work: where a pickup

@@ -36,9 +36,14 @@ struct: `figaro-commerce` declares only `lineItems`, and a clause carrying
 the sign gate refuses. Every reader takes the payment and the token from the
 commitment (or from `OrderCommitted`, which carries both), never from a
 clause. The one comparison the gate makes across the two is the
-denomination pin: where an assembly composes a clause with a designer-filled
-`currency` (`figaro-utility-token`), the gate requires the commitment's token
-to equal it.
+denomination pin: where an assembly composes a clause whose spec declares one
+(`specDenominationPinField`: assembly-scoped, of the denomination article,
+with exactly one designer-filled `address-hex` field, whatever its name;
+`figaro-utility-token`'s `currency` is the reference one), the gate requires
+the commitment's token to equal it. The lines a clause marks as priced
+(`block.checkout.pricedLines`, § "Clause-spec format") are never compared with
+the payment: a review shows their sum beside it and says the two are not held
+equal.
 
 Beside the clause leaves, the agreement format carries one reserved leaf: the
 **provenance leaf**, the link from an order to the registered agreement and the
@@ -131,9 +136,13 @@ without a design leaves it absent. The sign gate refuses an agreement that
 names a design (its provenance) and carries no topology leaf, and any
 topology leaf whose edges are not distinct 32-byte hashes
 (`validateCommitmentAgreement`). It also refuses an order whose leaf names
-another number of orders than the design entry it matches follows entries.
-It does not check which orders the edges name: an order hash depends on that
-order's parties, payment and salt, which no design carries. The SDK owns the format (`TOPOLOGY_LEAF_LABEL`,
+another number of orders than the design entry it matches follows entries,
+and a commitment that opens a process (`processId` zero) whose leaf names
+any order. It does not check which orders the edges name: an order hash
+depends on that order's parties, payment and salt, which no design carries,
+so the counter-signer checks them against the chain before it signs
+(`followedOrderIssues`; `docs/DATA_LAYER.md`, the paragraph "The
+counter-signer is the first reader of the edges"). The SDK owns the format (`TOPOLOGY_LEAF_LABEL`,
 `TOPOLOGY_LEAF_DOMAIN`, `topologyLeafBytes`, `topologyContentRef`,
 `computeTopologyLeaf`, `agreementLeaves` in `sdk/src/agreement.ts`); no
 contract and no proof program holds the constant.
@@ -234,7 +243,7 @@ only an agreement composing no clause. `figaro-commerce` is a clause like any
 other, composed where the parties commit the list of line items, or left out.
 No clause is required: the topology is the agreement format's own leaf, and
 the commitment carries the payment and the token, so an agreement that
-composes no clause declaring `lineItems` still carries its payment; what it
+composes no clause marking priced lines still carries its payment; what it
 does not commit is the list of what the payment buys. The designer's review
 screen names each such order before publishing. A reference agreement file
 (`agreements/*.json`) names its clauses by name. Checkout fills
@@ -469,13 +478,15 @@ registry's seed data; the published definition of the format is
   attestations to the signed agreement; it reads no content shape.
 - **`block` — the presentation**, organized into phase sections named for their
   reader: `design` (`article`, `scope`, `nestsUnder`, `fills`, `composes`),
-  `checkout` (`catalogueFills`, `profileFills`, `catalogueMeasures`), `runtime`
+  `checkout` (`catalogueFills`, `profileFills`, `catalogueMeasures`,
+  `pricedLines`, `derives`), `runtime`
   (`interaction`, `fields`). `runtime.fields` serves on-network composition inputs only (paired
   with `design.composes`); reporting is witness stages (`spec.stages`), never
   `runtime.fields`. The clause key leaves `block` out, and no fingerprint reads
-  it. Six of its attributes (`design.article`, `design.scope`, `design.fills`,
+  it. Eight of its attributes (`design.article`, `design.scope`, `design.fills`,
   `checkout.catalogueFills`, `checkout.profileFills`,
-  `checkout.catalogueMeasures`; `parseProjectionHints` in `sdk/src/projection.ts`)
+  `checkout.catalogueMeasures`, `checkout.pricedLines`, `checkout.derives`;
+  `parseProjectionHints` in `sdk/src/projection.ts`)
   are the reference tooling's rules for collecting the data a party signs.
   Another frontend may collect it differently; both parties sign one
   `checkoutHash` over one agreement, which either recomputes from the agreement
@@ -484,7 +495,51 @@ registry's seed data; the published definition of the format is
   (`frontend/lib/shared/clauseBlockBinding.ts`) — derive the attribute list from
   that type. **One verb — `fills` — says who fills which content fields**
   (designer / catalog / profile); the buyer owns every field named in no fills
-  list and no `catalogueMeasures` entry, derived as the complement, never stored.
+  list, no `catalogueMeasures` entry, no `derives` entry and no `pricedLines`
+  mark, derived as the complement, never stored. **A field's name carries no
+  meaning to any code**: a role a field plays (the order's priced lines, a
+  derived value, the denomination pin) is read from what the spec declares,
+  so a stranger's clause naming its fields otherwise plays the same role
+  (`docs/OPEN_WORLD.md` § 1).
+- **`block.checkout.pricedLines` marks the order's priced lines.** It names the
+  top-level array field that holds the lines and the field of each line item
+  that plays each role: `{ "field": "lineItems", "item": "itemId", "name":
+  "name", "quantity": "quantity", "unitPrice": "unitPrice" }`. `quantity` (an
+  `integer` field) and `unitPrice` (a `bigint` field, in the token's smallest
+  unit) are required; `item` (the catalog item's id) and `name` (both `string`
+  fields) are optional, and a line carries only the roles the mark names. A
+  mark the spec's own fields contradict marks nothing (`specPricedLines`). The
+  mark is the one way any reader finds the lines: the checkout writes them in
+  the shape the mark names into the first composed clause that carries one
+  (`fillPricedLines`), the quote request prices each line's unit price
+  (`derivePricedFields`; `buildQuoteRequest` refuses a request that leaves one
+  out), the review reads them and shows their sum (`readPricedLines`,
+  `pricedLinesSum`, `frontend/components/runtime/AgreementReview.tsx`), and the
+  checkout form offers the buyer no input for the marked field. The sum of the
+  lines and the commitment's payment are two figures: no check holds them
+  equal, the payment is what moves, and the review shows the sum beside the
+  payment and says so. A field named `lineItems` with no mark is content like
+  any other. `figaro-commerce` carries the mark above.
+- **`block.checkout.derives` declares a field the checkout computes.** It maps
+  a content field to a rule, by its name in an open registry
+  (`registerCheckoutDerivation` in `sdk/src/checkoutPlan.ts`, the same open
+  axis as the rate-quantity sources), and to the rule's inputs, by the rule's
+  own input names: each input is a field of the same clause (`{ "field":
+  "divisor" }`, read after the catalog and profile folds) or a catalog measure
+  (`{ "from": "massGrams", "combine": "sum" }`, combined as
+  `catalogueMeasures` combines). A rule the registry does not hold, or inputs
+  it cannot derive from, leave the field as it was (`fillCheckoutDerivations`).
+  The reference rule is `dimensional-weight`, with inputs `mass`, `length`,
+  `width`, `height` and `divisor`: billed weight is the greater of the gross
+  mass and the packaged volume ÷ divisor, each dimension rounded up to the
+  next whole centimeter first. `figaro-dimweight` declares
+  `{ "billedMassGrams": { "rule": "dimensional-weight", "inputs": { "mass":
+  { "from": "massGrams", "combine": "sum" }, "length": { "from": "lengthMm",
+  "combine": "single-unit" }, "width": { "from": "widthMm", "combine":
+  "single-unit" }, "height": { "from": "heightMm", "combine": "single-unit" },
+  "divisor": { "field": "divisor" } } } }`, the same catalog fields
+  `figaro-cargo` measures, so the billed weight is reproduced from the cargo
+  leaf of the same order.
 - **`block.checkout.catalogueMeasures` reads a field from the catalog item
   itself.** It maps a content field to the catalog-item field it is read from
   and how the order's lines combine it: `{ "massGrams": { "from": "massGrams",
@@ -533,9 +588,10 @@ format (`sdk/src/clauses/clause-spec.schema.json`):
    `field_carries_private` in `prover/clause/src/spec.rs`).
 4. The sign gate (`validateCommitmentAgreement`) refuses an agreement whose
    clause spec names the blinding field in `block.design.fills`,
-   `block.checkout.catalogueFills`, `block.checkout.profileFills` or
-   `block.checkout.catalogueMeasures` (a designer's, catalog's or profile's
-   value is public and the same in every order), a zero blinding value, and
+   `block.checkout.catalogueFills`, `block.checkout.profileFills`,
+   `block.checkout.catalogueMeasures` or `block.checkout.derives` (a
+   designer's, catalog's or profile's value, or one computed from them, is
+   public and the same in every order), a zero blinding value, and
    two clauses of one agreement that carry the same value.
 
 The value is content like any other field: it enters the canonical JSON of

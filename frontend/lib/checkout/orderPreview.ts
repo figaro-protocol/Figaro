@@ -30,6 +30,10 @@ export interface OrderPreview {
     checkoutHash: Hex;
     /** The unsigned commitment the buyer is about to sign. */
     commitment: Commitment;
+    /** The public forms of the agreements of the orders this one follows,
+     *  relayed beside it so its seller can check its edges
+     *  (`CommitmentPayload.followed`). Absent for an order that follows none. */
+    followed?: Agreement[];
 }
 
 /**

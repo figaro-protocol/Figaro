@@ -112,13 +112,14 @@ vi.mock("@/lib/checkout/orderCommitmentFlow", () => ({
         counterSignAndReturn: vi.fn(), quoteAndReturn: vi.fn(), commitOrder: vi.fn(),
     }),
     readSigningInputs: async () => null,
+    readFollowedOrders: async () => [],
 }));
 vi.mock("@/lib/checkout/orderPendingSellerSignature", () => ({
     useCommitmentPayloadInbox: () => ({ entries: [], status: "idle", error: null }),
 }));
 vi.mock("@/lib/member/useMembersRegistry", () => ({ useMemberProfile: () => ({ read: m.registration }) }));
 vi.mock("@/lib/member/profileFetcher", () => ({ fetchMemberProfile: () => m.profile() }));
-vi.mock("@/components/runtime/AgreementReview", () => ({ AgreementReview: () => null, commerceLineItems: () => [] }));
+vi.mock("@/components/runtime/AgreementReview", () => ({ AgreementReview: () => null, pricedLineItems: () => ({ lines: [], sum: null }) }));
 vi.mock("@/components/runtime/TokenApprovalFlow", () => ({ TokenApprovalFlow: () => null }));
 
 import { CheckoutView } from "@/app/(app)/s/checkout/_components/CheckoutView";

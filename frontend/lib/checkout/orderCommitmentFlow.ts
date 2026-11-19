@@ -36,15 +36,20 @@ import {
     buildDomain,
     calculateBonds,
     checkSellerBindsProcess,
+    computeCheckoutHash,
+    followedOrderIssues,
     hashCommitmentStruct,
     verifyCommitmentSignature,
     type Agreement,
     type Commitment,
     type Hex,
     type SwapFundingLeg,
+    type FollowedOrderRead,
 } from "@figaro-protocol/sdk";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
 import { cachedGetContractEvents } from "@/lib/core/eventCache";
+import { getCoreEvents } from "@/lib/core/indexer";
+import { fetchAgreement } from "@/lib/core/agreementFetch";
 import { assertAgreementSignable, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { specSource, getClauseSpec, loadClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { fetchHydratedAssemblyByHash } from "@/lib/protocol/useProcessRegistry";
@@ -237,6 +242,47 @@ async function readSigningSpecs(agreement: Agreement, client: { getBlockNumber?:
     }
 }
 
+/** The counter-signer's own read of each order the agreement's topology leaf
+ *  names (`FollowedOrderRead`): the process the chain holds it in
+ *  (`OrderCommitted`, from every order emitter, so both paths), and its
+ *  agreement — the one the payload carries (`CommitmentPayload.followed`)
+ *  or this wallet witnessed (`fetchAgreement`), taken only when its merkle
+ *  root equals the `checkoutHash` the chain holds. An order the chain does
+ *  not hold is left out; an agreement not read is null. A failed chain
+ *  read reads nothing, and `followedOrderIssues` then refuses every edge. */
+export async function readFollowedOrders(
+    payload: Pick<CommitmentPayload, "agreement" | "followed">,
+    client: { getBlockNumber?: unknown } | undefined,
+    chainId: number,
+): Promise<FollowedOrderRead[]> {
+    const follows = payload.agreement.follows;
+    if (!Array.isArray(follows) || follows.length === 0 || !client) return [];
+    let committed: { orderHash: Hex; processId: Hex; checkoutHash: Hex }[];
+    try {
+        committed = (await getCoreEvents(client as Parameters<typeof getCoreEvents>[0], chainId)).events.orderCommitted;
+    } catch {
+        return [];
+    }
+    const carriedRoot = (a: Agreement): Hex | null => {
+        try { return computeCheckoutHash(a); } catch { return null; }
+    };
+    const reads: FollowedOrderRead[] = [];
+    for (const edge of follows) {
+        const event = committed.find((e) => hexEqual(e.orderHash, edge));
+        if (!event) continue;
+        let agreement: Agreement | null = payload.followed?.find((a) => {
+            const root = carriedRoot(a);
+            return root !== null && hexEqual(root, event.checkoutHash);
+        }) ?? null;
+        if (agreement === null) {
+            const fetched = await fetchAgreement(event.checkoutHash);
+            agreement = fetched.status === "present" ? fetched.value : null;
+        }
+        reads.push({ orderHash: event.orderHash, processId: event.processId, agreement });
+    }
+    return reads;
+}
+
 /** What the sign gate reads before it judges an agreement: its clause specs,
  *  resolved through `ClauseRegistry` into the cache (`readSigningSpecs`),
  *  then the design its provenance leaf names (`readSigningDesign`). Every
@@ -424,7 +470,10 @@ export function useOrderCommitmentFlow() {
     ): Promise<CommitmentPayload> => {
         if (!address) throw new Error("Connect a wallet first.");
         const signed = await signCommitment(preview, funding);
-        const payload = opts?.sellerSig ? { ...signed, sellerSig: opts.sellerSig } : signed;
+        // The orders it follows travel beside it, in their public form, so
+        // its seller can check its edges (`acceptOrder`).
+        const withFollowed = preview.followed?.length ? { ...signed, followed: preview.followed } : signed;
+        const payload = opts?.sellerSig ? { ...withFollowed, sellerSig: opts.sellerSig } : withFollowed;
         return runStep("Order failed", async () => {
             setStep("sharing");
             await shareSignedOrder({
@@ -499,6 +548,19 @@ export function useOrderCommitmentFlow() {
                 incoming.agreement, incoming.commitment.seller as Hex, profileReaderForChain(publicClient, chainId),
             );
             if (!bound.ok) throw new Error(`Refusing this order — ${bound.reason}`);
+            // The seller's own check of the orders this one follows: each is
+            // committed in the process this order joins and stands where the
+            // design's entry says (`followedOrderIssues`). The pure sign gate
+            // holds the leaf's form and count; this needs the chain.
+            const followedIssues = followedOrderIssues(
+                incoming.agreement,
+                incoming.commitment,
+                await readSigningInputs(incoming.agreement, publicClient, chainId),
+                await readFollowedOrders(incoming, publicClient, chainId),
+            );
+            if (followedIssues.length > 0) {
+                throw new Error(`Refusing this order — the orders it follows do not match its design: ${followedIssues.map((i) => `${i.path}: ${i.message}`).join("; ")}`);
+            }
         }
 
         setStep("signing");

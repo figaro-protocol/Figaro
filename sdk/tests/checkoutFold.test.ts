@@ -1,30 +1,34 @@
 /**
  * The fill-where-composed clause writers (checkoutPlan) — the catalog
- * measures a spec declares, catalog-sourced class leaves, derived
- * dimensional weight. Clauses are found by declared field / spec hints
- * through the SpecSource, never by clause id. Migrated from the frontend's assemblyCheckoutFold suite when the
- * fills promoted to the SDK.
+ * measures a spec declares, catalog-sourced class leaves, the priced lines
+ * and the derived fields a spec marks. Clauses are found by what their specs
+ * declare, through the SpecSource, never by clause id or field name. Migrated
+ * from the frontend's assemblyCheckoutFold suite when the fills promoted to
+ * the SDK.
  */
 import { describe, expect, it } from "vitest";
 import {
     derivePricedFields,
     fillCatalogueMeasures,
+    fillCheckoutDerivations,
     fillClassClauses,
-    fillCommerceClause,
     fillDerivedClauses,
-    fillDimweightClause,
+    fillPricedLines,
     fillProfileClauses,
     getRateQuantityResolver,
     mechanicallyFilledFieldNames,
     missingCatalogueMeasures,
+    pricedLinesSum,
+    readPricedLines,
     readUtilityTokenPin,
+    registerCheckoutDerivation,
     resolveSubOrderPricing,
     type ProcessCheckoutLineItem,
 } from "../src/checkoutPlan.js";
 import { fillWalkProvenance } from "../src/reconstructOrders.js";
 import type { Agreement } from "../src/agreement.js";
-import { specDesignFills, specProfileFills, withSpecDefaults } from "../src/projection.js";
-import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
+import { specDesignFills, specPricedLines, specProfileFills, withSpecDefaults } from "../src/projection.js";
+import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceOf, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
 
 type ClauseFields = Record<string, Record<string, unknown>>;
 
@@ -32,10 +36,69 @@ const line = (over: Partial<ProcessCheckoutLineItem>): ProcessCheckoutLineItem =
     itemId: "i", name: "Item", quantity: 1, unitPrice: "1", ...over,
 });
 
+/** A reference spec with `checkout` attributes added to its `block`. The
+ *  clause key leaves `block` out, so the view keeps the reference key. */
+function withCheckout(name: string, checkout: Record<string, unknown>) {
+    const raw = rawSpecOf(name);
+    const block = raw.block as Record<string, Record<string, unknown>>;
+    return viewOf({ ...raw, block: { ...block, checkout: { ...block.checkout, ...checkout } } });
+}
+
+/** A reference spec with the named `checkout` attributes taken out of its
+ *  `block`, whatever `clauses/` declares: the same key, no such mark. */
+function withoutCheckout(name: string, attributes: readonly string[]) {
+    const raw = rawSpecOf(name);
+    const block = raw.block as Record<string, Record<string, unknown>>;
+    const checkout = Object.fromEntries(Object.entries(block.checkout ?? {}).filter(([k]) => !attributes.includes(k)));
+    return viewOf({ ...raw, block: { ...block, checkout } });
+}
+
+/** The marks `clauses/figaro-commerce.json` and `clauses/figaro-dimweight.json`
+ *  declare in `block.checkout`. */
+const COMMERCE_PRICED_LINES = { field: "lineItems", item: "itemId", name: "name", quantity: "quantity", unitPrice: "unitPrice" };
+const DIMWEIGHT_DERIVES = {
+    billedMassGrams: {
+        rule: "dimensional-weight",
+        inputs: {
+            mass: { from: "massGrams", combine: "sum" },
+            length: { from: "lengthMm", combine: "single-unit" },
+            width: { from: "widthMm", combine: "single-unit" },
+            height: { from: "heightMm", combine: "single-unit" },
+            divisor: { field: "divisor" },
+        },
+    },
+};
+
 const CARGO = specSourceFromFixtures(["figaro-cargo"]);
-const COMMERCE = specSourceFromFixtures(["figaro-commerce"]);
+const COMMERCE = specSourceOf([withCheckout("figaro-commerce", { pricedLines: COMMERCE_PRICED_LINES })]);
 const FREIGHT = specSourceFromFixtures(["figaro-freight-class"]);
-const CARGO_DIM = specSourceFromFixtures(["figaro-cargo", "figaro-dimweight"]);
+const CARGO_DIM = specSourceOf([viewOf(rawSpecOf("figaro-cargo")), withCheckout("figaro-dimweight", { derives: DIMWEIGHT_DERIVES })]);
+
+/** A stranger's clause: its own field names for the lines and their roles,
+ *  no item id and no name. */
+const STRANGER_LINES = viewOf({
+    clauseId: "a-strangers-bill",
+    version: 1,
+    title: "A stranger's bill",
+    description: "Lines of a bill, under the stranger's own names.",
+    fields: [{
+        name: "rows",
+        type: "array",
+        required: true,
+        minItems: 0,
+        items: {
+            name: "row",
+            type: "object",
+            required: true,
+            fields: [
+                { name: "count", type: "integer", required: true, min: 1 },
+                { name: "each", type: "bigint", required: true, min: "0" },
+            ],
+        },
+    }],
+    stages: {},
+    block: { design: { article: "billing" }, checkout: { pricedLines: { field: "rows", quantity: "count", unitPrice: "each" } } },
+});
 
 describe("fillCatalogueMeasures — the measures a spec declares, read from each line's catalog item", () => {
     const CARGO_KEY = keyOf("figaro-cargo");
@@ -113,14 +176,14 @@ const TOKEN = "0x000000000000000000000000000000000000000a" as const;
 const COMMERCE_AND_PIN = specSourceFromFixtures(["figaro-commerce", "figaro-utility-token"]);
 const PIN_ONLY = specSourceFromFixtures(["figaro-utility-token"]);
 
-describe("fillCommerceClause — the order's line items, written by declared field", () => {
+describe("fillPricedLines — the order's lines, written where the spec marks them", () => {
     it("writes no payment and no token: both are the commitment's", () => {
-        const out = fillCommerceClause({ [keyOf("figaro-commerce")]: {} }, COMMERCE);
+        const out = fillPricedLines({ [keyOf("figaro-commerce")]: {} }, COMMERCE);
         expect(out[keyOf("figaro-commerce")]).toEqual({});
     });
 
-    it("writes line items when supplied, stripped to the clause's closed shape", () => {
-        const out = fillCommerceClause({ [keyOf("figaro-commerce")]: {} }, COMMERCE, [
+    it("writes the lines in the item shape the mark names, and no other key", () => {
+        const out = fillPricedLines({ [keyOf("figaro-commerce")]: {} }, COMMERCE, [
             line({ itemId: "burger-001", name: "Cheeseburger", quantity: 2, unitPrice: "500", catalogItem: { massGrams: 400 } }),
         ]);
         expect(out[keyOf("figaro-commerce")].lineItems).toEqual([
@@ -128,13 +191,78 @@ describe("fillCommerceClause — the order's line items, written by declared fie
         ]);
     });
 
-    it("no-ops when no commerce clause is composed", () => {
+    it("a stranger's clause under other field names takes the lines in its own shape", () => {
+        const specs = specSourceOf([STRANGER_LINES]);
+        const out = fillPricedLines({ [STRANGER_LINES.clauseKey]: {} }, specs, [
+            line({ itemId: "x", name: "X", quantity: 3, unitPrice: "70" }),
+        ]);
+        expect(out[STRANGER_LINES.clauseKey]).toEqual({ rows: [{ count: 3, each: "70" }] });
+        expect(derivePricedFields([{ clause: STRANGER_LINES.clauseKey, data: out[STRANGER_LINES.clauseKey] }], specs))
+            .toEqual([{ clause: STRANGER_LINES.clauseKey, path: "rows.0.each" }]);
+        const [read] = readPricedLines([{ clause: STRANGER_LINES.clauseKey, data: out[STRANGER_LINES.clauseKey] }], specs);
+        expect(read.lines).toEqual([{ itemId: undefined, name: undefined, quantity: 3n, unitPrice: 70n }]);
+        expect(pricedLinesSum(read.lines)).toBe(210n);
+    });
+
+    it("a clause declaring a field named lineItems with no mark takes nothing: the name carries no meaning", () => {
+        const unmarked = specSourceOf([withoutCheckout("figaro-commerce", ["pricedLines"])]);
+        const clauses: ClauseFields = { [keyOf("figaro-commerce")]: {} };
+        expect(fillPricedLines(clauses, unmarked, [line({})])).toEqual(clauses);
+        expect(derivePricedFields([{ clause: keyOf("figaro-commerce"), data: { lineItems: [{ unitPrice: "1" }] } }], unmarked)).toEqual([]);
+        expect(readPricedLines([{ clause: keyOf("figaro-commerce"), data: { lineItems: [] } }], unmarked)).toEqual([]);
+        expect(mechanicallyFilledFieldNames(unmarked.get(keyOf("figaro-commerce")))).toEqual(new Set());
+    });
+
+    it("a mark the spec's fields contradict marks nothing", () => {
+        const wrongType = withCheckout("figaro-commerce", { pricedLines: { ...COMMERCE_PRICED_LINES, quantity: "name" } });
+        const noSuchField = withCheckout("figaro-commerce", { pricedLines: { ...COMMERCE_PRICED_LINES, field: "rows" } });
+        expect(specPricedLines(wrongType)).toBeUndefined();
+        expect(specPricedLines(noSuchField)).toBeUndefined();
+        expect(fillPricedLines({ [wrongType.clauseKey]: {} }, specSourceOf([wrongType]), [line({})])).toEqual({ [wrongType.clauseKey]: {} });
+    });
+
+    it("the lines' sum is read, never held equal to anything; an unreadable line gives no sum", () => {
+        const [read] = readPricedLines([{ clause: keyOf("figaro-commerce"), data: { lineItems: [
+            { itemId: "a", name: "A", quantity: 2, unitPrice: "500" },
+            { itemId: "b", name: "B", quantity: 1, unitPrice: "250" },
+        ] } }], COMMERCE);
+        expect(pricedLinesSum(read.lines)).toBe(1250n);
+        expect(pricedLinesSum([...read.lines, { quantity: 1n }])).toBeUndefined();
+    });
+
+    it("the mechanical fields of a clause are its mark's field and its derived fields", () => {
+        expect(mechanicallyFilledFieldNames(COMMERCE.get(keyOf("figaro-commerce")))).toEqual(new Set(["lineItems"]));
+        expect(mechanicallyFilledFieldNames(STRANGER_LINES)).toEqual(new Set(["rows"]));
+        expect(mechanicallyFilledFieldNames(CARGO_DIM.get(keyOf("figaro-dimweight")))).toEqual(new Set(["billedMassGrams"]));
+        expect(mechanicallyFilledFieldNames(undefined)).toEqual(new Set());
+    });
+
+    it("no-ops when no composed clause marks priced lines", () => {
         const clauses: ClauseFields = { [keyOf("figaro-cargo")]: {} };
-        expect(fillCommerceClause(clauses, CARGO, [line({})])).toEqual(clauses);
+        expect(fillPricedLines(clauses, CARGO, [line({})])).toEqual(clauses);
     });
 });
 
-describe("readUtilityTokenPin — routed on the DESIGN FILL, never on first match", () => {
+describe("readUtilityTokenPin — routed on the spec's denomination shape, never on first match", () => {
+    it("a stranger's denomination clause pins under its own field name", () => {
+        const raw = rawSpecOf("figaro-utility-token");
+        const block = raw.block as Record<string, Record<string, unknown>>;
+        const stranger = viewOf({
+            ...raw,
+            title: "a stranger's denomination",
+            fields: [{ name: "settlementAsset", type: "string", format: "address-hex", required: true }],
+            block: { ...block, design: { ...block.design, fills: ["settlementAsset"] } },
+        });
+        const specs = specSourceOf([stranger]);
+        expect(readUtilityTokenPin({ [stranger.clauseKey]: { settlementAsset: TOKEN } }, specs)).toBe(TOKEN);
+        // A designer-filled `currency` of another article, or at agreement scope, is no pin.
+        const otherArticle = viewOf({ ...raw, title: "other article", block: { ...block, design: { ...block.design, article: "coordination" } } });
+        const agreementScope = viewOf({ ...raw, title: "agreement scope", block: { ...block, design: { ...block.design, scope: "agreement" } } });
+        const both = specSourceOf([otherArticle, agreementScope]);
+        expect(readUtilityTokenPin({ [otherArticle.clauseKey]: { currency: TOKEN } }, both)).toBeUndefined();
+        expect(readUtilityTokenPin({ [agreementScope.clauseKey]: { currency: TOKEN } }, both)).toBeUndefined();
+    });
+
     it("finds the pin by its design.fills declaration", () => {
         expect(readUtilityTokenPin({ [keyOf("figaro-utility-token")]: { currency: TOKEN } }, PIN_ONLY)).toBe(TOKEN);
     });
@@ -282,53 +410,111 @@ describe("the profile fill and the mechanical field set read the spec each key n
             .toEqual(DECLARED);
     });
 
-    it("mechanicallyFilledFieldNames reads the composed key's spec only", () => {
+    it("mechanicallyFilledFieldNames reads the spec's declarations, never a field name", () => {
         const rawGeo = rawSpecOf("figaro-geolocation");
         const fakeGeo = viewOf({
             ...rawGeo,
             title: "a stranger's registration",
             fields: [...(rawGeo.fields as object[]), { ...(rawGeo.fields as object[])[0], name: "billedMassGrams" }, { ...(rawGeo.fields as object[])[0], name: "processDesignHash" }],
         });
-        const specs = specSourceWithRegistrations(specSourceFromFixtures(["figaro-geolocation"]), [fakeGeo]);
-        expect(mechanicallyFilledFieldNames({ [keyOf("figaro-geolocation")]: {} }, specs).has("billedMassGrams")).toBe(false);
-        expect(mechanicallyFilledFieldNames({ [fakeGeo.clauseKey]: {} }, specs).has("billedMassGrams")).toBe(true);
+        // A field named billedMassGrams that the spec does not derive is the buyer's.
+        expect(mechanicallyFilledFieldNames(fakeGeo).has("billedMassGrams")).toBe(false);
         // processDesignHash is no mechanical fill: the provenance leaf is the
         // agreement format's, never a clause field.
-        expect(mechanicallyFilledFieldNames({ [fakeGeo.clauseKey]: {} }, specs).has("processDesignHash")).toBe(false);
+        expect(mechanicallyFilledFieldNames(fakeGeo).has("processDesignHash")).toBe(false);
     });
 });
 
-describe("fillDimweightClause — derived billed weight (divisor from the profile-folded leaf)", () => {
+describe("fillCheckoutDerivations — a derived field, by the rule and inputs its spec declares", () => {
+    const one = (dims: Record<string, number>) => [line({ catalogItem: dims })];
+
     it("computes billed = max(gross, volumetric) with per-dimension round-up", () => {
         // 305×200×150 mm → round each up to the next cm → 310×200×150 = 9,300,000 mm³
         // ÷ 5000 = 1860 g volumetric > 1000 g gross → billed 1860.
-        const out = fillDimweightClause(
-            { [keyOf("figaro-cargo")]: { massGrams: 1000, lengthMm: 305, widthMm: 200, heightMm: 150 }, [keyOf("figaro-dimweight")]: { divisor: 5000 } },
+        const out = fillCheckoutDerivations(
+            { [keyOf("figaro-dimweight")]: { divisor: 5000 } },
+            one({ massGrams: 1000, lengthMm: 305, widthMm: 200, heightMm: 150 }),
             CARGO_DIM,
         );
-        expect(out[keyOf("figaro-dimweight")]).toMatchObject({ billedMassGrams: 1860, divisor: 5000 });
+        expect(out[keyOf("figaro-dimweight")]).toEqual({ billedMassGrams: 1860, divisor: 5000 });
     });
 
     it("uses gross mass when it exceeds the volumetric weight", () => {
-        const out = fillDimweightClause(
-            { [keyOf("figaro-cargo")]: { massGrams: 9000, lengthMm: 300, widthMm: 200, heightMm: 150 }, [keyOf("figaro-dimweight")]: { divisor: 5000 } },
+        const out = fillCheckoutDerivations(
+            { [keyOf("figaro-dimweight")]: { divisor: 5000 } },
+            one({ massGrams: 9000, lengthMm: 300, widthMm: 200, heightMm: 150 }),
             CARGO_DIM,
         );
         expect(out[keyOf("figaro-dimweight")].billedMassGrams).toBe(9000); // gross > 1800 volumetric
     });
 
-    it("no-ops without a divisor on the leaf, without dims, or without the dimweight clause", () => {
-        const withDims = { [keyOf("figaro-cargo")]: { massGrams: 1000, lengthMm: 300, widthMm: 200, heightMm: 150 }, [keyOf("figaro-dimweight")]: {} };
-        expect(fillDimweightClause(withDims, CARGO_DIM)).toEqual(withDims); // no divisor folded
-        const noDims = { [keyOf("figaro-cargo")]: { massGrams: 1000 }, [keyOf("figaro-dimweight")]: { divisor: 5000 } };
-        expect(fillDimweightClause(noDims, CARGO_DIM)).toEqual(noDims); // no dims
-        const noClause = { [keyOf("figaro-cargo")]: { massGrams: 1000, lengthMm: 300, widthMm: 200, heightMm: 150 } };
-        expect(fillDimweightClause(noClause, CARGO_DIM)).toEqual(noClause); // no dimweight clause
+    it("no-ops without a divisor, without dims, without a gross mass, or without a declaring clause", () => {
+        const dims = { massGrams: 1000, lengthMm: 300, widthMm: 200, heightMm: 150 };
+        const noDivisor = { [keyOf("figaro-dimweight")]: {} };
+        expect(fillCheckoutDerivations(noDivisor, one(dims), CARGO_DIM)).toEqual(noDivisor);
+        const withDivisor = { [keyOf("figaro-dimweight")]: { divisor: 5000 } };
+        expect(fillCheckoutDerivations(withDivisor, one({ massGrams: 1000 }), CARGO_DIM)).toEqual(withDivisor);
+        expect(fillCheckoutDerivations(withDivisor, one({ lengthMm: 300, widthMm: 200, heightMm: 150 }), CARGO_DIM)).toEqual(withDivisor);
+        // The reference dimweight spec with no `derives` mark derives nothing.
+        expect(fillCheckoutDerivations(withDivisor, one(dims), specSourceOf([withoutCheckout("figaro-dimweight", ["derives"])]))).toEqual(withDivisor);
     });
 
-    it("no-ops without a gross mass: the greater of two weights is unknown when one is missing", () => {
-        const noMass = { [keyOf("figaro-cargo")]: { lengthMm: 300, widthMm: 200, heightMm: 150 }, [keyOf("figaro-dimweight")]: { divisor: 5000 } };
-        expect(fillDimweightClause(noMass, CARGO_DIM)).toEqual(noMass);
+    it("a stranger's clause deriving under other names derives the same weight", () => {
+        const stranger = viewOf({
+            clauseId: "a-strangers-parcel-rate",
+            version: 1,
+            title: "A stranger's parcel rate",
+            description: "Chargeable weight under the stranger's own names.",
+            fields: [
+                { name: "chargeable", type: "integer", required: true, min: 1 },
+                { name: "factor", type: "integer", required: true, min: 1 },
+            ],
+            stages: {},
+            block: {
+                design: { article: "logistics" },
+                checkout: {
+                    profileFills: ["factor"],
+                    derives: {
+                        chargeable: {
+                            rule: "dimensional-weight",
+                            inputs: {
+                                mass: { from: "grossGrams", combine: "sum" },
+                                length: { from: "l", combine: "single-unit" },
+                                width: { from: "w", combine: "single-unit" },
+                                height: { from: "h", combine: "single-unit" },
+                                divisor: { field: "factor" },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        const specs = specSourceOf([stranger]);
+        const out = fillDerivedClauses(
+            { [stranger.clauseKey]: {} },
+            [line({ catalogItem: { grossGrams: 500, l: 300, w: 200, h: 150 } as never })],
+            specs,
+            { [stranger.clauseKey]: { factor: 5000 } },
+        );
+        expect(out[stranger.clauseKey]).toEqual({ chargeable: 1800, factor: 5000 });
+        expect(mechanicallyFilledFieldNames(stranger)).toEqual(new Set(["chargeable"]));
+    });
+
+    it("a rule the registry holds by another name is read through the registry; an unknown rule derives nothing", () => {
+        const counted = viewOf({
+            clauseId: "a-strangers-count",
+            version: 1,
+            title: "A stranger's count",
+            description: "Units, derived.",
+            fields: [{ name: "units", type: "integer", required: false }],
+            stages: {},
+            block: { design: { article: "logistics" }, checkout: { derives: { units: { rule: "a-strangers-units", inputs: { n: { from: "packs", combine: "sum" } } } } } },
+        });
+        const specs = specSourceOf([counted]);
+        const lines = [line({ quantity: 2, catalogItem: { packs: 3 } as never })];
+        expect(fillCheckoutDerivations({ [counted.clauseKey]: {} }, lines, specs)).toEqual({ [counted.clauseKey]: {} });
+        registerCheckoutDerivation("a-strangers-units", ({ n }) => n);
+        expect(fillCheckoutDerivations({ [counted.clauseKey]: {} }, lines, specs)[counted.clauseKey]).toEqual({ units: 6 });
     });
 
     it("derives end to end through fillDerivedClauses: profile divisor → folded leaf → billed", () => {
@@ -374,17 +560,32 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
     const REAL = keyOf(GEO);
     const HASH = `0x${"ab".repeat(32)}` as const;
 
-    it("fillCommerceClause", () => {
-        const { specs, fake } = lookalike([GEO], GEO, ["lineItems"]);
+    /** The lookalike with the commerce clause's line-items field and the
+     *  priced-lines mark over it. */
+    const pricedLookalike = () => {
+        const raw = rawSpecOf(GEO);
+        const rawBlock = raw.block as Record<string, Record<string, unknown>>;
+        const lineItems = (rawSpecOf("figaro-commerce").fields as Record<string, unknown>[])[0];
+        const fake = viewOf({
+            ...raw,
+            title: `${GEO} (a stranger's registration)`,
+            fields: [...(raw.fields as Record<string, unknown>[]), lineItems],
+            block: { ...rawBlock, checkout: { ...rawBlock.checkout, pricedLines: COMMERCE_PRICED_LINES } },
+        });
+        return { specs: specSourceWithRegistrations(specSourceFromFixtures([GEO]), [fake]), fake: fake.clauseKey };
+    };
+
+    it("fillPricedLines", () => {
+        const { specs, fake } = pricedLookalike();
         const lines = [line({ itemId: "i", name: "Item", quantity: 1, unitPrice: "1000" })];
-        expect(fillCommerceClause({ [REAL]: {} }, specs, lines)).toEqual({ [REAL]: {} });
-        expect(fillCommerceClause({ [fake]: {} }, specs, lines)[fake]).toEqual({
+        expect(fillPricedLines({ [REAL]: {} }, specs, lines)).toEqual({ [REAL]: {} });
+        expect(fillPricedLines({ [fake]: {} }, specs, lines)[fake]).toEqual({
             lineItems: [{ itemId: "i", name: "Item", quantity: 1, unitPrice: "1000" }],
         });
     });
 
     it("derivePricedFields reads each clause by its key", () => {
-        const { specs, fake } = lookalike([GEO], GEO, ["lineItems"]);
+        const { specs, fake } = pricedLookalike();
         const data = { lineItems: [{ itemId: "i" }] };
         expect(derivePricedFields([{ clause: REAL, data }], specs)).toEqual([]);
         expect(derivePricedFields([{ clause: fake, data }], specs)).toEqual([
@@ -393,9 +594,20 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
     });
 
     it("readUtilityTokenPin", () => {
-        const { specs, fake } = lookalike([GEO], GEO, ["currency"], { design: { fills: ["geocoder", "currency"] } });
-        expect(readUtilityTokenPin({ [REAL]: { currency: TOKEN } }, specs)).toBeUndefined();
-        expect(readUtilityTokenPin({ [fake]: { currency: TOKEN } }, specs)).toBe(TOKEN);
+        const { specs, fake } = lookalike([GEO], GEO, [], { design: { article: "denomination", scope: "assembly", fills: ["currency"] } });
+        // The lookalike declares no address-hex field yet: no pin.
+        expect(readUtilityTokenPin({ [fake]: { currency: TOKEN } }, specs)).toBeUndefined();
+        const raw = rawSpecOf(GEO);
+        const rawBlock = raw.block as Record<string, Record<string, unknown>>;
+        const pin = viewOf({
+            ...raw,
+            title: `${GEO} (a stranger's denomination)`,
+            fields: [...(raw.fields as Record<string, unknown>[]), { name: "currency", type: "string", format: "address-hex", required: true }],
+            block: { ...rawBlock, design: { ...rawBlock.design, article: "denomination", scope: "assembly", fills: ["currency"] } },
+        });
+        const withPin = specSourceWithRegistrations(specSourceFromFixtures([GEO]), [pin]);
+        expect(readUtilityTokenPin({ [REAL]: { currency: TOKEN } }, withPin)).toBeUndefined();
+        expect(readUtilityTokenPin({ [pin.clauseKey]: { currency: TOKEN } }, withPin)).toBe(TOKEN);
     });
 
     it("the walk's guarded fillWalkProvenance writes agreement.provenance, never a clause", () => {
@@ -428,12 +640,12 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
         expect(fillClassClauses({ [fake]: {} }, lines, specs)[fake]).toEqual({ hazmatClass: "3" });
     });
 
-    it("fillDimweightClause, and fillDerivedClauses reaching every fill", () => {
-        const { specs, fake } = lookalike(["figaro-cargo", GEO], GEO, ["billedMassGrams", "divisor"]);
-        const cargo = { massGrams: 500, lengthMm: 300, widthMm: 200, heightMm: 150 };
-        const real = { [keyOf("figaro-cargo")]: cargo, [REAL]: { divisor: 5000 } };
-        expect(fillDimweightClause(real, specs)).toEqual(real);
-        expect(fillDimweightClause({ [keyOf("figaro-cargo")]: cargo, [fake]: { divisor: 5000 } }, specs)[fake])
+    it("fillCheckoutDerivations, and fillDerivedClauses reaching every fill", () => {
+        const { specs, fake } = lookalike([GEO], GEO, ["billedMassGrams", "divisor"], { checkout: { derives: DIMWEIGHT_DERIVES } });
+        const dims = [line({ catalogItem: { massGrams: 500, lengthMm: 300, widthMm: 200, heightMm: 150 } })];
+        const real = { [REAL]: { divisor: 5000 } };
+        expect(fillCheckoutDerivations(real, dims, specs)).toEqual(real);
+        expect(fillCheckoutDerivations({ [fake]: { divisor: 5000 } }, dims, specs)[fake])
             .toMatchObject({ billedMassGrams: 1800 });
         const massLookalike = lookalike([GEO], GEO, ["massGrams"], { checkout: { catalogueMeasures: { massGrams: { from: "massGrams", combine: "sum" } } } });
         const lines = [line({ catalogItem: { massGrams: 500 } })];

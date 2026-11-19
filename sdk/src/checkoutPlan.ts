@@ -6,13 +6,13 @@
  *
  * Everything here shapes COMMITTED bytes (the agreement clauses the merkle
  * root hashes) or the payment figures the commitments sign, so a second
- * frontend must reproduce it exactly. No clause is ever named: clauses are
- * found by their DECLARED FIELDS (`lineItems`,
- * `massGrams`, `billedMassGrams`) or their spec hints (`catalogueFills`,
- * `catalogueMeasures`) through the caller's `SpecSource` — ANY registered clause carrying the
- * field participates, including clauses this code has never seen. A fill
- * whose clause isn't composed is a no-op, so the same call serves the root
- * and every sub-order.
+ * frontend must reproduce it exactly. No clause and no field is ever named:
+ * clauses are found by what their specs declare in `block.checkout`
+ * (`pricedLines`, `derives`, `catalogueFills`, `profileFills`,
+ * `catalogueMeasures`) and `block.design` (the denomination pin), through the
+ * caller's `SpecSource` — ANY registered clause declaring them participates,
+ * including clauses this code has never seen. A fill whose clause isn't
+ * composed is a no-op, so the same call serves the root and every sub-order.
  */
 
 import { parseUnits } from "viem";
@@ -20,13 +20,15 @@ import { geohashCentroidDistanceKm } from "./derive/geo.js";
 import { GEOHASH_FORMAT } from "./clauses/index.js";
 import { ownValue } from "./clauses/spec.js";
 import {
-    specDeclaresDesignFill,
-    specDeclaresField,
     specCatalogFills,
     specCatalogueMeasures,
+    specCheckoutDerivations,
+    specDenominationPinField,
+    specPricedLines,
     specProfileFills,
     withSpecDefaults,
     type CatalogueMeasure,
+    type PricedLinesMark,
     type ProjectionSpecView,
     type SpecSource,
 } from "./projection.js";
@@ -43,7 +45,8 @@ export interface ProcessCheckoutLineItem {
     itemId: string;
     name: string;
     quantity: number;
-    /** Decimal string, smallest unit (matches the commerce clause's bigint field). */
+    /** Decimal string, smallest unit (a priced-lines mark's `unitPrice` is a
+     *  `bigint` field). */
     unitPrice: string;
     /** The catalog item this line sells, as the seller lists it. A composed
      *  clause's declared catalog measures (`block.checkout.catalogueMeasures`)
@@ -71,24 +74,26 @@ function composedClauseWhere(
     });
 }
 
-/** The declared-field lookup the fills run: the first composed clause whose
- *  loaded spec declares `fieldName`. */
-function composedClauseDeclaring(
+/** The first composed clause whose spec marks its priced lines
+ *  (`specPricedLines`), with the mark. */
+function composedPricedLines(
     clauses: ClauseFields,
-    fieldName: string,
     specs: SpecSource,
-): Hex | undefined {
-    return composedClauseWhere(clauses, specs, (spec) => specDeclaresField(spec, fieldName));
+): { clauseKey: Hex; mark: PricedLinesMark } | undefined {
+    const clauseKey = composedClauseWhere(clauses, specs, (spec) => specPricedLines(spec) !== undefined);
+    const mark = clauseKey ? specPricedLines(specs.get(clauseKey)!) : undefined;
+    return clauseKey && mark ? { clauseKey, mark } : undefined;
 }
 
 /**
  * The RFQ's priced fields inside the clauses, DERIVED from an agreement by
- * declared field — each committed line's `unitPrice` in the clause declaring
- * `lineItems`. The quoted figure itself is the commitment's payment, which
- * the quote always moves; these are only the copies of it a clause carries.
- * Spec-routed like every fill, naming no clause; empty when no clause
- * declaring `lineItems` is composed or the spec cache is cold, and an empty
- * list still quotes (the commitment's payment alone moves).
+ * the spec's mark — the unit price of each committed line of every carried
+ * clause whose spec marks its priced lines (`block.checkout.pricedLines`,
+ * read through `specPricedLines`). The quoted figure itself is the
+ * commitment's payment, which the quote always moves; these are only the
+ * copies of it a clause carries. Empty when no carried clause marks priced
+ * lines or the spec cache is cold, and an empty list still quotes (the
+ * commitment's payment alone moves).
  */
 export function derivePricedFields(
     clauseEntries: readonly { clause: Hex; data?: Record<string, unknown> }[],
@@ -96,48 +101,114 @@ export function derivePricedFields(
 ): { clause: Hex; path: string }[] {
     // Commercial terms are PUBLIC (never a content-withheld clause), so a
     // clause carrying only a fingerprint contributes no priced field.
-    const clauses = Object.fromEntries(clauseEntries.map((s) => [s.clause, s.data ?? {}])) as ClauseFields;
-    const commerce = composedClauseDeclaring(clauses, "lineItems", specs);
-    if (!commerce) return [];
-    const lineItems = clauses[commerce]?.lineItems;
-    const count = Array.isArray(lineItems) ? lineItems.length : 0;
-    return Array.from({ length: count }, (_, i) => ({ clause: commerce, path: `lineItems.${i}.unitPrice` }));
+    return clauseEntries.flatMap(({ clause, data }) => {
+        const spec = specs.get(clause);
+        const mark = spec ? specPricedLines(spec) : undefined;
+        const lines = mark ? data?.[mark.field] : undefined;
+        if (!mark || !Array.isArray(lines)) return [];
+        return lines.map((_, i) => ({ clause, path: `${mark.field}.${i}.${mark.unitPrice}` }));
+    });
 }
 
 /**
- * Write the order's line items into the clause declaring `lineItems` (found
- * by the declared field, never by clause id), stripped to that field's closed
- * shape — the cart's physical attributes belong to the cargo collapse, not
- * here. Writes nothing when no composed clause declares `lineItems`, or when
- * no lines are given. The payment and the token are the commitment's own
- * fields and never enter a clause.
+ * Write the order's lines into the first composed clause whose spec marks
+ * its priced lines (`block.checkout.pricedLines`), each line written in the
+ * item shape the spec declares: the mark's `quantity` and `unitPrice`
+ * fields, and its `item` and `name` fields when the mark names them — no
+ * other key. Writes nothing when no composed clause marks priced lines, or
+ * when no lines are given. The payment and the token are the commitment's
+ * own fields and never enter a clause, and nothing holds the lines' sum
+ * equal to the payment (`pricedLinesSum` reads it for a review).
  */
-export function fillCommerceClause(
+export function fillPricedLines(
     clauses: ClauseFields,
     specs: SpecSource,
     lineItems?: ProcessCheckoutLineItem[],
 ): ClauseFields {
-    const commerceClauseId = composedClauseDeclaring(clauses, "lineItems", specs);
-    if (!commerceClauseId || !lineItems) return clauses;
+    const target = composedPricedLines(clauses, specs);
+    if (!target || !lineItems) return clauses;
+    const { clauseKey, mark } = target;
     return {
         ...clauses,
-        [commerceClauseId]: {
-            ...clauses[commerceClauseId],
-            lineItems: lineItems.map(({ itemId, name, quantity, unitPrice }) =>
-                ({ itemId, name, quantity, unitPrice })),
+        [clauseKey]: {
+            ...clauses[clauseKey],
+            [mark.field]: lineItems.map(({ itemId, name, quantity, unitPrice }) => ({
+                ...(mark.item !== undefined && { [mark.item]: itemId }),
+                ...(mark.name !== undefined && { [mark.name]: name }),
+                [mark.quantity]: quantity,
+                [mark.unitPrice]: unitPrice,
+            })),
         },
     };
 }
 
+/** One committed priced line, read through its clause's mark. A role the
+ *  mark does not name, or a value of the wrong shape, is undefined. */
+export interface PricedLine {
+    itemId?: string;
+    name?: string;
+    quantity?: bigint;
+    unitPrice?: bigint;
+}
+
+/** An integer value as a bigint: a safe integer number, or a decimal string. */
+function integerOf(value: unknown): bigint | undefined {
+    if (typeof value === "number" && Number.isSafeInteger(value)) return BigInt(value);
+    if (typeof value === "string" && /^-?\d+$/.test(value)) return BigInt(value);
+    return undefined;
+}
+
 /**
- * The designer's utility-token pin, read from a registered agreement's composed
- * clauses — the composed clause declaring `currency` as a DESIGNER FILL
- * (`block.design.fills`), with a well-formed value. The design-fill
- * declaration is the whole routing rule: ANY clause — including one this
- * code has never seen — declaring a `currency` design fill IS one, and a
- * clause declaring `currency` as plain content is never a pin. The pin
- * survives the value-free assembly build and is part of the processDesignHash:
- * the assembly's one-token tailoring.
+ * The priced lines an agreement commits, read from every clause whose spec
+ * marks them (`block.checkout.pricedLines`), never by a field name: one entry
+ * per such clause carrying content, its lines in committed order. A clause
+ * whose spec is not loaded, or whose content is withheld, yields none.
+ */
+export function readPricedLines(
+    clauseEntries: readonly { clause: Hex; data?: Record<string, unknown> }[],
+    specs: SpecSource,
+): { clause: Hex; lines: PricedLine[] }[] {
+    return clauseEntries.flatMap(({ clause, data }) => {
+        const spec = specs.get(clause);
+        const mark = spec ? specPricedLines(spec) : undefined;
+        const raw = mark ? data?.[mark.field] : undefined;
+        if (!mark || !Array.isArray(raw)) return [];
+        const lines = raw.map((entry): PricedLine => {
+            const line = entry && typeof entry === "object" ? entry as Record<string, unknown> : {};
+            const text = (role: string | undefined) => role !== undefined && typeof line[role] === "string" ? line[role] as string : undefined;
+            return {
+                itemId: text(mark.item),
+                name: text(mark.name),
+                quantity: integerOf(line[mark.quantity]),
+                unitPrice: integerOf(line[mark.unitPrice]),
+            };
+        });
+        return [{ clause, lines }];
+    });
+}
+
+/** The sum of the lines' quantity × unit price, in the token's smallest
+ *  unit; undefined when any line's quantity or unit price cannot be read. A
+ *  figure for a review to show beside the payment: no check holds the two
+ *  equal, and the payment the commitment carries is what moves. */
+export function pricedLinesSum(lines: readonly PricedLine[]): bigint | undefined {
+    let sum = 0n;
+    for (const line of lines) {
+        if (line.quantity === undefined || line.unitPrice === undefined) return undefined;
+        sum += line.quantity * line.unitPrice;
+    }
+    return sum;
+}
+
+/**
+ * The designer's utility-token pin, read from an assembly's composed clauses:
+ * the value of the first composed clause whose spec declares a denomination
+ * pin (`specDenominationPinField`: assembly-scoped, of the denomination
+ * article, with exactly one designer-filled `address-hex` field), when it is
+ * a well-formed address. The spec's shape is the whole routing rule: ANY
+ * clause declaring it pins, under any field name, including one this code
+ * has never seen. The pin survives the value-free assembly build and is part
+ * of the processDesignHash: the assembly's one-token tailoring.
  *
  * Undefined = unpinned (the buyer's payment-token pick, else the seller's
  * default, denominates) or spec cache cold.
@@ -146,44 +217,31 @@ export function readUtilityTokenPin(
     clauses: ClauseFields,
     specs: SpecSource,
 ): `0x${string}` | undefined {
-    const clauseKey = composedClauseWhere(
-        clauses,
-        specs,
-        (spec) => specDeclaresDesignFill(spec, "currency"),
-    );
-    const value = clauseKey ? clauses[clauseKey]?.currency : undefined;
+    const clauseKey = composedClauseWhere(clauses, specs, (spec) => specDenominationPinField(spec) !== undefined);
+    const field = clauseKey ? specDenominationPinField(specs.get(clauseKey)!) : undefined;
+    const value = clauseKey && field ? clauses[clauseKey]?.[field] : undefined;
     return isAddressHex(value) ? value : undefined;
 }
 
-/** The field names this module's fills write MECHANICALLY — derived or
- *  rewritten by the checkout walk regardless of any buyer input: the
- *  line items (`fillCommerceClause`) and the dimweight derivation
- *  (`fillDimweightClause`). ONE list, owned beside the fills it describes.
- *  The instantiated assembly's hash and the orders an order follows are no
- *  field here: they are the agreement format's provenance and topology
- *  leaves (`Agreement.provenance`, `Agreement.follows`), which the assembly
- *  walk writes, never a clause. */
-const MECHANICAL_FILL_FIELDS = ["lineItems", "billedMassGrams"] as const;
-
 /**
- * The field names the checkout walk fills mechanically for THIS composed
- * clause set — the subset of `MECHANICAL_FILL_FIELDS` some composed clause
- * actually declares (declared-field discovery, never a clause id). A
- * fillable surface subtracts these: rendering a buyer input the walk will
- * overwrite is a false affordance, not a fill.
+ * The fields of one clause the checkout walk fills MECHANICALLY, whatever
+ * the buyer enters, read from the clause's spec: the field its priced-lines
+ * mark names (`fillPricedLines`) and every field it derives
+ * (`block.checkout.derives`, `fillCheckoutDerivations`). A fillable surface
+ * subtracts these: rendering a buyer input the walk will overwrite is a
+ * false affordance, not a fill. Empty for an unloaded spec. The instantiated
+ * assembly's hash and the orders an order follows are no field here: they
+ * are the agreement format's provenance and topology leaves
+ * (`Agreement.provenance`, `Agreement.follows`), which the assembly walk
+ * writes, never a clause.
  */
-export function mechanicallyFilledFieldNames(
-    clauses: ClauseFields,
-    specs: SpecSource,
-): Set<string> {
-    return new Set(
-        MECHANICAL_FILL_FIELDS.filter((field) =>
-            (Object.keys(clauses) as Hex[]).some((clauseKey) => {
-                const spec = specs.get(clauseKey);
-                return spec ? specDeclaresField(spec, field) : false;
-            }),
-        ),
-    );
+export function mechanicallyFilledFieldNames(spec: ProjectionSpecView | undefined): Set<string> {
+    if (!spec) return new Set();
+    const priced = specPricedLines(spec);
+    return new Set([
+        ...(priced ? [priced.field] : []),
+        ...Object.keys(specCheckoutDerivations(spec)),
+    ]);
 }
 
 /** One catalog measure as a number: the line's catalog-item field, when it
@@ -361,44 +419,102 @@ export function fillProfileClauses(
     return out;
 }
 
-/**
- * Compute the dimensional (billed) weight onto the dimweight leaf, found by its
- * declared `billedMassGrams` field. DERIVED, not authored: billed = max(gross
- * mass, volumetric), volumetric = packaged volume ÷ divisor with each packaged
- * dimension rounded up to the next whole centimeter first (carriers round per
- * dimension). Reads the cargo leaf just filled and the divisor the PROFILE fold
- * just wrote onto this same leaf (the seller's shipping convention, a
- * profile-sourced value); skipped when the order composes no dimweight clause,
- * has no packaged dimensions or no gross mass (the greater of two weights is
- * unknown while one is missing), or the seller declares no divisor —
- * dimensional weight then simply does not apply.
- */
-export function fillDimweightClause(
-    clauses: ClauseFields,
-    specs: SpecSource,
-): ClauseFields {
-    const dimId = composedClauseDeclaring(clauses, "billedMassGrams", specs);
-    if (!dimId) return clauses;
-    const divisor = Number(clauses[dimId]?.divisor ?? 0);
-    if (!(divisor > 0)) return clauses;
-    const cargoId = composedClauseDeclaring(clauses, "massGrams", specs);
-    const cargo = cargoId ? clauses[cargoId] : undefined;
-    const l = Number(cargo?.lengthMm ?? 0), w = Number(cargo?.widthMm ?? 0), h = Number(cargo?.heightMm ?? 0);
-    if (!(l > 0 && w > 0 && h > 0)) return clauses;
-    const gross = Number(cargo?.massGrams ?? 0);
-    if (!(gross > 0)) return clauses;
+// ── Checkout derivations: the open rule registry ───────────────────────────
+//
+// A clause declares the content fields the checkout COMPUTES in
+// `block.checkout.derives`: for each field, the rule (`rule`, a name in the
+// registry below) and the rule's inputs by the rule's own input names, each
+// read from a field of the same clause (`{ field }`, after the catalog and
+// profile folds) or from the order's catalog items (`{ from, combine }`, as a
+// catalog measure combines). The KEY is a rule the spec names, never a sector,
+// a clause id or a field name, the same open axis as the rate-quantity
+// sources. A rule with no entry derives nothing: the field stays as it was.
+//
+// Tenants:
+//  - "dimensional-weight": billed = max(gross mass, volumetric), volumetric =
+//    packaged volume ÷ divisor, each packaged dimension rounded up to the next
+//    whole centimeter first (carriers round per dimension). Inputs `mass`
+//    (grams), `length`, `width`, `height` (millimeters) and `divisor`. Missing
+//    when any input is missing or not positive: the greater of two weights is
+//    unknown while one is, and with no divisor dimensional weight does not
+//    apply.
+
+/** The inputs a derivation rule reads, each a finite number or undefined
+ *  when its declared source holds none. */
+export type CheckoutDerivationInputs = Readonly<Record<string, number | undefined>>;
+
+/** A derivation rule: the field's value from its inputs, or undefined when
+ *  it cannot be derived (the field is then left as it was). */
+export type CheckoutDerivationRule = (inputs: CheckoutDerivationInputs) => number | undefined;
+
+function deriveDimensionalWeight(inputs: CheckoutDerivationInputs): number | undefined {
+    const { mass, length, width, height, divisor } = inputs;
+    if (![mass, length, width, height, divisor].every((v) => v !== undefined && v > 0)) return undefined;
     const roundCm = (mm: number) => Math.ceil(mm / 10) * 10;
-    const volMm3 = roundCm(l) * roundCm(w) * roundCm(h);
-    const volumetric = Math.ceil(volMm3 / divisor);
-    return { ...clauses, [dimId]: { ...clauses[dimId], billedMassGrams: Math.max(gross, volumetric), divisor } };
+    const volumeMm3 = roundCm(length!) * roundCm(width!) * roundCm(height!);
+    return Math.max(mass!, Math.ceil(volumeMm3 / divisor!));
+}
+
+const DERIVATIONS = new Map<string, CheckoutDerivationRule>([
+    ["dimensional-weight", deriveDimensionalWeight],
+]);
+
+/** Register a derivation rule under the name a spec's `block.checkout.derives`
+ *  entry gives it. Last write wins — the registry's extension point: a rule
+ *  a stranger's clause names lands here without touching checkout code.
+ *  @public */
+export function registerCheckoutDerivation(rule: string, derive: CheckoutDerivationRule): void {
+    DERIVATIONS.set(rule, derive);
+}
+
+/** A number read from a committed value: a finite number or a decimal string. */
+function finiteOf(value: unknown): number | undefined {
+    const n = typeof value === "number" ? value : typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
+    return Number.isFinite(n) ? n : undefined;
 }
 
 /**
- * Fill every derivable LOGISTICS clause on an order, wherever composed — the
- * catalog measures each spec declares, the class leaves (catalog-sourced),
- * the profile leaves (seller master data), then the derived dimweight (reads
- * the measures and the profile-folded divisor just written). Each fill is a no-op when its clause
- * isn't composed, so the same call serves the root and every sub-order.
+ * Compute every field a composed clause derives (`block.checkout.derives`,
+ * read through `specCheckoutDerivations`), each by its declared rule over its
+ * declared inputs: a field of the same clause, read from the values in hand,
+ * or a catalog measure combined over the order's lines (`combineMeasure`). A
+ * rule the registry does not hold, or one that cannot derive from the inputs,
+ * leaves the field as it was. Reads no clause id and no field name, so a
+ * stranger's clause deriving under other names derives as the reference one
+ * does. A no-op for a clause that derives nothing.
+ */
+export function fillCheckoutDerivations(
+    clauses: ClauseFields,
+    lines: readonly ProcessCheckoutLineItem[],
+    specs: SpecSource,
+): ClauseFields {
+    let out = clauses;
+    for (const clauseKey of Object.keys(clauses) as Hex[]) {
+        const spec = specs.get(clauseKey);
+        if (!spec) continue;
+        const written: Record<string, number> = {};
+        for (const [field, derivation] of Object.entries(specCheckoutDerivations(spec))) {
+            const rule = DERIVATIONS.get(derivation.rule);
+            if (!rule) continue;
+            const values = out[clauseKey] ?? {};
+            const inputs = Object.fromEntries(Object.entries(derivation.inputs).map(([name, input]) =>
+                [name, "field" in input ? finiteOf(values[input.field]) : combineMeasure(lines, input)]));
+            const value = rule(inputs);
+            if (value !== undefined && Number.isFinite(value)) written[field] = value;
+        }
+        if (Object.keys(written).length === 0) continue;
+        out = { ...out, [clauseKey]: { ...out[clauseKey], ...written } };
+    }
+    return out;
+}
+
+/**
+ * Fill every value the checkout folds onto an order's clauses, wherever
+ * composed — the catalog measures each spec declares, the class leaves
+ * (catalog-sourced), the profile leaves (seller master data), then the
+ * derived fields (`fillCheckoutDerivations`, which read the values the folds
+ * just wrote). Each fill is a no-op when its clause isn't composed, so the
+ * same call serves the root and every sub-order.
  */
 export function fillDerivedClauses(
     clauses: ClauseFields,
@@ -406,7 +522,7 @@ export function fillDerivedClauses(
     specs: SpecSource,
     profileValues?: Readonly<Record<string, Record<string, unknown>>>,
 ): ClauseFields {
-    return fillDimweightClause(
+    return fillCheckoutDerivations(
         fillProfileClauses(
             fillClassClauses(
                 fillCatalogueMeasures(clauses, lines, specs),
@@ -416,6 +532,7 @@ export function fillDerivedClauses(
             profileValues,
             specs,
         ),
+        lines,
         specs,
     );
 }

@@ -21,13 +21,13 @@ import type { DocumentLayout } from "@/lib/audit/documentProjection";
 
 /** Commercial invoice, EN 16931 core — one per SELLER (BG-4 single supplier). The
  *  interpretive VAT class is jurisdiction/graph-supplied and absent from the core.
- *  Applies wherever a clause declaring `lineItems` was committed; its currency
+ *  Applies wherever a clause whose spec marks priced lines was committed; its currency
  *  is the commitment's token, never a clause's. */
 const COMMERCIAL_INVOICE: DocumentLayout = {
     genre: "commercial-invoice",
     title: "Commercial invoice (EN 16931 core)",
     scope: "seller",
-    appliesWhen: { hasLeafField: "lineItems" },
+    appliesWhen: { hasPricedLines: true },
     header: [
         { label: "Invoice no. (BT-1)", ref: { orderHash: true } },
         { label: "Issue date (BT-2)", ref: { resolvedDate: true } },
