@@ -56,7 +56,7 @@ export type {
     ValidateOptions,
 } from "./validate.js";
 
-export { validateContent } from "./validate.js";
+export { validateContent, validateSignedContent } from "./validate.js";
 
 // ReDoS-safe matching of an attacker-authored field `pattern` — the single
 // source both off-chain validation and the frontend field inputs use.

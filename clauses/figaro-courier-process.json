@@ -35,6 +35,7 @@
         }
     ],
     "stages": {},
+    "emptyAnchor": true,
     "block": {
         "design": {
             "article": "attestations",

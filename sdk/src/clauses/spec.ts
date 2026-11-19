@@ -218,6 +218,18 @@ export interface ClauseSpec {
      *  `uint8 stage` (`stageKey`, `stageOfKey`); read one through
      *  `declaredStageFields`. */
     stages?: Readonly<Record<string, readonly FieldSpec[]>>;
+    /** Declares that the content the parties sign for this clause is the
+     *  empty anchor `{}`: the clause commits no content, and every field it
+     *  declares is the shape of content attested while the process is open
+     *  (a process-log clause, whose stage-0 event is attested like any
+     *  other). The sign gate accepts `{}` for such a clause and refuses any
+     *  other content; a clause that does not declare it is validated over
+     *  `fields` like any clause, `{}` included. Present only as `true`, and
+     *  never beside a top-level field's `default`, since a default fills the
+     *  signed content and this one has none (`parseClauseSpec`). It is
+     *  protocol, read by the sign gate in both engines, never by a clause's
+     *  name or its `block`. */
+    emptyAnchor?: true;
     // The `block` slice of the spec JSON (designer/runtime composition metadata)
     // is NOT parsed here — it's pure presentation the SDK never reads. The
     // frontend parses it off the same JSON (`lib/shared/clauseBlockBinding`).
@@ -669,7 +681,7 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
     if (!isObject(raw)) {
         return { ok: false, errors: [{ path: "$", message: "clause spec must be an object" }] };
     }
-    const { clauseId, version, title, description, fields, stages } = raw;
+    const { clauseId, version, title, description, fields, stages, emptyAnchor } = raw;
     if (typeof clauseId !== "string" || clauseId.length === 0) {
         errors.push({ path: "$.clauseId", message: "clauseId must be a non-empty string" });
     }
@@ -726,6 +738,21 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
             }
         }
     }
+    // The empty anchor: the signed content is `{}`, so no top-level field
+    // carries a `default`, which would fill content the clause never signs.
+    if (emptyAnchor !== undefined && emptyAnchor !== true) {
+        errors.push({ path: "$.emptyAnchor", message: "emptyAnchor must be true when present" });
+    }
+    if (emptyAnchor === true && Array.isArray(fields)) {
+        fields.forEach((field, i) => {
+            if (isObject(field) && field.default !== undefined) {
+                errors.push({
+                    path: `$.fields[${i}].default`,
+                    message: "a clause that signs the empty anchor (emptyAnchor) declares no top-level default: its signed content is {}, so a default fills nothing",
+                });
+            }
+        });
+    }
     // The `block` slice is presentation metadata the SDK does not own — the
     // frontend parses it (`lib/shared/clauseBlockBinding`). It's ignored here.
     if (errors.length > 0) return { ok: false, errors };
@@ -738,6 +765,7 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
             description: description as string,
             fields: parsedFields,
             ...(parsedStages !== undefined && { stages: parsedStages }),
+            ...(emptyAnchor === true && { emptyAnchor: true as const }),
         },
     };
 }

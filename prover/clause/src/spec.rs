@@ -215,6 +215,12 @@ pub struct ClauseSpec {
     /// Optional per-stage overrides, keyed by the on-chain `uint8 stage`
     /// a stage key names (`parse_stage_key`).
     pub stages: Option<std::collections::BTreeMap<u8, Vec<FieldSpec>>>,
+    /// The spec's top-level `emptyAnchor`: the content the parties sign for
+    /// this clause is the empty anchor `{}`, and every field it declares is
+    /// the shape of content attested while the process is open. Present in
+    /// the JSON only as `true`, never beside a top-level field's `default`
+    /// (`parse_clause_spec`); the SDK's `ClauseSpec.emptyAnchor`.
+    pub empty_anchor: bool,
     // The `block` slice of the spec JSON (designer/runtime composition
     // metadata) is NOT parsed here — pure presentation, matching Layer A.
     // The clause key covers the canonical document WITHOUT `block`; the
@@ -1104,6 +1110,34 @@ pub fn parse_clause_spec(raw: &Value) -> ParseClauseSpecResult {
         },
     };
 
+    // The empty anchor: the signed content is `{}`, so no top-level field
+    // carries a `default`, which would fill content the clause never signs.
+    let empty_anchor = match obj.get("emptyAnchor") {
+        None => false,
+        Some(Value::Bool(true)) => true,
+        Some(_) => {
+            err(
+                &mut errors,
+                "$.emptyAnchor",
+                "emptyAnchor must be true when present",
+            );
+            false
+        }
+    };
+    if empty_anchor {
+        if let Some(arr) = obj.get("fields").and_then(Value::as_array) {
+            for (i, v) in arr.iter().enumerate() {
+                if v.as_object().is_some_and(|f| f.contains_key("default")) {
+                    err(
+                        &mut errors,
+                        &format!("$.fields[{i}].default"),
+                        "a clause that signs the empty anchor (emptyAnchor) declares no top-level default: its signed content is {}, so a default fills nothing",
+                    );
+                }
+            }
+        }
+    }
+
     // The `block` slice is presentation metadata this layer does not own —
     // ignored, matching Layer A.
 
@@ -1118,5 +1152,6 @@ pub fn parse_clause_spec(raw: &Value) -> ParseClauseSpecResult {
         description,
         fields: parsed_fields,
         stages: parsed_stages,
+        empty_anchor,
     })
 }

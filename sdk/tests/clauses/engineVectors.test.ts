@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { canonicalize } from "../../src/agreement.js";
-import { encodeContentFromSpec, parseClauseSpec, validateContent } from "../../src/clauses/index.js";
+import { encodeContentFromSpec, parseClauseSpec, validateContent, validateSignedContent } from "../../src/clauses/index.js";
 
 const FIXTURE_PATH = path.resolve(__dirname, "../../../test/fixtures/clause-engine-vectors.json");
 
@@ -757,6 +757,31 @@ const SPEC_CASES: { label: string; spec: unknown }[] = [
     { label: "a mixed stage", spec: specOf(f({ type: "boolean" }), { 1: [{ name: "r", type: "integer", required: true, disposition: "private" }, { name: "n", type: "string", required: true }, BLINDING] }) },
     { label: "a public stage with a blinding field", spec: specOf(f({ type: "boolean" }), { 2: [{ name: "n", type: "string", required: true }, BLINDING] }) },
     { label: "an empty stage", spec: specOf(f({ type: "boolean" }), { 1: [] }) },
+    // The empty anchor: present only as true, never beside a top-level default.
+    { label: "emptyAnchor true", spec: { ...specOf(f({ type: "enum", values: ["a", "b"] })), emptyAnchor: true } },
+    { label: "emptyAnchor false", spec: { ...specOf(f({ type: "enum", values: ["a", "b"] })), emptyAnchor: false } },
+    { label: "emptyAnchor as a string", spec: { ...specOf(f({ type: "enum", values: ["a", "b"] })), emptyAnchor: "true" } },
+    { label: "emptyAnchor beside a top-level default", spec: { ...specOf(f({ type: "enum", values: ["a", "b"], default: "a" })), emptyAnchor: true } },
+    { label: "emptyAnchor beside a stage field's default", spec: { ...specOf(f({ type: "boolean" }), { 1: f({ type: "enum", values: ["a", "b"], default: "a" }) }), emptyAnchor: true } },
+];
+
+/** The content the parties SIGN, under the sign gate's one rule
+ *  (`validateSignedContent`, `validate_signed_content`): `{}` and nothing else
+ *  for a spec that declares `emptyAnchor`, content valid over `fields` for
+ *  every other, `{}` included. The spec is a stranger's: its `block` names an
+ *  article no code knows, and the rule reads none of it. */
+const LADDER: Field[] = [{ name: "call", type: "enum", values: ["arrived", "berthed", "sailed"], required: true }];
+const STRANGER_BLOCK = { design: { article: "harbor-log" } };
+const SIGNED_CASES: { label: string; spec: Record<string, unknown>; content: unknown }[] = [
+    { label: "the empty anchor, declared", spec: { ...specOf(LADDER), emptyAnchor: true, block: STRANGER_BLOCK }, content: {} },
+    { label: "content, under a declared empty anchor", spec: { ...specOf(LADDER), emptyAnchor: true, block: STRANGER_BLOCK }, content: { call: "arrived" } },
+    { label: "an array, under a declared empty anchor", spec: { ...specOf(LADDER), emptyAnchor: true, block: STRANGER_BLOCK }, content: [] },
+    { label: "null, under a declared empty anchor", spec: { ...specOf(LADDER), emptyAnchor: true, block: STRANGER_BLOCK }, content: null },
+    { label: "the empty anchor, declared, beside a stage set", spec: { ...specOf(LADDER, { 1: f({ type: "string" }) }), emptyAnchor: true, block: STRANGER_BLOCK }, content: {} },
+    { label: "the empty anchor, not declared, required field", spec: { ...specOf(LADDER), block: STRANGER_BLOCK }, content: {} },
+    { label: "the empty anchor, not declared, the attestations article", spec: { ...specOf(LADDER), block: { design: { article: "attestations" } } }, content: {} },
+    { label: "content, not declared", spec: { ...specOf(LADDER), block: STRANGER_BLOCK }, content: { call: "arrived" } },
+    { label: "the empty anchor, not declared, no required field", spec: specOf([{ name: "note", type: "string", required: false }]), content: {} },
 ];
 
 /** Encoded bytes for the values whose bytes a verdict alone does not show. */
@@ -825,6 +850,11 @@ function build() {
         ),
         contents: CONTENT_CASES.map(({ label, fields, content }) => ({ label, fields, content, ok: verdict(fields, content) })),
         specs: SPEC_CASES.map(({ label, spec }) => ({ label, spec, ok: parseClauseSpec(spec).ok })),
+        signed: SIGNED_CASES.map(({ label, spec, content }) => {
+            const parsed = parseClauseSpec(spec);
+            if (!parsed.ok) throw new Error(`signed case ${label}: the spec does not parse`);
+            return { label, spec, content, ok: validateSignedContent(content, parsed.spec).ok };
+        }),
         encodings: ENCODE_CASES.map(({ label, fields, stages, stage, content }) => {
             const parsed = parseClauseSpec(specOf(fields, stages));
             if (!parsed.ok) throw new Error(`encode case ${label}: the spec does not parse`);
@@ -863,6 +893,8 @@ describe("Clause-engine vectors — the hand-written leg of the clause-engine lo
         ).toBe(true);
         expect(built.specs.some((c) => c.ok)).toBe(true);
         expect(built.specs.some((c) => !c.ok)).toBe(true);
+        expect(built.signed.some((c) => c.ok)).toBe(true);
+        expect(built.signed.some((c) => !c.ok)).toBe(true);
     });
 
     it("the canonical bytes keep a key named __proto__, so two contents that differ there differ in their bytes", () => {

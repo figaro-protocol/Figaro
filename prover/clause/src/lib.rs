@@ -51,5 +51,6 @@ pub use spec::{
     StringFieldSpec, StringFormat, MAX_FIELD_DEPTH,
 };
 pub use validate::{
-    resolve_input_format, validate_content, ValidateOptions, ValidationError, ValidationResult,
+    resolve_input_format, validate_content, validate_signed_content, ValidateOptions,
+    ValidationError, ValidationResult,
 };

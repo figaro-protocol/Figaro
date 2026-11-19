@@ -9,8 +9,8 @@
 //! them.
 
 use figaro_clause::{
-    encode_content_from_spec, parse_clause_spec, validate_content, ClauseSpec, EncodeOptions,
-    ParseClauseSpecResult, ValidateOptions,
+    encode_content_from_spec, parse_clause_spec, validate_content, validate_signed_content,
+    ClauseSpec, EncodeOptions, ParseClauseSpecResult, ValidateOptions,
 };
 use serde_json::{json, Value};
 
@@ -132,6 +132,38 @@ fn the_engine_parses_the_specs_layer_a_parses_and_no_others() {
     assert!(
         differing.is_empty(),
         "{} specs differ:\n{}",
+        differing.len(),
+        differing.join("\n")
+    );
+}
+
+/// The sign gate's one rule, in both engines: a spec that declares
+/// `emptyAnchor` signs the empty anchor `{}` and nothing else, and every
+/// other spec's signed content, `{}` included, validates over its fields.
+/// The specs are a stranger's: their `block` names an article no code knows.
+#[test]
+fn the_engine_gives_layer_a_verdict_on_every_signed_content() {
+    let fx = fixture();
+    let cases = fx["signed"].as_array().expect("signed");
+    assert!(cases.len() >= 6);
+    let mut differing = Vec::new();
+    for case in cases {
+        let spec = match parse_clause_spec(&case["spec"]) {
+            ParseClauseSpecResult::Ok(spec) => spec,
+            ParseClauseSpecResult::Err(errors) => panic!("{}: {errors:?}", case["label"]),
+        };
+        let expected = case["ok"].as_bool().unwrap();
+        let got = validate_signed_content(&case["content"], &spec).is_ok();
+        if got != expected {
+            differing.push(format!(
+                "{}: Layer A {expected}, the engine {got}",
+                case["label"]
+            ));
+        }
+    }
+    assert!(
+        differing.is_empty(),
+        "{} signed verdicts differ:\n{}",
         differing.len(),
         differing.join("\n")
     );

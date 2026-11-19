@@ -78,7 +78,7 @@ types `string` (formats `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datet
 **`block.design.article`**). Set them thoughtfully, then read Step 3a before you write any
 of them. Write the spec as the **user's** document (their workspace).
 
-## Step 3a — The six `block` hints the reference tooling collects by (and the reserved-article trap)
+## Step 3a — The six `block` hints the reference tooling collects by (and the empty anchor)
 
 **Say this out loud to the user; it is the highest-cost thing on this page.** The
 clause key covers the spec without its top-level `block`, so a change to `block` alone
@@ -91,34 +91,31 @@ nothing else:
 
 | Hint | Writes into | Effect |
 |---|---|---|
-| `block.design.article: "attestations"` | `checkoutHash` | the clause is committed as an EMPTY anchor, filled by attestation later; field `default`s are NOT applied |
 | `block.design.scope: "assembly"` | `processDesignHash` + `checkoutHash` | composed ONCE for the whole design, folded into EVERY agreement at checkout; composing it on one order is a build error |
 | `block.design.fills` | `agreementHash` | names the fields whose DESIGN-TIME values survive into an agreement; name nothing and the agreement carries `{}` |
 | `block.checkout.catalogueFills` / `profileFills` | `checkoutHash` | names which fields the seller's catalog / profile folds write onto the leaf at checkout |
 | `block.checkout.catalogueMeasures` | `checkoutHash` | maps a field to the catalog-item field it is read from and how the order's lines combine it (`"sum"`, or `"single-unit"` for a one-unit order); a measure the items do not supply stays missing, so give such a field no `default` |
 
-**The reserved-article trap — picking one by accident is silent.** The group name is free
-text, but `"attestations"` means the thing above to the SDK. It is read straight off the
-spec: nothing warns, nothing throws, and the clause simply behaves
-differently than the user meant. The trap is that the reserved word is the *natural*
-one — an attestation clause grouped, reasonably, under `"attestations"` silently commits
-empty. **Registration is permanent and first-write-wins**, so if that is not what the user
-wants, group it under any other word BEFORE registering. There is no fix afterwards, only
-a new spec, which is a new key and a new registration.
+**What the parties sign is a top-level choice, never the article's.** A spec that
+declares `"emptyAnchor": true` at its top level (outside `block`) signs the EMPTY anchor
+`{}`: its content arrives only in attestations, the sign gate refuses any other content
+for it, and field `default`s are not applied (the parsers refuse a top-level `default`
+beside it). A spec that does not declare it signs content validated over its `fields`,
+whatever its article, `"attestations"` included. `emptyAnchor` is part of the clause key,
+and **registration is permanent and first-write-wins**, so agree it with the user BEFORE
+registering. There is no fix afterwards, only a new spec, which is a new key and a new
+registration.
 
-**The fills-on-process-log trap — the SDK will tell you.** There is one combination that
-never makes sense: declaring content pins (`design.fills`, or
-`checkout.catalogueFills`/`profileFills`/`catalogueMeasures`) on a clause whose article marks it a process-log
-(`"attestations"`). A process-log clause is committed as an unvalidated empty anchor —
-content validation is SKIPPED for it and field defaults are never filled — so a pin declared
-there is content the author believes is checked and that in fact never is. Run
-`warnProcessLogFillsTrap(spec)` from `@figaro-protocol/sdk` on the finished spec and read back what
-it returns to the user. It is a WARNING, not a parse error, and deliberately so: the article
-is free text and a third-party clause may declare anything, and `"attestations"` is correct
-and meaningful for a genuine process-log clause — the two shipped ones,
-`figaro-merchant-process` and `figaro-courier-process`, declare explicit EMPTY fill
-lists (`"fills": []`), which is the shape a real one always has. The warning fires
-only on that specific combination.
+**The fills-on-empty-anchor trap — the SDK will tell you.** One combination contradicts
+itself: declaring content pins (`design.fills`, or
+`checkout.catalogueFills`/`profileFills`/`catalogueMeasures`/`derives`) on a spec that
+declares `emptyAnchor`. The pin turns the signed `{}` into content, which the sign gate
+refuses for that clause. Run `warnProcessLogFillsTrap(spec)` from `@figaro-protocol/sdk` on
+the finished spec and read back what it returns to the user. It is a WARNING, not a parse
+error, since the parser reads no `block`: the two shipped process logs,
+`figaro-merchant-process` and `figaro-courier-process`, declare `emptyAnchor` with EMPTY
+fill lists (`"fills": []`), which is the shape a real one has. The warning fires only on
+that specific combination.
 
 **And one field attribute is mis-typed as UI metadata: `default`.** A field's `default`
 is documented as composition metadata, but it is NOT inert — when the composing input
@@ -204,12 +201,14 @@ validator — there is none, by design.
 - clause key:   0x…  (computeClauseKey(spec) = keccak256 of the canonical spec without block)
 - contentURI:   ipfs://…  (pins canonicalize(spec), exactly)
 - tx:           0x…  (registeredBy = <user wallet>)
+- signs the empty anchor: <yes, emptyAnchor: true | no>
 - block hints declared: <parseProjectionHints output — the six, or "none">
 - Discoverable now in any UI that reads the registry.
 ```
 
-State the `block` hints line even when it is empty: it is the user's record that no
-reserved article, no assembly scope, and no fills were declared by accident.
+State the empty-anchor line and the `block` hints line even when they are empty: they are
+the user's note that no empty anchor, no assembly scope, and no fills were declared by
+accident.
 
 ## Refuse, and teach, on these (closed-world tells)
 

@@ -98,6 +98,25 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         expect(parseClauseSpec(enumOf(257)).ok).toBe(false);
     });
 
+    // The empty anchor (`emptyAnchor`): present only as true, and never
+    // beside a top-level field's default. The schema and the parser accept
+    // and refuse the same specs.
+    const ladder = { name: "event", type: "enum", required: true, values: ["a", "b"] };
+    const emptyAnchorCases: ReadonlyArray<readonly [string, unknown, boolean]> = [
+        ["a ladder that signs the empty anchor", { ...withFields([ladder]), emptyAnchor: true }, true],
+        ["the empty anchor beside a stage set", { ...withFields([ladder], { "1": [open] }), emptyAnchor: true }, true],
+        ["the empty anchor beside a stage field's default", { ...withFields([ladder], { "1": [{ ...open, default: "x" }] }), emptyAnchor: true }, true],
+        ["emptyAnchor false", { ...withFields([ladder]), emptyAnchor: false }, false],
+        ["emptyAnchor as a string", { ...withFields([ladder]), emptyAnchor: "true" }, false],
+        ["the empty anchor beside a top-level default", { ...withFields([{ ...ladder, default: "a" }]), emptyAnchor: true }, false],
+    ];
+    it.each(emptyAnchorCases)("%s: accepted %s in BOTH schema and parser", (_name, spec, accepted) => {
+        expect(validateAgainstSchema(spec), JSON.stringify(validateAgainstSchema.errors)).toBe(accepted);
+        const parsed = parseClauseSpec(spec);
+        expect(parsed.ok).toBe(accepted);
+        if (parsed.ok) expect(parsed.spec.emptyAnchor).toBe(true);
+    });
+
     // A stage key has one spelling, the decimal of an integer 0..255; the
     // schema and the parser accept the same keys.
     const stageKeys: ReadonlyArray<readonly [string, boolean]> = [

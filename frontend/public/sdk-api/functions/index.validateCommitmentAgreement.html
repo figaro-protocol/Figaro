@@ -19,8 +19,9 @@
 <div class="tsd-comment tsd-typography"><p>The off-chain layer of the verification stack, run on BOTH sides of the bilateral commit
 (buyer before initiating, seller before counter-signing) so neither party
 signs an invalid agreement. Four checks: every present clause conforms to
-its clause spec (validateContent; a process-log clause's empty anchor <code>{}</code>
-carries no content and is skipped, and any content it carries is checked); where a denomination pin is composed, the pin equals the token of
+its clause spec (validateSignedContent: a clause whose spec declares
+<code>emptyAnchor</code> signs the empty anchor <code>{}</code> and nothing else, and every other
+clause's content, <code>{}</code> included, is validated over its fields); where a denomination pin is composed, the pin equals the token of
 the commitment about to be signed; the order carries every clause of the
 design its provenance names (the registered agreement's and the
 assembly-scoped ones) and every designer value (<code>block.design.fills</code>) the
@@ -56,7 +57,7 @@ two to compare.</p>
 <li><span><span class="tsd-kind-parameter">design</span>: <a href="../interfaces/index.HydratedProcessDesign.html" class="tsd-signature-type tsd-kind-interface">HydratedProcessDesign</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">issues</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.CommitmentAgreementIssue.html" class="tsd-signature-type tsd-kind-interface">CommitmentAgreementIssue</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">ok</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span> <span class="tsd-signature-symbol">}</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L1130">projection.ts:1130</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L1120">projection.ts:1120</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

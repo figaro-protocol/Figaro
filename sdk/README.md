@@ -1959,11 +1959,12 @@ import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 // the assembly keeps those values and strips every other clause's to `{}`.
 //
 // `block.design.article` is normally your clause's own group name (free text:
-// "coordination", "logistics", …). THREE values are routed on by code. One
-// changes agreement semantics:
-//   "attestations"       — an empty anchor at commit, content attested later
-//                          (specIsProcessLog)
-// and two are read by name:
+// "coordination", "logistics", …). None changes what the parties sign: a
+// spec that declares `"emptyAnchor": true` at its TOP level signs the empty
+// anchor `{}`, whatever its article, and the sign gate refuses any other
+// content for it; every other spec signs content validated over its fields.
+// "attestations" marks a process log for presentation (specIsProcessLog),
+// and two values are read by name:
 //   "denomination"       — on an assembly-scoped clause, its unfilled
 //                          designer-filled address-hex fields take the
 //                          deployment's token at seeding
@@ -1971,21 +1972,17 @@ import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 //   "dispute-resolution" — the frontend's audit view reads the clause as the
 //                          process's named forum (frontend/lib/semantic/
 //                          processRecourse.ts)
-// Pick the first by accident — say you group an attestation clause under
-// "attestations" — and your clause behaves differently with no error raised.
 // Registration is permanent and first-write-wins, so choose before you register.
 //
-// `warnProcessLogFillsTrap(view)` catches the one construction that never
-// makes sense under "attestations": declaring `design.fills` or
-// `checkout.catalogueFills`/`profileFills`/`catalogueMeasures`
-// (designer/catalog/profile content pins) on a clause the article marks a process-log. A process-log
-// clause is unvalidated at commit (`validateCommitmentAgreement` skips it
-// outright), so a pinned fill there is content the author believes is
-// checked that in fact never is. It's a WARNING, not a parse error —
-// "attestations" is correct and meaningful for a real process-log clause
-// (`figaro-merchant-process`, `figaro-courier-process` both use it, with no
-// fill list — the shape a genuine one always has); this fires only on that
-// specific fills-on-process-log combination.
+// `warnProcessLogFillsTrap(view)` catches the one construction that
+// contradicts itself: declaring `design.fills` or
+// `checkout.catalogueFills`/`profileFills`/`catalogueMeasures`/`derives`
+// (designer/catalog/profile content pins) on a spec that declares
+// `emptyAnchor`. The pinned fill turns the signed `{}` into content, which
+// `validateCommitmentAgreement` refuses for that clause. It's a WARNING, not a
+// parse error, since the parser reads no `block`; `emptyAnchor` alone is
+// correct for a process log (`figaro-merchant-process`,
+// `figaro-courier-process` both declare it, with no fill list).
 // `rawSpecsByKey` maps each clause key to the spec parsed from the bytes
 // `anchorClauseSpec(bytes, clauseKey)` verified.
 function makeSpecSource(rawSpecsByKey: Map<Hex, unknown>): SpecSource {
@@ -2047,7 +2044,8 @@ through `ClauseRegistry` before gating — the frontend does, so a key the cache
 had not warmed is read and a key no registry holds is never signed), and a
 content-withheld clause (`dataHash` with no `data`) — a signer binds no leaf it
 cannot read; `publicForm` withholds at the pin, after the signatures. A
-process-log clause's empty anchor is read as what it is. A value the design sets
+clause whose spec declares `emptyAnchor` signs the empty anchor `{}` and
+nothing else (`validateSignedContent`), whatever its article. A value the design sets
 is the designer's and arrives unchanged; a design field the designer left
 unset is a party's to fill. The gate takes the commitment being signed: the
 token and the payment are its fields alone, no clause restates them (a clause

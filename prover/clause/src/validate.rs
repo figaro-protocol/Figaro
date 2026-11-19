@@ -971,3 +971,24 @@ pub fn validate_content(
         ValidationResult::Err(errors)
     }
 }
+
+/// Validate the content the parties SIGN for a clause: the content
+/// committed under the `checkoutHash`. A spec that declares `emptyAnchor`
+/// signs the empty anchor `{}` and nothing else; every other spec's signed
+/// content, `{}` included, validates over its top-level `fields`
+/// (`validate_content` with no stage). The rule reads the spec's top
+/// level, never its `block`. the SDK's `validateSignedContent`.
+pub fn validate_signed_content(content: &Value, spec: &ClauseSpec) -> ValidationResult {
+    if !spec.empty_anchor {
+        return validate_content(content, spec, ValidateOptions::default());
+    }
+    if content.as_object().is_some_and(|o| o.is_empty()) {
+        ValidationResult::Ok
+    } else {
+        ValidationResult::Err(vec![ValidationError {
+            path: "$".to_string(),
+            message: "the spec declares emptyAnchor: its signed content is the empty anchor {}"
+                .to_string(),
+        }])
+    }
+}

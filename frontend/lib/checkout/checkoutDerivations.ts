@@ -21,7 +21,6 @@ import { processDesignFollows } from "@/lib/shared/assembly";
 import {
     clauseCatalogFills,
     clauseDesignFills,
-    clauseIsProcessLog,
     clauseProfileFills,
     getClauseSpec,
     specSource,
@@ -235,7 +234,7 @@ export function deriveAgreementGroups(args: {
                 values: clauseValueSummary(fields),
                 data: fields as Record<string, unknown>,
                 fields: buyerFields,
-                fillable: !clauseIsProcessLog(clauseKey) && buyerFields.length > 0,
+                fillable: getClauseSpec(clauseKey)?.emptyAnchor !== true && buyerFields.length > 0,
             };
         }),
     }];
@@ -270,8 +269,9 @@ export function deriveAgreementGroups(args: {
                     // field the walk fills mechanically. The complement is
                     // FIELD-granular, so a clause the seller's catalog fills
                     // in part still offers the buyer its own fields; a
-                    // process-log anchor (attested at runtime, empty at
-                    // commit) is never fillable. A COMPOSING clause's content
+                    // clause that signs the empty anchor (its spec's
+                    // `emptyAnchor`: content attested at runtime) is never
+                    // fillable. A COMPOSING clause's content
                     // fields ARE fillable — the composition surface collects
                     // only its block.runtime.fields runtime params, never its
                     // content.
@@ -286,7 +286,7 @@ export function deriveAgreementGroups(args: {
                         values: clauseValueSummary(fields),
                         data: fields as Record<string, unknown>,
                         fields: buyerFields,
-                        fillable: !clauseIsProcessLog(clauseKey) && buyerFields.length > 0,
+                        fillable: getClauseSpec(clauseKey)?.emptyAnchor !== true && buyerFields.length > 0,
                     };
                 }),
         };
