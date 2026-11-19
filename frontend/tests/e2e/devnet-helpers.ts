@@ -31,6 +31,7 @@ import {
     processDesignFollows,
     composeAuthoredProcessDesign,
     fillDeployTimeCurrency,
+    deployTimeCurrencyOf,
     composeAuthoredAgreements,
     agreementHashOf,
     processDesignHashOf,
@@ -787,13 +788,22 @@ export function referenceProcessDesignHash(name: string): `0x${string}` {
 
 /** Identity of a reference whose written copy leaves its denomination pin
  *  unfilled (a live token address is new every fresh deploy, so
- *  `assemblies/*.json` cannot ship a real one). The seeding fills the
- *  deployment's token into the pin BEFORE anchoring (the SDK's
- *  `fillDeployTimeCurrency`), so a spec wanting such a reference's slug hashes
+ *  `assemblies/*.json` cannot ship a real one). The seeding fills the pin
+ *  BEFORE anchoring (the SDK's `fillDeployTimeCurrency`) with the deployment's
+ *  token, or with the record's entry the written file names
+ *  (`deployTimeCurrency`, read by `deployTimeCurrencyOf`: the florin-gated
+ *  twins name `florinToken`), so a spec wanting such a reference's slug hashes
  *  the FILLED, key-resolved assembly — the raw file's hash never matches what
- *  is anchored. `name` is the file in `assemblies/`. */
-export function referenceAssemblySlugWithLiveCurrency(name: string, tokenAddress: `0x${string}`): string {
-    const assembly = fillDeployTimeCurrency(referenceAssemblyBuilt(name).assembly, tokenAddress, authoredSpecSource());
+ *  is anchored. `name` is the file in `assemblies/`; `record` is the
+ *  deployment the seeding read, keyed as the record is. */
+export function referenceAssemblySlugWithLiveCurrency(
+    name: string,
+    tokenAddress: `0x${string}`,
+    record: Readonly<Record<string, unknown>> = readLocalDeploymentConfig(),
+): string {
+    const written = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../assemblies', name), 'utf8')) as object;
+    const token = deployTimeCurrencyOf(written, record, tokenAddress);
+    const assembly = fillDeployTimeCurrency(referenceAssemblyBuilt(name).assembly, token, authoredSpecSource());
     return deriveProcessDesignSlug(processDesignHashOf(assembly));
 }
 

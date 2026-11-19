@@ -84,6 +84,11 @@
  *   ASSEMBLY_TOKEN_ADDRESS        — the deployment's token, filled into the
  *                                   denomination pin a written reference
  *                                   leaves unfilled (Sepolia: USDC)
+ *   DEPLOYMENT_RECORD             — the deployment record's path: a written
+ *                                   reference that names an address of the deployment for
+ *                                   its pin (`deployTimeCurrency`, e.g. the
+ *                                   florin-gated twins' `florinToken`) is
+ *                                   filled with that entry's address instead
  *
  * INCREMENTAL RELEASE controls (the nudge-per-session Sepolia rollout):
  *   SEED_ASSEMBLIES       — comma-separated reference-assembly names (the
@@ -130,7 +135,7 @@ import {
     CLAUSE_REGISTRY_ABI, PROCESS_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, computeClauseKey, canonicalize,
     processDesignHashOf, deriveProcessDesignSlug, parseProjectionHints,
     processDesignComposedClauseKeys, resolveAuthoredClauseKeys, composeAuthoredAgreements, composeAuthoredProcessDesign,
-    agreementHashOf, fillDeployTimeCurrency,
+    agreementHashOf, fillDeployTimeCurrency, deployTimeCurrencyOf,
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 
@@ -483,6 +488,29 @@ export function readBuiltAssembly(file, authored = loadAuthoredSpecs(), agreemen
     return composeAuthoredProcessDesign(JSON.parse(fs.readFileSync(file, 'utf8')), agreementsByName, authored);
 }
 
+/** An authored reference assembly built as a deployment anchors it: its
+ *  denomination pin, when the written file leaves it unfilled, filled with
+ *  the token the file names in the deployment record (`deployTimeCurrency`,
+ *  e.g. the record's `florinToken`) or else with `deploymentToken`
+ *  (`deployTimeCurrencyOf`, then `fillDeployTimeCurrency`, both the SDK's).
+ *  `{ assembly, agreements, token }`; throws when the token is not decided.
+ *  The ONE build every anchoring and every check of an anchored key reads.
+ *  Seed time only. */
+export function readDeployedAssembly(file, { record = {}, deploymentToken } = {}, authored = loadAuthoredSpecs(), agreementsByName = loadAuthoredAgreements(authored)) {
+    const written = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const built = composeAuthoredProcessDesign(written, agreementsByName, authored);
+    const token = deployTimeCurrencyOf(written, record, deploymentToken);
+    return { assembly: fillDeployTimeCurrency(built.assembly, token, authored), agreements: built.agreements, token };
+}
+
+/** The deployment record `DEPLOYMENT_RECORD` names (its path), parsed; `{}`
+ *  when unset. A reference assembly that pins an address of the deployment
+ *  (`deployTimeCurrency`) reads its token here. */
+export function readDeploymentRecordEnv() {
+    const file = process.env.DEPLOYMENT_RECORD;
+    return file ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+}
+
 /**
  * The authored clauses a founder's Ledger run leaves out: those the chain's
  * registration plan (`registrations` of `deployments/<chainId>.expected.json`)
@@ -726,11 +754,12 @@ export async function anchorProcessDesign({ publicClient, walletClient, account,
 }
 
 /** Pin the affixed documents, then anchor every reference assembly
- *  (`assemblies/*.json`) with the live denomination substituted for the
- *  checked-in sentinel. The ONE reference-assembly population path —
- *  devnet (EOA, mock token) and testnet/mainnet (vault, ruled token)
+ *  (`assemblies/*.json`) with the live denomination filled into the pin the
+ *  written file leaves unfilled: `tokenAddress`, or the `record`'s entry the
+ *  file names (`readDeployedAssembly`). The ONE reference-assembly population
+ *  path — devnet (EOA, mock token) and testnet/mainnet (vault, ruled token)
  *  differ only in the arguments. */
-export async function populateReferenceAssemblies({ publicClient, walletClient, account, registry, agreementRegistry, ipfsApiUrl, tokenAddress, vault, ownerClients, limit, only, log = console.log }) {
+export async function populateReferenceAssemblies({ publicClient, walletClient, account, registry, agreementRegistry, ipfsApiUrl, tokenAddress, record = {}, vault, ownerClients, limit, only, log = console.log }) {
     const documentsDir = path.join(ASSEMBLIES_DIR, 'documents');
     if (fs.existsSync(documentsDir)) {
         for (const file of fs.readdirSync(documentsDir).sort()) {
@@ -749,12 +778,9 @@ export async function populateReferenceAssemblies({ publicClient, walletClient, 
             log(`  · SEED_LIMIT ${limit} reached — remaining reference assemblies deferred to a later run`);
             break;
         }
-        const built = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), authored, agreementsByName);
-        // The deployment's token fills the denomination pin the written file
-        // leaves unfilled (the SDK's fill, read by the spec's shape).
-        const assembly = fillDeployTimeCurrency(built.assembly, tokenAddress, authored);
+        const { assembly, agreements } = readDeployedAssembly(path.join(ASSEMBLIES_DIR, file), { record, deploymentToken: tokenAddress }, authored, agreementsByName);
         const result = await anchorBuiltAssembly({
-            built: { assembly, agreements: built.agreements }, agreementRegistry,
+            built: { assembly, agreements }, agreementRegistry,
             publicClient, walletClient, account, registry, ipfsApiUrl, vault, ownerClients, log,
         });
         if (result.anchored) anchored += 1;
@@ -882,7 +908,7 @@ async function main() {
             console.log(`\nPopulating reference assemblies → ProcessRegistry ${processRegistry} (token ${assemblyToken})`);
             const a = await populateReferenceAssemblies({
                 publicClient, walletClient, account, registry: processRegistry, agreementRegistry, ipfsApiUrl,
-                tokenAddress: assemblyToken, vault, ownerClients, limit: remaining, only: onlyAssemblies,
+                tokenAddress: assemblyToken, record: readDeploymentRecordEnv(), vault, ownerClients, limit: remaining, only: onlyAssemblies,
             });
             console.log(`Done — ${a} reference assembly(ies) newly anchored.`);
         }

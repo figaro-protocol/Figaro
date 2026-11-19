@@ -8,7 +8,9 @@
 //
 // Cases: the right registrar holds; a wrong registrar, an unregistered key and
 // a withdrawn deposit each fail, for an agreement and for an assembly; a name
-// with no file fails; an assembly planned without its token fails.
+// with no file fails; an assembly planned without its token fails; a
+// florin-gated twin takes its token from the record's florinToken, and fails
+// without it.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -90,4 +92,22 @@ test("a wallet the expectations file does not define fails", async () => {
     const { failed } = await run({ ...plan, agreements: { "aerial-survey-flight": "ghost" } }, new Map([[k.agreement, held(SEEDER)], [k.assembly, held(SEEDER)]]));
     assert.equal(failed.length, 1);
     assert.match(failed[0], /not decided/);
+});
+
+test("a florin-gated twin's key is over the record's florin, whatever the plan's token", () => {
+    const FLORIN = "0x097521270f1b6EEc47BD86D834E4995a068B260f";
+    const twin = { assemblies: { "courier-delivery-florin": "seeder" }, assemblyToken: TOKEN };
+    const a = plannedRegistrations(twin, { florinToken: FLORIN });
+    assert.deepEqual(a.errors, []);
+    assert.equal(a.assemblies[0].token, FLORIN);
+    const b = plannedRegistrations({ ...twin, assemblyToken: STRANGER }, { florinToken: FLORIN });
+    assert.equal(b.assemblies[0].key, a.assemblies[0].key);
+    const c = plannedRegistrations(twin, { florinToken: STRANGER });
+    assert.notEqual(c.assemblies[0].key, a.assemblies[0].key);
+});
+
+test("a florin-gated twin planned against a record with no florin fails", () => {
+    const p = plannedRegistrations({ assemblies: { "tradelens-florin": "seeder" }, assemblyToken: TOKEN }, {});
+    assert.equal(p.assemblies.length, 0);
+    assert.match(p.errors[0], /not decided.*florinToken/);
 });
