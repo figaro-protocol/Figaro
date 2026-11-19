@@ -30,10 +30,10 @@
  * `siblingFormatSource` opens ONE door through the design-mode default rule: a
  * required scalar whose VALUE drives a sibling's input format (the sibling
  * declares `formatFromField`) fills here even though it carries a default —
- * otherwise the party filling the sibling is locked into the one standard the
- * default names (figaro-geolocation's `geocodeStandard` fixed at `geohash`,
- * leaving a party no way to state an origin as an H3, S2 or Open Location
- * Code cell, the other standards its enum lists).
+ * otherwise the party filling the sibling is held to the one value the default
+ * names. An enum source needs no door: the enum branch below renders one radio
+ * for each value the fetched spec's `values` lists, in both modes (the
+ * reference figaro-geolocation spec's `geocodeStandard` is such an enum).
  *
  * What a control SAYS about itself is spec-read too: the label is the spec's own
  * `label` (the same one `describeClause` uses on the read side), a required

@@ -53,3 +53,17 @@ export async function readNetwork<T>(label: string, load: () => Promise<T>): Pro
         return ABSENT;
     }
 }
+
+/** Inside an effect: hand `pending`'s value to `apply` unless the effect was
+ *  cleaned up first (its inputs changed, or the component unmounted), so a
+ *  late answer never overwrites a newer one. Returns the cleanup, for the
+ *  effect to return. */
+export function applyUntilCleanup<T>(pending: Promise<T>, apply: (value: T) => void): () => void {
+    let canceled = false;
+    void pending.then((value) => {
+        if (!canceled) apply(value);
+    });
+    return () => {
+        canceled = true;
+    };
+}

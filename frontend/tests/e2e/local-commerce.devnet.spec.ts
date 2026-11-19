@@ -103,6 +103,7 @@ import { CORE_ABI } from '@/lib/core/contracts';
 import { ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
 import { calculateBonds, computeClauseLeaf, type AgreementClause } from '@figaro-protocol/sdk';
 import { encodeGeohash } from '@figaro-protocol/sdk/derive';
+import { getClauseSpec } from '@/lib/shared/clauseSpecSource';
 import type { Page } from '@playwright/test';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -295,11 +296,15 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         const geoControl = (field: string) =>
             page.locator(`input[data-testid^="checkout-field-"][data-testid$="-${GEO_CLAUSE}-${field}"]`);
 
-        // The standard the endpoints are WRITTEN IN is a control: one choice for
-        // each standard the clause's enum names, the standards whose grain the
-        // clause engines cap, so a reader with no device location writes a
+        // The standard the endpoints are WRITTEN IN is a control: one radio for
+        // each value the chain-anchored spec's enum lists, read from the spec
+        // the registry names, so a reader with no device location writes a
         // locality in any of them.
-        for (const standard of ['geohash', 'h3', 's2', 'olc']) {
+        const standardField = getClauseSpec(GEO_CLAUSE)?.fields.find((f) => f.name === 'geocodeStandard');
+        expect(standardField?.type, 'the geolocation spec declares geocodeStandard as an enum').toBe('enum');
+        const standards = standardField?.type === 'enum' ? standardField.values : [];
+        expect(standards.length, 'the enum lists at least one standard').toBeGreaterThan(0);
+        for (const standard of standards) {
             await expect(geoControl(`geocodeStandard-${standard}`), `the geocode standard ${standard} is a choice, not a label`)
                 .toBeEnabled({ timeout: 20000 });
         }

@@ -32,7 +32,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { PublicClient } from "viem";
-import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { PENDING, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib/shared/networkRead";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import {
     deriveInFlightOrders,
@@ -112,22 +112,14 @@ export function useWithdrawGate(clauseOrProcess: WithdrawClauseOrAssembly | null
     useEffect(() => {
         const core = CONTRACTS.core;
         if (!clauseOrProcess || !isValidAddress(core)) return;
-        let canceled = false;
-
-        void readNetwork("useWithdrawGate", async () => {
+        return applyUntilCleanup(readNetwork("useWithdrawGate", async () => {
             const agreements = await resolveInFlightAgreements();
             return clauseOrProcess.kind === "clause"
                 ? deriveClauseWithdrawGate(clauseOrProcess.clauseKey, agreements)
                 : clauseOrProcess.kind === "assembly"
                     ? deriveProcessWithdrawGate(clauseOrProcess.processDesignHash, agreements)
                     : deriveAgreementWithdrawGate(clauseOrProcess.agreementHash, agreements);
-        }).then((next) => {
-            if (!canceled) setGate(next);
-        });
-
-        return () => {
-            canceled = true;
-        };
+        }), setGate);
         // clauseOrAssemblyKey captures the meaningful identity; clauseOrProcess
         // is read fresh in the closure from the same render that produced the key.
         // eslint-disable-next-line react-hooks/exhaustive-deps

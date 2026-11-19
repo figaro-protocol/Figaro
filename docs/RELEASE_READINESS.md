@@ -120,7 +120,17 @@ key built from the release guest, a gas figure read on that chain) are left to i
    - [maintainer] the repository's switches (secret scanning, push protection, Dependabot
      security updates, protection of `main`) — check: each reads on in the repository settings;
    - [agent] the frontend's high security gaps — check: `node scripts/audit-frontend.mjs` reports
-     zero highs;
+     zero highs. It does: `npm audit --omit=dev` in `frontend/` reports one low and nothing
+     higher. The six highs of the full `npm audit` (`brace-expansion`, `browserslist`,
+     `picomatch`, `smol-toml`, `undici`, `vite`) are in build and test tooling, which the
+     static export does not ship. The low is `katex` (GHSA-238p-pmpm-9mq7: a prototype
+     pollution already in the process can bypass the `trust` option). It is set aside:
+     `frontend/components/papers/Math.tsx` calls `renderToString` with `trust` at its default
+     (off) on TeX the paper pages carry, at build time. The fix is 0.18.2 or later, a major
+     step from 0.17: 0.18.0 prefixes KaTeX's inner CSS classes and 0.19.0 reports missing
+     glyph metrics through `strict`. The outer classes `frontend/scripts/paper-latex.mjs`
+     reads (`katex`, `katex-display`, `katex-html`) stay the same in 0.19.1, so the step
+     waits only for a build that runs the paper checks over the new output;
    - [agent] a clean-checkout build of a named commit — check: the build script's exit code from
      a fresh clone;
    - [agent] the accessibility check — check: `frontend/tests/e2e/accessibility.stranger.spec.ts`

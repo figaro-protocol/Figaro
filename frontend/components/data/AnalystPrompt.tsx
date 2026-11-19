@@ -31,6 +31,7 @@ import {
     type AnalystOutcome,
     type AnalystStatus,
 } from "@/lib/data/analystEndpoint";
+import { applyUntilCleanup } from "@/lib/shared/networkRead";
 
 export function AnalystPrompt() {
     // The endpoint may come from THIS BROWSER's own overrides (localStorage),
@@ -45,13 +46,7 @@ export function AnalystPrompt() {
 
     useEffect(() => {
         if (!endpoint) return;
-        let canceled = false;
-        readAnalystStatus().then((s) => {
-            if (!canceled) setStatus(s);
-        });
-        return () => {
-            canceled = true;
-        };
+        return applyUntilCleanup(readAnalystStatus(), setStatus);
     }, [endpoint]);
 
     if (!endpoint) return null;

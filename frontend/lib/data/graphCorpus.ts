@@ -76,7 +76,7 @@ import { activeChain } from "@/lib/shared/chains";
 import { publicClient } from "@/lib/shared/publicClient";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { ABSENT, PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { ABSENT, PENDING, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib/shared/networkRead";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 /**
@@ -435,13 +435,7 @@ export function useGraphCorpus(): NetworkRead<GraphCorpus> {
 
     useEffect(() => {
         if (specsFailed || !inputsLoaded) return;
-        let canceled = false;
-        void readNetwork("useGraphCorpus", () => readGraphCorpus({ assemblies })).then((next) => {
-            if (!canceled) setCorpus(next);
-        });
-        return () => {
-            canceled = true;
-        };
+        return applyUntilCleanup(readNetwork("useGraphCorpus", () => readGraphCorpus({ assemblies })), setCorpus);
         // `specVersion` bumps as clause specs resolve from IPFS: overlays
         // decode and provenance attributions appear without a reload.
     }, [specsFailed, inputsLoaded, assemblies, specVersion]);

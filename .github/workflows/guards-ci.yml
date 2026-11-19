@@ -45,8 +45,12 @@ jobs:
 
             # The docs site (/docs) is its own static export with its own
             # lockfile, served from the wallet app's origin: its scripts run
-            # with the same reach as the signing pages, so its dependencies are
-            # held to the frontend's gate.
+            # with the same reach as the signing pages. This leg gates at
+            # critical, below the frontend's high: `npm audit --omit=dev
+            # --audit-level=high` in docs-site fails on one high, zod 4.5.4
+            # (GHSA-mrhx-c7xc-m3w5), whose fix (4.6.6 or later) is outside the
+            # exact version docs-site/package.json pins. The gate moves to high
+            # when that pin moves.
             - name: npm audit — docs-site (production deps, critical only)
               working-directory: ./docs-site
               run: npm audit --omit=dev --audit-level=critical

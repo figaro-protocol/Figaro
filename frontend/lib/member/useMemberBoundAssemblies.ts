@@ -22,7 +22,7 @@ import {
     fetchHydratedAssembly,
 } from "@/lib/protocol/useProcessRegistry";
 import { hexEqual } from "@/lib/shared/evm";
-import { PENDING, present, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { PENDING, present, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib/shared/networkRead";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 /** A member's on-chain bound assembly, hydrated. */
@@ -80,9 +80,7 @@ export function useMemberBoundAssemblies(
         const publishedEvents = published.value;
         const metadataURI = registration.value.metadataURI;
 
-        let canceled = false;
-
-        void readNetwork("useMemberBoundAssemblies", async (): Promise<BoundAssembly[]> => {
+        return applyUntilCleanup(readNetwork("useMemberBoundAssemblies", async (): Promise<BoundAssembly[]> => {
             // The ONE cached profile read (`fetchMemberProfile`): IPFS-only
             // (an http(s) metadataURI reads as absent), size-capped and
             // parsed. A profile that fails to read or parse is absent.
@@ -116,13 +114,7 @@ export function useMemberBoundAssemblies(
                 });
             });
             return assemblies;
-        }).then((next) => {
-            if (!canceled) setResult(next);
-        });
-
-        return () => {
-            canceled = true;
-        };
+        }), setResult);
     }, [sellerAddress, registration, published]);
 
     return result;

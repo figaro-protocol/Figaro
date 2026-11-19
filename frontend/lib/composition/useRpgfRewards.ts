@@ -45,7 +45,7 @@ import { CONTRACTS, PROCESS_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/core
 import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { PENDING, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib/shared/networkRead";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 /** One clause, agreement or assembly the connected wallet is designer of record for, with
@@ -212,8 +212,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
 
     useEffect(() => {
         if (!minter || !counter || !publicClient) return;
-        let canceled = false;
-        void readNetwork("useRpgfRewards", async (): Promise<RpgfRewardsState> => {
+        return applyUntilCleanup(readNetwork("useRpgfRewards", async (): Promise<RpgfRewardsState> => {
             const minterBase = { address: minter, abi: RPGF_MINTER_ABI } as const;
             const counterBase = { address: counter, abi: USAGE_COUNTER_ABI } as const;
             // Which of the wallet's clauses, agreements and assemblies carried
@@ -332,12 +331,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                 }),
             );
             return { periods: rows, memberLive: live };
-        }).then((result) => {
-            if (!canceled) setRead(result);
-        });
-        return () => {
-            canceled = true;
-        };
+        }), setRead);
     }, [minter, counter, publicClient, chainId, account, discoverClausesAndAssemblies, refreshNonce]);
 
     /** Claim a closed period: one call carrying every clause, agreement or

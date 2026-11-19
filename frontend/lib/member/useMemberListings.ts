@@ -27,7 +27,7 @@ import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import type { PublicClient } from "viem";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { usePublishedAssemblies } from "@/lib/protocol/useProcessRegistry";
-import { ABSENT, PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { ABSENT, PENDING, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib/shared/networkRead";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 function isRegistryConfigured(): boolean {
@@ -89,14 +89,7 @@ export function useMemberListings(): { read: NetworkRead<Listing[]> } {
         if (!client || !isRegistryConfigured() || publishedAssemblies.status !== "present") return;
         const publishedHashes = new Set(publishedAssemblies.value.map((a) => a.processDesignHash.toLowerCase()));
 
-        let canceled = false;
-        void readNetwork("useMemberListings", () => listFromRegistry(client, chainId, publishedHashes)).then((next) => {
-            if (!canceled) setRead(next);
-        });
-
-        return () => {
-            canceled = true;
-        };
+        return applyUntilCleanup(readNetwork("useMemberListings", () => listFromRegistry(client, chainId, publishedHashes)), setRead);
     }, [client, chainId, publishedAssemblies]);
 
     return { read };

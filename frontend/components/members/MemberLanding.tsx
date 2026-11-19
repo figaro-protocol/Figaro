@@ -36,7 +36,7 @@ import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { cooldownPhrase } from "@/lib/member/cooldownPhrase";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
-import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { PENDING, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib/shared/networkRead";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { formatToken } from "@/lib/shared/utils";
 import { activeChain } from "@/lib/shared/chains";
@@ -155,22 +155,16 @@ function RegisteredCard({
     if (uriChanged) setProfileRead(PENDING);
 
     useEffect(() => {
-        let canceled = false;
         // The shared reviver-backed, size-capped, cached fetcher — NOT a
         // hand-rolled fetch+JSON.parse: a member profile is
         // permissionless untrusted network JSON, so it routes through the same
         // prototype-pollution-stripping path every other profile read uses.
         // A profile that cannot be read is absent: no heading, no error text.
-        void readNetwork("MemberLanding.profile", async () => {
+        return applyUntilCleanup(readNetwork("MemberLanding.profile", async () => {
             const parsed = await fetchMemberProfile(metadataURI);
             if (!parsed) throw new Error("member profile unreadable");
             return parsed;
-        }).then((read) => {
-            if (!canceled) setProfileRead(read);
-        });
-        return () => {
-            canceled = true;
-        };
+        }), setProfileRead);
     }, [metadataURI]);
 
     return (
