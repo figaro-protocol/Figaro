@@ -123,10 +123,10 @@ function scalarConstraintIssue(field: FieldSpec, raw: string): string | null {
         return `Must be at most ${field.maxLength} characters.`;
     }
     if (field.pattern) {
-        // ReDoS-safe: `field.pattern` is attacker-written (permissionless clause
-        // spec), and this runs on every keystroke — a catastrophic pattern would
-        // hang the tab. `safeRegexTest` screens the exponential shape and bounds
-        // the input, treating an unsafe/invalid pattern as satisfied (finding 5).
+        // `field.pattern` comes from a permissionless clause spec, so it is
+        // untrusted, and this runs on every keystroke: a backtracking engine
+        // would hang the tab on a pattern such as `(a|a)*`. `safeRegexTest` matches in time linear in the value,
+        // and gives the verdict the SDK's sign gate gives.
         if (!safeRegexTest(field.pattern, raw)) {
             return `Doesn't match the spec's required format (${field.pattern}).`;
         }

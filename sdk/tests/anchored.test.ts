@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { keccak256, toBytes, toHex } from "viem";
+import { concat, keccak256, numberToHex, toBytes, toHex } from "viem";
 import {
     anchorAgreement,
     anchorAttestationContent,
@@ -15,7 +15,16 @@ import {
     deriveAnchored,
     hydrateProcessDesign,
 } from "../src/anchored.js";
-import { PROVENANCE_LEAF_KEY, canonicalContentHash, canonicalize, computeCheckoutHash, type Agreement } from "../src/agreement.js";
+import {
+    PROVENANCE_LEAF_KEY,
+    TOPOLOGY_LEAF_DOMAIN,
+    canonicalContentHash,
+    canonicalize,
+    computeCheckoutHash,
+    provenanceContentRef,
+    topologyContentRef,
+    type Agreement,
+} from "../src/agreement.js";
 import { computeClauseKey } from "../src/discovery.js";
 import { PROCESS_TERMS_LEAF_KEY, agreementHashOf, processDesignHashOf, type ProcessDesign } from "../src/assembly.js";
 import { keyOf, rawSpecOf } from "./specFixtures.js";
@@ -194,7 +203,32 @@ describe("anchorAgreement", () => {
             expect(anchorAgreement({ ...named, provenance: bad }, root)).toBeNull();
         }
     });
+    it("refuses withheld entries that stand in for the provenance and topology leaves", () => {
+        // The forgery: the real root, no `provenance` and no `follows`, and two
+        // withheld "clauses" under the reserved keys that rebuild those leaves.
+        const P = { agreementHash: `0x${"33".repeat(32)}`, processDesignHash: `0x${"22".repeat(32)}` } as Hex32Pair;
+        const follows = [`0x${"a1".repeat(32)}`, `0x${"b2".repeat(32)}`] as `0x${string}`[];
+        const real: Agreement = { ...agreement, provenance: P, follows };
+        const root = computeCheckoutHash(real);
+        expect(anchorAgreement(real, root)).toBe(real);
+        const topology = { clause: TOPOLOGY_LEAF_DOMAIN, dataHash: concat([numberToHex(follows.length, { size: 32 }), topologyContentRef(follows)]) };
+        const provenanceWithheld = { clause: PROVENANCE_LEAF_KEY, dataHash: provenanceContentRef(P.agreementHash, P.processDesignHash) };
+        const provenanceInPlain = { clause: PROVENANCE_LEAF_KEY, data: { agreementHash: P.agreementHash, processDesignHash: P.processDesignHash } };
+        const { provenance: _p, follows: _f, ...bareReal } = real;
+        for (const clauses of [
+            [...agreement.clauses, topology, provenanceWithheld],
+            [...agreement.clauses, topology, provenanceInPlain],
+        ]) {
+            expect(anchorAgreement({ ...bareReal, clauses }, root)).toBeNull();
+        }
+        // Each reserved key is refused alone, under a hash of the right length too.
+        expect(() => computeCheckoutHash({ ...agreement, provenance: P, clauses: [...agreement.clauses, { clause: TOPOLOGY_LEAF_DOMAIN, dataHash: OTHER }] })).toThrow(/reserved/);
+        expect(() => computeCheckoutHash({ ...agreement, follows, clauses: [...agreement.clauses, provenanceWithheld] })).toThrow(/reserved/);
+        expect(() => computeCheckoutHash({ ...agreement, clauses: [...agreement.clauses, { clause: PROVENANCE_LEAF_KEY.toUpperCase().replace("0X", "0x") as `0x${string}`, dataHash: OTHER }] })).toThrow(/reserved/);
+    });
 });
+
+type Hex32Pair = { agreementHash: `0x${string}`; processDesignHash: `0x${string}` };
 
 describe("anchorAttestationContent", () => {
     it("returns the bytes their contentRef names", () => {
