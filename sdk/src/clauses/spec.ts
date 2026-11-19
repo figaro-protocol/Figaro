@@ -190,13 +190,38 @@ export function resolveInputFormat(
     siblings: readonly FieldSpec[],
     values: Record<string, unknown> | undefined,
 ): string | undefined {
+    return resolveFormatWith(field, values, (name) => stringDefault(siblings.find((s) => s.name === name)));
+}
+
+/** The one resolution behind `resolveInputFormat`, with the sibling's default
+ *  read through `defaultOf` (the first field of that name, as `find` reads
+ *  it). `validateContent` passes a map built once per object
+ *  (`siblingDefaults`), so a set of n fields costs n lookups, not n squared
+ *  comparisons. */
+export function resolveFormatWith(
+    field: FieldSpec,
+    values: Record<string, unknown> | undefined,
+    defaultOf: (name: string) => string | undefined,
+): string | undefined {
     if (field.type !== "string") return undefined;
     if (!field.formatFromField) return field.format;
     const live = ownValue(values, field.formatFromField);
     if (typeof live === "string" && live.length > 0) return live;
-    const source = siblings.find((s) => s.name === field.formatFromField);
-    if (source && typeof source.default === "string" && source.default.length > 0) return source.default;
-    return field.format;
+    return defaultOf(field.formatFromField) ?? field.format;
+}
+
+/** A field's `default` when it is a non-empty string. */
+function stringDefault(field: FieldSpec | undefined): string | undefined {
+    return field !== undefined && typeof field.default === "string" && field.default.length > 0 ? field.default : undefined;
+}
+
+/** Each name of a field set mapped to its first field's string default, or
+ *  `undefined` when no field of the set declares `formatFromField`. */
+export function siblingDefaults(fields: readonly FieldSpec[]): Map<string, string | undefined> | undefined {
+    if (!fields.some((f) => f.type === "string" && f.formatFromField)) return undefined;
+    const defaults = new Map<string, string | undefined>();
+    for (const f of fields) if (!defaults.has(f.name)) defaults.set(f.name, stringDefault(f));
+    return defaults;
 }
 
 export interface ClauseSpec {
@@ -643,6 +668,53 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
     return null;
 }
 
+/** Does `value` hold a UTF-16 surrogate that is not half of a pair? */
+export function hasLoneSurrogate(value: string): boolean {
+    for (let i = 0; i < value.length; i++) {
+        const code = value.charCodeAt(i);
+        if (code < 0xd800 || code > 0xdfff) continue;
+        if (code >= 0xdc00) return true;
+        const next = value.charCodeAt(i + 1);
+        if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
+        i++;
+    }
+    return false;
+}
+
+/**
+ * Push an issue for each string and each object key of the protocol half of a
+ * spec (every top-level attribute but `block`) that holds a lone UTF-16
+ * surrogate. `JSON.parse` keeps one (`"\ud800"`), and `canonicalize` writes
+ * it back as that escape, so the bytes a clause key hashes, and a plaintext
+ * attestation's witness carries, hold it; `serde_json`, which reads those
+ * bytes in the guest (`validate_attestation_content`, `prover/lib/src/kernel.rs`),
+ * refuses them. A spec the batch path cannot read does not parse here either.
+ * `block` is left out of the key and the witness, so it is not walked. The
+ * walk keeps its own stack, so a deep unknown attribute cannot overflow the
+ * call stack.
+ */
+function loneSurrogateIssues(raw: Record<string, unknown>, errors: SpecParseError[]): void {
+    const pending: Array<[unknown, string]> = [];
+    for (const [key, value] of Object.entries(raw)) {
+        if (key === "block") continue;
+        if (hasLoneSurrogate(key)) errors.push({ path: "$", message: "a key holds a lone UTF-16 surrogate" });
+        pending.push([value, `$.${key}`]);
+    }
+    for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
+        const [value, path] = next;
+        if (typeof value === "string") {
+            if (hasLoneSurrogate(value)) errors.push({ path, message: "string holds a lone UTF-16 surrogate" });
+        } else if (Array.isArray(value)) {
+            for (let i = 0; i < value.length; i++) pending.push([value[i], `${path}[${i}]`]);
+        } else if (isObject(value)) {
+            for (const [key, child] of Object.entries(value)) {
+                if (hasLoneSurrogate(key)) errors.push({ path, message: "a key holds a lone UTF-16 surrogate" });
+                pending.push([child, `${path}.${key}`]);
+            }
+        }
+    }
+}
+
 const STAGE_KEY_MESSAGE = "stage key must be the decimal of an integer 0..255: digits only, no sign, no leading zero";
 
 /**
@@ -681,6 +753,7 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
     if (!isObject(raw)) {
         return { ok: false, errors: [{ path: "$", message: "clause spec must be an object" }] };
     }
+    loneSurrogateIssues(raw, errors);
     const { clauseId, version, title, description, fields, stages, emptyAnchor } = raw;
     if (typeof clauseId !== "string" || clauseId.length === 0) {
         errors.push({ path: "$.clauseId", message: "clauseId must be a non-empty string" });

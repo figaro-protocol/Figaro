@@ -47987,6 +47987,58 @@
    "ok": true
   },
   {
+   "label": "formatFromField, two siblings of one name, the first with no default",
+   "fields": [
+    {
+     "name": "std",
+     "type": "string",
+     "required": false
+    },
+    {
+     "name": "std",
+     "type": "string",
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "loc": "dr5regw"
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField, two siblings of one name, the first whose default is geohash",
+   "fields": [
+    {
+     "name": "std",
+     "type": "string",
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "std",
+     "type": "string",
+     "required": false
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "loc": "dr5regw"
+   },
+   "ok": false
+  },
+  {
    "label": "an absent optional field named toString",
    "fields": [
     {

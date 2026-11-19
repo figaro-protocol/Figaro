@@ -538,6 +538,16 @@ const CONTENT_CASES: { label: string; fields: Field[]; content: unknown }[] = [
         fields: [{ name: "loc", type: "string", required: true, formatFromField: "loc" }],
         content,
     })),
+    // Two fields share the sibling's name: the first of them gives the default, in both engines,
+    // whether the engine scans the set or reads a map built once per object.
+    ...[
+        ["the first with no default", [{ name: "std", type: "string", required: false }, { name: "std", type: "string", required: false, default: "geohash" }]],
+        ["the first whose default is geohash", [{ name: "std", type: "string", required: false, default: "geohash" }, { name: "std", type: "string", required: false }]],
+    ].map(([which, siblings]) => ({
+        label: `formatFromField, two siblings of one name, ${which}`,
+        fields: [...(siblings as object[]), { name: "loc", type: "string", required: true, formatFromField: "std" }],
+        content: { loc: "dr5regw" },
+    })),
     // A field named as a property every object inherits is absent when the content leaves it out.
     ...["toString", "constructor", "valueOf", "hasOwnProperty", "__proto__"].map((name) => ({
         label: `an absent optional field named ${name}`,

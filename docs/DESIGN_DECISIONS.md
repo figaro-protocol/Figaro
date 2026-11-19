@@ -1489,6 +1489,89 @@ readers.
 back into `FigaroCore` and assert the guard's own error and one payout each.
 No test calls back into `AttestationCoordinator` or `UsageCounter` from a
 transfer; items 2 and 3 rest on a reading of the code.
+## 36. A stage-0 attestation is not the signed content; a reader compares its `contentRef` with the leaf's data hash
+
+**Pattern**: A clause may declare a `"0"` key in `stages`. The content the
+parties sign is then validated over `fields`, at the sign gate
+(`validateCommitmentAgreement`, `sdk/src/projection.ts`) and in the guest's
+gate for a re-asserted clause (`ContentKind::ReAssert` in
+`validate_attestation_content`, `prover/lib/src/kernel.rs`). Content
+attested at stage 0 is encoded and validated over `stages["0"]`
+(`contentFieldsFor`, `sdk/src/clauses/encode.ts`; `encode_content_from_spec`,
+`prover/clause/src/encode.rs`). `AttestationCoordinator` takes any
+`contentRef` at any stage and checks only that the leaf opens against the
+signed `checkoutHash`. So a stage-0 attestation of a clause is a
+re-assertion of the signed content only when its `contentRef` is the leaf's
+data hash (`hashClauseData`, `sdk/src/agreement.ts`; for the provenance
+leaf, `provenanceContentRef`). A reader that asks whether a party
+re-asserted a clause compares the two; the reference frontend's re-assert
+card does (`deriveProcessModelFromRuntime`,
+`frontend/lib/semantic/deriveProcessModelFromRuntime.ts`).
+
+**Why it looks wrong**: Stage 0 reads as the signing stage: the content
+the parties sign is the stage before any runtime evidence. A reader that
+takes every stage-0 attestation as the signed content needs no hash. A spec format with one meaning for stage 0
+would seem simpler.
+
+**Why it is correct**: The stage is a `uint8` the attesting party picks, and
+nothing on the chain ties stage 0 to the signed bytes; only the leaf's data
+hash does. A `"0"` stage key is the decimal of a `uint8` like any other
+(`stageOfKey`, `sdk/src/clauses/spec.ts`; `parse_stage_key`,
+`prover/clause/src/spec.rs`), so refusing it would make one stage unlike
+the rest for no rule of the mechanism. The re-assertion's own form already
+names the signed bytes: its `contentRef` is `keccak256(clauseData)`, the
+leaf's data hash, on both paths. A reader that compares the two is right for
+every spec, a spec with a `"0"` key and a party that files other content at
+stage 0 included. A reader that does not would take a party's stage-0
+witness, or any `contentRef` the coordinator accepted, for a re-assertion of
+what was signed. The reference frontend offers no re-assert card for a
+clause that declares a stage-0 witness, so its witness owns that stage.
+
+**Tests**: `frontend/tests/lib/deriveProcessModelFromRuntime.test.ts` (a
+stage-0 attestation whose `contentRef` is not the leaf's data hash leaves
+the clause, and the provenance leaf, to be re-asserted);
+`prover/lib/tests/parity.rs` (a re-assertion passes gate C over `fields`,
+and a witness at a declared stage validates over that stage's set).
+
+---
+
+## 37. The geohash grain cap is as firm as the values the designer allows the sibling `formatFromField` names
+
+**Pattern**: A string field that declares `formatFromField` takes its format
+from the named sibling's committed value, then from that sibling's default,
+then from its own static `format` (`resolveInputFormat`,
+`sdk/src/clauses/spec.ts`; `resolve_input_format`,
+`prover/clause/src/validate.rs`). The geohash grain cap (6 characters for a
+public value, 12 for a private one) applies only when the resolved format is
+`geohash`. When the sibling carries any other standard's name, the cap is
+lifted and the field's `maxLength` bounds the value. Both engines apply the
+same rule. The reference clause `figaro-geolocation` declares its
+`geocodeStandard` sibling as a free string of 1 to 64 characters, so the
+party that fills it may name any standard.
+
+**Why it looks wrong**: The party that fills the sibling can write
+`"Geohash"`, `"h3"` or any other name, and then commit a geohash finer than
+the cap. The cap reads as a privacy guarantee that one word lifts.
+
+**Why it is correct**: The engine knows the grain of one standard and no
+list of the others (`docs/OPEN_WORLD.md` § 1): a closed list of standard
+names would refuse a standard no one has registered yet. So the cap is a
+rule for a value the spec says is a geohash, and the designer decides how
+firmly a value is one. A designer who wants the cap firm declares the
+sibling as an `enum`, or gives it a `pattern`, so the sibling cannot carry
+another name; a designer who leaves it a free string accepts every standard
+and, with it, the field's `maxLength` as the only bound. The party that
+fills the field also fills the sibling, so the cap guards that party against
+writing more than the field needs, never against its own choice. The
+counterparty reads the committed standard and the value before it signs, and
+a party that will not have a finer location published declines to sign it.
+
+**Tests**: `sdk/tests/clauses/engineVectors.test.ts` and
+`prover/clause/tests/engine_vectors.rs` (the same verdicts in both engines:
+a sibling naming another standard lifts the cap, an `enum` sibling whose
+default is geohash keeps it, a sibling whose value is no string falls back
+to the static format, and of two siblings of one name the first gives the
+default).
 
 ---
 
@@ -1531,3 +1614,5 @@ transfer; items 2 and 3 rest on a reading of the code.
 | 33 | A private set carries its own blinding value | data/spec format | The commitment's `salt` looks like the same random value, a declared field looks like boilerplate, and a public clause carries none | The commitment's `salt` is emitted in `OrderCommitted` and blinds nothing; a declared field enters the hashed bytes with no hash, contract or proof change and is what a stranger's tool reads from the spec; public content is published, so a random value there hides nothing |
 | 34 | The sign gate refuses an agreement whose design it could not read | sign gate/SDK/frontend | A failed or empty read is absence elsewhere, and an agreement naming no design signs without the check | A signature binds the provenance leaf; only the design shows its clauses, designer values and edge count, and reading "not read" as "nothing to check" lets a party escape them by naming an assembly no registry anchors; the gate is the SDK's, never the Core's |
 | 35 | `resolveProcess` pays an order before it marks it resolved | Core-critical | An external call precedes the status write, against checks-effects-interactions | `nonReentrant` refuses a callback into `commit` or `resolveProcess`; the coordinator only emits and accepts no late evidence the window did not already allow; the counter counts only finished orders once; a revert takes every callback's effect with it |
+| 36 | A stage-0 attestation is not the signed content | evidence/reader | Stage 0 reads as the signing stage, so a reader takes any stage-0 attestation for the signed content | The stage is a `uint8` the attester picks and a `"0"` stage key validates stage-0 content over `stages["0"]`; only `contentRef` equal to the leaf's data hash makes a re-assertion, and the reader compares the two |
+| 37 | The geohash grain cap is as firm as the sibling's allowed values | spec format/data | One word in the sibling lifts a privacy cap | The engine knows one standard's grain and no closed list of the others; a designer makes the cap firm with an `enum` or `pattern` sibling; the filler of the field fills the sibling, and the counterparty reads both before it signs |

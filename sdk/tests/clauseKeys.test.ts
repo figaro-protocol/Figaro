@@ -38,6 +38,31 @@ describe("clause keys — test/fixtures/clause-keys.json", () => {
     });
 });
 
+// The canonical form's number and key rules, pinned by one key in both
+// languages: `test/fixtures/clause-key-canonical-form.json` holds floats,
+// integers above 2^53 and index-like keys. `JSON.parse` reads every number as
+// a double and `JSON.stringify` writes it as `Number.prototype.toString` does;
+// an object's array-index keys come first, in numeric order. The Rust leg is
+// `the_canonical_form_vector_hashes_to_the_sdk_key` in
+// prover/script/tests/clause_keys.rs, with the same key.
+describe("clause keys — the canonical form's numbers and index-like keys", () => {
+    const VECTOR = path.resolve(__dirname, "../../test/fixtures/clause-key-canonical-form.json");
+    const KEY = "0xb63f111646773cc201705869797963e352d7e816b9d4b365315115f330916d1a";
+
+    it("gives one key, the Rust tests' key", () => {
+        const spec = JSON.parse(readFileSync(VECTOR, "utf8"));
+        expect(computeClauseKey(spec)).toBe(KEY);
+        const { block: _block, ...protocol } = spec;
+        const bytes = canonicalize(protocol);
+        expect(bytes).toContain('"stages":{"0":[');
+        expect(bytes).toContain('"x-indexed":{"2":5,"10":2,"4294967294":7,"-1":8,"02":4,"4294967295":6,"a":3,"b":1}');
+        expect(bytes).toContain(
+            '"x-numbers":[0.1,2.5,100,123456789.125,1.5e-7,0.000001,1e+21,1e-7,1.23e+22,9007199254740992,'
+            + '18446744073709552000,18446744073709552000,1.7976931348623157e+308,5e-324,0,-42,-9007199254740992]',
+        );
+    });
+});
+
 describe("the clause key covers the protocol half of a spec and leaves `block` out", () => {
     // The reference agreement `agreements/counter-sale.json` and the three
     // clauses it composes. `figaro-geolocation` is the clause whose `block` is

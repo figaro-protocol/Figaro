@@ -394,3 +394,44 @@ describe("parseClauseSpec — the blinding field of a private set", () => {
         }
     });
 });
+
+// The guest reads a plaintext attestation's spec with serde_json, which
+// refuses a lone UTF-16 surrogate; JSON.parse keeps one, and `canonicalize`
+// writes it back into the bytes the clause key hashes. The SDK refuses such
+// a spec at parse, so no clause it reads is one the batch path cannot read.
+// The shared JSON fixture cannot hold a lone surrogate, so each engine keeps
+// its own leg: the guest's is
+// `attest_spec_holding_a_lone_surrogate_fails` in prover/lib/tests/parity.rs.
+describe("parseClauseSpec — a lone UTF-16 surrogate in the spec's own JSON", () => {
+    const text = (title: string, description: string, label: string) =>
+        `{"clauseId":"t","version":1,"title":"${title}","description":"${description}",`
+        + `"fields":[{"name":"x","type":"string","required":true,"label":"${label}"}]}`;
+
+    it("refuses one in the title, the description or a field's label, as JSON.parse reads it", () => {
+        for (const [raw, path] of [
+            [text("\\ud800", "D", "L"), "$.title"],
+            [text("T", "a\\udfffb", "L"), "$.description"],
+            [text("T", "D", "\\udc00\\ud800"), "$.fields[0].label"],
+            [text("T", "D", "\\ud83d"), "$.fields[0].label"],
+        ] as const) {
+            const result = parseClauseSpec(JSON.parse(raw));
+            expect(result.ok, raw).toBe(false);
+            if (!result.ok) expect(result.errors).toEqual([{ path, message: "string holds a lone UTF-16 surrogate" }]);
+        }
+    });
+
+    it("refuses one in an unknown attribute and in a key, since both enter the clause key", () => {
+        const unknown = parseClauseSpec(JSON.parse('{"clauseId":"t","version":1,"title":"T","description":"D","fields":[],"x-note":["\\ud800"]}'));
+        expect(unknown.ok).toBe(false);
+        if (!unknown.ok) expect(unknown.errors).toEqual([{ path: "$.x-note[0]", message: "string holds a lone UTF-16 surrogate" }]);
+        const key = parseClauseSpec(JSON.parse('{"clauseId":"t","version":1,"title":"T","description":"D","fields":[],"x-note":{"\\ud800":1}}'));
+        expect(key.ok).toBe(false);
+        if (!key.ok) expect(key.errors).toEqual([{ path: "$.x-note", message: "a key holds a lone UTF-16 surrogate" }]);
+    });
+
+    it("accepts a surrogate pair, and leaves `block`, which no key or witness carries, to its own reader", () => {
+        expect(parseClauseSpec(JSON.parse(text("\\ud83d\\ude9a", "🚚", "L"))).ok).toBe(true);
+        const withBlock = JSON.parse('{"clauseId":"t","version":1,"title":"T","description":"D","fields":[],"block":{"design":{"note":"\\ud800"}}}');
+        expect(parseClauseSpec(withBlock).ok).toBe(true);
+    });
+});
