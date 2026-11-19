@@ -354,6 +354,18 @@ export function useRegistrationDeposit(): NetworkRead<bigint> {
 /** The absence value: a human-operated participant (no services key). */
 const NO_AGENT_SERVICES: AgentServiceInfo = { services: {}, capabilities: [], reachable: false };
 
+/** The agent services a member profile declares. Module scope, so the
+ *  fetcher `useAsyncMemberResource` keys its reset on is the same function
+ *  on every render: an inline fetcher changed on each one, and the reset it
+ *  keyed re-rendered without end (React error 301). */
+async function fetchAgentServices(metadataURI: string): Promise<AgentServiceInfo> {
+    // The ONE cached profile read (IPFS-only, size-capped, parsed):
+    // a document that fails to read or parse as a member profile
+    // surfaces nothing.
+    const profile = await fetchMemberProfile(metadataURI);
+    return profile ? parseAgentServices(profile) : NO_AGENT_SERVICES;
+}
+
 /**
  * Fetches a member's metadataURI and parses ERC-8004-compatible
  * agent service endpoints if present. Returns { reachable: false } for
@@ -364,13 +376,7 @@ const NO_AGENT_SERVICES: AgentServiceInfo = { services: {}, capabilities: [], re
  */
 export function useAgentServices(address: `0x${string}` | undefined) {
     const { data, isLoading } = useAsyncMemberResource<AgentServiceInfo>(address, {
-        fetcher: async (metadataURI) => {
-            // The ONE cached profile read (IPFS-only, size-capped, parsed):
-            // a document that fails to read or parse as a member profile
-            // surfaces nothing.
-            const profile = await fetchMemberProfile(metadataURI);
-            return profile ? parseAgentServices(profile) : NO_AGENT_SERVICES;
-        },
+        fetcher: fetchAgentServices,
         failureMessage: "Agent services unavailable",
     });
     return { data: data ?? undefined, isLoading };
