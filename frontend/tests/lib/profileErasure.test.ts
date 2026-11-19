@@ -7,8 +7,8 @@
  * a refused unpin rejects, once every candidate has been tried.
  */
 import { describe, expect, it, vi } from "vitest";
-import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
-import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
+import { unpinSupersededProfileArtifacts } from "@/lib/registries/profileErasure";
+import type { MemberProfileMetadata } from "@/lib/registries/memberProfileMetadata";
 
 function profile(overrides: Partial<MemberProfileMetadata>): MemberProfileMetadata {
     return {

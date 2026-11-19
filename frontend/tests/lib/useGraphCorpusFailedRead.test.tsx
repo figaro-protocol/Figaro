@@ -37,8 +37,8 @@ vi.mock("wagmi", () => ({
     useAccount: () => ({ address: undefined, isConnected: false }),
     useWatchContractEvent: () => undefined,
 }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => m.SPECS }));
-vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => m.NO_ASSEMBLIES }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => m.SPECS }));
+vi.mock("@/lib/registries/assemblyChoices", () => ({ useAssemblyChoices: () => m.NO_ASSEMBLIES }));
 vi.mock("@/lib/core/eventCache", () => ({
     cachedGetLogs: async (_c: unknown, _id: number, opts: { address: string; eventName: string }) =>
         opts.address === m.CORE ? (m.logs[opts.eventName] ?? []) : [],
@@ -50,10 +50,10 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => ({
     CONTRACTS: { core: m.CORE },
 }));
 vi.mock("@/lib/shared/publicClient", () => ({ publicClient: m.CLIENT }));
-vi.mock("@/lib/composition/indexer", () => ({ getAllAttestationRecords: async () => m.attestations }));
+vi.mock("@/lib/core/attestationIndexer", () => ({ getAllAttestationRecords: async () => m.attestations }));
 // No attestation's content is recovered.
-vi.mock("@/lib/composition/witnessContent", () => ({ fetchWitnessContent: async () => null }));
-vi.mock("@/lib/composition/contracts", () => ({
+vi.mock("@/lib/core/witnessContent", () => ({ fetchWitnessContent: async () => null }));
+vi.mock("@/lib/composability/contracts", () => ({
     getSwapRouter: () => m.VENUE,
     getWitnessSwapAndCommitCoordinator: () => m.COORDINATOR,
 }));

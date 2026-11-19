@@ -47,7 +47,7 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => ({
 // No order here was witnessed by this wallet, so no body is read.
 vi.mock("@/lib/core/agreementFetch", () => ({ witnessedAgreementUri: () => null, fetchAgreement: async () => null }));
 
-import { useWithdrawGate } from "@/lib/protocol/withdrawGate";
+import { useWithdrawGate } from "@/lib/registries/withdrawGate";
 import { mapRead, present } from "@/lib/shared/networkRead";
 
 provider.selector = selectorOf;

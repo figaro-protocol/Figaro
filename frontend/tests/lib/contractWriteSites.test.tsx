@@ -71,10 +71,16 @@ vi.mock("wagmi", () => ({
     useReadContract: () => ({ data: undefined, isLoading: false, refetch: () => {} }),
 }));
 vi.mock("@/lib/shared/publicClient", () => ({ publicClient: {} }));
-vi.mock("@/lib/composition/contracts", () => ({
+vi.mock("@/lib/composability/contracts", () => ({
     getMultisender: () => "0x00000000000000000000000000000000000d1501",
     getWitnessSwapAndCommitCoordinator: () => "0x00000000000000000000000000000000000c0a01",
+}));
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     getAttestationCoordinator: () => "0x00000000000000000000000000000000000a7701",
+}));
+vi.mock("@/lib/rewards/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/rewards/contracts")>()),
     getRpgfMinter: () => "0x00000000000000000000000000000000000f1001",
     getUsageCounter: () => "0x00000000000000000000000000000000000c0c01",
 }));
@@ -106,7 +112,7 @@ vi.mock("@/lib/core/signedCommitment", () => ({ restoreSignedProcessId: (c: unkn
 vi.mock("@/lib/core/agreementFetch", () => ({
     fetchAgreement: async () => ({ status: "present", value: { clauses: [], provenance: { agreementHash: w.key, processDesignHash: w.key } } }),
 }));
-vi.mock("@/lib/composition/witnessContent", () => ({
+vi.mock("@/lib/core/witnessContent", () => ({
     publishWitnessContent: async () => undefined,
     keepPrivateWitnessContent: () => "public",
     readKeptWitnessContent: () => null,
@@ -122,20 +128,20 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
 }));
 
 import { activeChain } from "@/lib/shared/chains";
-import { useRegisterMember, useUpdateProfile } from "@/lib/member/useMembersRegistry";
-import { useRegisterClause } from "@/lib/protocol/useRegisterClause";
-import { usePayoutRoutingActions } from "@/lib/composition/usePayoutRoutingActions";
-import { useSwapAndCommitActions } from "@/lib/composition/useSwapAndCommitActions";
+import { useRegisterMember, useUpdateProfile } from "@/lib/registries/useMembersRegistry";
+import { useRegisterClause } from "@/lib/registries/useRegisterClause";
+import { usePayoutRoutingActions } from "@/lib/composability/usePayoutRoutingActions";
+import { useSwapAndCommitActions } from "@/lib/composability/useSwapAndCommitActions";
 import { useFigaroActions } from "@/lib/core/useFigaroActions";
-import { useUsageRecorder, type UsageWrite } from "@/lib/protocol/useUsageRecorder";
-import { useRpgfRewards } from "@/lib/composition/useRpgfRewards";
-import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
-import { useRequestWithdrawal, useWithdrawDeposit } from "@/lib/member/useMembersRegistry";
-import { useWithdrawAgreement, useWithdrawAssembly, useWithdrawClause } from "@/lib/protocol/useWithdrawStake";
+import { useUsageRecorder, type UsageWrite } from "@/lib/rewards/useUsageRecorder";
+import { useRpgfRewards } from "@/lib/rewards/useRpgfRewards";
+import { useAttestationCoordinatorActions } from "@/lib/core/useAttestationCoordinatorActions";
+import { useRequestWithdrawal, useWithdrawDeposit } from "@/lib/registries/useMembersRegistry";
+import { useWithdrawAgreement, useWithdrawAssembly, useWithdrawClause } from "@/lib/registries/useWithdrawStake";
 import { createCapabilityExecutors, type CapabilityExecutorDeps } from "@/lib/semantic/createCapabilityExecutors";
 
 // The configured addresses each write is sent to (set in the hoisted block
-// and in the `@/lib/composition/contracts` mock above).
+// and in the `@/lib/composability/contracts` mock above).
 const CORE = "0x00000000000000000000000000000000000c0e01";
 const CLAUSE_REGISTRY = "0x00000000000000000000000000000000000c1a01";
 const MEMBERS_REGISTRY = "0x00000000000000000000000000000000000e3b01";
@@ -473,26 +479,26 @@ const THIS_FILE = "tests/lib/contractWriteSites.test.tsx";
 const CENSUS: Census = {
     "hooks/useTokenApproval.ts": { tokens: { useWriteContract: 1, simulateWrite: 1 }, sites: ["useTokenApproval"], pinnedBy: "tests/lib/useTokenApproval.test.tsx" },
     "lib/checkout/orderCommitmentFlow.ts": { tokens: { useSignTypedData: 1, signTypedDataAsync: 2 }, sites: ["signCommitment", "signAndShare", "acceptOrder"], pinnedBy: "tests/lib/orderCommitmentFlowSign.test.tsx" },
-    "lib/composition/swapFunding.ts": { tokens: { signTypedData: 1 }, sites: ["signFundingLeg"], pinnedBy: "tests/lib/swapFundingQuoteSign.test.ts" },
-    "lib/composition/useAttestationCoordinatorActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useAttestationCoordinatorActions.submitAttestation", "createCapabilityExecutors.attestProvenanceLeaf"], pinnedBy: THIS_FILE },
-    "lib/composition/usePayoutRoutingActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 2 }, sites: ["usePayoutRoutingActions"], pinnedBy: THIS_FILE },
-    "lib/composition/useRpgfRewards.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRpgfRewards.claim"], pinnedBy: THIS_FILE },
-    "lib/composition/useSwapAndCommitActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useSwapAndCommitActions"], pinnedBy: THIS_FILE },
-    "lib/composition/useSwapFunding.ts": { tokens: {}, sites: ["useSwapFunding"], pinnedBy: "tests/lib/useSwapFunding.test.tsx" },
+    "lib/composability/swapFunding.ts": { tokens: { signTypedData: 1 }, sites: ["signFundingLeg"], pinnedBy: "tests/lib/swapFundingQuoteSign.test.ts" },
+    "lib/core/useAttestationCoordinatorActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useAttestationCoordinatorActions.submitAttestation", "createCapabilityExecutors.attestProvenanceLeaf"], pinnedBy: THIS_FILE },
+    "lib/composability/usePayoutRoutingActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 2 }, sites: ["usePayoutRoutingActions"], pinnedBy: THIS_FILE },
+    "lib/rewards/useRpgfRewards.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRpgfRewards.claim"], pinnedBy: THIS_FILE },
+    "lib/composability/useSwapAndCommitActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useSwapAndCommitActions"], pinnedBy: THIS_FILE },
+    "lib/composability/useSwapFunding.ts": { tokens: {}, sites: ["useSwapFunding"], pinnedBy: "tests/lib/useSwapFunding.test.tsx" },
     "lib/designer/publishAssembly.ts": { tokens: { useWriteContract: 2, simulateWrite: 2, simulateWriteVerify: 3 }, sites: ["usePublishAgreement", "usePublishAssembly"], pinnedBy: "tests/lib/publishAssemblyWrites.test.tsx" },
     "lib/core/useFigaroActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useFigaroActions.commit", "useFigaroActions.resolveProcess"], pinnedBy: THIS_FILE },
-    "lib/member/useMembersRegistry.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRegisterMember", "useUpdateProfile", "useRequestWithdrawal", "useWithdrawDeposit"], pinnedBy: THIS_FILE },
-    "lib/member/usePublishMemberProfile.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 2 }, sites: ["register", "updateProfile"], pinnedBy: "tests/lib/publishMemberProfileNoCatalog.test.tsx" },
-        "lib/protocol/useRegisterClause.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRegisterClause"], pinnedBy: THIS_FILE },
-    "lib/protocol/useUsageRecorder.ts": { tokens: { useWriteContract: 1, simulateWrite: 1, simulateWriteVerify: 1 }, sites: ["useUsageRecorder.recordUsage (clause)", "useUsageRecorder.recordUsage (agreement)", "useUsageRecorder.recordUsage (assembly)"], pinnedBy: THIS_FILE },
-    "lib/protocol/useWithdrawStake.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useWithdrawClause", "useWithdrawAssembly", "useWithdrawAgreement"], pinnedBy: THIS_FILE },
+    "lib/registries/useMembersRegistry.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRegisterMember", "useUpdateProfile", "useRequestWithdrawal", "useWithdrawDeposit"], pinnedBy: THIS_FILE },
+    "lib/registries/usePublishMemberProfile.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 2 }, sites: ["register", "updateProfile"], pinnedBy: "tests/lib/publishMemberProfileNoCatalog.test.tsx" },
+        "lib/registries/useRegisterClause.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRegisterClause"], pinnedBy: THIS_FILE },
+    "lib/rewards/useUsageRecorder.ts": { tokens: { useWriteContract: 1, simulateWrite: 1, simulateWriteVerify: 1 }, sites: ["useUsageRecorder.recordUsage (clause)", "useUsageRecorder.recordUsage (agreement)", "useUsageRecorder.recordUsage (assembly)"], pinnedBy: THIS_FILE },
+    "lib/registries/useWithdrawStake.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useWithdrawClause", "useWithdrawAssembly", "useWithdrawAgreement"], pinnedBy: THIS_FILE },
     "lib/shared/contractWrite.ts": { tokens: { simulateWrite: 2, simulateWriteVerify: 1 }, notASite: "the shared helper itself: its two definitions and simulateWriteVerify's own simulate" },
     "lib/shared/devShims.ts": { tokens: { sendTransaction: 1 }, notASite: "the dev signer's EIP-1193 transport, which forwards a write the wallet was asked for" },
 };
 
 /** Files whose writes reach the wallet only through a write hook listed
  *  above, so the scan has no token in them; each is still a site. */
-const INDIRECT = ["lib/composition/useSwapFunding.ts"];
+const INDIRECT = ["lib/composability/useSwapFunding.ts"];
 
 function sourceFiles(dir: string): string[] {
     return readdirSync(dir).flatMap((name) => {

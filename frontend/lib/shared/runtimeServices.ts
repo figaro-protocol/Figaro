@@ -1,11 +1,11 @@
-import type { CatalogService } from "@/lib/member/catalogService";
-import { DEFAULT_CATALOG_SERVICE } from "@/lib/member/catalogService";
-import type { HandoffMessagingService } from "@/lib/handoff/handoffMessagingService";
-import { DEFAULT_HANDOFF_MESSAGING_SERVICE } from "@/lib/handoff/handoffMessagingService";
-import type { DiscoveryService } from "@/lib/member/discoveryService";
-import { DEFAULT_DISCOVERY_SERVICE } from "@/lib/member/discoveryService";
-import type { HandoffPersistenceService } from "@/lib/handoff/handoffPersistenceService";
-import { DEFAULT_HANDOFF_PERSISTENCE_SERVICE } from "@/lib/handoff/handoffPersistenceService";
+import type { CatalogService } from "@/lib/registries/catalogService";
+import { DEFAULT_CATALOG_SERVICE } from "@/lib/registries/catalogService";
+import type { HandoffMessagingService } from "@/lib/data/handoff/handoffMessagingService";
+import { DEFAULT_HANDOFF_MESSAGING_SERVICE } from "@/lib/data/handoff/handoffMessagingService";
+import type { DiscoveryService } from "@/lib/registries/discoveryService";
+import { DEFAULT_DISCOVERY_SERVICE } from "@/lib/registries/discoveryService";
+import type { HandoffPersistenceService } from "@/lib/data/handoff/handoffPersistenceService";
+import { DEFAULT_HANDOFF_PERSISTENCE_SERVICE } from "@/lib/data/handoff/handoffPersistenceService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 

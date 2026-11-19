@@ -20,17 +20,17 @@ const { rows, agreementReads } = vi.hoisted(() => ({ rows: [] as unknown[], agre
 vi.mock("wagmi", () => ({ usePublicClient: () => ({ chain: { id: 31337 } }) }));
 vi.mock("@/hooks/useProcessOrders", () => ({ useProcessOrders: () => ORDERS }));
 vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreementReads: () => agreementReads }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
-vi.mock("@/lib/composition/indexer", () => ({ getAttestationsByOrder: async () => rows }));
-vi.mock("@/lib/audit/signatureVerdicts", () => ({ verifyOrderCommitSignatures: async () => { throw new Error("no verdict"); } }));
-vi.mock("@/lib/composition/witnessContent", () => ({
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
+vi.mock("@/lib/core/attestationIndexer", () => ({ getAttestationsByOrder: async () => rows }));
+vi.mock("@/lib/data/audit/signatureVerdicts", () => ({ verifyOrderCommitSignatures: async () => { throw new Error("no verdict"); } }));
+vi.mock("@/lib/core/witnessContent", () => ({
     resolveHeldWitnessContent: async () => null,
     // This device holds the content of one attestation only.
     heldWitnessReader: () => (place: { contentRef: string }) =>
         place.contentRef === HELD_REF ? { content: "0x00", values: { reading: "7" } } : null,
 }));
 vi.mock("@/components/runtime/WitnessPinErasure", () => ({ WitnessPinErasure: () => null }));
-vi.mock("@/lib/composition/useWitnessHolder", () => ({ useWitnessHolder: () => ({ address: "0x0000000000000000000000000000000000000002", chainId: 31337 }) }));
+vi.mock("@/lib/core/useWitnessHolder", () => ({ useWitnessHolder: () => ({ address: "0x0000000000000000000000000000000000000002", chainId: 31337 }) }));
 vi.mock("@/components/runtime/CredentialVerifyButton", () => ({ CredentialVerifyButton: () => null }));
 
 import { ProcessClauseEvidence } from "@/app/(app)/audit/_components/ProcessClauseEvidence";

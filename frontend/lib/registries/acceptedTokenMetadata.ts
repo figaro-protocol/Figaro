@@ -1,0 +1,10 @@
+/**
+ * lib/registries/acceptedTokenMetadata.ts
+ *
+ * `AcceptedTokenMetadata` — the tokens a member accepts for resolution —
+ * is part of the member-profile document shape owned by `@figaro-protocol/sdk`.
+ * This module re-exports it so existing `@/lib/registries/...` call sites keep
+ * working; add nothing here.
+ */
+
+export type { AcceptedTokenMetadata } from "@figaro-protocol/sdk";

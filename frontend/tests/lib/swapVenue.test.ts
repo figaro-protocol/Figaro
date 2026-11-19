@@ -3,11 +3,11 @@ import { decodeFunctionData, encodeAbiParameters, encodeFunctionData, getAddress
 import { SWAP_ROUTER_02_ABI } from "@figaro-protocol/sdk";
 
 const quoterMock = vi.fn();
-vi.mock("@/lib/composition/contracts", () => ({
+vi.mock("@/lib/composability/contracts", () => ({
     getSwapQuoter: () => quoterMock(),
 }));
 
-import { _resetSwapVenueCache_TESTING_ONLY, capWithSlippage, MAX_SLIPPAGE_BPS, detectSwapVenue, formatSlippagePercent, parseSlippagePercent } from "@/lib/composition/swapVenue";
+import { _resetSwapVenueCache_TESTING_ONLY, capWithSlippage, MAX_SLIPPAGE_BPS, detectSwapVenue, formatSlippagePercent, parseSlippagePercent } from "@/lib/composability/swapVenue";
 
 const ROUTER = ("0x" + "d0".repeat(20)) as `0x${string}`;
 const QUOTER = ("0x" + "e0".repeat(20)) as `0x${string}`;

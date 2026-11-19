@@ -56,13 +56,13 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => ({
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
 }));
 vi.mock("@/lib/shared/publicClient", () => ({ publicClient: CLIENT }));
-vi.mock("@/lib/protocol/useAgreementRegistry", () => ({
+vi.mock("@/lib/registries/useAgreementRegistry", () => ({
     usePublishedAgreements: () => scan,
     fetchRegisteredAgreement: async () => null,
     getRegisteredAgreement: () => undefined,
     useRegisteredAgreementsVersion: () => 0,
 }));
-vi.mock("@/lib/protocol/useWithdrawStake", () => ({
+vi.mock("@/lib/registries/useWithdrawStake", () => ({
     useWithdrawAgreement: () => ({ withdraw: vi.fn(), isPending: false }),
 }));
 vi.mock("@/lib/core/agreementFetch", () => ({

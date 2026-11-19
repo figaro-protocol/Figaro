@@ -65,9 +65,9 @@ vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 
 // The agreement body is party-private and not witnessed here; the attestation log is empty.
 vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => new Map() }));
-vi.mock("@/lib/composition/indexer", () => ({ getAttestationsByProcess: async () => [] }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
-vi.mock("@/lib/member/useMemberListings", () => ({ useMemberListings: () => ({ read: { status: "present", value: [] } }) }));
+vi.mock("@/lib/core/attestationIndexer", () => ({ getAttestationsByProcess: async () => [] }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
+vi.mock("@/lib/registries/useMemberListings", () => ({ useMemberListings: () => ({ read: { status: "present", value: [] } }) }));
 vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => null }));
 
 // The token's metadata, as its contract answers.
@@ -77,18 +77,18 @@ vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: "TKN" 
 // The action hooks: nothing is sent in this test.
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false, approve: vi.fn(), refetchAllowance: vi.fn() }) }));
 vi.mock("@/lib/core/useFigaroActions", () => ({ useFigaroActions: () => ({ resolveProcess: vi.fn(), hash: undefined, isPending: false }) }));
-vi.mock("@/lib/protocol/useUsageRecorder", () => ({ useUsageRecorder: () => ({}) }));
-vi.mock("@/lib/composition/useAttestationCoordinatorActions", () => ({
+vi.mock("@/lib/rewards/useUsageRecorder", () => ({ useUsageRecorder: () => ({}) }));
+vi.mock("@/lib/core/useAttestationCoordinatorActions", () => ({
     useAttestationCoordinatorActions: () => ({ isPending: false, isConfirming: false, isSuccess: false, submitAttestation: vi.fn() }),
 }));
-vi.mock("@/lib/member/useMembersRegistry", () => ({
+vi.mock("@/lib/registries/useMembersRegistry", () => ({
     useRegisterMember: () => ({ register: vi.fn(), isPending: false, isConfirming: false, isSuccess: false }),
     useUpdateProfile: () => ({ updateProfile: vi.fn(), isPending: false, isConfirming: false, isSuccess: false }),
     useWithdrawDeposit: () => ({ withdraw: vi.fn(), isPending: false, isConfirming: false, isSuccess: false }),
     useWithdrawalCooldown: () => ({ data: 60n }),
 }));
 // The payout contract is configured; the hook's writes are held elsewhere.
-vi.mock("@/lib/composition/usePayoutRoutingActions", () => ({
+vi.mock("@/lib/composability/usePayoutRoutingActions", () => ({
     usePayoutRoutingActions: () => ({ routeTokenPayout: routeTokenPayoutMock, isRouting: false, isAvailable: true }),
 }));
 vi.mock("@/lib/semantic/createCapabilityExecutors", () => ({ createCapabilityExecutors: () => ({ executorCallbacks: {} }) }));

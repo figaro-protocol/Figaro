@@ -13,7 +13,7 @@ const routeTokenPayout = vi.fn(async () => `0x${"ab".repeat(32)}` as `0x${string
 
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ ...decimalsState, loading: !decimalsState.ready }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: "USDC" }) }));
-vi.mock("@/lib/composition/usePayoutRoutingActions", () => ({
+vi.mock("@/lib/composability/usePayoutRoutingActions", () => ({
     usePayoutRoutingActions: () => ({ routeTokenPayout, isRouting: false, isAvailable: true }),
 }));
 

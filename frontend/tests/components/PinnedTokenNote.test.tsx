@@ -15,7 +15,7 @@ vi.mock("@/hooks/useTokenSymbol", () => ({
     useTokenSymbol: (address: string) => ({ data: address ? "MOCK" : undefined }),
 }));
 const specsState = { loaded: true, failed: false };
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({
+vi.mock("@/lib/registries/useClauseSpecs", () => ({
     useClauseSpecs: () => ({ version: 0, loaded: specsState.loaded, failed: specsState.failed, errors: [] }),
 }));
 

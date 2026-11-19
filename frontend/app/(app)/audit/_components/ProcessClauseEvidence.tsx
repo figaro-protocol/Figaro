@@ -6,23 +6,23 @@ import { usePublicClient } from "wagmi";
 import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { useProcessAgreementReads } from "@/hooks/useProcessAgreements";
 import type { Agreement } from "@figaro-protocol/sdk";
-import { getAttestationsByOrder, type AttestationRecord } from "@/lib/composition/indexer";
-import { attestationPathLabel } from "@/lib/composition/attestationPath";
-import { extractClauseData } from "@/lib/audit/clauseDataExtract";
-import { heldWitnessReader, resolveHeldWitnessContent } from "@/lib/composition/witnessContent";
-import { useWitnessHolder } from "@/lib/composition/useWitnessHolder";
+import { getAttestationsByOrder, type AttestationRecord } from "@/lib/core/attestationIndexer";
+import { attestationPathLabel } from "@/lib/core/attestationPath";
+import { extractClauseData } from "@/lib/data/audit/clauseDataExtract";
+import { heldWitnessReader, resolveHeldWitnessContent } from "@/lib/core/witnessContent";
+import { useWitnessHolder } from "@/lib/core/useWitnessHolder";
 import { decodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import { WitnessPinErasure } from "@/components/runtime/WitnessPinErasure";
 import {
     verifyOrderCommitSignatures,
     type OrderSignatureVerdicts,
-} from "@/lib/audit/signatureVerdicts";
+} from "@/lib/data/audit/signatureVerdicts";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
-import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
+import { extractProcessLogs } from "@/lib/data/audit/processLogsExtract";
 import { attestationIsWitness, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { MissingParts } from "./MissingParts";
-import type { MissingPart } from "@/lib/audit/types";
+import type { MissingPart } from "@/lib/data/audit/types";
 import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 import type { Order } from "@/lib/core/store";
 
@@ -41,7 +41,7 @@ import type { Order } from "@/lib/core/store";
  *
  *  DIRECT path — signature bytes are re-verified here from the commit
  *  transaction's calldata against the EXACT struct it carried
- *  (`lib/audit/signatureVerdicts`); the Core verified the same signatures at
+ *  (`lib/data/audit/signatureVerdicts`); the Core verified the same signatures at
  *  commit time.
  *
  *  BATCH path — the signature bytes sit in the batch transaction's operation
@@ -209,7 +209,7 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
 
     // Witness content, resolved from the fingerprint the chain carries: the
     // event's `contentRef` IS the keccak-CID of the published preimage (the
-    // publication half lives in `lib/composition/witnessContent`), so a reader
+    // publication half lives in `lib/core/witnessContent`), so a reader
     // derives the address from the event alone, verifies the bytes hash back
     // to the fingerprint, and decodes them through the same spec that declared
     // the stage. A party's own private witness resolves from the copy its

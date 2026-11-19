@@ -11,9 +11,9 @@
  */
 
 import { MemberEditGate } from "@/components/members/MemberEditGate";
-import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
+import { useMemberProfileEditor } from "@/lib/registries/useMemberProfileEditor";
 import { OnboardingProfileForm } from "@/components/members/OnboardingProfileForm";
-import type { OnboardingProfileDraft } from "@/lib/member/onboardingState";
+import type { OnboardingProfileDraft } from "@/lib/registries/onboardingState";
 
 export function MemberEditProfile() {
     const editor = useMemberProfileEditor({

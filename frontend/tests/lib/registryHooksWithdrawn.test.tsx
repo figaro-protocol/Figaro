@@ -32,12 +32,12 @@ vi.mock("wagmi", () => ({
 vi.mock("@/lib/core/eventCache", () => ({
     cachedGetContractEvents: (...a: unknown[]) => mocks.cachedGetContractEvents(...a),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
+vi.mock("@/lib/registries/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
     return {
         ...actual,
-        CONTRACTS: {
-            ...actual.CONTRACTS,
+        REGISTRY_CONTRACTS: {
+            ...actual.REGISTRY_CONTRACTS,
             clauseRegistry: "0x3333333333333333333333333333333333333333",
             agreementRegistry: "0x4444444444444444444444444444444444444444",
             processRegistry: "0x5555555555555555555555555555555555555555",
@@ -50,9 +50,9 @@ import {
     PROCESS_REGISTRY_ABI,
     CLAUSE_REGISTRY_ABI,
 } from "@figaro-protocol/sdk";
-import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
-import { usePublishedAgreements } from "@/lib/protocol/useAgreementRegistry";
-import { useAllPublishedAssemblies, usePublishedAssemblies } from "@/lib/protocol/useProcessRegistry";
+import { useAllRegisteredClauses } from "@/lib/registries/useClauseRegistry";
+import { usePublishedAgreements } from "@/lib/registries/useAgreementRegistry";
+import { useAllPublishedAssemblies, usePublishedAssemblies } from "@/lib/registries/useProcessRegistry";
 import { isLiveRegistration } from "@/lib/shared/clauseSpecSource";
 
 /** One raw log of `eventName` as a node returns it: topics and data, ABI-encoded. */

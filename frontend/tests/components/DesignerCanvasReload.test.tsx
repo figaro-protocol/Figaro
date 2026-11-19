@@ -66,8 +66,8 @@ vi.mock("wagmi", () => ({
     usePublicClient: () => undefined,
     useAccount: () => h.wallet,
 }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, failed: false, version: 1 }) }));
-vi.mock("@/lib/protocol/useAgreementRegistry", () => ({
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, failed: false, version: 1 }) }));
+vi.mock("@/lib/registries/useAgreementRegistry", () => ({
     fetchRegisteredAgreement: async () => undefined,
     getRegisteredAgreement: () => undefined,
     useRegisteredAgreementsVersion: () => 0,

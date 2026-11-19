@@ -151,7 +151,7 @@ interface ClauseBlockCheckout {
 }
 
 /** One `checkout.heldValues` entry. `reader` names a STANDARD (an open
- *  registry of readers, `frontend/lib/composition/heldValues.ts`), never a
+ *  registry of readers, `frontend/lib/composability/heldValues.ts`), never a
  *  clause. `contracts` gives, for each chain by its decimal id, the
  *  contracts that reader reads, by the reader's own role names; the
  *  addresses are fixed in the spec's registered bytes, so a chain added

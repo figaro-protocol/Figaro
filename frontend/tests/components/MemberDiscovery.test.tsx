@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 const listingsMock = vi.fn();
-vi.mock("@/lib/member/useMemberListings", () => ({ useMemberListings: () => listingsMock() }));
+vi.mock("@/lib/registries/useMemberListings", () => ({ useMemberListings: () => listingsMock() }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/app/(app)/discover/_components/useDeviceLocation", () => ({
     useDeviceLocation: () => ({ status: "idle", geohash: null, error: null, request: () => undefined, clear: () => undefined }),

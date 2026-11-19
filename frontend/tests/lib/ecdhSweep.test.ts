@@ -3,7 +3,7 @@ import {
     getOrCreateOrderEcdhKeypair,
     getOrderEcdhKeypair,
     sweepStaleEcdhKeypairs,
-} from "@/lib/handoff/ecdh";
+} from "@/lib/data/handoff/ecdh";
 
 const ECDH_KEYS_STORAGE_KEY = "figaro-ecdh-keys";
 

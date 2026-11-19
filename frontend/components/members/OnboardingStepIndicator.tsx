@@ -6,7 +6,7 @@ import {
     ONBOARDING_STEPS,
     onboardingStepHref,
     type OnboardingStep,
-} from "@/lib/member/onboardingState";
+} from "@/lib/registries/onboardingState";
 
 interface OnboardingStepIndicatorProps {
     /** id of the currently-rendered step. */

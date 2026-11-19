@@ -2,11 +2,11 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
     fetchMemberCatalog,
     invalidateCatalogCache,
-} from "@/lib/member/catalogFetcher";
-import { publishMemberCatalog } from "@/lib/member/catalogPublisher";
-import { createCatalogService } from "@/lib/member/catalogService";
-import { parseMemberCatalogDocument } from "@/lib/member/memberCatalogMetadataParser";
-import type { MemberCatalogMetadata } from "@/lib/member/memberCatalogMetadata";
+} from "@/lib/registries/catalogFetcher";
+import { publishMemberCatalog } from "@/lib/registries/catalogPublisher";
+import { createCatalogService } from "@/lib/registries/catalogService";
+import { parseMemberCatalogDocument } from "@/lib/registries/memberCatalogMetadataParser";
+import type { MemberCatalogMetadata } from "@/lib/registries/memberCatalogMetadata";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 

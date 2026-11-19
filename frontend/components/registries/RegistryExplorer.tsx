@@ -17,16 +17,16 @@
 import Link from "@/components/shared/Link";
 import { useCallback, useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useAllRegisteredClauses } from "@/lib/registries/useClauseRegistry";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { getClauseSpec, isLiveRegistration } from "@/lib/shared/clauseSpecSource";
-import { useAssemblyChoices, type AssemblyChoice } from "@/lib/protocol/assemblyChoices";
+import { useAssemblyChoices, type AssemblyChoice } from "@/lib/registries/assemblyChoices";
 import {
     fetchRegisteredAgreement,
     getRegisteredAgreement,
     useRegisteredAgreementsVersion,
-    usePublishedAgreements } from "@/lib/protocol/useAgreementRegistry";
-import { useRegisteredMembers, type RegisteredMemberRow } from "@/lib/member/useRegisteredMembers";
+    usePublishedAgreements } from "@/lib/registries/useAgreementRegistry";
+import { useRegisteredMembers, type RegisteredMemberRow } from "@/lib/registries/useRegisteredMembers";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 import { Button } from "@/components/ui/Button";

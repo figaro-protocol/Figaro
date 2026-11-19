@@ -616,7 +616,7 @@ registry's seed data; the published definition of the format is
   what the reader looks for on the chain for each value (`values`, a list of
   strings in the reader's own terms). The checkout reads, for the chain in
   use, which values the chain holds, and offers only those
-  (`useHeldValues`, `frontend/lib/composition/heldValues.ts`). The readers
+  (`useHeldValues`, `frontend/lib/composability/heldValues.ts`). The readers
   are an open registry keyed by the standard's name
   (`registerHeldValuesReader`), never by a clause, so a stranger's clause
   that names a registered standard with its own contracts and values is

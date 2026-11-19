@@ -57,10 +57,12 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
         CONTRACTS: {
             ...actual.CONTRACTS,
             core: "0x00000000000000000000000000000000000000c0",
-            processRegistry: PROCESS_REGISTRY,
-            agreementRegistry: AGREEMENT_REGISTRY,
         },
     };
+});
+vi.mock("@/lib/registries/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
+    return { ...actual, REGISTRY_CONTRACTS: { ...actual.REGISTRY_CONTRACTS, processRegistry: PROCESS_REGISTRY, agreementRegistry: AGREEMENT_REGISTRY } };
 });
 
 // The chain: each registry's `bindings(key)` → the contentURI the key is
@@ -102,8 +104,8 @@ vi.mock("@figaro-protocol/sdk", async (importOriginal) => {
 // a test sees WHOSE profile the accept path read.
 const profiles = new Map<string, MemberProfileMetadata | "fails">();
 const profileReads: string[] = [];
-vi.mock("@/lib/member/profileFetcher", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/member/profileFetcher")>();
+vi.mock("@/lib/registries/profileFetcher", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/registries/profileFetcher")>();
     return {
         ...actual,
         profileReaderForChain: () => async (member: string) => {
@@ -118,10 +120,10 @@ vi.mock("@/lib/member/profileFetcher", async (importOriginal) => {
 const commitSignedOrder = vi.fn(async () => { callOrder.push("broadcast"); return `0x${"cc".repeat(32)}` as Hex; });
 vi.mock("@/lib/core/orderCommitted", () => ({ commitSignedOrder: (...args: unknown[]) => commitSignedOrder(...(args as [])) }));
 vi.mock("@/lib/core/useFigaroActions", () => ({ useFigaroActions: () => ({ commit: vi.fn() }) }));
-vi.mock("@/lib/composition/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit: vi.fn() }) }));
+vi.mock("@/lib/composability/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit: vi.fn() }) }));
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({ useRuntimeServices: () => ({}) }));
 const relayed = vi.fn(async () => undefined);
-vi.mock("@/lib/handoff/relayChannel", () => ({ relayCommitmentPayload: (...args: unknown[]) => relayed(...(args as [])) }));
+vi.mock("@/lib/data/handoff/relayChannel", () => ({ relayCommitmentPayload: (...args: unknown[]) => relayed(...(args as [])) }));
 
 const { useOrderCommitmentFlow } = await import("@/lib/checkout/orderCommitmentFlow");
 

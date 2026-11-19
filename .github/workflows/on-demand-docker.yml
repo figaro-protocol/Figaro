@@ -10,7 +10,7 @@ name: On-Demand Docker Proofs
 # real-path test is the maintainer-manual smoke against XMTP's HOSTED dev
 # network (frontend/tests/e2e/xmtp-relay.smoke.spec.ts; docs/TESTING.md
 # § Playwright, `smoke` project). The frontend admits only the dev|production
-# networks (frontend/lib/handoff/xmtpChannel.ts — xmtpNetworkEnv throws on
+# networks (frontend/lib/data/handoff/xmtpChannel.ts — xmtpNetworkEnv throws on
 # anything else), so nothing here can yet point at a local broker. This job
 # therefore proves THE STACK, not a suite: bring up the full local xmtpd
 # broker (upstream's own dev harness — postgres, the contracts chain,

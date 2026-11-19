@@ -38,7 +38,7 @@ const CATALOG_LIST = vi.hoisted(() => [
     },
 ]);
 const CATALOGS = { read: { status: "present", value: CATALOG_LIST } };
-vi.mock("@/lib/member/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => CATALOGS }));
+vi.mock("@/lib/registries/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => CATALOGS }));
 const BOUND_LIST = vi.hoisted(() => [{
     slug: "two",
     name: "Two",
@@ -46,7 +46,7 @@ const BOUND_LIST = vi.hoisted(() => [{
     coSellerBindings: [],
 }]);
 const BOUND = { status: "present", value: BOUND_LIST };
-vi.mock("@/lib/member/useMemberBoundAssemblies", () => ({
+vi.mock("@/lib/registries/useMemberBoundAssemblies", () => ({
     useMemberBoundAssemblies: () => BOUND,
     withBoundCoSellers: (a: unknown) => a,
 }));
@@ -87,14 +87,14 @@ vi.mock("@/lib/checkout/dispatchRace", () => ({
     }),
     postToAgentEndpoint: vi.fn(),
 }));
-vi.mock("@/lib/composition/useCompositionActions", () => ({ useCompositionActions: () => ({ compose: vi.fn() }) }));
+vi.mock("@/lib/composability/useCompositionActions", () => ({ useCompositionActions: () => ({ compose: vi.fn() }) }));
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false, allowanceKnown: true }) }));
 vi.mock("@/hooks/useApproveThenAct", () => ({ useApproveThenAct: () => ({ runWithApproval: (_amount: unknown, act: () => void) => act() }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: undefined }) }));
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18 }) }));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "present", value: 10n ** 30n }, refetch: () => {} }) }));
 vi.mock("@/hooks/useConnectInjected", () => ({ useConnectInjected: () => vi.fn() }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
 // The panel's two acts, as buttons: start a race, and reset it.
 vi.mock("@/components/runtime/DispatchRacePanel", () => ({
     DispatchRacePanel: ({ race, onStart }: { race: { reset: () => void }; onStart: (p: { windowMs: number }) => void }) => (

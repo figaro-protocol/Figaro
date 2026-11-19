@@ -13,11 +13,11 @@ vi.mock("next/navigation", () => ({
 let searchParams = "family=clauses";
 
 const clauseEventsMock = vi.fn();
-vi.mock("@/lib/protocol/useClauseRegistry", () => ({ useAllRegisteredClauses: () => clauseEventsMock() }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, loadedCount: 0, total: 0, errors: [], version: 1 }) }));
+vi.mock("@/lib/registries/useClauseRegistry", () => ({ useAllRegisteredClauses: () => clauseEventsMock() }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, loadedCount: 0, total: 0, errors: [], version: 1 }) }));
 const assembliesMock = vi.fn();
-vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => assembliesMock() }));
-vi.mock("@/lib/member/useRegisteredMembers", () => ({ useRegisteredMembers: () => ({ read: { status: "present", value: [] } }) }));
+vi.mock("@/lib/registries/assemblyChoices", () => ({ useAssemblyChoices: () => assembliesMock() }));
+vi.mock("@/lib/registries/useRegisteredMembers", () => ({ useRegisteredMembers: () => ({ read: { status: "present", value: [] } }) }));
 vi.mock("@/components/assemblies/AssemblyShapeLine", () => ({ AssemblyShapeLine: () => null }));
 
 import { RegistryExplorer } from "@/components/registries/RegistryExplorer";

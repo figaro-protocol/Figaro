@@ -29,16 +29,16 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" } };
 });
-vi.mock("@/lib/composition/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/composition/contracts")>()),
+vi.mock("@/lib/composability/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/composability/contracts")>()),
     getWitnessSwapAndCommitCoordinator: () => "0x00000000000000000000000000000000000000c0",
     getPermit2: () => "0x00000000000000000000000000000000000000a2",
     getSwapRouter: () => "0x00000000000000000000000000000000000000d0",
 }));
 // A venue whose input for an exact output is 3/7 of it, rounded up, with a
 // margin of 1%: one venue for the panel's quotes and the legs' quotes alike.
-vi.mock("@/lib/composition/swapVenue", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/composition/swapVenue")>()),
+vi.mock("@/lib/composability/swapVenue", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/composability/swapVenue")>()),
     detectSwapVenue: async () => ({
         kind: "uniswap-v3",
         router: "0x00000000000000000000000000000000000000d0",
@@ -52,16 +52,16 @@ vi.mock("@/lib/composition/swapVenue", async (importOriginal) => ({
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 6 }) }));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "present", value: 10n ** 30n } }) }));
 vi.mock("@/lib/core/useFigaroActions", () => ({ useFigaroActions: () => ({ commit: vi.fn() }) }));
-vi.mock("@/lib/composition/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit: vi.fn() }) }));
+vi.mock("@/lib/composability/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit: vi.fn() }) }));
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({ useRuntimeServices: () => ({}) }));
 
 import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
-import { capWithSlippage } from "@/lib/composition/swapVenue";
+import { capWithSlippage } from "@/lib/composability/swapVenue";
 import { executeAssemblyCheckout, planProcessOrders, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { useOrderCommitmentFlow, type BuyerFundingRequest } from "@/lib/checkout/orderCommitmentFlow";
-import { useFundingMargin } from "@/lib/composition/useFundingMargin";
+import { useFundingMargin } from "@/lib/composability/useFundingMargin";
 import type { OrderPreview } from "@/lib/checkout/orderPreview";
-import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
+import type { BoundAssembly } from "@/lib/registries/useMemberBoundAssemblies";
 import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 
 const BUYER = "0x1111111111111111111111111111111111111111" as const;

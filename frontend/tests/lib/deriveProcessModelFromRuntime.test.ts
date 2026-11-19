@@ -6,7 +6,7 @@ import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSou
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { OrderState, type Order } from "@/lib/core/store";
 import type { ProcessSummary } from "@/lib/core/walletProcessQueries";
-import type { RuntimeAttestation } from "@/lib/composition/indexer";
+import type { RuntimeAttestation } from "@/lib/core/attestationIndexer";
 import type { CapabilityModel } from "@/lib/semantic/models";
 import { truncateHex } from "@/lib/shared/formatHex";
 

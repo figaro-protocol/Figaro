@@ -12,7 +12,7 @@ import { extractOverlays, type RecoveredAttestation } from "@figaro-protocol/sdk
 import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
 import { keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 import { createCapabilityExecutors, type CapabilityExecutorDeps } from "@/lib/semantic/createCapabilityExecutors";
-import { publishWitnessContent } from "@/lib/composition/witnessContent";
+import { publishWitnessContent } from "@/lib/core/witnessContent";
 
 vi.mock("@/lib/core/signedCommitment", () => ({ restoreSignedProcessId: (c: Commitment) => c }));
 

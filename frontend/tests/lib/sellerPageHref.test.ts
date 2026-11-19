@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { listingClickThroughHref, sellerPageHref } from "@/lib/member/memberListing";
-import type { Listing } from "@/lib/member/memberListing";
+import { listingClickThroughHref, sellerPageHref } from "@/lib/registries/memberListing";
+import type { Listing } from "@/lib/registries/memberListing";
 
 /**
  * One wallet, one public page, one place the route is written. The wizard's

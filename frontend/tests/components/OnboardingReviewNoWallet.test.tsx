@@ -1,6 +1,6 @@
 /**
  * `/members/review` with no wallet. The visitor's draft is the anonymous one
- * (`lib/member/onboardingState.ts`), filled without a wallet: the review shows
+ * (`lib/registries/onboardingState.ts`), filled without a wallet: the review shows
  * it as it stands, with no subject address and no stand-in for one. A wallet
  * that connects adopts the anonymous draft and the anonymous copy is removed,
  * so after a disconnect it is usually empty: an empty draft is an empty
@@ -23,17 +23,17 @@ const FILLED = {
     assemblies: [],
     catalog: { items: [{ id: "i", name: "Item", description: "", price: "1", available: true }] },
 };
-vi.mock("@/lib/member/onboardingState", () => ({
+vi.mock("@/lib/registries/onboardingState", () => ({
     useOnboardingState: () => ({ state: m.state, clear: vi.fn() }),
     onboardingStepLabel: (s: string) => s,
 }));
-vi.mock("@/lib/member/useMembersRegistry", () => ({
+vi.mock("@/lib/registries/useMembersRegistry", () => ({
     // With no wallet the registration read has no subject and stays pending.
     useMemberProfile: () => ({ read: { status: "pending" } }),
     useRegistrationDeposit: () => ({ status: "present", value: 10n ** 16n }),
     useWithdrawalCooldown: () => ({ data: 60n }),
 }));
-vi.mock("@/lib/member/usePublishMemberProfile", () => ({
+vi.mock("@/lib/registries/usePublishMemberProfile", () => ({
     usePublishMemberProfile: () => ({ publish: vi.fn(), isPending: false, isConfirming: false, isSuccess: false, error: null }),
 }));
 vi.mock("@/components/shared/ContentImage", () => ({ ContentImage: () => null }));

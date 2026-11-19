@@ -28,7 +28,7 @@ vi.mock("wagmi", () => ({
     useAccount: () => ({ address: ADDRESS, isConnected: true }),
 }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
-vi.mock("@/lib/member/useMembersRegistry", async () => {
+vi.mock("@/lib/registries/useMembersRegistry", async () => {
     const React = await import("react");
     return {
         useMemberProfile: () => mocks.registry,
@@ -48,10 +48,10 @@ vi.mock("@/lib/member/useMembersRegistry", async () => {
         },
     };
 });
-vi.mock("@/lib/member/onboardingState", () => ({
+vi.mock("@/lib/registries/onboardingState", () => ({
     useOnboardingState: () => mocks.onboarding,
 }));
-vi.mock("@/lib/member/profileFetcher", () => ({
+vi.mock("@/lib/registries/profileFetcher", () => ({
     fetchMemberProfile: async () => mocks.profile(),
 }));
 vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
@@ -60,11 +60,11 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
         publishJSON: async () => ({ uri: "ipfs://QmNextProfile" }),
     },
 }));
-vi.mock("@/lib/member/profileErasure", () => ({
+vi.mock("@/lib/registries/profileErasure", () => ({
     unpinSupersededProfileArtifacts: (...args: unknown[]) => mocks.unpin(...args),
 }));
 
-import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
+import { useMemberProfileEditor } from "@/lib/registries/useMemberProfileEditor";
 
 function renderEditor() {
     return renderHook(() => useMemberProfileEditor({ seed: () => {} }));

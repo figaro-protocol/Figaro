@@ -11,7 +11,7 @@
  * only guarantees the fetch starts early.
  */
 
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 
 export function ClauseSpecsLoader() {
     useClauseSpecs();

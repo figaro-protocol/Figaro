@@ -13,10 +13,10 @@
  */
 
 import { MemberEditGate } from "@/components/members/MemberEditGate";
-import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
+import { useMemberProfileEditor } from "@/lib/registries/useMemberProfileEditor";
 import type {
     BuyerProcessSubscription,
-} from "@/lib/member/memberProfileMetadata";
+} from "@/lib/registries/memberProfileMetadata";
 import { OnboardingBuyerForm } from "@/components/members/OnboardingBuyerForm";
 
 export function MemberEditBuyer() {

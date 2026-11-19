@@ -30,7 +30,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { NO_PUBLISH_TARGET_LINE } from "@/lib/shared/ipfsService";
 import { PublishTargetNotice } from "@/components/shared/PublishTargetNotice";
 import type { Order } from "@/lib/core/store";
-import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
+import { buildAuditBundlePdfBlob } from "@/lib/data/audit/auditBundlePdf";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { describeClause, composesForumUrl } from "@/lib/shared/clauseSpecSource";
 import type { RecourseClause } from "@/lib/semantic/processRecourse";

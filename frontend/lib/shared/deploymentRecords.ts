@@ -14,7 +14,7 @@
  *
  * This is the one module that reads a Figaro contract's address from the
  * environment (the devnet's mock tokens are read where they are suggested,
- * `lib/member/commonTokens.ts`).
+ * `components/members/commonTokens.ts`).
  * Next.js inlines `process.env.NEXT_PUBLIC_*` only when the read is a direct
  * property access, so each one below is a literal.
  */

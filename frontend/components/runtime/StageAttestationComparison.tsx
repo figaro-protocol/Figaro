@@ -10,7 +10,7 @@
  * party of the process signed it) and declares the stage a witness stage
  * (`spec.stages[N]`, so the filing carries content). Every filing is compared —
  * the latest per attester per order — and each row names its party and order. The comparison is
- * derived at read time (`lib/composition/stageAttestationComparison`) from
+ * derived at read time (`lib/core/stageAttestationComparison`) from
  * the process's attestation log and the content each fingerprint resolves to
  * — the same read path the audit's clause evidence uses: `resolveHeldWitnessContent`
  * reads the copy this browser kept of a private filing made from it (the copy
@@ -23,17 +23,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { decodeContentFromSpec, declaredStageFields } from "@figaro-protocol/sdk/clauses";
-import type { RuntimeAttestation } from "@/lib/composition/indexer";
-import { attestationPathLabel } from "@/lib/composition/attestationPath";
-import { resolveHeldWitnessContent } from "@/lib/composition/witnessContent";
-import { useWitnessHolder } from "@/lib/composition/useWitnessHolder";
+import type { RuntimeAttestation } from "@/lib/core/attestationIndexer";
+import { attestationPathLabel } from "@/lib/core/attestationPath";
+import { resolveHeldWitnessContent } from "@/lib/core/witnessContent";
+import { useWitnessHolder } from "@/lib/core/useWitnessHolder";
 import {
     compareStageContent,
     groupAttestationsByStage,
     type StageComparison,
-} from "@/lib/composition/stageAttestationComparison";
+} from "@/lib/core/stageAttestationComparison";
 import { attestationIsWitness, clauseIsAssemblyScoped, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 interface Props {

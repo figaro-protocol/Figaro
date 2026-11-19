@@ -66,25 +66,25 @@ const reads = vi.hoisted(() => {
     };
 });
 
-vi.mock("@/lib/protocol/useRegisterClause", () => ({ useRegisteredClausesByWallet: reads.clauses }));
-vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: reads.assemblies }));
-vi.mock("@/lib/protocol/useAgreementRegistry", () => ({
+vi.mock("@/lib/registries/useRegisterClause", () => ({ useRegisteredClausesByWallet: reads.clauses }));
+vi.mock("@/lib/registries/assemblyChoices", () => ({ useAssemblyChoices: reads.assemblies }));
+vi.mock("@/lib/registries/useAgreementRegistry", () => ({
     usePublishedAgreements: reads.agreements,
     fetchRegisteredAgreement: async () => null,
     getRegisteredAgreement: () => ({ name: "Courier leg", clauses: {} }),
     useRegisteredAgreementsVersion: () => 0,
 }));
-vi.mock("@/lib/protocol/useWithdrawStake", () => ({
+vi.mock("@/lib/registries/useWithdrawStake", () => ({
     useWithdrawClause: () => ({ withdraw: async () => undefined }),
     useWithdrawAgreement: () => ({ withdraw: async () => undefined }),
 }));
-vi.mock("@/lib/protocol/withdrawGate", async () => {
-    const actual = await vi.importActual<typeof import("@/lib/protocol/withdrawGate")>("@/lib/protocol/withdrawGate");
+vi.mock("@/lib/registries/withdrawGate", async () => {
+    const actual = await vi.importActual<typeof import("@/lib/registries/withdrawGate")>("@/lib/registries/withdrawGate");
     const open = { canWithdraw: true, inFlightCount: 0, unverifiedCount: 0 } as WithdrawGate;
     return { ...actual, useWithdrawGate: () => ({ gate: { status: "present", value: open } }) };
 });
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({}) }));
-vi.mock("@/lib/protocol/registryWrites", () => ({ useRegistryWriteVersion: () => 0 }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({}) }));
+vi.mock("@/lib/registries/registryWrites", () => ({ useRegistryWriteVersion: () => 0 }));
 vi.mock("@/components/assemblies/AssemblyShapeLine", () => ({ AssemblyShapeLine: () => null }));
 
 import { ClausesList } from "@/app/(tools)/assemblies/designer/_components/ClausesList";

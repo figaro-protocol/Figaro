@@ -10,7 +10,7 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import type { RpgfPeriodState } from "@/lib/composition/useRpgfRewards";
+import type { RpgfPeriodState } from "@/lib/rewards/useRpgfRewards";
 
 const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as const;
 const CLAUSE = `0x${"ab".repeat(32)}` as const;
@@ -21,8 +21,8 @@ const m = vi.hoisted(() => ({
 }));
 vi.mock("wagmi", () => ({ useAccount: () => ({ address: WALLET }) }));
 vi.mock("@/lib/shared/viewedWallet", () => ({ useViewedWallet: (connected: unknown) => connected }));
-vi.mock("@/lib/composition/useRpgfRewards", () => ({ useRpgfRewards: () => m.rewards }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
+vi.mock("@/lib/rewards/useRpgfRewards", () => ({ useRpgfRewards: () => m.rewards }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18, ready: true, loading: false }) }));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "present", value: 0n }, refetch: () => {} }) }));
 

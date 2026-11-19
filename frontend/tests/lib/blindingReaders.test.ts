@@ -9,7 +9,7 @@
  * reader keys on the attribute, never on a clause id or a field name.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { compareStageContent } from "@/lib/composition/stageAttestationComparison";
+import { compareStageContent } from "@/lib/core/stageAttestationComparison";
 import { buyerAuthoredFields } from "@/lib/checkout/checkoutDerivations";
 import {
     _resetClauseSpecCache_TESTING_ONLY,

@@ -16,15 +16,15 @@ const m = vi.hoisted(() => ({ mounted: true, push: (() => {}) as (href: string) 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: (href: string) => m.push(href) }) }));
 vi.mock("wagmi", () => ({ useAccount: () => ({ address: ADDRESS, isConnected: true }) }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => m.mounted }));
-vi.mock("@/lib/member/onboardingState", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/member/onboardingState")>()),
+vi.mock("@/lib/registries/onboardingState", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/registries/onboardingState")>()),
     useOnboardingState: () => m.onboarding,
 }));
-vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => ({ read: { status: "present", value: [] } }) }));
+vi.mock("@/lib/registries/assemblyChoices", () => ({ useAssemblyChoices: () => ({ read: { status: "present", value: [] } }) }));
 vi.mock("@/components/members/AssemblyChoiceRow", () => ({ AssemblyChoiceRow: () => null }));
 
 import { OnboardingBuyerForm } from "@/components/members/OnboardingBuyerForm";
-import { onboardingNextHref, onboardingPrevHref } from "@/lib/member/onboardingState";
+import { onboardingNextHref, onboardingPrevHref } from "@/lib/registries/onboardingState";
 
 beforeEach(() => {
     m.mounted = true;

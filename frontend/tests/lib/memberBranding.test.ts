@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
     fetchMemberBranding,
     clearBrandingCache,
-} from '@/lib/member/memberBranding';
+} from '@/lib/registries/memberBranding';
 
 describe('memberBranding', () => {
 

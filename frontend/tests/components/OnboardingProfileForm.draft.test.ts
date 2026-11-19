@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { fromDraft, toDraft } from "@/components/members/OnboardingProfileForm";
-import type { OnboardingProfileDraft } from "@/lib/member/onboardingState";
+import type { OnboardingProfileDraft } from "@/lib/registries/onboardingState";
 
 const BASIS = ("0x" + "22".repeat(20)) as `0x${string}`;
 const PICKED = ("0x" + "11".repeat(20)) as `0x${string}`;

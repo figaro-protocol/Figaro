@@ -54,8 +54,8 @@ import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { parseToken } from "@/lib/shared/utils";
 import { hexEqual } from "@/lib/shared/evm";
-import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
-import type { MemberCatalog } from "@/lib/member/types";
+import type { BoundAssembly } from "@/lib/registries/useMemberBoundAssemblies";
+import type { MemberCatalog } from "@/lib/registries/types";
 
 /** The signing capabilities the algorithm drives — provided by `useCheckout`,
  *  which backs them with the order* commitment flow. */

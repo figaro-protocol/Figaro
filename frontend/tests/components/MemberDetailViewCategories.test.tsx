@@ -2,7 +2,7 @@ import React from "react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemberDetailView } from "@/app/(app)/s/view/_components/MemberDetailView";
-import type { MemberCatalog } from "@/lib/member/types";
+import type { MemberCatalog } from "@/lib/registries/types";
 
 const SELLER = "0x00000000000000000000000000000000000000aa";
 
@@ -20,10 +20,10 @@ const CATALOG: MemberCatalog = {
 };
 
 const catalogs = vi.hoisted(() => ({ read: undefined as unknown }));
-vi.mock("@/lib/member/useRegisteredCatalogs", () => ({
+vi.mock("@/lib/registries/useRegisteredCatalogs", () => ({
     useRegisteredCatalogs: () => ({ read: catalogs.read }),
 }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
 vi.mock("@/lib/checkout", () => ({
     useCommerce: () => ({ address: undefined }),
 }));
@@ -35,7 +35,7 @@ vi.mock("@/lib/checkout/cartStore", () => ({
         clearCart: vi.fn(),
     }),
 }));
-vi.mock("@/lib/member/useMemberResolutionHistory", () => ({
+vi.mock("@/lib/registries/useMemberResolutionHistory", () => ({
     useMemberResolutionHistory: () => ({ resolutionHistory: null, isLoading: false }),
 }));
 vi.mock("@/components/members/TokenAddressInput", () => ({

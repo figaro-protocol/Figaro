@@ -37,7 +37,7 @@ vi.mock("@/lib/core/indexer", async (importOriginal) => ({
 vi.mock("@/lib/core/useWatchOrderEvents", () => ({ useWatchOrderEvents: () => undefined }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/lib/shared/viewedWallet", () => ({ useViewedWallet: (a: string | undefined) => a ?? mocks.walletParam }));
-vi.mock("@/lib/member/useMemberListings", () => ({ useMemberListings: () => ({ read: { status: "absent" }, listings: [] }) }));
+vi.mock("@/lib/registries/useMemberListings", () => ({ useMemberListings: () => ({ read: { status: "absent" }, listings: [] }) }));
 vi.mock("@/lib/checkout/orderPendingSellerSignature", () => ({
     usePendingSellerSignature: () => ({ pending: [], dismiss: () => undefined }),
     awaitsMyCounterSign: () => false,

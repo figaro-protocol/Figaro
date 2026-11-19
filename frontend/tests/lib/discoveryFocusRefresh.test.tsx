@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
-import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
-import type { DiscoveryService } from "@/lib/member/discoveryService";
-import type { MemberCatalog } from "@/lib/member/types";
+import { useRegisteredCatalogs } from "@/lib/registries/useRegisteredCatalogs";
+import type { DiscoveryService } from "@/lib/registries/discoveryService";
+import type { MemberCatalog } from "@/lib/registries/types";
 
 const usePublicClientMock = vi.fn();
 const useChainIdMock = vi.fn();
@@ -16,7 +16,7 @@ vi.mock("wagmi", () => ({
 // effect proceeds; the discovery service is injected below. Stable reference
 // so it does not itself re-trigger the effect on every render.
 const PUBLISHED = { read: { status: "present", value: [] as unknown[] } };
-vi.mock("@/lib/protocol/useProcessRegistry", () => ({
+vi.mock("@/lib/registries/useProcessRegistry", () => ({
     getAssemblyLoadError: () => undefined,
     usePublishedAssemblies: () => PUBLISHED,
 }));

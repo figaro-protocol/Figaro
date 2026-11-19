@@ -1,0 +1,874 @@
+/**
+ * PDF renderer for the audit bundle (Phase D).
+ *
+ * Composes the audit-bundle extracts (Contract, per-clause data, process
+ * logs, members registry, Hash appendix) plus every projected document —
+ * invoice, bill of lading, financial statements — into one
+ * cryptographically-verifiable PDF. Every page footer carries the
+ * `checkoutHash` (or `processId`) so a reader lands on each page already
+ * oriented to the on-chain anchor it derives from.
+ *
+ * Implementation notes:
+ *
+ * - `@react-pdf/renderer` uses its own component set (not HTML / Tailwind).
+ *   All styling goes through `StyleSheet.create`.
+ *
+ * - The PDF is rendered client-side on user click — see
+ *   `components/runtime/DownloadAuditBundleButton.tsx`. No server round-trip;
+ *   the user's data stays in their browser. SSR-side generation is also
+ *   possible with the same component if a backend ever needs to ship
+ *   pre-rendered bundles.
+ *
+ * - For multi-order processes the bundle iterates orders, emitting
+ *   per-order Contract / Clause-data / Process-logs / Members-registry
+ *   pages. The documents (invoice, BoL, financial statements) and hash
+ *   appendix aggregate across the whole process.
+ */
+import { Fragment, type ReactNode } from "react";
+import {
+    Document,
+    Page,
+    View,
+    Text,
+    StyleSheet,
+} from "@react-pdf/renderer";
+import { tokenFigure } from "@/lib/shared/utils";
+import type { AuditBundle } from "./auditBundle";
+import type { MissingPart } from "./types";
+import type { RenderedDocument } from "./documentProjection";
+import { attestationPathLabel } from "@/lib/core/attestationPath";
+import type { ProcessTimeline, TimelineEvent } from "@/lib/data/audit/processTimeline";
+import { truncateHex } from "@/lib/shared/formatHex";
+
+// ── Styles ──────────────────────────────────────────────────────────────────
+//
+// DELIBERATELY OUTSIDE the screen palette — not an
+// un-migrated raw-hex site, and not a finding. Print is a second medium: this
+// bundle is an evidence document meant to survive photocopying, faxing and
+// black-and-white laser output, where the MUJI warm-neutral ramp collapses
+// into indistinguishable mid-grays. The neutral grayscale below is chosen for
+// that medium, and the two chromatic values (`#15803d` / `#b91c1c`, the
+// signature verdicts) are held at print-legible saturation for the same
+// reason. Do not "fix" these onto `colorTokens`; changing them changes what a
+// printed audit bundle looks like in a forum, not what a page looks like.
+
+const styles = StyleSheet.create({
+    page: {
+        padding: 36,
+        fontSize: 9,
+        fontFamily: "Helvetica",
+        color: "#111111",
+    },
+    header: {
+        marginBottom: 16,
+        paddingBottom: 8,
+        borderBottom: "1pt solid #d4d4d4",
+    },
+    h1: {
+        fontSize: 16,
+        fontWeight: 700,
+        marginBottom: 4,
+    },
+    h2: {
+        fontSize: 11,
+        fontWeight: 700,
+        marginTop: 14,
+        marginBottom: 6,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+    },
+    label: {
+        fontSize: 7,
+        color: "#737373",
+        textTransform: "uppercase",
+        letterSpacing: 0.4,
+    },
+    mono: {
+        fontFamily: "Courier",
+        fontSize: 8,
+    },
+    metadataRow: {
+        flexDirection: "row",
+        marginBottom: 2,
+    },
+    metadataKey: {
+        width: 120,
+        color: "#737373",
+        fontSize: 8,
+    },
+    metadataValue: {
+        fontSize: 8,
+        flex: 1,
+    },
+    section: {
+        marginBottom: 12,
+    },
+    sectionTitle: {
+        fontSize: 9,
+        fontWeight: 700,
+        marginBottom: 4,
+    },
+    sectionBody: {
+        fontSize: 8,
+        color: "#404040",
+    },
+    table: {
+        marginTop: 6,
+        marginBottom: 6,
+        borderTop: "1pt solid #e5e5e5",
+    },
+    tableRow: {
+        flexDirection: "row",
+        borderBottom: "0.5pt solid #e5e5e5",
+        paddingTop: 3,
+        paddingBottom: 3,
+    },
+    tableHeader: {
+        backgroundColor: "#fafafa",
+        fontWeight: 700,
+    },
+    tCell: {
+        paddingHorizontal: 4,
+        fontSize: 8,
+    },
+    tCellMono: {
+        paddingHorizontal: 4,
+        fontFamily: "Courier",
+        fontSize: 7,
+    },
+    tCellRight: {
+        paddingHorizontal: 4,
+        fontSize: 8,
+        textAlign: "right",
+    },
+    footer: {
+        position: "absolute",
+        bottom: 18,
+        left: 36,
+        right: 36,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        fontSize: 7,
+        color: "#737373",
+        borderTop: "0.5pt solid #d4d4d4",
+        paddingTop: 4,
+    },
+    footerHash: {
+        fontFamily: "Courier",
+        fontSize: 7,
+        color: "#737373",
+    },
+    badge: {
+        fontSize: 7,
+        fontFamily: "Courier",
+        color: "#737373",
+        paddingHorizontal: 4,
+        paddingVertical: 2,
+        borderRadius: 2,
+    },
+    badgeOk: {
+        color: "#15803d",
+    },
+    badgeBad: {
+        color: "#b91c1c",
+    },
+    note: {
+        fontSize: 7,
+        color: "#737373",
+        marginTop: 6,
+        fontStyle: "italic",
+    },
+});
+
+// ── Display helpers ─────────────────────────────────────────────────────────
+
+function fmt(amount: bigint, decimals: number | undefined): string {
+    return tokenFigure(amount, decimals);
+}
+
+function shortHex(hex: string | undefined, head = 10, tail = 6): string {
+    return truncateHex(hex, { head, tail }) || "—";
+}
+
+function shortAddr(addr: string | undefined): string {
+    return shortHex(addr, 6, 4);
+}
+
+
+// ── Footer ──────────────────────────────────────────────────────────────────
+
+function PageFooter({ checkoutHash, processId }: { checkoutHash?: string; processId?: string }) {
+    return (
+        <View style={styles.footer} fixed>
+            <View>
+                <Text style={styles.footerHash}>
+                    checkoutHash {shortHex(checkoutHash, 14, 8)}
+                </Text>
+                <Text style={styles.footerHash}>
+                    processId {shortHex(processId, 14, 8)}
+                </Text>
+            </View>
+            <Text
+                style={styles.footerHash}
+                render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
+            />
+        </View>
+    );
+}
+
+// ── Shared page scaffold + metadata row ─────────────────────────────────────
+
+/** The A4 page every bundle section renders on: kicker label + h1 header,
+ *  the section's own content, and the anchor footer. Omit `footer` for a
+ *  page with no on-chain anchor of its own (the projected documents). */
+function AuditPage({ label, title, footer, children }: {
+    label: string;
+    title: string;
+    footer?: { checkoutHash?: string; processId?: string };
+    children: ReactNode;
+}) {
+    return (
+        <Page size="A4" style={styles.page}>
+            <View style={styles.header}>
+                <Text style={styles.label}>{label}</Text>
+                <Text style={styles.h1}>{title}</Text>
+            </View>
+            {children}
+            {footer && <PageFooter checkoutHash={footer.checkoutHash} processId={footer.processId} />}
+        </Page>
+    );
+}
+
+/** One key/value metadata row. `mono` sets the value in the hash face;
+ *  `extraStyle` layers a verdict style (badgeOk / badgeBad) on the value. */
+function MetaRow({ k, v, mono = false, extraStyle }: {
+    k: string;
+    v: ReactNode;
+    mono?: boolean;
+    extraStyle?: (typeof styles)[keyof typeof styles];
+}) {
+    return (
+        <View style={styles.metadataRow}>
+            <Text style={styles.metadataKey}>{k}</Text>
+            <Text style={[styles.metadataValue, ...(mono ? [styles.mono] : []), ...(extraStyle ? [extraStyle] : [])]}>
+                {v}
+            </Text>
+        </View>
+    );
+}
+
+// ── Cover page ──────────────────────────────────────────────────────────────
+
+function CoverPage({ processId, buyer, generatedAt }: {
+    processId: string;
+    buyer: string | undefined;
+    generatedAt: Date;
+}) {
+    return (
+        <AuditPage label="Audit bundle" title="Bonded commitment record" footer={{ processId }}>
+            <View style={styles.section}>
+                <MetaRow k="processId" v={processId} mono />
+                {buyer && <MetaRow k="buyer" v={buyer} mono />}
+                <MetaRow k="generated" v={generatedAt.toISOString()} />
+            </View>
+            <Text style={styles.note}>
+                This bundle is a cryptographically-verifiable trade record. Every
+                hash herein anchors to one or more on-chain events; the reader can
+                recompute each hash from the cited content and verify against
+                chain without protocol cooperation. Cash-basis projection of
+                on-chain commit + resolve events. Not an audited statement under
+                any accounting standard — interpretation under GAAP/IFRS requires
+                accountant judgment.
+            </Text>
+            <Text style={styles.note}>
+                Sections: Process timeline (FigaroCore lifecycle, once for the
+                whole process). Then per order, repeated: Contract · Clause
+                data (every committed clause, rendered from its spec) ·
+                Process logs · Members registry. Then once for the whole
+                process: Documents (invoice, bill of lading, financial
+                statements) · Hash appendix.
+            </Text>
+        </AuditPage>
+    );
+}
+
+// ── What this evidence file does not contain ───────────────────────────────────────
+
+/** The parts this evidence file could not hold, each with the reason the reader gave.
+ *  The page states what is missing and draws no conclusion about why. */
+function MissingPage({ missing }: { missing: readonly MissingPart[] }) {
+    return (
+        <AuditPage label="Audit bundle" title="What this evidence file does not contain">
+            <Text style={styles.note}>
+                {missing.length === 0
+                    ? "The reader that built this evidence file named no missing part."
+                    : "Each entry below names a part this evidence file does not contain and the reason the reader gave. The evidence file holds no content for these parts."}
+            </Text>
+            <View style={styles.section}>
+                {missing.map((m, i) => (
+                    <View key={i}>
+                        <MetaRow k="part" v={m.part} mono />
+                        {m.orderHash && <MetaRow k="orderHash" v={m.orderHash} mono />}
+                        <MetaRow k="reason" v={m.reason} />
+                    </View>
+                ))}
+            </View>
+        </AuditPage>
+    );
+}
+
+// ── Contract page ───────────────────────────────────────────────────────────
+
+function ContractPage({ contract, decimals }: { contract: AuditBundle["contract"]; decimals: number | undefined }) {
+    return (
+        <AuditPage
+            label="Contract"
+            title={contract.title}
+            footer={{ checkoutHash: contract.checkoutHash, processId: contract.processId }}
+        >
+            <View style={styles.section}>
+                <MetaRow k="orderHash" v={contract.orderHash} mono />
+                <MetaRow k="buyer" v={contract.parties.buyer} mono />
+                <MetaRow k="seller" v={contract.parties.seller} mono />
+                <MetaRow k="currency" v={contract.currency} mono />
+                <MetaRow k="payment (P)" v={fmt(contract.payment, decimals)} />
+                <MetaRow k="runningTotal (G)" v={fmt(contract.runningTotal, decimals)} />
+                {contract.committedAtBlock !== undefined && (
+                    <MetaRow k="committedAtBlock" v={contract.committedAtBlock} />
+                )}
+            </View>
+
+            {/* Topology */}
+            <Text style={styles.h2}>Topology</Text>
+            <View style={styles.section}>
+                <Text style={styles.sectionBody}>
+                    {contract.topology.position === "root"
+                        ? "Root order of its process (on chain, its cumulative value equals its payment)."
+                        : "Later order of its process (on chain, its cumulative value exceeds its payment)."}
+                </Text>
+                {!contract.topology.composed ? (
+                    <Text style={styles.sectionBody}>Its agreement carries no topology leaf.</Text>
+                ) : contract.topology.follows.length === 0 ? (
+                    <Text style={styles.sectionBody}>Parent orders in its topology leaf: none.</Text>
+                ) : (
+                    <>
+                        <Text style={styles.sectionBody}>
+                            Parent order(s), as the topology leaf of its agreement names them:
+                        </Text>
+                        {contract.topology.follows.map((p) => (
+                            <Text key={p} style={[styles.mono, { marginTop: 1 }]}>{p}</Text>
+                        ))}
+                    </>
+                )}
+            </View>
+
+            {/* Method + jurisdiction summaries */}
+            {(contract.method || contract.jurisdiction) && (
+                <>
+                    <Text style={styles.h2}>Terms</Text>
+                    <View style={styles.section}>
+                        {contract.method && <MetaRow k="method" v={contract.method} mono />}
+                        {contract.jurisdiction && (
+                            <>
+                                <MetaRow k="applicable law" v={contract.jurisdiction.applicableLaw} />
+                                {contract.jurisdiction.forum && (
+                                    <MetaRow k="forum" v={contract.jurisdiction.forum} />
+                                )}
+                                {contract.jurisdiction.language && (
+                                    <MetaRow k="language" v={contract.jurisdiction.language} />
+                                )}
+                            </>
+                        )}
+                    </View>
+                </>
+            )}
+
+            {/* Clauses table */}
+            <Text style={styles.h2}>Clauses ({contract.clauses.length})</Text>
+            <View style={styles.table}>
+                <View style={[styles.tableRow, styles.tableHeader]}>
+                    <Text style={[styles.tCell, { flex: 2 }]}>Clause</Text>
+                    <Text style={[styles.tCell, { flex: 3 }]}>Title</Text>
+                    <Text style={[styles.tCellMono, { flex: 4 }]}>Leaf hash</Text>
+                </View>
+                {contract.clauses.map((clause) => (
+                    <View key={clause.clauseKey} style={styles.tableRow}>
+                        <Text style={[styles.tCellMono, { flex: 2 }]}>{clause.clauseKey}</Text>
+                        <Text style={[styles.tCell, { flex: 3 }]}>{clause.title}</Text>
+                        <Text style={[styles.tCellMono, { flex: 4 }]}>{shortHex(clause.leafHash, 14, 10)}</Text>
+                    </View>
+                ))}
+            </View>
+            <Text style={styles.note}>
+                Each clause leaf hash is a node in the merkle tree under
+                checkoutHash. Reader recomputes via computeClauseLeaf and
+                verifies inclusion.
+            </Text>
+        </AuditPage>
+    );
+}
+
+// ── Generic per-clause data page ────────────────────────────────────────────
+// Renders EVERY committed clause from its registered spec (title + field labels
+// + values) via describeClause. Names no clause, assumes no field — the
+// open-world replacement for the per-genre pages.
+
+function ClauseDataPage({ doc }: { doc: AuditBundle["clauseData"] }) {
+    return (
+        <AuditPage
+            label="Clause data"
+            title={doc.title}
+            footer={{ checkoutHash: doc.checkoutHash, processId: doc.processId }}
+        >
+            <View style={styles.section}>
+                <MetaRow k="orderHash" v={doc.orderHash} mono />
+            </View>
+            <Text style={styles.note}>
+                Every clause committed on this order, rendered from its registered
+                spec — title, field labels, and committed value(s). Names no clause
+                and assumes no field; a clause the protocol has never seen renders
+                here from its own spec.
+            </Text>
+            {doc.clauses.map((clause) => (
+                <View key={clause.clauseKey}>
+                    <Text style={styles.h2}>{clause.title}</Text>
+                    {/* A withheld clause's values exist and are not in this file:
+                        their place stays empty, and the list of what the file
+                        lacks names them. */}
+                    {clause.withheld ? null : clause.fields.length === 0 ? (
+                        <Text style={styles.sectionBody}>Committed with no field values.</Text>
+                    ) : (
+                        <View style={styles.table}>
+                            {clause.fields.map((field) => (
+                                <View key={field.name} style={styles.tableRow}>
+                                    <Text style={[styles.tCell, { flex: 2 }]}>{field.label}</Text>
+                                    <Text style={[styles.tCell, { flex: 3 }]}>{field.values.join(", ")}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </View>
+            ))}
+            {doc.clauses.length === 0 && (
+                <Text style={styles.sectionBody}>No clause data committed on this order.</Text>
+            )}
+            {doc.blindingValues.length > 0 && (
+                <View>
+                    <Text style={styles.h2}>Blinding values</Text>
+                    <Text style={styles.note}>
+                        A private clause carries a random value beside its terms, so its
+                        data hash cannot be confirmed by guessing the terms. It is no term,
+                        and the forum needs it to recompute the clause&apos;s data hash and
+                        leaf: the value goes into the clause&apos;s data with the terms above.
+                    </Text>
+                    <View style={styles.table}>
+                        {doc.blindingValues.map((b) => (
+                            <View key={`${b.clauseKey}-${b.field}`} style={styles.tableRow}>
+                                <Text style={[styles.tCellMono, { flex: 3 }]}>{b.clauseKey}</Text>
+                                <Text style={[styles.tCell, { flex: 1 }]}>{b.field}</Text>
+                                <Text style={[styles.tCellMono, { flex: 4 }]}>{b.value}</Text>
+                            </View>
+                        ))}
+                    </View>
+                </View>
+            )}
+        </AuditPage>
+    );
+}
+
+// ── Sovereign process-logs page ─────────────────────────────────────────────
+
+function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
+    const total = doc.logs.reduce((n, g) => n + g.events.length, 0);
+    return (
+        <AuditPage
+            label="Process logs"
+            title={doc.title}
+            footer={{ checkoutHash: doc.checkoutHash, processId: doc.processId }}
+        >
+            <View style={styles.section}>
+                <MetaRow k="orderHash" v={doc.orderHash} mono />
+                <MetaRow
+                    k="events recorded"
+                    v={<>{total} across {doc.logs.length} process clause{doc.logs.length === 1 ? "" : "s"}</>}
+                />
+            </View>
+            <Text style={styles.note}>
+                Sovereign event logs from off-chain sellers. The buyer&apos;s
+                actions are FigaroCore events (commit / resolveProcess);
+                off-chain sellers record theirs via whatever process clause
+                their order carries, so what each party signed, and when,
+                is fixed in the process&apos;s data. One section per clause, titled from its
+                registered spec. Each contentRef =
+                keccak256(`(uint8 eventType, string evidenceUri)`); eventType
+                indexes the clause&apos;s spec-declared event enum.
+            </Text>
+            <Text style={styles.note}>
+                Each event is its attester&apos;s representation, checked for
+                binding to the order and never for truth; what stands behind
+                a seller&apos;s attestation is the buyer&apos;s decision to withhold
+                resolution, at the price of its own bond, until a false one is
+                put right, and parties acting together are outside that reach.
+            </Text>
+
+            <Text style={styles.note}>
+                Path: direct = {attestationPathLabel("direct")}; batch = {attestationPathLabel("batch")}.
+            </Text>
+
+            {doc.logs.map((group) => (
+                <View key={group.clauseKey}>
+                    <Text style={styles.h2}>{group.title} ({group.events.length})</Text>
+                    <View style={styles.table}>
+                        <View style={[styles.tableRow, styles.tableHeader]}>
+                            <Text style={[styles.tCell, { flex: 0.8 }]}>Stage</Text>
+                            <Text style={[styles.tCellMono, { flex: 3 }]}>Attester</Text>
+                            <Text style={[styles.tCellMono, { flex: 4 }]}>contentRef</Text>
+                            <Text style={[styles.tCell, { flex: 1 }]}>Block</Text>
+                            <Text style={[styles.tCell, { flex: 1 }]}>Path</Text>
+                        </View>
+                        {group.events.map((e, i) => (
+                            <View key={`${group.clauseKey}-${e.contentRef}-${i}`} style={styles.tableRow}>
+                                <Text style={[styles.tCell, { flex: 0.8 }]}>{e.stage}</Text>
+                                <Text style={[styles.tCellMono, { flex: 3 }]}>{shortAddr(e.attester)}</Text>
+                                <Text style={[styles.tCellMono, { flex: 4 }]}>{shortHex(e.contentRef, 14, 8)}</Text>
+                                <Text style={[styles.tCell, { flex: 1 }]}>{e.blockNumber}</Text>
+                                <Text style={[styles.tCell, { flex: 1 }]}>{e.universe ?? ""}</Text>
+                            </View>
+                        ))}
+                    </View>
+                    {group.events.filter((e) => e.heldContent).map((e, i) => (
+                        <View key={`held-${group.clauseKey}-${e.contentRef}-${i}`}>
+                            <Text style={styles.note}>
+                                Private content of the stage {e.stage} attestation, held by the
+                                builder of this file. keccak256(content bytes) = contentRef {e.contentRef}.
+                            </Text>
+                            <Text style={styles.note}>
+                                {e.heldReceived
+                                    ? `Copy received from the attester ${e.attester}, its counterparty on this order, and kept in the browser profile this file was built in.`
+                                    : `Copy kept in the browser profile this file was built in, when the attester ${e.attester} filed the attestation from it.`}
+                            </Text>
+                            {Object.entries(e.heldValues ?? {}).map(([name, value]) => (
+                                <MetaRow key={name} k={name} v={typeof value === "string" ? value : JSON.stringify(value, (_k, x) => (typeof x === "bigint" ? x.toString() : x))} mono />
+                            ))}
+                            <MetaRow k="content bytes" v={e.heldContent!} mono />
+                        </View>
+                    ))}
+                </View>
+            ))}
+
+            {total === 0 && (
+                <Text style={styles.sectionBody}>
+                    No sovereign process events attested for this order.
+                </Text>
+            )}
+        </AuditPage>
+    );
+}
+
+// ── Members registry page ─────────────────────────────────────────────────
+
+function MembersRegistryPage({ doc }: { doc: AuditBundle["membersRegistry"]["seller"] }) {
+    return (
+        <AuditPage
+            label="Members registry"
+            title={doc.title}
+            footer={{ checkoutHash: doc.checkoutHash, processId: doc.processId }}
+        >
+            <View style={styles.section}>
+                <MetaRow k="orderHash" v={doc.orderHash} mono />
+                <MetaRow k={doc.party} v={doc.member} mono />
+                <MetaRow
+                    k="registered?"
+                    v={doc.registered ? "Yes" : "NOT REGISTERED"}
+                    extraStyle={doc.auditSignificant ? styles.badgeBad : doc.registered ? styles.badgeOk : undefined}
+                />
+                {doc.registered && doc.metadataURI && (
+                    <MetaRow k="metadataURI" v={doc.metadataURI} mono />
+                )}
+                {doc.registered && doc.registeredAtBlock !== undefined && (
+                    <MetaRow k="registered at block" v={doc.registeredAtBlock} />
+                )}
+            </View>
+            {doc.notice && (
+                <Text style={doc.auditSignificant ? [styles.sectionBody, styles.badgeBad] : styles.sectionBody}>{doc.notice}</Text>
+            )}
+            <Text style={styles.note}>
+                The Core does not enforce registration —
+                MembersRegistry is advisory off-chain metadata. A wallet that
+                sells is expected to be a member (runtime convention), so an
+                unregistered seller is itself an audit-significant flag. A wallet
+                may buy without registering; a buyer that registers is a member
+                like any other, and can offer the data its orders produce.
+            </Text>
+        </AuditPage>
+    );
+}
+
+// ── Timeline page ───────────────────────────────────────────────────────────
+
+function shortDetails(ev: TimelineEvent): string {
+    const parts: string[] = [];
+    if (ev.eventName === "OrderCommitted") {
+        if (ev.details.payment) parts.push(`P=${ev.details.payment}`);
+        if (ev.details.seller) parts.push(`seller ${shortAddr(ev.details.seller)}`);
+    } else if (ev.eventName === "OrderResolved") {
+        if (ev.details.sellerPayout) parts.push(`seller +${ev.details.sellerPayout}`);
+        if (ev.details.buyerPayout) parts.push(`buyer +${ev.details.buyerPayout}`);
+    } else {
+        for (const [k, v] of Object.entries(ev.details)) {
+            if (!v) continue;
+            const display = v.length > 24 ? shortHex(v, 8, 4) : v;
+            parts.push(`${k}=${display}`);
+        }
+    }
+    return parts.join(" · ");
+}
+
+function TimelinePage({ timeline }: { timeline: ProcessTimeline }) {
+    const { events, summary, participants } = timeline;
+    return (
+        <AuditPage
+            label="Process timeline"
+            title="FigaroCore lifecycle events"
+            footer={{ processId: timeline.processId }}
+        >
+            <Text style={styles.note}>
+                Chronological reconstruction of all FigaroCore events scoped to
+                this processId, plus coordinator-specific extensions where
+                supplied (lifecycle signals, proximity proofs). Each row is
+                anchored to a transaction hash on chain — the reader can
+                verify event-by-event without protocol cooperation.
+            </Text>
+
+            <View style={styles.section}>
+                <MetaRow k="chainId" v={timeline.chainId} />
+                <MetaRow k="core address" v={timeline.coreAddress} mono />
+                {timeline.batchVerifierAddress && (
+                    <MetaRow k="batch verifier" v={timeline.batchVerifierAddress} mono />
+                )}
+                <MetaRow
+                    k="events"
+                    v={<>{events.length} total · {summary.orderCount} committed · {summary.resolvedCount} resolved</>}
+                />
+                <MetaRow k="total payment" v={summary.totalPayment} />
+                <MetaRow k="seller payouts" v={summary.totalSellerPayout} />
+                <MetaRow k="buyer payouts" v={summary.totalBuyerPayout} />
+                {participants.length > 0 && (
+                    <MetaRow k="participants" v={participants.map((p) => shortAddr(p)).join(", ")} mono />
+                )}
+            </View>
+
+            <Text style={styles.note}>
+                Path: direct = {attestationPathLabel("direct")}; batch = {attestationPathLabel("batch")}.
+            </Text>
+            <Text style={styles.h2}>Events ({events.length})</Text>
+            {events.length === 0 ? (
+                <Text style={styles.sectionBody}>
+                    No FigaroCore events found for this processId. The process
+                    may not yet exist on this chain, or the RPC may have lost
+                    the historical range.
+                </Text>
+            ) : (
+                <View style={styles.table}>
+                    <View style={[styles.tableRow, styles.tableHeader]}>
+                        <Text style={[styles.tCell, { flex: 2 }]}>Timestamp (UTC)</Text>
+                        <Text style={[styles.tCell, { flex: 1 }]}>Block</Text>
+                        <Text style={[styles.tCell, { flex: 2 }]}>Event</Text>
+                        <Text style={[styles.tCell, { flex: 1 }]}>Path</Text>
+                        <Text style={[styles.tCellMono, { flex: 2 }]}>Order</Text>
+                        <Text style={[styles.tCell, { flex: 4 }]}>Detail</Text>
+                        <Text style={[styles.tCellMono, { flex: 2 }]}>tx</Text>
+                    </View>
+                    {events.map((ev, idx) => (
+                        <View key={`${ev.txHash}-${idx}`} style={styles.tableRow}>
+                            <Text style={[styles.tCell, { flex: 2 }]}>{ev.iso}</Text>
+                            <Text style={[styles.tCell, { flex: 1 }]}>{ev.blockNumber.toString()}</Text>
+                            <Text style={[styles.tCell, { flex: 2 }]}>{ev.label}</Text>
+                            <Text style={[styles.tCell, { flex: 1 }]}>{ev.universe}</Text>
+                            <Text style={[styles.tCellMono, { flex: 2 }]}>
+                                {ev.orderHash ? shortHex(ev.orderHash, 8, 4) : "—"}
+                            </Text>
+                            <Text style={[styles.tCell, { flex: 4 }]}>{shortDetails(ev)}</Text>
+                            <Text style={[styles.tCellMono, { flex: 2 }]}>{shortHex(ev.txHash, 8, 4)}</Text>
+                        </View>
+                    ))}
+                </View>
+            )}
+            <Text style={styles.note}>
+                Generated {timeline.generatedAt}. Same data surface used by
+                the in-iframe evidence-display view.
+            </Text>
+        </AuditPage>
+    );
+}
+
+// ── Hash appendix page ──────────────────────────────────────────────────────
+
+function HashAppendixPage({ appendix }: { appendix: AuditBundle["hashAppendix"] }) {
+    return (
+        <AuditPage
+            label="Verification"
+            title={appendix.title}
+            footer={{ checkoutHash: appendix.checkoutHash, processId: appendix.processId }}
+        >
+            <Text style={styles.note}>
+                Reader recomputes each hash from the cited content / location and
+                verifies against chain. checkoutHash = merkle root over clause
+                leaves, the provenance leaf and the topology leaf. Each clause
+                leaf = computeClauseLeaf(clause); the provenance leaf =
+                computeProvenanceLeaf(agreementHash, processDesignHash); the
+                topology leaf = computeTopologyLeaf(follows). Each
+                attestation contentRef = keccak256(content); the chain holds
+                only this hash, and the content is held off chain by the
+                parties.
+            </Text>
+            <View style={styles.table}>
+                <View style={[styles.tableRow, styles.tableHeader]}>
+                    <Text style={[styles.tCell, { flex: 1.5 }]}>Kind</Text>
+                    <Text style={[styles.tCell, { flex: 3 }]}>Label</Text>
+                    <Text style={[styles.tCellMono, { flex: 3 }]}>Hash</Text>
+                    <Text style={[styles.tCell, { flex: 4 }]}>Source</Text>
+                </View>
+                {appendix.anchors.map((anchor, idx) => (
+                    <View key={idx} style={styles.tableRow}>
+                        <Text style={[styles.tCellMono, { flex: 1.5 }]}>{anchor.kind}</Text>
+                        <Text style={[styles.tCell, { flex: 3 }]}>{anchor.label}</Text>
+                        <Text style={[styles.tCellMono, { flex: 3 }]}>{shortHex(anchor.hash, 12, 8)}</Text>
+                        <Text style={[styles.tCell, { flex: 4 }]}>{anchor.sourceLocation}</Text>
+                    </View>
+                ))}
+            </View>
+        </AuditPage>
+    );
+}
+
+// ── Top-level Document ──────────────────────────────────────────────────────
+
+export interface AuditBundlePdfData {
+    /** Process id this bundle covers. */
+    processId: string;
+    /** Buyer address (root buyer of the process), if known. */
+    buyer?: string;
+    /** Per-order extractor outputs. One entry per order in the process. */
+    perOrderBundles: AuditBundle[];
+    /** Every recognizable document — invoice, BoL, financial statements — projected
+     *  from declared assemblies / statement projectors over the committed record by
+     *  the generic engine. One generic page each; no genre code. */
+    documents: readonly RenderedDocument[];
+    /**
+     * FigaroCore lifecycle timeline for the process. When present, the PDF
+     * renders a Process Timeline page right after the cover. When omitted
+     * (e.g. RPC unavailable), the bundle still renders without it.
+     */
+    timeline?: ProcessTimeline | null;
+    /** The process token's decimals(), read from the chain; absent when unreadable. */
+    tokenDecimals?: number;
+    /** Every part the evidence file does not contain, each with its reason; drawn on
+     *  its own page right after the cover. */
+    missing: readonly MissingPart[];
+    /** Generation timestamp (UTC). */
+    generatedAt: Date;
+}
+
+/**
+ * ONE generic renderer for EVERY recognizable document. It knows no genre — it
+ * draws whatever the generic engine produced from a declared assembly (header
+ * rows, an optional line table with a total, generic whole-leaf sections, a
+ * note). A new document genre (invoice, BoL, packing list, …) is a new assembly
+ * in `documentLayouts.ts`; this renderer never changes.
+ */
+function DocumentPage({ document }: { document: RenderedDocument }) {
+    return (
+        <AuditPage label="Document" title={document.title}>
+            <View style={styles.section}>
+                {document.header.map((r) => (
+                    <MetaRow key={r.label} k={r.label} v={r.value} mono />
+                ))}
+            </View>
+            {document.lines && (
+                <>
+                    <Text style={styles.h2}>Lines</Text>
+                    <View style={styles.table}>
+                        <View style={[styles.tableRow, styles.tableHeader]}>
+                            {document.lines.columns.map((c, i) => (
+                                <Text key={c} style={i === document.lines!.columns.length - 1 ? styles.tCellRight : styles.tCell}>{c}</Text>
+                            ))}
+                        </View>
+                        {document.lines.rows.map((row, ri) => (
+                            <View key={ri} style={styles.tableRow}>
+                                {row.map((cell, ci) => (
+                                    <Text key={ci} style={ci === row.length - 1 ? styles.tCellRight : (ci === 0 ? styles.tCellMono : styles.tCell)}>{cell || "—"}</Text>
+                                ))}
+                            </View>
+                        ))}
+                    </View>
+                    {document.lines.total && (
+                        <MetaRow k={document.lines.total.label} v={document.lines.total.value} />
+                    )}
+                </>
+            )}
+            {document.leafSections?.map((s) => (
+                <View key={s.label}>
+                    <Text style={styles.h2}>{s.label}</Text>
+                    <View style={styles.section}>
+                        {s.entries.map((e) => (
+                            <MetaRow key={e.key} k={e.key} v={e.value} />
+                        ))}
+                    </View>
+                </View>
+            ))}
+            {document.legend && document.legend.length > 0 && (
+                <View>
+                    <Text style={styles.h2}>Legend</Text>
+                    <View style={styles.section}>
+                        {document.legend.map((l) => (
+                            <MetaRow key={l.key} k={l.key} v={l.description} />
+                        ))}
+                    </View>
+                </View>
+            )}
+            {document.note && <Text style={styles.note}>{document.note}</Text>}
+        </AuditPage>
+    );
+}
+
+/** @public — consumed via namespace access (`import * as pdfBundle` →
+ *  `pdfBundle.AuditBundlePdf` in auditBundlePdf.ts), which knip can't resolve
+ *  statically. Real consumer; do not remove. */
+export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
+    return (
+        <Document
+            title={`Audit bundle ${shortHex(data.processId, 10, 6)}`}
+            author="Figaro Protocol"
+            subject="Bonded commitment record"
+        >
+            <CoverPage processId={data.processId} buyer={data.buyer} generatedAt={data.generatedAt} />
+            <MissingPage missing={data.missing} />
+            {data.timeline ? <TimelinePage timeline={data.timeline} /> : null}
+            {data.perOrderBundles.map((bundle) => (
+                <ContractPage key={`contract-${bundle.contract.orderHash}`} contract={bundle.contract} decimals={data.tokenDecimals} />
+            ))}
+            {data.perOrderBundles.map((bundle) => (
+                <ClauseDataPage key={`clausedata-${bundle.clauseData.orderHash}`} doc={bundle.clauseData} />
+            ))}
+            {data.perOrderBundles.map((bundle) => (
+                <ProcessLogsPage key={`processlogs-${bundle.processLogs.orderHash}`} doc={bundle.processLogs} />
+            ))}
+            {data.perOrderBundles.map((bundle) => (
+                <Fragment key={`opreg-${bundle.membersRegistry.seller.orderHash}`}>
+                    <MembersRegistryPage doc={bundle.membersRegistry.seller} />
+                    <MembersRegistryPage doc={bundle.membersRegistry.buyer} />
+                </Fragment>
+            ))}
+            {/* Every recognizable document — invoice per seller, BoL per carriage
+                leg, financial statements per seller + consolidated — one generic
+                page each, from declared assemblies / statement projectors. No genre code. */}
+            {data.documents.map((document, i) => (
+                <DocumentPage key={`document-${document.genre}-${i}`} document={document} />
+            ))}
+            {data.perOrderBundles.map((bundle) => (
+                <HashAppendixPage key={`appendix-${bundle.hashAppendix.orderHash}`} appendix={bundle.hashAppendix} />
+            ))}
+        </Document>
+    );
+}

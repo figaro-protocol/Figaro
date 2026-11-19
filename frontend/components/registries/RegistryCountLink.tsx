@@ -20,10 +20,10 @@
 
 import Link from "@/components/shared/Link";
 import { useMemo } from "react";
-import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
-import { usePublishedAssemblies } from "@/lib/protocol/useProcessRegistry";
-import { usePublishedAgreements } from "@/lib/protocol/useAgreementRegistry";
-import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
+import { useAllRegisteredClauses } from "@/lib/registries/useClauseRegistry";
+import { usePublishedAssemblies } from "@/lib/registries/useProcessRegistry";
+import { usePublishedAgreements } from "@/lib/registries/useAgreementRegistry";
+import { useRegisteredMembers } from "@/lib/registries/useRegisteredMembers";
 import type { RegistryFamily } from "@/lib/registries/explorer";
 import { isLiveRegistration } from "@/lib/shared/clauseSpecSource";
 import { mapRead, type NetworkRead } from "@/lib/shared/networkRead";

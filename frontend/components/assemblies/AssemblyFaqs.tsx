@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "@/components/shared/Link";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
-import { useAllPublishedAssemblies, fetchAssembly } from "@/lib/protocol/useProcessRegistry";
+import { useAllPublishedAssemblies, fetchAssembly } from "@/lib/registries/useProcessRegistry";
 import type { ProcessDesignFaqEntry } from "@figaro-protocol/sdk";
 
 /**

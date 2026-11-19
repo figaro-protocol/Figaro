@@ -16,7 +16,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { Order } from "@/lib/core/store";
 
 const specs = vi.hoisted(() => ({ state: { loaded: false, failed: false, version: 0 }, client: { chain: { id: 31337 } } }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => specs.state }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => specs.state }));
 vi.mock("wagmi", () => ({ useChainId: () => 31337, usePublicClient: () => specs.client }));
 // The chain's two ceilings: one order resolves per process, so the blank
 // canvas's root already stands at the cap.

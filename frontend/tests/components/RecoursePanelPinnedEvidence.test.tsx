@@ -35,15 +35,15 @@ vi.mock("@/lib/shared/runtimeServicesContext", () => ({
     }),
 }));
 vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => chain.agreements }));
-vi.mock("@/lib/composition/indexer", () => ({ getAttestationsByOrder: async () => chain.attestations }));
-vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [], getActiveMembers: async () => [] }));
-vi.mock("@/lib/audit/processTimeline", () => ({ buildProcessTimeline: async () => ({ missing: [] }) }));
-vi.mock("@/lib/composition/witnessContent", () => ({
+vi.mock("@/lib/core/attestationIndexer", () => ({ getAttestationsByOrder: async () => chain.attestations }));
+vi.mock("@/lib/registries/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [], getActiveMembers: async () => [] }));
+vi.mock("@/lib/data/audit/processTimeline", () => ({ buildProcessTimeline: async () => ({ missing: [] }) }));
+vi.mock("@/lib/core/witnessContent", () => ({
     // The holder holds both witnesses: a file that read them would carry them.
     heldWitnessReader: () => (place: { contentRef: string }) => held.byRef.get(place.contentRef.toLowerCase()) ?? null,
 }));
 // The renderer writes the data the page would print as the blob.
-vi.mock("@/lib/audit/pdfBundle", () => ({ AuditBundlePdf: ({ data }: { data: unknown }) => data }));
+vi.mock("@/lib/data/audit/pdfBundle", () => ({ AuditBundlePdf: ({ data }: { data: unknown }) => data }));
 vi.mock("@react-pdf/renderer", () => ({
     pdf: (data: unknown) => ({
         toBlob: async () => new Blob([JSON.stringify(data, (_k, v: unknown) => (typeof v === "bigint" ? v.toString() : v))]),

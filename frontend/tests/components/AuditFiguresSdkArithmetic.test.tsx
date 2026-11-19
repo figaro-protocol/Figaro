@@ -25,9 +25,9 @@ vi.mock("@/components/runtime/DownloadAuditBundleButton", () => ({ DownloadAudit
 
 import { orderFromSdk, type Order } from "@/lib/core/store";
 import { ProcessFinancialsView } from "@/app/(app)/audit/_components/ProcessFinancialsView";
-import { buildAuditBundleData } from "@/lib/audit/auditBundlePdf";
+import { buildAuditBundleData } from "@/lib/data/audit/auditBundlePdf";
 import { DocumentView } from "@/app/(app)/audit/_components/DocumentView";
-import type { RenderedDocument } from "@/lib/audit/documentProjection";
+import type { RenderedDocument } from "@/lib/data/audit/documentProjection";
 
 const PROCESS = `0x${"ab".repeat(32)}` as const;
 const BUYER = "0x00000000000000000000000000000000000000b1" as const;

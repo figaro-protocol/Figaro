@@ -5,13 +5,13 @@ import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 const fetchHydratedAssemblyMock = vi.fn();
 const publishedMock = vi.fn();
 const loadErrorMock = vi.fn<(hash: string) => string | undefined>(() => undefined);
-vi.mock("@/lib/protocol/useProcessRegistry", () => ({
+vi.mock("@/lib/registries/useProcessRegistry", () => ({
     usePublishedAssemblies: () => publishedMock(),
     fetchHydratedAssembly: (...args: unknown[]) => fetchHydratedAssemblyMock(...args),
     getAssemblyLoadError: (hash: string) => loadErrorMock(hash),
 }));
 
-import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
+import { useAssemblyChoices } from "@/lib/registries/assemblyChoices";
 
 const EVENT = {
     slug: "asm-fresh", registeredBy: "0xA", processDesignHash: "0x1", contentURI: "ipfs://fresh", blockNumber: 2n,

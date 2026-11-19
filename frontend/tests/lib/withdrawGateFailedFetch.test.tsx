@@ -33,7 +33,7 @@ vi.mock("@figaro-protocol/sdk/derive", async (importOriginal) => ({
     deriveInFlightOrders: () => [{ processId: `0x${"ab".repeat(32)}`, checkoutHash: CHECKOUT }],
 }));
 
-import { useWithdrawGate } from "@/lib/protocol/withdrawGate";
+import { useWithdrawGate } from "@/lib/registries/withdrawGate";
 
 const TARGET = { kind: "clause", clauseKey: CLAUSE } as const;
 

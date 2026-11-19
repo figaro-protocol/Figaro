@@ -2,7 +2,7 @@
 
 /**
  * PrivateFilingsPanel — the private filings of one order, delivered to the
- * counterparty on its request (`lib/handoff/privateFilings.ts`): the third
+ * counterparty on its request (`lib/data/handoff/privateFilings.ts`): the third
  * use of the sealed ceremony, beside AddressDetailPanel and
  * ContentDeliveryPanel, through the same hook (`useCeremonyPanel`).
  *
@@ -34,9 +34,9 @@ import {
     requestPrivateFilings,
     sendPrivateFilings,
     type ReceivedPrivateFilings,
-} from "@/lib/handoff/privateFilings";
-import { useCeremonyPanel } from "@/lib/handoff/useCeremonyChannel";
-import { useWitnessHolder } from "@/lib/composition/useWitnessHolder";
+} from "@/lib/data/handoff/privateFilings";
+import { useCeremonyPanel } from "@/lib/data/handoff/useCeremonyChannel";
+import { useWitnessHolder } from "@/lib/core/useWitnessHolder";
 import { hexEqual } from "@/lib/shared/evm";
 import { Button } from "@/components/ui/Button";
 import { CeremonyPanelFrame, CeremonyRequestButton } from "@/components/runtime/CeremonyPanelFrame";

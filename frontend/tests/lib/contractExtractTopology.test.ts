@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractContract } from "@/lib/audit/contractExtract";
+import { extractContract } from "@/lib/data/audit/contractExtract";
 import { OrderState, type Order } from "@/lib/core/store";
 import type { Agreement } from "@figaro-protocol/sdk";
 

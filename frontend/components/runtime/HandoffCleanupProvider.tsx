@@ -1,6 +1,6 @@
 "use client";
 
-import { useHandoffCleanup } from "@/lib/handoff/useHandoffCleanup";
+import { useHandoffCleanup } from "@/lib/data/handoff/useHandoffCleanup";
 
 /**
  * Invisible provider-level component that watches for the terminal order

@@ -27,7 +27,7 @@ vi.mock("wagmi", () => ({
     useWriteContract: () => ({ writeContractAsync: w.write, data: undefined, isPending: false, error: null }),
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false, data: undefined }),
 }));
-vi.mock("@/lib/member/catalogPublisher", () => ({
+vi.mock("@/lib/registries/catalogPublisher", () => ({
     publishMemberCatalog: async (catalog: unknown) => {
         w.catalogPins.push(catalog);
         return { uri: "ipfs://bafycatalog" };
@@ -43,7 +43,7 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
     },
 }));
 
-import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
+import { usePublishMemberProfile } from "@/lib/registries/usePublishMemberProfile";
 
 beforeEach(() => {
     w.catalogPins = [];

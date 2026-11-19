@@ -21,7 +21,7 @@
 import type { ReactNode } from "react";
 import Link from "@/components/shared/Link";
 import { Card } from "@/components/ui/Card";
-import type { AssemblyChoice } from "@/lib/protocol/assemblyChoices";
+import type { AssemblyChoice } from "@/lib/registries/assemblyChoices";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 
 export function AssemblyChoiceRow({

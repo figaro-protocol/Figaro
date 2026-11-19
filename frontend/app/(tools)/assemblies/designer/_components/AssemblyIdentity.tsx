@@ -29,8 +29,8 @@
 import { useMemo } from "react";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { snapshotAssemblyIdentity } from "@/lib/designer/draftToAssembly";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { useRegisteredAgreementsVersion } from "@/lib/protocol/useAgreementRegistry";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
+import { useRegisteredAgreementsVersion } from "@/lib/registries/useAgreementRegistry";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export function AssemblyIdentity({ snapshot }: { snapshot: DesignSnapshot | null }) {

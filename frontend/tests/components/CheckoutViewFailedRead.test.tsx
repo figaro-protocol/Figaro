@@ -12,9 +12,9 @@ vi.mock("wagmi", () => ({ useChainId: () => 31337, usePublicClient: () => ({ cha
 // The failed read in both shapes: as the old hook reported it (an empty
 // catalog list, not loading) and as the one read primitive's `absent`.
 const CATALOGS = { catalogs: [], isLoading: false, read: { status: "absent" } };
-vi.mock("@/lib/member/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => CATALOGS }));
+vi.mock("@/lib/registries/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => CATALOGS }));
 const BOUND = Object.assign({ assemblies: [] }, { status: "absent" });
-vi.mock("@/lib/member/useMemberBoundAssemblies", () => ({
+vi.mock("@/lib/registries/useMemberBoundAssemblies", () => ({
     useMemberBoundAssemblies: () => BOUND,
     withBoundCoSellers: (a: unknown) => a,
 }));
@@ -29,7 +29,7 @@ vi.mock("@/lib/checkout", () => ({
 }));
 vi.mock("@/lib/checkout/cartStore", () => ({ useCartStore: () => ({ items: [] }) }));
 vi.mock("@/lib/checkout/dispatchRace", () => ({ useDispatchRace: () => ({}), postToAgentEndpoint: vi.fn() }));
-vi.mock("@/lib/composition/useCompositionActions", () => ({ useCompositionActions: () => ({ compose: vi.fn() }) }));
+vi.mock("@/lib/composability/useCompositionActions", () => ({ useCompositionActions: () => ({ compose: vi.fn() }) }));
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false }) }));
 vi.mock("@/hooks/useApproveThenAct", () => ({ useApproveThenAct: () => ({ runWithApproval: vi.fn() }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: undefined }) }));
@@ -37,7 +37,7 @@ vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18 }) }
 // The funding margin reads the funding token's balance; no token is chosen here.
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "pending" }, refetch: () => {} }) }));
 vi.mock("@/hooks/useConnectInjected", () => ({ useConnectInjected: () => vi.fn() }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
 
 import { CheckoutView } from "@/app/(app)/s/checkout/_components/CheckoutView";
 

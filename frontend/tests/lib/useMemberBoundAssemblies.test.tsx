@@ -19,7 +19,7 @@ const reads = vi.hoisted(() => ({
     profile: { read: { status: "present", value: { registered: true, metadataURI: "", registeredBlock: 1n } } },
 }));
 
-vi.mock("@/lib/member/useMembersRegistry", () => ({
+vi.mock("@/lib/registries/useMembersRegistry", () => ({
     useMemberProfile: () => {
         if (reads.profile.read.value.metadataURI !== memberProfile.uri) {
             reads.profile = { read: { status: "present", value: { registered: true, metadataURI: memberProfile.uri, registeredBlock: 1n } } };
@@ -27,7 +27,7 @@ vi.mock("@/lib/member/useMembersRegistry", () => ({
         return reads.profile;
     },
 }));
-vi.mock("@/lib/protocol/useProcessRegistry", () => ({
+vi.mock("@/lib/registries/useProcessRegistry", () => ({
     getAssemblyLoadError: () => undefined,
     useAllPublishedAssemblies: () => reads.published,
     fetchHydratedAssembly: async () => ({ assembly: { name: "Anchored", agreements: [] }, agreements: {} }),
@@ -37,7 +37,7 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
     fetchCappedContent: (...args: unknown[]) => fetchCappedContentMock(...args),
 }));
 
-import { useMemberBoundAssemblies } from "@/lib/member/useMemberBoundAssemblies";
+import { useMemberBoundAssemblies } from "@/lib/registries/useMemberBoundAssemblies";
 
 const PROFILE = {
     name: "Seller",

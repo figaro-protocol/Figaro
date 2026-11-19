@@ -30,17 +30,17 @@ vi.mock("wagmi", () => ({
     useAccount: () => ({ address: mocks.address, isConnected: !!mocks.address }),
 }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
-vi.mock("@/lib/protocol/useRegisterClause", () => ({
+vi.mock("@/lib/registries/useRegisterClause", () => ({
     useRegisteredClausesByWallet: () => mocks.scan,
 }));
-vi.mock("@/lib/protocol/useWithdrawStake", () => ({
+vi.mock("@/lib/registries/useWithdrawStake", () => ({
     useWithdrawClause: () => ({ withdraw: async () => undefined }),
     useWithdrawAgreement: () => ({ withdraw: async () => undefined }),
 }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({}) }));
-vi.mock("@/lib/protocol/registryWrites", () => ({ useRegistryWriteVersion: () => 0 }));
-vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => mocks.scan }));
-vi.mock("@/lib/protocol/useAgreementRegistry", () => ({
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({}) }));
+vi.mock("@/lib/registries/registryWrites", () => ({ useRegistryWriteVersion: () => 0 }));
+vi.mock("@/lib/registries/assemblyChoices", () => ({ useAssemblyChoices: () => mocks.scan }));
+vi.mock("@/lib/registries/useAgreementRegistry", () => ({
     usePublishedAgreements: () => mocks.scan,
     fetchRegisteredAgreement: async () => null,
     getRegisteredAgreement: () => undefined,

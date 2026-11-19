@@ -107,28 +107,28 @@ loses, moves or retypes a field and this table does not move with it.
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 1 | `processId` | `bytes32 indexed` | Every co-seller and any reader groups a process's orders by it (`sdk/src/derive/graphs.ts:129`) | A fingerprint: the root order's digest |
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 2 | `buyer` | `address indexed` | Any reader of the public data: the resolution graph (`sdk/src/derive/graphs.ts:117`) and the buyer-to-seller pairs (`sdk/src/derive/queries.ts:165`) | The wallet's address |
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 3 | `seller` | `address` | The same readers (`sdk/src/derive/graphs.ts:118`, `sdk/src/derive/queries.ts:165`); a co-seller sees the other sellers of its process | The wallet's address |
-| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 4 | `token` | `address` | A forum's evidence file names the token the chain moved (`frontend/lib/audit/contractExtract.ts:153`); the resolution graph's denomination (`sdk/src/derive/graphs.ts:131`) | The token's address |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 4 | `token` | `address` | A forum's evidence file names the token the chain moved (`frontend/lib/data/audit/contractExtract.ts:153`); the resolution graph's denomination (`sdk/src/derive/graphs.ts:131`) | The token's address |
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 5 | `payment` | `uint256` | Any reader: the volume per denomination (`sdk/src/derive/queries.ts:166`) and the bonds locked (`sdk/src/derive/graphs.ts:114`) | The exact amount, in the token's smallest unit |
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 6 | `runningTotal` | `uint256` | Any reader derives each seller's bond from it (`sdk/src/derive/graphs.ts:114`); a software agent of a party reads it to know a seller's bond (`sdk/src/agent/proposer.ts:133`) | The exact amount |
-| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 7 | `checkoutHash` | `bytes32` | A forum checks the agreement body against it (`frontend/lib/audit/hashAppendix.ts:87`) and looks the agreement up by it (`frontend/lib/audit/auditBundlePdf.ts:111`) | A fingerprint: the agreement's merkle root |
-| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 8 | `salt` | `uint256` | Whoever rebuilds the signed commitment from events alone: the buyer's resolution (`sdk/src/commitments.ts:279`, called by `sdk/src/agent/proposer.ts:154`) and a forum's evidence file (`frontend/lib/audit/contractExtract.ts:156`) | A random 256-bit number (`sdk/src/commitments.ts:308`), no party's data |
-| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 9 | `commitDeadline` | `uint256` | The same readers (`sdk/src/commitments.ts:280`, `frontend/lib/audit/contractExtract.ts:157`) | A time in seconds |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 7 | `checkoutHash` | `bytes32` | A forum checks the agreement body against it (`frontend/lib/data/audit/hashAppendix.ts:87`) and looks the agreement up by it (`frontend/lib/data/audit/auditBundlePdf.ts:111`) | A fingerprint: the agreement's merkle root |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 8 | `salt` | `uint256` | Whoever rebuilds the signed commitment from events alone: the buyer's resolution (`sdk/src/commitments.ts:279`, called by `sdk/src/agent/proposer.ts:154`) and a forum's evidence file (`frontend/lib/data/audit/contractExtract.ts:156`) | A random 256-bit number (`sdk/src/commitments.ts:308`), no party's data |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 9 | `commitDeadline` | `uint256` | The same readers (`sdk/src/commitments.ts:280`, `frontend/lib/data/audit/contractExtract.ts:157`) | A time in seconds |
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderSeller` | 0 | `orderHash` | `bytes32 indexed` | A reader listing the orders a wallet sold, the seller itself among them (`frontend/lib/core/indexer.ts:238`) | A fingerprint, repeated from `OrderCommitted` |
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderSeller` | 1 | `seller` | `address indexed` | The same reader (`frontend/lib/core/indexer.ts:237`) | The wallet's address, repeated from `OrderCommitted` so it can be indexed |
-| `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 0 | `orderHash` | `bytes32 indexed` | Any reader marks the order resolved (`sdk/src/state.ts:188`); a forum's timeline (`frontend/lib/audit/processTimeline.ts:290`) | A fingerprint |
-| `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 1 | `processId` | `bytes32 indexed` | Only the order's own parties: a party purges its sealed-channel keys for the process (`frontend/lib/handoff/useHandoffCleanup.ts:88`) | A fingerprint |
-| `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 2 | `sellerPayout` | `uint256` | Any reader of the resolution graph (`sdk/src/state.ts:192`); a forum's timeline (`frontend/lib/audit/processTimeline.ts:281`) | The exact amount |
-| `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 3 | `buyerPayout` | `uint256` | The same readers (`sdk/src/state.ts:193`, `frontend/lib/audit/processTimeline.ts:282`) | The exact amount |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 0 | `orderHash` | `bytes32 indexed` | Any reader marks the order resolved (`sdk/src/state.ts:188`); a forum's timeline (`frontend/lib/data/audit/processTimeline.ts:289`) | A fingerprint |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 1 | `processId` | `bytes32 indexed` | Only the order's own parties: a party purges its sealed-channel keys for the process (`frontend/lib/data/handoff/useHandoffCleanup.ts:88`) | A fingerprint |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 2 | `sellerPayout` | `uint256` | Any reader of the resolution graph (`sdk/src/state.ts:192`); a forum's timeline (`frontend/lib/data/audit/processTimeline.ts:280`) | The exact amount |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 3 | `buyerPayout` | `uint256` | The same readers (`sdk/src/state.ts:193`, `frontend/lib/data/audit/processTimeline.ts:281`) | The exact amount |
 | `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 0 | `processId` | `bytes32 indexed` | Any reader marks the process resolved (`sdk/src/state.ts:197`); a party waits on it after a batched resolution (`sdk/src/relay/index.ts:149`) | A fingerprint |
 | `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 1 | `buyer` | `address indexed` | no reader found: decoded (`sdk/src/events.ts:90`) and never read. It answers a stranger's question: which processes did this wallet close as buyer? A filter on the indexed topic finds them without reading any order (`src/core/kernel/FigaroCore.sol:291`) | The wallet's address, repeated from `OrderCommitted` |
 | `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 2 | `orderCount` | `uint256` | no reader found: decoded (`sdk/src/events.ts:91`) and never read. It answers a stranger's question: how many orders did this one call pay? A reader checks it against the `OrderResolved` events it holds (`src/core/kernel/FigaroCore.sol:291`, `src/core/verifier/FigaroBatchVerifier.sol:825`) | A count |
 | `FigaroCore`, `FigaroBatchVerifier` | `EIP712DomainChanged` | — | — | — | no reader found: OpenZeppelin's `EIP712` declares the event and nothing in `src/` emits it. It answers the question ERC-5267 asks: did the signing domain change? The domain is fixed at construction, so the answer is never (`src/core/kernel/FigaroCore.sol:27`) | No field |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 0 | `orderHash` | `bytes32 indexed` | Any reader groups attestations by order (`sdk/src/derive/attestation.ts:41`) | A fingerprint |
-| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 1 | `processId` | `bytes32 indexed` | Any reader: attestations by process (`sdk/src/derive/attestation.ts:31`); the data explorer attributes a process to its assembly (`frontend/lib/data/graphCorpus.ts:246`) | A fingerprint |
-| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 2 | `attester` | `address indexed` | The data explorer counts distinct attesters per clause (`frontend/lib/data/explorer.ts:344`); a forum's evidence file names the attester (`frontend/lib/audit/processLogsExtract.ts:104`) | The wallet's address |
-| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 3 | `clauseId` | `bytes32` | Any reader groups attestations by clause (`sdk/src/derive/overlay.ts:112`); a forum's evidence file (`frontend/lib/audit/processLogsExtract.ts:81`) | A fingerprint: the clause key |
-| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 4 | `stage` | `uint8` | Any reader decodes the content by the stage's shape (`sdk/src/derive/overlay.ts:133`); a forum's evidence file (`frontend/lib/audit/processLogsExtract.ts:85`) | A small number |
-| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 5 | `contentRef` | `bytes32` | Any reader fetches the content by it (`frontend/lib/data/graphCorpus.ts:303`) and checks the bytes against it (`sdk/src/anchored.ts:191`) | A fingerprint: `keccak256` of the content; a private set's content carries its blinding value, a public set's carries none |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 1 | `processId` | `bytes32 indexed` | Any reader: attestations by process (`sdk/src/derive/attestation.ts:31`); the data explorer attributes a process to its assembly (`frontend/lib/data/graphCorpus.ts:247`) | A fingerprint |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 2 | `attester` | `address indexed` | The data explorer counts distinct attesters per clause (`frontend/lib/data/explorer.ts:344`); a forum's evidence file names the attester (`frontend/lib/data/audit/processLogsExtract.ts:104`) | The wallet's address |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 3 | `clauseId` | `bytes32` | Any reader groups attestations by clause (`sdk/src/derive/overlay.ts:112`); a forum's evidence file (`frontend/lib/data/audit/processLogsExtract.ts:81`) | A fingerprint: the clause key |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 4 | `stage` | `uint8` | Any reader decodes the content by the stage's shape (`sdk/src/derive/overlay.ts:133`); a forum's evidence file (`frontend/lib/data/audit/processLogsExtract.ts:85`) | A small number |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 5 | `contentRef` | `bytes32` | Any reader fetches the content by it (`frontend/lib/data/graphCorpus.ts:304`) and checks the bytes against it (`sdk/src/anchored.ts:191`) | A fingerprint: `keccak256` of the content; a private set's content carries its blinding value, a public set's carries none |
 | `FigaroBatchVerifier` | `BatchOperations` | 0 | `batchId` | `uint64 indexed` | A relay rebuilding the batch path's state from the chain pairs the log with its `BatchSettled` (`prover/sequencer/src/rebuild.rs:91`); the SDK's reader of the uses a batch left uncounted pairs it with the `BatchAccrualSkipped` of the same transaction and batch id (`sdk/src/rpgf/index.ts:437`) | A counter |
 | `FigaroBatchVerifier` | `BatchOperations` | 1 | `blockTimestamp` | `uint64` | The same relay replays the batch at that clock (`prover/sequencer/src/rebuild.rs:105`) | A time in seconds |
 | `FigaroBatchVerifier` | `BatchOperations` | 2 | `usagePeriod` | `uint8` | The SDK's reader of the uses a batch left uncounted returns it as the period its claims were applied under (`sdk/src/rpgf/index.ts:438`) | A period number |
@@ -207,7 +207,7 @@ fields, and the blinding field").
   its own or received from the counterparty, says which, and names as missing
   each piece it does not hold. The evidence file a party pins in public for a
   forum (`RecoursePanel`, `forPublicPin` in
-  `frontend/lib/audit/auditBundlePdf.ts`) carries each private clause and
+  `frontend/lib/data/audit/auditBundlePdf.ts`) carries each private clause and
   each private witness by its fingerprint only, and names the content as
   kept by its holder. Whoever holds the content reproduces the
   fingerprint from the content alone; a data buyer checks a disclosed leaf
@@ -233,12 +233,12 @@ Four limits, stated plainly:
    the order, by asking for one or by sending its own filings. The
    reference frontend keeps it in the attester's browser storage
    (`localStorage`, `keepPrivateWitnessContent` in
-   `frontend/lib/composition/witnessContent.ts`), under the wallet that
+   `frontend/lib/core/witnessContent.ts`), under the wallet that
    attested and the chain it attested on (point 4). The one submitter every
    filing goes through, the rail's attestations and the ceremony panels'
    evidence alike, writes it before the attestation is sent and refuses to
    send where the browser will not keep it (`submitAttestation` in
-   `frontend/lib/composition/useAttestationCoordinatorActions.ts`). It keeps the bytes only, one entry per attestation, and every reader
+   `frontend/lib/core/useAttestationCoordinatorActions.ts`). It keeps the bytes only, one entry per attestation, and every reader
    decodes the values, blinding value included, from the bytes it has checked
    against the content reference. A party that clears its browser's storage
    loses it: the content is its own to keep, and its export (point 4) and the
@@ -253,7 +253,7 @@ Four limits, stated plainly:
    `prepareAttestationContent` returns. Where a content delivery's stage-1
    set is private, the sender draws its blinding value before the send and
    seals it in the encrypted delivery beside the artifact
-   (`prepareCompletionEvidence` in `frontend/lib/handoff/contentDelivery.ts`),
+   (`prepareCompletionEvidence` in `frontend/lib/data/handoff/contentDelivery.ts`),
    so the receiver rebuilds the content, recomputes the anchor and shows its
    verdict (`completionEvidenceAnchor`) once an `Attestation` by the sender
    holds that order, clause, stage and reference; a public stage-1 set's delivery
@@ -261,7 +261,7 @@ Four limits, stated plainly:
 
    The counterparty receives the private filings of an order by its own
    request, with both parties' order pages open
-   (`frontend/lib/handoff/privateFilings.ts`, `PrivateFilingsPanel` on
+   (`frontend/lib/data/handoff/privateFilings.ts`, `PrivateFilingsPanel` on
    `/orders/view`). Its page counts a counterparty's filing as private once
    the clause's spec is read and declares the set private, never while the
    spec is unread. Its page offers its temporary public key, wallet-signed,

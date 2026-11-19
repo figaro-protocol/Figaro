@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
-import { useMemberBranding } from "@/lib/member/useMemberBranding";
+import { useMemberBranding } from "@/lib/registries/useMemberBranding";
 import { resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
 
 /**

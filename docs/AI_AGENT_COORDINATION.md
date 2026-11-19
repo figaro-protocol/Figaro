@@ -151,7 +151,7 @@ dispatch race races over the `CoordinationChannel` interface, period: the SDK's
 selection, and every surface — batch script or interactive checkout — supplies only
 per-candidate channels (a declared service endpoint routes to `HttpChannel`/`A2aChannel`;
 a wallet counterparty routes through the frontend's relay adapter,
-`frontend/lib/handoff/relayChannel.ts`, the handoff relay's pre-commit cell speaking
+`frontend/lib/data/handoff/relayChannel.ts`, the handoff relay's pre-commit cell speaking
 this same interface). Window duration, buyer overrides, and progress rendering are
 caller policy; the choreography is never written twice.
 

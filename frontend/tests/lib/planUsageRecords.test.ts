@@ -21,7 +21,7 @@ import {
     type Commitment,
     type UsageClaimContext,
 } from "@figaro-protocol/sdk";
-import type { UsageWrite } from "@/lib/protocol/useUsageRecorder";
+import type { UsageWrite } from "@/lib/rewards/useUsageRecorder";
 import { planUsageRecords, type UsagePlanEntry } from "@/lib/semantic/planUsageRecords";
 import { createCapabilityExecutors, type CapabilityExecutorDeps } from "@/lib/semantic/createCapabilityExecutors";
 import { OrderState, type Order } from "@/lib/core/store";

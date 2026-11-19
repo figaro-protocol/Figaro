@@ -22,8 +22,8 @@
  */
 
 import { MemberEditGate } from "@/components/members/MemberEditGate";
-import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
-import type { MemberAgentServices } from "@/lib/member/memberProfileMetadata";
+import { useMemberProfileEditor } from "@/lib/registries/useMemberProfileEditor";
+import type { MemberAgentServices } from "@/lib/registries/memberProfileMetadata";
 import { OnboardingAgentsForm } from "@/components/members/OnboardingAgentsForm";
 
 export function MemberEditAgents() {

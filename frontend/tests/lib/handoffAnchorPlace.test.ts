@@ -18,12 +18,12 @@ const SELLER = "0x2222222222222222222222222222222222222222";
 const THIRD = "0x3333333333333333333333333333333333333333";
 
 let rows: Array<Record<string, unknown>> = [];
-vi.mock("@/lib/composition/indexer", () => ({
+vi.mock("@/lib/core/attestationIndexer", () => ({
     getAttestationsByOrder: async (_c: unknown, _id: number, orderHash: string) =>
         rows.filter((r) => String(r.orderHash).toLowerCase() === orderHash.toLowerCase()),
 }));
 
-import { attestationAnchorMatches } from "@/lib/handoff/handoffAnchorState";
+import { attestationAnchorMatches } from "@/lib/data/handoff/handoffAnchorState";
 
 const client = {} as PublicClient;
 const place = { contentRef: REF, clauseId: CLAUSE, stage: 1, attester: SELLER };

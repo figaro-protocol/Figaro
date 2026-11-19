@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
-import type { AssemblyChoice } from "@/lib/protocol/assemblyChoices";
+import type { AssemblyChoice } from "@/lib/registries/assemblyChoices";
 
 /**
  * The wizard's assembly picker reads as the designer wrote it: name, then the

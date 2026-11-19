@@ -1,0 +1,287 @@
+/**
+ * lib/data/audit/signatureVerdicts.ts — per-order EIP-712 signature verdicts for
+ * the audit surface: did the buyer and the seller really sign the committed
+ * struct hash?
+ *
+ * The OrderCommitted event carries every Commitment field but NO signatures —
+ * the signature bytes exist on-chain only inside the commit transaction's
+ * CALLDATA (`commit(c, buyerSig, sellerSig)` on FigaroCore, or
+ * `swapAndCommit(c, buyerSig, sellerSig, …)` on the witness swap coordinator).
+ * So this reader walks log → transactionHash → getTransaction →
+ * decodeFunctionData, then checks each signature with the SDK's canonical
+ * `verifyCommitmentSignature` — zero crypto is implemented in the frontend.
+ *
+ * The calldata is read only when the transaction CALLS one of those two
+ * contracts. A selector match alone proves nothing about what reached
+ * FigaroCore: a contract exposing the same `commit` signature may pass other
+ * signature bytes on, so a commit made through any other contract reads
+ * "indirect" — the commit stands (FigaroCore emitted `OrderCommitted`), and
+ * the signatures it verified are not in this transaction's top-level calldata.
+ *
+ * The decoded struct is bound back to the order by recomputing the on-chain
+ * order hash (`computeOrderHash`); a transaction whose decoded commitment does
+ * not reproduce this order's hash (a wrapped commit this reader cannot parse)
+ * yields "unavailable", never a false verdict. The decoded struct is the
+ * SIGNED struct verbatim — a root order's calldata carries `processId = 0`,
+ * exactly what the parties signed — so no processId restoration is needed.
+ *
+ * Note the calldata-decoding caution in ProcessClauseEvidence (witness VALUES
+ * must never be faked from calldata) does not apply here: the signatures are
+ * genuinely in calldata by construction — they are what FigaroCore verified.
+ *
+ * ── The batch universe ──────────────────────────────────────────────────────
+ *
+ * All of the above describes the DIRECT path only. There are two resolution
+ * paths and two DISJOINT state universes (docs/SCALING_STRATEGY.md): the
+ * verifier emits `OrderCommitted` for a batched order under its own address,
+ * which the order readers fold beside the Core's, and its signatures sit in
+ * the batch's operation stream, not in a `commit` call. A commit the
+ * verifier logged is routed to the batch verdict below. So for batched trade the walk above finds
+ * nothing, and reporting "unavailable" would understate what is actually known.
+ *
+ * What IS known, and why it is a different KIND of evidence: the zkVM guest
+ * verifies both EIP-712 signatures itself (`prover/lib/src/kernel.rs:111,116`
+ * recover the buyer and seller from the commitment digest inside `apply_commit`
+ * and reject the batch on mismatch), and an attestation can only be applied to
+ * an order the guest already holds as ACTIVE (`require_known_active_commitment`,
+ * `prover/lib/src/kernel.rs:331`) — a status written ONLY by `apply_commit`. `FigaroBatchVerifier`
+ * accepts a batch only against an immutable `programVKey`, and chains state via
+ * `prevRoot == stateRoot`. So a verifier-re-emitted `Attestation` for an order
+ * proves that order's commit passed both signature checks inside a proof this
+ * verifier accepted.
+ *
+ * The verdicts are the COMMIT signatures'. A batched resolve's authorization
+ * is another object: the buyer's ECDSA signature, which the guest recovers, or
+ * bytes the buyer's wallet code validates, which the guest publishes unchecked
+ * and the verifier checks against the buyer's code at resolution — authorized
+ * by the wallet's code, checked by the verifier at resolution. Either way the
+ * commits it resolves were signed by both parties as above.
+ *
+ * Two honesty constraints this reader keeps:
+ *   1. The reader has NOT re-verified anything. It is trusting a proof it can
+ *      independently check (verifier address + vkey are reported so it can).
+ *   2. The named batch is the batch that ATTESTED the order. Guest state carries
+ *      across batches, so the commit was proven in that batch or an EARLIER one
+ *      in the same root chain — never claim it is the commit's own batch.
+ */
+import { decodeFunctionData, type Hex, type PublicClient } from "viem";
+import {
+    BATCH_VERIFIER_ABI,
+    CORE_ABI,
+    WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI,
+    computeOrderHash,
+    verifyCommitmentSignature,
+    type Commitment,
+} from "@figaro-protocol/sdk";
+import { CONTRACTS, getBatchVerifier } from "@/lib/core/contracts";
+import { getWitnessSwapAndCommitCoordinator } from "@/lib/composability/contracts";
+import { getAllOrderCommitted, getStringArg } from "@/lib/core/indexer";
+import { getAllBatchSettled, getBatchAttestationsByOrder } from "@/lib/core/attestationIndexer";
+import { hexEqual } from "@/lib/shared/evm";
+
+/** One party's verdict.
+ *  - "valid"/"invalid" — the reader RE-VERIFIED the signature from the commit
+ *    transaction's calldata (direct path).
+ *  - "proved" — the signature was verified inside the SP1 proof that resolved a
+ *    batch carrying this order. The reader did NOT recompute it; it is trusting
+ *    a proof it can independently check. Never conflate with "valid".
+ *  - "indirect" — the commit transaction called neither FigaroCore nor the
+ *    witness swap coordinator, so its calldata is not the call FigaroCore
+ *    verified; nothing is recomputed. Never a failure.
+ *  - "unavailable" — nothing on either path answered for this order; absence,
+ *    never a failure. */
+type SignatureVerdict = "valid" | "invalid" | "unavailable" | "proved" | "indirect";
+
+/** What a reader needs to check the proof themselves, plus how tightly the
+ *  order could be bound to a batch. */
+export interface BatchProvenance {
+    /** The batch whose resolution re-emitted this order's attestation. null when
+     *  the order could not be bound to a specific batch — the weaker but still
+     *  true statement (proved by SOME batch this verifier accepted). */
+    batchId: bigint | null;
+    /** The `settleBatch` transaction that batch was resolved in; null when unbound. */
+    transactionHash: Hex | null;
+    /** The verifier that checked the proof — the address a reader queries. */
+    verifier: `0x${string}`;
+    /** The immutable program verification key the proof was checked against;
+     *  null when it could not be read. */
+    programVKey: Hex | null;
+}
+
+export interface OrderSignatureVerdicts {
+    buyer: SignatureVerdict;
+    seller: SignatureVerdict;
+    /** The commit transaction the signatures were read from; null when no
+     *  commit transaction was found for the order. */
+    transactionHash: Hex | null;
+    /** Set only for the "proved" verdict — the batch-path provenance a reader
+     *  would check. null on the direct path. */
+    batch: BatchProvenance | null;
+}
+
+const UNAVAILABLE: OrderSignatureVerdicts = {
+    buyer: "unavailable",
+    seller: "unavailable",
+    transactionHash: null,
+    batch: null,
+};
+
+/**
+ * Decode a commit transaction's calldata into the signed struct + both
+ * signature blobs. Tries FigaroCore's `commit` and the witness swap
+ * coordinator's `swapAndCommit` (both lead with `c, buyerSig, sellerSig`).
+ * Returns null for calldata that is neither.
+ */
+export function decodeCommitCalldata(
+    input: Hex,
+): { commitment: Commitment; buyerSig: Hex; sellerSig: Hex } | null {
+    for (const abi of [CORE_ABI, WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI]) {
+        try {
+            const { functionName, args } = decodeFunctionData({ abi, data: input });
+            if (functionName === "commit" || functionName === "swapAndCommit") {
+                const [commitment, buyerSig, sellerSig] = args as unknown as [Commitment, Hex, Hex];
+                return { commitment, buyerSig, sellerSig };
+            }
+        } catch {
+            // Not this ABI — try the next.
+        }
+    }
+    return null;
+}
+
+/**
+ * Verdicts for one commit transaction's calldata, bound to `orderHash`.
+ * Returns null when the calldata does not decode as a commit, or decodes to a
+ * commitment that does not reproduce this order's on-chain hash — the caller
+ * reports "unavailable" rather than a false verdict.
+ */
+export async function verdictsForCommitCalldata(
+    input: Hex,
+    orderHash: string,
+    ctx: { chainId: number; core: `0x${string}` },
+): Promise<Pick<OrderSignatureVerdicts, "buyer" | "seller"> | null> {
+    const decoded = decodeCommitCalldata(input);
+    if (!decoded) return null;
+    const { commitment, buyerSig, sellerSig } = decoded;
+    if (!hexEqual(computeOrderHash(commitment, ctx.chainId, ctx.core), orderHash)) return null;
+    const [buyerOk, sellerOk] = await Promise.all([
+        verifyCommitmentSignature(commitment, buyerSig, commitment.buyer, ctx),
+        verifyCommitmentSignature(commitment, sellerSig, commitment.seller, ctx),
+    ]);
+    return { buyer: buyerOk ? "valid" : "invalid", seller: sellerOk ? "valid" : "invalid" };
+}
+
+/**
+ * Batch-path provenance for an order, or null when the batch universe says
+ * nothing about it.
+ *
+ * The binding is transitive: a per-order log the verifier emitted sits in
+ * the `settleBatch` transaction that carried the order, and the
+ * `BatchSettled` in the SAME transaction names the batch. The per-order log
+ * is the verifier's `OrderCommitted` (`settleTx`, when the order readers
+ * found it) or, failing that, a re-emitted `Attestation`. An order the
+ * verifier logged neither way leaves no trace — hence null, never a
+ * manufactured verdict.
+ */
+async function resolveBatchProvenance(
+    client: PublicClient,
+    chainId: number,
+    orderHash: string,
+    settleTx: string | null = null,
+): Promise<BatchProvenance | null> {
+    const verifier = getBatchVerifier();
+    if (!verifier) return null;
+
+    const attestations = settleTx ? [] : await getBatchAttestationsByOrder(client, chainId, orderHash);
+    if (!settleTx && attestations.length === 0) return null;
+
+    // The vkey is what makes the proof checkable by the reader; report it when
+    // readable, but its absence never invalidates the binding above.
+    let programVKey: Hex | null = null;
+    try {
+        programVKey = await client.readContract({
+            address: verifier,
+            abi: BATCH_VERIFIER_ABI,
+            functionName: "programVKey",
+        }) as Hex;
+    } catch {
+        programVKey = null;
+    }
+
+    const transactionHash = (settleTx as Hex | null) ?? attestations[0]?.transactionHash ?? null;
+    if (!transactionHash) return { batchId: null, transactionHash: null, verifier, programVKey };
+
+    // Name the batch by finding the BatchSettled emitted in the same settleBatch
+    // transaction. Unbindable (log pruned, reorg, cache gap) degrades to the
+    // weaker statement rather than guessing a batch id.
+    let batchId: bigint | null = null;
+    try {
+        const settled = await getAllBatchSettled(client, chainId);
+        const match = settled.find((l) => hexEqual(l.transactionHash ?? null, transactionHash));
+        const raw = (match as { args?: { batchId?: unknown } } | undefined)?.args?.batchId;
+        if (typeof raw === "bigint") batchId = raw;
+        else if (typeof raw === "number") batchId = BigInt(raw);
+    } catch {
+        batchId = null;
+    }
+
+    return { batchId, transactionHash, verifier, programVKey };
+}
+
+/**
+ * The audit-surface read: find the order's OrderCommitted log (the same cached
+ * log store every other reader shares), fetch its transaction, and verify both
+ * signatures against the struct the calldata actually carried.
+ *
+ * When the direct path has no commit log for the order, fall through to the
+ * batch universe before reporting absence — an order resolved there is not
+ * unanswerable, it is answered by a proof rather than by calldata.
+ */
+export async function verifyOrderCommitSignatures(
+    client: PublicClient,
+    chainId: number,
+    orderHash: string,
+): Promise<OrderSignatureVerdicts> {
+    const all = await getAllOrderCommitted(client, chainId);
+    const log = all.find((l) => hexEqual(getStringArg(l, "orderHash"), orderHash));
+    // The order readers fold both emitters: a commit the verifier logged was
+    // checked inside the proof that landed its batch, never by calldata here.
+    const verifier = getBatchVerifier();
+    if (log && verifier && hexEqual(log.address as string, verifier)) {
+        return provedOrUnavailable(client, chainId, orderHash, log.transactionHash ?? null);
+    }
+    const transactionHash = log?.transactionHash ?? null;
+    if (!transactionHash) return provedOrUnavailable(client, chainId, orderHash);
+
+    // A failed transaction read rejects: the reader renders no verdict for
+    // it, never "unavailable" (which is the chain's answer, not a failure).
+    const { input, to } = await client.getTransaction({ hash: transactionHash });
+
+    // Only a direct call's calldata is the call FigaroCore verified.
+    const coordinator = getWitnessSwapAndCommitCoordinator();
+    if (!hexEqual(to, CONTRACTS.core) && !(coordinator && hexEqual(to, coordinator))) {
+        return { buyer: "indirect", seller: "indirect", transactionHash, batch: null };
+    }
+
+    const verdicts = await verdictsForCommitCalldata(input, orderHash, {
+        chainId,
+        core: CONTRACTS.core,
+    });
+    if (!verdicts) return { ...UNAVAILABLE, transactionHash, batch: null };
+    return { ...verdicts, transactionHash, batch: null };
+}
+
+/** The batch fallthrough: "proved" when the verifier's own logs bind this order
+ *  to its proof, otherwise the existing "unavailable". */
+async function provedOrUnavailable(
+    client: PublicClient,
+    chainId: number,
+    orderHash: string,
+    settleTx: string | null = null,
+): Promise<OrderSignatureVerdicts> {
+    // A failed provenance read rejects (no verdict rendered); only the chain's
+    // answer that no batch attested the order is "unavailable".
+    const batch = await resolveBatchProvenance(client, chainId, orderHash, settleTx);
+    if (!batch) return UNAVAILABLE;
+    return { buyer: "proved", seller: "proved", transactionHash: null, batch };
+}

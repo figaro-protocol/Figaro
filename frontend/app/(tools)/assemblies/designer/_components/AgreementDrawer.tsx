@@ -34,9 +34,9 @@ import {
     getRegisteredAgreement,
     useRegisteredAgreementsVersion,
     usePublishedAgreements,
-} from "@/lib/protocol/useAgreementRegistry";
-import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+} from "@/lib/registries/useAgreementRegistry";
+import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/registries/useClauseRegistry";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsAssemblyScoped, clauseDesignFills, isLiveRegistration, specSource } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";

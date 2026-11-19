@@ -13,7 +13,7 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import type { RpgfPeriodState } from "@/lib/composition/useRpgfRewards";
+import type { RpgfPeriodState } from "@/lib/rewards/useRpgfRewards";
 
 const NAMED = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as const;
 const OTHER = "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc" as const;
@@ -41,8 +41,8 @@ vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/lib/shared/viewedWallet", () => ({
     useViewedWallet: (connected: `0x${string}` | undefined) => m.named ?? connected,
 }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
-vi.mock("@/lib/composition/useRpgfRewards", () => ({
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
+vi.mock("@/lib/rewards/useRpgfRewards", () => ({
     useRpgfRewards: (subject: `0x${string}` | undefined) => ({
         available: true, account: subject, claim: async () => undefined, refresh: () => undefined, read: m.read,
     }),

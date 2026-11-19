@@ -36,13 +36,14 @@ vi.mock("@/lib/core/indexer", async (importOriginal) => {
     };
 });
 vi.mock("@/lib/core/eventCache", () => ({ cachedGetLogs: async () => [] }));
-vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [] }));
-vi.mock("@/lib/composition/contracts", () => ({
+vi.mock("@/lib/registries/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [] }));
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     getAttestationCoordinator: () => "0x00000000000000000000000000000000000000f1",
     getBatchVerifier: () => undefined,
 }));
 
-import { getSellerResolutionHistory } from "@/lib/composition/indexer";
+import { getSellerResolutionHistory } from "@/lib/registries/memberResolutionHistory";
 
 describe("getSellerResolutionHistory attestation tally", () => {
     it("counts the member's own attestation, never the buyer's or a co-seller's", async () => {

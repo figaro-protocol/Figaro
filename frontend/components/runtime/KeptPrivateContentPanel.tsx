@@ -3,7 +3,7 @@
 /**
  * KeptPrivateContentPanel — the connected wallet's own copies of private
  * witness content, as this browser keeps them for it on this chain
- * (`lib/composition/witnessContent.ts`): the content of its private filings,
+ * (`lib/core/witnessContent.ts`): the content of its private filings,
  * and the copies it received from a counterparty. Three controls, each the
  * holder's own act: export them to a file it keeps, import such a file back
  * (each entry checked again against its fingerprint), and remove them from
@@ -20,7 +20,7 @@ import {
     forgetHeldWitnessContent,
     importKeptWitnessContent,
     type WitnessHolder,
-} from "@/lib/composition/witnessContent";
+} from "@/lib/core/witnessContent";
 import { Button } from "@/components/ui/Button";
 import { CeremonyPanelFrame } from "@/components/runtime/CeremonyPanelFrame";
 

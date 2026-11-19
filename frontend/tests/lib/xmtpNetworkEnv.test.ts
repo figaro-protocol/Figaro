@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { xmtpNetworkEnv } from "@/lib/handoff/xmtpChannel";
+import { xmtpNetworkEnv } from "@/lib/data/handoff/xmtpChannel";
 
 describe("xmtpNetworkEnv — the XMTP network is deployment config, never a literal", () => {
     afterEach(() => vi.unstubAllEnvs());

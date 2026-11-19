@@ -39,28 +39,28 @@ vi.mock("wagmi", () => ({
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => undefined, replace: (h: string) => m.replace(h) }) }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
 vi.mock("@/hooks/useProcessOrders", () => ({ useProcessOrders: () => m.orders }));
 vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreementReads: () => m.agreementReads }));
-vi.mock("@/lib/composition/indexer", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/composition/indexer")>()),
+vi.mock("@/lib/core/attestationIndexer", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/attestationIndexer")>()),
     getAttestationsByOrder: () => m.attestations(),
 }));
-vi.mock("@/lib/audit/signatureVerdicts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/audit/signatureVerdicts")>()),
+vi.mock("@/lib/data/audit/signatureVerdicts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/data/audit/signatureVerdicts")>()),
     verifyOrderCommitSignatures: () => m.verdicts(),
 }));
 // The committed clause data an order's evidence block shows; its extraction
 // is its own tests'. One committed clause puts the order's block on the page.
-vi.mock("@/lib/audit/clauseDataExtract", () => ({
+vi.mock("@/lib/data/audit/clauseDataExtract", () => ({
     extractClauseData: () => ({ clauses: [{ clauseKey: "0xc1", title: "A committed clause", fields: [], withheld: false }], missing: [] }),
 }));
-vi.mock("@/lib/member/useMembersRegistry", () => ({
+vi.mock("@/lib/registries/useMembersRegistry", () => ({
     useMemberProfile: () => ({ read: m.registration }),
     useUpdateProfile: () => ({ updateProfile: async () => undefined, isPending: false, isConfirming: false, isSuccess: false, error: null, hash: undefined }),
 }));
-vi.mock("@/lib/member/onboardingState", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/member/onboardingState")>()),
+vi.mock("@/lib/registries/onboardingState", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/registries/onboardingState")>()),
     useOnboardingState: () => ({ state: {}, loaded: true, subject: WALLET, update: () => undefined }),
 }));
 

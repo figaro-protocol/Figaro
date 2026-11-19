@@ -12,18 +12,18 @@ import { OnboardingLoadingCard } from "@/components/members/OnboardingStepChrome
 import { ContentImage } from "@/components/shared/ContentImage";
 import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { useMounted } from "@/hooks/useMounted";
-import { onboardingStepLabel, useOnboardingState } from "@/lib/member/onboardingState";
-import { sellerPageHref } from "@/lib/member/memberListing";
+import { onboardingStepLabel, useOnboardingState } from "@/lib/registries/onboardingState";
+import { sellerPageHref } from "@/lib/registries/memberListing";
 import { deriveProcessDesignSlug } from "@/lib/shared/assembly";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import {
     useMemberProfile,
     useRegistrationDeposit,
     useWithdrawalCooldown,
-} from "@/lib/member/useMembersRegistry";
-import { type MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
-import { cooldownPhrase } from "@/lib/member/cooldownPhrase";
-import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
+} from "@/lib/registries/useMembersRegistry";
+import { type MemberProfileMetadata } from "@/lib/registries/memberProfileMetadata";
+import { cooldownPhrase } from "@/lib/registries/cooldownPhrase";
+import { usePublishMemberProfile } from "@/lib/registries/usePublishMemberProfile";
 
 /**
  * Final step — review and publish.

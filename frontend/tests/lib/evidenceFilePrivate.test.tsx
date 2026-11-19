@@ -18,9 +18,9 @@ vi.mock("@react-pdf/renderer", () => {
     return { Document: passthrough, Page: passthrough, View: passthrough, Text: passthrough, StyleSheet: { create: <T,>(s: T) => s } };
 });
 
-import { buildAuditBundle } from "@/lib/audit/auditBundle";
-import { AuditBundlePdf } from "@/lib/audit/pdfBundle";
-import type { AttestationRecord } from "@/lib/composition/indexer";
+import { buildAuditBundle } from "@/lib/data/audit/auditBundle";
+import { AuditBundlePdf } from "@/lib/data/audit/pdfBundle";
+import type { AttestationRecord } from "@/lib/core/attestationIndexer";
 import { OrderState, type Order } from "@/lib/core/store";
 import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
 import { pinSpec } from "./primeClauseSpecs";

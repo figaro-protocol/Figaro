@@ -7,9 +7,9 @@ import Link from "@/components/shared/Link";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { CtaLink } from "@/components/marketing/CtaLink";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
-import { useAssemblyChoices, type AssemblyChoice } from "@/lib/protocol/assemblyChoices";
-import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
-import { profileToListing } from "@/lib/member/memberListing";
+import { useAssemblyChoices, type AssemblyChoice } from "@/lib/registries/assemblyChoices";
+import { useRegisteredMembers } from "@/lib/registries/useRegisteredMembers";
+import { profileToListing } from "@/lib/registries/memberListing";
 
 /**
  * The users' showcase: every assembly a designer has published, read from the

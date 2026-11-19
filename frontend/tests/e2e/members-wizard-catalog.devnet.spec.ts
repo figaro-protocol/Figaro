@@ -25,7 +25,7 @@
  * daemon. Iterate with `--no-deps` once the chain is anchored.
  */
 import { expect, type Page } from '@playwright/test';
-import { sellerPageHref } from '@/lib/member/memberListing';
+import { sellerPageHref } from '@/lib/registries/memberListing';
 import { test, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import type { Hex } from 'viem';
 import { PROCESS_REGISTRY_ABI } from '@figaro-protocol/sdk';

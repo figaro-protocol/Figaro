@@ -18,7 +18,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { serializeProcessDesign } from "@figaro-protocol/sdk";
-import { _primeRegisteredAgreement_TESTING_ONLY } from "@/lib/protocol/useAgreementRegistry";
+import { _primeRegisteredAgreement_TESTING_ONLY } from "@/lib/registries/useAgreementRegistry";
 import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 import {
     projectSnapshotForReview,

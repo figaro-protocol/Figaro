@@ -12,9 +12,9 @@
 import { useMemo, useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";
 import type { Order } from "@/lib/core/store";
-import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
+import { buildAuditBundlePdfBlob } from "@/lib/data/audit/auditBundlePdf";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
-import { useWitnessHolder } from "@/lib/composition/useWitnessHolder";
+import { useWitnessHolder } from "@/lib/core/useWitnessHolder";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { Button } from "@/components/ui/Button";
 

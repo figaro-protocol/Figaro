@@ -316,7 +316,7 @@ contracts cannot read events, so on the direct path a use is counted by a
 separate transaction, sent after the resolve, that proves the order resolved.
 The buyer's wallet in this frontend sends it right after the resolve confirms
 (`frontend/lib/semantic/createCapabilityExecutors.ts`, through
-`frontend/lib/protocol/useUsageRecorder.ts`), and the SDK's agent sends it
+`frontend/lib/rewards/useUsageRecorder.ts`), and the SDK's agent sends it
 with `recordProcessUsage` (`sdk/src/agent/autonomous.ts`); anyone may send a
 missed one. A resolve that no usage call follows leaves its uses uncounted: each
 stays countable in whichever period is open when a usage call is sent with its

@@ -10,7 +10,7 @@
  * as not-safe (genuinely unknown chain state).
  */
 import { describe, expect, it } from "vitest";
-import { withdrawBlockedReason, withdrawUnverifiedCaveat } from "@/lib/protocol/withdrawGate";
+import { withdrawBlockedReason, withdrawUnverifiedCaveat } from "@/lib/registries/withdrawGate";
 import type { WithdrawGate } from "@figaro-protocol/sdk/derive";
 import { ABSENT, PENDING, present } from "@/lib/shared/networkRead";
 

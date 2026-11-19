@@ -30,10 +30,10 @@ import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useTokenBalance from "@/hooks/useTokenBalance";
 import { Button } from "@/components/ui/Button";
 import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate";
-import { useRpgfRewards, type RpgfPeriodState } from "@/lib/composition/useRpgfRewards";
-import { CONTRACTS } from "@/lib/core/contracts";
+import { useRpgfRewards, type RpgfPeriodState } from "@/lib/rewards/useRpgfRewards";
+import { REWARDS_CONTRACTS } from "@/lib/rewards/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
 /** A clause row names its spec's own name and version once the spec has
@@ -73,13 +73,13 @@ export function RewardsView() {
     // Re-renders as clause specs load from the registry, so a clause row
     // names its spec once the spec is here.
     useClauseSpecs();
-    const { decimals: florinDecimals } = useTokenDecimals(CONTRACTS.florinToken as `0x${string}` | undefined);
+    const { decimals: florinDecimals } = useTokenDecimals(REWARDS_CONTRACTS.florinToken as `0x${string}` | undefined);
     const [busy, setBusy] = useState<string | null>(null);
     const [error, setError] = useState("");
     // The florin balance, read again whenever the rewards read is (a claim
     // moves both).
     const { read: florinRead, refetch: refetchFlorin } = useTokenBalance(
-        CONTRACTS.florinToken as `0x${string}` | undefined,
+        REWARDS_CONTRACTS.florinToken as `0x${string}` | undefined,
         account,
     );
     const florinBalance = florinRead.status === "present" ? florinRead.value : null;

@@ -24,11 +24,11 @@ import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { useMounted } from "@/hooks/useMounted";
-import { noteRegistryWrite } from "@/lib/protocol/registryWrites";
+import { noteRegistryWrite } from "@/lib/registries/registryWrites";
 import {
     useRegisterClause,
     type RegisterClauseOutcome,
-} from "@/lib/protocol/useRegisterClause";
+} from "@/lib/registries/useRegisterClause";
 
 export type Validation =
     | { state: "empty" }

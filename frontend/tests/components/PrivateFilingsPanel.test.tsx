@@ -45,25 +45,25 @@ vi.mock("wagmi", () => {
         usePublicClient: () => publicClient,
     };
 });
-vi.mock("@/lib/handoff/channel", async () => {
-    const { createMockChannel } = await import("@/lib/handoff/mockChannel");
+vi.mock("@/lib/data/handoff/channel", async () => {
+    const { createMockChannel } = await import("@/lib/data/handoff/mockChannel");
     return { getHandoffChannel: async (address: string) => createMockChannel(address) };
 });
-vi.mock("@/lib/composition/indexer", () => ({
+vi.mock("@/lib/core/attestationIndexer", () => ({
     getAttestationsByOrder: async (_c: unknown, _id: number, orderHash: string) =>
         chain.filter((row) => row.orderHash.toLowerCase() === orderHash.toLowerCase()),
 }));
-vi.mock("@/lib/composition/useAttestationCoordinatorActions", () => ({
+vi.mock("@/lib/core/useAttestationCoordinatorActions", () => ({
     useAttestationCoordinatorActions: () => ({ submitAttestation: vi.fn() }),
 }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
 
 import { PrivateFilingsPanel } from "@/components/runtime/PrivateFilingsPanel";
 import { StageAttestationComparison } from "@/components/runtime/StageAttestationComparison";
-import { createMockChannel } from "@/lib/handoff/mockChannel";
-import { requestPrivateFilings, sendPrivateFilings, filingsCeremonyId } from "@/lib/handoff/privateFilings";
-import { KEPT_WITNESS_STORAGE_KEY, keepPrivateWitnessContent, readHeldWitness } from "@/lib/composition/witnessContent";
-import type { RuntimeAttestation } from "@/lib/composition/indexer";
+import { createMockChannel } from "@/lib/data/handoff/mockChannel";
+import { requestPrivateFilings, sendPrivateFilings, filingsCeremonyId } from "@/lib/data/handoff/privateFilings";
+import { KEPT_WITNESS_STORAGE_KEY, keepPrivateWitnessContent, readHeldWitness } from "@/lib/core/witnessContent";
+import type { RuntimeAttestation } from "@/lib/core/attestationIndexer";
 import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { pinSpec } from "../lib/primeClauseSpecs";
 

@@ -49,7 +49,7 @@ vi.mock("@xmtp/browser-sdk", () => ({
     },
 }));
 
-import { createXmtpChannel } from "@/lib/handoff/xmtpChannel";
+import { createXmtpChannel } from "@/lib/data/handoff/xmtpChannel";
 
 const signMessage = async () => `0x${"11".repeat(65)}` as `0x${string}`;
 

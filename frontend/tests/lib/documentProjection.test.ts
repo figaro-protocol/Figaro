@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { projectDocuments, type DocumentLayout } from "@/lib/audit/documentProjection";
-import { DOCUMENT_LAYOUTS } from "@/lib/audit/documentLayouts";
+import { projectDocuments, type DocumentLayout } from "@/lib/data/audit/documentProjection";
+import { DOCUMENT_LAYOUTS } from "@/lib/data/audit/documentLayouts";
 import { OrderState, type Order } from "@/lib/core/store";
 import type { Agreement } from "@figaro-protocol/sdk";
 import { _resetClauseSpecCache_TESTING_ONLY } from "@/lib/shared/clauseSpecSource";
@@ -174,7 +174,7 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
 
 // ── Financial statements as documents ──────────────────────────────────────────
 
-import { projectFinancialStatements, projectAllFinancialStatements } from "@/lib/audit/documentProjection";
+import { projectFinancialStatements, projectAllFinancialStatements } from "@/lib/data/audit/documentProjection";
 import { calculateBonds } from "@figaro-protocol/sdk";
 
 const withBonds = (o: Partial<Order> & Pick<Order, "orderHash" | "seller">): Order => {
@@ -215,7 +215,7 @@ describe("projectFinancialStatements — the 3 statements AS a document (no dupl
 
 // ── The legend: every label the statements emit is explained ───────────────────
 
-import { FINANCIAL_STATEMENT_LEGEND } from "@/lib/audit/documentProjection";
+import { FINANCIAL_STATEMENT_LEGEND } from "@/lib/data/audit/documentProjection";
 
 describe("financial statements legend — derived from the projection's own labels", () => {
     // One open order and one resolved order, so every row key AND every

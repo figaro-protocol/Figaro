@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
 import { OnboardingShell } from "@/components/members/OnboardingShell";
 import { OnboardingReview } from "@/components/members/OnboardingReview";
-import { sellerPageHref } from "@/lib/member/memberListing";
+import { sellerPageHref } from "@/lib/registries/memberListing";
 
 export const metadata: Metadata = withOg({
     title: "Review — Member onboarding",

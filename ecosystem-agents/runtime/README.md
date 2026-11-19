@@ -122,7 +122,7 @@ assembly — the analyst decodes and prices with nothing else; both verify
 through the SDK's `anchor*` functions, the ones the frontend uses) and `ipfsRead.mjs` (the one gateway reader every component here shares) sit
 under both. The fingerprint→address derivation itself is `witnessContentCid`
 (`@figaro-protocol/sdk/derive` — pure, no I/O); this runtime and
-`frontend/lib/composition/witnessContent.ts` both consume that one export,
+`frontend/lib/core/witnessContent.ts` both consume that one export,
 each supplying its own I/O, and the derivation is asserted against a golden
 vector a real Kubo produced (`tests/analyst.test.mjs`).
 

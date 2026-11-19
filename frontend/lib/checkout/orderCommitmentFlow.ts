@@ -46,13 +46,14 @@ import {
     type SwapFundingLeg,
     type FollowedOrderRead,
 } from "@figaro-protocol/sdk";
-import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
+import { CLAUSE_REGISTRY_ABI, REGISTRY_CONTRACTS } from "@/lib/registries/contracts";
 import { cachedGetContractEvents } from "@/lib/core/eventCache";
 import { getCoreEvents } from "@/lib/core/indexer";
 import { fetchAgreement } from "@/lib/core/agreementFetch";
 import { assertAgreementSignable, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { specSource, getClauseSpec, loadClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { fetchHydratedAssemblyByHash } from "@/lib/protocol/useProcessRegistry";
+import { fetchHydratedAssemblyByHash } from "@/lib/registries/useProcessRegistry";
 import { useFigaroActions } from "@/lib/core/useFigaroActions";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { hexEqual, isValidAddress, ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -65,13 +66,13 @@ import {
     type SwapConfirmationDetails,
 } from "@/lib/checkout/orderPreview";
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
-import { relayCommitmentPayload } from "@/lib/handoff/relayChannel";
+import { relayCommitmentPayload } from "@/lib/data/handoff/relayChannel";
 import { buildCounterDraft, validateDraft, type CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { commitSignedOrder } from "@/lib/core/orderCommitted";
 import { commitmentOrderHash } from "@/lib/core/signedCommitment";
-import { quoteFundingLeg, signFundingLeg, type FundingQuote, type QuoteFundingLegArgs } from "@/lib/composition/swapFunding";
-import { useSwapAndCommitActions } from "@/lib/composition/useSwapAndCommitActions";
-import { profileReaderForChain } from "@/lib/member/profileFetcher";
+import { quoteFundingLeg, signFundingLeg, type FundingQuote, type QuoteFundingLegArgs } from "@/lib/composability/swapFunding";
+import { useSwapAndCommitActions } from "@/lib/composability/useSwapAndCommitActions";
+import { profileReaderForChain } from "@/lib/registries/profileFetcher";
 
 /** The buyer's checkout-time choice to fund their bond by swap: which
  *  accepted token to fund from. Threaded through the sign step so EVERY
@@ -225,7 +226,7 @@ async function readSigningDesign(agreement: Agreement): Promise<HydratedProcessD
 async function readSigningSpecs(agreement: Agreement, client: { getBlockNumber?: unknown } | undefined, chainId: number): Promise<void> {
     const missing = agreement.clauses.map((c) => c.clause).filter((key) => getClauseSpec(key) === undefined);
     if (missing.length === 0 || !client) return;
-    const registry = CONTRACTS.clauseRegistry;
+    const registry = REGISTRY_CONTRACTS.clauseRegistry;
     if (!registry) return;
     let rows: { args?: { clauseKey?: `0x${string}`; contentURI?: string; registeredBy?: `0x${string}` } }[] = [];
     try {

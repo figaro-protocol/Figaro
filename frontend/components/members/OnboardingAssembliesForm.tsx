@@ -11,18 +11,18 @@ import { Select } from "@/components/ui/Select";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useMounted } from "@/hooks/useMounted";
-import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
-import { findListingByAddress } from "@/lib/member/memberListing";
-import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
+import { useRegisteredCatalogs } from "@/lib/registries/useRegisteredCatalogs";
+import { findListingByAddress } from "@/lib/registries/memberListing";
+import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/registries/onboardingState";
 import type {
     ProcessBindingRecord,
     CoSellerBinding,
-} from "@/lib/member/memberProfileMetadata";
+} from "@/lib/registries/memberProfileMetadata";
 import {
     type AssemblyChoice,
     requiredCoSellerClauses,
     useAssemblyChoices,
-} from "@/lib/protocol/assemblyChoices";
+} from "@/lib/registries/assemblyChoices";
 import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
 import { PinnedTokenNote } from "@/components/members/PinnedTokenNote";
 import { ProfileClauseValues } from "@/components/members/ProfileClauseValues";

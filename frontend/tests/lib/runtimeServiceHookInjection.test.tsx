@@ -10,13 +10,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import type { PublicClient } from "viem";
-import { useHandoffCleanup } from "@/lib/handoff/useHandoffCleanup";
-import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
+import { useHandoffCleanup } from "@/lib/data/handoff/useHandoffCleanup";
+import { useRegisteredCatalogs } from "@/lib/registries/useRegisteredCatalogs";
 import { RuntimeServicesProvider, useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { DEFAULT_RUNTIME_SERVICES, type RuntimeServices } from "@/lib/shared/runtimeServices";
-import type { MemberCatalog } from "@/lib/member/types";
-import type { DiscoveryService } from "@/lib/member/discoveryService";
-import type { HandoffPersistenceService } from "@/lib/handoff/handoffPersistenceService";
+import type { MemberCatalog } from "@/lib/registries/types";
+import type { DiscoveryService } from "@/lib/registries/discoveryService";
+import type { HandoffPersistenceService } from "@/lib/data/handoff/handoffPersistenceService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 
 const WALLET = "0x1234567890123456789012345678901234567890";
@@ -35,7 +35,7 @@ vi.mock("wagmi", () => ({
 // The surfacing rule's ProcessRegistry cross-check — resolved (empty) so the
 // catalog read proceeds. One stable reference: the hook keys on its identity.
 const PUBLISHED = vi.hoisted(() => ({ read: { status: "present", value: [] as unknown[] } }));
-vi.mock("@/lib/protocol/useProcessRegistry", () => ({ usePublishedAssemblies: () => PUBLISHED }));
+vi.mock("@/lib/registries/useProcessRegistry", () => ({ usePublishedAssemblies: () => PUBLISHED }));
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 
 const injectedMember: MemberCatalog = {

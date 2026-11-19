@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Point the composition-address resolvers at fixed devnet-shaped addresses.
-vi.mock("@/lib/composition/contracts", () => ({
+vi.mock("@/lib/composability/contracts", () => ({
     getWitnessSwapAndCommitCoordinator: () => "0x" + "c0".repeat(20),
     getPermit2: () => "0x" + "a2".repeat(20),
     getSwapRouter: () => "0x" + "d0".repeat(20),
@@ -9,8 +9,8 @@ vi.mock("@/lib/composition/contracts", () => ({
 
 import { decodeFunctionData, parseAbi } from "viem";
 import { hashCommitmentStruct, type Commitment } from "@figaro-protocol/sdk";
-import { quoteFundingLeg, signFundingLeg } from "@/lib/composition/swapFunding";
-import { _resetSwapVenueCache_TESTING_ONLY } from "@/lib/composition/swapVenue";
+import { quoteFundingLeg, signFundingLeg } from "@/lib/composability/swapFunding";
+import { _resetSwapVenueCache_TESTING_ONLY } from "@/lib/composability/swapVenue";
 
 /** The one commitment a signed leg funds, in the buyer's place. */
 const COMMITMENT: Commitment = {

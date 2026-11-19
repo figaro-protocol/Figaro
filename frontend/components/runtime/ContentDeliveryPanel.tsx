@@ -36,8 +36,8 @@ import {
     requestContentDelivery,
     sendContentDelivery,
     type DeliveredContent,
-} from "@/lib/handoff/contentDelivery";
-import { useCeremonyPanel } from "@/lib/handoff/useCeremonyChannel";
+} from "@/lib/data/handoff/contentDelivery";
+import { useCeremonyPanel } from "@/lib/data/handoff/useCeremonyChannel";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { Button } from "@/components/ui/Button";
 import { CeremonyPanelFrame, CeremonyRequestButton } from "@/components/runtime/CeremonyPanelFrame";

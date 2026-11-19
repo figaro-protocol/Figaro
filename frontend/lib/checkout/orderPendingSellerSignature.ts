@@ -41,7 +41,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import type { RuntimeServices } from "@/lib/shared/runtimeServices";
-import type { WalletMessageSigner } from "@/lib/handoff/handoffMessagingService";
+import type { WalletMessageSigner } from "@/lib/data/handoff/handoffMessagingService";
 import { MAX_COMMITMENT_PAYLOAD_BYTES } from "@figaro-protocol/sdk/agent";
 import type { Hex } from "viem";
 

@@ -29,16 +29,16 @@ import {
     requestPrivateFilings,
     sendPrivateFilings,
     type PrivateFiling,
-} from "@/lib/handoff/privateFilings";
-import { contentCeremonyId } from "@/lib/handoff/contentDelivery";
-import { sendCeremonyBlob } from "@/lib/handoff/ceremony";
+} from "@/lib/data/handoff/privateFilings";
+import { contentCeremonyId } from "@/lib/data/handoff/contentDelivery";
+import { sendCeremonyBlob } from "@/lib/data/handoff/ceremony";
 import {
     KEPT_WITNESS_STORAGE_KEY,
     keepPrivateWitnessContent,
     keepReceivedWitnessContent,
     readHeldWitness,
     readKeptWitnessContent,
-} from "@/lib/composition/witnessContent";
+} from "@/lib/core/witnessContent";
 import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { pinSpec } from "./primeClauseSpecs";
 

@@ -22,7 +22,7 @@ vi.mock("wagmi", () => ({
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/hooks/useConnectInjected", () => ({ useConnectInjected: () => vi.fn() }));
 vi.mock("@/components/members/IpfsImageUpload", () => ({ IpfsImageUpload: () => null }));
-vi.mock("@/lib/member/commonTokens", () => ({ getCommonTokens: () => [] }));
+vi.mock("@/components/members/commonTokens", () => ({ getCommonTokens: () => [] }));
 const STATE = {
     profile: {
         name: "Seller",
@@ -30,7 +30,7 @@ const STATE = {
         defaultTokenAddress: TOKEN,
     },
 };
-vi.mock("@/lib/member/onboardingState", () => ({
+vi.mock("@/lib/registries/onboardingState", () => ({
     useOnboardingState: () => ({ state: STATE, loaded: true, subject: ADDRESS, update: vi.fn() }),
     onboardingNextHref: () => "/members/next",
 }));

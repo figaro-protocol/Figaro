@@ -4,18 +4,18 @@ import { renderHook, waitFor } from "@testing-library/react";
 // One client object across renders, as wagmi returns: the hook's effect is keyed on it.
 const client = {};
 vi.mock("wagmi", () => ({ usePublicClient: () => client, useChainId: () => 31337 }));
-vi.mock("@/lib/core/contracts", () => ({ CONTRACTS: { membersRegistry: `0x${"11".repeat(20)}` } }));
+vi.mock("@/lib/registries/contracts", () => ({ REGISTRY_CONTRACTS: { membersRegistry: `0x${"11".repeat(20)}` } }));
 const assembliesMock = vi.fn();
-vi.mock("@/lib/protocol/useProcessRegistry", () => ({ usePublishedAssemblies: () => assembliesMock() }));
+vi.mock("@/lib/registries/useProcessRegistry", () => ({ usePublishedAssemblies: () => assembliesMock() }));
 const activeMembersMock = vi.fn();
-vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({ getActiveMembers: () => activeMembersMock() }));
+vi.mock("@/lib/registries/membersRegistryIndexer", () => ({ getActiveMembers: () => activeMembersMock() }));
 const profileMock = vi.fn();
-vi.mock("@/lib/member/profileFetcher", () => ({ fetchMemberProfile: () => profileMock() }));
-vi.mock("@/lib/member/memberListing", () => ({
+vi.mock("@/lib/registries/profileFetcher", () => ({ fetchMemberProfile: () => profileMock() }));
+vi.mock("@/lib/registries/memberListing", () => ({
     profileToListing: (_p: unknown, address: string) => ({ address, name: "m", description: "", bindings: [{ assemblyHash: ASM }] }),
 }));
 
-import { useMemberListings } from "@/lib/member/useMemberListings";
+import { useMemberListings } from "@/lib/registries/useMemberListings";
 
 const ASM = `0x${"aa".repeat(32)}`;
 const assemblies = { read: { status: "present", value: [{ processDesignHash: ASM }] } };

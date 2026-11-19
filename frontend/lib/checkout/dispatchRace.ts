@@ -36,7 +36,7 @@
  * guard, resolved through the DID-verifying resolver when the profile
  * declares `services.did` — see `resolveAgentEndpoint`; no endpoint → the
  * relay adapter,
- * `@/lib/handoff/relayChannel`), renders progress, and owns the window timer
+ * `@/lib/data/handoff/relayChannel`), renders progress, and owns the window timer
  * and the buyer's overrides. Race payloads travel INLINE over the relay —
  * deliberately NOT `shareSignedOrder` (whose documented precondition is a
  * BUYER-signed, final order): a draft or countersigned-only reply is
@@ -62,20 +62,20 @@ import {
     type RaceOutcome,
     type RaceRun,
 } from "@figaro-protocol/sdk/agent";
-import type { MemberAgentServices } from "@/lib/member/memberProfileMetadata";
+import type { MemberAgentServices } from "@/lib/registries/memberProfileMetadata";
 import { generateSalt } from "@figaro-protocol/sdk";
 import { planProcessOrders, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import { redrawNodeBlinding } from "@/lib/checkout/checkoutBlinding";
 import { chainDeadline } from "@/lib/checkout/orderPreview";
 import { commitmentOrderHash } from "@/lib/core/signedCommitment";
-import { createRelayCoordinationChannel, type RelayCoordinationChannel } from "@/lib/handoff/relayChannel";
+import { createRelayCoordinationChannel, type RelayCoordinationChannel } from "@/lib/data/handoff/relayChannel";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { formatToken } from "@/lib/shared/utils";
 import { hexEqual } from "@/lib/shared/evm";
 import { getE2EModeSession } from "@/lib/shared/e2e";
-import { bindsAssembly } from "@/lib/member/memberListing";
+import { bindsAssembly } from "@/lib/registries/memberListing";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
 type Hex = `0x${string}`;

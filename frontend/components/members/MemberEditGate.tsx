@@ -9,7 +9,7 @@
  */
 
 import { Card } from "@/components/ui/Card";
-import type { MemberEditGateState } from "@/lib/member/useMemberProfileEditor";
+import type { MemberEditGateState } from "@/lib/registries/useMemberProfileEditor";
 
 export function MemberEditGate({ gate }: { gate: MemberEditGateState }) {
     if (gate.kind === "absent") return null;

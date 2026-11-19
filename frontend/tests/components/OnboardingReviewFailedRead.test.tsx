@@ -20,17 +20,17 @@ const STATE = {
     assemblies: [{ bindingId: "b", subjectAddress: ADDRESS, processDesignHash: `0x${"ab".repeat(32)}` }],
     catalog: { items: [{ id: "i", name: "Item", description: "", price: "1", available: true }] } as { items: unknown[] },
 };
-vi.mock("@/lib/member/onboardingState", () => ({
+vi.mock("@/lib/registries/onboardingState", () => ({
     useOnboardingState: () => ({ state: STATE, clear: vi.fn() }),
     onboardingStepLabel: (s: string) => s,
 }));
-vi.mock("@/lib/member/useMembersRegistry", () => ({
+vi.mock("@/lib/registries/useMembersRegistry", () => ({
     // Both shapes: the failed read as the old hook reported it, and as `absent`.
     useMemberProfile: () => ({ data: undefined, isLoading: false, read: reads.registration }),
     useRegistrationDeposit: () => ({ status: "present", value: 10n ** 16n, data: 10n ** 16n }),
     useWithdrawalCooldown: () => ({ data: 60n }),
 }));
-vi.mock("@/lib/member/usePublishMemberProfile", () => ({
+vi.mock("@/lib/registries/usePublishMemberProfile", () => ({
     usePublishMemberProfile: () => ({ publish: vi.fn(), isPending: false, isConfirming: false, isSuccess: false, error: null }),
 }));
 vi.mock("@/components/shared/ContentImage", () => ({ ContentImage: () => null }));

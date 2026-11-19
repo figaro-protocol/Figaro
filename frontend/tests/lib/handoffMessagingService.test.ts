@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_HANDOFF_MESSAGING_SERVICE } from "@/lib/handoff/handoffMessagingService";
+import { DEFAULT_HANDOFF_MESSAGING_SERVICE } from "@/lib/data/handoff/handoffMessagingService";
 
 const sendHandoffKeyMock = vi.fn();
 const onWrappedKeyMock = vi.fn();
@@ -7,7 +7,7 @@ const sendCommitmentPayloadMock = vi.fn();
 const onAnyCommitmentPayloadMock = vi.fn();
 const getHandoffChannelMock = vi.fn();
 
-vi.mock("@/lib/handoff/channel", () => ({
+vi.mock("@/lib/data/handoff/channel", () => ({
     getHandoffChannel: (...args: unknown[]) => getHandoffChannelMock(...args),
 }));
 

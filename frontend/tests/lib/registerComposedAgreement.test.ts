@@ -10,9 +10,9 @@ import { describe, expect, it, vi } from "vitest";
 import { agreementHashOf, type RegisteredAgreement } from "@figaro-protocol/sdk";
 import { ContractFunctionRevertedError, encodeErrorResult } from "viem";
 
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, agreementRegistry: "0x00000000000000000000000000000000000a9e01" } };
+vi.mock("@/lib/registries/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
+    return { ...actual, REGISTRY_CONTRACTS: { ...actual.REGISTRY_CONTRACTS, agreementRegistry: "0x00000000000000000000000000000000000a9e01" } };
 });
 vi.mock("@/lib/shared/publicClient", () => ({
     publicClient: {},

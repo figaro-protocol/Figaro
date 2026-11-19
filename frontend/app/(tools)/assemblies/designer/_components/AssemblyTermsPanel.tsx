@@ -25,8 +25,8 @@
  */
 
 import { useMemo } from "react";
-import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useAllRegisteredClauses } from "@/lib/registries/useClauseRegistry";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import {
     clauseDesignFills,
     clauseIsAssemblyScoped,

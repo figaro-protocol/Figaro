@@ -14,25 +14,25 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import type { PublicClient } from "viem";
-import { COMPLETION_STAGE, completionEvidenceAnchor } from "@/lib/handoff/contentDelivery";
-import { addressDetailAnchorRef } from "@/lib/handoff/addressDetail";
+import { COMPLETION_STAGE, completionEvidenceAnchor } from "@/lib/data/handoff/contentDelivery";
+import { addressDetailAnchorRef } from "@/lib/data/handoff/addressDetail";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { keyOf, primeClauseSpecs } from "../lib/primeClauseSpecs";
 
 const captured = vi.hoisted(() => ({ options: [] as Array<{ expectedAnchor: (d: unknown, blob: string, sender: string) => unknown }> }));
 const chain = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>> }));
 
-vi.mock("@/lib/handoff/useCeremonyChannel", () => ({
+vi.mock("@/lib/data/handoff/useCeremonyChannel", () => ({
     useCeremonyPanel: (options: { expectedAnchor: (d: unknown, blob: string, sender: string) => unknown }) => {
         captured.options.push(options);
         return { role: null };
     },
 }));
-vi.mock("@/lib/composition/indexer", () => ({ getAttestationsByOrder: async () => chain.rows }));
+vi.mock("@/lib/core/attestationIndexer", () => ({ getAttestationsByOrder: async () => chain.rows }));
 
 import { ContentDeliveryPanel } from "@/components/runtime/ContentDeliveryPanel";
 import { AddressDetailPanel } from "@/components/runtime/AddressDetailPanel";
-import { attestationAnchorMatches } from "@/lib/handoff/handoffAnchorState";
+import { attestationAnchorMatches } from "@/lib/data/handoff/handoffAnchorState";
 
 const ORDER = `0x${"0a".repeat(32)}`;
 const BUYER = "0x1111111111111111111111111111111111111111" as const;

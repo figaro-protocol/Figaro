@@ -16,7 +16,7 @@ import {
     specCatalogueMeasures,
     type SubOrderPricing,
 } from "@figaro-protocol/sdk";
-import { displayNameForAddress } from "@/lib/member/memberListing";
+import { displayNameForAddress } from "@/lib/registries/memberListing";
 import { processDesignFollows } from "@/lib/shared/assembly";
 import {
     clauseCatalogFills,

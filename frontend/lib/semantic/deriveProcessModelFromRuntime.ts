@@ -3,7 +3,7 @@ import type { Agreement } from "@figaro-protocol/sdk";
 import { calculateResolution, clauseByField, hashClauseData, isProcessRoot, provenanceContentRef } from "@figaro-protocol/sdk";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { ProcessSummary } from "@/lib/core/walletProcessQueries";
-import type { RuntimeAttestation } from "@/lib/composition/indexer";
+import type { RuntimeAttestation } from "@/lib/core/attestationIndexer";
 import { attestationContentFields, clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue, specSource } from "@/lib/shared/clauseSpecSource";
 import { PROVENANCE_LEAF_KEY } from "@figaro-protocol/sdk";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";

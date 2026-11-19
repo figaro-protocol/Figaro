@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/Button";
 import {
     type Listing,
     listingClickThroughHref,
-} from "@/lib/member/memberListing";
-import { useMemberResolutionHistory } from "@/lib/member/useMemberResolutionHistory";
+} from "@/lib/registries/memberListing";
+import { useMemberResolutionHistory } from "@/lib/registries/useMemberResolutionHistory";
 
 function distinctAssemblySlugs(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => deriveProcessDesignSlug(b.assemblyHash))));

@@ -10,13 +10,13 @@
  *     library (`lib/designer/`) read `block.design` and never
  *     `block.checkout` or `block.runtime`;
  *   - checkout: the checkout's pages (`app/(app)/s/checkout/`, `/sign`), its
- *     library, the seller's binding surfaces (`lib/member/`,
+ *     library, the seller's binding surfaces (`lib/registries/`,
  *     `components/members/`) and the pre-sign review read `block.design` and
  *     `block.checkout`, and never `block.runtime`.
  *
  * A read through a helper counts as a read of the part behind it: the spec
  * cache's readers of the checkout part (`lib/shared/clauseSpecSource.ts`),
- * the held-values readers (`lib/composition/heldValues.ts`) and the SDK's
+ * the held-values readers (`lib/composability/heldValues.ts`) and the SDK's
  * priced-lines readers. No helper reads the runtime part, so a runtime read
  * is always a direct one.
  */
@@ -37,10 +37,10 @@ const PHASE_FILES: Readonly<Record<"design" | "checkout", readonly string[]>> = 
         "app/(app)/s/checkout",
         "app/(app)/sign",
         "lib/checkout",
-        "lib/member",
+        "lib/registries",
         "components/members",
-        "lib/composition/heldValues.ts",
-        "lib/composition/useCompositionActions.ts",
+        "lib/composability/heldValues.ts",
+        "lib/composability/useCompositionActions.ts",
         "components/runtime/AgreementReview.tsx",
         "components/runtime/AgreementPreviewModal.tsx",
         "components/runtime/CommitmentSignPreviewProvider.tsx",

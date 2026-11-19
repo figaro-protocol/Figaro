@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cooldownPhrase } from "@/lib/member/cooldownPhrase";
+import { cooldownPhrase } from "@/lib/registries/cooldownPhrase";
 
 /**
  * The wizard's review and the leave row quote the stake and the delay it is locked for from

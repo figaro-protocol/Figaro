@@ -27,7 +27,7 @@ import { OrderState, type Order } from "@/lib/core/store";
 import { restoreSignedProcessId } from "@/lib/core/signedCommitment";
 import { attestationContentFields, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { isBytes32Hex } from "@/lib/shared/evm";
-import type { UsageWrite } from "@/lib/protocol/useUsageRecorder";
+import type { UsageWrite } from "@/lib/rewards/useUsageRecorder";
 import { planUsageRecords, type PlannedUsageWrite, type UsagePlanEntry } from "@/lib/semantic/planUsageRecords";
 import type { AttestProvenanceLeafCapabilityAction, SubmitClauseAttestationCapabilityAction } from "@/lib/semantic/models";
 

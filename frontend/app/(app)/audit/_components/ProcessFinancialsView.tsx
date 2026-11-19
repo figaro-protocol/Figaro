@@ -16,7 +16,7 @@
  */
 
 import { useProcessOrders } from "@/hooks/useProcessOrders";
-import { projectAllFinancialStatements } from "@/lib/audit/documentProjection";
+import { projectAllFinancialStatements } from "@/lib/data/audit/documentProjection";
 import { DownloadAuditBundleButton } from "@/components/runtime/DownloadAuditBundleButton";
 import { DocumentView } from "./DocumentView";
 import type { Order } from "@/lib/core/store";

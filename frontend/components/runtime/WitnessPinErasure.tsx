@@ -1,13 +1,13 @@
 "use client";
 
-import { unpinWitnessContent } from "@/lib/composition/witnessContent";
+import { unpinWitnessContent } from "@/lib/core/witnessContent";
 import { PinErasureControl } from "@/components/runtime/PinErasureControl";
 
 /**
  * Controller-erasure for a process's published witness-content pins.
  *
  * Public-disposition attestation content publishes at its fingerprint-derived
- * keccak-CID (`lib/composition/witnessContent`); this is the erasure half of
+ * keccak-CID (`lib/core/witnessContent`); this is the erasure half of
  * that publish story — the same author-pins → author-erases symmetry as the
  * member profile, device evidence, and committed-agreement pins. Deliberate,
  * never automatic: the values are runtime evidence a dispute forum may want,

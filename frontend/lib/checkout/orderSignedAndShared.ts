@@ -25,7 +25,7 @@ interface WalletMessageSigner {
 }
 
 /** The one transport capability this module needs — structural, so this module
- *  names no concrete transport. `HandoffMessagingService` (handoff/) satisfies it. */
+ *  names no concrete transport. `HandoffMessagingService` (`lib/data/handoff/`) satisfies it. */
 export interface CommitmentPayloadRelay {
     sendCommitmentPayload(params: {
         address: string;

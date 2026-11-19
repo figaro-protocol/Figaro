@@ -1,0 +1,124 @@
+"use client";
+
+/**
+ * useUsageRecorder — the usage-recording writes to `UsageCounter`,
+ * a contract of the designer rewards (`lib/rewards/`), never of the Core.
+ *
+ * The three calls — a clause, a registered agreement, an assembly — are
+ * PERMISSIONLESS by design: UsageCounter re-verifies every fact from state
+ * the chain already holds (order RESOLVED + merkle proof against the signed
+ * checkoutHash; for an assembly, the agreement's membership under its
+ * assembly root too), so nothing about the caller is trusted.
+ * The resolve capability plans these before the buyer resolves
+ * (`planUsageRecords`, from the counter's own facts read by
+ * `fetchClaimContext`) and sends them right after — count usage when it
+ * happens.
+ *
+ * A write can meet the counter's reverts — `AlreadyCounted` (the key was
+ * counted for this process already) and `SellerNotStaked` (the live-stake
+ * gate) among them. The plan repeats no key; each planned write is then
+ * SIMULATED here first and sent only if the simulation passes, so no revert
+ * is ever sent — the wallet signs only writes the counter accepts. Anyone can
+ * redo a missed one.
+ */
+
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import type { Abi, PublicClient } from "viem";
+import { USAGE_COUNTER_ABI, fetchUsageClaimContext, type Commitment, type UsageClaimContext } from "@figaro-protocol/sdk";
+import { getUsageCounter } from "@/lib/rewards/contracts";
+import { simulateWrite, simulateWriteVerify, type ContractCall } from "@/lib/shared/contractWrite";
+
+type Hex = `0x${string}`;
+
+/** One usage write, by the family it credits — the counter's three entry
+ *  points. `proof` is the provenance leaf's (agreement, assembly) or the
+ *  clause leaf's (clause) sorted-pair proof under the order's checkoutHash. */
+export type UsageWrite =
+    | {
+          kind: "clause";
+          order: Commitment;
+          /** The clause key the clause carries. */
+          key: Hex;
+          /** The clause FINGERPRINT — only it reaches calldata, never the
+           *  plaintext, so a private clause stays off-chain. */
+          clauseDataHash: Hex;
+          proof: readonly Hex[];
+      }
+    | {
+          kind: "agreement";
+          order: Commitment;
+          /** The registered agreement's hash (`AgreementRegistry`). */
+          key: Hex;
+          /** The assembly root the provenance leaf names beside it. */
+          processDesignHash: Hex;
+          proof: readonly Hex[];
+      }
+    | {
+          kind: "assembly";
+          order: Commitment;
+          /** The assembly's processDesignHash. */
+          key: Hex;
+          /** The agreement's agreement hash and the hash of its entry bytes. */
+          agreementHash: Hex;
+          agreementContentHash: Hex;
+          proof: readonly Hex[];
+          /** The agreement leaf's proof under `key`. */
+          membershipProof: readonly Hex[];
+      };
+
+export function useUsageRecorder() {
+    const { writeContractAsync } = useWriteContract();
+    const publicClient = usePublicClient();
+    const { address: account } = useAccount();
+
+    // Fail loudly here — never let a malformed NEXT_PUBLIC_USAGE_COUNTER
+    // reach a read or a write with a garbage address.
+    const requireCounter = () => {
+        const usageCounter = getUsageCounter();
+        if (!usageCounter) throw new Error("UsageCounter address not configured (NEXT_PUBLIC_USAGE_COUNTER).");
+        return usageCounter;
+    };
+    const requireClient = () => {
+        if (!publicClient) throw new Error("No public client available to read the UsageCounter.");
+        return publicClient;
+    };
+
+    /** The counter's facts — its provenance and assembly-terms leaf keys —
+     *  read once from the deployment being called; they serve every order of
+     *  the process. */
+    const fetchClaimContext = (): Promise<UsageClaimContext> =>
+        fetchUsageClaimContext(requireClient() as unknown as PublicClient, requireCounter());
+
+    const usageCall = (write: UsageWrite): ContractCall => {
+        if (!account) throw new Error("Wallet not connected.");
+        const base = { address: requireCounter(), abi: USAGE_COUNTER_ABI as Abi, account };
+        switch (write.kind) {
+            case "clause":
+                return { ...base, functionName: "recordClauseUsage", args: [write.order, write.key, write.clauseDataHash, [...write.proof]] };
+            case "agreement":
+                return { ...base, functionName: "recordAgreementUsage", args: [write.order, write.key, write.processDesignHash, [...write.proof]] };
+            case "assembly":
+                return {
+                    ...base,
+                    functionName: "recordProcessDesignUsage",
+                    args: [write.order, write.key, write.agreementHash, write.agreementContentHash, [...write.proof], [...write.membershipProof]],
+                };
+        }
+    };
+
+    /** Throws the counter's revert, by its error name, when the write would
+     *  not land — the planner's check before it asks the wallet. */
+    const simulateUsage = (write: UsageWrite): Promise<void> =>
+        simulateWrite(requireClient(), usageCall(write));
+
+    /** Send one usage write through the shared simulate → send → verify. */
+    const recordUsage = async (write: UsageWrite): Promise<Hex> =>
+        simulateWriteVerify({
+            ...usageCall(write),
+            client: requireClient(),
+            writeContractAsync,
+            failureMessage: "The usage was not recorded.",
+        });
+
+    return { fetchClaimContext, simulateUsage, recordUsage };
+}
