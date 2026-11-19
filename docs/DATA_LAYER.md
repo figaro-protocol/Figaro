@@ -49,25 +49,27 @@ Evidence follows the same pattern: the public artifact carries the coarsest
 mechanism-sufficient grain (the geohash cell, hashed device identifiers) plus
 the hash of the raw capture; full fidelity stays party-held for dispute-time
 revelation. Raw coordinates and stable device identifiers never land on a
-public artifact. Where the rule caps a public field's precision, the cap is a
-rule of the SDK's content validation, never one frontend's taste. The spec
-carries the structural ceiling (`maxLength`) and the attributes the cap reads:
-the field's `disposition`, and its resolved format, static or named by a
-sibling: the static `format`, or the value of the sibling `formatFromField`
-names, which is the standard (the `figaro-geolocation` spec in `clauses/`).
-When that format is one of the four standards whose grain the SDK reads,
+public artifact. Where the rule caps a public field's precision, the clause
+engines hold the cap, never one frontend's taste and never the spec: the SDK's
 `validateContent` (`sdk/src/clauses/validate.ts`, with the caps in
-`sdk/src/clauses/grain.ts`) refuses a value finer than its disposition's cap,
-and a value that is no code of the standard. The public caps are neighborhood
-grade: a geohash of 6 characters, an H3 cell of resolution 8, an S2 cell of
-level 13, an Open Location Code of length 6. The private caps are 12
-characters, resolution 15, level 30 and length 15 (`docs/CLAUSES.md` gives the
-equivalence). A standard it carries no grain knowledge of is bounded by
-`maxLength` only. The `figaro-geolocation` spec names only the four in its
-`geocodeStandard` enum, so its public `origin` and `destination` are capped
-under every standard it admits; a clause whose standard is a free string
-accepts a standard the cap does not know (`docs/DESIGN_DECISIONS.md`, the entry
-on the grain cap's firmness).
+`sdk/src/clauses/grain.ts`) and the guest's engine (`prover/clause/src/grain.rs`)
+each carry one table of caps, keyed by the field's disposition and its
+standard. The spec declares no cap. It declares the standard and the
+disposition, and a structural ceiling (`maxLength`): the field's `disposition`
+(absent reads as public), and its format, static (`format`) or named by a
+sibling (the value of the field `formatFromField` names, as the
+`figaro-geolocation` spec in `clauses/` names its `geocodeStandard`). When that
+format is one of the four standards in the engines' table, each engine refuses
+a value finer than its disposition's cap, and a value that is no code of the
+standard. The public caps are neighborhood grade: a geohash of 6 characters, an
+H3 cell of resolution 8, an S2 cell of level 13, an Open Location Code of
+length 6. The private caps are 12 characters, resolution 15, level 30 and
+length 15 (`docs/CLAUSES.md` gives the equivalence). A standard outside the
+table is bounded by `maxLength` only. The `figaro-geolocation` spec names only
+the four in its `geocodeStandard` enum, so its public `origin` and
+`destination` are capped under every standard it admits; a clause whose
+standard is a free string accepts a standard the table does not hold
+(`docs/DESIGN_DECISIONS.md`, the entry on the grain cap's firmness).
 A member profile's location is the member's own publication, read as written:
 the SDK's profile parser (`sdk/src/memberProfile.ts`, `parseLocation`) applies
 no cap, so a profile already published stays readable, and the reference

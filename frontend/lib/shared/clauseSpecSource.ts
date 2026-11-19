@@ -23,6 +23,7 @@ import { contentFieldsFor, declaredStageFields, parseClauseSpec, stageOfKey, typ
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
 import { PROVENANCE_LEAF_KEY, anchorClauseSpec, deriveAnchored, type Anchored, type Hex, type ProjectionHints, type ProjectionSpecView, type SpecSource } from "@figaro-protocol/sdk";
 import { DEFAULT_IPFS_SERVICE, fetchCappedBinary } from "@/lib/shared/ipfsService";
+import { checkContentAddress } from "@/lib/shared/contentAddress";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 /** A loaded clause spec: the SDK `ClauseSpec` (content-only — `fields`/`stages`),
@@ -58,12 +59,23 @@ const NESTS_UNDER = new Map<string, string>();
 /**
  * Fetcher hook — URI → the pinned BYTES (or their exact text), handed over
  * unparsed; `anchorClauseSpec` parses them and checks the spec against the key.
- * Default resolves an `ipfs://` locator through the gateway and fetches it;
- * tests swap in a stub via `setClauseSpecFetcher`.
+ * The default resolves an `ipfs://` locator through the gateway, fetches it,
+ * and accepts the bytes only when they hash to the CID the URI names
+ * (`checkContentAddress`): the clause key leaves the `block` out, so the CID
+ * is what holds the `block` read here to the bytes the registrant pinned.
+ * Tests swap in a stub via `setClauseSpecFetcher`.
  */
 export type ClauseSpecFetcher = (uri: string) => Promise<Uint8Array | string>;
 
-let activeFetcher: ClauseSpecFetcher = async (uri) => {
+/** The refusal of fetched bytes that are not the content their URI names, or
+ *  of a URI that names its content in a form the frontend cannot recompute.
+ *  The bytes are wrong, not merely not served yet, so the load keeps it as a
+ *  permanent failure. */
+class ContentAddressRefusal extends Error {}
+
+/** The default fetcher: the gateway read, then the content-address check.
+ *  Exported so a test can put it back after a stub. @internal */
+export const defaultClauseSpecFetcher: ClauseSpecFetcher = async (uri) => {
     const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(uri);
     if (!url) throw new Error(`Cannot resolve clause spec URI: ${uri}`);
     // Size-capped fetch (F4): a permissionlessly-registered clause pointing at
@@ -72,8 +84,16 @@ let activeFetcher: ClauseSpecFetcher = async (uri) => {
     // `anchorClauseSpec` undecoded, which refuses invalid UTF-8.
     const response = await fetchCappedBinary(url);
     if (!response.ok || response.bytes === null) throw new Error(`Failed to fetch clause spec at ${uri}: ${response.status} ${response.statusText}`);
+    const check = checkContentAddress(uri, response.bytes);
+    if (check !== "match") {
+        throw new ContentAddressRefusal(
+            check === "mismatch" ? `the bytes served for ${uri} do not hash to its CID` : `${uri} names no CID in a form the frontend can verify`,
+        );
+    }
     return response.bytes;
 };
+
+let activeFetcher: ClauseSpecFetcher = defaultClauseSpecFetcher;
 
 /** Replace the default fetcher (test-only). @internal */
 export function setClauseSpecFetcher(fetcher: ClauseSpecFetcher): void {
@@ -93,18 +113,26 @@ function cacheSpec(spec: Anchored<ClauseSpecWithBlock>): void {
  * spec they hold against `clauseKey`, parse, cache, and return the spec. Idempotent: a spec
  * already cached resolves immediately. Throws on parse / network failure /
  * integrity mismatch (no silent fallback). PERMANENT failures — the bytes are
- * wrong, not merely not served yet: integrity mismatch, unparseable spec or
- * block — are recorded under `getClauseSpecLoadError`, so a re-reading
- * consumer can leave them alone; a network miss keeps nothing and is re-read.
+ * wrong, not merely not served yet: bytes that are not the content their CID
+ * names, integrity mismatch, unparseable spec or block — are kept under
+ * `getClauseSpecLoadError`, so a re-reading consumer can leave them alone; a
+ * network miss keeps nothing and is re-read.
  * The check (`anchorClauseSpec`) parses the fetched bytes, drops the top-level
  * `block`, canonicalizes and hashes: a spec whose protocol half differs from
- * the key never enters the cache, while its `block` and its byte form may be
- * any.
+ * the key never enters the cache. The key leaves the `block` and the byte form
+ * out; the default fetcher's CID check holds both to the bytes the registrant
+ * pinned.
  */
 export async function loadClauseSpec(clauseKey: Hex, uri: string): Promise<Anchored<ClauseSpecWithBlock>> {
     const cached = SPEC_CACHE.get(norm(clauseKey));
     if (cached !== undefined) return cached;
-    const fetched = await activeFetcher(uri);
+    let fetched: Uint8Array | string;
+    try {
+        fetched = await activeFetcher(uri);
+    } catch (err) {
+        if (err instanceof ContentAddressRefusal) SPEC_LOAD_ERRORS.set(norm(clauseKey), `content-address failure: ${err.message}`);
+        throw err;
+    }
     const anchored = anchorClauseSpec(fetched, clauseKey);
     if (anchored === null) {
         const detail = `the spec at ${uri}, without its block, does not hash to the clause key ${clauseKey}`;

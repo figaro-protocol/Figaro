@@ -438,7 +438,18 @@ from `contentURI`, parses it, drops `block`, canonicalizes and checks the hash
 against the key (`anchorClauseSpec` in `sdk/src/anchored.ts`, called by
 `loadClauseSpec` in `frontend/lib/shared/clauseSpecSource.ts`). The byte form
 a spec is pinned in and its `block` do not change its key; an edit to
-presentation alone keeps the clause, and so its count of use. The spec's
+presentation alone keeps the clause, and so its count of use. So the key alone
+does not hold the `block` a reader receives: a gateway can serve another
+`block` that still verifies against it. The reference frontend's fetcher
+(`defaultClauseSpecFetcher`) accepts the fetched bytes only when they hash to
+the CID in `contentURI` (`checkContentAddress` in
+`frontend/lib/shared/contentAddress.ts`), so the `block` it reads is the one
+the registrant pinned. Bytes that fail, or a `contentURI` whose CID form it
+cannot recompute, leave the clause unread, its place empty
+(`DESIGN_DECISIONS.md` § 40). Every reader parses a spec with `__proto__`,
+`constructor` and `prototype` keys stripped, so `computeClauseKey` and
+`clauseKeyPreimage` throw on a spec whose protocol half carries one, naming
+it: its key would be one no reader anchors. The spec's
 `clauseId` (`figaro-emissions`) and `version` are presentation fields inside
 the document — a title and a lineage counter a human reads; nothing on chain
 or in a leaf reads them, so two specs that carry one name are two clauses and
