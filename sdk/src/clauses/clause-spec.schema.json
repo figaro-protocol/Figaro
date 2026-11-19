@@ -17,7 +17,7 @@
         "description": { "type": "string" },
         "fields": {
             "$ref": "#/$defs/fieldSet",
-            "description": "The clause's content fields — the terms-and-conditions blanks. Filled in for a transaction, they become one CLAUSE of the signed agreement (a merkle leaf under the on-chain checkoutHash). This is the committed content: stage 0. WHO fills each blank is declared by the block phase sections' `fills` lists and `checkout.catalogueMeasures`; any field named in none of them is the buyer's, authored at checkout (the default — always derived as the complement, never stored)."
+            "description": "The clause's content fields — the terms-and-conditions blanks. Filled in for a transaction, they become one CLAUSE of the signed agreement (a merkle leaf under the on-chain checkoutHash). This is the content the parties sign. An attestation at a stage the spec declares in `stages` is encoded over that stage's fields, stage 0 included, so a stage-0 attestation re-asserts the signed content only when its contentRef is the leaf's data hash. WHO fills each blank is declared by the block phase sections' `fills` lists and `checkout.catalogueMeasures`; any field named in none of them is the buyer's, filled at checkout (the default — always derived as the complement, never stored)."
         },
         "stages": {
             "type": "object",

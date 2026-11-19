@@ -289,7 +289,12 @@ its manual.
   static `format`, or, when it declares `formatFromField`, the named
   sibling's committed value, then that sibling's default, then `format`. A
   stage field's `formatFromField` names a field of the same stage, and
-  resolves among that stage's fields only. When the resolved format is
+  resolves among that stage's fields only. When two fields share the
+  sibling's name, the first gives the default. Each engine reads the
+  defaults from a map it builds once per object, so a set of n fields costs
+  n lookups. The cap is as firm as the values the designer allows the
+  sibling: a sibling that names another standard lifts it, and an `enum` or
+  `pattern` sibling keeps it (`docs/DESIGN_DECISIONS.md` § 37). When the resolved format is
   `geohash`, a `public` value carries at most 6 characters and a `private` one
   at most 12, under the field's `maxLength`, which stays the structural
   ceiling. An array whose item spec declares `format: "geohash"` caps each
@@ -330,7 +335,13 @@ its manual.
   half after it, or a low half alone). `JSON.parse` keeps one and
   `serde_json`, which reads content in the guest, refuses it; the SDK's
   `validateContent` refuses it too, so no party signs content the batch
-  path cannot read.
+  path cannot read. The spec's own JSON holds none either, in a string or
+  in a key of any top-level attribute but `block`: those are the bytes a
+  clause key hashes and a plaintext attestation's witness carries, and
+  gate S refuses them when `serde_json` reads them. `parseClauseSpec`
+  refuses such a spec, and names where the surrogate is
+  (`sdk/tests/clauses/spec.test.ts`; `attest_spec_holding_a_lone_surrogate_fails`,
+  `prover/lib/tests/parity.rs`).
 - `encodeContentFromSpec` / `decodeContentFromSpec` — the one spec-driven
   encoder and its inverse, reading the field-to-position mapping from the
   parsed spec for any clause, with the same stage selection. There is no
@@ -353,6 +364,10 @@ gate for a re-asserted clause (`validate_attestation_content` in
 (`validateSignedContent`, `validate_signed_content`). Content
 attested at stage N, stage 0 included, is encoded and validated over
 `stages[N]` where the spec declares it, else over `fields`, in both engines.
+So a stage-0 attestation is not the signed content: it re-asserts that
+content only when its `contentRef` is the leaf's data hash
+(`hashClauseData`), and a reader compares the two
+(`docs/DESIGN_DECISIONS.md` § 36).
 A stage key has one spelling: the decimal of an integer from 0 to 255, digits
 only, with no sign, no leading zero and no whitespace (`"0"`, `"1"`, `"255"`).
 A spec with any other key does not parse in either engine, and the issue names

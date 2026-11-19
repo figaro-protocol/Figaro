@@ -1,0 +1,48 @@
+{
+    "clauseId": "canonical-form-vector",
+    "version": 1,
+    "title": "Canonical form vector",
+    "description": "A spec whose protocol half holds floats, integers above 2^53 and index-like keys, so its clause key pins the number forms and the key order of the canonical bytes.",
+    "fields": [
+        { "name": "reading", "type": "string", "required": true }
+    ],
+    "stages": {
+        "10": [{ "name": "late", "type": "string", "required": true }],
+        "2": [{ "name": "early", "type": "string", "required": true }],
+        "0": [{ "name": "opening", "type": "string", "required": true }]
+    },
+    "x-numbers": [
+        0.1,
+        2.50,
+        1E2,
+        123456789.125,
+        1.5e-7,
+        0.000001,
+        1e21,
+        1e-7,
+        123e20,
+        9007199254740993,
+        18446744073709551615,
+        18446744073709551616,
+        1.7976931348623157e308,
+        5e-324,
+        -0.0,
+        -42,
+        -9007199254740993
+    ],
+    "x-indexed": {
+        "b": 1,
+        "10": 2,
+        "a": 3,
+        "02": 4,
+        "2": 5,
+        "4294967295": 6,
+        "4294967294": 7,
+        "-1": 8
+    },
+    "block": {
+        "design": { "article": "none", "scope": "agreement", "nestsUnder": null, "fills": [], "composes": null },
+        "checkout": { "catalogueFills": [], "profileFills": [], "catalogueMeasures": {} },
+        "runtime": { "interaction": null, "fields": [] }
+    }
+}

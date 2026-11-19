@@ -26,6 +26,9 @@
 use alloy_primitives::{address, keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
 
+pub mod canonical;
+pub use canonical::{canonicalize, canonicalize_json};
+
 use figaro_kernel::eip712::*;
 use figaro_kernel::types::*;
 
@@ -87,78 +90,7 @@ pub fn load_spec_json(clause_id_str: &str) -> String {
     if let Some(spec) = value.as_object_mut() {
         spec.remove("block");
     }
-    canonicalize_json(&value.to_string())
-}
-
-/// The SDK's `canonicalize` — `JSON.stringify` with every object's keys
-/// sorted, compact — reproduced byte for byte. `JSON.stringify` writes an
-/// object's array-index keys (`"50"`, `"100"`) first in numeric order and the
-/// rest in sorted UTF-16 order, so a sorted `BTreeMap` alone is not it.
-/// `tests/clause_keys.rs` pins it to the SDK's keys.
-pub fn canonicalize_json(raw: &str) -> String {
-    let value: serde_json::Value = serde_json::from_str(raw).expect("spec JSON");
-    let mut out = String::with_capacity(raw.len());
-    write_canonical(&value, &mut out);
-    out
-}
-
-/// An ECMAScript array index: the canonical decimal form of an integer
-/// below 2^32 - 1.
-fn array_index(key: &str) -> Option<u32> {
-    if key.is_empty() || (key.len() > 1 && key.starts_with('0')) {
-        return None;
-    }
-    if !key.bytes().all(|b| b.is_ascii_digit()) {
-        return None;
-    }
-    key.parse::<u32>().ok().filter(|n| *n != u32::MAX)
-}
-
-fn write_canonical(value: &serde_json::Value, out: &mut String) {
-    use serde_json::Value;
-    match value {
-        Value::Object(map) => {
-            let mut indexed: Vec<(u32, &String)> = Vec::new();
-            let mut named: Vec<&String> = Vec::new();
-            for k in map.keys() {
-                match array_index(k) {
-                    Some(n) => indexed.push((n, k)),
-                    None => named.push(k),
-                }
-            }
-            indexed.sort_by_key(|(n, _)| *n);
-            named.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
-            out.push('{');
-            let keys = indexed.into_iter().map(|(_, k)| k).chain(named);
-            for (i, k) in keys.enumerate() {
-                if i > 0 {
-                    out.push(',');
-                }
-                out.push_str(&serde_json::to_string(k).expect("key"));
-                out.push(':');
-                write_canonical(&map[k], out);
-            }
-            out.push('}');
-        }
-        Value::Array(items) => {
-            out.push('[');
-            for (i, item) in items.iter().enumerate() {
-                if i > 0 {
-                    out.push(',');
-                }
-                write_canonical(item, out);
-            }
-            out.push(']');
-        }
-        Value::Number(n) => match n.as_f64() {
-            // A float with no fraction prints as an integer in JavaScript.
-            Some(f) if !n.is_i64() && !n.is_u64() && f.fract() == 0.0 && f.abs() < 1e21 => {
-                out.push_str(&format!("{}", f as i128));
-            }
-            _ => out.push_str(&n.to_string()),
-        },
-        other => out.push_str(&serde_json::to_string(other).expect("scalar")),
-    }
+    canonicalize(&value)
 }
 
 fn parse_spec(spec_json: &str) -> figaro_clause::ClauseSpec {

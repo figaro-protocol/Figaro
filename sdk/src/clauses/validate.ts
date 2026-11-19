@@ -33,7 +33,7 @@ import type {
     ObjectFieldSpec,
     FieldDisposition,
 } from "./spec.js";
-import { ownValue, resolveInputFormat } from "./spec.js";
+import { hasLoneSurrogate, ownValue, resolveFormatWith, resolveInputFormat, siblingDefaults } from "./spec.js";
 import { contentFieldsFor } from "./encode.js";
 import { safeRegexTest } from "./safeRegex.js";
 import { GEOHASH_FORMAT, geohashCapturePrecision } from "./grain.js";
@@ -64,19 +64,6 @@ const DECIMAL_BIGINT_RE = /^-?[0-9]+$/;
 
 function isObject(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-/** Does `value` hold a UTF-16 surrogate that is not half of a pair? */
-function hasLoneSurrogate(value: string): boolean {
-    for (let i = 0; i < value.length; i++) {
-        const code = value.charCodeAt(i);
-        if (code < 0xd800 || code > 0xdfff) continue;
-        if (code >= 0xdc00) return true;
-        const next = value.charCodeAt(i + 1);
-        if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
-        i++;
-    }
-    return false;
 }
 
 function validateString(value: unknown, spec: StringFieldSpec, path: string, errors: ValidationError[]): void {
@@ -211,6 +198,7 @@ function validateObject(value: unknown, spec: ObjectFieldSpec, path: string, err
         return;
     }
     const known = new Set<string>();
+    const defaults = siblingDefaults(spec.fields);
     for (const field of spec.fields) {
         known.add(field.name);
         const childPath = path === "$" ? `$.${field.name}` : `${path}.${field.name}`;
@@ -222,7 +210,8 @@ function validateObject(value: unknown, spec: ObjectFieldSpec, path: string, err
             continue;
         }
         validateField(childValue, field, childPath, errors);
-        validateGrain(childValue, resolveInputFormat(field, spec.fields, value), field.disposition, childPath, errors);
+        const resolved = resolveFormatWith(field, value, (name) => defaults?.get(name));
+        validateGrain(childValue, resolved, field.disposition, childPath, errors);
     }
     // Reject unknown fields — clause is a closed contract.
     for (const key of Object.keys(value)) {

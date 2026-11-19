@@ -1,6 +1,6 @@
 import { Order, OrderState } from "@/lib/core/store";
 import type { Agreement } from "@figaro-protocol/sdk";
-import { calculateResolution, clauseByField, isProcessRoot } from "@figaro-protocol/sdk";
+import { calculateResolution, clauseByField, hashClauseData, isProcessRoot, provenanceContentRef } from "@figaro-protocol/sdk";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { ProcessSummary } from "@/lib/core/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
@@ -240,6 +240,12 @@ function roleCapabilities(
         // own attestation: the coordinator attests one clause per call, so
         // an "all" act would be N wallet prompts that can stop half-way. The
         // card is absent once every clause is re-asserted.
+        //
+        // A re-assertion is the party's stage-0 attestation whose contentRef
+        // is the leaf's data hash. Any other stage-0 attestation of the
+        // clause is not one: the coordinator takes any contentRef, and a
+        // spec's stages["0"] encodes stage-0 content over a set other than
+        // the signed `fields` (docs/DESIGN_DECISIONS.md § 36).
         for (const party of ["seller", "buyer"] as const) {
             if (party === "seller" ? !isSeller : !isBuyer) continue;
             const choices: CapabilityModel[] = [];
@@ -247,8 +253,10 @@ function roleCapabilities(
                 const clauseKey = clauseEntry.clause;
                 if (clauseIsProcessLog(clauseKey)) continue;
                 if (clauseWitnessStages(clauseKey).some((w) => w.stage === 0)) continue;
-                    const already = orderAttestations.some(
+                const leafDataHash = hashClauseData(clauseEntry);
+                const already = orderAttestations.some(
                     (a) => hexEqual(a.clauseId, clauseKey) && a.stage === 0
+                        && hexEqual(a.contentRef, leafDataHash)
                         && hexEqual(a.attester, party === "seller" ? order.seller : order.buyer),
                 );
                 if (already) continue;
@@ -280,8 +288,10 @@ function roleCapabilities(
             // attest, beside the clauses, keyed by the reserved key (a
             // format rule, never a clause name).
             if (party === "buyer" && agreement.provenance !== undefined) {
+                const leafDataHash = provenanceContentRef(agreement.provenance.agreementHash, agreement.provenance.processDesignHash);
                 const already = orderAttestations.some(
-                    (a) => hexEqual(a.clauseId, PROVENANCE_LEAF_KEY) && a.stage === 0 && hexEqual(a.attester, order.buyer),
+                    (a) => hexEqual(a.clauseId, PROVENANCE_LEAF_KEY) && a.stage === 0
+                        && hexEqual(a.contentRef, leafDataHash) && hexEqual(a.attester, order.buyer),
                 );
                 if (!already) {
                     const capId = `${order.processId}:${orderIdStr}:provenance-leaf-buyer-reassert`;

@@ -671,7 +671,14 @@ edit to the `title` or a field's type moves the key. `prover/script/tests/clause
 (`figaro-prove-test`) and `prover/lib/tests/parity.rs` read the same fixture
 and assert the Rust canonicalization lands on every key; `parity.rs`
 `attest_witness_carrying_block_is_refused_and_without_it_is_accepted` holds Gate S
-to the witness without `block`. The resolver from
+to the witness without `block`. The Rust tests keep one canonical form,
+`prover/script/src/canonical.rs`, which the test crates of `prover/lib` and
+`prover/clause` include by path. `test/fixtures/clause-key-canonical-form.json`,
+a spec with floats, integers above 2^53 and index-like keys, gives one key in
+`clauseKeys.test.ts` and in `clause_keys.rs`
+(`the_canonical_form_vector_hashes_to_the_sdk_key`): numbers are written as
+`Number.prototype.toString` writes the double `JSON.parse` reads, and an
+object's array-index keys come first. The resolver from
 written clause names to keys — a local authoring read run before a document
 is published — is covered by
 `sdk/tests/assembly.test.ts` § `resolveAuthoredClauseKeys`: a name two loaded

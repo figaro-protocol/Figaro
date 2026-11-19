@@ -16,10 +16,14 @@ use figaro_kernel::types::*;
 // Specs are witness inputs loaded from `clauses/` (the ClauseRegistry
 // seed source) — nothing is embedded in the engine.
 
+/// The SDK's `canonicalize`, the one canonical form of the Rust tests
+/// (`prover/script/src/canonical.rs`).
+#[path = "../../script/src/canonical.rs"]
+mod canonical;
+use canonical::canonicalize;
+
 /// The spec file as pinned: the SDK's `canonicalize` of the whole document,
-/// `block` included — keys sorted at every depth (serde_json's default map
-/// is sorted), compact. The specs loaded here carry no array-index keys,
-/// which `JSON.stringify` would order first.
+/// `block` included.
 fn load_pinned_spec_json(clause_id_str: &str) -> String {
     let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     p.pop(); // prover/
@@ -28,7 +32,7 @@ fn load_pinned_spec_json(clause_id_str: &str) -> String {
     p.push(format!("{clause_id_str}.json"));
     let raw = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
     let value: serde_json::Value = serde_json::from_str(&raw).expect("spec JSON");
-    serde_json::to_string(&value).expect("serialize")
+    canonicalize(&value)
 }
 
 /// The witness bytes: the canonical form of the spec without its top-level
@@ -38,7 +42,7 @@ fn load_spec_json(clause_id_str: &str) -> String {
     let mut value: serde_json::Value =
         serde_json::from_str(&load_pinned_spec_json(clause_id_str)).expect("spec JSON");
     value.as_object_mut().expect("spec object").remove("block");
-    let canonical = serde_json::to_string(&value).expect("serialize");
+    let canonical = canonicalize(&value);
     assert_eq!(
         keccak256(canonical.as_bytes()),
         sdk_clause_key(clause_id_str),
@@ -755,6 +759,42 @@ fn attest_content_holding_a_lone_surrogate_fails() {
 }
 
 #[test]
+fn attest_spec_holding_a_lone_surrogate_fails() {
+    // serde_json refuses a lone UTF-16 surrogate in the witness spec's own
+    // JSON (its title, description or a field's label), where JSON.parse
+    // keeps one and the SDK's `canonicalize` writes it back as the escape.
+    // The SDK's leg of this vector ("parseClauseSpec — a lone UTF-16
+    // surrogate in the spec's own JSON" in sdk/tests/clauses/spec.test.ts)
+    // refuses the spec at parse too. The fixture's leaf is built over these
+    // very bytes, so the identity gate would pass: the refusal is the parse.
+    for escape in [r"\ud800", r"a\udfffb", r"\udc00\ud800", r"\ud83d"] {
+        let base = load_spec_json("figaro-modalities");
+        let spec_json = base.replacen(
+            r#""description":""#,
+            &format!(r#""description":"{escape}"#),
+            1,
+        );
+        assert_ne!(spec_json, base, "the description is spliced");
+        let f = attest_fixture_for(spec_json, CLAUSE_DATA);
+        let (proof, content_ref) = re_assert_proof(&f);
+        assert_eq!(keccak256(proof.spec_json.as_bytes()), f.clause_key);
+        let seller1_key = make_signing_key(SELLER1_KEY);
+        let op = seller_attest_op(&f, proof, content_ref, &seller1_key);
+
+        match run_attest_batch(&f, op) {
+            Err(KernelError::ClauseSpecParseFailed(message)) => {
+                assert!(
+                    message.starts_with("spec not valid JSON"),
+                    "{escape}: {message}"
+                );
+                assert!(message.contains("escape"), "{escape}: {message}");
+            }
+            other => panic!("{escape}: expected ClauseSpecParseFailed, got {other:?}"),
+        }
+    }
+}
+
+#[test]
 fn attest_spec_identity_mismatch_fails() {
     let f = attest_fixture();
     // Supply the figaro-handoff spec under the figaro-modalities key —
@@ -903,7 +943,7 @@ fn witness_spec(fields: &serde_json::Value, stages: Option<&serde_json::Value>) 
     if let Some(stages) = stages {
         spec["stages"] = stages.clone();
     }
-    serde_json::to_string(&spec).expect("serialize")
+    canonicalize(&spec)
 }
 
 fn hex_to_bytes(hex: &str) -> Vec<u8> {
@@ -920,7 +960,7 @@ fn a_re_assert_of_a_blinded_private_clause_passes_its_gates() {
     let spec_json = witness_spec(&vector["fields"], None);
     // The committed clause data: the canonical JSON of the content, its
     // blinding value with it.
-    let clause_data = serde_json::to_string(&vector["content"]).expect("serialize");
+    let clause_data = canonicalize(&vector["content"]);
     let f = attest_fixture_for(spec_json, &clause_data);
     let content_ref = keccak256(clause_data.as_bytes());
     let proof = AttestationContentProof {
@@ -944,7 +984,7 @@ fn a_re_assert_of_a_blinded_private_clause_passes_its_gates() {
     // is what refuses it.
     let mut bare = vector["content"].clone();
     bare.as_object_mut().expect("content object").remove("b");
-    let bare_data = serde_json::to_string(&bare).expect("serialize");
+    let bare_data = canonicalize(&bare);
     let f = attest_fixture_for(witness_spec(&vector["fields"], None), &bare_data);
     let proof = AttestationContentProof {
         spec_json: f.spec_json.clone(),

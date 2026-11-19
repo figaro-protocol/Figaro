@@ -1,6 +1,6 @@
 import { beforeAll, describe, it, expect } from "vitest";
 import type { Agreement } from "@figaro-protocol/sdk";
-import { PROVENANCE_LEAF_KEY } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY, hashClauseData, provenanceContentRef } from "@figaro-protocol/sdk";
 import { pinSpec } from "./primeClauseSpecs";
 import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
@@ -56,12 +56,13 @@ const summary: ProcessSummary = {
     orders: [],
 };
 
+// A re-assertion's contentRef is the leaf's data hash (docs/DESIGN_DECISIONS.md § 36).
 const reasserted = (clauseIndex: number, attester: string): RuntimeAttestation => ({
     clauseId: clauseEntries[clauseIndex].clause,
     orderHash: ORDER_HASH,
     stage: 0,
     attester,
-    contentRef: `0x${"00".repeat(32)}`,
+    contentRef: hashClauseData(clauseEntries[clauseIndex]),
     blockNumber: 1,
     universe: "direct",
 });
@@ -121,6 +122,15 @@ describe("re-assert committed clauses — one card per party per order", () => {
         });
     }
 
+    it("a stage-0 attestation whose contentRef is not the leaf's data hash is no re-assertion", () => {
+        // The coordinator takes any contentRef, and a spec's stages["0"] encodes
+        // stage-0 content over a set other than the signed fields.
+        const other: RuntimeAttestation = { ...reasserted(1, SELLER), contentRef: `0x${"00".repeat(32)}` };
+        const cards = reassertCards(SELLER, [other]);
+        expect(cards).toHaveLength(1);
+        expect(choiceClauseIds(cards[0])).toEqual(clauseEntries.map((s) => s.clause));
+    });
+
     it("the other party's re-assertion leaves this party's count whole", () => {
         const cards = reassertCards(BUYER, clauseEntries.map((_s, i) => reasserted(i, SELLER)));
         expect(cards).toHaveLength(1);
@@ -178,8 +188,13 @@ describe("re-assert committed clauses — the provenance leaf", () => {
     });
 
     it("the buyer's own attestation of the reserved key removes it", () => {
-        const filed: RuntimeAttestation = { clauseId: PROVENANCE_LEAF_KEY, orderHash: ORDER_HASH, stage: 0, attester: BUYER, contentRef: `0x${"00".repeat(32)}`, blockNumber: 2, universe: "direct" };
+        const filed: RuntimeAttestation = { clauseId: PROVENANCE_LEAF_KEY, orderHash: ORDER_HASH, stage: 0, attester: BUYER, contentRef: provenanceContentRef(AGREEMENT_HASH, COMPOSITION), blockNumber: 2, universe: "direct" };
         expect(provenanceChoices(cardsWith(BUYER, [filed]))).toHaveLength(0);
+    });
+
+    it("an attestation of the reserved key over other bytes leaves it", () => {
+        const other: RuntimeAttestation = { clauseId: PROVENANCE_LEAF_KEY, orderHash: ORDER_HASH, stage: 0, attester: BUYER, contentRef: `0x${"00".repeat(32)}`, blockNumber: 2, universe: "direct" };
+        expect(provenanceChoices(cardsWith(BUYER, [other]))).toHaveLength(1);
     });
 
     it("a resolved order offers nothing — the attestation is filed while the process is open", () => {

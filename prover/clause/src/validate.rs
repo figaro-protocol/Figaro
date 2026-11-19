@@ -5,6 +5,8 @@
 //! proof), off-chain sequencer (where it runs before submitting a batch),
 //! and any Rust SDK consumer.
 
+use std::collections::HashMap;
+
 use serde_json::Value;
 
 use crate::grain::{geohash_capture_precision, GEOHASH_FORMAT};
@@ -791,6 +793,7 @@ fn validate_object(
         }
     };
     let mut known: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    let sibling_defaults = sibling_defaults(&spec.fields);
     for field in &spec.fields {
         let base = field.base();
         known.insert(base.name.as_str());
@@ -810,7 +813,11 @@ fn validate_object(
             }
             Some(child_value) => {
                 validate_field(child_value, field, &child_path, errors);
-                let resolved = resolve_input_format(field, &spec.fields, Some(obj));
+                let resolved = resolve_format_with(field, Some(obj), |name| {
+                    sibling_defaults
+                        .as_ref()
+                        .and_then(|d| d.get(name).copied().flatten())
+                });
                 validate_grain(child_value, resolved, base.disposition, &child_path, errors);
             }
         }
@@ -841,6 +848,22 @@ pub fn resolve_input_format<'a>(
     siblings: &'a [FieldSpec],
     values: Option<&'a serde_json::Map<String, Value>>,
 ) -> Option<&'a str> {
+    resolve_format_with(field, values, |name| {
+        siblings
+            .iter()
+            .find(|f| f.base().name == name)
+            .and_then(string_default)
+    })
+}
+
+/// The one resolution behind `resolve_input_format`, with the sibling's
+/// default read through `default_of` (the first field of that name, as
+/// `find` reads it).
+fn resolve_format_with<'a>(
+    field: &'a FieldSpec,
+    values: Option<&'a serde_json::Map<String, Value>>,
+    default_of: impl FnOnce(&str) -> Option<&'a str>,
+) -> Option<&'a str> {
     let FieldSpec::String(s) = field else {
         return None;
     };
@@ -853,14 +876,36 @@ pub fn resolve_input_format<'a>(
             return Some(live.as_str());
         }
     }
-    let sibling_default = siblings
+    default_of(source).or(static_format)
+}
+
+/// A field's `default` when it is a non-empty string.
+fn string_default(field: &FieldSpec) -> Option<&str> {
+    match &field.base().default {
+        Some(DefaultValue::String(d)) if !d.is_empty() => Some(d.as_str()),
+        _ => None,
+    }
+}
+
+/// Each name of a field set mapped to its first field's string default,
+/// built once per object, so resolving every field's format reads one map
+/// in place of a scan of the set per field: n lookups, not n squared
+/// comparisons, for a set of n fields. `None` when no field of the set
+/// declares `formatFromField`, so a set without one builds nothing.
+fn sibling_defaults(fields: &[FieldSpec]) -> Option<HashMap<&str, Option<&str>>> {
+    let reads_a_sibling = fields
         .iter()
-        .find(|f| f.base().name == *source)
-        .and_then(|f| match &f.base().default {
-            Some(DefaultValue::String(d)) if !d.is_empty() => Some(d.as_str()),
-            _ => None,
-        });
-    sibling_default.or(static_format)
+        .any(|f| matches!(f, FieldSpec::String(s) if s.format_from_field.is_some()));
+    if !reads_a_sibling {
+        return None;
+    }
+    let mut defaults: HashMap<&str, Option<&str>> = HashMap::with_capacity(fields.len());
+    for f in fields {
+        defaults
+            .entry(f.base().name.as_str())
+            .or_insert_with(|| string_default(f));
+    }
+    Some(defaults)
 }
 
 /// The geohash grain cap — the SDK's `validateGrain`. The caller passes the

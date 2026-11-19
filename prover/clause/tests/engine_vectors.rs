@@ -14,6 +14,11 @@ use figaro_clause::{
 };
 use serde_json::{json, Value};
 
+/// The SDK's `canonicalize`, the one canonical form of the Rust tests
+/// (`prover/script/src/canonical.rs`).
+#[path = "../../script/src/canonical.rs"]
+mod canonical;
+
 fn fixture() -> Value {
     let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     p.pop(); // prover/
@@ -209,10 +214,8 @@ fn the_engine_reads_every_key_of_layer_a_canonical_bytes() {
             read, case["content"],
             "{label}: the bytes carry the content"
         );
-        // serde_json's map is ordered by key, so its compact form is the
-        // canonical form of these contents.
         assert_eq!(
-            serde_json::to_string(&read).unwrap(),
+            canonical::canonicalize(&read),
             bytes,
             "{label}: the bytes are canonical"
         );
