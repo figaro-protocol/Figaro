@@ -683,10 +683,13 @@ export async function memberProfileBindings(
  *  panel (the root's relay surface) appears. Every modal shares one testid
  *  and the next can replace the last faster than a hidden-state observation
  *  (the multi-order walk signs sub-orders back to back), so each confirm is
- *  keyed on the DISPLAYED checkoutHash — one confirm per distinct hash. */
+ *  keyed on the DISPLAYED checkoutHash — one confirm per distinct hash.
+ *  `onPreview`, when given, reads each modal before its confirm, in the order
+ *  the modals open. */
 export async function confirmAgreementPreviews(
     page: import('@playwright/test').Page,
     expectedOrders: number,
+    onPreview?: (checkoutHash: string) => Promise<void>,
 ): Promise<void> {
     const confirmed = new Set<string>();
     for (let i = 0; i < 600; i++) {
@@ -704,6 +707,7 @@ export async function confirmAgreementPreviews(
         expect(confirmed.size, 'the confirm gate never shows more modals than orders')
             .toBeLessThan(expectedOrders);
         confirmed.add(hash);
+        await onPreview?.(hash);
         await page.getByTestId('preview-confirm').click();
     }
     await page.getByTestId('buyer-share-panel').waitFor({ timeout: 60000 });
@@ -1081,6 +1085,61 @@ export async function fillDeliveryCheckout(page: Page): Promise<void> {
     await checkoutField(page, DELIVERY_CLAUSES.geo, 'origin')
         .fill(encodeGeohash(DELIVERY_DEVICE.lat, DELIVERY_DEVICE.lon, 6));
     await checkoutField(page, DELIVERY_CLAUSES.geo, 'destination').fill(DELIVERY_DEVICE.destination);
+}
+
+/** The freelancer-value-chain reference (`assemblies/freelancer-value-chain.json`),
+ *  found by SHAPE over the anchored assemblies: exactly three orders, every
+ *  one composing the content hand-off. Returns its slug. */
+export async function findFreelancerChainAssembly(): Promise<string> {
+    await primeRegisteredClauseSpecs();
+    const content = keyOf('figaro-content-handoff');
+    const t = (await discoverAnchoredAssemblies()).find((a) =>
+        a.agreements.length === 3
+        && a.agreements.every((o) => content in (o.clauses ?? {})));
+    expect(t, 'the freelancer-value-chain reference is anchored (assemblies/ — run populate-test-data)').toBeTruthy();
+    return t!.slug;
+}
+
+/** The checkout particulars every order of the freelancer value chain takes:
+ *  the encrypted transfer and the jurisdiction geohashes on EVERY
+ *  deliverable. Call after `checkout-view` renders, before placing the order. */
+export async function fillFreelancerChainCheckout(page: Page): Promise<void> {
+    await primeRegisteredClauseSpecs();
+    const everyField = async (fieldPath: string, action: (c: ReturnType<typeof page.locator>) => Promise<void>) => {
+        const controls = page.locator(`[data-testid^="checkout-field-"][data-testid$="-${fieldPath}"]`);
+        const n = await controls.count();
+        expect(n, `at least one control for ${fieldPath}`).toBeGreaterThan(0);
+        for (let i = 0; i < n; i++) await action(controls.nth(i));
+    };
+    await everyField(`${keyOf('figaro-content-handoff')}-contentHandoff-encrypted-transfer`, (c) => c.check());
+    await everyField(`${keyOf('figaro-geolocation')}-origin`, (c) => c.fill('9q8yyk'));
+    await everyField(`${keyOf('figaro-geolocation')}-destination`, (c) => c.fill('u15pk4'));
+}
+
+/** Top up wallets the anvil launch never funded (a spec's own derived keys):
+ *  ETH by a plain transfer from anvil[0], as any new wallet receives it, and
+ *  the devnet token through its open mint. Only a wallet below the floor is
+ *  topped up, so a re-run sends nothing it does not need. */
+export async function fundDevnetWallets(wallets: readonly `0x${string}`[]): Promise<void> {
+    const publicClient = localPublicClient();
+    const token = readLocalDeploymentConfig().tokenAddress as `0x${string}`;
+    const erc20 = parseAbi([
+        'function balanceOf(address) view returns (uint256)',
+        'function mint(address to, uint256 amount) external',
+    ]);
+    const funder = createWalletClient({
+        account: privateKeyToAccount(ANVIL_KEYS[0] as `0x${string}`), chain: LOCAL_ANVIL, transport: http(RPC_URL),
+    });
+    for (const who of wallets) {
+        if ((await publicClient.getBalance({ address: who })) < parseEther('1')) {
+            await publicClient.waitForTransactionReceipt({ hash: await funder.sendTransaction({ to: who, value: parseEther('10') }) });
+        }
+        if ((await publicClient.readContract({ address: token, abi: erc20, functionName: 'balanceOf', args: [who] })) < parseEther('100')) {
+            await publicClient.waitForTransactionReceipt({
+                hash: await funder.writeContract({ address: token, abi: erc20, functionName: 'mint', args: [who, parseEther('1000')] }),
+            });
+        }
+    }
 }
 
 /** The designer composes the commerce clause on each canvas order named, as

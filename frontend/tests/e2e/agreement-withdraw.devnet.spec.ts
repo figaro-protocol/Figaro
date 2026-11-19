@@ -21,17 +21,21 @@
  * `${assembly name} · order 1` — DesignerCanvas `registerOrderAgreement`), so
  * the reclaim row is labeled by this run's document.
  *
- * THE GATE IS NOT EXERCISED here, only its open state. The blocked state needs
- * a VERIFIED in-flight trade whose committed agreement's decoded provenance
- * names this agreementHash (`withdrawGate.ts` `resolveInFlightAgreements` →
- * `deriveAgreementWithdrawGate`): an assembly composed from the agreement,
- * published, bound by a seller, and checked out and committed in THIS browser
- * context (only a witnessed order is verified). That is the full
- * assembly-withdraw choreography; no shorter UI path produces such an order.
- * What this spec asserts of the gate: with no trade composed from the fresh
+ * THE GATE, OPEN (the first test): with no trade composed from the fresh
  * agreement, the row's reclaim renders ENABLED once the gate is read, and any
  * foreign in-flight trades (never witnessed by this fresh context) surface as
  * the party-private caveat, never a block.
+ *
+ * THE GATE, BLOCKED (the second test): the blocked state needs a VERIFIED
+ * in-flight trade whose committed agreement's decoded provenance names the
+ * agreementHash (`withdrawGate.ts` `resolveInFlightAgreements` →
+ * `deriveAgreementWithdrawGate`). Publishing an assembly through the designer
+ * registers each new agreement under the publishing wallet
+ * (`publishAssembly.ts`), so `publishProbeAssembly` gives the designer a
+ * registered agreement AND an assembly composing it. A seller binds that
+ * assembly, the buyer checks out in THIS browser context (only a witnessed
+ * order is verified), the seller accepts: the row's reclaim is disabled and
+ * its reason names the one trade. The buyer resolves: the reclaim is enabled.
  *
  * VALUE LEGS (the chain is the point):
  *   register — designer ETH ↓ exactly (deposit + gasUsed×effectiveGasPrice);
@@ -39,13 +43,29 @@
  *   reclaim  — registry ETH ↓ exactly deposit;
  *              designer ETH ↑ exactly (deposit − gasUsed×effectiveGasPrice)
  *
+ * The second test's three wallets are keys this spec derives (no anvil index:
+ * every one of 0..46 is some spec's), funded by `fundDevnetWallets` and signed
+ * for in the browser through the local-key signer bridge (`local-signer.ts`).
+ *
  * Requires Anvil + ./scripts/devup.sh (deploy + populate) + Kubo + :3100.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, type Hex } from 'viem';
-import { mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, readAgreementBinding, waitForConnected } from './devnet-helpers';
-import { makeProbeSpec, registerProbeClause } from './probeAssembly';
+import { createPublicClient, defineChain, http, keccak256, stringToHex, type Hex } from 'viem';
+import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
+import {
+    confirmAgreementPreviews,
+    discoverAnchoredAssemblies,
+    fundDevnetWallets,
+    isBindingOf,
+    memberProfileBindings,
+    pinJSONToIPFS,
+    readLocalDeploymentConfig,
+    readAgreementBinding,
+    seedRegisteredMember,
+    waitForConnected,
+} from './devnet-helpers';
+import { attachLocalSigner } from './local-signer';
+import { makeProbeSpec, publishProbeAssembly, registerProbeClause } from './probeAssembly';
 import { AGREEMENT_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { CORE_ABI } from '@/lib/core/contracts';
 
@@ -67,6 +87,12 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 // balance, so the seeded member is unaffected; every ETH assert is a delta
 // between reads with only this spec's own transaction in between.
 const DESIGNER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 9 }).address as Hex;
+
+// The blocked-gate test's own wallets: keys derived from this file's name and
+// the role, so a re-run signs as the same three wallets and no other spec does.
+const GATE_DESIGNER_KEY = keccak256(stringToHex('agreement-withdraw.devnet.spec.ts:designer'));
+const GATE_SELLER_KEY = keccak256(stringToHex('agreement-withdraw.devnet.spec.ts:seller'));
+const GATE_BUYER_KEY = keccak256(stringToHex('agreement-withdraw.devnet.spec.ts:buyer'));
 
 test.describe('AgreementRegistry withdraw — the designer reclaims an agreement stake (devnet)', () => {
     test.setTimeout(240_000);
@@ -268,5 +294,155 @@ test.describe('AgreementRegistry withdraw — the designer reclaims an agreement
         const reloadedBtn = reloadedRow.getByTestId('agreement-withdraw-button');
         await expect(reloadedBtn).toHaveText('Stake reclaimed', { timeout: 30000 });
         await expect(reloadedBtn).toBeDisabled();
+    });
+
+    test('a verified in-flight trade composed from the agreement disables the reclaim; the buyer\'s resolution enables it', async ({ page }) => {
+        test.setTimeout(360_000);
+        page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
+
+        const config = readLocalDeploymentConfig();
+        const core = config.figaroCore as Hex;
+        const token = config.tokenAddress as Hex;
+        const agreementRegistry = (process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? config.agreementRegistry) as Hex;
+        const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+
+        const designer = privateKeyToAccount(GATE_DESIGNER_KEY);
+        const seller = privateKeyToAccount(GATE_SELLER_KEY);
+        const buyer = privateKeyToAccount(GATE_BUYER_KEY);
+        await fundDevnetWallets([designer.address, seller.address, buyer.address]);
+        await attachLocalSigner(page.context(), {
+            accounts: [designer, seller, buyer], chain: LOCAL_ANVIL, rpcUrl: RPC_URL, defaultAccount: designer.address,
+        });
+
+        // ── PUBLISH: the designer publishes an assembly carrying a per-run
+        //    probe clause through the canvas; the publish registers the
+        //    assembly's one new agreement under the designer first. ──
+        const publishFrom = await publicClient.getBlockNumber();
+        await gotoAsWallet(page, designer.address, '/?e2e=devnet');
+        const { slug, clauseKey: probeClauseKey } = await publishProbeAssembly(page);
+
+        const registered = await publicClient.getContractEvents({
+            address: agreementRegistry, abi: AGREEMENT_REGISTRY_ABI, eventName: 'AgreementRegistered',
+            args: { registeredBy: designer.address }, fromBlock: publishFrom + 1n,
+        });
+        expect(registered, 'the publish registered exactly one agreement under the designer').toHaveLength(1);
+        const agreementHash = registered[0].args.agreementHash as Hex;
+        const anchored = (await discoverAnchoredAssemblies()).find((a) => a.slug === slug);
+        expect(anchored, 'the published assembly hydrates from chain → IPFS').toBeTruthy();
+        expect(
+            anchored!.agreements.map((a) => a.agreementHash.toLowerCase()),
+            "the assembly's one order binds the agreement the publish registered",
+        ).toEqual([agreementHash.toLowerCase()]);
+        const processDesignHash = anchored!.processDesignHash;
+
+        // ── BIND: the seller's profile binds exactly this run's assembly and
+        //    lists one item, priced in the devnet token. ──
+        const { uri: catalogURI } = await pinJSONToIPFS({
+            subjectAddress: seller.address,
+            version: '1.0.0',
+            unitSystem: 'metric' as const,
+            items: [{
+                id: 'agreement-gate-item', name: 'Gate item', description: 'An item sold under the probe assembly',
+                price: '1', category: 'digital', available: true,
+            }],
+        });
+        await seedRegisteredMember({
+            walletKey: GATE_SELLER_KEY,
+            profile: {
+                name: 'Agreement gate seller',
+                description: 'Seeded by agreement-withdraw.devnet.spec.ts',
+                catalogURI,
+                acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: LOCAL_ANVIL.id }],
+                defaultTokenAddress: token,
+                processBindings: [{
+                    bindingId: `agreement-gate-${slug}`,
+                    subjectAddress: seller.address,
+                    processDesignHash,
+                    coSellerBindings: [],
+                }],
+            },
+        });
+        expect(
+            (await memberProfileBindings(seller.address)).some((b) => isBindingOf(b, processDesignHash)),
+            "the seller's pinned profile binds this run's assembly",
+        ).toBe(true);
+
+        // ── COMMIT: the buyer checks out in THIS context (the order is
+        //    witnessed, so the designer's gate verifies it); the seller accepts. ──
+        const queryCommitted = () => publicClient.getContractEvents({
+            address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: buyer.address }, fromBlock: 0n,
+        });
+        const committedBefore = (await queryCommitted()).length;
+        await gotoAsWallet(page, buyer.address, `/s/view?seller=${seller.address}&e2e=devnet`);
+        await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        const addBtn = page.locator('[data-testid^="btn-add-"]').first();
+        await addBtn.waitFor({ state: 'visible', timeout: 20000 });
+        await addBtn.click();
+        await page.getByTestId('btn-review-order').click();
+        await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
+        await expect(page.getByTestId('method-static'), 'the one binding names the probe assembly')
+            .toHaveAttribute('data-method', slug, { timeout: 30000 });
+        // The probe clause's one field names no filler, so the buyer fills it.
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${probeClauseKey}-probeStage-probe-opened"]`).check();
+        const place = page.getByTestId('btn-place-order');
+        await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
+        await place.click();
+        await confirmAgreementPreviews(page, 1);
+        await page.getByTestId('send-commitment-xmtp').click();
+        await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30000 });
+
+        await gotoAsWallet(page, seller.address, '/orders?e2e=devnet');
+        await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        await page.getByTestId('order-your-turn-card').first().waitFor({ state: 'visible', timeout: 30000 });
+        await page.getByTestId('btn-accept-order').first().click();
+        await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
+        await page.getByTestId('preview-confirm').click();
+        await expect.poll(async () => (await queryCommitted()).length, {
+            timeout: 60000, message: 'the order commits on-chain',
+        }).toBe(committedBefore + 1);
+        const committed = (await queryCommitted()).at(-1)!;
+        expect(committed.args.seller?.toLowerCase(), 'committed against the bound seller').toBe(seller.address.toLowerCase());
+        const processId = committed.args.processId!;
+
+        // ── GATE, BLOCKED: the designer's registered-agreements list. The row's
+        //    reclaim is disabled and its reason names the one verified trade. ──
+        const designerRowButton = async () => {
+            await gotoAsWallet(page, designer.address, '/assemblies/designer?e2e=devnet');
+            await page.getByTestId('agreements-reclaim-list').waitFor({ timeout: 30000 });
+            await waitForConnected(page);
+            const row = page.getByTestId(`agreement-reclaim-row-${agreementHash}`);
+            await row.waitFor({ state: 'visible', timeout: 30000 });
+            await expect(page.getByTestId(`agreement-reclaim-state-${agreementHash}`), 'the registration reads live').toHaveText('live');
+            return row.getByTestId('agreement-withdraw-button');
+        };
+        const blockedBtn = await designerRowButton();
+        await expect(blockedBtn, 'the reason names the one verified in-flight trade').toHaveAttribute(
+            'title', /^Cannot reclaim the stake yet: 1 in-flight trade still composes this registration\./, { timeout: 60000 },
+        );
+        await expect(blockedBtn, 'the reclaim is disabled while the composed trade is in flight').toBeDisabled();
+        expect((await readAgreementBinding(agreementHash))?.stakeWithdrawn, 'the stake is still held').toBe(false);
+
+        // ── RESOLVE: the buyer resolves the process; the trade leaves the
+        //    in-flight set. ──
+        const queryResolved = () => publicClient.getContractEvents({
+            address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { processId }, fromBlock: 0n,
+        });
+        await gotoAsWallet(page, buyer.address, `/orders/view?process=${processId}&e2e=devnet`);
+        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+        await waitForConnected(page);
+        const resolveBtn = page.getByTestId('capability-execute-resolve-process');
+        await expect(resolveBtn, 'the buyer can resolve the active process').toBeEnabled({ timeout: 30000 });
+        await resolveBtn.click();
+        await expect.poll(async () => (await queryResolved()).length, {
+            timeout: 60000, message: 'ProcessResolved lands on-chain for this process',
+        }).toBe(1);
+
+        // ── GATE, OPEN: the same row, read again, offers the reclaim. ──
+        const openBtn = await designerRowButton();
+        await expect(openBtn, 'every composed trade resolved → the reclaim is enabled').toBeEnabled({ timeout: 60000 });
+        await expect(openBtn).toHaveAttribute('title', /^Reclaim your registration stake\./);
+        await expect(openBtn).toHaveText('Reclaim stake');
     });
 });

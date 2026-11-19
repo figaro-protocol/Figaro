@@ -4,15 +4,17 @@
  *
  * `inject-ethereum-multi.js` answers eth_accounts / chain queries in the
  * page and forwards everything else to the node — which works on Anvil
- * because its accounts are unlocked. Two smokes need keys the node has never
+ * because its accounts are unlocked. Some specs need keys the node has never
  * seen: the XMTP relay smoke (device-unique identities on a public XMTP
- * network) and the Sepolia smoke (nobody signs for you on a public chain).
- * For those the fixture consults `window.__FIGARO_LOCAL_SIGN__` — a
- * `context.exposeFunction` handler that signs in Node with viem accounts —
- * and `window.__FIGARO_LOCAL_ACCOUNTS__`, the addresses it may sign for.
- * The devnet suite sets neither global; the bridge never fires there.
+ * network), the Sepolia smoke (nobody signs for you on a public chain), and
+ * devnet specs that act as wallets of their own past anvil's launch accounts
+ * (every anvil index is some spec's already). For those the fixture consults
+ * `window.__FIGARO_LOCAL_SIGN__` — a `context.exposeFunction` handler that
+ * signs in Node with viem accounts — and `window.__FIGARO_LOCAL_ACCOUNTS__`,
+ * the addresses it may sign for. A context that sets neither signs through
+ * the node, as anvil's unlocked accounts do.
  *
- * ONE implementation for both smokes; the chain + RPC are parameters.
+ * ONE implementation for every such spec; the chain + RPC are parameters.
  */
 import type { BrowserContext } from '@playwright/test';
 import { createWalletClient, http, type Chain, type Hex } from 'viem';
