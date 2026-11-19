@@ -53,6 +53,7 @@ import { encodeGeohash } from '@figaro-protocol/sdk/derive';
 import { deriveProcessDesignSlug } from '@/lib/shared/assembly';
 import { clauseLadderField, labelEnumValue, loadClauseSpec, setClauseSpecFetcher, specSource } from '@/lib/shared/clauseSpecSource';
 import { keyOf } from '../lib/primeClauseSpecs';
+import { decodeGetInboxIdsResponse, encodeGetInboxIdsRequest, grpcWebFrame, grpcWebUnaryMessage } from './xmtpGrpcWeb';
 
 /** The ONE way a spec locates a clause by the name a human reads — over the
  *  specs `primeRegisteredClauseSpecs` loaded from the chain. */
@@ -998,21 +999,21 @@ export const E2E_HANDOFF_OVER_XMTP = process.env.NEXT_PUBLIC_E2E_HANDOFF_CHANNEL
 
 /** The inbox id the local XMTP broker holds for `address`, read out of band
  *  from the node named by NEXT_PUBLIC_XMTP_API_URL, or undefined while it
- *  holds none. The node serves Connect, so a unary call is a JSON POST to
- *  `/<package>.<Service>/<Method>`. */
+ *  holds none. The node takes gRPC or gRPC-Web and refuses Connect, so the
+ *  unary call `ReplicationApi/GetInboxIds` goes as one gRPC-Web POST, framed
+ *  and decoded in `./xmtpGrpcWeb.ts`. A grpc-status other than 0 throws. */
 export async function xmtpInboxOnLocalBroker(address: string): Promise<string | undefined> {
     const node = process.env.NEXT_PUBLIC_XMTP_API_URL;
     if (!node) throw new Error('NEXT_PUBLIC_XMTP_API_URL names no local XMTP node');
     const res = await fetch(`${node.replace(/\/$/, '')}/xmtp.xmtpv4.message_api.ReplicationApi/GetInboxIds`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            requests: [{ identifier: address.toLowerCase(), identifierKind: 'IDENTIFIER_KIND_ETHEREUM' }],
-        }),
+        headers: { 'content-type': 'application/grpc-web+proto', 'x-grpc-web': '1' },
+        body: grpcWebFrame(encodeGetInboxIdsRequest(address.toLowerCase())),
     });
     if (!res.ok) throw new Error(`GetInboxIds answered ${res.status}: ${await res.text()}`);
-    const body = await res.json() as { responses?: { identifier?: string; inboxId?: string }[] };
-    return body.responses?.find((r) => r.identifier?.toLowerCase() === address.toLowerCase())?.inboxId || undefined;
+    const message = grpcWebUnaryMessage(new Uint8Array(await res.arrayBuffer()), res.headers);
+    return decodeGetInboxIdsResponse(message)
+        .find((r) => r.identifier.toLowerCase() === address.toLowerCase())?.inboxId || undefined;
 }
 
 /** Resolve an `ipfs://` URI to a Kubo-gateway URL. */

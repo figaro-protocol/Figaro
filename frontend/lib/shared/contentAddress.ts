@@ -85,7 +85,7 @@ function base16Decode(text: string): Uint8Array | null {
 }
 
 /** An unsigned varint at `at`; `null` when it runs past the end or past 2^53. */
-function readVarint(bytes: Uint8Array, at: number): { value: number; next: number } | null {
+export function readVarint(bytes: Uint8Array, at: number): { value: number; next: number } | null {
     let value = 0;
     let scale = 1;
     for (let i = at; i < bytes.length && i < at + 8; i++) {
@@ -96,7 +96,8 @@ function readVarint(bytes: Uint8Array, at: number): { value: number; next: numbe
     return null;
 }
 
-function varint(value: number): number[] {
+/** An unsigned varint: seven bits a byte, the low bits first. */
+export function varint(value: number): number[] {
     const out: number[] = [];
     let rest = value;
     while (rest >= 0x80) {
@@ -160,7 +161,7 @@ function cidBytes(version: 0 | 1, codec: number, hashCode: number, digest: Uint8
 }
 
 /** A protobuf length-delimited field. */
-function lengthDelimited(field: number, payload: ArrayLike<number>): number[] {
+export function lengthDelimited(field: number, payload: ArrayLike<number>): number[] {
     return [(field << 3) | 2, ...varint(payload.length), ...Array.from(payload)];
 }
 
