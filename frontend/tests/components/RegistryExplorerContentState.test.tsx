@@ -2,7 +2,7 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { pinSpec } from "../lib/primeClauseSpecs";
-import { _resetClauseSpecCache_TESTING_ONLY, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
+import { _resetClauseSpecCache_TESTING_ONLY, defaultClauseSpecFetcher, getClauseSpecLoadError, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 
 const replaceMock = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -56,6 +56,63 @@ describe("RegistryExplorer — a row only once its content resolves; a failed re
         expect(screen.queryByText(FRESH)).toBeNull();
         expect(screen.queryByText(BAD)).toBeNull();
         expect(document.body.textContent).not.toMatch(/unclassified|content unavailable|not served by the gateway/);
+    });
+
+    describe("the default fetcher holds the served bytes to the registered CID", () => {
+        // The spec's canonical bytes and the CIDv0 Kubo's `add` reports for them
+        // (`ipfs add -nQ`), the form `pinBlob` and the seeding pin under.
+        const HELD = { clauseId: "figaro-cid-held", version: 1, title: "Held", description: "d", fields: [{ name: "x", type: "string", required: true }], block: { design: { article: "logistics" } } };
+        const HELD_CID = "QmfZVv8kLycpw8J12uud8VTJrcP2x68toSasec84tW8Ave";
+        // The same protocol half under another `block`: the clause key is the same.
+        const SWAPPED = { ...HELD, block: { design: { article: "finance" } } };
+
+        function serveOverGateway(bytes: string): void {
+            vi.stubGlobal("fetch", vi.fn(async () => new Response(bytes, { status: 200 })));
+            setClauseSpecFetcher(defaultClauseSpecFetcher);
+        }
+        afterEach(() => { vi.unstubAllGlobals(); });
+
+        it("the bytes the registrant pinned load: the registry page shows the clause's row", async () => {
+            searchParams = "family=clauses";
+            const held = pinSpec(HELD);
+            serveOverGateway(held.bytes);
+            await loadClauseSpec(held.clauseKey, `ipfs://${HELD_CID}`);
+            clauseEventsMock.mockReturnValue(present([{ ...ev(held.clauseKey), contentURI: `ipfs://${HELD_CID}` }]));
+
+            render(<RegistryExplorer />);
+
+            expect(screen.getByText(held.clauseKey)).toBeInTheDocument();
+            expect(document.body.textContent).toContain("Held · figaro-cid-held v1");
+        });
+
+        it("a spec served with a swapped block under the registered CID is refused: the registry page shows no row for the clause and no failure text", async () => {
+            searchParams = "family=clauses";
+            const held = pinSpec(HELD);
+            const swapped = pinSpec(SWAPPED);
+            expect(swapped.clauseKey).toBe(held.clauseKey);
+            serveOverGateway(swapped.bytes);
+            await expect(loadClauseSpec(held.clauseKey, `ipfs://${HELD_CID}`)).rejects.toThrow(/do not hash to its CID/);
+            expect(getClauseSpecLoadError(held.clauseKey)).toMatch(/^content-address failure/);
+            clauseEventsMock.mockReturnValue(present([{ ...ev(held.clauseKey), contentURI: `ipfs://${HELD_CID}` }]));
+
+            render(<RegistryExplorer />);
+
+            expect(screen.queryByText(held.clauseKey)).toBeNull();
+            expect(document.body.textContent).not.toContain("figaro-cid-held");
+            expect(document.body.textContent).not.toMatch(/content-address|do not hash|unavailable/);
+        });
+
+        it("a URI that names no CID the frontend can verify is refused the same way: the registry page shows no row", async () => {
+            searchParams = "family=clauses";
+            const held = pinSpec(HELD);
+            serveOverGateway(held.bytes);
+            await expect(loadClauseSpec(held.clauseKey, "https://example.org/held.json")).rejects.toThrow(/names no CID/);
+            clauseEventsMock.mockReturnValue(present([{ ...ev(held.clauseKey), contentURI: "https://example.org/held.json" }]));
+
+            render(<RegistryExplorer />);
+
+            expect(screen.queryByText(held.clauseKey)).toBeNull();
+        });
     });
 
     it("a FAILED registry read renders nothing for the family — no failure text, no count, no empty state", () => {

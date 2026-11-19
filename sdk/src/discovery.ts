@@ -52,14 +52,30 @@ import type {
     AgreementBinding,
 } from "./types.js";
 import { canonicalContentHash, canonicalize } from "./agreement.js";
+import { strippedKeyPath } from "./safeJson.js";
 
 // ── Clause key ───────────────────────────────────────────────────────────────
 
 /** The protocol half of a spec: the document without its top-level `block`.
- *  A value that is not a plain object is returned as it is. */
+ *  A value that is not a plain object is returned as it is.
+ *
+ *  Throws when the protocol half carries a `__proto__`, `constructor` or
+ *  `prototype` key at any depth. Every reader parses a fetched spec with
+ *  those keys stripped (`strippingReviver`, `anchorClauseSpec`), so a key
+ *  computed over them is one no reader anchors: the clause would be
+ *  registered and never read. Refusing here refuses it where a registrant
+ *  computes the key or the preimage, before anything is pinned or sent; a
+ *  spec without those keys hashes exactly as before. */
 function protocolHalf(spec: unknown): unknown {
     if (spec === null || typeof spec !== "object" || Array.isArray(spec)) return spec;
-    return Object.fromEntries(Object.entries(spec).filter(([name]) => name !== "block"));
+    const half = Object.fromEntries(Object.entries(spec).filter(([name]) => name !== "block"));
+    const stripped = strippedKeyPath(half);
+    if (stripped !== null) {
+        throw new Error(
+            `clause spec carries the key ${stripped}: readers parse a spec with __proto__, constructor and prototype keys stripped, so no reader would anchor its clause key`,
+        );
+    }
+    return half;
 }
 
 /**
