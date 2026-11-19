@@ -1,0 +1,17 @@
+{
+    "name": "Reefer carriage, priced in florins",
+    "summary": "One refrigerated carriage leg, open only to shippers and carriers who trade in florins.",
+    "description": "A single order over the reefer-carriage agreement, unchanged: a refrigerated carrier moves the cargo with its cold chain, chain of custody, emissions and hand-off each attested, and both parties bond before the leg. One term is added. The designer pins the florin, the token that rewards the designers of clauses, agreements and processes, as the one token the order is priced and bonded in. Checkout writes the florin into the agreement, so no token picker appears. This is the designer's choice, not the protocol's: the reefer-carriage agreement stays open to any ERC-20 token in every design that composes it without the pin.",
+    "deployTimeCurrency": {
+        "deployment": "florinToken"
+    },
+    "assemblyClauses": {
+        "figaro-utility-token": {}
+    },
+    "agreements": [
+        {
+            "id": "agreement-0",
+            "agreement": "reefer-carriage"
+        }
+    ]
+}

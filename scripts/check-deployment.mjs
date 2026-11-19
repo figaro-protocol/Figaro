@@ -383,7 +383,7 @@ async function main() {
         console.log("  · the expectations file names none under registrations.agreements or registrations.assemblies — not checked");
     } else {
         await checkRegistrars({
-            planned: plannedRegistrations(plan),
+            planned: plannedRegistrations(plan, record),
             readBinding: (family, key) => read(family === "agreement" ? record.agreementRegistry : record.processRegistry, "bindings", [key]),
             walletAddress: (name) => resolveAddress({ wallet: name }, name),
             ok,

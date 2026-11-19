@@ -1,0 +1,60 @@
+{
+    "name": "Containerized import chain, priced in florins",
+    "summary": "The six-party reefer import, open only to buyers and sellers who trade in florins.",
+    "description": "The same containerized import chain as the open design, with the same six agreements unchanged: shipper, pre-shipment inspection, freight forwarder, reefer ocean carrier, customs agent and destination drayage, each bonded for more than its own leg is worth. One term is added. The designer pins the florin, the token that rewards the designers of clauses, agreements and processes, as the one token every order of the chain is priced and bonded in. Checkout writes the florin into every agreement, so no token picker appears and every bond and every payment of the chain moves in florins. This is the designer's choice, not the protocol's: the open import chain stays registered beside it and runs in any ERC-20 token.",
+    "deployTimeCurrency": {
+        "deployment": "florinToken"
+    },
+    "assemblyClauses": {
+        "figaro-property-transfer": {
+            "anticipatedEvents": [
+                "Cargo resold in transit",
+                "Title passed to the letter-of-credit bank"
+            ]
+        },
+        "figaro-applicable-law": {},
+        "figaro-arbitration-kleros": {},
+        "figaro-utility-token": {}
+    },
+    "agreements": [
+        {
+            "id": "agreement-0",
+            "agreement": "shipper-consignment"
+        },
+        {
+            "id": "agreement-1",
+            "agreement": "cargo-inspection",
+            "follows": [
+                "agreement-0"
+            ]
+        },
+        {
+            "id": "agreement-2",
+            "agreement": "freight-forwarding",
+            "follows": [
+                "agreement-0"
+            ]
+        },
+        {
+            "id": "agreement-3",
+            "agreement": "reefer-carriage",
+            "follows": [
+                "agreement-2"
+            ]
+        },
+        {
+            "id": "agreement-4",
+            "agreement": "customs-filing",
+            "follows": [
+                "agreement-3"
+            ]
+        },
+        {
+            "id": "agreement-5",
+            "agreement": "drayage-delivery",
+            "follows": [
+                "agreement-4"
+            ]
+        }
+    ]
+}
