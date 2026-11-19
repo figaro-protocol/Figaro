@@ -2,7 +2,8 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useEffectEvent } from "react";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { useAccount } from "wagmi";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { handleOrderSurfaceFailure } from "@/lib/shared/orderSurfaceActions";
@@ -57,27 +58,27 @@ export function TokenApprovalFlow({
     const approved = !!address && !isChecking && !hasInsufficientBalance && !needsApproval(requiredAmount);
     const isApproving = isApprovePending || isApproveConfirming;
 
+    // `completionSent` follows `approved` during render; the parent is told
+    // from an effect, once each time it turns true.
+    if (approved && !completionSent) {
+        setErrorMessage(null);
+        setCompletionSent(true);
+    } else if (!approved && completionSent) {
+        setCompletionSent(false);
+    }
+    const notifyApprovalComplete = useEffectEvent(onApprovalComplete);
     useEffect(() => {
-        if (approved && !completionSent) {
-            setErrorMessage(null);
-            setCompletionSent(true);
-            onApprovalComplete();
-            return;
-        }
-
-        if (!approved && completionSent) {
-            setCompletionSent(false);
-        }
-    }, [approved, completionSent, onApprovalComplete]);
+        if (completionSent) notifyApprovalComplete();
+    }, [completionSent]);
 
     // `approve` never throws: a refused, failed or reverted approval arrives as
     // the hook's `isApproveError`, and it granted no allowance, so the error
     // entry names it rather than returning to the authorize step unexplained.
-    useEffect(() => {
-        if (isApproveError) {
-            setErrorMessage("The authorization did not go through: the wallet refused it or the transaction reverted, so nothing was authorized.");
-        }
-    }, [isApproveError]);
+    // Set during render, on the render the error lands (`useDepsChanged`).
+    const approveErrorChanged = useDepsChanged([isApproveError]);
+    if (approveErrorChanged && isApproveError) {
+        setErrorMessage("The authorization did not go through: the wallet refused it or the transaction reverted, so nothing was authorized.");
+    }
 
     const handleApprove = async () => {
         try {

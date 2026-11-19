@@ -23,7 +23,8 @@
  *   - disputeID:            (optional) a forum-side dispute reference, shown for context
  */
 
-import { Suspense, useEffect, useState, useMemo, useCallback } from "react";
+import { Suspense, useEffect, useState, useMemo } from "react";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { useSearchParams } from "next/navigation";
 import { createPublicClient, isAddress } from "viem";
 import { mockAwareHttp } from "@/lib/shared/mockTransport";
@@ -208,59 +209,52 @@ function EvidenceDisplayContent() {
         return createPublicClient({ transport: mockAwareHttp(rpcUrl) });
     }, [rpcUrl, clientError]);
 
-    const fetchTimeline = useCallback(async () => {
-        if (!processId) {
-            setError("Missing processId query parameter.");
-            setLoading(false);
-            return;
-        }
-        if (clientError) {
-            setError(clientError);
-            setLoading(false);
-            return;
-        }
-        if (!client) {
-            setError("Missing arbitrableJsonRpcUrl query parameter — cannot connect to chain.");
-            setLoading(false);
-            return;
-        }
-        if (coreAddressParam && !isAddress(coreAddressParam)) {
-            setError("Invalid coreAddress — must be a valid EVM address.");
-            setLoading(false);
-            return;
-        }
-        if (coordinatorParam && !isAddress(coordinatorParam)) {
-            setError("Invalid coordinatorAddress — must be a valid EVM address.");
-            setLoading(false);
-            return;
-        }
-
-        try {
-            // The RPC is the link's choice, so its logs never enter the
-            // site's shared event cache; the coordinator and the first block
-            // are the link's too, when it names them.
-            const tl = await buildProcessTimeline(client, processId, coreAddressParam ?? undefined, {
-                sharedCache: false,
-                ...(coordinatorParam ? { coordinatorAddress: coordinatorParam } : {}),
-                ...(fromBlockParam !== undefined ? { fromBlock: fromBlockParam } : {}),
-            });
-            if (chainIdParam && Number(chainIdParam) !== tl.chainId) {
-                setError(`The link names chain ${chainIdParam}, but its RPC answers for chain ${tl.chainId}.`);
-                return;
-            }
-            setTimeline(tl);
-        } catch (cause: unknown) {
-            // A failed read renders nothing — no error card.
-            console.warn("[evidence-display] timeline read failed:", cause);
-            setReadFailed(true);
-        } finally {
-            setLoading(false);
-        }
-    }, [client, clientError, processId, coreAddressParam, coordinatorParam, fromBlockParam, chainIdParam]);
+    // A link that cannot be read is told during render, on the render its
+    // parameters change (`useDepsChanged`); the effect reads the chain only.
+    const linkError = !processId
+        ? "Missing processId query parameter."
+        : clientError
+          ? clientError
+          : !client
+            ? "Missing arbitrableJsonRpcUrl query parameter — cannot connect to chain."
+            : coreAddressParam && !isAddress(coreAddressParam)
+              ? "Invalid coreAddress — must be a valid EVM address."
+              : coordinatorParam && !isAddress(coordinatorParam)
+                ? "Invalid coordinatorAddress — must be a valid EVM address."
+                : null;
+    const linkChanged = useDepsChanged([client, clientError, processId, coreAddressParam, coordinatorParam, fromBlockParam, chainIdParam]);
+    if (linkChanged && linkError) {
+        setError(linkError);
+        setLoading(false);
+    }
 
     useEffect(() => {
-        fetchTimeline();
-    }, [fetchTimeline]);
+        if (linkError || !processId || !client) return;
+
+        void (async () => {
+            try {
+                // The RPC is the link's choice, so its logs never enter the
+                // site's shared event cache; the coordinator and the first block
+                // are the link's too, when it names them.
+                const tl = await buildProcessTimeline(client, processId, coreAddressParam ?? undefined, {
+                    sharedCache: false,
+                    ...(coordinatorParam ? { coordinatorAddress: coordinatorParam } : {}),
+                    ...(fromBlockParam !== undefined ? { fromBlock: fromBlockParam } : {}),
+                });
+                if (chainIdParam && Number(chainIdParam) !== tl.chainId) {
+                    setError(`The link names chain ${chainIdParam}, but its RPC answers for chain ${tl.chainId}.`);
+                    return;
+                }
+                setTimeline(tl);
+            } catch (cause: unknown) {
+                // A failed read renders nothing — no error card.
+                console.warn("[evidence-display] timeline read failed:", cause);
+                setReadFailed(true);
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, [linkError, client, processId, coreAddressParam, coordinatorParam, fromBlockParam, chainIdParam]);
 
     // ── Loading state ───────────────────────────────────────────────
     if (loading) {

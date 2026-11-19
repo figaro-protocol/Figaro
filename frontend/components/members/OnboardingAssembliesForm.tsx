@@ -127,8 +127,9 @@ export function OnboardingAssembliesForm({
     const { hydrated, markHydrated } = useSubjectHydration(subject);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (hydrated || !loaded) return;
+    // Hydrate during render, once: the draft is React state already read
+    // (`loaded`), so the persistence effect below first runs with it.
+    if (!hydrated && loaded) {
         const existing = state.assemblies ?? [];
         setSelected(new Set(existing.map(assemblyKey)));
         const cps = new Map<string, CoSellerBinding[]>();
@@ -139,7 +140,7 @@ export function OnboardingAssembliesForm({
         }
         setCoSellersByAssembly(cps);
         markHydrated();
-    }, [hydrated, loaded, markHydrated, state.assemblies]);
+    }
 
     useEffect(() => {
         if (!hydrated || !choicesLoaded) return;

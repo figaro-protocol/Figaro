@@ -34,6 +34,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAllRegisteredClauses } from "./useClauseRegistry";
 import { getClauseSpec, getClauseSpecLoadError, loadClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 export interface ClauseSpecsState {
     /** True once the registry has been read AND every registered clause's spec
@@ -65,11 +66,15 @@ export function useClauseSpecs(): ClauseSpecsState {
      *  makes a failed clause a SKIP, not a permanent block. */
     const [settled, setSettled] = useState(false);
 
+    // A new clause set is unsettled from the render it arrives in
+    // (`useDepsChanged`); the effect loads the specs only.
+    const eventsChanged = useDepsChanged([events]);
+    if (eventsChanged && events) setSettled(false);
+
     useEffect(() => {
         if (!events) return;
         let canceled = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
-        setSettled(false);
         const pending = events.filter((e) => e.contentURI && e.clauseKey);
         /** One read pass over `batch`; the first pass fixes `loaded`, later
          *  passes re-read what is still unresolved and stop when nothing is. */

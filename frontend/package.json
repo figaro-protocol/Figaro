@@ -9,7 +9,7 @@
         "check:paper-pdfs": "node scripts/check-paper-pdfs.mjs",
         "start": "node scripts/serve-export.mjs out 3000",
         "serve:export": "node scripts/serve-export.mjs",
-        "lint": "eslint app components lib",
+        "lint": "eslint app components lib hooks tests",
         "type-check": "tsc --noEmit",
         "knip": "knip",
         "knip:files": "knip --include files",

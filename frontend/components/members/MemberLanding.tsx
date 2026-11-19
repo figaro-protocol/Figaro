@@ -37,6 +37,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { cooldownPhrase } from "@/lib/member/cooldownPhrase";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { formatToken } from "@/lib/shared/utils";
 import { activeChain } from "@/lib/shared/chains";
 
@@ -148,9 +149,13 @@ function RegisteredCard({
     const [profileRead, setProfileRead] = useState<NetworkRead<MemberProfileMetadata>>(PENDING);
     const profile = profileRead.status === "present" ? profileRead.value : null;
 
+    // A new profile URI reads as pending from the render it changes in
+    // (`useDepsChanged`); the effect fetches only.
+    const uriChanged = useDepsChanged([metadataURI]);
+    if (uriChanged) setProfileRead(PENDING);
+
     useEffect(() => {
         let canceled = false;
-        setProfileRead(PENDING);
         // The shared reviver-backed, size-capped, cached fetcher — NOT a
         // hand-rolled fetch+JSON.parse: a member profile is
         // permissionless untrusted network JSON, so it routes through the same
@@ -408,11 +413,10 @@ function WithdrawRow({
     // Hold the receipt visible after success — let the member dismiss
     // it explicitly. Only then does the parent refetch (which causes the
     // dashboard → doorway transition, removing this row from the DOM).
-    useEffect(() => {
-        if (isSuccess && hash && !receiptHash) {
-            setReceiptHash(hash);
-        }
-    }, [isSuccess, hash, receiptHash]);
+    // Set during render: the receipt shows in the render the success lands in.
+    if (isSuccess && hash && !receiptHash) {
+        setReceiptHash(hash);
+    }
 
     async function handleWithdraw() {
         setSubmitError(null);

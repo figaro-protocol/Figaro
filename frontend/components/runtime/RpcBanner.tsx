@@ -10,10 +10,8 @@ export function RpcBanner() {
     const isE2EMock = isE2EMockSession();
 
     useEffect(() => {
-        if (isE2EMock) {
-            setAvailable(true);
-            return;
-        }
+        // A mock session has no RPC to probe: it reads as available (below).
+        if (isE2EMock) return;
 
         let mounted = true;
 
@@ -84,7 +82,7 @@ export function RpcBanner() {
         };
     }, [publicClient, isE2EMock]);
 
-    if (available === null || available === true) return null;
+    if (isE2EMock || available === null || available === true) return null;
 
     return (
         // Opaque `bg-canvas` rather than a `bg-warning/N` tint: the banner is

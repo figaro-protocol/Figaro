@@ -40,18 +40,23 @@ export interface RegisteredMemberRow {
     profile: MemberProfileMetadata | null;
 }
 
+function isMembersRegistryConfigured(): boolean {
+    const registry = CONTRACTS.membersRegistry;
+    return !!registry && registry.length === 42;
+}
+
 /** Every registered member as a `NetworkRead`: `absent` when the registry
  *  read failed (or no registry is configured), never `[]`. */
 export function useRegisteredMembers(): { read: NetworkRead<RegisteredMemberRow[]>; refetch: () => void } {
-    const [read, setRead] = useState<NetworkRead<RegisteredMemberRow[]>>(PENDING);
+    // No registry configured is a build-time constant: the read is absent
+    // from the first render, and the effect never fetches.
+    const [read, setRead] = useState<NetworkRead<RegisteredMemberRow[]>>(() =>
+        isMembersRegistryConfigured() ? PENDING : ABSENT,
+    );
     const { generation, refetch } = useRefetchGeneration();
 
     useEffect(() => {
-        const registry = CONTRACTS.membersRegistry;
-        if (!registry || registry.length !== 42) {
-            setRead(ABSENT);
-            return;
-        }
+        if (!isMembersRegistryConfigured()) return;
         let canceled = false;
         const timers = new Set<ReturnType<typeof setTimeout>>();
         const chainId = publicClient.chain?.id ?? activeChain.id;

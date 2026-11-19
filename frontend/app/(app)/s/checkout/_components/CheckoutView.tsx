@@ -19,6 +19,7 @@
 import Link from "@/components/shared/Link";
 import { PublishTargetNotice } from "@/components/shared/PublishTargetNotice";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { useChainId, usePublicClient } from "wagmi";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
@@ -228,7 +229,10 @@ export function CheckoutView({ sellerAddress }: Props) {
     // The buyer's own amounts, per listed price, in the denomination — a
     // decimal string as typed; absent = the venue quote stands.
     const [translationEdits, setTranslationEdits] = useState<Record<string, string>>({});
-    useEffect(() => { setTranslationEdits({}); }, [currency]);
+    // A new denomination clears them, during render on the render it changes
+    // (`useDepsChanged`).
+    const currencyChanged = useDepsChanged([currency]);
+    if (currencyChanged) setTranslationEdits({});
     // The lead's quote basis's symbol — the token its catalog (and so the
     // cart) is priced in: read from the token, else as the seller declared it.
     const { data: basisResolvedSymbol } = useTokenSymbol(sellerDefault ?? "");
@@ -290,15 +294,17 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     // Clear a stale choice the seller no longer offers; auto-select the sole
     // option (a one-option dropdown is noise — the static line shows it).
-    useEffect(() => {
+    // Adjusted during render, on the render the offered slugs change
+    // (`useDepsChanged`): the adjustment reads only the slugs.
+    const assemblyOptionsChanged = useDepsChanged([assemblyOptions.map((o) => o.slug).join("\n")]);
+    if (assemblyOptionsChanged) {
         if (selectedSlug && !assemblyOptions.some((o) => o.slug === selectedSlug)) {
             setSelectedSlug(undefined);
         }
         if (assemblyOptions.length === 1 && selectedSlug !== assemblyOptions[0].slug) {
             setSelectedSlug(assemblyOptions[0].slug);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [assemblyOptions]);
+    }
 
     const balance = tokenBalance ?? 0n;
     const isApproving = isApprovePending || isApproveConfirming;
@@ -317,12 +323,17 @@ export function CheckoutView({ sellerAddress }: Props) {
     // it lands: a reset made while the attempt signed has cleared it, and the
     // outcome the attempt's render captured is then stale.
     const raceOutcomeNow = useRef(raceOutcome);
-    raceOutcomeNow.current = raceOutcome;
+    useEffect(() => {
+        raceOutcomeNow.current = raceOutcome;
+    }, [raceOutcome]);
     // Buyer-entered units per assembly node id — the "checkout-quantity" rate
     // source's input (hours, seats, …). Read by the SAME pricing call the
     // commit walk makes, so the shown figure equals what commits.
     const [subOrderQuantities, setSubOrderQuantities] = useState<Record<string, number>>({});
-    useEffect(() => { setSellerSelection(null); }, [selectedSlug]);
+    // A new assembly clears the co-seller choice, during render on the render
+    // it is picked (`useDepsChanged`).
+    const selectedSlugChanged = useDepsChanged([selectedSlug]);
+    if (selectedSlugChanged) setSellerSelection(null);
     // The clause specs the agreement terms below are read from. The cache is a
     // module singleton warmed from chain → IPFS, so a surface that only READS
     // it (getClauseSpec) renders whatever happened to be cached at that instant
@@ -437,13 +448,21 @@ export function CheckoutView({ sellerAddress }: Props) {
     const translationKey = translated.length > 0 && swapFundingContracts && currency
         ? `${currency}|${translated.map((l) => `${l.key}:${l.listedToken}:${l.listedPrice}`).join(",")}`
         : null;
+    // The quotes are reset during render, on the render their key changes
+    // (`useDepsChanged`); the effect asks the venue only.
+    // Keyed on the client's chain: the wallet library keeps one client per
+    // chain, so a new chain is a new client.
+    const translationInputsChanged = useDepsChanged([translationKey, publicClient?.chain?.id]);
+    if (translationInputsChanged) {
+        setTranslationQuotes(
+            !translationKey || !publicClient || !swapFundingContracts || !currency
+                ? null
+                : { key: translationKey, byPrice: {} },
+        );
+    }
     useEffect(() => {
-        if (!translationKey || !publicClient || !swapFundingContracts || !currency) {
-            setTranslationQuotes(null);
-            return;
-        }
+        if (!translationKey || !publicClient || !swapFundingContracts || !currency) return;
         let canceled = false;
-        setTranslationQuotes({ key: translationKey, byPrice: {} });
         void Promise.all(translated.map(async (l) => {
             try {
                 const result = await translateListedPrice(publicClient, swapFundingContracts.router, {

@@ -23,6 +23,7 @@ import {
 } from "@/lib/protocol/useProcessRegistry";
 import { hexEqual } from "@/lib/shared/evm";
 import { PENDING, present, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 /** A member's on-chain bound assembly, hydrated. */
 export interface BoundAssembly {
@@ -59,23 +60,23 @@ export function useMemberBoundAssemblies(
     const { read: published } = useAllPublishedAssemblies();
     const [result, setResult] = useState<NetworkRead<BoundAssembly[]>>(PENDING);
 
+    // The reads that end without a fetch are set during render, on the
+    // render the inputs change (`useDepsChanged`); the effect fetches only.
+    const settled: NetworkRead<BoundAssembly[]> | null = !sellerAddress
+        ? PENDING
+        : registration.status !== "present"
+          ? registration
+          : published.status !== "present"
+            ? published
+            : !registration.value.registered
+              ? present([])
+              : null;
+    const inputsChanged = useDepsChanged([sellerAddress, registration, published]);
+    if (inputsChanged && settled) setResult(settled);
+
     useEffect(() => {
-        if (!sellerAddress) {
-            setResult(PENDING);
-            return;
-        }
-        if (registration.status !== "present") {
-            setResult(registration);
-            return;
-        }
-        if (published.status !== "present") {
-            setResult(published);
-            return;
-        }
-        if (!registration.value.registered) {
-            setResult(present([]));
-            return;
-        }
+        if (!sellerAddress || registration.status !== "present" || published.status !== "present") return;
+        if (!registration.value.registered) return;
         const publishedEvents = published.value;
         const metadataURI = registration.value.metadataURI;
 

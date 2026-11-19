@@ -245,8 +245,8 @@ export function OnboardingCatalogForm({
     // items, hydration could fire against the EMPTY_STATE snapshot
     // and the persistence effect would then overwrite their saved
     // items with the local default `[emptyItem()]`.
-    useEffect(() => {
-        if (hydrated || !loaded) return;
+    // It runs during render, once: the draft is React state already read.
+    if (!hydrated && loaded) {
         const storedUnitSystem = state.catalog?.unitSystem ?? "metric";
         setUnitSystem(storedUnitSystem);
         const stored = state.catalog?.items;
@@ -254,7 +254,7 @@ export function OnboardingCatalogForm({
             setItems(stored.map((item) => fromItem(item, storedUnitSystem)));
         }
         setHydratedFor(subject);
-    }, [hydrated, loaded, subject, state.catalog]);
+    }
 
     // Persist on every form change.
     useEffect(() => {

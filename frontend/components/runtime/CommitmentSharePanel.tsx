@@ -11,6 +11,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import Image from "next/image";
 import { useAccount, useChainId, useWalletClient } from "wagmi";
 import { tokenFigure } from "@/lib/shared/utils";
@@ -105,19 +106,25 @@ export function CommitmentSharePanel({
     const serialized = payload ? serializeCommitmentPayload(payload) : null;
     const recipientAddress = payload ? resolveRecipientAddress(payload, address) : null;
 
-    useEffect(() => {
+    // A new payload or recipient starts the transport afresh, reset during
+    // render on the render it changes (`useDepsChanged`).
+    const shareTargetChanged = useDepsChanged([payload, recipientAddress]);
+    if (shareTargetChanged) {
         setTransportStatus("idle");
         setTransportError(null);
         setTransportRecipient(null);
-    }, [payload, recipientAddress]);
+    }
 
-    // Generate QR when payload is ready and waiting for counter-party
+    // Generate QR when payload is ready and waiting for counter-party. With
+    // nothing to show, the QR is cleared during render on the render the
+    // inputs change (`useDepsChanged`); the effect generates only.
+    const qrInputsChanged = useDepsChanged([serialized, step, qrSize]);
+    if (qrInputsChanged && (!serialized || step !== "awaiting-seller")) {
+        setQrDataUrl(null);
+        setQrUnavailable(false);
+    }
     useEffect(() => {
-        if (!serialized || step !== "awaiting-seller") {
-            setQrDataUrl(null);
-            setQrUnavailable(false);
-            return;
-        }
+        if (!serialized || step !== "awaiting-seller") return;
 
         let canceled = false;
         generateQRDataURL(serialized, qrSize)

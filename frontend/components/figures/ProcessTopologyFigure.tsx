@@ -61,9 +61,9 @@ export function ProcessTopologyFigure({
     figureDesc,
     caption,
 }: ProcessTopologyFigureProps) {
-    let running = 0;
+    // The running total through leg i, summed left to right.
     const nodes = legs.map((leg, i) => {
-        running += leg.payment;
+        const running = legs.slice(0, i + 1).reduce((sum, l) => sum + l.payment, 0);
         return {
             ...leg,
             index: i + 1,

@@ -13,6 +13,7 @@
  * Names no clause, prints no content: it counts entries.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import {
     countHeldWitnessContent,
     exportKeptWitnessContent,
@@ -39,9 +40,10 @@ export function KeptPrivateContentPanel({ holder, refreshKey = 0, onChanged }: P
     const [confirmRemove, setConfirmRemove] = useState(false);
     const fileInput = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-        setCount(countHeldWitnessContent(holder));
-    }, [holder, refreshKey]);
+    // Read again during render, on the render the holder or the key changes
+    // (`useDepsChanged`), as the initial count is.
+    const countInputsChanged = useDepsChanged([holder, refreshKey]);
+    if (countInputsChanged) setCount(countHeldWitnessContent(holder));
 
     const handleExport = useCallback(() => {
         const text = exportKeptWitnessContent(holder);

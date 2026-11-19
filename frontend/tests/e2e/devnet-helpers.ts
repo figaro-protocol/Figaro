@@ -431,7 +431,6 @@ async function pinTextToIPFS(text: string): Promise<{ cid: string; uri: string }
         const api = (process.env.IPFS_PIN_SERVICE_API ?? 'https://api.pinata.cloud').replace(/\/$/, '');
         const res = await fetch(`${api}/pinning/pinFileToIPFS`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: form });
         if (!res.ok) throw new Error(`pin service pin failed: ${res.status} ${res.statusText}`);
-        // eslint-disable-next-line no-restricted-syntax -- the harness's own local Kubo API, never a network-fetched document
         const result = await res.json() as { IpfsHash?: string };
         if (typeof result.IpfsHash !== 'string' || !result.IpfsHash) throw new Error('pin service returned no CID');
         return { cid: result.IpfsHash, uri: `ipfs://${result.IpfsHash}` };
@@ -441,7 +440,6 @@ async function pinTextToIPFS(text: string): Promise<{ cid: string; uri: string }
     if (!res.ok) {
         throw new Error(`IPFS pin failed: ${res.status} ${res.statusText}`);
     }
-    // eslint-disable-next-line no-restricted-syntax -- the harness's own local Kubo API, never a network-fetched document
     const result = await res.json() as { Hash?: string };
     if (typeof result.Hash !== 'string' || !result.Hash) {
         throw new Error('IPFS pin returned no CID');
@@ -479,7 +477,6 @@ export async function assertPinnedInIpfs(cid: string): Promise<void> {
             `IPFS pin/ls failed for ${cid}: ${res.status} ${res.statusText} — not pinned in the local Kubo node`,
         );
     }
-    // eslint-disable-next-line no-restricted-syntax -- the harness's own local Kubo API, never a network-fetched document
     const body = await res.json() as { Keys?: Record<string, { Type?: string }> };
     expect(body.Keys?.[cid], `CID ${cid} must be pinned in the local Kubo node`).toBeTruthy();
 }

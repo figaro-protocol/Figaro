@@ -27,6 +27,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel } from "@/lib/semantic/models";
 import { executeTransactionCapabilityAction } from "@/lib/semantic/executeTransactionCapability";
 import { ABSENT, PENDING, present, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 /** The orders an absent or pending read stands for in the executors' inputs —
  *  no model and no capability is derived from it (`processModel` is null). */
@@ -168,11 +169,13 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     // action lands (processReloadKey bumps). A failed read is absent: never
     // `[]`, which would show every stage unattested and offer attest/resolve.
     const [attestationsRead, setAttestationsRead] = useState<NetworkRead<RuntimeAttestation[]>>(PENDING);
+    // No client or process yet reads as pending, set during render on the
+    // render the inputs change (`useDepsChanged`); the effect reads only.
+    // The reset reads only whether a client is there, so it is keyed on that.
+    const attestationInputsChanged = useDepsChanged([!!publicClient, effectiveProcessId, processReloadKey]);
+    if (attestationInputsChanged && (!publicClient || !effectiveProcessId)) setAttestationsRead(PENDING);
     useEffect(() => {
-        if (!publicClient || !effectiveProcessId) {
-            setAttestationsRead(PENDING);
-            return;
-        }
+        if (!publicClient || !effectiveProcessId) return;
         let canceled = false;
         const chainId = publicClient.chain?.id ?? 0;
         void readNetwork("useSemanticProcessWorkspace.attestations", () =>
@@ -211,24 +214,30 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
                     ? present(null)
                     : PENDING;
 
-    const runtimeCapabilities = processModel
-        ? collectRuntimeCapabilities([...processModel.capabilities, ...processModel.orders.flatMap((order) => order.capabilities)])
-        : [];
+    const runtimeCapabilities = useMemo(
+        () => processModel
+            ? collectRuntimeCapabilities([...processModel.capabilities, ...processModel.orders.flatMap((order) => order.capabilities)])
+            : [],
+        [processModel],
+    );
 
     const executableCapabilityIds = useMemo(
         () => new Set(runtimeCapabilities.map((capability) => capability.id)),
         [runtimeCapabilities]
     );
 
+    // Any landed action re-reads process state + the attestation log so
+    // the next capability surfaces (a merchant signal advances the
+    // ladder, a proximity proof retires the handoff capability). The
+    // component's own state is cleared during render, on the render the
+    // action lands (`useDepsChanged`); the effect bumps the shared store.
+    const actionOutcomeChanged = useDepsChanged([isActionSuccess, bumpProcessReload]);
+    if (actionOutcomeChanged && isActionSuccess) {
+        setExecutingCapabilityId(null);
+        setActionError(null);
+    }
     useEffect(() => {
-        if (isActionSuccess) {
-            // Any landed action re-reads process state + the attestation log so
-            // the next capability surfaces (a merchant signal advances the
-            // ladder, a proximity proof retires the handoff capability).
-            bumpProcessReload();
-            setExecutingCapabilityId(null);
-            setActionError(null);
-        }
+        if (isActionSuccess) bumpProcessReload();
     }, [isActionSuccess, bumpProcessReload]);
 
     // The WRITE half — built by the executor factory (lib/semantic), with

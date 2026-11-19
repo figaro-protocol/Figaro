@@ -77,6 +77,7 @@ import { publicClient } from "@/lib/shared/publicClient";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { ABSENT, PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 /**
  * How many attestation payloads one pass tries to recover, most recent first.
@@ -426,14 +427,14 @@ export function useGraphCorpus(): NetworkRead<GraphCorpus> {
 
     const inputsLoaded = corpusInputsLoaded(choices, assembliesFailed, specsLoaded);
 
+    // A failed clause-registry read: nothing is known of the terms the corpus
+    // reads, so the corpus is absent, not pending for ever. Set during render,
+    // on the render the registry read fails (`useDepsChanged`).
+    const specsFailedChanged = useDepsChanged([specsFailed]);
+    if (specsFailedChanged && specsFailed) setCorpus(ABSENT);
+
     useEffect(() => {
-        // A failed clause-registry read: nothing is known of the terms the corpus
-        // reads, so the corpus is absent, not pending for ever.
-        if (specsFailed) {
-            setCorpus(ABSENT);
-            return;
-        }
-        if (!inputsLoaded) return;
+        if (specsFailed || !inputsLoaded) return;
         let canceled = false;
         void readNetwork("useGraphCorpus", () => readGraphCorpus({ assemblies })).then((next) => {
             if (!canceled) setCorpus(next);
@@ -443,7 +444,6 @@ export function useGraphCorpus(): NetworkRead<GraphCorpus> {
         };
         // `specVersion` bumps as clause specs resolve from IPFS: overlays
         // decode and provenance attributions appear without a reload.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [specsFailed, inputsLoaded, assemblies, specVersion]);
 
     return corpus;

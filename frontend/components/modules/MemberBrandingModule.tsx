@@ -4,7 +4,8 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
 import { useMemberBranding } from "@/lib/member/useMemberBranding";
 import { resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
@@ -44,9 +45,10 @@ export function MemberLogo({
     const logoSrc = branding?.logoURI ? resolveMemberDocumentUri(branding.logoURI) : null;
     const [imageFailed, setImageFailed] = useState(false);
 
-    useEffect(() => {
-        setImageFailed(false);
-    }, [logoSrc]);
+    // A new logo gets a fresh load, reset during render on the render it
+    // changes (`useDepsChanged`).
+    const logoChanged = useDepsChanged([logoSrc]);
+    if (logoChanged) setImageFailed(false);
 
     if (isLoading) {
         return (

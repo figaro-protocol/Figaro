@@ -216,12 +216,11 @@ export function OnboardingProfileForm({
     // the previous gate left them stuck unhydrated — which then
     // disabled the persistence effect below, so nothing they typed
     // ever reached localStorage.
-    useEffect(() => {
-        if (hydrated || !loaded) return;
-        const next = fromDraft(state.profile);
-        setForm(next);
+    // It runs during render, once: the draft is React state already read.
+    if (!hydrated && loaded) {
+        setForm(fromDraft(state.profile));
         setHydratedFor(subject);
-    }, [hydrated, loaded, subject, state.profile]);
+    }
 
     // Persist on every form change so a refresh / navigation doesn't lose work.
     useEffect(() => {
@@ -239,13 +238,13 @@ export function OnboardingProfileForm({
     // default got removed and is no longer in the valid set. Without
     // this, the member has to remember to click the radio that just
     // appeared — easy to miss when there's only one option visible.
-    useEffect(() => {
-        if (validTokens.length === 0) return;
-        const stillValid = validTokens.some((t) => hexEqual(t.address, form.defaultTokenAddress));
-        if (!form.defaultTokenAddress || !stillValid) {
-            setForm((prev) => ({ ...prev, defaultTokenAddress: validTokens[0].address }));
-        }
-    }, [validTokens, form.defaultTokenAddress]);
+    // Adjusted during render: the next render already carries the default.
+    if (
+        validTokens.length > 0 &&
+        (!form.defaultTokenAddress || !validTokens.some((t) => hexEqual(t.address, form.defaultTokenAddress)))
+    ) {
+        setForm((prev) => ({ ...prev, defaultTokenAddress: validTokens[0].address }));
+    }
 
     function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
         setForm((prev) => ({ ...prev, [key]: value }));

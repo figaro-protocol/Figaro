@@ -23,6 +23,7 @@ import {
     type DIDDocument,
 } from "@figaro-protocol/sdk/agent";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 export type { DIDDocument };
 
@@ -36,16 +37,23 @@ export function useDidDocument(did: string | undefined) {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    useEffect(() => {
+    // The synchronous resets run during render, on the render `did` changes
+    // (`useDepsChanged`); the effect resolves only.
+    const didChanged = useDepsChanged([did]);
+    if (didChanged) {
         if (!did || !isDidWeb(did)) {
             setDocument(null);
             setError(did ? `Not a did:web identifier: ${did}` : null);
-            return;
+        } else {
+            setIsLoading(true);
+            setError(null);
         }
+    }
+
+    useEffect(() => {
+        if (!did || !isDidWeb(did)) return;
 
         let canceled = false;
-        setIsLoading(true);
-        setError(null);
 
         resolveDidWeb(did).then((result) => {
             if (canceled) return;
@@ -78,13 +86,7 @@ export function useDidConsistency(
 ) {
     const chainId = useChainId();
     const { document, error, isLoading } = useDidDocument(did);
-    const [consistent, setConsistent] = useState(false);
-
-    useEffect(() => {
-        setConsistent(
-            !!document && !!address && didDocumentMatchesAddress(document, address, chainId),
-        );
-    }, [document, address, chainId]);
+    const consistent = !!document && !!address && didDocumentMatchesAddress(document, address, chainId);
 
     return { document, consistent, error, isLoading };
 }

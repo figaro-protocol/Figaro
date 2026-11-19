@@ -46,6 +46,7 @@ import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 /** One clause, agreement or assembly the connected wallet is designer of record for, with
  *  the accrual it carried in a given period. `c` = distinct resolved processes,
@@ -200,10 +201,18 @@ export function useRpgfRewards(subject?: `0x${string}`) {
         return [...out.values()];
     }, [publicClient, chainId, account]);
 
+    // A read the inputs changed under is pending from that render
+    // (`useDepsChanged`); the effect reads the chain only.
+    // Keyed on whether a client is there, with the chain: the wallet library
+    // keeps one client per chain, and a render may be handed a fresh object
+    // for the same client (the export's prerender is), which as a key would
+    // never end.
+    const inputsChanged = useDepsChanged([minter, counter, !!publicClient, chainId, account, refreshNonce]);
+    if (inputsChanged && minter && counter && publicClient) setRead(PENDING);
+
     useEffect(() => {
         if (!minter || !counter || !publicClient) return;
         let canceled = false;
-        setRead(PENDING);
         void readNetwork("useRpgfRewards", async (): Promise<RpgfRewardsState> => {
             const minterBase = { address: minter, abi: RPGF_MINTER_ABI } as const;
             const counterBase = { address: counter, abi: USAGE_COUNTER_ABI } as const;

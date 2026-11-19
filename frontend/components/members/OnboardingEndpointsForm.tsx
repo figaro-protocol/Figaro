@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "@/components/shared/Link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -82,20 +82,12 @@ const TOKEN_FIELDS: HintedFieldDef<"pinServiceToken" | "analystToken">[] = [
 export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
     const mounted = useMounted();
     const router = useRouter();
-    const [form, setForm] = useState<Required<Pick<UserEndpointOverrides, "ipfsApiUrl" | "pinServiceUrl" | "pinServiceToken" | "ipfsGatewayUrl" | "rpcUrl" | "analystUrl" | "analystToken">>>({
-        ipfsApiUrl: "",
-        pinServiceUrl: "",
-        pinServiceToken: "",
-        ipfsGatewayUrl: "",
-        rpcUrl: "",
-        analystUrl: "",
-        analystToken: "",
-    });
-    const [saved, setSaved] = useState(false);
-
-    useEffect(() => {
+    // Read from storage when the state is created. The server render reads
+    // nothing (no storage), and the form renders only once mounted, so the
+    // read never shows in a first paint the server did not render.
+    const [form, setForm] = useState<Required<Pick<UserEndpointOverrides, "ipfsApiUrl" | "pinServiceUrl" | "pinServiceToken" | "ipfsGatewayUrl" | "rpcUrl" | "analystUrl" | "analystToken">>>(() => {
         const current = readUserEndpoints();
-        setForm({
+        return {
             ipfsApiUrl: current.ipfsApiUrl ?? "",
             pinServiceUrl: current.pinServiceUrl ?? "",
             pinServiceToken: current.pinServiceToken ?? "",
@@ -103,8 +95,9 @@ export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
             rpcUrl: current.rpcUrl ?? "",
             analystUrl: current.analystUrl ?? "",
             analystToken: current.analystToken ?? "",
-        });
-    }, []);
+        };
+    });
+    const [saved, setSaved] = useState(false);
 
     function handleSave(e: React.FormEvent) {
         e.preventDefault();

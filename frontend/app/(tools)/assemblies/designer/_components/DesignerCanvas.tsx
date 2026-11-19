@@ -144,12 +144,14 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
  */
 export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
     const { loaded, failed } = useClauseSpecs();
-    const everLoadedRef = useRef(false);
-    if (loaded) everLoadedRef.current = true;
+    // The latch is state, set during render the first time `loaded` is true.
+    const [everLoaded, setEverLoaded] = useState(false);
+    if (loaded && !everLoaded) setEverLoaded(true);
+    const latched = everLoaded || loaded;
     // A failed registry read renders nothing: no canvas, and no loading line
     // for a read that is not in flight.
-    if (failed && !everLoadedRef.current) return null;
-    if (!everLoadedRef.current) {
+    if (failed && !latched) return null;
+    if (!latched) {
         return (
             <p className="text-sm text-ink-muted" data-testid="designer-specs-loading">
                 Loading registered clauses…
@@ -165,11 +167,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
 
     // Initial render must match SSR — start blank and hydrate from the
     // appropriate seed in a mount effect.
-    const initialRef = useRef<InitialState | null>(null);
-    if (initialRef.current === null) {
-        initialRef.current = buildBlankInitial();
-    }
-    const initial = initialRef.current;
+    const [initial] = useState<InitialState>(buildBlankInitial);
 
     const [session] = useState<SyntheticProcessSession>(() => initial.session);
     const [orders, setOrders] = useState<Order[]>(() => initial.orders);

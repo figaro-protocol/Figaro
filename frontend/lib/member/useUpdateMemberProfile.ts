@@ -29,8 +29,9 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toError } from "@/lib/shared/errors";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
 import {
@@ -101,11 +102,13 @@ export function useUpdateMemberProfile(
 
     // Reset transient errors whenever the underlying profile reference changes
     // (e.g. user navigates away and back). Keeps stale messages from leaking
-    // into a fresh edit session.
-    useEffect(() => {
+    // into a fresh edit session. Set during render, on the render the
+    // reference changes (`useDepsChanged`).
+    const profileChanged = useDepsChanged([existingProfile]);
+    if (profileChanged) {
         setPinError(null);
         setPublishedURI(null);
-    }, [existingProfile]);
+    }
 
     async function save(patch: MemberProfilePatch, options?: SaveOptions): Promise<void> {
         if (!existingProfile) {

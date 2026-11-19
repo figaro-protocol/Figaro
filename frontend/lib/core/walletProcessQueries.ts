@@ -26,6 +26,7 @@ import { getCoreEvents } from "@/lib/core/indexer";
 import { useWatchOrderEvents } from "@/lib/core/useWatchOrderEvents";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 /** The two roles in a Figaro order commitment. */
 export type PartyRole = "buyer" | "seller";
@@ -75,11 +76,14 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
     const [read, setRead] = useState<NetworkRead<ProcessRow[]>>(PENDING);
     const [tick, setTick] = useState(0);
 
+    // No subject or client yet reads as pending, set during render on the
+    // render the inputs change (`useDepsChanged`); the effect reads only.
+    // The reset reads only whether a client is there, so it is keyed on that.
+    const inputsChanged = useDepsChanged([address, !!publicClient, chainId, role, tick]);
+    if (inputsChanged && (!address || !publicClient || !chainId)) setRead(PENDING);
+
     useEffect(() => {
-        if (!address || !publicClient || !chainId) {
-            setRead(PENDING);
-            return;
-        }
+        if (!address || !publicClient || !chainId) return;
         let canceled = false;
 
         void readNetwork("useWalletProcessRows", async () => {

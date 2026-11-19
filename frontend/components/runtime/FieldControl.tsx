@@ -50,7 +50,7 @@
  * whose spec declares no labels renders its raw tokens, unchanged.
  */
 
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
 import { safeRegexTest } from "@figaro-protocol/sdk/clauses";
 import { labelEnumValue } from "@/lib/shared/clauseSpecSource";
@@ -80,7 +80,10 @@ function ObjectEntryFields({
     mode: FieldControlMode;
 }) {
     const latest = useRef(value);
-    latest.current = value;
+    // Synced after each commit, before any event handler can call `patch`.
+    useLayoutEffect(() => {
+        latest.current = value;
+    }, [value]);
     const patch = (name: string, next: unknown) => {
         const nextObj = { ...latest.current };
         if (next === undefined) delete nextObj[name];

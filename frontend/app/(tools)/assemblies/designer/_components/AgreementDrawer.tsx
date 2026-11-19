@@ -26,6 +26,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import type { Order } from "@/lib/core/store";
 import { Button } from "@/components/ui/Button";
 import {
@@ -109,10 +110,10 @@ export function AgreementDrawer({
 
 
 
-    // Auto-open Parties on each new order.
-    useEffect(() => {
-        if (order) setOpenSection("identity");
-    }, [order?.orderHash]);
+    // Auto-open Parties on each new order: during render, on the render the
+    // order changes (`useDepsChanged`).
+    const orderChanged = useDepsChanged([order?.orderHash]);
+    if (orderChanged && order) setOpenSection("identity");
 
     if (!order) {
         if (!embedded) return null;

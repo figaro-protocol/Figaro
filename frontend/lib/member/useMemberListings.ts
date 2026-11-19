@@ -28,6 +28,7 @@ import type { PublicClient } from "viem";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { usePublishedAssemblies } from "@/lib/protocol/useProcessRegistry";
 import { ABSENT, PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 function isRegistryConfigured(): boolean {
     return !!CONTRACTS.membersRegistry
@@ -75,15 +76,17 @@ export function useMemberListings(): { read: NetworkRead<Listing[]> } {
     // binding into "nothing is registered".
     const { read: publishedAssemblies } = usePublishedAssemblies(undefined);
 
+    // The reads that end without a fetch are set during render, on the
+    // render the inputs change (`useDepsChanged`); the effect fetches only.
+    // The reset reads only whether a client is there, so it is keyed on that.
+    const inputsChanged = useDepsChanged([!!client, chainId, publishedAssemblies]);
+    if (inputsChanged) {
+        if (!client || !isRegistryConfigured()) setRead(ABSENT);
+        else if (publishedAssemblies.status !== "present") setRead(publishedAssemblies);
+    }
+
     useEffect(() => {
-        if (!client || !isRegistryConfigured()) {
-            setRead(ABSENT);
-            return;
-        }
-        if (publishedAssemblies.status !== "present") {
-            setRead(publishedAssemblies);
-            return;
-        }
+        if (!client || !isRegistryConfigured() || publishedAssemblies.status !== "present") return;
         const publishedHashes = new Set(publishedAssemblies.value.map((a) => a.processDesignHash.toLowerCase()));
 
         let canceled = false;
