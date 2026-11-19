@@ -43,14 +43,14 @@ export interface Order {
     processId: Hex;
     buyer: Address;
     seller: Address;
-    currency: Address;
+    token: Address;
     payment: bigint;
     runningTotal: bigint;
     checkoutHash: Hex;
     /** Salt from the commitment (for full reconstruction at resolution). */
     salt: bigint;
-    /** Deadline from the commitment (for full reconstruction at resolution). */
-    deadline: bigint;
+    /** commitDeadline from the commitment (for full reconstruction at resolution). */
+    commitDeadline: bigint;
     state: OrderState;
     /** Block number when committed. */
     blockNumber: number;
@@ -72,7 +72,7 @@ export interface Order {
 export interface Process {
     processId: Hex;
     rootBuyer: Address;
-    currency: Address;
+    token: Address;
     runningTotal: bigint;
     orders: Map<Hex, Order>;
     resolved: boolean;
@@ -85,12 +85,12 @@ export interface OrderCommittedEvent {
     processId: Hex;
     buyer: Address;
     seller: Address;
-    currency: Address;
+    token: Address;
     payment: bigint;
     runningTotal: bigint;
     checkoutHash: Hex;
     salt: bigint;
-    deadline: bigint;
+    commitDeadline: bigint;
     blockNumber: number;
     /** The commit transaction — its receipt carries any funding legs
      *  (`readFundingLegs`, `@figaro-protocol/sdk/derive`). */
@@ -414,7 +414,7 @@ export interface ResolutionBreakdown {
 export interface AgentProcessContext {
     processId: Hex;
     rootBuyer: Address;
-    currency: Address;
+    token: Address;
     runningTotal: bigint;
     activeOrderCount: number;
     resolved: boolean;

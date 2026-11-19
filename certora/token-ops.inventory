@@ -21,8 +21,8 @@
 # be followed by a spec PR within the same sprint.
 
 src/core/kernel/FigaroCore.sol :: FigaroCore._pullExact :: token.safeTransferFrom(from, address(this), amount) | commit bond pull | commitBuyerExactDelta, commitSellerExactDelta, commitContractExactDelta, commitAllowanceDrainSafety, commitTokenConservation
-src/core/kernel/FigaroCore.sol :: FigaroCore.resolveProcess :: currency.safeTransfer(c.seller, sellerPayout) | seller payout | resolveSingleOrderPayout, resolveSingleOrderConservation
-src/core/kernel/FigaroCore.sol :: FigaroCore.resolveProcess :: currency.safeTransfer(buyer, buyerPayout) | buyer payout | resolveSingleOrderPayout, resolveSingleOrderConservation
+src/core/kernel/FigaroCore.sol :: FigaroCore.resolveProcess :: token.safeTransfer(c.seller, sellerPayout) | seller payout | resolveSingleOrderPayout, resolveSingleOrderConservation
+src/core/kernel/FigaroCore.sol :: FigaroCore.resolveProcess :: token.safeTransfer(buyer, buyerPayout) | buyer payout | resolveSingleOrderPayout, resolveSingleOrderConservation
 
 # WitnessSwapAndCommitCoordinator — the swap-and-commit coordinator (its unhardened
 # predecessor, which left the swap route outside every signature, was deleted before

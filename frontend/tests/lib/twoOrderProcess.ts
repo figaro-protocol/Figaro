@@ -43,10 +43,10 @@ export async function loadModalitySpec(): Promise<void> {
 const base = {
     processId: PROCESS,
     buyer: BUYER,
-    currency: `0x${"33".repeat(20)}`,
+    token: `0x${"33".repeat(20)}`,
     state: OrderState.Active,
     salt: 1n,
-    deadline: 0n,
+    commitDeadline: 0n,
 };
 
 export const rootOrder: Order = {

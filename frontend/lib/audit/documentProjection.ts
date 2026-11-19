@@ -122,7 +122,7 @@ function resolve(ref: ValueRef, order: Order, unit: Unit): string {
         return [...new Set(sellers)].join(", ");
     }
     if ("payment" in ref) return order.payment.toString();
-    if ("currency" in ref) return order.currency ?? "";
+    if ("currency" in ref) return order.token ?? "";
     if ("resolvedDate" in ref) {
         return order.state === OrderState.Resolved && order.resolvedAt !== undefined
             ? new Date(order.resolvedAt * 1000).toISOString().slice(0, 10)
@@ -274,7 +274,7 @@ export function projectFinancialStatements(
         return a;
     };
     for (const o of orders) {
-        const c = (o.currency ?? ZERO_ADDRESS).toLowerCase();
+        const c = (o.token ?? ZERO_ADDRESS).toLowerCase();
         const a = agg(c);
         const active = o.state === OrderState.Active;
         if (active) {

@@ -272,12 +272,12 @@ export function orderToCommitment(order: Order): Commitment {
         processId: order.processId,
         buyer: order.buyer,
         seller: order.seller,
-        token: order.currency,
+        token: order.token,
         payment: order.payment,
         runningTotal: order.runningTotal,
         checkoutHash: order.checkoutHash,
         salt: order.salt,
-        commitDeadline: order.deadline,
+        commitDeadline: order.commitDeadline,
     };
 }
 
@@ -344,14 +344,14 @@ export function computeDeadline(nowSeconds: bigint, ttlSeconds: number = DEFAULT
     return nowSeconds + BigInt(ttlSeconds);
 }
 
-// ── Cumulative value fetcher ────────────────────────────────────────────────
+// ── Running total fetcher ──────────────────────────────────────────────────
 
 /**
  * Read the current runningTotal for a process from the contract.
  * This MUST be called before building a sub-order commitment to prevent
- * CumulativeValueMismatch reverts.
+ * RunningTotalMismatch reverts.
  */
-export async function fetchCumulativeValue(
+export async function fetchRunningTotal(
     client: PublicClient,
     coreAddress: Address,
     processId: Hex,
@@ -362,7 +362,7 @@ export async function fetchCumulativeValue(
         functionName: "processes",
         args: [processId],
     });
-    // processes() returns (rootBuyer, currency, runningTotal, activeOrderCount)
+    // processes() returns (rootBuyer, token, runningTotal, activeOrderCount)
     return (result as readonly [Address, Address, bigint, bigint])[2];
 }
 
@@ -422,8 +422,8 @@ export function buildCommitment(params: CommitmentParams, domain: EIP712Domain) 
 /**
  * Convenience: fetch the process's current cumulative value and build a
  * sub-order commitment in one call, its `runningTotal` the value
- * FigaroCore will check — the process's cumulative value PLUS this order's
- * payment — so the struct cannot revert `CumulativeValueMismatch` against
+ * FigaroCore will check — the process's running total PLUS this order's
+ * payment — so the struct cannot revert `RunningTotalMismatch` against
  * the state it was built on.
  */
 export async function buildCommitmentSafe(
@@ -432,14 +432,14 @@ export async function buildCommitmentSafe(
     params: Omit<CommitmentParams, "runningTotal">,
     domain: EIP712Domain,
 ) {
-    const currentCumulativeValue = await fetchCumulativeValue(
+    const currentRunningTotal = await fetchRunningTotal(
         client,
         addresses.core,
         params.processId,
     );
 
     return buildCommitment(
-        { ...params, runningTotal: currentCumulativeValue + params.payment },
+        { ...params, runningTotal: currentRunningTotal + params.payment },
         domain,
     );
 }

@@ -268,7 +268,7 @@ contract HalmosFigaroCore is Test {
     //
     // After each sub-order commit, runningTotal strictly increases.
 
-    function check_cumulativeValueMonotonic(uint256 payment1, uint256 payment2) public {
+    function check_runningTotalMonotonic(uint256 payment1, uint256 payment2) public {
         vm.assume(payment1 > 0 && payment1 <= type(uint64).max);
         vm.assume(payment2 > 0 && payment2 <= type(uint64).max);
         uint256 cumAfterSub = payment1 + payment2;

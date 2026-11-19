@@ -11,7 +11,7 @@ import {MockERC20SixDecimals} from "src/mocks/MockERC20SixDecimals.sol";
 
 /// @title WeirdTokenTest — FigaroCore against the ERC-20 shapes beyond the
 ///        fee-on-transfer rejection
-/// @notice The currency is the parties' choice and its terms ride into the
+/// @notice The token is the parties' choice and its terms ride into the
 ///         process (`DESIGN_DECISIONS.md` #9). Four shapes: no return value
 ///         (settles, through SafeERC20), six decimals (settles exactly, the
 ///         FigaroCore never reads `decimals()`), an issuer blocklist (a blocked
@@ -187,7 +187,7 @@ contract WeirdTokenTest is Test {
         rbs.approve(address(core), type(uint256).max);
     }
 
-    function _commitRoot(address currency, address seller, uint256 sellerKey, uint256 payment, uint256 salt)
+    function _commitRoot(address bondToken, address seller, uint256 sellerKey, uint256 payment, uint256 salt)
         internal
         returns (bytes32 processId, CommitmentTypes.Commitment memory c)
     {
@@ -195,7 +195,7 @@ contract WeirdTokenTest is Test {
             processId: bytes32(0),
             buyer: buyer,
             seller: seller,
-            token: currency,
+            token: bondToken,
             payment: payment,
             runningTotal: payment,
             checkoutHash: keccak256("root-agreement"),
@@ -206,7 +206,7 @@ contract WeirdTokenTest is Test {
     }
 
     function _commitSub(
-        address currency,
+        address bondToken,
         bytes32 processId,
         address seller,
         uint256 sellerKey,
@@ -218,7 +218,7 @@ contract WeirdTokenTest is Test {
             processId: processId,
             buyer: buyer,
             seller: seller,
-            token: currency,
+            token: bondToken,
             payment: payment,
             runningTotal: expectedCum,
             checkoutHash: keccak256("sub-agreement"),

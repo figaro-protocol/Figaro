@@ -56,8 +56,8 @@ describe("readFundingLegs — devnet receipts", () => {
         expect(leg.blockNumber).toBe(receipt.blockNumber);
         expect(leg.transactionHash).toBe(receipt.transactionHash);
         expect(lower(leg.payload.party)).toBe(lower(commit.buyer));
-        expect(lower(leg.payload.tokenOut)).toBe(lower(commit.currency));
-        expect(lower(leg.payload.tokenIn)).not.toBe(lower(commit.currency));
+        expect(lower(leg.payload.tokenOut)).toBe(lower(commit.token));
+        expect(lower(leg.payload.tokenIn)).not.toBe(lower(commit.token));
         // The output covers the buyer's bond: twice the payment.
         expect(leg.payload.amountOut).toBe(commit.payment * 2n);
         expect(leg.payload.amountIn).toBe(2_000000000000000000n);
@@ -71,7 +71,7 @@ describe("readFundingLegs — devnet receipts", () => {
         const [leg] = legs;
         expect(lower(leg.venue)).toBe(lower(fixture.venue));
         expect(lower(leg.payload.party)).toBe(lower(commit.seller));
-        expect(lower(leg.payload.tokenOut)).toBe(lower(commit.currency));
+        expect(lower(leg.payload.tokenOut)).toBe(lower(commit.token));
         expect(leg.payload.amountOut).toBe(commit.runningTotal * 2n);
     });
 
@@ -141,7 +141,7 @@ function fundedLeg(party: Address, tokenIn: Address, pulled: bigint, spent: bigi
 }
 
 describe("readFundingLegs — both parties, and an unspent input", () => {
-    const commitment = { buyer: BUYER, seller: SELLER, currency: DENOM };
+    const commitment = { buyer: BUYER, seller: SELLER, token: DENOM };
 
     it("both parties funded: one leg each, in the order they ran, net of the unspent input", () => {
         const buyer = fundedLeg(BUYER, IN_A, 120n, 100n, 200n, 200n);

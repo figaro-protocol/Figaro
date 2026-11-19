@@ -49,7 +49,7 @@ const TOKEN = "0x00000000000000000000000000000000000000c1";
 // Each log carries the decoded args the cache attaches (`orderCommittedLog` has none; add what the timeline reads).
 const commit: FixtureLog = {
     ...orderCommittedLog({ address: VERIFIER, blockNumber: 4n, orderHash: ORDER, processId: PROCESS, buyer: BUYER, seller: SELLER, payment: 5_000_000n }),
-    args: { orderHash: ORDER, processId: PROCESS, buyer: BUYER, seller: SELLER, currency: TOKEN, payment: 5_000_000n },
+    args: { orderHash: ORDER, processId: PROCESS, buyer: BUYER, seller: SELLER, token: TOKEN, payment: 5_000_000n },
 };
 const resolved = orderResolvedLog({ address: VERIFIER, blockNumber: 9n, orderHash: ORDER, processId: PROCESS, sellerPayout: 5_000_000n, buyerPayout: 0n });
 const attested = attestationLog({ address: VERIFIER, blockNumber: 6n, orderHash: ORDER, processId: PROCESS, attester: SELLER, clauseId: CLAUSE, stage: 1, contentRef: word(0xba) });

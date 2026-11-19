@@ -31,7 +31,7 @@ Read the [whole model](/) first, and [The contracts](/protocol/contracts/) for t
 
 **A fee-on-transfer token makes `FigaroCore` refuse the commit.** The bond arithmetic depends on `FigaroCore` receiving exactly what was committed; a fee-on-transfer or rebasing ERC-20 breaks that, and `FigaroCore` reverts `FeeOnTransferDetected` (`src/core/kernel/FigaroCore.sol:128`). Pay in a plain, non-fee-on-transfer, non-rebasing token. See the error on [The contracts](/protocol/contracts/).
 
-**A process cannot mix ERC-20s.** The 2:1 bond ratio is a same-unit comparison, so `FigaroCore` refuses any oracle or DEX dependency that would compare across tokens and reverts `CurrencyMismatch` on an extending order whose `currency` differs from the process's. Mix currencies by composing parallel processes, or swap before commit — never within one process. The cost model is on [Composition](/protocol/composition/).
+**A process cannot mix ERC-20s.** The 2:1 bond ratio is a same-unit comparison, so `FigaroCore` refuses any oracle or DEX dependency that would compare across tokens and reverts `TokenMismatch` on an extending order whose `token` differs from the process's. Mix currencies by composing parallel processes, or swap before commit — never within one process. The cost model is on [Composition](/protocol/composition/).
 
 ## Resolution-time — resolving, and recording what it earned
 

@@ -140,7 +140,7 @@ pub fn filter_applicable_ops(
 
 /// Whether a Core refusal against the LANDED state is final. The state
 /// behind the verifier's root only moves forward — a process, once it
-/// exists, keeps its root buyer and currency; an order goes from
+/// exists, keeps its root buyer and token; an order goes from
 /// uncommitted to committed to resolved and never back; the chain's clock
 /// only advances — and a signature or a witness fails whatever the state.
 /// The rest name what a later operation may still supply: a process or an
@@ -155,7 +155,7 @@ pub fn filter_applicable_ops(
 pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bool {
     match e {
         KernelError::IncompleteOrderList { required, provided } => provided < required,
-        KernelError::CumulativeValueMismatch { expected, actual } => expected < actual,
+        KernelError::RunningTotalMismatch { expected, actual } => expected < actual,
         KernelError::StaleResolveAuthorization { signed, current } => signed < current,
         KernelError::OrderNotCommitted(_) => match op {
             KernelOp::Resolve {
@@ -177,7 +177,7 @@ pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bo
         | KernelError::InvalidSellerSignature
         | KernelError::InvalidSignature
         | KernelError::ZeroPayment
-        | KernelError::InvalidRootCumulativeValue
+        | KernelError::InvalidRootRunningTotal
         | KernelError::Overflow
         | KernelError::ProcessAlreadyExists
         | KernelError::DuplicateCommitment
@@ -185,7 +185,7 @@ pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bo
         | KernelError::NoActiveOrders
         | KernelError::OrderAlreadyResolved
         | KernelError::NotProcessBuyer
-        | KernelError::CurrencyMismatch
+        | KernelError::TokenMismatch
         | KernelError::NotAuthorized
         | KernelError::InvalidInclusionProof
         | KernelError::ClauseSpecParseFailed(_)

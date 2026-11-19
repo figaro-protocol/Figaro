@@ -595,7 +595,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
             let escrow = 0n;
             for (const { s, event, payment } of commits) {
                 expect(event.args.processId, `${s.label} is in the one process`).toBe(processId);
-                expect((event.args.currency as string).toLowerCase(), `${s.label}'s order is in the one denomination`).toBe(mockToken.toLowerCase());
+                expect((event.args.token as string).toLowerCase(), `${s.label}'s order is in the one denomination`).toBe(mockToken.toLowerCase());
                 expect(event.args.payment, `${s.label}'s payment is the amount the buyer signed, in MOCK`).toBe(payment);
                 cumulative += payment;
                 expect(event.args.runningTotal, `the cumulative value through ${s.label}`).toBe(cumulative);
@@ -614,7 +614,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
             // The funding leg, read from contributor-1's commit receipt through
             // the SDK reader: MPMT out of its own wallet, MOCK in, at the venue.
             const legs = readFundingLegs(c1Commit.receipt.logs, {
-                buyer: c1Commit.event.args.buyer!, seller: c1Commit.event.args.seller!, currency: c1Commit.event.args.currency!,
+                buyer: c1Commit.event.args.buyer!, seller: c1Commit.event.args.seller!, token: c1Commit.event.args.token!,
             }, swapCoordinator);
             expect(legs, 'one funding leg in contributor-1\'s commit').toHaveLength(1);
             const [leg] = legs;

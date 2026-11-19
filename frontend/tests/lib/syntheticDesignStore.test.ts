@@ -83,7 +83,7 @@ describe("syntheticDesignStore round-trip", () => {
         const nonSerializable = Object.entries(order).filter(
             ([key, v]) =>
                 typeof v === "bigint" &&
-                !["runningTotal", "payment", "sellerBond", "buyerBond", "salt", "deadline"].includes(key),
+                !["runningTotal", "payment", "sellerBond", "buyerBond", "salt", "commitDeadline"].includes(key),
         );
         // Any hit here is a field the store's serializer doesn't know — it
         // would throw inside JSON.stringify and be silently swallowed.

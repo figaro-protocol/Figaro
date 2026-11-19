@@ -17,7 +17,7 @@ there, never quote a remembered number.
 **Pattern**: `resolveProcess()` sets `ps.activeOrderCount = 0`. Any
 subsequent `commit()` targeting that same `processId` reverts with
 `ProcessAlreadyResolved`. The `ProcessState` struct is not deleted —
-`rootBuyer`, `currency`, and `runningTotal` persist — but the gate at
+`rootBuyer`, `token`, and `runningTotal` persist — but the gate at
 the top of the sub-order branch refuses extension.
 
 **Why it looks like overhead**: A reviewer trained on permissionless
@@ -193,7 +193,7 @@ as a salt would introduce a partial-predictability vector for validator-MEV.
 The party-chosen `salt`, signed by both buyer and seller in the EIP-712
 commitment, is sufficient. If both parties sign the same salt twice (same
 commitment submitted a second time), the replay is rejected — by
-`ProcessAlreadyExists` at the root and `CumulativeValueMismatch` on
+`ProcessAlreadyExists` at the root and `RunningTotalMismatch` on
 sub-orders (the accumulator has strictly moved), with `DuplicateCommitment`
 as the content-addressed backstop behind both (the revert-branch suite pins
 the preempting error on each path). The salt does not need to be
@@ -330,8 +330,8 @@ the state root does not move.
 
 ## 10. Single currency per process — multi-token is a composition concern
 
-**Pattern**: `commit` binds every order in a process to one `currency` address;
-sub-orders with a mismatched currency revert (`CurrencyMismatch`). Two parties
+**Pattern**: `commit` binds every order in a process to one `token` address;
+sub-orders with a mismatched currency revert (`TokenMismatch`). Two parties
 cannot buy and sell in different tokens within the same process.
 
 **Why it looks correct and IS correct**: The 2:1 asymmetric bond ratio is
@@ -1256,7 +1256,7 @@ another number of orders than its design entry follows entries).
 **Pattern**: Two facts about a process's orders have two sources, and a
 reader keeps them apart. Which order opened the process is the Core's fact:
 the opening order is committed with a zero `processId`, and its cumulative
-value is its own payment (`InvalidRootCumulativeValue`, `FigaroCore.commit`;
+value is its own payment (`InvalidRootRunningTotal`, `FigaroCore.commit`;
 the same refusal in the proof program, `prover/lib/src/kernel.rs`). Both
 paths carry `payment` and `runningTotal` in `OrderCommitted`, and
 `isProcessRoot` (`sdk/src/state.ts`) reads them. Which order follows which is

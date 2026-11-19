@@ -75,7 +75,7 @@ export function calculateRootApproval(payment: bigint): {
  * offset against bonds FigaroCore already holds from earlier orders in
  * the process:
  *   Buyer:  2 × payment            (pulled again, per order)
- *   Seller: 2 × newCumulativeValue (the whole cumulative bond for this
+ *   Seller: 2 × newRunningTotal    (the whole cumulative bond for this
  *                                   order, NOT the increment over the
  *                                   previous order's bond)
  *
@@ -85,14 +85,14 @@ export function calculateRootApproval(payment: bigint): {
  */
 export function calculateSubOrderApproval(
     payment: bigint,
-    newCumulativeValue: bigint,
+    newRunningTotal: bigint,
 ): {
     buyerApproval: bigint;
     sellerApproval: bigint;
 } {
     return {
         buyerApproval: payment * 2n,
-        sellerApproval: newCumulativeValue * 2n,
+        sellerApproval: newRunningTotal * 2n,
     };
 }
 

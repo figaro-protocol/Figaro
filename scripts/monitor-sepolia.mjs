@@ -208,7 +208,7 @@ const statuses = [];
 for (const o of committed) {
     statuses.push(await client.readContract({ address: record.figaroCore, abi: coreAbi, functionName: "orderStatus", args: [o.args.orderHash] }));
 }
-const held = new Map(); // currency → bonds still locked
+const held = new Map(); // token → bonds still locked
 let open = 0;
 let resolved = 0;
 committed.forEach((o, i) => {
@@ -216,19 +216,19 @@ committed.forEach((o, i) => {
     if (statuses[i] !== 1) throw new Error(`order ${o.args.orderHash} committed in tx ${o.transactionHash} has FigaroCore status ${statuses[i]}; the node is not on this deployment's chain`);
     open++;
     const bonds = 2n * o.args.payment + 2n * o.args.runningTotal;
-    held.set(o.args.currency, (held.get(o.args.currency) ?? 0n) + bonds);
+    held.set(o.args.token, (held.get(o.args.token) ?? 0n) + bonds);
 });
-const currencies = new Set(committed.map((o) => o.args.currency));
-for (const currency of currencies) {
-    const expected = held.get(currency) ?? 0n;
+const tokens = new Set(committed.map((o) => o.args.token));
+for (const token of tokens) {
+    const expected = held.get(token) ?? 0n;
     const [balance, decimals, symbol] = await Promise.all([
-        client.readContract({ address: currency, abi: erc20Abi, functionName: "balanceOf", args: [record.figaroCore] }),
-        client.readContract({ address: currency, abi: erc20Abi, functionName: "decimals" }).catch(() => 18),
-        client.readContract({ address: currency, abi: erc20Abi, functionName: "symbol" }).catch(() => currency),
+        client.readContract({ address: token, abi: erc20Abi, functionName: "balanceOf", args: [record.figaroCore] }),
+        client.readContract({ address: token, abi: erc20Abi, functionName: "decimals" }).catch(() => 18),
+        client.readContract({ address: token, abi: erc20Abi, functionName: "symbol" }).catch(() => token),
     ]);
     const line = `${symbol}: holds ${formatUnits(balance, decimals)}, open bonds ${formatUnits(expected, decimals)}`;
     if (balance < expected) {
-        alert("critical", `insolvent-${currency}`,
+        alert("critical", `insolvent-${token}`,
             `Monitor: FigaroCore holds less than its open bonds in ${symbol}`,
             `${line}. Invariant A-8 is broken: some resolution will fail or some bond has left FigaroCore other than at resolution. Treat as the worst case in SECURITY.md § "Incident response".`);
     } else if (balance > expected) {
@@ -237,7 +237,7 @@ for (const currency of currencies) {
         notes.push(`${line} (exact)`);
     }
 }
-notes.push(`${committed.length} order(s) committed, ${resolved} resolved, ${open} open, ${currencies.size} currenc${currencies.size === 1 ? "y" : "ies"}`);
+notes.push(`${committed.length} order(s) committed, ${resolved} resolved, ${open} open, ${tokens.size} currenc${tokens.size === 1 ? "y" : "ies"}`);
 
 // ── Report ────────────────────────────────────────────────────────────
 

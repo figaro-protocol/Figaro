@@ -196,7 +196,7 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
 });
 
 describe("buildCommitmentSafe — the sub-order's cumulative value is what FigaroCore checks", () => {
-    const processes = async () => [BUYER, TOKEN, 700n, 2n] as const; // rootBuyer, currency, runningTotal, activeOrderCount
+    const processes = async () => [BUYER, TOKEN, 700n, 2n] as const; // rootBuyer, token, runningTotal, activeOrderCount
     const client = { readContract: processes } as unknown as Parameters<typeof buildCommitmentSafe>[0];
     const addresses = { core: CORE_ADDR } as Parameters<typeof buildCommitmentSafe>[1];
     const domain = buildDomain(31337, CORE_ADDR);
@@ -206,7 +206,7 @@ describe("buildCommitmentSafe — the sub-order's cumulative value is what Figar
             processId: PROCESS_ID, buyer: BUYER, seller: SELLER, token: TOKEN, payment: 50n,
             checkoutHash: AGREEMENT, salt: 1n, commitDeadline: 2_000_000n,
         }, domain);
-        // FigaroCore: the commitment's runningTotal == the process's runningTotal + payment, else CumulativeValueMismatch.
+        // FigaroCore: the commitment's runningTotal == the process's runningTotal + payment, else RunningTotalMismatch.
         expect(commitment.runningTotal).toBe(700n + 50n);
         expect(commitment.payment).toBe(50n);
         expect(commitment.processId).toBe(PROCESS_ID);

@@ -565,7 +565,7 @@ export function walletRecordAnswer(corpus, wallet) {
         truthBoundary: rec.boundary,
         wallet: rec.wallet,
         processesAsRootBuyer: rec.processesAsRootBuyer.map((p) => ({
-            processId: p.processId, currency: p.currency, runningTotal: p.runningTotal,
+            processId: p.processId, token: p.token, runningTotal: p.runningTotal,
             resolved: p.resolved, orderCount: p.orders.size,
         })),
         ordersAsBuyer: rec.ordersAsBuyer.map(orderRow),
@@ -576,7 +576,7 @@ export function walletRecordAnswer(corpus, wallet) {
 function orderRow(o) {
     return {
         orderHash: o.orderHash, processId: o.processId, buyer: o.buyer, seller: o.seller,
-        currency: o.currency, payment: o.payment, runningTotal: o.runningTotal,
+        token: o.token, payment: o.payment, runningTotal: o.runningTotal,
         state: o.state, blockNumber: o.blockNumber,
         sellerPayout: o.sellerPayout ?? null, buyerPayout: o.buyerPayout ?? null,
     };
@@ -638,7 +638,7 @@ export function tradeStory(corpus, processId) {
         found: true,
         resolution: {
             truthBoundary: corpus.graphs.resolution.boundary,
-            currency: chain.currency,
+            token: chain.token,
             runningTotal: chain.runningTotal,
             resolved: chain.resolved,
             orders: chain.orders.map((o) => ({

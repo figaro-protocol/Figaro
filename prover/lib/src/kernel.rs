@@ -133,13 +133,13 @@ fn apply_commit(
             return Err(KernelError::ProcessAlreadyExists);
         }
         if c.running_total != c.payment {
-            return Err(KernelError::InvalidRootCumulativeValue);
+            return Err(KernelError::InvalidRootRunningTotal);
         }
         state.insert_process(
             process_id,
             ProcessState {
                 root_buyer: c.buyer,
-                currency: c.token,
+                token: c.token,
                 running_total: c.payment,
                 active_order_count: 1,
             },
@@ -155,15 +155,15 @@ fn apply_commit(
         if c.buyer != ps.root_buyer {
             return Err(KernelError::NotProcessBuyer);
         }
-        if c.token != ps.currency {
-            return Err(KernelError::CurrencyMismatch);
+        if c.token != ps.token {
+            return Err(KernelError::TokenMismatch);
         }
         let actual = ps
             .running_total
             .checked_add(c.payment)
             .ok_or(KernelError::Overflow)?;
         if c.running_total != actual {
-            return Err(KernelError::CumulativeValueMismatch {
+            return Err(KernelError::RunningTotalMismatch {
                 expected: c.running_total,
                 actual,
             });
@@ -253,7 +253,7 @@ fn apply_resolve(
         });
     }
 
-    let currency = ps.currency;
+    let token = ps.token;
     let buyer = ps.root_buyer;
 
     // ── Per-order resolution ──
@@ -270,8 +270,8 @@ fn apply_resolve(
 
         let (seller_payout, buyer_payout) = resolution_payouts(c)?;
 
-        tracker.payout(currency, c.seller, seller_payout)?;
-        tracker.payout(currency, buyer, buyer_payout)?;
+        tracker.payout(token, c.seller, seller_payout)?;
+        tracker.payout(token, buyer, buyer_payout)?;
 
         state.set_order_status(order_hash, 2)?;
     }

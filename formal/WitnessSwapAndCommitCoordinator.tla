@@ -9,7 +9,7 @@
  * output to that party's own EOA, then calls `FigaroCore.commit`, which pulls the
  * bonds from the named parties. The swap is the ON-RAMP into the process
  * denomination, never the denomination itself — FigaroCore still sees exactly one
- * currency (`c.currency`).
+ * currency (`c.token`).
  *
  * WHAT IS MODELED — the funds state machine, at EVM-step granularity so that the
  * intermediate "swap executed, commit not yet" states are REACHABLE and therefore
@@ -32,7 +32,7 @@
  *                        (the two `_pullExact` calls of `FigaroCore.commit`),
  *                        after its root-order guard
  *                        `runningTotal == payment`
- *                        (`InvalidRootCumulativeValue`)
+ *                        (`InvalidRootRunningTotal`)
  *   Revert            →  EVM revert from ANY mid-call step: the whole call frame
  *                        rolls back to the snapshot. Enabled everywhere in-flight,
  *                        which subsumes every named revert (SwapCallFailed,
@@ -54,7 +54,7 @@
  *   Multi-currency processes           — forbidden by doctrine; one bond currency.
  *   Input token equal to the bond currency — the contract does not refuse
  *                                        an `inputToken` equal to
- *                                        `c.currency`; the model's two tokens
+ *                                        `c.token`; the model's two tokens
  *                                        are distinct, so that case is outside
  *                                        the model.
  *   Sub-orders / process chains        — root orders only (`runningTotal`
@@ -239,10 +239,10 @@ LegSwapSettle(party, maxIn, bondAmount, nxt, consumed, received) ==
 \* figaroCore.commit(c, buyerSig, sellerSig). FigaroCore pulls the bonds from the
 \* NAMED parties, not from msg.sender — which is why the coordinator funds the
 \* party in place and never becomes a counterparty.
-\*   _pullExact(currency, c.buyer,  c.payment * 2)                 FigaroCore.commit
-\*   _pullExact(currency, c.seller, c.runningTotal * 2) FigaroCore.commit
+\*   _pullExact(token, c.buyer,  c.payment * 2)                 FigaroCore.commit
+\*   _pullExact(token, c.seller, c.runningTotal * 2) FigaroCore.commit
 \* Root-order guard: runningTotal must equal payment, else
-\* InvalidRootCumulativeValue reverts the whole call            FigaroCore.commit
+\* InvalidRootRunningTotal reverts the whole call            FigaroCore.commit
 Commit ==
   /\ pc = "commit"
   /\ tx.cumVal = tx.payment
@@ -267,7 +267,7 @@ Commit ==
 \* An EVM revert at any point in the call frame. Restores everything the frame
 \* touched. Enabled from every in-flight phase, so it subsumes every named revert
 \* path (NothingToFund is a pre-state guard; SwapCallFailed; OutputBelowBond;
-\* InvalidRootCumulativeValue; a failed _pullExact; out-of-gas).
+\* InvalidRootRunningTotal; a failed _pullExact; out-of-gas).
 \*
 \* `routeMismatch` and `txCount` are model bookkeeping, not chain state, so they
 \* are deliberately NOT rolled back.

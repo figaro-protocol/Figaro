@@ -699,9 +699,9 @@ const { buyerApproval, sellerApproval } = calculateRootApproval(payment);
 // → buyerApproval = 2 × payment,  sellerApproval = 2 × payment
 
 // Sub-order (extends an existing process):
-const approvals = calculateSubOrderApproval(payment, newCumulativeValue);
+const approvals = calculateSubOrderApproval(payment, newRunningTotal);
 // → buyerApproval  = 2 × payment
-//   sellerApproval = 2 × newCumulativeValue  — the WHOLE cumulative bond for
+//   sellerApproval = 2 × newRunningTotal  — the WHOLE cumulative bond for
 //   this order, NOT the increment over the previous order's bond.
 ```
 
@@ -724,7 +724,7 @@ number GROWS with the chain even though their own link only added 40 or 25.
 Every one of those 330 + 810 units stays locked in `FigaroCore` until the buyer
 calls `resolveProcess`; nothing is released order by order.
 
-Approving the *increment* instead of the full `2 × newCumulativeValue` is the
+Approving the *increment* instead of the full `2 × newRunningTotal` is the
 reverting mistake: `commit` reverts inside the token with
 `ERC20InsufficientAllowance`, and the bonds already pulled for the earlier
 orders stay locked in `FigaroCore` until the buyer resolves the process.
@@ -737,7 +737,7 @@ instead of leaving you to decode `ERC20InsufficientAllowance`.
 ```ts
 import { assertApprovalCoversBond } from "@figaro-protocol/sdk";
 
-const required = calculateSubOrderApproval(payment, newCumulativeValue);
+const required = calculateSubOrderApproval(payment, newRunningTotal);
 assertApprovalCoversBond({ buyerApproval, sellerApproval }, required); // throws if either falls short
 ```
 
@@ -2945,7 +2945,7 @@ trade moved to the batch path under-reports.
   through a funded EOA it controls (this is how the DAO treasury buys — it never
   signs a commitment itself).
 - **Event-sourced state** — `Topology` reconstructs the full process/order topology from on-chain events. No subgraph dependency.
-- **Live `FigaroCore` event contract** — reconstruction assumes `OrderCommitted` carries the full commitment payload (`checkoutHash`, `salt`, `deadline`) and that order/process closure is derived from `OrderResolved` plus `ProcessResolved`.
+- **Live `FigaroCore` event contract** — reconstruction assumes `OrderCommitted` carries the full commitment payload (`checkoutHash`, `salt`, `commitDeadline`) and that order/process closure is derived from `OrderResolved` plus `ProcessResolved`.
 - **Agent-native** — the proposer generates typed actions; the HITL queue and autonomous gateway are two execution modes for the same action type.
 
 ## Versioning & stability

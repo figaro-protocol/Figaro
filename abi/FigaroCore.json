@@ -177,7 +177,7 @@
         "internalType": "address"
       },
       {
-        "name": "currency",
+        "name": "token",
         "type": "address",
         "internalType": "contract IERC20"
       },
@@ -294,7 +294,7 @@
         "internalType": "address"
       },
       {
-        "name": "currency",
+        "name": "token",
         "type": "address",
         "indexed": false,
         "internalType": "address"
@@ -324,7 +324,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "deadline",
+        "name": "commitDeadline",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -409,27 +409,6 @@
   },
   {
     "type": "error",
-    "name": "CumulativeValueMismatch",
-    "inputs": [
-      {
-        "name": "expected",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "actual",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "CurrencyMismatch",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "DeadlineExpired",
     "inputs": []
   },
@@ -493,7 +472,7 @@
   },
   {
     "type": "error",
-    "name": "InvalidRootCumulativeValue",
+    "name": "InvalidRootRunningTotal",
     "inputs": []
   },
   {
@@ -544,6 +523,22 @@
   },
   {
     "type": "error",
+    "name": "RunningTotalMismatch",
+    "inputs": [
+      {
+        "name": "expected",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "actual",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "SafeERC20FailedOperation",
     "inputs": [
       {
@@ -563,6 +558,11 @@
         "internalType": "string"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "TokenMismatch",
+    "inputs": []
   },
   {
     "type": "error",

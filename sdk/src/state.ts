@@ -44,7 +44,7 @@ export function reconstruct(events: CoreEvents): Map<Hex, Process> {
  * `OrderCommitted` event alone: the root's `runningTotal` equals its own
  * `payment`. Both paths emit the two fields (`FigaroCore._emitCommitted`,
  * `FigaroBatchVerifier._emitCommitted`), and both refuse a root whose declared
- * cumulative value is not its payment (`InvalidRootCumulativeValue`, in
+ * running total is not its payment (`InvalidRootRunningTotal`, in
  * `FigaroCore.commit` and in the proof program). A later order adds a
  * non-zero payment to the running total, so its cumulative value is larger
  * than its payment. The agreement's topology leaf is never read here: it is
@@ -133,7 +133,7 @@ export class Topology {
         return {
             processId,
             rootBuyer: process.rootBuyer,
-            currency: process.currency,
+            token: process.token,
             runningTotal: process.runningTotal,
             activeOrderCount: [...process.orders.values()].filter(
                 (o) => o.state === OS.Active,
@@ -151,12 +151,12 @@ export class Topology {
             processId: e.processId,
             buyer: e.buyer,
             seller: e.seller,
-            currency: e.currency,
+            token: e.token,
             payment: e.payment,
             runningTotal: e.runningTotal,
             checkoutHash: e.checkoutHash,
             salt: e.salt,
-            deadline: e.deadline,
+            commitDeadline: e.commitDeadline,
             state: OS.Active,
             blockNumber: e.blockNumber,
         };
@@ -168,7 +168,7 @@ export class Topology {
             process = {
                 processId: e.processId,
                 rootBuyer: e.buyer,
-                currency: e.currency,
+                token: e.token,
                 runningTotal: e.runningTotal,
                 orders: new Map(),
                 resolved: false,

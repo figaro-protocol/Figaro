@@ -1294,7 +1294,7 @@ fn commit_at(timestamp: u64) -> Result<(PublicValues, Vec<NetPosition>, BatchEve
 
 #[test]
 fn a_commitment_lives_through_its_deadline_and_not_one_second_past() {
-    // FigaroCore: `if (c.deadline < block.timestamp) revert DeadlineExpired()`.
+    // FigaroCore: `if (c.commitDeadline < block.timestamp) revert DeadlineExpired()`.
     let deadline: u64 = root_commitment().commit_deadline.try_into().unwrap();
     assert!(commit_at(deadline - 1).is_ok(), "before the deadline");
     assert!(
@@ -1340,7 +1340,7 @@ fn the_state_root_binds_every_map_it_covers() {
             PROCESS_ID,
             ProcessState {
                 root_buyer: BUYER,
-                currency: TOKEN,
+                token: TOKEN,
                 running_total: U256::from(100u64),
                 active_order_count: 1,
             },
@@ -1367,8 +1367,8 @@ fn the_state_root_binds_every_map_it_covers() {
     s.processes[0].1.root_buyer = SELLER1;
     cases.push(("a process's buyer", s));
     let mut s = base.clone();
-    s.processes[0].1.currency = CORE;
-    cases.push(("a process's currency", s));
+    s.processes[0].1.token = CORE;
+    cases.push(("a process's token", s));
     let mut s = base.clone();
     s.processes[0].0 = SUB_DIGEST;
     cases.push(("a process's id", s));
@@ -1747,10 +1747,10 @@ fn a_resolve_signed_before_a_later_commit_is_refused() {
     }
 }
 
-/// A resolve signed over the process's cumulative value at application
+/// A resolve signed over the process's running total at application
 /// resolves both orders.
 #[test]
-fn a_resolve_signed_over_the_current_cumulative_value_resolves() {
+fn a_resolve_signed_over_the_current_running_total_resolves() {
     let current = sub_commitment().running_total;
     let (_pv, positions, _events) =
         apply_batch(&two_commits_then_resolve(current)).expect("resolves");

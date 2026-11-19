@@ -255,7 +255,7 @@ test.describe('THE UTILITY-TOKEN REFERENCE — equipment hire, denominated by de
 
         // ── (b) THE COMMITMENT'S CURRENCY, read back from chain, is the pin. ──
         expect(
-            (event.args.currency as string).toLowerCase(),
+            (event.args.token as string).toLowerCase(),
             'the OrderCommitted currency is the assembly\'s pinned token',
         ).toBe(mockToken.toLowerCase());
 

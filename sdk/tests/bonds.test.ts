@@ -85,12 +85,12 @@ describe("assertApprovalCoversBond", () => {
     it("catches the classic increment-only sub-order bug (seller side)", () => {
         // A process at runningTotal 20 grows to 27 with a new order of payment 5.
         // The classic bug approves 2×(27-20)=14 instead of the full 2×27=54.
-        const previousCumulativeValue = 20n;
-        const newCumulativeValue = 27n;
-        const calc = calculateSubOrderApproval(5n, newCumulativeValue);
+        const previousRunningTotal = 20n;
+        const newRunningTotal = 27n;
+        const calc = calculateSubOrderApproval(5n, newRunningTotal);
         const buggyApproval = {
             buyerApproval: calc.buyerApproval,
-            sellerApproval: (newCumulativeValue - previousCumulativeValue) * 2n,
+            sellerApproval: (newRunningTotal - previousRunningTotal) * 2n,
         };
         expect(() => assertApprovalCoversBond(buggyApproval, calc)).toThrow(/Seller approval/);
         expect(() => assertApprovalCoversBond(buggyApproval, calc)).toThrow(/increment/);

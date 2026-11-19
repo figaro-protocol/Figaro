@@ -185,7 +185,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
  *  `projectValueFlow`. Empty when the record composes no coordinator. */
 type CommittedEventLog = {
     transactionHash: Hex | null;
-    args: { buyer?: Hex; seller?: Hex; currency?: Hex };
+    args: { buyer?: Hex; seller?: Hex; token?: Hex };
 };
 async function expectedLegEdges(
     publicClient: ReturnType<typeof localPublicClient>,
@@ -200,7 +200,7 @@ async function expectedLegEdges(
         if (!e.transactionHash) continue;
         const tx = e.transactionHash.toLowerCase();
         if (!receipts.has(tx)) receipts.set(tx, await publicClient.getTransactionReceipt({ hash: e.transactionHash }));
-        const commitment = { buyer: e.args.buyer!, seller: e.args.seller!, currency: e.args.currency! };
+        const commitment = { buyer: e.args.buyer!, seller: e.args.seller!, token: e.args.token! };
         for (const leg of readFundingLegs(receipts.get(tx)!.logs, commitment, swapCoordinator)) {
             const key = `${tx}|${leg.payload.party.toLowerCase()}|${leg.payload.tokenIn.toLowerCase()}`;
             if (seen.has(key)) continue;
@@ -516,7 +516,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'symbol' }),
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'decimals' }),
         ]);
-        const tokenOrders = allCommitted.filter((e) => (e.args.currency as string).toLowerCase() === token.toLowerCase());
+        const tokenOrders = allCommitted.filter((e) => (e.args.token as string).toLowerCase() === token.toLowerCase());
         const tokenProcessCount = new Set(tokenOrders.map((e) => (e.args.processId as string).toLowerCase())).size;
         const tokenSettledOrders = tokenOrders.filter((e) => resolvedOrderHashes.has((e.args.orderHash as string).toLowerCase())).length;
 
@@ -549,7 +549,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         const clientProcesses = new Set(clientBuyerOrders.map((e) => (e.args.processId as string).toLowerCase()));
         const clientSettledProcesses = [...clientProcesses].filter((p) => resolvedProcessIds.has(p)).length;
         const clientDenominations = new Set(
-            [...clientBuyerOrders, ...clientSellerOrders].map((e) => (e.args.currency as string).toLowerCase()),
+            [...clientBuyerOrders, ...clientSellerOrders].map((e) => (e.args.token as string).toLowerCase()),
         ).size;
 
         // ── THE PAGE. Walletless by construction: no provider injected, no

@@ -200,7 +200,7 @@ export async function buildAuditBundleData(
 
     // The process token's decimals(), read from the chain; absent when unreadable.
     let tokenDecimals: number | undefined;
-    const processCurrency = orders[0]?.currency as `0x${string}` | undefined;
+    const processCurrency = orders[0]?.token as `0x${string}` | undefined;
     if (publicClient && processCurrency) {
         try {
             tokenDecimals = Number(await publicClient.readContract({ address: processCurrency, abi: erc20Abi, functionName: "decimals" }));

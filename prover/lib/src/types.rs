@@ -23,7 +23,7 @@ pub struct Commitment {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProcessState {
     pub root_buyer: Address,
-    pub currency: Address,
+    pub token: Address,
     pub running_total: U256,
     pub active_order_count: u64,
 }
@@ -630,12 +630,12 @@ pub enum KernelError {
     ZeroPayment,
     ProcessAlreadyExists,
     UnknownProcess,
-    CumulativeValueMismatch {
+    RunningTotalMismatch {
         expected: U256,
         actual: U256,
     },
     NotProcessBuyer,
-    CurrencyMismatch,
+    TokenMismatch,
     OrderNotCommitted(B256),
     NoActiveOrders,
     IncompleteOrderList {
@@ -650,7 +650,7 @@ pub enum KernelError {
         current: U256,
     },
     DuplicateCommitment,
-    InvalidRootCumulativeValue,
+    InvalidRootRunningTotal,
     ProcessAlreadyResolved,
     Overflow,
     InvalidSignature,
@@ -713,10 +713,10 @@ pub enum KernelError {
 impl core::fmt::Display for KernelError {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match self {
-            Self::CumulativeValueMismatch { expected, actual } => {
+            Self::RunningTotalMismatch { expected, actual } => {
                 write!(
                     f,
-                    "CumulativeValueMismatch(expected={expected}, actual={actual})"
+                    "RunningTotalMismatch(expected={expected}, actual={actual})"
                 )
             }
             Self::IncompleteOrderList { required, provided } => {

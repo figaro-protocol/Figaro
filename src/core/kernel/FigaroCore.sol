@@ -18,10 +18,10 @@ import "./CommitmentTypes.sol";
 ///
 ///         Invariants enforced on-chain:
 ///         - Asymmetric bonding (buyer: 2× payment, seller: 2× runningTotal)
-///         - Monotonic cumulative-value accumulator per process
+///         - Monotonic running-total accumulator per process
 ///         - Buyer identity (root buyer address in every sub-order, verified via signature)
 ///         - Buyer dominance (only root buyer can resolve — msg.sender enforced)
-///         - Single-currency invariant per process
+///         - Single-token invariant per process
 ///         - Atomic resolution with direct transfer (no internal ledger)
 ///         - Fee-on-transfer token rejection (_pullExact balance check)
 contract FigaroCore is EIP712, ReentrancyGuard {
@@ -31,19 +31,19 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     // ── Events ─────────────────────────────────────────────────────
 
     /// @notice Emitted when a commitment is bonded on-chain.
-    ///         Includes salt and deadline so agents can fully reconstruct
+    ///         Includes salt and commitDeadline so agents can fully reconstruct
     ///         Commitment structs from events alone (no calldata parsing).
     event OrderCommitted(
         bytes32 indexed orderHash,
         bytes32 indexed processId,
         address indexed buyer,
         address seller,
-        address currency,
+        address token,
         uint256 payment,
         uint256 runningTotal,
         bytes32 checkoutHash,
         uint256 salt,
-        uint256 deadline
+        uint256 commitDeadline
     );
 
     /// @notice Companion event for indexed seller lookup (EVM 3-index limit).
@@ -65,22 +65,22 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     error ZeroPayment();
     error ProcessAlreadyExists();
     error UnknownProcess();
-    error CumulativeValueMismatch(uint256 expected, uint256 actual);
+    error RunningTotalMismatch(uint256 expected, uint256 actual);
     error NotProcessBuyer();
-    error CurrencyMismatch();
+    error TokenMismatch();
     error OrderNotCommitted(bytes32 orderHash);
     error NoActiveOrders();
     error IncompleteOrderList(uint256 required, uint256 provided);
     error DuplicateCommitment();
     error FeeOnTransferDetected();
-    error InvalidRootCumulativeValue();
+    error InvalidRootRunningTotal();
     error ProcessAlreadyResolved();
 
     // ── Process state (the minimal accumulator) ───────────────────
 
     struct ProcessState {
         address rootBuyer;
-        IERC20 currency;
+        IERC20 token;
         uint256 runningTotal;
         uint256 activeOrderCount;
     }
@@ -170,11 +170,11 @@ contract FigaroCore is EIP712, ReentrancyGuard {
                 revert ProcessAlreadyExists();
             }
             if (c.runningTotal != c.payment) {
-                revert InvalidRootCumulativeValue();
+                revert InvalidRootRunningTotal();
             }
 
             processes[processId] = ProcessState({
-                rootBuyer: c.buyer, currency: IERC20(c.token), runningTotal: c.payment, activeOrderCount: 1
+                rootBuyer: c.buyer, token: IERC20(c.token), runningTotal: c.payment, activeOrderCount: 1
             });
         } else {
             // ── Sub-order: extend existing process ────────────────
@@ -182,14 +182,14 @@ contract FigaroCore is EIP712, ReentrancyGuard {
             if (ps.rootBuyer == address(0)) revert UnknownProcess();
             if (ps.activeOrderCount == 0) revert ProcessAlreadyResolved();
             if (c.buyer != ps.rootBuyer) revert NotProcessBuyer();
-            if (c.token != address(ps.currency)) revert CurrencyMismatch();
+            if (c.token != address(ps.token)) revert TokenMismatch();
 
-            uint256 actualCumulative = ps.runningTotal + c.payment;
-            if (c.runningTotal != actualCumulative) {
-                revert CumulativeValueMismatch(c.runningTotal, actualCumulative);
+            uint256 actualRunningTotal = ps.runningTotal + c.payment;
+            if (c.runningTotal != actualRunningTotal) {
+                revert RunningTotalMismatch(c.runningTotal, actualRunningTotal);
             }
 
-            ps.runningTotal = actualCumulative;
+            ps.runningTotal = actualRunningTotal;
             ps.activeOrderCount += 1;
         }
 
@@ -258,7 +258,7 @@ contract FigaroCore is EIP712, ReentrancyGuard {
             revert IncompleteOrderList(ps.activeOrderCount, commitments.length);
         }
 
-        IERC20 currency = ps.currency;
+        IERC20 token = ps.token;
         address buyer = ps.rootBuyer;
 
         for (uint256 i = 0; i < commitments.length; i++) {
@@ -273,13 +273,13 @@ contract FigaroCore is EIP712, ReentrancyGuard {
 
             // Overflow guard for the payout below; unreachable while the token keeps the Core's balance, which holds at least 4x this value
             if (c.runningTotal > type(uint256).max / 3) {
-                revert("CumulativeValueOverflow");
+                revert("RunningTotalOverflow");
             }
             uint256 sellerPayout = c.runningTotal * 2 + c.payment;
             uint256 buyerPayout = c.payment;
 
-            currency.safeTransfer(c.seller, sellerPayout);
-            currency.safeTransfer(buyer, buyerPayout);
+            token.safeTransfer(c.seller, sellerPayout);
+            token.safeTransfer(buyer, buyerPayout);
 
             orderStatus[orderHash] = 2;
 

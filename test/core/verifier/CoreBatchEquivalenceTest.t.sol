@@ -674,19 +674,19 @@ contract CoreBatchEquivalenceTest is Test {
     }
 
     /// @dev `OrderCommitted` with its ids read as the model's indices and its
-    ///      currency (the path's own token, checked) taken out of the data.
+    ///      token (the path's own token, checked) taken out of the data.
     function _committedRecord(uint256 t, uint256 path, Vm.Log memory l, address token)
         internal
         view
         returns (bytes memory)
     {
-        bytes memory data = l.data; // seller, currency, payment, runningTotal, checkoutHash, salt, deadline
-        address currency;
+        bytes memory data = l.data; // seller, token, payment, runningTotal, checkoutHash, salt, commitDeadline
+        address committedToken;
         assembly ("memory-safe") {
-            currency := mload(add(data, 64))
+            committedToken := mload(add(data, 64))
             mstore(add(data, 64), 0)
         }
-        if (currency != token) revert ObservableDiverges("events: OrderCommitted currency", t, path);
+        if (committedToken != token) revert ObservableDiverges("events: OrderCommitted token", t, path);
         return abi.encode(_oid(t, l.topics[1]), _pid(t, l.topics[2]), l.topics[3], data);
     }
 

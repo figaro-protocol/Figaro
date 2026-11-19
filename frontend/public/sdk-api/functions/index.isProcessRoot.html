@@ -20,7 +20,7 @@
 <code>OrderCommitted</code> event alone: the root's <code>runningTotal</code> equals its own
 <code>payment</code>. Both paths emit the two fields (<code>FigaroCore._emitCommitted</code>,
 <code>FigaroBatchVerifier._emitCommitted</code>), and both refuse a root whose declared
-cumulative value is not its payment (<code>InvalidRootCumulativeValue</code>, in
+running total is not its payment (<code>InvalidRootRunningTotal</code>, in
 <code>FigaroCore.commit</code> and in the proof program). A later order adds a
 non-zero payment to the running total, so its cumulative value is larger
 than its payment. The agreement's topology leaf is never read here: it is

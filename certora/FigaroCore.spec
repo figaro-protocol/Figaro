@@ -62,8 +62,8 @@ rule orderStatusTransitionsAreValid(bytes32 orderHash, method f) {
 // ═══════════════════════════════════════════════════════════════════
 
 rule activeCountRisesOrDropsToZero(bytes32 processId, method f) {
-    address rootBuyer; address currency; uint256 cumVal; uint256 countBefore;
-    (rootBuyer, currency, cumVal, countBefore) = processes(processId);
+    address rootBuyer; address token; uint256 cumVal; uint256 countBefore;
+    (rootBuyer, token, cumVal, countBefore) = processes(processId);
 
     require rootBuyer != 0;
 
@@ -71,8 +71,8 @@ rule activeCountRisesOrDropsToZero(bytes32 processId, method f) {
     calldataarg args;
     f(e, args);
 
-    address rootBuyer2; address currency2; uint256 cumVal2; uint256 countAfter;
-    (rootBuyer2, currency2, cumVal2, countAfter) = processes(processId);
+    address rootBuyer2; address token2; uint256 cumVal2; uint256 countAfter;
+    (rootBuyer2, token2, cumVal2, countAfter) = processes(processId);
 
     // After any function: count either stays, increases, or drops to 0 (resolve)
     assert countAfter >= countBefore || countAfter == 0,
@@ -88,8 +88,8 @@ rule activeCountRisesOrDropsToZero(bytes32 processId, method f) {
 // ═══════════════════════════════════════════════════════════════════
 
 rule onlyBuyerCanResolve(bytes32 processId, method f) {
-    address rootBuyer; address currency; uint256 cumVal; uint256 count;
-    (rootBuyer, currency, cumVal, count) = processes(processId);
+    address rootBuyer; address token; uint256 cumVal; uint256 count;
+    (rootBuyer, token, cumVal, count) = processes(processId);
 
     require rootBuyer != 0;
     require count > 0;
@@ -100,8 +100,8 @@ rule onlyBuyerCanResolve(bytes32 processId, method f) {
     calldataarg args;
     f(e, args);
 
-    address rootBuyer2; address currency2; uint256 cumVal2; uint256 countAfter;
-    (rootBuyer2, currency2, cumVal2, countAfter) = processes(processId);
+    address rootBuyer2; address token2; uint256 cumVal2; uint256 countAfter;
+    (rootBuyer2, token2, cumVal2, countAfter) = processes(processId);
 
     // A non-buyer cannot zero the active count (i.e. cannot resolve)
     assert countAfter > 0,
@@ -135,14 +135,14 @@ rule noDoubleCommit(bytes32 orderHash) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 6: Cumulative Value Monotonicity
+// RULE 6: Running Total Monotonicity
 //
 // The runningTotal of a process can only increase, never decrease.
 // ═══════════════════════════════════════════════════════════════════
 
-rule cumulativeValueMonotonic(bytes32 processId, method f) {
-    address rootBuyer; address currency; uint256 cumBefore; uint256 count;
-    (rootBuyer, currency, cumBefore, count) = processes(processId);
+rule runningTotalMonotonic(bytes32 processId, method f) {
+    address rootBuyer; address token; uint256 cumBefore; uint256 count;
+    (rootBuyer, token, cumBefore, count) = processes(processId);
 
     // Process must already exist — new process creation is not a "decrease"
     require rootBuyer != 0;
@@ -151,11 +151,11 @@ rule cumulativeValueMonotonic(bytes32 processId, method f) {
     calldataarg args;
     f(e, args);
 
-    address rootBuyer2; address currency2; uint256 cumAfter; uint256 count2;
-    (rootBuyer2, currency2, cumAfter, count2) = processes(processId);
+    address rootBuyer2; address token2; uint256 cumAfter; uint256 count2;
+    (rootBuyer2, token2, cumAfter, count2) = processes(processId);
 
     assert cumAfter >= cumBefore,
-        "Cumulative value must never decrease";
+        "The running total must never decrease";
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -165,8 +165,8 @@ rule cumulativeValueMonotonic(bytes32 processId, method f) {
 // ═══════════════════════════════════════════════════════════════════
 
 rule rootBuyerImmutable(bytes32 processId, method f) {
-    address rootBuyerBefore; address currency; uint256 cumVal; uint256 count;
-    (rootBuyerBefore, currency, cumVal, count) = processes(processId);
+    address rootBuyerBefore; address token; uint256 cumVal; uint256 count;
+    (rootBuyerBefore, token, cumVal, count) = processes(processId);
 
     require rootBuyerBefore != 0;
 
@@ -174,22 +174,22 @@ rule rootBuyerImmutable(bytes32 processId, method f) {
     calldataarg args;
     f(e, args);
 
-    address rootBuyerAfter; address currency2; uint256 cumVal2; uint256 count2;
-    (rootBuyerAfter, currency2, cumVal2, count2) = processes(processId);
+    address rootBuyerAfter; address token2; uint256 cumVal2; uint256 count2;
+    (rootBuyerAfter, token2, cumVal2, count2) = processes(processId);
 
     assert rootBuyerAfter == rootBuyerBefore,
         "Root buyer of an existing process must never change";
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 8: Process Currency Immutability
+// RULE 8: Process Token Immutability
 //
-// Once a process is created, its currency never changes.
+// Once a process is created, its token never changes.
 // ═══════════════════════════════════════════════════════════════════
 
-rule currencyImmutable(bytes32 processId, method f) {
-    address rootBuyer; address currencyBefore; uint256 cumVal; uint256 count;
-    (rootBuyer, currencyBefore, cumVal, count) = processes(processId);
+rule tokenImmutable(bytes32 processId, method f) {
+    address rootBuyer; address tokenBefore; uint256 cumVal; uint256 count;
+    (rootBuyer, tokenBefore, cumVal, count) = processes(processId);
 
     require rootBuyer != 0;
 
@@ -197,11 +197,11 @@ rule currencyImmutable(bytes32 processId, method f) {
     calldataarg args;
     f(e, args);
 
-    address rootBuyer2; address currencyAfter; uint256 cumVal2; uint256 count2;
-    (rootBuyer2, currencyAfter, cumVal2, count2) = processes(processId);
+    address rootBuyer2; address tokenAfter; uint256 cumVal2; uint256 count2;
+    (rootBuyer2, tokenAfter, cumVal2, count2) = processes(processId);
 
-    assert currencyAfter == currencyBefore,
-        "Currency of an existing process must never change";
+    assert tokenAfter == tokenBefore,
+        "The token of an existing process must never change";
 }
 
 // ═══════════════════════════════════════════════════════════════════

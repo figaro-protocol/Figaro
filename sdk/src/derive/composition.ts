@@ -55,7 +55,7 @@ export interface SwapLeg {
 export interface ValueFlowNode {
     token: Address;
     /** Processes denominated in this token (every commitment signs its
-     *  `currency`; a process is monotoken). */
+     *  `token`; a process is monotoken). */
     processCount: number;
     /** Resolved orders resolved in this denomination. */
     settledOrderCount: number;
@@ -124,16 +124,16 @@ export function projectValueFlow(
     // Resolution flows per denomination (protocol-enforced).
     const resolutionEdges = new Map<string, ValueFlowEdge & { basis: "protocol-enforced" }>();
     for (const chain of resolution.chains.values()) {
-        const n = node(chain.currency);
+        const n = node(chain.token);
         n.processCount += 1;
         for (const order of chain.orders) {
             if (order.state !== OrderState.Resolved) continue;
             n.settledOrderCount += 1;
             n.settledVolume += order.payment;
-            const key = addressKey(chain.currency);
+            const key = addressKey(chain.token);
             let edge = resolutionEdges.get(key);
             if (!edge) {
-                edge = { basis: "protocol-enforced", token: chain.currency, settledOrderCount: 0, settledVolume: 0n };
+                edge = { basis: "protocol-enforced", token: chain.token, settledOrderCount: 0, settledVolume: 0n };
                 resolutionEdges.set(key, edge);
             }
             edge.settledOrderCount += 1;

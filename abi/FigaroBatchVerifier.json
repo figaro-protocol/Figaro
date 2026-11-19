@@ -513,7 +513,7 @@
         "internalType": "address"
       },
       {
-        "name": "currency",
+        "name": "token",
         "type": "address",
         "indexed": false,
         "internalType": "address"
@@ -543,7 +543,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "deadline",
+        "name": "commitDeadline",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"

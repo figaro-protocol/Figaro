@@ -70,7 +70,7 @@ beforeAll(async () => {
 function commit(address: string, block: bigint, orderHash: `0x${string}`): FixtureLog {
     return {
         ...orderCommittedLog({ address, blockNumber: block, orderHash, processId: PROCESS, buyer: BUYER, seller: SELLER, payment: PAYMENT[orderHash] }),
-        args: { orderHash, processId: PROCESS, buyer: BUYER, seller: SELLER, currency: TOKEN, payment: PAYMENT[orderHash] },
+        args: { orderHash, processId: PROCESS, buyer: BUYER, seller: SELLER, token: TOKEN, payment: PAYMENT[orderHash] },
     };
 }
 const resolve = (address: string, block: bigint, orderHash: `0x${string}`) =>
@@ -104,9 +104,9 @@ function client() {
 
 function orderOf(orderHash: `0x${string}`): Order {
     return {
-        orderHash, processId: PROCESS, buyer: BUYER, seller: SELLER, currency: TOKEN, checkoutHash: CHECKOUT[orderHash],
+        orderHash, processId: PROCESS, buyer: BUYER, seller: SELLER, token: TOKEN, checkoutHash: CHECKOUT[orderHash],
         payment: PAYMENT[orderHash], runningTotal: PAYMENT[orderHash], state: OrderState.Resolved,
-        sellerBond: 0n, buyerBond: 0n, salt: 1n, deadline: 1n,
+        sellerBond: 0n, buyerBond: 0n, salt: 1n, commitDeadline: 1n,
     } as Order;
 }
 const ORDERS = [orderOf(ORDER_A), orderOf(ORDER_B), orderOf(ORDER_C)];

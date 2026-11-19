@@ -39,7 +39,7 @@ Both are `nonReentrant`. `commit` verifies both EIP-712 signatures over `c`, the
 
 **The EIP-712 domain is `{ name: "FigaroCore", version: "3", chainId, verifyingContract }`** (`src/core/kernel/FigaroCore.sol:101`). The version counts changes to the commitment struct's layout, not deploys.
 
-**Custom errors** (`src/core/kernel/FigaroCore.sol:62-77`): `DeadlineExpired`, `InvalidBuyerSignature`, `InvalidSellerSignature`, `ZeroPayment`, `ProcessAlreadyExists`, `UnknownProcess`, `CumulativeValueMismatch(expected, actual)`, `NotProcessBuyer`, `CurrencyMismatch`, `OrderNotCommitted(orderHash)`, `NoActiveOrders`, `IncompleteOrderList(required, provided)`, `DuplicateCommitment`, `FeeOnTransferDetected`, `InvalidRootCumulativeValue`, `ProcessAlreadyResolved`. Decode them by name with `CORE_ABI` from `@figaro-protocol/sdk`, which also carries the standard ERC-20 error fragments (`ERC20InsufficientAllowance` shows up when a sub-order approval falls short — `FigaroCore` pulls the full per-order bond every time and nets nothing against bonds it already holds).
+**Custom errors** (`src/core/kernel/FigaroCore.sol:62-77`): `DeadlineExpired`, `InvalidBuyerSignature`, `InvalidSellerSignature`, `ZeroPayment`, `ProcessAlreadyExists`, `UnknownProcess`, `RunningTotalMismatch(expected, actual)`, `NotProcessBuyer`, `TokenMismatch`, `OrderNotCommitted(orderHash)`, `NoActiveOrders`, `IncompleteOrderList(required, provided)`, `DuplicateCommitment`, `FeeOnTransferDetected`, `InvalidRootRunningTotal`, `ProcessAlreadyResolved`. Decode them by name with `CORE_ABI` from `@figaro-protocol/sdk`, which also carries the standard ERC-20 error fragments (`ERC20InsufficientAllowance` shows up when a sub-order approval falls short — `FigaroCore` pulls the full per-order bond every time and nets nothing against bonds it already holds).
 
 **Events:** `OrderCommitted` (carries every struct field but no signatures — the signature bytes live in the commit transaction's calldata), `OrderSeller`, `OrderResolved`, `ProcessResolved` (`src/core/kernel/FigaroCore.sol:36-58`).
 
@@ -61,7 +61,7 @@ await wallet.writeContract({
 });
 ```
 
-To resolve, rebuild the full active-order set from `OrderCommitted` events (nothing has to be kept client-side) and call `resolveProcess(processId, commitments)` from the buyer wallet. Build every `deadline` from chain time, not host time, or you race `DeadlineExpired`.
+To resolve, rebuild the full active-order set from `OrderCommitted` events (nothing has to be kept client-side) and call `resolveProcess(processId, commitments)` from the buyer wallet. Build every `commitDeadline` from chain time, not host time, or you race `DeadlineExpired`.
 
 ## CommitmentTypes — the signed struct
 

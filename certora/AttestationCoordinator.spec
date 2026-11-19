@@ -192,29 +192,29 @@ rule attestationCannotChangeOrderStatus(bytes32 watchedOrder, method f)
 // ═══════════════════════════════════════════════════════════════════
 // RULE 4: No AttestationCoordinator call can change FigaroCore process state
 //
-// rootBuyer, currency, runningTotal, and activeOrderCount are all owned by
+// rootBuyer, token, runningTotal, and activeOrderCount are all owned by
 // FigaroCore. AC cannot modify them.
 // ═══════════════════════════════════════════════════════════════════
 
 rule attestationCannotChangeProcessState(bytes32 watchedProcess, method f)
     filtered { f -> f.contract == currentContract }
 {
-    address rootBuyerBefore; address currencyBefore;
+    address rootBuyerBefore; address tokenBefore;
     uint256 cumValBefore;    uint256 countBefore;
-    (rootBuyerBefore, currencyBefore, cumValBefore, countBefore) =
+    (rootBuyerBefore, tokenBefore, cumValBefore, countBefore) =
         core.processes(watchedProcess);
 
     env e;
     calldataarg args;
     f(e, args);
 
-    address rootBuyerAfter; address currencyAfter;
+    address rootBuyerAfter; address tokenAfter;
     uint256 cumValAfter;    uint256 countAfter;
-    (rootBuyerAfter, currencyAfter, cumValAfter, countAfter) =
+    (rootBuyerAfter, tokenAfter, cumValAfter, countAfter) =
         core.processes(watchedProcess);
 
     assert rootBuyerBefore == rootBuyerAfter &&
-           currencyBefore   == currencyAfter  &&
+           tokenBefore   == tokenAfter  &&
            cumValBefore     == cumValAfter    &&
            countBefore      == countAfter,
         "No AttestationCoordinator function can change FigaroCore process state";
