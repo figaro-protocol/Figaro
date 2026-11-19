@@ -360,6 +360,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `checkSellerBindsProcess` | root | The seller's bound-assembly check: the assembly an order's provenance leaf names must be one the seller's own profile binds, read through a `MemberProfileReader` at acceptance time; refuses a missing provenance leaf, a missing reader and an unreadable profile. Every seller acceptance path runs it. |
 | `checkEndpointLogAgreement` | root | Agreement over the event sets N endpoints returned for one pinned range — pure, caller-fetched. |
 | `commit` | `/agent` | Submit `FigaroCore.commit` with both signatures; any holder of the payload may broadcast. |
+| `commitOrder` | `/derive` | A process's orders in commit order, by the running total each commit carried, the same on either path. |
 | `computeCheckoutHash` | root | The agreement's merkle root over its sorted clause leaves, its two-key provenance leaf and its topology leaf. |
 | `computeClauseKey` | root | A clause's key: `keccak256` of `clauseKeyPreimage(spec)`, the canonical bytes of the spec without its top-level `block` — the registry key, every clause's `clause`, and the attest calls' `clauseId`. |
 | `clauseKeyPreimage` | root | The bytes a clause key hashes: `canonicalize` of the spec without its top-level `block`. A plaintext attestation's witness carries them as `spec_json`. |
@@ -402,6 +403,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `fillPricedLines` | root | Write the order's lines into the first composed clause whose spec marks priced lines (`block.checkout.pricedLines`), in the item shape the mark names; nothing when no such clause is composed. The payment and the token stay in the commitment. |
 | `fillProfileClauses` | root | Fold the seller's profile-filled clause values onto their leaves. |
 | `filterByClause` | `/derive` | Narrow attestation events to one clause. |
+| `followsOfEdges` | `/derive` | The `followsOf` that `marketShape` takes, read from `processEdges`. |
 | `filterByOrder` | `/derive` | Narrow attestation events to one order hash. |
 | `filterByProcess` | `/derive` | Narrow attestation events to one process id. |
 | `filterByStage` | `/derive` | Narrow attestation events to one stage; the stage's meaning is in the clause spec. |
@@ -436,6 +438,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `planSubOrderSellers` | root | Topologically order an assembly's sub-orders and resolve each one's bound seller. |
 | `parseAgreementRegistryLogs` | root | Decode `AgreementRegistry` logs into registrations and stake withdrawals, keyed by `agreementHash`. |
 | `planProcessOrders` | root | A hydrated assembly's agreements in commit order, each with its clause bag (keyed by clause key). |
+| `processEdges` | `/derive` | Each process's edges: the registered process design's, matched to its commits by position, for a process the caller links to it; FigaroCore's linear view for every other. The design, never what the parties signed. |
 | `profileValuesFor` | root | The profile-filled clause values a given seller publishes, read from its catalog. |
 | `projectAgentServices` | root | Read the agent service endpoints out of a profile document, tolerating partial ones. |
 | `projectProcessGraph` | `/derive` | The process graph, labeled protocol-enforced — `reconstruct()`'s topology as a first-class object. |
@@ -1531,10 +1534,10 @@ also carry what stands behind it when the chain cannot check it: both signatures
 for a declaration; for an attestation, the buyer's decision to withhold resolution.
 
 ```ts
-import { fetchCoreEvents, fetchAttestationRecords } from "@figaro-protocol/sdk";
+import { fetchCoreEvents, fetchAttestationRecords, planProcessOrders } from "@figaro-protocol/sdk";
 import {
   projectProcessGraph, projectResolutionGraph, extractOverlays, projectValueFlow,
-  readFundingLegs, marketShape, walletRecord,
+  readFundingLegs, marketShape, processEdges, followsOfEdges, walletRecord,
 } from "@figaro-protocol/sdk/derive";
 
 const core = await fetchCoreEvents(client, addresses, BigInt(record.deploymentBlock));
@@ -1572,7 +1575,18 @@ const valueFlow = projectValueFlow(resolution, swapLegs, pins);
 // Queries are thin folds over the graphs. Assembly attribution is
 // CALLER-SUPPLIED: a process you cannot key is reported in
 // `unattributedProcessCount`, never binned under a guess.
-const shape = marketShape(process, (processId) => assemblyKeyFor(processId));
+// A process's edges: a process linked to a registered process design (its
+// buyer's provenance attestation, or a UsageRecorded of kind process naming
+// it) takes the design's positions matched to its commits by position — the
+// design, never what the parties signed (that is each agreement's topology
+// leaf, which no event carries); every other process keeps FigaroCore's
+// linear view. `hydratedFor` is your read of the registered process design.
+const edges = processEdges(process, (processId) => {
+  const processDesignHash = assemblyKeyFor(processId);
+  const hydrated = processDesignHash && hydratedFor(processDesignHash);
+  return hydrated ? { processDesignHash, planned: planProcessOrders(hydrated) } : undefined;
+});
+const shape = marketShape(process, (processId) => assemblyKeyFor(processId), followsOfEdges(edges));
 const rec   = walletRecord(process, "0x…");        // empty arrays = no history
 ```
 

@@ -13,6 +13,11 @@
  *   edges (each agreement's `follows`) via `depthsOverParents`; without them
  *   FigaroCore's own linear view stands. A process holding an order whose
  *   edges the caller does not know takes no shape and is counted as such.
+ * - Process edges: a process linked to a registered process design takes
+ *   the design's edges, the design's positions matched to its commits by
+ *   position (`processEdges`); every other process keeps the linear view.
+ *   A reader outside the trade holds no agreement body, so these are the
+ *   edges it can read, and they are the design, never what was signed.
  * - Wallet-record: one wallet's public trading history — the processes it
  *   resolves as root buyer and the orders it holds either side of.
  *
@@ -24,7 +29,8 @@
 import type { Hex, Address, Process, Order } from "../types.js";
 import { OrderState } from "../types.js";
 import { depthsOverParents } from "../topology.js";
-import type { ProcessGraph } from "./graphs.js";
+import type { PlannedProcessOrder } from "../reconstructOrders.js";
+import { commitOrder, type ProcessGraph } from "./graphs.js";
 
 // ── Market-shape ────────────────────────────────────────────────────────────
 
@@ -191,6 +197,101 @@ export function marketShape(
         group.shapes = [...shapesOf.get(group.key)!.values()];
     }
     return { boundary: "protocol-derived", groups, unattributedProcessCount };
+}
+
+// ── Process edges: the design, or FigaroCore's linear view ──────────────────
+
+/** One position of a registered process design, as `planProcessOrders` gives it:
+ *  its entry's label and the labels of the entries it follows. */
+export type DesignPosition = Pick<PlannedProcessOrder, "nodeId" | "parentLocalIds">;
+
+/** The registered process design a process is linked to, and its positions in
+ *  commit order (`planProcessOrders(hydrated)`). */
+export interface DesignLink {
+    processDesignHash: Hex;
+    planned: readonly DesignPosition[];
+}
+
+/**
+ * A process's edges and where they come from. `"design"`: the registered
+ * process design's edges, matched to the process's commits by position, which is
+ * the design the process was linked to and never what the parties signed (the
+ * signed edges are each agreement's topology leaf, which no event carries).
+ * `"linear"`: FigaroCore's own view, each order following the one committed
+ * before it. Protocol-derived: the commits are protocol-enforced, the link is
+ * a provenance attestation or a counted use, and the edges are the design's.
+ */
+export interface ProcessEdges {
+    boundary: "protocol-derived";
+    source: "design" | "linear";
+    /** The registered process design the edges were read from; null for the linear view. */
+    processDesignHash: Hex | null;
+    /** The process's order hashes in commit order. */
+    orders: readonly Hex[];
+    /** Order hash → the order hashes it follows (`[]` on the root). */
+    follows: ReadonlyMap<Hex, readonly Hex[]>;
+}
+
+/**
+ * The design's edges over a process's commits, or undefined when the commits
+ * do not fit the design. The commit at position `i` instantiates the design's
+ * position `i`: the process design → orders walk commits the positions in this
+ * order (`reconstructOrdersFromProcessDesign`). An open process matches the
+ * design's first positions; a process with more commits than the design has
+ * positions, or whose first position follows another, does not fit.
+ */
+function designedFollows(orders: readonly Order[], planned: readonly DesignPosition[]): Map<Hex, Hex[]> | undefined {
+    if (orders.length === 0 || orders.length > planned.length) return undefined;
+    if (planned[0].parentLocalIds.length > 0) return undefined;
+    const positionOf = new Map(planned.map((p, i) => [p.nodeId, i]));
+    const follows = new Map<Hex, Hex[]>();
+    for (let i = 0; i < orders.length; i++) {
+        const parents: Hex[] = [];
+        for (const id of planned[i].parentLocalIds) {
+            const at = positionOf.get(id);
+            if (at === undefined || at >= i) return undefined;
+            parents.push(orders[at].orderHash);
+        }
+        follows.set(orders[i].orderHash, parents);
+    }
+    return follows;
+}
+
+/**
+ * Every process's edges: the design's for a process `designOf` links to a
+ * registered process design whose positions fit its commits, FigaroCore's linear
+ * view for every other. `designOf` is the caller's link (the buyer's
+ * provenance attestation, or a `UsageRecorded` of the process design naming the
+ * process), with the process design's positions in commit order.
+ */
+export function processEdges(
+    graph: ProcessGraph,
+    designOf: (processId: Hex) => DesignLink | undefined,
+): Map<Hex, ProcessEdges> {
+    const out = new Map<Hex, ProcessEdges>();
+    for (const process of graph.processes.values()) {
+        const orders = commitOrder(process);
+        const hashes = orders.map((o) => o.orderHash);
+        const link = designOf(process.processId);
+        const designed = link ? designedFollows(orders, link.planned) : undefined;
+        out.set(process.processId, designed && link
+            ? { boundary: "protocol-derived", source: "design", processDesignHash: link.processDesignHash, orders: hashes, follows: designed }
+            : {
+                boundary: "protocol-derived",
+                source: "linear",
+                processDesignHash: null,
+                orders: hashes,
+                follows: new Map(hashes.map((h, i) => [h, i === 0 ? [] : [hashes[i - 1]]])),
+            });
+    }
+    return out;
+}
+
+/** The `followsOf` `marketShape` takes, read from `processEdges`. */
+export function followsOfEdges(edges: ReadonlyMap<Hex, ProcessEdges>): (orderHash: Hex) => readonly Hex[] | undefined {
+    const byOrder = new Map<string, readonly Hex[]>();
+    for (const e of edges.values()) for (const [order, follows] of e.follows) byOrder.set(order.toLowerCase(), follows);
+    return (orderHash) => byOrder.get(orderHash.toLowerCase());
 }
 
 // ── Wallet-record ───────────────────────────────────────────────────────────

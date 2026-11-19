@@ -53,6 +53,7 @@ function corpus(over: Partial<GraphCorpus> = {}): GraphCorpus {
         venue: null,
         assemblyNames: new Map(),
         attributionByProcess: new Map(),
+        edgesByProcess: new Map(),
         ...over,
     } as GraphCorpus;
 }
@@ -281,7 +282,7 @@ describe("DataExplorer — a listed process can be carried into the audit view",
         distinctPairCount: 1,
         volumeByDenomination: new Map([[TOKEN, { committed: 18n, settled: 9n }]]),
         processCommitBlocks: [12],
-        shapes: [{ orderCount: 1, processCount: 1 }],
+        shapes: [{ orderCount: 1, depth: 0, maxWidth: 1, processCount: 1 }],
     });
 
     beforeEach(() => {
@@ -331,6 +332,54 @@ describe("DataExplorer — a listed process can be carried into the audit view",
             "href",
             `/audit/view?process=${PROCESS}`,
         );
+    });
+
+    it("a process linked to a registered process design shows the design's edges, labeled as the design and not as what was signed", () => {
+        searchParams = "view=market";
+        const [o1, o2, o3] = [`0x${"11".repeat(32)}`, `0x${"12".repeat(32)}`, `0x${"13".repeat(32)}`] as const;
+        corpusMock.mockReturnValue({
+            status: "present",
+            value: corpus({
+                process: { boundary: "protocol-enforced", processes: new Map([[PROCESS, process(PROCESS)]]) },
+                market: { boundary: "protocol-derived", groups: new Map([[MARKET, marketGroup(MARKET)]]), unattributedProcessCount: 0 },
+                attributionByProcess: new Map([[PROCESS.toLowerCase(), MARKET.toLowerCase()]]),
+                assemblyNames: new Map([[MARKET.toLowerCase(), "Fan-out design"]]),
+                edgesByProcess: new Map([[PROCESS.toLowerCase(), {
+                    boundary: "protocol-derived",
+                    source: "design",
+                    processDesignHash: MARKET,
+                    orders: [o1, o2, o3],
+                    follows: new Map([[o1, []], [o2, [o1]], [o3, [o1]]]),
+                }]]),
+            } as unknown as Partial<GraphCorpus>),
+        });
+        render(<DataExplorer />);
+        const line = screen.getByTestId(`process-designed-edges-${PROCESS.toLowerCase()}`);
+        expect(line.textContent).toMatch(/The design.s edges, not what the parties signed/);
+        expect(line.textContent).toContain("order 2 follows order 1; order 3 follows order 1");
+        expect(line.textContent).toContain("Fan-out design");
+        expect(screen.getByTestId("market-shapes-note").textContent).toMatch(/not what the parties signed/);
+    });
+
+    it("a process with no link to a process design keeps the linear view and carries no design line", () => {
+        searchParams = "view=market";
+        corpusMock.mockReturnValue({
+            status: "present",
+            value: corpus({
+                process: { boundary: "protocol-enforced", processes: new Map([[PROCESS, process(PROCESS)]]) },
+                market: { boundary: "protocol-derived", groups: new Map(), unattributedProcessCount: 1 },
+                edgesByProcess: new Map([[PROCESS.toLowerCase(), {
+                    boundary: "protocol-derived",
+                    source: "linear",
+                    processDesignHash: null,
+                    orders: [`0x${"11".repeat(32)}`],
+                    follows: new Map([[`0x${"11".repeat(32)}`, []]]),
+                }]]),
+            } as unknown as Partial<GraphCorpus>),
+        });
+        render(<DataExplorer />);
+        expect(screen.getByTestId(`process-row-${PROCESS.toLowerCase()}`)).toBeInTheDocument();
+        expect(screen.queryByTestId(`process-designed-edges-${PROCESS.toLowerCase()}`)).toBeNull();
     });
 
     it("an empty record lists no process rows at all — absence, never a fabricated id", () => {

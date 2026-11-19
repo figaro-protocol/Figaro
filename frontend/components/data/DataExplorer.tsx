@@ -53,6 +53,7 @@ import {
     walletOrderRows,
     walletRecordSummary,
     type DataExplorerQuery,
+    type DesignedEdges,
     type GraphView,
     type ProcessRow,
 } from "@/lib/data/explorer";
@@ -222,7 +223,7 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                 way an attributed one's does. */}
             {corpus.market.unattributedProcessCount > 0 ? (
                 <ProcessList
-                    rows={processRowsForMarket(corpus.process, corpus.attributionByProcess, null)}
+                    rows={processRowsForMarket(corpus.process, corpus.attributionByProcess, null, corpus.edgesByProcess)}
                     corpus={corpus}
                     testId="market-processes-unattributed"
                 />
@@ -273,18 +274,21 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                                     : " · one process, so no cadence yet"}
                                 {" · "}
                                 {r.shapes
-                                    .map((s) => `${s.processCount}× chain of ${s.orderCount}`)
+                                    .map((s) => `${s.processCount}× ${s.orderCount} order${s.orderCount === 1 ? "" : "s"}, depth ${s.depth}, width ${s.maxWidth}`)
                                     .join(", ")}
                             </p>
                         </li>
                     ))}
                 </ul>
             )}
-            <p className="text-xs text-ink-muted leading-relaxed max-w-3xl">
-                Chain shapes are FigaroCore&apos;s own LINEAR view &mdash; a chain of commits against a
-                monotonic accumulator. How orders relate as a DAG is declared in each
-                agreement&apos;s topology leaf, which is committed rather than attested, so it is
-                not recoverable from public events here.
+            <p className="text-xs text-ink-muted leading-relaxed max-w-3xl" data-testid="market-shapes-note">
+                A process linked to a registered process design, by its buyer&apos;s provenance
+                attestation or by a counted use of the design, takes the edges of that
+                design: the design&apos;s positions matched to the commits in the order they
+                landed. Those edges are the design, not what the parties signed: the signed
+                edges are in each agreement&apos;s topology leaf, which no event carries. Every
+                other process keeps FigaroCore&apos;s own linear view, a chain of commits against
+                a rising running total. Depth and width are counted over those edges.
             </p>
         </div>
     );
@@ -325,7 +329,7 @@ function MarketOverlays({ corpus, marketKey }: { corpus: GraphCorpus; marketKey:
  *  can never disagree. */
 function MarketProcesses({ corpus, marketKey }: { corpus: GraphCorpus; marketKey: string }) {
     const rows = useMemo(
-        () => processRowsForMarket(corpus.process, corpus.attributionByProcess, marketKey),
+        () => processRowsForMarket(corpus.process, corpus.attributionByProcess, marketKey, corpus.edgesByProcess),
         [corpus, marketKey],
     );
     return <ProcessList rows={rows} corpus={corpus} testId={`market-processes-${marketKey}`} />;
@@ -367,6 +371,7 @@ function ProcessList({ rows, corpus, testId }: { rows: readonly ProcessRow[]; co
                         {" · "}
                         {r.resolved ? "resolved" : "active"}
                         {r.firstBlock !== null ? ` · from block ${r.firstBlock}` : ""}
+                        {r.designedEdges ? <DesignedEdgesLine edges={r.designedEdges} processId={r.processId} corpus={corpus} /> : null}
                     </li>
                 ))}
             </ul>
@@ -377,6 +382,25 @@ function ProcessList({ rows, corpus, testId }: { rows: readonly ProcessRow[]; co
                 {" "}Each opens its own data at <code className="font-mono">/audit/view</code>.
             </p>
         </div>
+    );
+}
+
+/** A linked process's edges, labeled as the design they were read from:
+ *  never what the parties signed. Orders are named by commit position. */
+function DesignedEdgesLine({ edges, processId, corpus }: { edges: DesignedEdges; processId: string; corpus: GraphCorpus }) {
+    const name = corpus.assemblyNames.get(edges.processDesignHash.toLowerCase());
+    const following = edges.edges.filter((e) => e.follows.length > 0);
+    return (
+        <span className="block" data-testid={`process-designed-edges-${processId.toLowerCase()}`}>
+            The design&apos;s edges, not what the parties signed:{" "}
+            {following.map((e, i) => (
+                <span key={e.position}>
+                    {i > 0 ? "; " : ""}order {e.position} follows {e.follows.map((f) => `order ${f}`).join(" and ")}
+                </span>
+            ))}
+            {following.length === 0 ? "a single order" : ""}
+            {" "}&mdash; read from the registered process design {name ?? <code className="font-mono">{truncateHex(edges.processDesignHash)}</code>}.
+        </span>
     );
 }
 

@@ -33,6 +33,14 @@
  *   is the `provenanceContentRef` of a loaded assembly's agreement (its
  *   agreement hash and its assembly root). No such attestation, no
  *   attribution: the process is counted as unattributed and said to be.
+ *
+ *   a process's edges are the DESIGN's, never what the parties signed. The
+ *   signed edges are each agreement's topology leaf, which no event carries.
+ *   A process linked to a registered process design the page loaded, by its
+ *   buyer's provenance attestation or by a `UsageRecorded` of the process
+ *   design naming it (the counter emits it for a counted use on either path),
+ *   takes that design's edges, matched to its commits by position
+ *   (`processEdges`); every other process keeps FigaroCore's linear view.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -40,6 +48,9 @@ import type { Hex, PublicClient } from "viem";
 import {
     provenanceContentRef,
     agreementClauses,
+    planProcessOrders,
+    USAGE_COUNTER_ABI,
+    USAGE_KIND_PROCESS,
     readUtilityTokenPin,
     type Address,
     type OrderCommittedEvent,
@@ -47,13 +58,18 @@ import {
 } from "@figaro-protocol/sdk";
 import {
     extractOverlays,
+    followsOfEdges,
     marketShape,
+    processEdges,
     projectProcessGraph,
     projectResolutionGraph,
     projectValueFlow,
     readFundingLegs,
+    type DesignLink,
+    type DesignPosition,
     type MarketShape,
     type OverlayGraph,
+    type ProcessEdges,
     type ProcessGraph,
     type RecoveredAttestation,
     type ResolutionGraph,
@@ -67,9 +83,10 @@ import {
     type IndexedLog,
 } from "@/lib/core/indexer";
 import { getAllAttestationRecords } from "@/lib/composition/indexer";
+import { cachedGetContractEvents } from "@/lib/core/eventCache";
 import { fetchWitnessContent } from "@/lib/composition/witnessContent";
 import { getSwapRouter, getWitnessSwapAndCommitCoordinator } from "@/lib/composition/contracts";
-import { ERC20_ABI } from "@/lib/core/contracts";
+import { ERC20_ABI, getUsageCounter } from "@/lib/core/contracts";
 import { isBytes32Hex } from "@/lib/shared/evm";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { activeChain } from "@/lib/shared/chains";
@@ -119,6 +136,10 @@ export interface GraphCorpus {
      *  overlay declared for it. A process absent from this map is the honest
      *  unattributed case, counted in `market.unattributedProcessCount`. */
     attributionByProcess: Map<string, string>;
+    /** processId (lowercased) → its edges: the design's for a process linked
+     *  to a loaded registered process design whose positions fit its commits, the
+     *  linear view for every other (`processEdges`). */
+    edgesByProcess: Map<string, ProcessEdges>;
 }
 
 /** A published assembly in the minimal shape this read needs: its registered
@@ -130,6 +151,10 @@ interface CorpusAssembly {
     /** The registered agreement each agreement binds, in assembly order. */
     agreementHashes: readonly `0x${string}`[];
     name: string;
+    /** The design's positions in commit order (`planProcessOrders`), or
+     *  null when its topology cannot be planned: its processes then keep the
+     *  linear view. */
+    planned: readonly DesignPosition[] | null;
     clauseSets: readonly {
         clauses: Record<string, Record<string, unknown>>;
     }[];
@@ -147,6 +172,16 @@ export function readAssemblyUtilityTokenPins(assemblies: readonly CorpusAssembly
         }
     }
     return pins;
+}
+
+/** A process design's positions in commit order, or null when its topology
+ *  cannot be planned (a cycle, an agreement not hydrated). */
+function plannedPositions(hydrated: Parameters<typeof planProcessOrders>[0]): DesignPosition[] | null {
+    try {
+        return planProcessOrders(hydrated).map(({ nodeId, parentLocalIds }) => ({ nodeId, parentLocalIds }));
+    } catch {
+        return null;
+    }
 }
 
 /** How many commit receipts one pass reads at a time. */
@@ -251,6 +286,54 @@ export function attributionFromOverlays(
     return byProcess;
 }
 
+/**
+ * The processes `UsageCounter` counted a use of a process design for:
+ * processId (lowercased) → processDesignHash (lowercased), from its
+ * `UsageRecorded` stream, which a direct call and a proved batch both
+ * emit. A deployment with no counter, or a read that fails, links nothing
+ * this pass: those processes keep whatever link their provenance gives.
+ */
+async function readProcessDesignUseLinks(client: PublicClient, chainId: number): Promise<Map<string, string>> {
+    const links = new Map<string, string>();
+    const counter = getUsageCounter();
+    if (!counter) return links;
+    let logs: Awaited<ReturnType<typeof cachedGetContractEvents>>;
+    try {
+        logs = await cachedGetContractEvents(client, chainId, { address: counter, abi: USAGE_COUNTER_ABI, eventName: "UsageRecorded" });
+    } catch (err) {
+        console.warn("[graphCorpus] UsageRecorded is unreadable this pass; no process is linked by its counted use:", err);
+        return links;
+    }
+    for (const log of logs) {
+        const a = log.args as { kind?: number; clauseOrProcess?: string; processId?: string } | undefined;
+        if (Number(a?.kind) !== USAGE_KIND_PROCESS || !isBytes32Hex(a?.clauseOrProcess) || !isBytes32Hex(a?.processId)) continue;
+        const pid = a.processId.toLowerCase();
+        if (!links.has(pid)) links.set(pid, a.clauseOrProcess.toLowerCase());
+    }
+    return links;
+}
+
+/**
+ * The registered process design a process is linked to, with its positions:
+ * the buyer's provenance attestation first (`attributionFromOverlays`), else a
+ * counted use of a process design naming the process. The link holds only
+ * when the page loaded that design and could plan its positions; otherwise
+ * the process has none and keeps the linear view.
+ */
+function designLinkOf(
+    processId: Hex,
+    attributionByProcess: ReadonlyMap<string, string>,
+    useLinks: ReadonlyMap<string, string>,
+    assemblies: readonly Pick<CorpusAssembly, "processDesignHash" | "planned">[],
+): DesignLink | undefined {
+    const pid = processId.toLowerCase();
+    const key = attributionByProcess.get(pid) ?? useLinks.get(pid);
+    if (key === undefined) return undefined;
+    const design = assemblies.find((a) => a.processDesignHash.toLowerCase() === key);
+    if (!design?.planned) return undefined;
+    return { processDesignHash: design.processDesignHash, planned: design.planned };
+}
+
 /** Best-effort `symbol()` + `decimals()` for each denomination the data
  *  names. A token that does not answer is simply absent from the map. */
 async function readTokenMeta(
@@ -290,9 +373,10 @@ async function readGraphCorpus(deps?: {
     const chainId = deps?.chainId ?? activeChain.id;
 
     // 1. FETCH — the order events and the attestations, each from both emitters.
-    const [{ events: core, committedLogs }, attestations] = await Promise.all([
+    const [{ events: core, committedLogs }, attestations, useLinks] = await Promise.all([
         getCoreEvents(client, chainId),
         getAllAttestationRecords(client, chainId),
+        readProcessDesignUseLinks(client, chainId),
     ]);
     const fundingLegs = await readCommitFundingLegs(client, chainId, committedLogs, core.orderCommitted);
 
@@ -333,7 +417,9 @@ async function readGraphCorpus(deps?: {
     const valueFlow = projectValueFlow(resolution, fundingLegs, pins);
 
     const byProcess = attributionFromOverlays(overlays, deps?.assemblies ?? []);
-    const market = marketShape(process, (processId: Hex) => byProcess.get(processId.toLowerCase()));
+    const edges = processEdges(process, (processId) => designLinkOf(processId, byProcess, useLinks, deps?.assemblies ?? []));
+    const market = marketShape(process, (processId: Hex) => byProcess.get(processId.toLowerCase()), followsOfEdges(edges));
+    const edgesByProcess = new Map([...edges].map(([processId, e]) => [processId.toLowerCase(), e]));
 
     const tokenMeta = await readTokenMeta(client, valueFlow.nodes.map((n) => n.token));
 
@@ -354,6 +440,7 @@ async function readGraphCorpus(deps?: {
         venue: getSwapRouter(),
         assemblyNames,
         attributionByProcess: byProcess,
+        edgesByProcess,
     };
 }
 
@@ -410,6 +497,7 @@ export function useGraphCorpus(): NetworkRead<GraphCorpus> {
                     processDesignHash: a.processDesignHash,
                     agreementHashes: hydrated.assembly.agreements.map((entry) => entry.agreementHash),
                     name: a.name,
+                    planned: plannedPositions(hydrated),
                     clauseSets: [
                         // Assembly-scoped clauses compose ONCE for the whole
                         // design — a denomination pin lives here, not in an

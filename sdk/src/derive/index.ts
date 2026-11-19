@@ -24,7 +24,8 @@
  *   graph over resolution denominations + swap legs
  * - Funding legs: the swap legs one commit transaction carries, read from its
  *   receipt's ERC-20 transfers (the coordinator emits nothing of its own)
- * - Queries: market-shape and wallet-record, thin folds over the graphs
+ * - Queries: market-shape, a process's edges (the design or the linear
+ *   view) and wallet-record, thin folds over the graphs
  */
 
 // ── Attestation filtering ───────────────────────────────────────────────────
@@ -72,7 +73,7 @@ export type { TruthBoundary } from "./truth.js";
 
 // ── Base-graph projections (Process + Resolution) ───────────────────────────
 
-export { projectProcessGraph, projectResolutionGraph } from "./graphs.js";
+export { commitOrder, projectProcessGraph, projectResolutionGraph } from "./graphs.js";
 export type {
     ProcessGraph,
     ResolutionGraph,
@@ -107,10 +108,13 @@ export type { FundingLeg, ReceiptLogInput } from "./fundingLegs.js";
 
 // ── Canonical graph queries ─────────────────────────────────────────────────
 
-export { marketShape, walletRecord } from "./queries.js";
+export { followsOfEdges, marketShape, processEdges, walletRecord } from "./queries.js";
 export type {
     ChainShape,
     DenominationVolume,
+    DesignLink,
+    DesignPosition,
+    ProcessEdges,
     MarketShapeGroup,
     MarketShape,
     WalletRecord,
