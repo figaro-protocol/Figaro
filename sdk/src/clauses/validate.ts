@@ -82,16 +82,18 @@ function validateString(value: unknown, spec: StringFieldSpec, path: string, err
     if (spec.minLength !== undefined && value.length < spec.minLength) {
         errors.push({ path, message: `string shorter than minLength ${spec.minLength}` });
     }
-    if (spec.maxLength !== undefined && value.length > spec.maxLength) {
+    const overMaxLength = spec.maxLength !== undefined && value.length > spec.maxLength;
+    if (overMaxLength) {
         errors.push({ path, message: `string longer than maxLength ${spec.maxLength}` });
     }
-    if (spec.pattern !== undefined) {
-        // ReDoS-safe: `pattern` is attacker-authored (permissionless clause
-        // spec). `safeRegexTest` screens the catastrophic-backtracking shape and
-        // bounds the input, treating an unsafe/over-long/invalid pattern as
-        // satisfied. The Rust prover mirror (prover/clause/src/validate.rs)
-        // applies the SAME screen with identical skip semantics — the two are
-        // conformance-locked, so this must not diverge (see safeRegex.ts).
+    // A value over `maxLength` is already refused, so its pattern is not run.
+    // The guest runs it and adds a second error; the verdict is the same.
+    if (spec.pattern !== undefined && !overMaxLength) {
+        // `pattern` comes from a permissionless clause spec, so it is
+        // untrusted. `safeRegexTest` matches it in time linear in the value
+        // (safeRegex.ts), and applies the guest's two skips
+        // (prover/clause/src/validate.rs, `safe_regex_test`), so the two
+        // engines give one verdict.
         if (!safeRegexTest(spec.pattern, value)) {
             errors.push({ path, message: `string does not match pattern ${spec.pattern}` });
         }

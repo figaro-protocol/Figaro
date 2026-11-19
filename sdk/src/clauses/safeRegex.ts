@@ -1,36 +1,45 @@
 /**
- * @figaro-protocol/sdk/clauses — ReDoS-safe matching of an attacker-authored clause
- * `pattern` against a value.
+ * @figaro-protocol/sdk/clauses — matching a clause's `pattern` against a value
+ * in time linear in the value.
  *
- * A clause spec is permissionless: any author registers one, so a field's
- * `pattern` (the regex a string field must match) is UNTRUSTED input. Native
- * JavaScript `RegExp` has no backtracking budget, so a pathological pattern
- * such as `(a+)+$` run against a mismatching input hangs the thread — a denial
- * of service on whoever validates that field (the signer typing into it, or the
- * SDK's off-chain content check). *
- * `safeRegexTest` bounds the exposure two ways: it refuses to run a pattern that
- * exhibits the catastrophic-backtracking shape (a quantified group whose body is
- * itself quantified — the exponential class), and it refuses to test an
- * over-long input. In either refusal it treats the pattern as SATISFIED. That is
- * the safe direction here: the client-side `pattern` check is only a UX aid — the
- * binding validation of clause content is the merkle commitment, the
- * counterparty's own review, and downstream forums, never this regex. Skipping a
- * self-declared, self-defeating pattern weakens only that author's own field.
+ * A clause spec is permissionless: anyone registers one, so a field's
+ * `pattern` (the regex a string field must match) is UNTRUSTED input. A
+ * backtracking engine such as JavaScript's `RegExp` takes exponential time on
+ * a pattern such as `(a+)+$` or `^(a|a)*$` against a value that almost
+ * matches, and that blocks whoever validates the field: the sign gate, a
+ * seller's agent, a checkout page. The SDK therefore never runs a spec's
+ * pattern on `RegExp`. It compiles the pattern, once, into a Thompson
+ * automaton over the portable core (the statement below) and runs that
+ * automaton as a state set over the value: each character is read once,
+ * against at most every state of the automaton, so the work is bounded by
+ * the automaton's size times the value's length. The guest's `regex` crate
+ * (`prover/clause/src/validate.rs`) is also an automaton engine, and the two
+ * give one verdict on every portable pattern.
+ *
+ * `safeRegexTest` keeps two rules the guest also applies, so that the two
+ * engines give one verdict on every value (`safe_regex_test`,
+ * `prover/clause/src/validate.rs`): a value longer than
+ * MAX_PATTERN_TEST_INPUT is not tested, and a pattern of the nested
+ * quantifier shape (`isPotentiallyCatastrophicRegex`) is not run. Either one
+ * counts the pattern as satisfied. Neither one bounds the time, which the
+ * automaton bounds; both hold the two engines to one verdict.
  */
 
 /** Inputs longer than this are not pattern-tested (returns satisfied). Clause
  *  string fields are identifier/short-text scale; this clears every real value
- *  with wide margin while bounding worst-case matching work. */
+ *  with wide margin. The guest applies the same bound. */
 export const MAX_PATTERN_TEST_INPUT = 4096;
 
 /**
- * Conservatively detect the exponential-backtracking shape: a group `(...)`
- * whose body contains a quantifier (`*`, `+`, or `{…,}`) and which is itself
- * immediately quantified. Catches `(a+)+`, `(a*)*`, `(a+)*`, `(a{2,})+`,
- * `((x+))+`, etc. Escaped metacharacters and character classes are skipped so
- * `\(` / `[+*]` do not false-positive. Alternation-overlap patterns
- * (`(a|ab)*`) are polynomial, not exponential, and out of scope for this
- * screen.
+ * The nested quantifier shape: a group `(...)` whose body contains a
+ * quantifier (`*`, `+`, or `{…,}`) and which is itself immediately
+ * quantified. Catches `(a+)+`, `(a*)*`, `(a+)*`, `(a{2,})+`, `((x+))+`, etc.
+ * Escaped metacharacters and character classes are skipped so `\(` / `[+*]`
+ * do not count. `safeRegexTest` does not run a pattern of this shape, because
+ * the guest does not either (`is_potentially_catastrophic_regex`,
+ * `prover/clause/src/validate.rs`, its exact port). It is not what keeps
+ * matching linear: the automaton does that, for every pattern, this shape and
+ * overlapping alternation such as `(a|a)*` alike.
  */
 export function isPotentiallyCatastrophicRegex(pattern: string): boolean {
     // Stack entry per open group: whether its body has seen a quantifier yet.
@@ -305,22 +314,380 @@ export function isPortablePattern(pattern: string): boolean {
     return sizes.length === 1 && sizes[0] <= MAX_PATTERN_EXPANSION;
 }
 
+// ── The linear-time matcher ──────────────────────────────────────────────────
+//
+// A portable pattern is parsed into a tree, the tree is compiled into a
+// Thompson automaton (one instruction array), and the automaton runs over the
+// value as a set of states: each step reads one character and moves every
+// live state at once, so no choice is ever retried. The verdict is whether the
+// pattern matches anywhere in the value, which is what `RegExp.prototype.test`
+// and the guest's `Regex::is_match` both answer. Laziness changes which match
+// a backtracking engine reports, never whether one exists, so a lazy
+// quantifier compiles as its greedy form. The classes are read as the guest
+// reads them, with its Unicode tables off: `\d` is `[0-9]`, `\w` is
+// `[0-9A-Za-z_]`, `\s` is `[\t\n\v\f\r ]`, `.` is every character but `\n`,
+// and `\b` is the boundary between a `\w` character and any other. On a
+// printable-ASCII value, the only kind a pattern runs on, JavaScript's
+// classes match the same characters.
+
+/** One character set: an entry per ASCII code, 1 when the set holds it. */
+type CharSet = Uint8Array;
+
+type PatternNode =
+    | { t: "set"; set: CharSet }
+    | { t: "assert"; k: "^" | "$" | "b" | "B" }
+    | { t: "cat"; items: PatternNode[] }
+    | { t: "alt"; alts: PatternNode[] }
+    | { t: "rep"; node: PatternNode; min: number; max: number };
+
+const EMPTY_NODE: PatternNode = { t: "cat", items: [] };
+
+function charSet(holds: (code: number) => boolean): CharSet {
+    const set = new Uint8Array(128);
+    for (let c = 0; c < 128; c++) set[c] = holds(c) ? 1 : 0;
+    return set;
+}
+
+const isDigitCode = (c: number) => c >= 0x30 && c <= 0x39;
+const isWordCode = (c: number) =>
+    isDigitCode(c) || (c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a) || c === 0x5f;
+const isSpaceCode = (c: number) => c === 0x20 || (c >= 0x09 && c <= 0x0d);
+
+/** The set a class letter (`d D w W s S`) names. */
+function letterSet(letter: string): CharSet {
+    const lower = letter.toLowerCase();
+    const base = lower === "d" ? isDigitCode : lower === "w" ? isWordCode : isSpaceCode;
+    const negated = letter !== lower;
+    return charSet((c) => base(c) !== negated);
+}
+
+const ANY_BUT_NEWLINE = charSet((c) => c !== 0x0a);
+
+function literalSet(ch: string): CharSet {
+    const code = ch.charCodeAt(0);
+    return charSet((c) => c === code);
+}
+
+/** Parses a pattern `isPortablePattern` accepted. Each construct is read
+ *  only in the form the portable core allows it. */
+function parsePortable(pattern: string): PatternNode {
+    let i = 0;
+
+    const parseClass = (): PatternNode => {
+        i++; // `[`
+        const negated = pattern[i] === "^";
+        if (negated) i++;
+        const set = new Uint8Array(128);
+        const union = (other: CharSet) => {
+            for (let c = 0; c < 128; c++) set[c] |= other[c];
+        };
+        while (pattern[i] !== "]") {
+            const c = pattern[i];
+            if (c === "\\") {
+                const e = pattern[i + 1];
+                union(CLASS_LETTERS.includes(e) ? letterSet(e) : literalSet(e));
+                i += 2;
+                continue;
+            }
+            // A range: the core allows one only between two plain literals,
+            // and never from `-`.
+            if (c !== "-" && pattern[i + 1] === "-" && pattern[i + 2] !== "]") {
+                const to = pattern.charCodeAt(i + 2);
+                for (let code = c.charCodeAt(0); code <= to; code++) set[code] = 1;
+                i += 3;
+                continue;
+            }
+            set[c.charCodeAt(0)] = 1;
+            i++;
+        }
+        i++; // `]`
+        if (negated) for (let c = 0; c < 128; c++) set[c] ^= 1;
+        return { t: "set", set };
+    };
+
+    const parseAtom = (): PatternNode => {
+        const c = pattern[i];
+        if (c === "\\") {
+            const e = pattern[i + 1];
+            i += 2;
+            if (e === "b" || e === "B") return { t: "assert", k: e };
+            return { t: "set", set: CLASS_LETTERS.includes(e) ? letterSet(e) : literalSet(e) };
+        }
+        if (c === "[") return parseClass();
+        if (c === "(") {
+            i++;
+            if (pattern[i] === "?") i += 2; // `?:`
+            const inner = parseAlt();
+            i++; // `)`
+            return inner;
+        }
+        i++;
+        if (c === ".") return { t: "set", set: ANY_BUT_NEWLINE };
+        if (c === "^" || c === "$") return { t: "assert", k: c };
+        return { t: "set", set: literalSet(c) };
+    };
+
+    const parseQuantified = (): PatternNode => {
+        const atom = parseAtom();
+        const q = pattern[i];
+        let min: number;
+        let max: number;
+        if (q === "*") {
+            [min, max] = [0, Infinity];
+            i++;
+        } else if (q === "+") {
+            [min, max] = [1, Infinity];
+            i++;
+        } else if (q === "?") {
+            [min, max] = [0, 1];
+            i++;
+        } else if (q === "{") {
+            const end = pattern.indexOf("}", i);
+            const [low, high] = pattern.slice(i + 1, end).split(",");
+            min = Number(low);
+            max = high === undefined ? min : high === "" ? Infinity : Number(high);
+            i = end + 1;
+        } else {
+            return atom;
+        }
+        if (pattern[i] === "?") i++; // lazy: the same verdict
+        return { t: "rep", node: atom, min, max };
+    };
+
+    const parseSeq = (): PatternNode => {
+        const items: PatternNode[] = [];
+        while (i < pattern.length && pattern[i] !== "|" && pattern[i] !== ")") items.push(parseQuantified());
+        return { t: "cat", items };
+    };
+
+    const parseAlt = (): PatternNode => {
+        const alts = [parseSeq()];
+        while (pattern[i] === "|") {
+            i++;
+            alts.push(parseSeq());
+        }
+        return alts.length === 1 ? alts[0] : { t: "alt", alts };
+    };
+
+    return parseAlt();
+}
+
+/** Does the node match only the empty string, with no assertion in it? */
+function isEmptyNode(node: PatternNode): boolean {
+    switch (node.t) {
+        case "set":
+        case "assert":
+            return false;
+        case "cat":
+            return node.items.every(isEmptyNode);
+        case "alt":
+            return node.alts.every(isEmptyNode);
+        case "rep":
+            return node.max === 0 || isEmptyNode(node.node);
+    }
+}
+
+/** The node with every empty part dropped, and an alternation's empty
+ *  branches kept as one. No verdict changes. The expanded size counts an
+ *  empty group as zero, so without this `(?:||||){64}` nested four deep
+ *  would compile to millions of instructions; with it, the automaton is a few
+ *  instructions per counted item. */
+function simplify(node: PatternNode): PatternNode {
+    if (isEmptyNode(node)) return EMPTY_NODE;
+    switch (node.t) {
+        case "set":
+        case "assert":
+            return node;
+        case "cat":
+            return { t: "cat", items: node.items.filter((n) => !isEmptyNode(n)).map(simplify) };
+        case "alt": {
+            const alts = node.alts.filter((n) => !isEmptyNode(n)).map(simplify);
+            if (alts.length < node.alts.length) alts.push(EMPTY_NODE);
+            return { t: "alt", alts };
+        }
+        case "rep":
+            return { t: "rep", node: simplify(node.node), min: node.min, max: node.max };
+    }
+}
+
+/** The instruction kinds of the automaton. */
+const OP_SET = 0;
+const OP_SPLIT = 1;
+const OP_JMP = 2;
+const OP_ASSERT = 3;
+const OP_MATCH = 4;
+
+interface PatternProgram {
+    op: number[];
+    /** OP_SET: the set; OP_ASSERT: the assertion. */
+    arg: (CharSet | string | null)[];
+    /** OP_SPLIT and OP_JMP: the target; OP_SPLIT also goes on to pc + 1. */
+    target: number[];
+}
+
+/** Largest automaton compiled. A portable pattern's automaton stays far
+ *  under it; past it the pattern is treated as outside the core. */
+const MAX_PROGRAM_SIZE = 1 << 16;
+
+function compilePortable(root: PatternNode): PatternProgram | null {
+    const prog: PatternProgram = { op: [], arg: [], target: [] };
+    const emit = (op: number, arg: CharSet | string | null = null, target = -1): number => {
+        prog.op.push(op);
+        prog.arg.push(arg);
+        prog.target.push(target);
+        return prog.op.length - 1;
+    };
+    const emitNode = (node: PatternNode): boolean => {
+        if (prog.op.length > MAX_PROGRAM_SIZE) return false;
+        switch (node.t) {
+            case "set":
+                emit(OP_SET, node.set);
+                return true;
+            case "assert":
+                emit(OP_ASSERT, node.k);
+                return true;
+            case "cat":
+                return node.items.every(emitNode);
+            case "alt": {
+                const jumps: number[] = [];
+                for (let k = 0; k < node.alts.length; k++) {
+                    const last = k === node.alts.length - 1;
+                    const split = last ? -1 : emit(OP_SPLIT);
+                    if (!emitNode(node.alts[k])) return false;
+                    if (!last) {
+                        jumps.push(emit(OP_JMP));
+                        prog.target[split] = prog.op.length;
+                    }
+                }
+                for (const j of jumps) prog.target[j] = prog.op.length;
+                return true;
+            }
+            case "rep": {
+                for (let k = 0; k < node.min; k++) if (!emitNode(node.node)) return false;
+                if (node.max === Infinity) {
+                    const split = emit(OP_SPLIT);
+                    if (!emitNode(node.node)) return false;
+                    emit(OP_JMP, null, split);
+                    prog.target[split] = prog.op.length;
+                    return true;
+                }
+                const splits: number[] = [];
+                for (let k = node.min; k < node.max; k++) {
+                    splits.push(emit(OP_SPLIT));
+                    if (!emitNode(node.node)) return false;
+                }
+                for (const s of splits) prog.target[s] = prog.op.length;
+                return true;
+            }
+        }
+    };
+    if (!emitNode(root)) return null;
+    emit(OP_MATCH);
+    return prog.op.length > MAX_PROGRAM_SIZE ? null : prog;
+}
+
+/** Compiled automata, by pattern: a spec's pattern is compiled once, when it
+ *  is first matched, and reused for every value after. The cache empties
+ *  when it fills, so a stream of new patterns cannot grow it without bound. */
+const PROGRAMS = new Map<string, PatternProgram | null>();
+const MAX_CACHED_PROGRAMS = 1024;
+
+function programOf(pattern: string): PatternProgram | null {
+    const cached = PROGRAMS.get(pattern);
+    if (cached !== undefined) return cached;
+    const prog = isPortablePattern(pattern) ? compilePortable(simplify(parsePortable(pattern))) : null;
+    if (PROGRAMS.size >= MAX_CACHED_PROGRAMS) PROGRAMS.clear();
+    PROGRAMS.set(pattern, prog);
+    return prog;
+}
+
 /**
- * ReDoS-safe replacement for `new RegExp(pattern).test(value)`. Returns `false`
- * when the value leaves printable ASCII, or when a safe, valid pattern
- * definitively does not match. Returns `true` (satisfied) when the pattern
- * matches, when the pattern is unsafe to run, when it is not a valid regex, or
- * when the input is over-long.
+ * Does the portable `pattern` match somewhere in `value`? The automaton runs
+ * as a state set, so the work is at most the automaton's size times
+ * `value.length + 1`, whatever the pattern and the value. Returns null when
+ * `pattern` is outside the portable core: such a pattern never parses in a
+ * spec, and this matcher reads no other syntax. A character of `value` past
+ * ASCII matches no set.
+ */
+export function portablePatternMatches(pattern: string, value: string): boolean | null {
+    const prog = programOf(pattern);
+    if (prog === null) return null;
+    const n = value.length;
+    const isWordAt = (p: number) => {
+        if (p < 0 || p >= n) return false;
+        const c = value.charCodeAt(p);
+        return c < 128 && isWordCode(c);
+    };
+    // `seen[pc] === stamp`: the state is already in the set being built.
+    const seen = new Int32Array(prog.op.length).fill(-1);
+    let stamp = 0;
+    let current: number[] = [];
+    let next: number[] = [];
+    const stack: number[] = [];
+
+    /** Adds `start` and every state it reaches without reading a character,
+     *  at position `pos`, to `list`. True when the match state is reached. */
+    const add = (list: number[], start: number, pos: number): boolean => {
+        stack.push(start);
+        while (stack.length > 0) {
+            const pc = stack.pop() as number;
+            if (seen[pc] === stamp) continue;
+            seen[pc] = stamp;
+            switch (prog.op[pc]) {
+                case OP_MATCH:
+                    stack.length = 0;
+                    return true;
+                case OP_SET:
+                    list.push(pc);
+                    break;
+                case OP_JMP:
+                    stack.push(prog.target[pc]);
+                    break;
+                case OP_SPLIT:
+                    stack.push(prog.target[pc], pc + 1);
+                    break;
+                case OP_ASSERT: {
+                    const k = prog.arg[pc];
+                    const holds =
+                        k === "^" ? pos === 0 :
+                        k === "$" ? pos === n :
+                        k === "b" ? isWordAt(pos - 1) !== isWordAt(pos) :
+                        isWordAt(pos - 1) === isWordAt(pos);
+                    if (holds) stack.push(pc + 1);
+                    break;
+                }
+            }
+        }
+        return false;
+    };
+
+    for (let pos = 0; ; pos++) {
+        // A match may start at any position, so the start state joins the set.
+        if (add(current, 0, pos)) return true;
+        if (pos === n) return false;
+        stamp++;
+        const c = value.charCodeAt(pos);
+        next.length = 0;
+        for (const pc of current) {
+            const set = prog.arg[pc] as CharSet;
+            if (c < 128 && set[c] === 1 && add(next, pc + 1, pos + 1)) return true;
+        }
+        [current, next] = [next, current];
+    }
+}
+
+/**
+ * Tests `value` against a clause's `pattern` in linear time. Returns `false`
+ * when the value leaves printable ASCII, or when the pattern does not match.
+ * Returns `true` (satisfied) when the pattern matches, when the value is
+ * longer than MAX_PATTERN_TEST_INPUT, when the pattern has the nested
+ * quantifier shape, or when it is outside the portable core (a spec with such
+ * a pattern never parses). The guest's `safe_regex_test` gives the same
+ * verdict on every case a parsed spec reaches.
  */
 export function safeRegexTest(pattern: string, value: string): boolean {
     if (!isPrintableAscii(value)) return false;
     if (value.length > MAX_PATTERN_TEST_INPUT) return true;
     if (isPotentiallyCatastrophicRegex(pattern)) return true;
-    let re: RegExp;
-    try {
-        re = new RegExp(pattern);
-    } catch {
-        return true; // an unparseable spec pattern is the validator's finding, not the input's
-    }
-    return re.test(value);
+    return portablePatternMatches(pattern, value) ?? true;
 }

@@ -16,11 +16,13 @@
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="saferegextest"><span class="tsd-kind-call-signature">safeRegexTest</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pattern</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">value</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#saferegextest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>ReDoS-safe replacement for <code>new RegExp(pattern).test(value)</code>. Returns <code>false</code>
-when the value leaves printable ASCII, or when a safe, valid pattern
-definitively does not match. Returns <code>true</code> (satisfied) when the pattern
-matches, when the pattern is unsafe to run, when it is not a valid regex, or
-when the input is over-long.</p>
+<div class="tsd-comment tsd-typography"><p>Tests <code>value</code> against a clause's <code>pattern</code> in linear time. Returns <code>false</code>
+when the value leaves printable ASCII, or when the pattern does not match.
+Returns <code>true</code> (satisfied) when the pattern matches, when the value is
+longer than MAX_PATTERN_TEST_INPUT, when the pattern has the nested
+quantifier shape, or when it is outside the portable core (a spec with such
+a pattern never parses). The guest's <code>safe_regex_test</code> gives the same
+verdict on every case a parsed spec reaches.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -29,7 +31,7 @@ when the input is over-long.</p>
 <li><span><span class="tsd-kind-parameter">value</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/clauses/safeRegex.ts#L315">clauses/safeRegex.ts:315</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/clauses/safeRegex.ts#L688">clauses/safeRegex.ts:688</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

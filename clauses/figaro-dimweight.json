@@ -18,7 +18,7 @@
             "required": true,
             "min": 1,
             "max": 4294967295,
-            "description": "The dimensional divisor applied (the seller's shipping convention, e.g. ~5000 metric). Committed so the billed weight is reproducible: volumetric = packaged volume \u00f7 divisor."
+            "description": "The divisor in mm\u00b3 per gram (the carrier's cm\u00b3 per kg, the same number): volumetric weight in whole grams is each packaged dimension rounded up to the next whole centimeter, multiplied in mm\u00b3, divided by this divisor and rounded up, and the billed weight is the larger of that and the gross mass. Mass and dimensions come from the catalog items and are committed only when a clause declaring them is composed beside this one."
         }
     ],
     "stages": {},

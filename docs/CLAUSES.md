@@ -349,6 +349,22 @@ its manual.
   spec parses. A spec whose pattern is outside the core does not parse, in
   either engine. A patterned field's value is printable ASCII; a value
   outside it does not validate.
+- A pattern is untrusted, since anyone registers a spec, and neither engine
+  runs it by backtracking. The guest's `regex` crate is an automaton engine.
+  The SDK never runs a spec's pattern on JavaScript's `RegExp`, which takes
+  exponential time on a pattern such as `(a+)+$` or `^(a|a)*$`: it compiles
+  the pattern once, into a Thompson automaton over the portable core, and
+  runs it as a state set, so a value is matched in time linear in its length
+  (`portablePatternMatches`, `sdk/src/clauses/safeRegex.ts`). The SDK reads
+  the classes as the guest reads them with its Unicode tables off. Both
+  engines apply the same two skips, each of which counts the pattern as
+  satisfied: a value longer than 4,096 characters is not tested, and a
+  pattern with a quantified group whose body holds a quantifier is not run
+  (`isPotentiallyCatastrophicRegex`, `is_potentially_catastrophic_regex`).
+  A value over the field's `maxLength` is refused without its pattern run.
+  `sdk/tests/clauses/safeRegex.test.ts` compares the automaton with
+  `RegExp` on every pattern in `clauses/`, and the shared vectors lock the
+  verdicts to the guest's.
 - A `string` value holds no lone UTF-16 surrogate (`"\ud800"` with no low
   half after it, or a low half alone). `JSON.parse` keeps one and
   `serde_json`, which reads content in the guest, refuses it; the SDK's

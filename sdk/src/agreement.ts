@@ -306,6 +306,13 @@ export function hashClauseData(clauseEntry: AgreementClause): Hex {
                 `Clause ${clauseEntry.clause} carries both plaintext data and a dataHash fingerprint — exactly one is allowed`,
             );
         }
+        // A fingerprint is a keccak256: 32 bytes, as the chain's `bytes32`
+        // takes it. A longer one would let a withheld entry rebuild a leaf
+        // whose inner preimage is longer than a clause leaf's, such as the
+        // topology leaf (`computeTopologyLeaf`).
+        if (typeof clauseEntry.dataHash !== "string" || !BYTES32_RE.test(clauseEntry.dataHash)) {
+            throw new Error(`Clause ${clauseEntry.clause} dataHash is not a 32-byte hex hash: ${String(clauseEntry.dataHash)}`);
+        }
         return clauseEntry.dataHash;
     }
     return keccak256(getClauseDataBytes(clauseEntry));
@@ -387,6 +394,14 @@ export function agreementLeaves(agreement: Agreement): Hex[] {
     const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
     if (dupes.length > 0) {
         throw new Error(`Duplicate clause keys in agreement: ${[...new Set(dupes)].join(", ")}`);
+    }
+    // The format's own leaves are built from `provenance` and `follows`,
+    // never from a clause entry: an entry under either reserved key could
+    // stand in for them and hide the design or the order links an agreement
+    // carries.
+    const reserved = keys.find((k) => k === PROVENANCE_LEAF_KEY.toLowerCase() || k === TOPOLOGY_LEAF_DOMAIN.toLowerCase());
+    if (reserved !== undefined) {
+        throw new Error(`Clause key ${reserved} is a reserved format key, never a clause`);
     }
     const leaves = agreement.clauses.map(computeClauseLeaf);
     if (agreement.provenance !== undefined) {

@@ -1258,7 +1258,13 @@ register. `ClauseRegistry.registerClause` accepts any nonzero key, and
 shape would let a stranger register it and earn on every order, or would
 need a contract and a guest change to refuse it. A leaf of another length
 opens under no clause key, so it is registered nowhere, attested nowhere and
-counted nowhere, with no contract and no verification key moved. The leaf
+counted nowhere, with no contract and no verification key moved. On chain a
+data hash is a `bytes32`; off chain the SDK refuses a withheld clause whose
+`dataHash` is not 32 bytes (`hashClauseData`) and a clause entry under
+`TOPOLOGY_LEAF_DOMAIN` or `PROVENANCE_LEAF_KEY` (`agreementLeaves`,
+`sdk/src/agreement.ts`), so no entry of a served agreement rebuilds either
+format leaf, and `anchorAgreement` refuses a document that tries
+(`sdk/tests/topologyLeaf.test.ts`, `sdk/tests/anchored.test.ts`). The leaf
 stays double-hashed, so it never passes as an internal node. An assembly
 leaf's inner preimage is also 96 bytes (domain, key, data hash), and it is
 kept apart from the topology leaf by its first word, the domain:

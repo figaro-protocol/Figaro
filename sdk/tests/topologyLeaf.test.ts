@@ -75,6 +75,19 @@ describe("the topology leaf's shape", () => {
         }
     });
 
+    it("is reproduced by no withheld entry, because a data hash of another length is refused", () => {
+        // The 64-byte `uint256(n) ‖ dataHash` under the topology domain would
+        // be the topology leaf's 96-byte inner preimage byte for byte.
+        for (const follows of [[], [P1], [P1, P2]] as Hex[][]) {
+            const forged = concat([numberToHex(follows.length, { size: 32 }), topologyContentRef(follows)]);
+            expect(() => computeClauseLeaf({ clause: TOPOLOGY_LEAF_DOMAIN, dataHash: forged })).toThrow(/32-byte/);
+            expect(() => computeClauseLeaf({ clause: K("any key"), dataHash: forged })).toThrow(/32-byte/);
+        }
+        for (const hash of ["0x", "0x1234", `0x${"ab".repeat(31)}`, `0x${"ab".repeat(33)}`, `0x${"zz".repeat(32)}`]) {
+            expect(() => computeClauseLeaf({ clause: K("any key"), dataHash: hash as Hex })).toThrow(/32-byte/);
+        }
+    });
+
     it("refuses an edge that is not a 32-byte hash, and an edge named twice", () => {
         expect(() => topologyLeafBytes(["0x1234" as Hex])).toThrow(/32-byte/);
         expect(() => topologyLeafBytes([P1, P1.toUpperCase().replace("0X", "0x") as Hex])).toThrow(/twice/);

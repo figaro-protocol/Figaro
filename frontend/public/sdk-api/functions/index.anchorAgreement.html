@@ -19,7 +19,9 @@
 <div class="tsd-comment tsd-typography"><p>An agreement, verified against the commitment's <code>checkoutHash</code>: the
 merkle root over its clause leaves, its provenance leaf and its topology
 leaf is the hash. A document whose leaves do not hash (malformed,
-duplicated clause keys, a <code>provenance</code> that is not two 32-byte hex keys,
+duplicated clause keys, a clause entry under a reserved key
+(<code>PROVENANCE_LEAF_KEY</code>, <code>TOPOLOGY_LEAF_DOMAIN</code>), a withheld <code>dataHash</code>
+that is not 32 bytes, a <code>provenance</code> that is not two 32-byte hex keys,
 a <code>follows</code> that is not a list of distinct 32-byte order hashes) is not
 the agreement. The
 top-level <code>buyer</code> and <code>seller</code> are outside the hash and pass unchecked
@@ -32,7 +34,7 @@ here — check them against the commitment.</p>
 <li><span><span class="tsd-kind-parameter">checkoutHash</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../types/index.Anchored.html" class="tsd-signature-type tsd-kind-type-alias">Anchored</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.Agreement.html" class="tsd-signature-type tsd-kind-interface">Agreement</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/anchored.ts#L171">anchored.ts:171</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/anchored.ts#L173">anchored.ts:173</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

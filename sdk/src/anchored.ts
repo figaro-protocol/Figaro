@@ -163,7 +163,9 @@ export function anchorProcessDesign(raw: unknown, processDesignHash: Hex | strin
 /** An agreement, verified against the commitment's `checkoutHash`: the
  *  merkle root over its clause leaves, its provenance leaf and its topology
  *  leaf is the hash. A document whose leaves do not hash (malformed,
- *  duplicated clause keys, a `provenance` that is not two 32-byte hex keys,
+ *  duplicated clause keys, a clause entry under a reserved key
+ *  (`PROVENANCE_LEAF_KEY`, `TOPOLOGY_LEAF_DOMAIN`), a withheld `dataHash`
+ *  that is not 32 bytes, a `provenance` that is not two 32-byte hex keys,
  *  a `follows` that is not a list of distinct 32-byte order hashes) is not
  *  the agreement. The
  *  top-level `buyer` and `seller` are outside the hash and pass unchecked
