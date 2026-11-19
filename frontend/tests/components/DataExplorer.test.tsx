@@ -1,6 +1,6 @@
 /**
  * DataExplorer.test.tsx — the two things the surface must never get wrong:
- * a layer is rendered WITH the truth boundary behind it, and an absence is
+ * a layer, and each row in it, is rendered WITH the truth boundary behind it, and an absence is
  * rendered as an absence (unattributed processes, a fingerprint-only overlay
  * family, no venue reader) rather than as an empty table implying nothing
  * happened.
@@ -445,5 +445,112 @@ describe("DataExplorer — the layer tabs are a WAI-ARIA tab set with 44px targe
             expect(cls).toContain("rounded-tile");
             expect(cls).not.toMatch(/(^|\s)rounded(\s|$)/);
         }
+    });
+});
+
+describe("DataExplorer — every row of the market, overlays and wallet layers names what backs it", () => {
+    const PROCESS = `0x${"ab".repeat(32)}`;
+    const MARKET = `0x${"cd".repeat(32)}`;
+    const BUYER = "0x5555555555555555555555555555555555555555";
+    const SELLER = "0x6666666666666666666666666666666666666666";
+    const ORDER = {
+        orderHash: `0x${"11".repeat(32)}`,
+        processId: PROCESS,
+        buyer: BUYER,
+        seller: SELLER,
+        token: TOKEN,
+        payment: 9n,
+        runningTotal: 9n,
+        checkoutHash: `0x${"99".repeat(32)}`,
+        salt: 0n,
+        commitDeadline: 0n,
+        state: 1,
+        blockNumber: 12,
+    };
+    const PROCESS_GRAPH = {
+        boundary: "protocol-enforced",
+        processes: new Map([[PROCESS, { processId: PROCESS, rootBuyer: BUYER, token: TOKEN, runningTotal: 9n, resolved: true, orders: new Map([["o1", ORDER]]) }]]),
+        topology: {
+            getProcessesByBuyer: () => [],
+            getOrdersBySeller: (w: string) => (w.toLowerCase() === SELLER ? [ORDER] : []),
+        },
+    };
+
+    /** The labels whose nearest row is `row` itself: a nested row's label is its own. */
+    function ownLabels(row: HTMLElement): HTMLElement[] {
+        return within(row).queryAllByTestId("row-boundary").filter((el) => el.closest("li") === row);
+    }
+
+    function expectOwnLabel(row: HTMLElement, boundary: string, source: RegExp) {
+        const labels = ownLabels(row);
+        expect(labels).toHaveLength(1);
+        expect(labels[0].textContent).toBe(boundary);
+        expect(labels[0].parentElement!.querySelector('[data-testid="row-source"]')!.textContent).toMatch(source);
+    }
+
+    beforeEach(() => {
+        analystUrlMock.mockReturnValue(null);
+        statusMock.mockReturnValue(null);
+    });
+
+    it("market: a market row is protocol-derived, grouped by provenance; each of its process rows is protocol-enforced", () => {
+        searchParams = "view=market";
+        corpusMock.mockReturnValue({
+            status: "present",
+            value: corpus({
+                process: PROCESS_GRAPH,
+                market: {
+                    boundary: "protocol-derived",
+                    groups: new Map([[MARKET, {
+                        key: MARKET,
+                        processCount: 1,
+                        orderCount: 1,
+                        distinctPairCount: 1,
+                        volumeByDenomination: new Map([[TOKEN, { committed: 18n, settled: 9n }]]),
+                        processCommitBlocks: [12],
+                        shapes: [{ orderCount: 1, depth: 0, maxWidth: 1, processCount: 1 }],
+                    }]]),
+                    unattributedProcessCount: 0,
+                },
+                attributionByProcess: new Map([[PROCESS.toLowerCase(), MARKET.toLowerCase()]]),
+            } as unknown as Partial<GraphCorpus>),
+        });
+        render(<DataExplorer />);
+        expectOwnLabel(screen.getByTestId(`market-row-${MARKET}`), "protocol-derived", /provenance attestation/);
+        expectOwnLabel(screen.getByTestId(`process-row-${PROCESS.toLowerCase()}`), "protocol-enforced", /order events/);
+    });
+
+    it("overlays: each overlay row is protocol-derived and says whether any content was read", () => {
+        searchParams = "view=overlays";
+        const entry = (decoded: unknown) => ({
+            orderHash: ORDER.orderHash,
+            processId: PROCESS,
+            attester: SELLER,
+            stage: 1,
+            universe: "direct",
+            blockNumber: 4,
+            contentRef: `0x${"33".repeat(32)}`,
+            decoded,
+        });
+        const OTHER_KEY = `0x${"b2".repeat(32)}`;
+        corpusMock.mockReturnValue({
+            status: "present",
+            value: corpus({
+                overlays: [
+                    { boundary: "protocol-derived", clauseKey: KEY, spec: null, provenanceLeaf: false, entries: [entry(null)] },
+                    { boundary: "protocol-derived", clauseKey: OTHER_KEY, spec: { clauseId: "x", title: "X" }, provenanceLeaf: false, entries: [entry({ a: "1" }), entry({ a: "2" })] },
+                ],
+            } as unknown as Partial<GraphCorpus>),
+        });
+        render(<DataExplorer />);
+        expectOwnLabel(screen.getByTestId(`overlay-row-${KEY}`), "protocol-derived", /no content read/);
+        expectOwnLabel(screen.getByTestId(`overlay-row-${OTHER_KEY}`), "protocol-derived", /attester's own content/);
+    });
+
+    it("wallet: each order row is protocol-enforced, derived from the order events", () => {
+        searchParams = `view=wallet&wallet=${SELLER}`;
+        corpusMock.mockReturnValue({ status: "present", value: corpus({ process: PROCESS_GRAPH } as unknown as Partial<GraphCorpus>) });
+        render(<DataExplorer />);
+        expectOwnLabel(screen.getByTestId(`wallet-row-${ORDER.orderHash}-seller`), "protocol-enforced", /order events/);
     });
 });

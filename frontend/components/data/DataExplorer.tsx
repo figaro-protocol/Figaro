@@ -25,12 +25,13 @@
 import Link from "@/components/shared/Link";
 import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { walletRecord, type TruthBoundary, type ValueFlowEdge } from "@figaro-protocol/sdk/derive";
+import { walletRecord, type ValueFlowEdge } from "@figaro-protocol/sdk/derive";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 import { Card } from "@/components/ui/Card";
 import { Tabs } from "@/components/ui/Tabs";
 import { Input } from "@/components/ui/Input";
 import { AnalystPrompt } from "@/components/data/AnalystPrompt";
+import { RowBoundary } from "@/components/data/RowBoundary";
 import { ProcessAuditOpen } from "@/app/(app)/audit/_components/ProcessAuditOpen";
 import { useGraphCorpus, type GraphCorpus } from "@/lib/data/graphCorpus";
 import {
@@ -90,15 +91,6 @@ function BoundaryLine({ view }: { view: GraphView }) {
             </div>
             <p className="text-sm text-ink-body leading-relaxed max-w-3xl">{layer.statement}</p>
         </div>
-    );
-}
-
-/** One row's own boundary, where a layer holds rows of more than one kind. */
-function RowBoundary({ boundary }: { boundary: TruthBoundary }) {
-    return (
-        <span className="block text-xs text-ink-muted font-mono" data-testid="row-boundary">
-            {boundary}
-        </span>
     );
 }
 
@@ -237,7 +229,7 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
             ) : (
                 <ul className="space-y-5">
                     {shown.map((r) => (
-                        <li key={r.key} className="space-y-1">
+                        <li key={r.key} className="space-y-1" data-testid={`market-row-${r.key}`}>
                             <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-3">
                                 <span className="text-sm font-semibold text-ink-heading">{r.name}</span>
                                 {r.nameResolved ? (
@@ -263,6 +255,13 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                                     </span>
                                 ))}
                             </p>
+                            {/* The figures fold the order events; the grouping is the
+                                buyer's provenance attestation, so the row carries the
+                                market shape's own boundary. */}
+                            <RowBoundary
+                                boundary={corpus.market.boundary}
+                                source="derived at read time from the order events, grouped by the buyer's provenance attestation"
+                            />
                             <MarketOverlays corpus={corpus} marketKey={r.key} />
                             <MarketProcesses corpus={corpus} marketKey={r.key} />
                             <p className="text-xs text-ink-muted">
@@ -371,6 +370,7 @@ function ProcessList({ rows, corpus, testId }: { rows: readonly ProcessRow[]; co
                         {" · "}
                         {r.resolved ? "resolved" : "active"}
                         {r.firstBlock !== null ? ` · from block ${r.firstBlock}` : ""}
+                        <RowBoundary boundary={corpus.process.boundary} source="derived at read time from the order events" />
                         {r.designedEdges ? <DesignedEdgesLine edges={r.designedEdges} processId={r.processId} corpus={corpus} /> : null}
                     </li>
                 ))}
@@ -470,6 +470,14 @@ function OverlaysView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: 
                                     </>
                                 )}
                             </p>
+                            <RowBoundary
+                                boundary={r.boundary}
+                                source={
+                                    r.posture === "decoded"
+                                        ? "derived at read time from the Attestation events; decoded fields read from each attester's own content"
+                                        : "derived at read time from the Attestation events; no content read"
+                                }
+                            />
                         </li>
                     ))}
                 </ul>
@@ -616,7 +624,7 @@ function WalletView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                     </p>
                     <ul className="space-y-2">
                         {rows.map((r) => (
-                            <li key={`${r.orderHash}-${r.side}`} className="text-sm text-ink-body">
+                            <li key={`${r.orderHash}-${r.side}`} className="text-sm text-ink-body" data-testid={`wallet-row-${r.orderHash.toLowerCase()}-${r.side}`}>
                                 <span className="text-ink-heading">{r.side}</span> ·{" "}
                                 <Amount value={r.payment} token={r.currency} corpus={corpus} /> ·{" "}
                                 {r.resolved ? "resolved" : "active"}
@@ -627,6 +635,7 @@ function WalletView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                                         open the process data
                                     </Link>
                                 </span>
+                                {record ? <RowBoundary boundary={record.boundary} source="derived at read time from the order events" /> : null}
                             </li>
                         ))}
                     </ul>

@@ -22,6 +22,7 @@ import { extractProcessLogs } from "@/lib/data/audit/processLogsExtract";
 import { attestationIsWitness, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { MissingParts } from "./MissingParts";
+import { RowBoundary } from "@/components/data/RowBoundary";
 import type { MissingPart } from "@/lib/data/audit/types";
 import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 import type { Order } from "@/lib/core/store";
@@ -96,6 +97,10 @@ function OrderSignatureRows({
                                 Not a direct call &mdash; the commit went through another contract, so this transaction&rsquo;s calldata is not what FigaroCore verified
                             </span>
                         )}
+                        {/* The Core recovers both signers at commit (`FigaroCore`), and on
+                            the batch path the proof checks them, so a committed order's
+                            signatures are the Core's. */}
+                        <RowBoundary boundary="protocol-enforced" source="checked by the Core at commit, on either path" />
                     </dd>
                 </div>
             ))}
@@ -388,7 +393,13 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                                                     {clause.fields.map((field) => (
                                                         <div key={field.name} className="contents">
                                                             <dt className="text-ink-muted">{field.label}</dt>
-                                                            <dd className="text-ink-body">{field.values.join(", ")}</dd>
+                                                            <dd className="text-ink-body" data-testid={`audit-field-${clause.clauseKey}-${field.name}`}>
+                                                                {field.values.join(", ")}
+                                                                <RowBoundary
+                                                                    boundary="institution-declared"
+                                                                    source="read from the agreement the parties signed"
+                                                                />
+                                                            </dd>
                                                         </div>
                                                     ))}
                                                 </dl>
@@ -411,7 +422,7 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                                             const decoded = witnessValues.get(`${group.clauseKey}:${event.stage}:${event.contentRef}`);
                                             const witness = decoded ? describeWitness(group.clauseKey, event.stage, decoded) : null;
                                             return (
-                                                <li key={`${group.clauseKey}-${i}`} className="text-ink-body">
+                                                <li key={`${group.clauseKey}-${i}`} className="text-ink-body" data-testid={`audit-log-${group.clauseKey}-${i}`}>
                                                     <div className="flex flex-wrap gap-x-3">
                                                         <span className="text-ink-heading">
                                                             {describeAttestation(group.clauseKey, event.stage).eventLabel}
@@ -421,6 +432,14 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                                                         </span>
                                                         <span className="text-ink-muted text-xs">block {event.blockNumber}</span>
                                                     </div>
+                                                    <RowBoundary
+                                                        boundary="protocol-derived"
+                                                        source={
+                                                            witness && witness.fields.length > 0
+                                                                ? "derived at read time from the Attestation event; the values below read from the attester's own content"
+                                                                : "derived at read time from the Attestation event; no content read"
+                                                        }
+                                                    />
                                                     {/* The evidence the chain actually carries: a fingerprint of
                                                         what was attested, timestamped and tamper-evident (any
                                                         change to the content changes the fingerprint). The

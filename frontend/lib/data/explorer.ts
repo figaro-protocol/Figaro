@@ -337,6 +337,9 @@ export function processAuditHref(processId: string): string {
 // ── Attestation overlays (the open graph class) ─────────────────────────────
 
 export interface OverlayRow {
+    /** What backs the row: the overlay graph's own truth boundary, carried
+     *  from the SDK's projection, never chosen here. */
+    boundary: TruthBoundary;
     /** The on-chain clause key — the opaque grouping key, present always. */
     clauseKey: string;
     /** The readable id, only when the family's spec resolved from the
@@ -377,6 +380,7 @@ export function overlayRows(graphs: readonly OverlayGraph[]): OverlayRow[] {
         const blocks = g.entries.map((e) => e.blockNumber);
         const clauseId = g.spec?.clauseId ?? null;
         return {
+            boundary: g.boundary,
             clauseKey: g.clauseKey,
             clauseId,
             title: g.spec?.title ?? (g.provenanceLeaf ? "Assembly provenance" : truncateHex(g.clauseKey, { head: 10, tail: 0 })),
