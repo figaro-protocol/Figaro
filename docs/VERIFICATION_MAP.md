@@ -993,7 +993,8 @@ The CI results are read with `gh run list --workflow <file> --branch main --limi
 | Semgrep `p/rust` | `prover/program/src`, `prover/lib/src`, `prover/clause/src`, `prover/sequencer/src` | `prover-ci` run 44508926137 | pass at the code |
 | CodeQL, Rust | the prover workspace | `codeql` run 44508926305 at `470ef10e`; no open Rust alert | pass at the code |
 | `cargo audit` | `prover/Cargo.lock` | no advisory but the five `prover/.cargo/audit.toml` sets aside; `guards-ci` run 44516806606 at `a09f9e9f` | pass at the code |
-| The SP1 advisories | SP1's five published advisories are not in RustSec, so `cargo audit` cannot read them; no check reads them | — | not run |
+| `cargo deny check` (`prover/deny.toml`) | `prover/Cargo.lock`: RustSec advisories with the same five set aside as `prover/.cargo/audit.toml`, and the unmaintained notice of `bincode` 1.3.3 (RUSTSEC-2025-0141) beside them; unmaintained and unsound notices on the crates a workspace member names directly; licenses against a permissive allow list, MPL-2.0 for `dynasm`, `dynasmrt` and `option-ext` only; sources (crates.io and the two `sp1-patches` repositories); duplicate versions as warnings | the `cargo-deny` job of `supply-chain` (`.github/workflows/supply-chain.yml`). A local run with cargo-deny 0.20.2 on the uncommitted change fails on one finding: `tokio` 1.53.1 is unsound (RUSTSEC-2026-0386, `AsyncFd`'s constructors), fixed at 1.53.3, and `figaro-sequencer` names it directly; licenses, bans and sources pass, with 48 duplicate-version warnings | added; first run pending |
+| The SP1 advisories (`scripts/check-sp1-advisories.mjs`) | SP1's advisories are not in RustSec, so `cargo audit` and `cargo deny` cannot read them. The script reads the GitHub advisory database (`/advisories?ecosystem=rust&affects=`, each pinned `sp1*` name in its hyphen and underscore spelling) and the published advisories of `succinctlabs/sp1`, and fails when a pinned version is in an affected range; `scripts/test-check-sp1-advisories.mjs` holds that it fails on `test/fixtures/sp1-advisories/Cargo.lock` (6.8.0, one patch below the fix of GHSA-p7v2-jjv3-8p8f) | the `sp1-advisories` job of `supply-chain`; a local run read six advisories and found the 21 pinned crates, all at 6.8.1, in no affected range | added; first run pending |
 | Mutation, `cargo-mutants` | `figaro-kernel`, `figaro-clause` | 617 mutants, 12 survivors read as equivalent, at `f62b71cf` | pass at an earlier commit |
 | A Groth16 proof from this tree's key, accepted on chain | — | § 14, "owed"; two proofs of an earlier guest at `cf6ba4ab` on a Sepolia fork | not run |
 | A proof that the guest implements the model | — | § 14, "owed" | not run |
@@ -1020,12 +1021,13 @@ The CI results are read with `gh run list --workflow <file> --branch main --limi
 | The deployment's wiring | `DeployWiringTest` | within the whole suite, `foundry-ci` run 44508926270 | pass at the code |
 | The public deployment's watcher | the Sepolia contracts' events, daily | `monitor` run 44490365975 at `2e7bb5f0` | ran; it alerts, it proves nothing |
 | The read-back on a live chain (`scripts/check-deployment.mjs`) | — | § 14, "owed" | not run |
-| `zizmor` over the workflows, the OpenSSF Scorecard over the repository | — | — | not run |
+| `zizmor` 1.31.1 over the workflows | `.github/workflows/` | the `zizmor` job of `supply-chain`, failing on a high-severity finding. A local run found one high finding, cache poisoning in `.github/workflows/sdk-release.yml`, fixed by dropping the npm cache there; 23 medium (credentials kept by `actions/checkout`), 1 low and 6 informational findings stand open | added; first run pending |
+| The OpenSSF Scorecard | the repository | `scorecard` (`.github/workflows/scorecard.yml`), weekly and on dispatch; the result is a workflow artifact only, never sent to the Scorecard public API | added; first run pending |
 | Mutation testing of the SDK's tests, a formal proof of the SDK or the signer | — | § 14, "owed" | not run |
 
 ### 16.10 What is left
 
-The tools of Task 2's checklist that have not run are Medusa, `crytic/properties`, Aderyn, `necessist`, Gambit, Kontrol, Kani, `cargo-fuzz`, `cargo-deny`, `cargo-vet`, `zizmor`, the OpenSSF Scorecard, the SP1 advisory check and OpenZeppelin Monitor. The gate benches (Certora, Echidna, TLA+, Lean, `mewt`, `cargo-mutants`) have not run on the code at `a09f9e9f`. The nine open CodeQL alerts are not triaged. No agent audit has read the registries, the designer rewards, the data layer or the SDK as its scope.
+The tools of Task 2's checklist that have not run are Medusa, `crytic/properties`, Aderyn, `necessist`, Gambit, Kontrol, Kani, `cargo-fuzz`, `cargo-vet` and OpenZeppelin Monitor. `cargo-deny`, `zizmor`, the OpenSSF Scorecard and the SP1 advisory check are in CI, and their first runs are pending. The gate benches (Certora, Echidna, TLA+, Lean, `mewt`, `cargo-mutants`) have not run on the code at `a09f9e9f`. The nine open CodeQL alerts are not triaged. No agent audit has read the registries, the designer rewards, the data layer or the SDK as its scope.
 
 ---
 

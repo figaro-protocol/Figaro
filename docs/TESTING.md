@@ -1263,6 +1263,25 @@ Per workflow, what it runs and when:
   whole-tree guard battery and the Claude semantic open-world gate run
   maintainer-side, in pre-commit — they are private tooling and not part of
   the public CI tree.
+- **`Supply Chain CI`** (`supply-chain.yml`) — push/PR, NOT path-filtered,
+  weekly (Mondays 04:41 UTC) and dispatch. Three jobs: `cargo deny check`
+  (0.20.2) over `prover/Cargo.lock` with `prover/deny.toml` — RustSec
+  advisories (the same five set aside as `prover/.cargo/audit.toml`, and
+  `bincode`'s unmaintained notice), unmaintained and unsound notices on the
+  crates a workspace member names directly, licenses
+  against a permissive allow list, sources limited to crates.io and the two
+  `sp1-patches` git repositories, duplicate versions as warnings only; the SP1
+  advisory check — `scripts/test-check-sp1-advisories.mjs` over
+  `test/fixtures/sp1-advisories/`, then `scripts/check-sp1-advisories.mjs`,
+  which reads the GitHub advisory database and the published advisories of
+  `succinctlabs/sp1` (RustSec carries none of them) and fails when a pinned
+  `sp1*` crate is in an affected range; and `zizmor` (1.31.1) over
+  `.github/workflows/`, failing on a high-severity finding, then printing
+  every finding without failing.
+- **`scorecard`** — weekly (Mondays 05:17 UTC) + dispatch: the OpenSSF
+  Scorecard over the repository, its SARIF and JSON kept as a workflow
+  artifact with 90-day retention. `publish_results` is false, so nothing
+  reaches the Scorecard public API or code scanning. Gates no merge.
 - **`estate-snapshot`** — weekly (Mondays 00:23 UTC) + dispatch: captures the
   perishable estate signals (GitHub traffic, which the API retains only ~14
   days; the Cloudflare daily site-traffic series for figaroprotocol.com; the

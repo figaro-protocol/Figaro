@@ -45,12 +45,16 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
+            # No npm cache in a publishing workflow: a cache another run wrote
+            # could reach the published tarball (zizmor's cache-poisoning
+            # audit). `npm ci` installs from the lockfile every time. setup-node
+            # 4.4.0 caches only when `cache` is set (its action.yml has no
+            # `package-manager-cache` input), so the audit's remaining finding
+            # on this line, which assumes 5.x, is ignored on the line itself.
             - name: Setup Node.js
-              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0 # zizmor: ignore[cache-poisoning]
               with:
                   node-version-file: .nvmrc
-                  cache: "npm"
-                  cache-dependency-path: package-lock.json
                   registry-url: "https://registry.npmjs.org"
 
             - name: Install dependencies

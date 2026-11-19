@@ -1,0 +1,131 @@
+name: Supply Chain CI
+
+# Three supply-chain checks beside the dependency audit of guards-ci.yml:
+#
+# `cargo-deny` — `cargo deny check` over prover/Cargo.lock with
+# prover/deny.toml: RustSec advisories, licenses, duplicate versions (warnings
+# only) and sources.
+#
+# `sp1-advisories` — scripts/check-sp1-advisories.mjs: RustSec carries none of
+# SP1's advisories, so this job reads the GitHub advisory database and the
+# published advisories of succinctlabs/sp1, and fails when a pinned sp1 crate
+# is in an affected range. Its fixture test runs first.
+#
+# `zizmor` — the static audit of .github/workflows/. The gate fails on a
+# high-severity finding; a second pass prints every finding and never fails.
+#
+# Every push and pull request, and weekly, since an advisory can be published
+# against a lockfile that has not changed.
+
+on:
+    workflow_dispatch:
+    push:
+        branches: [main, develop]
+    pull_request:
+        branches: [main, develop]
+    schedule:
+        - cron: "41 4 * * 1"
+
+permissions:
+    contents: read
+
+env:
+    CARGO_DENY_VERSION: "0.20.2"
+    ZIZMOR_VERSION: "1.31.1"
+
+jobs:
+    cargo-deny:
+        name: cargo deny (prover workspace)
+        runs-on: ubuntu-24.04
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  persist-credentials: false
+
+            # The same pin the sequencer release builds with
+            # (prover/rust-toolchain.toml), read as guards-ci.yml reads it.
+            - name: Read pinned Rust toolchain
+              run: |
+                  RUST_TOOLCHAIN=$(awk -F'"' '/^channel/{print $2}' prover/rust-toolchain.toml)
+                  if [ -z "$RUST_TOOLCHAIN" ]; then
+                      echo "could not read channel from prover/rust-toolchain.toml"
+                      exit 1
+                  fi
+                  echo "RUST_TOOLCHAIN=$RUST_TOOLCHAIN" >> "$GITHUB_ENV"
+
+            - name: Install Rust ${{ env.RUST_TOOLCHAIN }}
+              run: |
+                  rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+                  rustup default "$RUST_TOOLCHAIN"
+
+            - name: Cache cargo-deny
+              id: cache-cargo-deny
+              uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: ~/.cargo/bin/cargo-deny
+                  key: cargo-deny-${{ env.CARGO_DENY_VERSION }}-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}
+
+            - name: Install cargo-deny ${{ env.CARGO_DENY_VERSION }}
+              if: steps.cache-cargo-deny.outputs.cache-hit != 'true'
+              run: cargo install cargo-deny --locked --version "$CARGO_DENY_VERSION"
+
+            # The lockfile is read as committed and never re-resolved.
+            - name: cargo deny check — prover/Cargo.lock
+              working-directory: ./prover
+              run: cargo deny --locked check
+
+    sp1-advisories:
+        name: SP1 advisories (GitHub advisory database)
+        runs-on: ubuntu-24.04
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  persist-credentials: false
+
+            - name: Setup Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version-file: .nvmrc
+
+            # The fixture lock pins sp1 one patch below a fixed version; the
+            # test asserts the check fails on it and passes at the fix.
+            - name: Fixture test
+              run: node --test scripts/test-check-sp1-advisories.mjs
+
+            # The token only raises the API's rate limit; both endpoints
+            # answer without one.
+            - name: Check the pinned sp1 crates
+              env:
+                  GITHUB_TOKEN: ${{ github.token }}
+              run: node scripts/check-sp1-advisories.mjs
+
+    zizmor:
+        name: zizmor (workflows)
+        runs-on: ubuntu-24.04
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  persist-credentials: false
+
+            # No upload to code scanning: the findings go to the log and to
+            # annotations on the run.
+            - name: zizmor — fails on a high-severity finding
+              uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
+              with:
+                  version: ${{ env.ZIZMOR_VERSION }}
+                  inputs: .github/workflows/
+                  min-severity: high
+                  advanced-security: "false"
+                  annotations: "true"
+
+            - name: zizmor — every finding, never fails
+              if: always()
+              continue-on-error: true
+              uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
+              with:
+                  version: ${{ env.ZIZMOR_VERSION }}
+                  inputs: .github/workflows/
+                  advanced-security: "false"

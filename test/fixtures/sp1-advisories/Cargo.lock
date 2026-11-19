@@ -1,0 +1,18 @@
+# A Cargo.lock cut down to two sp1 crates, both one patch below the fix of
+# GHSA-p7v2-jjv3-8p8f (6.8.1). scripts/test-check-sp1-advisories.mjs reads it.
+version = 4
+
+[[package]]
+name = "sp1-prover"
+version = "6.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "sp1-sdk"
+version = "6.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "serde"
+version = "1.0.228"
+source = "registry+https://github.com/rust-lang/crates.io-index"
