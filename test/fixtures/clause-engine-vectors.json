@@ -47055,6 +47055,330 @@
    "ok": false
   },
   {
+   "group": "h3, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "h3",
+    "disposition": "public"
+   },
+   "value": "872830828ffffff",
+   "ok": true
+  },
+  {
+   "group": "h3, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "h3",
+    "disposition": "public"
+   },
+   "value": "8828308281fffff",
+   "ok": true
+  },
+  {
+   "group": "h3, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "h3",
+    "disposition": "public"
+   },
+   "value": "8828308281FFFFF",
+   "ok": true
+  },
+  {
+   "group": "h3, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "h3",
+    "disposition": "public"
+   },
+   "value": "8928308280fffff",
+   "ok": false
+  },
+  {
+   "group": "h3, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "h3",
+    "disposition": "public"
+   },
+   "value": "8f28308280db6db",
+   "ok": false
+  },
+  {
+   "group": "h3, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "h3",
+    "disposition": "public"
+   },
+   "value": "9828308281fffff",
+   "ok": false
+  },
+  {
+   "group": "h3, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "h3",
+    "disposition": "public"
+   },
+   "value": "8828308281ffffe",
+   "ok": false
+  },
+  {
+   "group": "h3, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "h3",
+    "disposition": "public"
+   },
+   "value": "g828308281fffff",
+   "ok": false
+  },
+  {
+   "group": "h3, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "h3",
+    "disposition": "public"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "s2, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "s2",
+    "disposition": "public"
+   },
+   "value": "9",
+   "ok": true
+  },
+  {
+   "group": "s2, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "s2",
+    "disposition": "public"
+   },
+   "value": "89c259b",
+   "ok": true
+  },
+  {
+   "group": "s2, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "s2",
+    "disposition": "public"
+   },
+   "value": "89c259b4",
+   "ok": true
+  },
+  {
+   "group": "s2, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "s2",
+    "disposition": "public"
+   },
+   "value": "89c259b1",
+   "ok": false
+  },
+  {
+   "group": "s2, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "s2",
+    "disposition": "public"
+   },
+   "value": "89c259b2",
+   "ok": false
+  },
+  {
+   "group": "s2, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "s2",
+    "disposition": "public"
+   },
+   "value": "c",
+   "ok": false
+  },
+  {
+   "group": "s2, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "s2",
+    "disposition": "public"
+   },
+   "value": "X",
+   "ok": false
+  },
+  {
+   "group": "s2, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "s2",
+    "disposition": "public"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
+   "group": "olc, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "olc",
+    "disposition": "public"
+   },
+   "value": "8FVC0000+",
+   "ok": true
+  },
+  {
+   "group": "olc, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "olc",
+    "disposition": "public"
+   },
+   "value": "8FVC9G00+",
+   "ok": true
+  },
+  {
+   "group": "olc, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "olc",
+    "disposition": "public"
+   },
+   "value": "8fvc9g00+",
+   "ok": true
+  },
+  {
+   "group": "olc, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "olc",
+    "disposition": "public"
+   },
+   "value": "8FVC9G8F+",
+   "ok": false
+  },
+  {
+   "group": "olc, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "olc",
+    "disposition": "public"
+   },
+   "value": "9G8F+6X",
+   "ok": false
+  },
+  {
+   "group": "olc, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "olc",
+    "disposition": "public"
+   },
+   "value": "8FVC9G80+",
+   "ok": false
+  },
+  {
+   "group": "olc, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "olc",
+    "disposition": "public"
+   },
+   "value": "8FVC9G8F+6",
+   "ok": false
+  },
+  {
+   "group": "olc, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "olc",
+    "disposition": "public"
+   },
+   "value": "FFVC9G00+",
+   "ok": false
+  },
+  {
+   "group": "olc, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "olc",
+    "disposition": "public"
+   },
+   "value": "8FVC9G8F",
+   "ok": false
+  },
+  {
+   "group": "olc, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "olc",
+    "disposition": "public"
+   },
+   "value": "",
+   "ok": false
+  },
+  {
    "group": "a format the cap does not read",
    "field": {
     "name": "v",
@@ -47419,6 +47743,490 @@
    "content": {
     "g": "dr5reg",
     "b": "0xab"
+   },
+   "ok": false
+  },
+  {
+   "label": "private h3 \"8f28308280db6db\"",
+   "fields": [
+    {
+     "name": "g",
+     "type": "string",
+     "required": true,
+     "format": "h3",
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "g": "8f28308280db6db",
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": true
+  },
+  {
+   "label": "private h3 \"8e28308280db6df\"",
+   "fields": [
+    {
+     "name": "g",
+     "type": "string",
+     "required": true,
+     "format": "h3",
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "g": "8e28308280db6df",
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": true
+  },
+  {
+   "label": "private h3 \"8f28308280db6db0\"",
+   "fields": [
+    {
+     "name": "g",
+     "type": "string",
+     "required": true,
+     "format": "h3",
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "g": "8f28308280db6db0",
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": false
+  },
+  {
+   "label": "private s2 \"89c259b1e3d47a4b\"",
+   "fields": [
+    {
+     "name": "g",
+     "type": "string",
+     "required": true,
+     "format": "s2",
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "g": "89c259b1e3d47a4b",
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": true
+  },
+  {
+   "label": "private s2 \"89c259b1e3d47a4c\"",
+   "fields": [
+    {
+     "name": "g",
+     "type": "string",
+     "required": true,
+     "format": "s2",
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "g": "89c259b1e3d47a4c",
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": true
+  },
+  {
+   "label": "private s2 \"89c259b1e3d47a4b0\"",
+   "fields": [
+    {
+     "name": "g",
+     "type": "string",
+     "required": true,
+     "format": "s2",
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "g": "89c259b1e3d47a4b0",
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": false
+  },
+  {
+   "label": "private olc \"8FVC9G8F+6X23456\"",
+   "fields": [
+    {
+     "name": "g",
+     "type": "string",
+     "required": true,
+     "format": "olc",
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "g": "8FVC9G8F+6X23456",
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": true
+  },
+  {
+   "label": "private olc \"9G8F+6X\"",
+   "fields": [
+    {
+     "name": "g",
+     "type": "string",
+     "required": true,
+     "format": "olc",
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "g": "9G8F+6X",
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": true
+  },
+  {
+   "label": "private olc \"8FVC9G8F+6X234567\"",
+   "fields": [
+    {
+     "name": "g",
+     "type": "string",
+     "required": true,
+     "format": "olc",
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "g": "8FVC9G8F+6X234567",
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField, an enum sibling of the capped standards {\"std\":\"h3\",\"loc\":\"8828308281fffff\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "enum",
+     "values": [
+      "geohash",
+      "h3",
+      "s2",
+      "olc"
+     ],
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "disposition": "public",
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "h3",
+    "loc": "8828308281fffff"
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField, an enum sibling of the capped standards {\"std\":\"h3\",\"loc\":\"8928308280fffff\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "enum",
+     "values": [
+      "geohash",
+      "h3",
+      "s2",
+      "olc"
+     ],
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "disposition": "public",
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "h3",
+    "loc": "8928308280fffff"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField, an enum sibling of the capped standards {\"std\":\"s2\",\"loc\":\"89c259b4\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "enum",
+     "values": [
+      "geohash",
+      "h3",
+      "s2",
+      "olc"
+     ],
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "disposition": "public",
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "s2",
+    "loc": "89c259b4"
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField, an enum sibling of the capped standards {\"std\":\"s2\",\"loc\":\"89c259b1\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "enum",
+     "values": [
+      "geohash",
+      "h3",
+      "s2",
+      "olc"
+     ],
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "disposition": "public",
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "s2",
+    "loc": "89c259b1"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField, an enum sibling of the capped standards {\"std\":\"s2\",\"loc\":\"dr5reg\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "enum",
+     "values": [
+      "geohash",
+      "h3",
+      "s2",
+      "olc"
+     ],
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "disposition": "public",
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "s2",
+    "loc": "dr5reg"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField, an enum sibling of the capped standards {\"std\":\"olc\",\"loc\":\"8FVC9G00+\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "enum",
+     "values": [
+      "geohash",
+      "h3",
+      "s2",
+      "olc"
+     ],
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "disposition": "public",
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "olc",
+    "loc": "8FVC9G00+"
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField, an enum sibling of the capped standards {\"std\":\"olc\",\"loc\":\"8FVC9G8F+\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "enum",
+     "values": [
+      "geohash",
+      "h3",
+      "s2",
+      "olc"
+     ],
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "disposition": "public",
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "olc",
+    "loc": "8FVC9G8F+"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField, an enum sibling of the capped standards {\"loc\":\"dr5reg\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "enum",
+     "values": [
+      "geohash",
+      "h3",
+      "s2",
+      "olc"
+     ],
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "disposition": "public",
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "loc": "dr5reg"
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField, an enum sibling of the capped standards {\"loc\":\"dr5regw\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "enum",
+     "values": [
+      "geohash",
+      "h3",
+      "s2",
+      "olc"
+     ],
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "disposition": "public",
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "loc": "dr5regw"
    },
    "ok": false
   },

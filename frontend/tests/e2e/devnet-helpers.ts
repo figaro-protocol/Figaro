@@ -1076,9 +1076,9 @@ export async function fillDeliveryCheckout(page: Page): Promise<void> {
     await checkoutField(page, DELIVERY_CLAUSES.modalities, 'modality-delivery').check();
     await checkoutField(page, DELIVERY_CLAUSES.handoff, 'handoff-face-to-face').check();
     await checkoutField(page, DELIVERY_CLAUSES.proximity, 'bands-zone-wifi').check();
-    // geocodeStandard is its own control, empty over its spec default
-    // ("geohash" — the built frontend) as placeholder: left untouched the
-    // build commits the default, and the endpoints below fill as geohash text.
+    // geocodeStandard is its own control, an enum choice with no choice
+    // made: left untouched the build commits the spec default ("geohash"),
+    // and the endpoints below fill as geohash text.
     // The format-keyed device-capture control retired with the standards
     // generalization; its successor is standard-gated (punch-listed).
     await checkoutField(page, DELIVERY_CLAUSES.geo, 'origin')

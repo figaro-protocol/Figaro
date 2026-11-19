@@ -431,6 +431,54 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
         field: str({ format: "geohash", disposition: "public" }),
         values: GEOHASHES,
     },
+    // The other standards the cap reads, each at its public cap and one grade
+    // past it, and values that are no code of the standard: H3 resolution 8,
+    // S2 level 13, Open Location Code length 6.
+    {
+        group: "h3, public",
+        field: str({ format: "h3", disposition: "public" }),
+        values: [
+            "872830828ffffff", // resolution 7
+            "8828308281fffff", // resolution 8, the cap
+            "8828308281FFFFF", // resolution 8, upper case
+            "8928308280fffff", // resolution 9, one past
+            "8f28308280db6db", // resolution 15
+            "9828308281fffff", // mode 3, no cell
+            "8828308281ffffe", // a digit past the resolution is not 7
+            "g828308281fffff",
+            "",
+        ],
+    },
+    {
+        group: "s2, public",
+        field: str({ format: "s2", disposition: "public" }),
+        values: [
+            "9", // level 0
+            "89c259b", // level 12
+            "89c259b4", // level 13, the cap
+            "89c259b1", // level 14, one past
+            "89c259b2", // the lowest set bit at an odd position
+            "c", // face 6
+            "X",
+            "",
+        ],
+    },
+    {
+        group: "olc, public",
+        field: str({ format: "olc", disposition: "public" }),
+        values: [
+            "8FVC0000+", // length 4
+            "8FVC9G00+", // length 6, the cap
+            "8fvc9g00+", // length 6, lower case
+            "8FVC9G8F+", // length 8, one grade past
+            "9G8F+6X", // a short code, length 10
+            "8FVC9G80+", // padding of odd length
+            "8FVC9G8F+6", // one digit after the separator
+            "FFVC9G00+", // a first digit past the latitude range
+            "8FVC9G8F",
+            "",
+        ],
+    },
     {
         group: "a format the cap does not read",
         field: str({ format: "plus-code", maxLength: 12 }),
@@ -476,6 +524,40 @@ const CONTENT_CASES: { label: string; fields: Field[]; content: unknown }[] = [
     ].map((content) => ({
         label: `private geohash ${JSON.stringify(content)}`,
         fields: [{ name: "g", type: "string", required: true, format: "geohash", disposition: "private" }, BLINDING],
+        content,
+    })),
+    // The private caps of the other standards: H3 resolution 15, S2 level 30,
+    // Open Location Code length 15. H3 and S2 write no finer grade, so the
+    // case past each is a value that is no code; an Open Location Code of 16
+    // digits is past the specification's longest.
+    ...[
+        { format: "h3", values: ["8f28308280db6db", "8e28308280db6df", "8f28308280db6db0"] },
+        { format: "s2", values: ["89c259b1e3d47a4b", "89c259b1e3d47a4c", "89c259b1e3d47a4b0"] },
+        { format: "olc", values: ["8FVC9G8F+6X23456", "9G8F+6X", "8FVC9G8F+6X234567"] },
+    ].flatMap(({ format, values }) =>
+        values.map((g) => ({
+            label: `private ${format} ${JSON.stringify(g)}`,
+            fields: [{ name: "g", type: "string", required: true, format, disposition: "private" }, BLINDING],
+            content: { g, b: B32 },
+        })),
+    ),
+    // The reference geolocation clause's shape: an enum sibling of the capped standards.
+    ...[
+        { std: "h3", loc: "8828308281fffff" },
+        { std: "h3", loc: "8928308280fffff" },
+        { std: "s2", loc: "89c259b4" },
+        { std: "s2", loc: "89c259b1" },
+        { std: "s2", loc: "dr5reg" },
+        { std: "olc", loc: "8FVC9G00+" },
+        { std: "olc", loc: "8FVC9G8F+" },
+        { loc: "dr5reg" },
+        { loc: "dr5regw" },
+    ].map((content) => ({
+        label: `formatFromField, an enum sibling of the capped standards ${JSON.stringify(content)}`,
+        fields: [
+            { name: "std", type: "enum", values: ["geohash", "h3", "s2", "olc"], required: false, default: "geohash" },
+            { name: "loc", type: "string", required: true, disposition: "public", formatFromField: "std" },
+        ],
         content,
     })),
     // A nested field keeps its own disposition for the grain; a private one makes its set private (the set rules).
@@ -1042,7 +1124,7 @@ describe("The rules both engines apply", () => {
              ...built.contents.map((c) => ({ text: JSON.stringify(c.fields), ok: c.ok })),
              ...built.specs.map((c) => ({ text: JSON.stringify(c.spec), ok: c.ok }))]
                 .some((c) => needle.test(c.text) && c.ok === ok);
-        for (const needle of [/"geohash"/, /"disposition":"private"/, /"formatFromField"/, /"blinding":true/]) {
+        for (const needle of [/"geohash"/, /"format":"h3"/, /"format":"s2"/, /"format":"olc"/, /"disposition":"private"/, /"formatFromField"/, /"blinding":true/]) {
             expect(holds(needle, true), `${needle} accepted`).toBe(true);
             expect(holds(needle, false), `${needle} refused`).toBe(true);
         }

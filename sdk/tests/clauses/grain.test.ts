@@ -13,7 +13,13 @@ import { describe, expect, it } from "vitest";
 import {
     capGeohashGrain,
     clampPublicGeohash,
+    GEOHASH_FORMAT,
     geohashCapturePrecision,
+    grainCapOf,
+    grainOf,
+    H3_FORMAT,
+    OLC_FORMAT,
+    S2_FORMAT,
     PRIVATE_GEOHASH_MAX_PRECISION,
     PUBLIC_GEOHASH_MAX_PRECISION,
 } from "../../src/clauses/index.js";
@@ -100,5 +106,59 @@ describe("geohashCapturePrecision (device-capture mirror of the cap)", () => {
 
     it("captures at fine grain for private disposition", () => {
         expect(geohashCapturePrecision("private")).toBe(PRIVATE_GEOHASH_MAX_PRECISION);
+    });
+});
+
+describe("grainOf and grainCapOf (the grade each capped standard writes in its code)", () => {
+    it("reads an H3 cell index's resolution from bits 52 to 55, as the H3 documentation's examples carry it", () => {
+        expect(grainOf(H3_FORMAT, "85283473fffffff")).toBe(5);
+        expect(grainOf(H3_FORMAT, "8828308281fffff")).toBe(8);
+        expect(grainOf(H3_FORMAT, "8928308280fffff")).toBe(9);
+        expect(grainOf(H3_FORMAT, "8f28308280db6db")).toBe(15);
+    });
+
+    it("refuses an H3 value that is no cell index: another mode, a digit past the resolution that is not 7, no hex", () => {
+        for (const v of ["9828308281fffff", "8828308281ffffe", "g828308281fffff", "", "8f28308280db6db0"]) {
+            expect(grainOf(H3_FORMAT, v), v).toBeNull();
+        }
+    });
+
+    it("reads an S2 token's level from its lowest set bit", () => {
+        expect(grainOf(S2_FORMAT, "9")).toBe(0);
+        expect(grainOf(S2_FORMAT, "89c25")).toBe(8);
+        expect(grainOf(S2_FORMAT, "89c259b4")).toBe(13);
+        expect(grainOf(S2_FORMAT, "89c259b1")).toBe(14);
+        expect(grainOf(S2_FORMAT, "89c259b1e3d47a4b")).toBe(30);
+    });
+
+    it("refuses an S2 value that is no cell token: an odd lowest bit, face 6, the none token", () => {
+        for (const v of ["89c259b2", "c", "X", "", "89c259b1e3d47a4b0"]) expect(grainOf(S2_FORMAT, v), v).toBeNull();
+    });
+
+    it("reads an Open Location Code's length: padded, full and short codes", () => {
+        expect(grainOf(OLC_FORMAT, "8F000000+")).toBe(2);
+        expect(grainOf(OLC_FORMAT, "8FVC9G00+")).toBe(6);
+        expect(grainOf(OLC_FORMAT, "8fvc9g00+")).toBe(6);
+        expect(grainOf(OLC_FORMAT, "8FVC9G8F+")).toBe(8);
+        expect(grainOf(OLC_FORMAT, "8FVC9G8F+6X")).toBe(10);
+        // A short code keeps the precision of the full code it came from.
+        expect(grainOf(OLC_FORMAT, "9G8F+6X")).toBe(10);
+        expect(grainOf(OLC_FORMAT, "8FVC9G8F+6X23456")).toBe(15);
+    });
+
+    it("refuses an Open Location Code value that is no code", () => {
+        for (const v of ["8FVC9G80+", "8FVC9G8F+6", "8FVC9G8F", "8FVC9G00+6X", "FFVC9G00+", "8FVC9G8F+6X234567", "8FVC+9G8F+", ""]) {
+            expect(grainOf(OLC_FORMAT, v), v).toBeNull();
+        }
+    });
+
+    it("carries the public and private cap of each standard, and none of a standard it does not know", () => {
+        expect(grainCapOf(GEOHASH_FORMAT)).toMatchObject({ public: 6, private: 12 });
+        expect(grainCapOf(H3_FORMAT)).toMatchObject({ public: 8, private: 15 });
+        expect(grainCapOf(S2_FORMAT)).toMatchObject({ public: 13, private: 30 });
+        expect(grainCapOf(OLC_FORMAT)).toMatchObject({ public: 6, private: 15 });
+        expect(grainCapOf("maidenhead")).toBeUndefined();
+        expect(grainCapOf("toString")).toBeUndefined();
+        expect(grainOf("maidenhead", "JN47uv")).toBeUndefined();
     });
 });

@@ -3,7 +3,7 @@
     "agreements": [
         {
             "label": "three-clauses",
-            "checkoutHash": "0x3e340a77a4201cd4aacd7c0e40fa8ea5d985e2ee7f68a9ad28ae9d40f4cfaaf5",
+            "checkoutHash": "0x7bf075df08c073349eb5e44c41226c6f86b7f705a5b931ff76fc8f9fb8351f75",
             "clauseCount": 3,
             "clauses": [
                 {
@@ -11,13 +11,13 @@
                     "clauseData": "{\"modality\":\"delivery\"}",
                     "leaf": "0xe5801a45b9e0e0dd86b4b0570d83bb4c86db3136ae44c268a7dbaacc5ffcf032",
                     "proof": [
-                        "0x65ef4d65f0971dd1e363fbe6f72873a673565505613d10eaf1d3806cbed8fe37"
+                        "0x98bcb222bda62e448392659a9d6e010bfb9360c53161740047c597b9d6e7255a"
                     ]
                 },
                 {
-                    "clauseKey": "0x2debe8f7d98d145369387dc1c930855123ce013b164693d60e3669149fc707ca",
+                    "clauseKey": "0xe1a07470b03d454f1e7690c92137e293e4eabc125a4eead234995f2a21afa774",
                     "clauseData": "{\"hops\":2,\"origin\":\"site-7\"}",
-                    "leaf": "0xb17ac010d7be512894be7e1a29f39f73b80913e19fcd57a07b5b0df88bb46a2d",
+                    "leaf": "0xc5977d758ead22232bb290e965e4152e941ecd91f3e4c889ffa4f2107f37c8e5",
                     "proof": [
                         "0xe33e3cdd6670028d2acc9e1fe3502f8d62a41bead5809746dc313de1fe2de39b",
                         "0xe5801a45b9e0e0dd86b4b0570d83bb4c86db3136ae44c268a7dbaacc5ffcf032"
@@ -28,7 +28,7 @@
                     "clauseData": "{\"law\":\"ch\"}",
                     "leaf": "0xe33e3cdd6670028d2acc9e1fe3502f8d62a41bead5809746dc313de1fe2de39b",
                     "proof": [
-                        "0xb17ac010d7be512894be7e1a29f39f73b80913e19fcd57a07b5b0df88bb46a2d",
+                        "0xc5977d758ead22232bb290e965e4152e941ecd91f3e4c889ffa4f2107f37c8e5",
                         "0xe5801a45b9e0e0dd86b4b0570d83bb4c86db3136ae44c268a7dbaacc5ffcf032"
                     ]
                 }
@@ -49,14 +49,14 @@
         },
         {
             "label": "one-clause-a-topology-and-a-design",
-            "checkoutHash": "0x981b8dd5d0faa2310b2326e6c673656cf3aa1748d32ddfd59d557c693c0e5675",
+            "checkoutHash": "0xd1fa89ac5f496ad13b3927dc33598ac03b4ef23fe028c3743a46e0fe95c3e59b",
             "clauseCount": 1,
             "provenance": {
                 "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                 "agreementHash": "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c",
-                "processDesignHash": "0x73072c5cdf8cc80a6315e362ff5633dc86aace073f6d2220b22f92beded16b78",
-                "clauseData": "{\"agreementHash\":\"0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c\",\"processDesignHash\":\"0x73072c5cdf8cc80a6315e362ff5633dc86aace073f6d2220b22f92beded16b78\"}",
-                "leaf": "0x9cef57d2e719227a27accb3b72879b098aff77de0ae5c172ed8761ab3ea56df6",
+                "processDesignHash": "0x916fb3797b722f04aae9d583a441e5cd8be05b0ca89e62cf27d3a584eb955d17",
+                "clauseData": "{\"agreementHash\":\"0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c\",\"processDesignHash\":\"0x916fb3797b722f04aae9d583a441e5cd8be05b0ca89e62cf27d3a584eb955d17\"}",
+                "leaf": "0x5441954a642be195f5d75d950682f622efe743aa8b372835e77e557dfd5466a4",
                 "proof": [
                     "0xa17e1e2abf5a5709c413cce584db7e38200a19361ad5e98542a85c44a06b8709",
                     "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c"
@@ -73,7 +73,7 @@
                     "clauseData": "{\"lineItems\":[{\"itemId\":\"i-7\",\"name\":\"Item\",\"quantity\":1,\"unitPrice\":\"7\"}]}",
                     "leaf": "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c",
                     "proof": [
-                        "0xe38544361d51728e8fc719d482a6a7bc32002402142620757bdec577e6b53773"
+                        "0x0b829d167a38909b980f230e14474a8182d1b7c52ba6c6e87a1f1cb7221bd292"
                     ]
                 }
             ]

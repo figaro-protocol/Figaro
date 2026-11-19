@@ -2,17 +2,27 @@
     "clauseId": "figaro-geolocation",
     "version": 1,
     "title": "Geolocation",
-    "description": "Origin and destination locality codes under a DECLARED geocode standard \u2014 where an order originates and terminates. Composed for ANY modality and BOTH physical and digital value chains: a shipment route (cell-grid codes: geohash, H3, S2, Open Location Code), a service jurisdiction or digital-delivery territory (jurisdiction codes: ISO 3166-1/-2, UN/LOCODE; endpoint territory in digital chains is evidenced per RFC 8805/9632 geofeeds). The standard is the source of truth \u2014 referenced, never restated; the axis is OPEN (any standard, existing or future). Carries no physical-shipment assumption; mass and volume live in the elective figaro-cargo clause.",
+    "description": "Origin and destination cells under a DECLARED geocode standard \u2014 where an order originates and terminates, at the grain of a neighborhood. Composed for ANY modality and BOTH physical and digital value chains. The standard is one of the cell grids whose grain the clause engines cap: geohash (6 characters at most), H3 (resolution 8 at most), S2 (level 13 at most) or Open Location Code (code length 6 at most). The standard is the source of truth \u2014 referenced, never restated. A clause that needs another standard, a jurisdiction code among them, is a clause of its own. Carries no physical-shipment assumption; mass and volume live in the elective figaro-cargo clause.",
     "fields": [
         {
             "name": "geocodeStandard",
-            "type": "string",
+            "type": "enum",
             "required": true,
-            "minLength": 1,
-            "maxLength": 64,
+            "values": [
+                "geohash",
+                "h3",
+                "s2",
+                "olc"
+            ],
+            "valueLabels": {
+                "geohash": "Geohash",
+                "h3": "H3",
+                "s2": "S2",
+                "olc": "Open Location Code"
+            },
             "default": "geohash",
             "label": "Geocode standard",
-            "description": "How the two location codes below are written. Geohash is the usual choice and the built-in default; H3, S2, and Open Location Code work too, and any standard you name is accepted."
+            "description": "How the two location codes below are written: geohash (the default), H3, S2 or Open Location Code. These are the standards whose grain the clause engines read, so each public code is held to the neighborhood."
         },
         {
             "name": "geocoder",
@@ -21,7 +31,7 @@
             "minLength": 1,
             "maxLength": 256,
             "label": "Geocoder",
-            "description": "A Nominatim-compatible geocoding endpoint the parties resolve typed locations through when producing the origin/destination codes \u2014 a DESIGN fill: the designer pins it when tailoring the assembly, so every party to the trade resolves through the SAME service instead of whatever each client happened to configure. Optional because jurisdiction-grade standards (iso3166-1/-2, unlocode) need no geocoder at all; cell-grid standards (geohash, h3, s2, olc) typically name one. An OPEN axis like the standard itself: any https endpoint speaking the declared standard's resolution is valid."
+            "description": "A Nominatim-compatible geocoding endpoint the parties resolve typed locations through when producing the origin/destination codes \u2014 a DESIGN fill: the designer pins it when tailoring the assembly, so every party to the trade resolves through the SAME service instead of whatever each client happened to configure. Optional: a party may produce the codes without one. An OPEN axis: any https endpoint speaking the declared standard's resolution is valid."
         },
         {
             "name": "origin",
@@ -31,7 +41,7 @@
             "maxLength": 32,
             "disposition": "public",
             "formatFromField": "geocodeStandard",
-            "description": "Where the order starts, as a location code in the standard above. Give the neighbourhood, never the door: a geohash of six characters or fewer. The exact address travels privately to the other party at hand-off; it is never written to the chain.",
+            "description": "Where the order starts, as a location code in the standard above. Give the neighborhood, never the door: a geohash of six characters or fewer, an H3 cell of resolution 8 or coarser, an S2 cell of level 13 or coarser, or an Open Location Code of length 6 or less. The exact address travels privately to the other party at hand-off; it is never written to the chain.",
             "label": "Origin"
         },
         {
@@ -42,7 +52,7 @@
             "maxLength": 32,
             "disposition": "public",
             "formatFromField": "geocodeStandard",
-            "description": "Where the order ends, as a location code in the standard above. Your phone can fill it from its location. Give the neighbourhood, never the door: a geohash of six characters or fewer. The exact address travels privately to the other party at hand-off; it is never written to the chain.",
+            "description": "Where the order ends, as a location code in the standard above. Your phone can fill it from its location. Give the neighborhood, never the door: a geohash of six characters or fewer, an H3 cell of resolution 8 or coarser, an S2 cell of level 13 or coarser, or an Open Location Code of length 6 or less. The exact address travels privately to the other party at hand-off; it is never written to the chain.",
             "label": "Destination"
         }
     ],

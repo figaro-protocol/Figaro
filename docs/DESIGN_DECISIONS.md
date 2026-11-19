@@ -1542,43 +1542,53 @@ and a witness at a declared stage validates over that stage's set).
 
 ---
 
-## 37. The geohash grain cap is as firm as the values the designer allows the sibling `formatFromField` names
+## 37. The grain cap is as firm as the values the designer allows the sibling `formatFromField` names
 
 **Pattern**: A string field that declares `formatFromField` takes its format
 from the named sibling's committed value, then from that sibling's default,
 then from its own static `format` (`resolveInputFormat`,
 `sdk/src/clauses/spec.ts`; `resolve_input_format`,
-`prover/clause/src/validate.rs`). The geohash grain cap (6 characters for a
-public value, 12 for a private one) applies only when the resolved format is
-`geohash`. When the sibling carries any other standard's name, the cap is
-lifted and the field's `maxLength` bounds the value. Both engines apply the
-same rule. The reference clause `figaro-geolocation` declares its
-`geocodeStandard` sibling as a free string of 1 to 64 characters, so the
-party that fills it may name any standard.
+`prover/clause/src/validate.rs`). The grain cap applies only when the
+resolved format is one of the four standards whose grain both engines read
+(`sdk/src/clauses/grain.ts`, `prover/clause/src/grain.rs`): `geohash` (6
+characters for a public value, 12 for a private one), `h3` (resolution 8 and
+15), `s2` (level 13 and 30) and `olc`, the Open Location Code (length 6 and
+15). Under one of the four, a value that is no code of the standard is
+refused too, because no grain can be read from it. When the sibling carries
+any other standard's name, the cap is lifted and the field's `maxLength`
+bounds the value. Both engines apply the same rule. The reference clause
+`figaro-geolocation` declares its `geocodeStandard` sibling as an `enum` of
+the four, so under it every public endpoint is capped.
 
-**Why it looks wrong**: The party that fills the sibling can write
-`"Geohash"`, `"h3"` or any other name, and then commit a geohash finer than
-the cap. The cap reads as a privacy guarantee that one word lifts.
+**Why it looks wrong**: In a stranger's clause that declares the sibling as
+a free string, the party that fills it can write `"Geohash"`, `"maidenhead"`
+or any other name, and then commit a location finer than the cap. The cap
+reads as a privacy guarantee that one word lifts.
 
-**Why it is correct**: The engine knows the grain of one standard and no
-list of the others (`docs/OPEN_WORLD.md` § 1): a closed list of standard
-names would refuse a standard no one has registered yet. So the cap is a
-rule for a value the spec says is a geohash, and the designer decides how
-firmly a value is one. A designer who wants the cap firm declares the
-sibling as an `enum`, or gives it a `pattern`, so the sibling cannot carry
-another name; a designer who leaves it a free string accepts every standard
-and, with it, the field's `maxLength` as the only bound. The party that
-fills the field also fills the sibling, so the cap guards that party against
-writing more than the field needs, never against its own choice. The
-counterparty reads the committed standard and the value before it signs, and
-a party that will not have a finer location published declines to sign it.
+**Why it is correct**: The engines know the grain of four standards, by
+their format value, and no list of the others (`docs/OPEN_WORLD.md` § 1): a
+closed list of standard names would refuse a standard no one has registered
+yet. So the cap is a rule for a value the spec says is a code of a known
+standard, and the designer decides how firmly a value is one. A designer who
+wants the cap firm declares the sibling as an `enum` of capped standards, or
+gives it a `pattern`, so the sibling cannot carry another name; the
+reference clause does so. A designer who leaves it a free string accepts
+every standard and, with it, the field's `maxLength` as the only bound. The
+party that fills the field also fills the sibling, so the cap guards that
+party against writing more than the field needs, never against its own
+choice. The counterparty reads the committed standard and the value before
+it signs, and a party that will not have a finer location published declines
+to sign it.
 
 **Tests**: `sdk/tests/clauses/engineVectors.test.ts` and
 `prover/clause/tests/engine_vectors.rs` (the same verdicts in both engines:
-a sibling naming another standard lifts the cap, an `enum` sibling whose
-default is geohash keeps it, a sibling whose value is no string falls back
-to the static format, and of two siblings of one name the first gives the
-default).
+each capped standard at its public cap and one grade past it, at its private
+cap and past it, and a value that is no code of it; an `enum` sibling of the
+four capped standards; a sibling naming another standard lifts the cap, an
+`enum` sibling whose default is geohash keeps it, a sibling whose value is no
+string falls back to the static format, and of two siblings of one name the
+first gives the default). `sdk/tests/clauses/examples.test.ts` holds the
+reference clause to each cap and refuses a standard outside its enum.
 
 ---
 
@@ -1622,4 +1632,4 @@ default).
 | 34 | The sign gate refuses an agreement whose design it could not read | sign gate/SDK/frontend | A failed or empty read is absence elsewhere, and an agreement naming no design signs without the check | A signature binds the provenance leaf; only the design shows its clauses, designer values and edge count, and reading "not read" as "nothing to check" lets a party escape them by naming an assembly no registry anchors; the gate is the SDK's, never the Core's |
 | 35 | `resolveProcess` pays an order before it marks it resolved | Core-critical | An external call precedes the status write, against checks-effects-interactions | `nonReentrant` refuses a callback into `commit` or `resolveProcess`; the coordinator only emits and accepts no late evidence the window did not already allow; the counter counts only finished orders once; a revert takes every callback's effect with it |
 | 36 | A stage-0 attestation is not the signed content | evidence/reader | Stage 0 reads as the signing stage, so a reader takes any stage-0 attestation for the signed content | The stage is a `uint8` the attester picks and a `"0"` stage key validates stage-0 content over `stages["0"]`; only `contentRef` equal to the leaf's data hash makes a re-assertion, and the reader compares the two |
-| 37 | The geohash grain cap is as firm as the sibling's allowed values | spec format/data | One word in the sibling lifts a privacy cap | The engine knows one standard's grain and no closed list of the others; a designer makes the cap firm with an `enum` or `pattern` sibling; the filler of the field fills the sibling, and the counterparty reads both before it signs |
+| 37 | The grain cap is as firm as the sibling's allowed values | spec format/data | One word in the sibling lifts a privacy cap | The engine knows one standard's grain and no closed list of the others; a designer makes the cap firm with an `enum` or `pattern` sibling; the filler of the field fills the sibling, and the counterparty reads both before it signs |
