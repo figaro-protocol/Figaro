@@ -20,15 +20,17 @@ describes the contract surface.
 ## The boundary
 
 `FigaroCore` exposes two operations, `commit` and `resolveProcess`, and no
-third. It holds bonds, the accumulator, and the data of what was committed. It
-does not hold the goods: value, performance, and the parties' knowledge of both
-pass off-chain, and no `FigaroCore` operation can observe or undo them. Every
-payoff therefore has two parts: **what `FigaroCore` moves** (the bond locked at
-`commit`, the payout made at `resolveProcess`) and **what the party retains
-off-chain**, credited at the value the parties themselves signed — `P` for the
-exchange at an order, at most `G` for everything accumulated through it. The
-second part is a credit and never a debit: a party is counted for what is in
-its hands and never charged for what is not.
+third. It holds the bonds, a status for each order (`orderStatus`), and the
+state of each process (`processes`: its root buyer, its token, the accumulator
+and its count of active orders). It does not hold the goods: value,
+performance, and the parties' knowledge of both pass off-chain, and no
+`FigaroCore` operation can observe or undo them. Every payoff therefore has
+two parts: **what `FigaroCore` moves** (the bond locked at `commit`, the
+payout made at `resolveProcess`) and **what the party retains off-chain**,
+credited at the value the parties themselves signed — `P` for the exchange at
+an order, at most `G` for everything accumulated through it. The second part
+is a credit and never a debit: a party is counted for what is in its hands and
+never charged for what is not.
 
 Resolving *is* the buyer's acceptance of the performance, the law's word for taking what was delivered and never its word for assenting to an offer (that one's counterpart is the seller's counter-signature, `docs/LEXICON.md`) — `FigaroCore` holds no test of
 performance and admits no report of delivery. Resolution is the only terminal

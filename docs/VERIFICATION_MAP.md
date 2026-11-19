@@ -42,7 +42,7 @@ Each component's status — every bench's result and the commit it ran at — is
 
 ### In-scope (this document)
 
-- **`FigaroCore`**: `src/core/kernel/FigaroCore.sol` — 2 external functions, 2 mappings, decentralized and permissionless, nothing paid to the protocol
+- **`FigaroCore`**: `src/core/kernel/FigaroCore.sol` — 2 state-changing external functions, 2 mappings, decentralized and permissionless, nothing paid to the protocol
 - **Protocol compositions**: `AttestationCoordinator`, `ClauseRegistry`, `MembersRegistry`, `AgreementRegistry`, `ProcessRegistry`, `WitnessSwapAndCommitCoordinator`
 - **Florin ecosystem**: `FlorinToken` + `RpgfMinter` (implements `IFlorinMinter`; registered as a minter at genesis)
 - **Formal model**: `formal/FigaroCore.tla`, `formal/MC.tla`, `formal/MC.cfg`
@@ -73,7 +73,7 @@ Each component's status — every bench's result and the commit it ran at — is
 ### Accounting invariants
 
 - `A-1` **Token conservation**: sum of all wallets + contract balance = initial total supply
-- `A-2` **Contract solvency**: contract balance ≥ 0 (never promises more than held)
+- `A-2` **Contract solvency**: contract balance ≥ 0; for a token whose balances move only by transfers, the contract holds at least the bonds of every open order. A token that rebases downward breaks the second half: the Core does not detect the rebase, and the resolve that runs its balance short reverts on the transfer out (`docs/DESIGN_DECISIONS.md` § 9)
 - `A-3` **Wallet non-negative**: no participant goes below zero
 - `A-4` **Cumulative integrity**: per-process $runningTotal = \sum(order.payment)$
 - `A-5` **Active count**: per-process $activeCount = count(committed\ orders)$

@@ -61,12 +61,12 @@ pub fn commitment_struct_hash(c: &Commitment) -> B256 {
 //
 // Not in FigaroCore. This is the batched equivalent of
 // msg.sender == rootBuyer. The buyer signs an EIP-712 typed message
-// authorizing resolution of the process as it stands: its id and its
-// cumulative value. The cumulative value grows at every commit, so the
-// authorization applies only to the orders the process held when the buyer
-// signed; after a further commit the buyer signs again. Replay protection:
-// once resolveProcess sets activeOrderCount = 0, the process cannot be
-// resolved again, and the processId can never be reused.
+// authorizing resolution of one process at one cumulative value; the guest
+// applies it only while the process holds that value (`StaleResolveAuthorization`),
+// and resolves every order the process holds: those it held at the signing,
+// or, signed ahead, those the buyer's own later commits bring it to
+// (docs/DESIGN_DECISIONS.md § 21). Replay protection: a resolve sets
+// activeOrderCount = 0 for good, and a processId is never reused.
 
 /// Compute the struct hash for a `ResolveProcess` authorization.
 /// `ResolveProcess(bytes32 processId,uint256 runningTotal)`

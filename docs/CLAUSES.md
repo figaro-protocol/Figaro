@@ -395,8 +395,12 @@ spec and registers such a clause anyway; the reference tooling never loads it.
 The spec's stage list is the whole signal: an interface derives a witness capability
 for any composed clause that declares stages, renders the form from the
 declared fields, validates and encodes at the stage, and files through
-`AttestationCoordinator`; readers decode the recovered calldata against the
-same spec. Who witnesses is never engine policy — either party may file,
+`AttestationCoordinator`. The coordinator's calldata carries the content only
+as fingerprints (`clauseDataHash` and `contentRef`), and its `Attestation` event
+carries `contentRef`. A reader takes the content off the chain, from the party
+that holds it or from where a public clause's content is published, checks
+that its `keccak256` equals the event's `contentRef`, and decodes it against
+the same spec. Who witnesses is never engine policy — either party may file,
 and sufficiency is derived at read time against the committed terms. The
 evidence window closes at resolution (`DESIGN_DECISIONS.md` §6).
 

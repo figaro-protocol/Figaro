@@ -292,9 +292,9 @@ fn apply_resolve(
 /// own 2× bond back, plus what the buyer pays). Buyer payout = `payment`
 /// (the remainder of the buyer's 2× bond).
 ///
-/// Public so a relay can PUBLISH the same per-order facts FigaroCore emits
-/// without re-deriving the arithmetic: `apply_resolve` is the only other
-/// caller, so the published figure and the resolved figure cannot drift.
+/// `apply_resolve` is its one caller in the guest and the relay, so a payout's
+/// arithmetic lives here alone; it is public so a test or a stranger's reader
+/// computes the two legs with the guest's own code (`sequencer.rs`'s tests do).
 pub fn resolution_payouts(c: &Commitment) -> Result<(U256, U256), KernelError> {
     let seller_payout = c
         .running_total

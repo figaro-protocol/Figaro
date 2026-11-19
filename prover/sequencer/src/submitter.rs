@@ -845,7 +845,6 @@ sol! {
         function stateRoot() external view returns (bytes32);
         function clauseRegistry() external view returns (address);
         function programVKey() external view returns (bytes32);
-        function batchCount() external view returns (uint64);
     }
 }
 
