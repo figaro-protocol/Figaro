@@ -136,7 +136,7 @@ function validCommitInputs(env e, CommitmentTypes.Commitment c) returns bool {
         c.payment < MAX_VALUE() &&
         c.runningTotal >= c.payment &&
         c.runningTotal < MAX_VALUE() &&
-        c.deadline >= e.block.timestamp;
+        c.commitDeadline >= e.block.timestamp;
 }
 
 // ═══════════════════════════════════════════════════════════════════
