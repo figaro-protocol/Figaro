@@ -559,6 +559,18 @@ next batch — the balances, the one `BatchSettled` and the per-order answers
 read from the chain, the dead-letter count and its reason from `/status`.
 Same gate as the batch test; `prover-ci` runs both.
 
+`sdk/tests/batch-accrual-skip-e2e.test.ts` drives a use the counter leaves
+uncounted to a later batch that counts it, on the same harness with two
+periods: the relay assembles a resolve and its usage claim in period 0, the
+test holds the batch's transaction in the mempool and mines it after period 0 ends, so the
+counter refuses the call whole and the verifier lands the batch with
+`BatchAccrualSkipped`; `fetchSkippedBatchUses` reads the claim back from the
+verifier's logs, the claim is sent again, and a later batch's use stands in
+`UsageCounter.accrualOf` for period 1, with nothing in period 0. It moves the
+chain's clock, so it starts an Anvil of its own on port 18555 and never runs
+on a shared chain. Same gate as the batch test; `prover-ci` runs it beside
+the other two.
+
 `frontend/tests/e2e/batch-events.devnet.spec.ts` is the app's end of the same
 path: it starts the built sequencer with nothing (`REBUILD_FROM_CHAIN=1`)
 against the DEVNET's own verifier (the devnet pins that binary's guest,
@@ -1161,7 +1173,8 @@ Per workflow, what it runs and when:
   main and dispatch — installs the SP1
   toolchain the way `sequencer-release` does, builds the sequencer, runs
   `cargo test` on `figaro-sequencer` and `figaro-prove-test`, then runs
-  `sdk/tests/batch-e2e.test.ts` and `sdk/tests/batch-revoke-e2e.test.ts` against a live Anvil with
+  `sdk/tests/batch-e2e.test.ts`, `sdk/tests/batch-revoke-e2e.test.ts` and
+  `sdk/tests/batch-accrual-skip-e2e.test.ts` against a live Anvil with
   `REQUIRE_BATCH_E2E=1`, so a missing chain or binary fails instead of
   skipping.
 - **`sdk-ci`** — push/PR, path-filtered (re-triggers on

@@ -12,10 +12,14 @@
  * spec in `clauses/` it names (`resolveAuthoredClauseKeys`) and the result is
  * validated with the SDK parser before it is pinned, so the pinned profile
  * carries keys. Every member registers from ITS OWN wallet
- * with ITS OWN stake (RELEASE_READINESS Task 13): the founder direct from the
- * Ledger, the DAO from its EIP-7702-delegated operator EOA (never the vault
- * address; members/README.md), a stranger from theirs. One registrar per
- * invocation:
+ * with ITS OWN stake (RELEASE_READINESS Task 13), the wallet the plan in
+ * deployments/<chainId>.expected.json names for its file (`registrations.
+ * members`; `scripts/seed/seed.sh member <file>` sets the registrar and
+ * refuses a signer whose address is not the plan's): the founder direct from
+ * the Ledger; the DAO from its operator EOA (`daoOperator`), a plain
+ * transaction signed with that EOA's own key (DAO_OPERATOR_KEY) and staked
+ * from its balance, never from the vault address (members/README.md); a
+ * stranger from theirs. One registrar per invocation:
  *
  *   MEMBER_PROFILE            — path to the profile JSON (required)
  *   NEXT_PUBLIC_MEMBERS_REGISTRY — the MembersRegistry address (required;
@@ -26,7 +30,11 @@
  *   REGISTRAR_IMPERSONATE     — fork rehearsal only: an address impersonated
  *                               on an Anvil node (populate-clauses.mjs), OR
  *   REGISTRAR_VAULT + VAULT_OWNER_KEYS [+ VAULT_LEDGER_HD_PATH | VAULT_IMPERSONATE_OWNER]
- *                             — the vault registers, staking from its own balance
+ *                             — the vault registers ITSELF as the member, staking
+ *                               from its own balance; the seeding never runs it
+ *                               for a profile in members/ (the treasury wallet
+ *                               holds no profile: docs/DAO.md § "Who holds the
+ *                               treasury")
  *   IPFS_PIN_SERVICE_JWT / NEXT_PUBLIC_IPFS_API_URL — pinning, as populate-clauses
  *
  * Idempotent: an already-registered wallet is reported and skipped (a profile

@@ -4,14 +4,21 @@
  *
  * `app/(marketing)/layout.tsx` mounts no `<Providers>`, so a wagmi hook
  * reached from a marketing page has no `WagmiProvider` above it. This test
- * walks the static import graph from every layout and page under
+ * walks the import graph, static imports and `import("…")` calls with a
+ * literal specifier alike, from every layout and page under
  * `app/(marketing)/`, through `components/`, `hooks/` and `lib/`, and fails
  * when any file it reaches:
  *
  * - imports `app/providers.tsx` (the `Providers` stack that mounts
  *   `WagmiProvider`), or
  * - takes anything from the wallet package: `wagmi`, a subpath of it
- *   (`wagmi/connectors/injected`) or `@wagmi/…`.
+ *   (`wagmi/connectors/injected`) or `@wagmi/…`, or
+ * - imports an installed package whose dependencies, followed to the end,
+ *   include the wallet package (its `package.json`: `dependencies` and the
+ *   `peerDependencies` it does not mark optional).
+ *
+ * Those three are what can put the wallet package in a marketing page's
+ * bundle, read without a Next build.
  *
  * Nothing on a marketing path is allowed the wallet package: the marketing
  * pages read the chain through the standalone `publicClient` of
@@ -23,14 +30,19 @@
  * The other half: the `(app)` and `(tools)` layouts reach `Providers`, and
  * `Providers` takes `WagmiProvider` from `wagmi`.
  *
- * Proves: no static import chain from a marketing layout or page reaches the
- * wallet provider or any module of the wallet package. Does not prove: anything about a dynamic
- * `import()` (none is walked), or that a page renders without a console
- * error (the `stranger` Playwright project reads the pages in a browser).
- * Type-only imports load nothing at runtime and are not walked.
+ * Proves: no import chain from a marketing layout or page reaches the wallet
+ * provider or any module of the wallet package, in the tree or through a
+ * package's declared dependencies. Does not prove: anything about an
+ * `import()` whose specifier is computed (none is walked); a module a package
+ * bundles inside its own files without declaring it; or that a page renders
+ * without a console error (the `stranger` Playwright project reads the pages
+ * in a browser). A dependency is not proof that its code reaches the bundle,
+ * so the package half over-counts and never under-counts. Type-only imports
+ * load nothing at runtime and are not walked.
  */
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { isBuiltin } from "node:module";
 import path from "node:path";
 import ts from "typescript";
 
@@ -87,6 +99,79 @@ function staticImports(file: string): StaticImport[] {
     return out;
 }
 
+/** The `import("x")` calls anywhere in one file, with a literal specifier: a
+ *  chunk the page loads when the call runs (`next/dynamic` included), so it is
+ *  part of what the page can load in the browser. */
+function dynamicImports(file: string): StaticImport[] {
+    const source = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
+    const out: StaticImport[] = [];
+    const visit = (node: ts.Node) => {
+        if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+            const [arg] = node.arguments;
+            if (arg && ts.isStringLiteralLike(arg)) out.push({ specifier: arg.text, names: null });
+        }
+        ts.forEachChild(node, visit);
+    };
+    visit(source);
+    return out;
+}
+
+/** Every import that loads code: static, re-exported and dynamic. */
+const loadedImports = (file: string): StaticImport[] => [...staticImports(file), ...dynamicImports(file)];
+
+/** The installed package a bare specifier names (`@scope/name/sub` → `@scope/name`). */
+function packageName(specifier: string): string {
+    const parts = specifier.split("/");
+    return specifier.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0];
+}
+
+/** The directory of an installed package, found as Node finds it: the
+ *  nearest `node_modules/<name>` from `fromDir` upward. Null for a Node
+ *  built-in (`node:fs`) or a package not installed. */
+function packageDir(name: string, fromDir: string): string | null {
+    for (let dir = fromDir; ; dir = path.dirname(dir)) {
+        const candidate = path.join(dir, "node_modules", name);
+        if (existsSync(path.join(candidate, "package.json"))) return candidate;
+        if (path.dirname(dir) === dir) return null;
+    }
+}
+
+/** For each installed package, the chain of packages through which it
+ *  depends on the wallet package, or null when none does: its
+ *  `dependencies` and non-optional `peerDependencies`, followed to the end. A
+ *  dependency is not proof that a module of it reaches the bundle, so this
+ *  over-counts and never under-counts. */
+const walletDependency = new Map<string, string[] | null>();
+function walletDependencyChain(root: string): string[] | null {
+    if (walletDependency.has(root)) return walletDependency.get(root)!;
+    const chains = new Map<string, string[]>();
+    const queue = [root];
+    let found: string[] | null = null;
+    while (queue.length > 0 && !found) {
+        const dir = queue.shift()!;
+        const manifest = JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8")) as {
+            name: string;
+            dependencies?: Record<string, string>;
+            peerDependencies?: Record<string, string>;
+            peerDependenciesMeta?: Record<string, { optional?: boolean }>;
+        };
+        const chain = [...(chains.get(dir) ?? []), manifest.name];
+        const deps = [
+            ...Object.keys(manifest.dependencies ?? {}),
+            ...Object.keys(manifest.peerDependencies ?? {}).filter((d) => !manifest.peerDependenciesMeta?.[d]?.optional),
+        ];
+        for (const dep of deps) {
+            if (isWalletPackage(dep)) { found = [...chain, dep]; break; }
+            const depDir = packageDir(dep, dir);
+            if (!depDir || chains.has(depDir) || depDir === root) continue;
+            chains.set(depDir, chain);
+            queue.push(depDir);
+        }
+    }
+    walletDependency.set(root, found);
+    return found;
+}
+
 /** The file an in-tree specifier names, or null for a package. */
 function resolveLocal(from: string, specifier: string): string | null {
     let base: string;
@@ -114,7 +199,7 @@ function walletEntryPoints(imp: StaticImport): string[] {
 const isWalletPackage = (specifier: string) =>
     specifier === WALLET_PACKAGE || specifier.startsWith(`${WALLET_PACKAGE}/`) || specifier.startsWith("@wagmi/");
 
-/** Every file reachable by static import from `entries`, with the chain that reached it. */
+/** Every file reachable by static or dynamic import from `entries`, with the chain that reached it. */
 function reachable(entries: string[]): Map<string, string[]> {
     const chains = new Map<string, string[]>();
     const queue: string[] = [];
@@ -125,7 +210,7 @@ function reachable(entries: string[]): Map<string, string[]> {
     while (queue.length > 0) {
         const file = queue.shift()!;
         if (!/\.(tsx?|jsx?|mjs)$/.test(file)) continue;
-        for (const imp of staticImports(file)) {
+        for (const imp of loadedImports(file)) {
             const next = resolveLocal(file, imp.specifier);
             if (!next || chains.has(next)) continue;
             chains.set(next, [...chains.get(file)!, next]);
@@ -152,10 +237,21 @@ describe("wallet-provider scope per route", () => {
         for (const [file, chain] of chains) {
             const route = chain.map(rel).join(" → ");
             if (file === PROVIDERS) offenders.push(`${route} (the Providers stack)`);
-            for (const imp of staticImports(file)) {
-                if (!isWalletPackage(imp.specifier)) continue;
-                const taken = imp.names === null ? "the whole module" : imp.names.join(", ");
-                offenders.push(`${route} takes ${taken} from "${imp.specifier}"`);
+            for (const imp of loadedImports(file)) {
+                if (isWalletPackage(imp.specifier)) {
+                    const taken = imp.names === null ? "the whole module" : imp.names.join(", ");
+                    offenders.push(`${route} takes ${taken} from "${imp.specifier}"`);
+                    continue;
+                }
+                // A package the page loads brings its own dependencies into the bundle.
+                if (resolveLocal(file, imp.specifier) !== null || isBuiltin(imp.specifier)) continue;
+                const dir = packageDir(packageName(imp.specifier), path.dirname(file));
+                if (!dir) {
+                    offenders.push(`${route} imports "${imp.specifier}", which is not installed, so its dependencies cannot be read`);
+                    continue;
+                }
+                const through = walletDependencyChain(dir);
+                if (through) offenders.push(`${route} imports "${imp.specifier}", which depends on the wallet package: ${through.join(" → ")}`);
             }
         }
         expect(offenders).toEqual([]);

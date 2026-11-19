@@ -334,6 +334,32 @@ export function useRpgfRewards(subject?: `0x${string}`) {
         }), setRead);
     }, [minter, counter, publicClient, chainId, account, discoverClausesAndAssemblies, refreshNonce]);
 
+    /** The earliest end, in the read in hand, of a period the chain has not
+     *  closed; undefined when every period read is closed or no end was read. */
+    const nextEnd = read.status === "present"
+        ? read.value.periods.reduce<bigint | undefined>((earliest, p) =>
+            !p.periodClosed && p.periodEnd.status === "present" && (earliest === undefined || p.periodEnd.value < earliest)
+                ? p.periodEnd.value
+                : earliest, undefined)
+        : undefined;
+
+    // A page left open across a period's end reads again once the chain's
+    // clock passes it: the latest block's timestamp, the clock
+    // `UsageCounter.periodClosed` reads, never the device's. One read per
+    // end; the new read says whether the period closed.
+    useEffect(() => {
+        if (nextEnd === undefined || !publicClient) return;
+        let passed = false;
+        return publicClient.watchBlocks({
+            emitOnBegin: true,
+            onBlock: (block) => {
+                if (passed || block.timestamp < nextEnd) return;
+                passed = true;
+                refresh();
+            },
+        });
+    }, [nextEnd, publicClient, refresh]);
+
     /** Claim a closed period: one call carrying every clause, agreement or
      *  assembly that accrued for the wallet in it. The minter rewards each key
      *  once per period and counts a key already claimed as zero, so the call

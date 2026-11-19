@@ -6,7 +6,7 @@
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 
 const w = vi.hoisted(() => {
     process.env.NEXT_PUBLIC_CLAUSE_REGISTRY = "0x00000000000000000000000000000000000c1a01";
@@ -217,6 +217,46 @@ describe("the period's end, as the chain holds it", () => {
         render(<RewardsView />);
         expect(await screen.findByTestId("period-card-0")).toBeInTheDocument();
         expect(screen.queryByTestId("period-end-0")).toBeNull();
+    });
+
+    it("an open period reads again once the chain's latest block passes its end", async () => {
+        // The counter says the period is open until the chain's clock reaches its end.
+        let chainNow = 1_899_999_000n;
+        const readContract = w.client.readContract as ReturnType<typeof vi.fn>;
+        type ReadCall = { functionName: string; args?: readonly unknown[] };
+        const answer = readContract.getMockImplementation() as (call: ReadCall) => Promise<unknown>;
+        readContract.mockImplementation(async (call: ReadCall) =>
+            call.functionName === "periodClosed" ? chainNow >= 1_900_000_000n : answer(call));
+        let onBlock: ((block: { timestamp: bigint }) => void) | undefined;
+        w.client.watchBlocks = vi.fn((params: { onBlock: (block: { timestamp: bigint }) => void }) => {
+            onBlock = params.onBlock;
+            return () => { onBlock = undefined; };
+        });
+        const periodCountReads = () => readContract.mock.calls.filter(([c]) => c.functionName === "periodCount").length;
+
+        const { result } = renderHook(() => useRpgfRewards());
+        await waitFor(() => expect(result.current.read.status).toBe("present"));
+        const first = result.current.read;
+        if (first.status !== "present") throw new Error("unreachable");
+        expect(first.value.periods[0].periodClosed).toBe(false);
+        await waitFor(() => expect(onBlock).toBeDefined());
+        const readsBefore = periodCountReads();
+
+        // A block before the end: no new read.
+        act(() => onBlock!({ timestamp: chainNow }));
+        expect(periodCountReads()).toBe(readsBefore);
+
+        // The chain's clock moves past the end: the page reads again, and the
+        // new read says the period closed.
+        chainNow = 1_900_000_001n;
+        act(() => onBlock!({ timestamp: chainNow }));
+        await waitFor(() => expect(periodCountReads()).toBe(readsBefore + 1));
+        await waitFor(() => {
+            const read = result.current.read;
+            expect(read.status === "present" && read.value.periods[0].periodClosed).toBe(true);
+        });
+        // Every period read is closed: the watch stops.
+        await waitFor(() => expect(onBlock).toBeUndefined());
     });
 
     it("resolved empty: no period, so no end is read or shown", async () => {
