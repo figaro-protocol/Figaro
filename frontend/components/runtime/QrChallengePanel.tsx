@@ -20,6 +20,7 @@ import Link from "@/components/shared/Link";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { hexEqual } from "@/lib/shared/evm";
+import { applyUntilCleanup } from "@/lib/shared/networkRead";
 import { Textarea } from "@/components/ui/Textarea";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
 
@@ -58,13 +59,7 @@ export function QrChallengePanel({ processId, orderHash, clauseKey }: Interactio
     const [scanned, setScanned] = useState("");
 
     useEffect(() => {
-        let canceled = false;
-        void generateQRDataURL(identity).then((url) => {
-            if (!canceled) setQrDataUrl(url);
-        });
-        return () => {
-            canceled = true;
-        };
+        return applyUntilCleanup(generateQRDataURL(identity), setQrDataUrl);
     }, [identity]);
 
     const decoded = scanned.trim() ? tryDecodeIdentity(scanned.trim()) : null;

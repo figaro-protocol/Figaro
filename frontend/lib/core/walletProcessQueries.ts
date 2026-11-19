@@ -25,7 +25,7 @@ import { projectProcessGraph, walletRecord } from "@figaro-protocol/sdk/derive";
 import { getCoreEvents } from "@/lib/core/indexer";
 import { useWatchOrderEvents } from "@/lib/core/useWatchOrderEvents";
 import { CONTRACTS } from "@/lib/core/contracts";
-import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { PENDING, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib/shared/networkRead";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 /** The two roles in a Figaro order commitment. */
@@ -84,9 +84,7 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
 
     useEffect(() => {
         if (!address || !publicClient || !chainId) return;
-        let canceled = false;
-
-        void readNetwork("useWalletProcessRows", async () => {
+        return applyUntilCleanup(readNetwork("useWalletProcessRows", async () => {
             // The SDK fold — the same one `/data/explore` answers wallet
             // history with — fed from the cached logs; only the row
             // mapping below is this hook's own.
@@ -119,11 +117,7 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
                 : record.ordersAsSeller.map((o) => toRow(o, (order) => order.buyer));
             built.sort((a, b) => b.blockNumber - a.blockNumber);
             return built;
-        }).then((next) => {
-            if (!canceled) setRead(next);
-        });
-
-        return () => { canceled = true; };
+        }), setRead);
     }, [address, publicClient, chainId, role, tick]);
 
     // Re-fetch on new commits / resolutions, from every order emitter.

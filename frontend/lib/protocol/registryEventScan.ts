@@ -24,7 +24,7 @@ import type { Abi, Log } from "viem";
 import { cachedGetContractEvents } from "@/lib/core/eventCache";
 import { activeChain } from "@/lib/shared/chains";
 import { publicClient } from "@/lib/shared/publicClient";
-import { ABSENT, PENDING, mapRead, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { ABSENT, PENDING, mapRead, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib/shared/networkRead";
 import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
 import { hexEqual } from "@/lib/shared/evm";
 
@@ -79,10 +79,9 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
                 setRead(ABSENT);
                 return;
             }
-            let canceled = false;
             const reader = client ?? publicClient;
             const chainId = reader.chain?.id ?? activeChain.id;
-            void readNetwork(label, async () => {
+            return applyUntilCleanup(readNetwork(label, async () => {
                 const [registeredRaw, withdrawnRaw] = await Promise.all([
                     cachedGetContractEvents(reader, chainId, { address: registry, abi, eventName: registeredEventName }),
                     cachedGetContractEvents(reader, chainId, { address: registry, abi, eventName: withdrawnEventName }),
@@ -93,13 +92,7 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
                     )
                     : registeredRaw) as Log[];
                 return toRows(registeredLogs, withdrawnRaw as Log[], registeredBy);
-            }).then((next) => {
-                if (!canceled) setRead(next);
-            });
-
-            return () => {
-                canceled = true;
-            };
+            }), setRead);
         }, [registeredBy, enabled, client, generation]);
 
         return useMemo(() => ({ read, refetch }), [read, refetch]);
