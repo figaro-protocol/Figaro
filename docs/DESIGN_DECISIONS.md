@@ -1194,13 +1194,28 @@ do not show the graph of orders.
 
 **Why it is correct**: The bonds are sized by the running total alone, and a
 commitment with a wrong running total never commits, so the edges size
-nothing (`THEORY.md` § "Topology is not in the Core"). Version 3 already took
-the bond's parent from the process's tail and never from the parent list. A
-field in the struct that the Core neither reads nor checks adds calldata to
-every commit for a graph the Core does not use. The parties still sign the edges,
-since the agreement body hashes into the `checkoutHash` they sign. A wallet
-outside the trade reads the designed edges from the registered assembly
+nothing (`THEORY.md` § "Topology is not in the Core"). A field in the struct
+that the Core neither reads nor checks adds calldata to every commit for a
+graph the Core does not use. The parties still sign the edges, since the
+agreement body hashes into the `checkoutHash` they sign. A wallet outside the
+trade reads the designed edges from the registered process design
 (`planProcessOrders`, `sdk/src/reconstructOrders.ts`), never from an event.
+The counter-signer reads the edges first, and checks each one before it signs
+(`followedOrderIssues`, `sdk/src/projection.ts`; `DATA_LAYER.md`, "The
+counter-signer is the first reader of the edges").
+
+**History**: Each earlier version of the Core held the edges in a different
+place. Version 3 took a list of parent order ids at each sub-order and
+validated it on the chain: each id existed, was in the same process, was not
+past the tail and was not repeated, up to four
+(its `_validateUiParents`). It took the bond's
+parent from the process's tail, never from that list. Version 4 put the
+parents in the signed struct, `SubOrderCommitment.parentOrderHashes`, signed
+and not validated. Version 5 moved them
+into the agreement. The repository's history starts at version 5, and no
+document states a reason for the move. The reason above
+is the one that stands: the bonds read only the running total, and the
+counter-signer and the registered process design give each reader the edges.
 
 **Tests**: `COMMITMENT_TYPEHASH equals FigaroCore's literal type string`
 (`sdk/tests/commitments.test.ts`) pins the struct's fields.
@@ -1426,6 +1441,57 @@ registry anchors is refused on counter-sign and on broadcast, with no
 
 ---
 
+## 35. `resolveProcess` pays an order before it marks the order resolved
+
+**Pattern**: Inside its loop, `FigaroCore.resolveProcess` checks that an
+order's `orderStatus` is 1, sends the seller's payout and the buyer's refund
+with `safeTransfer`, and only then sets `orderStatus` to 2. It sets
+`activeOrderCount` to zero after the loop. The function carries
+`nonReentrant` (`src/core/kernel/FigaroCore.sol`).
+
+**Why it looks wrong**: The usual order is checks, then effects, then
+interactions. Here an external call to the token comes before the write that
+marks the order resolved. A token that calls out on transfer can run code while the order
+still reads as open.
+
+**Why it is correct**: Every reader of the status is safe in that window.
+`orderStatus` has three readers in the contracts, and each one is checked
+here.
+
+1. `FigaroCore` itself, in `commit` (`DuplicateCommitment`) and in
+   `resolveProcess`. Both functions carry `nonReentrant`, and they share one
+   guard. A call back into either one during a transfer reverts with
+   `ReentrancyGuardReentrantCall`, so no second payout and no new order can
+   use the stale status.
+2. `AttestationCoordinator`, a separate contract with no storage, reads the
+   status in `_requireKnownCommitment` and accepts an attestation only on an
+   order at status 1. A callback can attest an order whose payout has left
+   and whose status is still 1. That attestation moves no token and writes no
+   state: the coordinator only emits `Attestation`. It lands in the same
+   transaction as the resolution, before that order's `OrderResolved`, as an
+   attestation in the block before would. The window still closes at resolve
+   (§ 6). If the resolve reverts, the attestation reverts with it.
+3. `UsageCounter`, in `_requireResolvedOrder`, counts an order only at
+   status 2. During a callback, only the orders the loop already finished
+   read 2, and each one's payout has already left. A use counted then is the
+   use a later transaction would count, and the counter's once-ever
+   `processCounted` stops a second count. If the resolve reverts, the count
+   reverts with it.
+
+The resolution is one transaction, so a reader outside it sees status 1
+before and status 2 after, never the window. The guard holds the function,
+and the place of the status write changes no outcome for any of the three
+readers.
+
+**Tests**: `test_resolve_reentry_isBlocked_payoutsStillCorrect` and
+`test_commit_reentry_isBlocked_resolutionStillCorrect`
+(`test/ReentrancyAdversarialTest.t.sol`) arm `MockReentrantToken` to call
+back into `FigaroCore` and assert the guard's own error and one payout each.
+No test calls back into `AttestationCoordinator` or `UsageCounter` from a
+transfer; items 2 and 3 rest on a reading of the code.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -1459,8 +1525,9 @@ registry anchors is refused on counter-sign and on broadcast, with no
 | 27 | A state-neutral batch's proof can land twice | batch-path/reward-path | A proof submitted twice is the replay shape, and `BatchSettled` repeats | A batch that moves no state has prev root == new root; its second landing moves no token, and the counter's once-ever `processCounted` skips every use, so nothing a reader relies on changes; a batch that moved the root cannot land twice |
 | 28 | `FlorinToken.mint` checks the supply cap the minters' caps already bound | token | A check that cannot fire reads as dead code | It states the billion bound in the token, at the one function that creates florins, where a stranger reads it; one storage read, no outcome changes |
 | 29 | Public pieces no code of ours reads | registry/reward-path/token | Surface nothing reads is surface to audit for nothing | Each answers a stranger's question of the chain: who may mint, which keys are reserved, where a stake went, which sellers counted |
-| 30 | Topology is not in the commitment struct | Core-critical | The process's shape reads as part of what is bonded, and the events alone do not show the graph of orders | The bonds are sized by the running total alone; the parties sign the edges through the `checkoutHash`; a wallet outside the trade reads the designed edges from the registered assembly |
+| 30 | Topology is not in the commitment struct | Core-critical | The process's shape reads as part of what is bonded, and the events alone do not show the graph of orders | The bonds are sized by the running total alone; the parties sign the edges through the `checkoutHash`; a wallet outside the trade reads the designed edges from the registered process design; the counter-signer checks a sub-order's edges before it signs; version 3 validated parent ids on the chain, version 4 signed them in the struct, version 5 moved them into the agreement |
 | 31 | The topology leaf has a shape of its own | agreement format/reward-path | The provenance leaf takes the clause-leaf shape under a reserved key, and a leaf no contract rebuilds reads as unprovable | A reserved key in the clause-leaf shape could be registered by anyone and earn on every order; a 96-byte inner preimage opens under no clause key, with no contract or verification key moved, and the edges have no stage after commit to attest |
 | 32 | A reader names the opening order from the chain, and the edges from the agreement | reader/frontend | A test on `runningTotal` in a reader of the process's shape reads as bond arithmetic deciding the graph | It decides no edge: it answers which order opened the process, the Core's own fact at commit; the edges come only from the agreement's topology leaf, and unknown edges are shown as none |
 | 33 | A private set carries its own blinding value | data/spec format | The commitment's `salt` looks like the same random value, a declared field looks like boilerplate, and a public clause carries none | The commitment's `salt` is emitted in `OrderCommitted` and blinds nothing; a declared field enters the hashed bytes with no hash, contract or proof change and is what a stranger's tool reads from the spec; public content is published, so a random value there hides nothing |
 | 34 | The sign gate refuses an agreement whose design it could not read | sign gate/SDK/frontend | A failed or empty read is absence elsewhere, and an agreement naming no design signs without the check | A signature binds the provenance leaf; only the design shows its clauses, designer values and edge count, and reading "not read" as "nothing to check" lets a party escape them by naming an assembly no registry anchors; the gate is the SDK's, never the Core's |
+| 35 | `resolveProcess` pays an order before it marks it resolved | Core-critical | An external call precedes the status write, against checks-effects-interactions | `nonReentrant` refuses a callback into `commit` or `resolveProcess`; the coordinator only emits and accepts no late evidence the window did not already allow; the counter counts only finished orders once; a revert takes every callback's effect with it |
