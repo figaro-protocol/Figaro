@@ -17,7 +17,7 @@
  *   process graph's business, and the two layers stay independent.
  */
 
-import type { Hex, Address, Process, BondBreakdown, ResolutionBreakdown } from "../types.js";
+import type { Hex, Address, Order, Process, BondBreakdown, ResolutionBreakdown } from "../types.js";
 import { OrderState } from "../types.js";
 import type { CoreEvents } from "../state.js";
 import { Topology } from "../state.js";
@@ -44,6 +44,20 @@ export function projectProcessGraph(events: CoreEvents): ProcessGraph {
     const topology = new Topology();
     topology.applyEvents(events);
     return { boundary: "protocol-enforced", processes: topology.processes, topology };
+}
+
+/**
+ * A process's orders in commit order: by the running total each commit
+ * carried. FigaroCore refuses a zero payment (`ZeroPayment`), so the running
+ * total rises with every commit and orders a process's commits on either
+ * path, whatever the order the map or the block holds them in.
+ */
+export function commitOrder(process: Process): Order[] {
+    return [...process.orders.values()].sort((a, b) =>
+        a.runningTotal === b.runningTotal
+            ? a.blockNumber - b.blockNumber
+            : a.runningTotal < b.runningTotal ? -1 : 1,
+    );
 }
 
 // ── Resolution graph ────────────────────────────────────────────────────────
@@ -104,12 +118,7 @@ export function projectResolutionGraph(events: CoreEvents): ResolutionGraph {
 
     const chains = new Map<Hex, ResolutionChain>();
     for (const process of topology.processes.values()) {
-        const orders = [...process.orders.values()]
-            .sort((a, b) =>
-                a.runningTotal === b.runningTotal
-                    ? a.blockNumber - b.blockNumber
-                    : a.runningTotal < b.runningTotal ? -1 : 1,
-            )
+        const orders = commitOrder(process)
             .map((o): ResolutionEntry => {
                 const locked = calculateBonds(o.runningTotal, o.payment);
                 return {

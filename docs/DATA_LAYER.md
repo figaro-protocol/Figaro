@@ -405,7 +405,14 @@ at resolution (`OrderResolved`). The other part, the edges of who comes before
 whom, is read from the design: the edges sit in the agreement body, whose
 address no event carries (`frontend/lib/core/agreementFetch.ts`, header), so a
 reader takes them from the registered assembly or from an agreement body it
-holds. The sign gate (`validateCommitmentAgreement`, `sdk/src/projection.ts`)
+holds. A reader outside the trade takes the registered process design's:
+`processEdges` (`sdk/src/derive/queries.ts`) matches the design's positions
+(`planProcessOrders`) to a process's commits by position, the commits ordered
+by running total (`commitOrder`, `sdk/src/derive/graphs.ts`), for a process
+its buyer's provenance attestation or a `UsageRecorded` of the process design
+links to it, and `/data/explore` labels them the design, never what the
+parties signed; a process with no link, or whose commits do not fit the
+design, keeps the linear view of the commits. The sign gate (`validateCommitmentAgreement`, `sdk/src/projection.ts`)
 holds two things about them at each party's signature, from the agreement and
 the design alone: an order names as many orders as its design entry follows
 (`designIssues`), and a commitment that opens a process (`processId` zero)

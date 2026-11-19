@@ -857,6 +857,23 @@ cuts the attestation stream at each entry's end (it reads) and one byte short
 `BatchOperations` log of its own batch id, two batches in one transaction
 included.
 
+**A process's designed edges, on both paths.** `sdk/tests/designedEdges.test.ts`
+realizes the reference process design `assemblies/tradelens.json` through
+`reconstructOrdersFromProcessDesign` and hands `processEdges` only the
+`OrderCommitted` events and the registered design: the edges it rebuilds by
+position equal each agreement's topology leaf, with one block per commit and
+with every commit in one block; an open process matches the design's first
+positions, and a process with no link, or with more commits than the design
+has positions, keeps the linear view.
+`frontend/tests/lib/graphCorpusDesignedEdges.test.tsx` reads the same through
+the corpus (`useGraphCorpus`) and `/data/explore`: the direct path's commits
+at `FigaroCore` linked by the buyer's provenance attestation, and the batch
+path's commits at `FigaroBatchVerifier` linked by a `UsageRecorded` of the
+process design; a use of a clause links nothing, and a failed `UsageRecorded`
+read links nothing while the corpus still lands. A batch whose use the counter
+skipped (`BatchAccrualSkipped`) emits no `UsageRecorded`, so its process is
+linked only by its provenance attestation.
+
 **Packer vectors — the batch verifier's four hand-packed hashes.** The usage
 packer's Rust-generated vector is asserted against the contract's assembly
 (`test_usageHash_matchesTheRustVector`); the positions, attestations and
