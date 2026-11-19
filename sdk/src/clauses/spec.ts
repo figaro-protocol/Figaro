@@ -134,9 +134,12 @@ export interface EnumFieldSpec extends BaseFieldSpec {
     type: "enum";
     values: readonly string[];
     /** An enum value reserved as the ABI position-as-index placeholder
-     *  (conventionally index 0, e.g. klerosCourt "none"). It exists so the
-     *  wire encoding keeps its historical 1-based semantics; it is never a
-     *  valid composition input, and generic input surfaces exclude it. */
+     *  (conventionally index 0, a value such as "none" that names no term).
+     *  It lets a spec keep its real values at positions 1 and up; it is never
+     *  a valid composition input, and no default may name it. No
+     *  reference clause declares one: every value of
+     *  `figaro-arbitration-kleros`'s `klerosCourt`, `general` included, names
+     *  a real court. */
     sentinel?: string;
     /** Per-value human display labels (value → label), e.g.
      *  `{ "zone-wifi": "Same Wi-Fi network" }`. Purely cosmetic off-chain

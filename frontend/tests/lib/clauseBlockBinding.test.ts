@@ -105,6 +105,24 @@ describe("parseBlockBinding — clause block-binding (sectioned UI half)", () =>
         expect(parse({ design: { article: "logistics" } }).block?.checkout.catalogueMeasures).toEqual({});
     });
 
+    it("preserves checkout.heldValues, reads its absence as {}, and rejects a bad chain id, address or value list", () => {
+        const heldValues = {
+            tier: {
+                reader: "some-standard",
+                contracts: { "10": { registry: `0x${"ab".repeat(20)}` } },
+                values: { gold: ["Gold"], silver: ["Metals", "Silver"] },
+            },
+        };
+        const { block } = parse({ design: { article: "terms" }, checkout: { heldValues } });
+        expect(block?.checkout.heldValues).toEqual(heldValues);
+        expect(parse({ design: { article: "terms" } }).block?.checkout.heldValues).toEqual({});
+        const bad = (tier: unknown) => parse({ design: { article: "terms" }, checkout: { heldValues: { tier } } });
+        expect(bad({ ...heldValues.tier, reader: "" }).errors.some((e) => e.path === "$.block.checkout.heldValues.tier.reader")).toBe(true);
+        expect(bad({ ...heldValues.tier, contracts: { mainnet: { registry: `0x${"ab".repeat(20)}` } } }).block).toBeNull();
+        expect(bad({ ...heldValues.tier, contracts: { "10": { registry: "0x1234" } } }).block).toBeNull();
+        expect(bad({ ...heldValues.tier, values: { gold: [] } }).errors.some((e) => e.path === "$.block.checkout.heldValues.tier.values.gold")).toBe(true);
+    });
+
     it("rejects a catalogueMeasures entry with no source field or an unknown combinator", () => {
         const noFrom = parse({ design: { article: "logistics" }, checkout: { catalogueMeasures: { massGrams: { combine: "sum" } } } });
         expect(noFrom.block).toBeNull();

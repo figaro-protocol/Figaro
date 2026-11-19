@@ -80,6 +80,18 @@ describe("figaro-arbitration-kleros — Kleros's published court list", () => {
         for (const c of chains) expect(jurors.default).toBe(c.minJurorsDefault);
     });
 
+    it("the checkout hint names each court as the field's description does, and each chain's arbitrator and PolicyRegistry as Kleros publishes them", () => {
+        const hint = klerosSpecRaw.block.checkout.heldValues.klerosCourt;
+        expect(hint.reader).toBe("kleros-liquid-policy-courts");
+        expect(hint.values).toEqual(NAMED);
+        const contracts = hint.contracts as Record<string, { arbitrator: string; policyRegistry: string }>;
+        expect(Object.keys(contracts).map(Number).sort()).toEqual(chains.map((c) => c.chainId).sort());
+        for (const c of courtList.chains) {
+            expect(contracts[String(c.chainId)]!.arbitrator.toLowerCase()).toBe(c.arbitrator.toLowerCase());
+            expect(contracts[String(c.chainId)]!.policyRegistry.toLowerCase()).toBe(c.policyRegistry.toLowerCase());
+        }
+    });
+
     it("the forum link is Kleros's Dispute Resolver, which serves every chain in the list", () => {
         expect(klerosSpecRaw.block.design.composes.forumUrl).toBe(courtList.forum.url);
         for (const c of chains) expect(courtList.forum.chainIds).toContain(c.chainId);

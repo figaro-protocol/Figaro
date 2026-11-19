@@ -131,6 +131,27 @@ interface ClauseBlockCheckout {
      *  each by a rule of the open derivation registry over its declared
      *  inputs (`CheckoutDerivation`). Never the buyer's. */
     derives: Readonly<Record<string, CheckoutDerivation>>;
+    /** The enum content fields (by name, the map's keys) whose values a
+     *  checkout offers only when the chain in use holds what each value
+     *  names (`HeldValuesHint`): read at checkout by the reader the hint
+     *  names, from the contracts it gives for that chain. A presentation
+     *  hint like every attribute here: what the parties sign is unchanged,
+     *  and a frontend that knows no reader for the standard offers none of
+     *  the values. */
+    heldValues: Readonly<Record<string, HeldValuesHint>>;
+}
+
+/** One `checkout.heldValues` entry. `reader` names a STANDARD (an open
+ *  registry of readers, `frontend/lib/composition/heldValues.ts`), never a
+ *  clause. `contracts` gives, for each chain by its decimal id, the
+ *  contracts that reader reads, by the reader's own role names; the
+ *  addresses are fixed in the spec's registered bytes, so a chain added
+ *  later needs a new spec version. `values` names, for each enum value, what
+ *  the reader looks for on the chain, in the reader's own terms. */
+export interface HeldValuesHint {
+    reader: string;
+    contracts: Readonly<Record<string, Readonly<Record<string, `0x${string}`>>>>;
+    values: Readonly<Record<string, readonly string[]>>;
 }
 
 /** The `runtime` section — read by the capability rail while the process runs. */
@@ -209,6 +230,61 @@ function parseCatalogueMeasures(
             return null;
         }
         out[field] = { from: entry.from, combine: entry.combine };
+    }
+    return out;
+}
+
+const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
+const CHAIN_ID = /^[1-9][0-9]*$/;
+
+/** A `checkout.heldValues` map: absent is `{}`; present, every entry names
+ *  its reader, its contracts per decimal chain id (each an address by role
+ *  name) and, per enum value, a non-empty list of non-empty strings — the
+ *  rule of `clause-spec.schema.json`. */
+function parseHeldValues(
+    raw: unknown,
+    path: string,
+    errors: SpecParseError[],
+): Readonly<Record<string, HeldValuesHint>> | null {
+    if (raw === undefined) return {};
+    if (!isObject(raw)) {
+        errors.push({ path, message: "must be an object mapping enum content field names to { reader, contracts, values } when present" });
+        return null;
+    }
+    const out: Record<string, HeldValuesHint> = {};
+    for (const [field, entry] of Object.entries(raw)) {
+        const where = `${path}.${field}`;
+        if (!isObject(entry) || typeof entry.reader !== "string" || entry.reader.length === 0) {
+            errors.push({ path: `${where}.reader`, message: "must name its reader standard (a non-empty reader)" });
+            return null;
+        }
+        const contracts: Record<string, Record<string, `0x${string}`>> = {};
+        if (!isObject(entry.contracts)) {
+            errors.push({ path: `${where}.contracts`, message: "must map decimal chain ids to { role: address }" });
+            return null;
+        }
+        for (const [chainId, roles] of Object.entries(entry.contracts)) {
+            if (!CHAIN_ID.test(chainId) || !isObject(roles)
+                || Object.values(roles).some((a) => typeof a !== "string" || !ADDRESS.test(a))) {
+                errors.push({ path: `${where}.contracts.${chainId}`, message: "must be a decimal chain id mapping role names to 0x-prefixed 20-byte addresses" });
+                return null;
+            }
+            contracts[chainId] = roles as Record<string, `0x${string}`>;
+        }
+        const values: Record<string, readonly string[]> = {};
+        if (!isObject(entry.values)) {
+            errors.push({ path: `${where}.values`, message: "must map each enum value to a non-empty list of non-empty strings" });
+            return null;
+        }
+        for (const [value, names] of Object.entries(entry.values)) {
+            if (!Array.isArray(names) || names.length === 0
+                || names.some((n) => typeof n !== "string" || n.length === 0)) {
+                errors.push({ path: `${where}.values.${value}`, message: "must be a non-empty list of non-empty strings" });
+                return null;
+            }
+            values[value] = names as string[];
+        }
+        out[field] = { reader: entry.reader, contracts, values };
     }
     return out;
 }
@@ -302,6 +378,7 @@ export function parseBlockBinding(
     let catalogueMeasures: Readonly<Record<string, CatalogueMeasure>> = {};
     let pricedLines: PricedLinesMark | null = null;
     let derives: Readonly<Record<string, CheckoutDerivation>> = {};
+    let heldValues: Readonly<Record<string, HeldValuesHint>> = {};
     if (raw.checkout !== undefined) {
         if (!isObject(raw.checkout)) {
             errors.push({ path: `${path}.checkout`, message: "checkout section must be an object when present" });
@@ -334,6 +411,9 @@ export function parseBlockBinding(
             }
             derives = parsedDerives;
         }
+        const parsedHeld = parseHeldValues(raw.checkout.heldValues, `${path}.checkout.heldValues`, errors);
+        if (parsedHeld === null) return null;
+        heldValues = parsedHeld;
     }
 
     // ── runtime ─────────────────────────────────────────────────────────
@@ -374,7 +454,7 @@ export function parseBlockBinding(
 
     return {
         design: { article: rawDesign.article as ClauseArticle, scope, nestsUnder, fills: designFills, composes },
-        checkout: { catalogueFills, profileFills, catalogueMeasures, pricedLines, derives },
+        checkout: { catalogueFills, profileFills, catalogueMeasures, pricedLines, derives, heldValues },
         runtime: { interaction, fields: runtimeFields },
     };
 }

@@ -230,8 +230,10 @@ describe("parseClauseSpec — meta-clause validation", () => {
         }
     });
 
-    // Enum `sentinel` names the ABI position-as-index placeholder (e.g.
-    // klerosCourt "none") — a member value that is never valid input.
+    // Enum `sentinel` names the ABI position-as-index placeholder — a member
+    // value that is never valid input. The spec here is a test spec: no
+    // reference clause declares a sentinel, and every klerosCourt value
+    // (`general` among them) names a real Kleros court.
     it("preserves an enum sentinel and rejects a non-member sentinel", () => {
         const ok = parseClauseSpec({
             clauseId: "t", version: 1, title: "T", description: "D",

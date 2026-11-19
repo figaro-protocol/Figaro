@@ -123,12 +123,15 @@ the field <code>name</code>.</p>
 <h3 class="tsd-anchor-link" id="sentinel"><code class="tsd-tag">Optional</code><span>sentinel</span><a href="#sentinel" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">sentinel</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div>
 <div class="tsd-comment tsd-typography"><p>An enum value reserved as the ABI position-as-index placeholder
-(conventionally index 0, e.g. klerosCourt &quot;none&quot;). It exists so the
-wire encoding keeps its historical 1-based semantics; it is never a
-valid composition input, and generic input surfaces exclude it.</p>
+(conventionally index 0, a value such as &quot;none&quot; that names no term).
+It lets a spec keep its real values at positions 1 and up; it is never
+a valid composition input, and no default may name it. No
+reference clause declares one: every value of
+<code>figaro-arbitration-kleros</code>'s <code>klerosCourt</code>, <code>general</code> included, names
+a real court.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/clauses/spec.ts#L140">clauses/spec.ts:140</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/clauses/spec.ts#L143">clauses/spec.ts:143</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="type"><span>type</span><a href="#type" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">type</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;enum&quot;</span></div><aside class="tsd-sources">
@@ -144,7 +147,7 @@ selected value from here, falling back to the raw value when absent.
 Need not cover every value — unlisted values render raw.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/clauses/spec.ts#L146">clauses/spec.ts:146</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/clauses/spec.ts#L149">clauses/spec.ts:149</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="values"><span>values</span><a href="#values" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">values</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div><aside class="tsd-sources">

@@ -223,6 +223,12 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
 - **`composition/`** — third-party on-network contract composition (external, on-chain composition).
   Generic dispatch is `useCompositionActions.ts`, with per-contract hooks and
   readers beneath it.
+  - *Held values:* `heldValues.ts` — the open registry of readers that a spec's
+    `block.checkout.heldValues` names (`registerHeldValuesReader`), and
+    `useHeldValues`, which checkout uses to offer only the enum values the named
+    contracts on the connected chain hold. A chain the hint gives no address for
+    is not filtered; an unknown reader, a failed read or an empty read offers no
+    value.
   - *The funding leg:* `swapFunding.ts` — the venue quote/route plus the
     party-agnostic witness-signed leg builder, the buyer's at checkout and the
     seller's at accept: the party's own act of holding the denomination, never a
