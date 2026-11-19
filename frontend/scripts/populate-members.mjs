@@ -13,8 +13,9 @@
  * validated with the SDK parser before it is pinned, so the pinned profile
  * carries keys. Every member registers from ITS OWN wallet
  * with ITS OWN stake (RELEASE_READINESS Task 13): the founder direct from the
- * Ledger, the DAO through its vault from the vault's balance, a stranger from
- * theirs. One registrar per invocation:
+ * Ledger, the DAO from its EIP-7702-delegated operator EOA (never the vault
+ * address; members/README.md), a stranger from theirs. One registrar per
+ * invocation:
  *
  *   MEMBER_PROFILE            — path to the profile JSON (required)
  *   NEXT_PUBLIC_MEMBERS_REGISTRY — the MembersRegistry address (required;
@@ -22,7 +23,9 @@
  *   RPC_URL                   — chain RPC (default http://127.0.0.1:8545)
  *   REGISTRAR_PRIVATE_KEY     — EOA registrar (devnet default anvil[0]), OR
  *   REGISTRAR_LEDGER_HD_PATH  — Ledger registrar (signed on the device), OR
- *   REGISTRAR_VAULT + VAULT_OWNER_KEYS [+ VAULT_LEDGER_HD_PATH]
+ *   REGISTRAR_IMPERSONATE     — fork rehearsal only: an address impersonated
+ *                               on an Anvil node (populate-clauses.mjs), OR
+ *   REGISTRAR_VAULT + VAULT_OWNER_KEYS [+ VAULT_LEDGER_HD_PATH | VAULT_IMPERSONATE_OWNER]
  *                             — the vault registers, staking from its own balance
  *   IPFS_PIN_SERVICE_JWT / NEXT_PUBLIC_IPFS_API_URL — pinning, as populate-clauses
  *
@@ -31,11 +34,10 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { createPublicClient, createWalletClient, encodeFunctionData, http } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
+import { createPublicClient, encodeFunctionData, http } from 'viem';
 import { MEMBERS_REGISTRY_ABI, parseMemberProfileDocument, resolveAuthoredClauseKeys } from '@figaro-protocol/sdk';
 import {
-    VAULT_ABI, ledgerWalletClient, loadAuthoredSpecs, pinJSON, pinService, readEnvLocal, registrarAccount, resolveChain, vaultExecute,
+    VAULT_ABI, loadAuthoredSpecs, pinJSON, pinService, readEnvLocal, registrarWalletClient, resolveChain, vaultExecute, vaultOwnerClients,
 } from './populate-clauses.mjs';
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
@@ -57,20 +59,17 @@ async function main() {
     const publicClient = createPublicClient({ chain, transport: http(RPC_URL) });
 
     const vault = process.env.REGISTRAR_VAULT;
-    if (vault && process.env.REGISTRAR_LEDGER_HD_PATH) {
-        throw new Error('REGISTRAR_VAULT and REGISTRAR_LEDGER_HD_PATH are two registrars — one per invocation');
+    if (vault && (process.env.REGISTRAR_LEDGER_HD_PATH || process.env.REGISTRAR_IMPERSONATE)) {
+        throw new Error('REGISTRAR_VAULT and REGISTRAR_LEDGER_HD_PATH / REGISTRAR_IMPERSONATE are two registrars — one per invocation');
     }
-    const walletClient = process.env.REGISTRAR_LEDGER_HD_PATH
-        ? ledgerWalletClient({ hdPath: process.env.REGISTRAR_LEDGER_HD_PATH, rpcUrl: RPC_URL })
-        : createWalletClient({ account: registrarAccount(chain.id), chain, transport: http(RPC_URL) });
     let ownerClients;
     if (vault) {
-        const keys = (process.env.VAULT_OWNER_KEYS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-        if (keys.length === 0) throw new Error('REGISTRAR_VAULT is set but VAULT_OWNER_KEYS is missing');
-        ownerClients = keys.map((k) => createWalletClient({ account: privateKeyToAccount(k), chain, transport: http(RPC_URL) }));
-        if (process.env.VAULT_LEDGER_HD_PATH) {
-            ownerClients.push(ledgerWalletClient({ hdPath: process.env.VAULT_LEDGER_HD_PATH, rpcUrl: RPC_URL }));
-        }
+        if (!(process.env.VAULT_OWNER_KEYS ?? '').trim()) throw new Error('REGISTRAR_VAULT is set but VAULT_OWNER_KEYS is missing');
+        ownerClients = await vaultOwnerClients({ chain, rpcUrl: RPC_URL });
+    }
+    // In vault mode the executing owner sends every transaction the run sends.
+    const walletClient = vault ? ownerClients[0] : await registrarWalletClient({ chain, rpcUrl: RPC_URL });
+    if (vault) {
         for (const c of ownerClients) {
             const ok = await publicClient.readContract({ address: vault, abi: VAULT_ABI, functionName: 'isOwner', args: [c.account.address] });
             if (!ok) throw new Error(`${c.account.address} is not an owner of vault ${vault}`);

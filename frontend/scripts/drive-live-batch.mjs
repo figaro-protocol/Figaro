@@ -101,16 +101,35 @@
  * Nothing here is a production surface: the mock is never deployed by any
  * deploy script, and no app path reads it.
  *
+ * The walkaway test (WALKAWAY=1). The process is opened through the project's
+ * relay (step 3 and 4 above), then every project relay is stopped and its
+ * state deleted (RELAY_STOP_CMD, a shell command the operator writes for its
+ * hosts: e.g. `ssh root@<box> 'pkill -x sequencer; rm -f ~/sequencer-state-*.json'`),
+ * and the script checks that SEQUENCER_URL no longer answers. Then a stranger
+ * resolves it: `proveAndSettle` (@figaro-protocol/sdk/relay) starts the relay
+ * program RELAY_BINARY on this machine, which rebuilds the state behind the
+ * verifier's root from the chain alone, takes the buyer's signed resolve, and
+ * lands the batch from STRANGER_KEY — a key that is neither party's and not the
+ * project relay's (PROJECT_RELAY_ADDRESS, when given). The checks are step 7's,
+ * plus the settlement's sender being the stranger; no usage claim is sent
+ * (the stranger proves the resolve alone), so the accrual is not checked. The
+ * wallet-code forms are refused in this mode. The prover is the relay
+ * program's own setting, passed through this process's environment
+ * (`SP1_PROVER`, `SP1_PROOF_MODE`, the network key): a real verifier needs a
+ * real proof; a devnet's mock verifier takes SP1_PROVER=mock.
+ *
  * Env:
  *   RPC_URL               — chain RPC (fork or live) — required
  *   SEQUENCER_URL         — the running relay's HTTP API — required
  *   BATCH_BUYER_KEY       — buyer signer (explicit, funded) — required
  *   BATCH_SELLER_KEY      — seller signer (explicit, funded, a registered
  *                           member so the usage claim credits) — required
- *   DEPLOYMENT_RECORD     — path to the deployment record JSON
- *                           (default ../../deployments/11155111.json)
- *   SETTLEMENT_TOKEN      — ERC-20 the order resolves in (defaults to Circle's
- *                           Sepolia USDC when the record says 11155111)
+ *   DEPLOYMENT_RECORD     — path to the deployment record JSON (default
+ *                           ../../deployments/<the RPC's chain id>.json)
+ *   SETTLEMENT_TOKEN      — ERC-20 the order resolves in (default: the token the
+ *                           chain's registration plan fills the reference
+ *                           assemblies with, ../../deployments/<chainId>.expected.json
+ *                           § registrations.assemblyToken)
  *   PAYMENT               — payment in the token's base units (default 1000000)
  *   WITNESS_CLAUSE        — the file in clauses/ the witness attestation's
  *                           spec is read from (default figaro-modalities);
@@ -137,6 +156,14 @@
  *                           unset = deploy one from FOUNDRY_OUT
  *   FOUNDRY_OUT           — Foundry's output dir (default ../../out)
  *   WALLET_CODE_LIVE      — 1 allows delegating on a non-anvil chain
+ *  The walkaway test:
+ *   WALKAWAY              — 1 runs it (see above)
+ *   RELAY_STOP_CMD        — the shell command that stops every project relay
+ *                           and deletes its state — required
+ *   RELAY_BINARY          — the relay program the stranger runs — required
+ *   STRANGER_KEY          — the stranger's key; sends settleBatch — required
+ *   PROJECT_RELAY_ADDRESS — the project relay's sending address, refused as
+ *                           the stranger's
  */
 
 import fs from 'node:fs';
@@ -158,6 +185,8 @@ import {
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec, encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
 import { SequencerClient } from '@figaro-protocol/sdk/agent';
+import { proveAndSettle } from '@figaro-protocol/sdk/relay';
+import { execSync } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -174,8 +203,14 @@ const RPC_URL = requireEnv('RPC_URL');
 const SEQUENCER_URL = requireEnv('SEQUENCER_URL');
 const BUYER_KEY = requireEnv('BATCH_BUYER_KEY');
 const SELLER_KEY = requireEnv('BATCH_SELLER_KEY');
+// The record of the chain the RPC answers for, never a chain named here.
+const RPC_CHAIN_ID = await createPublicClient({ transport: http(RPC_URL) }).getChainId();
 const RECORD_PATH = process.env.DEPLOYMENT_RECORD
-    ?? path.resolve(__dirname, '../../deployments/11155111.json');
+    ?? path.resolve(__dirname, `../../deployments/${RPC_CHAIN_ID}.json`);
+const WALKAWAY = flag('WALKAWAY', '0');
+const STRANGER_KEY = WALKAWAY ? requireEnv('STRANGER_KEY') : undefined;
+const RELAY_BINARY = WALKAWAY ? requireEnv('RELAY_BINARY') : undefined;
+const RELAY_STOP_CMD = WALKAWAY ? requireEnv('RELAY_STOP_CMD') : undefined;
 const PAYMENT = BigInt(process.env.PAYMENT ?? '1000000');
 const WITNESS_CLAUSE = process.env.WITNESS_CLAUSE ?? 'figaro-modalities';
 const BATCH_WAIT_TIMEOUT_MS = Number(process.env.BATCH_WAIT_TIMEOUT_MS ?? 7_200_000);
@@ -201,14 +236,14 @@ const buyerNeedsCode = FORMS.resolveByWalletCode || FORMS.refusalCheck
 const sellerNeedsCode = FORMS.walletCodeAttest.includes('Seller');
 const needsCode = buyerNeedsCode || sellerNeedsCode;
 
-// Circle's canonical Sepolia USDC — the reference-assembly denomination fill.
-const SEPOLIA_USDC = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
-
 const record = JSON.parse(fs.readFileSync(RECORD_PATH, 'utf-8'));
+// The chain's own token: the one its registration plan fills the reference
+// assemblies' denomination pin with.
+const planFile = path.resolve(__dirname, `../../deployments/${record.chainId}.expected.json`);
 const TOKEN = process.env.SETTLEMENT_TOKEN
-    ?? (record.chainId === 11155111 ? SEPOLIA_USDC : null);
+    ?? (fs.existsSync(planFile) ? JSON.parse(fs.readFileSync(planFile, 'utf-8')).registrations?.assemblyToken : undefined);
 if (!TOKEN) {
-    console.error('SETTLEMENT_TOKEN is required for a non-Sepolia record.');
+    console.error(`SETTLEMENT_TOKEN is required: ${planFile} names no registrations.assemblyToken.`);
     process.exit(1);
 }
 
@@ -311,6 +346,15 @@ if (chainId !== record.chainId) {
 if (needsCode && !isAnvil && process.env.WALLET_CODE_LIVE !== '1') {
     gaps.push('a wallet-code form is selected on a non-anvil chain: the test wallet code lets anyone approve digests for a delegated account; set WALLET_CODE_LIVE=1 to accept that for these test keys');
 }
+const strangerAccount = WALKAWAY ? privateKeyToAccount(STRANGER_KEY) : undefined;
+if (WALKAWAY) {
+    if (needsCode) gaps.push('WALKAWAY runs the signed forms only: unset the wallet-code forms');
+    const others = [buyerAccount.address, sellerAccount.address, process.env.PROJECT_RELAY_ADDRESS].filter(Boolean);
+    if (others.some((a) => a.toLowerCase() === strangerAccount.address.toLowerCase())) {
+        gaps.push(`STRANGER_KEY is ${strangerAccount.address}, a party's or the project relay's address: the walkaway lands the batch from a key of its own`);
+    }
+    try { fs.accessSync(RELAY_BINARY, fs.constants.X_OK); } catch { gaps.push(`RELAY_BINARY ${RELAY_BINARY} is not an executable file`); }
+}
 if (FORMS.refusalCheck && !isAnvil) {
     gaps.push('WALLET_CODE_REFUSAL_CHECK needs an anvil fork: it holds a block to place a call ahead of the relay\'s settlement');
 }
@@ -378,6 +422,10 @@ if (sellerToken < bonds.sellerBond) {
 const GAS_FLOOR = needsCode ? 6_000_000_000_000_000n : 2_000_000_000_000_000n;
 if (buyerEth < GAS_FLOOR) gaps.push(`buyer ETH ${buyerEth} below the ~${Number(GAS_FLOOR) / 1e18} gas floor`);
 if (sellerEth < GAS_FLOOR) gaps.push(`seller ETH ${sellerEth} below the ~${Number(GAS_FLOOR) / 1e18} gas floor`);
+if (WALKAWAY) {
+    const strangerEth = await publicClient.getBalance({ address: strangerAccount.address });
+    if (strangerEth < GAS_FLOOR) gaps.push(`stranger ETH ${strangerEth} below the ~${Number(GAS_FLOOR) / 1e18} gas floor (it pays settleBatch)`);
+}
 
 const fmt = (v) => `${v} (${Number(v) / 10 ** Number(tokenDecimals)} ${tokenSymbol})`;
 console.log(`record:            ${RECORD_PATH}`);
@@ -594,6 +642,7 @@ saveRecord({});
 
 // Every delegation installed is removed before exit, whatever happens.
 const delegated = [];
+let walkawaySettled;
 let automineHeld = false;
 try {
     // ── The wallet code (only when a wallet-code form is selected) ───────────
@@ -799,30 +848,69 @@ try {
             message: { processId, runningTotal },
         });
         saveRecord({ resolution: { form: 'signed', processId, runningTotal: runningTotal.toString(), buyerSig: buyerResolveSig } });
-        const r = await sequencer.submitResolve(processId, runningTotal, [commitment], buyerResolveSig);
-        console.log(`\nsubmitted Resolve (op ${r.id})`);
+        if (WALKAWAY) {
+            // ── The walkaway: no project relay, a stranger proves and lands ──
+            console.log('\n── The walkaway: every project relay stopped, its state deleted ──');
+            execSync(RELAY_STOP_CMD, { stdio: 'inherit', shell: '/bin/bash' });
+            if (await sequencer.isAvailable()) {
+                throw new Error(`the project relay at ${SEQUENCER_URL} still answers after RELAY_STOP_CMD — the walkaway has not started`);
+            }
+            console.log(`the project relay at ${SEQUENCER_URL} no longer answers`);
+            console.log(`the stranger ${strangerAccount.address} starts ${RELAY_BINARY} on this machine; it rebuilds from the chain alone (from block ${record.deploymentBlock ?? 0})`);
+            walkawaySettled = await proveAndSettle({
+                relayBinary: RELAY_BINARY,
+                rpcUrl: RPC_URL,
+                batchVerifier: verifier,
+                submitterKey: STRANGER_KEY,
+                fromBlock: BigInt(record.deploymentBlock ?? 0),
+                env: {
+                    USAGE_COUNTER_ADDRESS: record.usageCounter,
+                    CLAUSE_REGISTRY_ADDRESS: record.clauseRegistry,
+                    PROCESS_REGISTRY_ADDRESS: record.processRegistry,
+                    AGREEMENT_REGISTRY_ADDRESS: record.agreementRegistry,
+                    MEMBERS_REGISTRY_ADDRESS: record.membersRegistry,
+                },
+                timeoutMs: BATCH_WAIT_TIMEOUT_MS,
+            }, { processId, runningTotal, commitments: [commitment], buyerSignature: buyerResolveSig });
+            console.log(`the stranger's batch ${walkawaySettled.batchId} landed: ${walkawaySettled.transactionHash} (block ${walkawaySettled.blockNumber})`);
+            saveRecord({ walkaway: { submitter: strangerAccount.address, transactionHash: walkawaySettled.transactionHash, batchId: walkawaySettled.batchId.toString() } });
+        } else {
+            const r = await sequencer.submitResolve(processId, runningTotal, [commitment], buyerResolveSig);
+            console.log(`\nsubmitted Resolve (op ${r.id})`);
+        }
     }
 
-    const claimContext = await fetchUsageClaimContext(publicClient, record.usageCounter, agreement);
-    const claims = buildUsageClaims(commitment, agreement, claimContext);
-    if (claims.length !== 1 || claims[0].clause_or_process !== clauseKey) {
-        throw new Error(`expected one usage claim for ${clauseKey}, got ${JSON.stringify(claims)}`);
+    // The walkaway sends no usage claim: the stranger proves the resolve alone.
+    let accrualKey;
+    let accrualBefore;
+    let claimBlock;
+    if (!WALKAWAY) {
+        const claimContext = await fetchUsageClaimContext(publicClient, record.usageCounter, agreement);
+        const claims = buildUsageClaims(commitment, agreement, claimContext);
+        if (claims.length !== 1 || claims[0].clause_or_process !== clauseKey) {
+            throw new Error(`expected one usage claim for ${clauseKey}, got ${JSON.stringify(claims)}`);
+        }
+        accrualKey = [USAGE_KIND_CLAUSE, clauseKey, currentPeriod];
+        accrualBefore = await read(record.usageCounter, USAGE_COUNTER_ABI, 'accrualOf', accrualKey);
+        claimBlock = await publicClient.getBlockNumber();
+        await sequencer.submitUsageClaim(claims[0]);
+        console.log(`submitted usage claim for ${spec.clauseId} (period ${currentPeriod})`);
     }
-    const accrualKey = [USAGE_KIND_CLAUSE, clauseKey, currentPeriod];
-    const accrualBefore = await read(record.usageCounter, USAGE_COUNTER_ABI, 'accrualOf', accrualKey);
-    const claimBlock = await publicClient.getBlockNumber();
-    await sequencer.submitUsageClaim(claims[0]);
-    console.log(`submitted usage claim for ${spec.clauseId} (period ${currentPeriod})`);
 
-    const resolved = await waitUntil('the process to resolve on chain', async () => {
-        const logs = await events('ProcessResolved', { processId }, startBlock);
-        return logs[0] ?? null;
-    });
+    // The walkaway's settlement has landed already (proveAndSettle returns on
+    // it), and no project relay answers a wait's status read.
+    const resolved = WALKAWAY
+        ? (await events('ProcessResolved', { processId }, startBlock))[0]
+        : await waitUntil('the process to resolve on chain', async () => {
+            const logs = await events('ProcessResolved', { processId }, startBlock);
+            return logs[0] ?? null;
+        });
+    if (!resolved) throw new Error(`no ProcessResolved for ${processId} since block ${startBlock}`);
 
     // The relay may carry the claim in the resolve's batch or a later one:
     // wait for the counter itself to move. A batch whose accrual the counter
     // refused names it in BatchAccrualSkipped; that is a failure, not a wait.
-    const accrualAfter = await waitUntil('the usage accrual on the counter', async () => {
+    const accrualAfter = WALKAWAY ? undefined : await waitUntil('the usage accrual on the counter', async () => {
         const skipped = await publicClient.getLogs({ address: verifier, event: BATCH_ACCRUAL_SKIPPED, fromBlock: claimBlock });
         if (skipped.length > 0) {
             throw new Error(`the counter skipped a batch's accrual since the claim (batch ${skipped[0].args.batchId}, reason ${skipped[0].args.reason}) — while waiting for the usage accrual`);
@@ -857,13 +945,22 @@ try {
     // exactly the BatchSettled logs the verifier emitted since the start.
     check(`batch count ${batchCount} → ${finalCount}, matching the ${settled.length} BatchSettled log(s) since block ${startBlock}`,
         finalCount - batchCount === BigInt(settled.length));
-    check(`usage accrued on the counter: c ${accrualBefore[0]} → ${accrualAfter[0]}, d ${accrualAfter[1]}, score ${accrualAfter[2]}`,
-        accrualAfter[0] === accrualBefore[0] + 1n && accrualAfter[1] >= accrualBefore[1]);
-    // The score mirrors UsageCounter._score: floored to 0 until the clause has
-    // minSellers distinct (buyer, seller) pairs — accrual below the floor is
-    // counted, never scored.
-    check(`score matches the minSellers floor (d ${accrualAfter[1]} vs floor ${minSellers})`,
-        (accrualAfter[1] >= minSellers) === (accrualAfter[2] > 0n));
+    if (WALKAWAY) {
+        // The resolution landed from the stranger's key, in the batch it proved.
+        const tx = await publicClient.getTransaction({ hash: walkawaySettled.transactionHash });
+        check(`the resolving settlement was sent by the stranger ${strangerAccount.address} to the verifier (from ${tx.from})`,
+            sameAddr(tx.from, strangerAccount.address) && sameAddr(tx.to, verifier));
+        check(`ProcessResolved is in the stranger's settlement (${resolved.transactionHash})`,
+            resolved.transactionHash === walkawaySettled.transactionHash);
+    } else {
+        check(`usage accrued on the counter: c ${accrualBefore[0]} → ${accrualAfter[0]}, d ${accrualAfter[1]}, score ${accrualAfter[2]}`,
+            accrualAfter[0] === accrualBefore[0] + 1n && accrualAfter[1] >= accrualBefore[1]);
+        // The score mirrors UsageCounter._score: floored to 0 until the clause has
+        // minSellers distinct (buyer, seller) pairs — accrual below the floor is
+        // counted, never scored.
+        check(`score matches the minSellers floor (d ${accrualAfter[1]} vs floor ${minSellers})`,
+            (accrualAfter[1] >= minSellers) === (accrualAfter[2] > 0n));
+    }
 
     // ── The batches, from the verifier's own logs ──────────────────────────
     // BatchSettled names each batch and its roots; BatchOperations, in the

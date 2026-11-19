@@ -32,18 +32,23 @@
 // Exit 0 only when every check holds; every failure is printed, never only
 // the first.
 //
-//   RPC_URL   the node (default http://127.0.0.1:8545)
+//   RPC_URL           the node (default http://127.0.0.1:8545)
+//   IPFS_GATEWAY_URL  a gateway the member profiles are read through, to
+//                     compare each pinned profile with its file in members/;
+//                     unset, a member's stake and registration are checked and
+//                     its content is not (the output says so)
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { createPublicClient, http, parseAbi } from "viem";
+import { createPublicClient, http, parseAbi, parseAbiItem } from "viem";
 // The SDK's own clause key — keccak256 of the canonical bytes of the spec
 // without its top-level `block`. Built output: run
 // `npm run build` in sdk/ when dist/ is stale.
 import { computeClauseKey } from "../sdk/dist/discovery.js";
 import { checkRegistrars, plannedRegistrations } from "./check-deployment-registrars.mjs";
+import { checkMembers, plannedMembers } from "./check-deployment-members.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -383,6 +388,44 @@ async function main() {
             walletAddress: (name) => resolveAddress({ wallet: name }, name),
             ok,
             bad,
+        });
+    }
+
+    console.log("\nWho registered each named member profile");
+    if (!plan?.members) {
+        console.log("  · the expectations file names none under registrations.members — not checked");
+    } else {
+        const fromBlock = BigInt(record.deploymentBlock ?? 0);
+        const MEMBER_EVENTS = [
+            parseAbiItem("event MemberRegistered(address indexed member, string metadataURI)"),
+            parseAbiItem("event MemberProfileUpdated(address indexed member, string metadataURI)"),
+        ];
+        const gateway = process.env.IPFS_GATEWAY_URL?.replace(/\/$/, "");
+        const vault = resolveAddress({ wallet: "daoVault" }, "daoVault");
+        await checkMembers({
+            planned: plannedMembers(plan),
+            // MembersRegistry.registered takes an address; the shared ABI's
+            // `registered` is the clause registry's, over a key.
+            readRegistered: (member) => client.readContract({
+                address: record.membersRegistry, abi: parseAbi(["function registered(address) view returns (bool)"]),
+                functionName: "registered", args: [member],
+            }),
+            readProfileURI: async (member) => {
+                const logs = (await Promise.all(MEMBER_EVENTS.map((event) => client.getLogs({
+                    address: record.membersRegistry, event, args: { member }, fromBlock,
+                })))).flat().sort((x, y) => Number(x.blockNumber - y.blockNumber) || x.logIndex - y.logIndex);
+                return logs.at(-1)?.args.metadataURI ?? null;
+            },
+            readProfile: async (uri) => {
+                if (!gateway) return null;
+                const res = await fetch(`${gateway}/ipfs/${uri.replace(/^ipfs:\/\//, "")}`);
+                return res.ok ? res.json() : { name: `(the gateway answered ${res.status})` };
+            },
+            walletAddress: (name) => resolveAddress({ wallet: name }, name),
+            vaultAddress: vault.address,
+            ok,
+            bad,
+            note: (n) => console.log(`  · ${n}`),
         });
     }
 

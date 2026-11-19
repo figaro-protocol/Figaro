@@ -16,9 +16,18 @@ set -e
 #   - reads the target RPC's chain id back and refuses unless it is
 #     11155111 (Sepolia) — an Anvil FORK of Sepolia keeps that chain id,
 #     which is what makes the fork rehearsal run through this same wrapper
-#   - --verify wires to foundry.toml's [etherscan] "sepolia" entry unless
-#     SKIP_VERIFY=1 (fork rehearsal only: a fork's contracts do not exist on
-#     the real Etherscan, so verification there can only fail)
+#   - writes the record FIRST, then verifies every contract it names on
+#     Etherscan (scripts/verify-etherscan.mjs, constructor arguments read from
+#     forge's broadcast file), unless SKIP_VERIFY=1 (fork rehearsal only: a
+#     fork's contracts do not exist on the real Etherscan, so verification
+#     there can only fail). A verification that fails after the transactions
+#     landed leaves the record written and exits 1; VERIFY_ONLY=1 then
+#     verifies the deployment the record names, sending no transaction:
+#
+#       VERIFY_ONLY=1 ETHERSCAN_API_KEY=... ./scripts/deploy-sepolia.sh
+#
+#   - RECORD_DIR names the directory the record is written to (default
+#     deployments/; under SKIP_VERIFY=1, ${TMPDIR:-/tmp}/figaro-rehearsal-deployments)
 #
 # Usage:
 #   SEPOLIA_DEPLOY_CONFIRM=yes \
@@ -51,6 +60,29 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DEPLOY_DIR="$REPO_ROOT/deployments"
 SEPOLIA_CHAIN_ID=11155111
+
+# ── Verify only: the deployment the record names, no transaction ────────────
+verify_record() { # <record path>
+  echo ""
+  echo "🔎 Verifying every contract $1 names on Etherscan ..."
+  if node "$REPO_ROOT/scripts/verify-etherscan.mjs" "$1" --artifacts "$REPO_ROOT/out"; then
+    echo "✅ Every contract verified."
+  else
+    echo "❌ Verification did not complete. The record stands at $1;"
+    echo "   rerun only the verification, which sends no transaction:"
+    echo "   VERIFY_ONLY=1 RECORD_DIR=$(dirname "$1") ETHERSCAN_API_KEY=... $0"
+    exit 1
+  fi
+}
+if [ "${VERIFY_ONLY:-}" = "1" ]; then
+  : "${ETHERSCAN_API_KEY:?VERIFY_ONLY needs ETHERSCAN_API_KEY}"
+  RECORD="${RECORD_DIR:-$DEPLOY_DIR}/${SEPOLIA_CHAIN_ID}.json"
+  [ -f "$RECORD" ] || { echo "❌ no record at $RECORD to verify"; exit 1; }
+  # The artifacts must reproduce the deployed creation code: the deploy's own build.
+  (cd "$REPO_ROOT" && forge build --via-ir) || exit 1
+  verify_record "$RECORD"
+  exit 0
+fi
 
 # ── Guard 1: explicit confirmation ──────────────────────────────────────────
 if [ "${SEPOLIA_DEPLOY_CONFIRM:-}" != "yes" ]; then
@@ -177,13 +209,9 @@ if [ "${PAIR_ONLY:-}" = "1" ]; then
   fi
   echo ""
 
-  VERIFY_FLAG="--verify"
-  if [ "${SKIP_VERIFY:-}" = "1" ]; then
-    VERIFY_FLAG=""
-  fi
   FORGE_OUT=$(forge script script/DeploySepoliaPair.s.sol:DeploySepoliaPair \
       --rpc-url "$RPC_URL" \
-      --broadcast --slow --via-ir $VERIFY_FLAG \
+      --broadcast --slow --via-ir \
       ${FORGE_GAS_MULTIPLIER:+--gas-estimate-multiplier "$FORGE_GAS_MULTIPLIER"} ${FORGE_SKIP_SIMULATION:+--skip-simulation} 2>&1) || { echo "$FORGE_OUT"; echo "❌ forge script failed — see its output above"; exit 1; }
   echo "$FORGE_OUT"
 
@@ -206,11 +234,13 @@ if [ "${PAIR_ONLY:-}" = "1" ]; then
   # Update the record in place: only the pair and the key it pins change. A
   # FORK REHEARSAL must never clobber the real record (same branch as below).
   if [ "${SKIP_VERIFY:-}" = "1" ]; then
-    DEPLOY_DIR="${TMPDIR:-/tmp}/figaro-rehearsal-deployments"
+    DEPLOY_DIR="${RECORD_DIR:-${TMPDIR:-/tmp}/figaro-rehearsal-deployments}"
     echo ""
     echo "ℹ️  Fork rehearsal — record diverted to $DEPLOY_DIR (deployments/ untouched)"
-    mkdir -p "$DEPLOY_DIR"
+  else
+    DEPLOY_DIR="${RECORD_DIR:-$DEPLOY_DIR}"
   fi
+  mkdir -p "$DEPLOY_DIR"
   OUT_RECORD="$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json"
   echo ""
   echo "✍️  Updating $OUT_RECORD ..."
@@ -225,6 +255,7 @@ if [ "${PAIR_ONLY:-}" = "1" ]; then
   echo "   UsageCounter            = $USAGE_COUNTER_ADDR (was $OLD_COUNTER)"
   echo "   FigaroBatchVerifier     = $BATCH_VERIFIER_ADDR (was $OLD_VERIFIER)"
   echo "   Record: $OUT_RECORD"
+  [ "${SKIP_VERIFY:-}" = "1" ] || verify_record "$OUT_RECORD"
   echo ""
   echo "⚠️  The live RpgfMinter stays bound to $OLD_COUNTER (minter registration"
   echo "   renounced): usage accrued through the new counter is not claimable on"
@@ -254,10 +285,9 @@ echo "📝 Running forge script (deployment block $DEPLOYMENT_BLOCK)..."
 # --slow: wait for each transaction's receipt before sending the next — see
 # deploy-local.sh's identical rationale (nonce-tracking race under
 # pipelined broadcast).
-VERIFY_FLAG="--verify"
-if [ "${SKIP_VERIFY:-}" = "1" ]; then
-  VERIFY_FLAG=""
-fi
+# Verification runs after the record is written (verify_record), never
+# inside forge: a verification failure must not lose the record of
+# transactions that landed.
 # The output is printed whether forge succeeds or fails: under `set -e` a
 # failing forge would otherwise exit this script with its output unseen.
 # FORGE_GAS_MULTIPLIER (percent) widens forge's gas limits: forge sizes each
@@ -272,7 +302,7 @@ fi
 # per-transaction gas cap.
 FORGE_OUT=$(forge script script/DeploySepolia.s.sol:DeploySepolia \
     --rpc-url "$RPC_URL" \
-    --broadcast --slow --via-ir $VERIFY_FLAG \
+    --broadcast --slow --via-ir \
     ${FORGE_GAS_MULTIPLIER:+--gas-estimate-multiplier "$FORGE_GAS_MULTIPLIER"} ${FORGE_SKIP_SIMULATION:+--skip-simulation} 2>&1) || { echo "$FORGE_OUT"; echo "❌ forge script failed — see its output above"; exit 1; }
 echo "$FORGE_OUT"
 
@@ -314,9 +344,11 @@ echo "   programVKey pinned = $PROGRAM_VKEY_ONCHAIN"
 # Anvil fork keeps Sepolia's chain id, so without this branch a rehearsal
 # writes fork addresses over the deployed truth.
 if [ "${SKIP_VERIFY:-}" = "1" ]; then
-  DEPLOY_DIR="${TMPDIR:-/tmp}/figaro-rehearsal-deployments"
+  DEPLOY_DIR="${RECORD_DIR:-${TMPDIR:-/tmp}/figaro-rehearsal-deployments}"
   echo ""
   echo "ℹ️  Fork rehearsal — record diverted to $DEPLOY_DIR (deployments/ untouched)"
+else
+  DEPLOY_DIR="${RECORD_DIR:-$DEPLOY_DIR}"
 fi
 echo ""
 echo "✍️  Writing $DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json ..."
@@ -358,6 +390,11 @@ if [ -n "$RECORD_RPC_URL" ]; then
   jq --arg url "$RECORD_RPC_URL" '. + {rpcUrl: $url}' "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json.tmp"
   mv "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json.tmp" "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json"
 fi
+echo "   record written: $DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json"
+
+# The record stands before any verification: a failure below leaves it, and
+# VERIFY_ONLY=1 resumes the verification alone.
+[ "${SKIP_VERIFY:-}" = "1" ] || verify_record "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json"
 
 echo ""
 echo "✅ Deployment complete!"

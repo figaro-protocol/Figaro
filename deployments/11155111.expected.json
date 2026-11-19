@@ -5,7 +5,9 @@
         "founder": "0xB4592b12F02a46a8FD8529CE992f067403BDe3e9",
         "supporters": "0xE75DA40Ee55ecECBc1161A4dD6798086b968C87C",
         "dao": { "record": "daoTreasury" },
-        "daoVault": { "record": "daoTreasury" }
+        "daoVault": { "record": "daoTreasury" },
+        "daoOperator": "0xCfb4F5cb3D6A9861d657541Dde1bf0DE7E6Cfed9",
+        "deployer": "0xaB6002468376875CcD4323857E972FB2aFdA647c"
     },
     "batchVerifier": {
         "programVKey": "0x00569b319e52c0a8c173cd333a88177ea189879df483b9003b8b31f1429447d9",
@@ -42,6 +44,39 @@
         "default": "founder",
         "byClause": {
             "figaro-commerce": "daoVault"
+        },
+        "agreements": {
+            "aerial-survey-flight": "founder",
+            "aerial-survey-flight-open-data": "founder",
+            "cargo-inspection": "founder",
+            "counter-sale": "founder",
+            "courier-delivery": "founder",
+            "customs-filing": "founder",
+            "data-stream-access": "founder",
+            "drayage-delivery": "founder",
+            "freelance-contribution": "founder",
+            "freelance-deliverable": "founder",
+            "freight-forwarding": "founder",
+            "merchant-order": "founder",
+            "reefer-carriage": "founder",
+            "shipper-consignment": "founder"
+        },
+        "assemblies": {
+            "aerial-survey": "founder",
+            "aerial-survey-open-data": "founder",
+            "data-stream-subscription": "founder",
+            "equipment-hire": "founder",
+            "freelancer": "founder",
+            "freelancer-value-chain": "founder",
+            "local-commerce": "founder",
+            "pos": "founder",
+            "tradelens": "founder"
+        },
+        "assemblyToken": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+        "members": {
+            "founder": "founder",
+            "dao": "daoOperator",
+            "deployer": "deployer"
         }
     },
     "links": {}

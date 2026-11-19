@@ -62,6 +62,14 @@ on:
             - "deployments/*.expected.json"
             - "scripts/monitor-sepolia.mjs"
             - "scripts/test-monitor.mjs"
+            # The deploy tooling and its tests.
+            - "scripts/check-deployment-*.mjs"
+            - "scripts/verify-etherscan.mjs"
+            - "scripts/propose-gas-constants.mjs"
+            - "scripts/test-*.mjs"
+            - "scripts/seed/**"
+            - "scripts/prover-box/checkout-release.sh"
+            - "scripts/prover-box/test-checkout-release.sh"
             - ".github/workflows/devnet-e2e-ci.yml"
     pull_request:
         branches: [main, develop]
@@ -115,7 +123,7 @@ jobs:
                                       ;;
                                   # The rest of the stack the push trigger
                                   # watches: the spine.
-                                  script/*|sdk/*|frontend/*|clauses/*|agreements/*|assemblies/*|scripts/deploy-local.sh|scripts/check-deployment.mjs|deployments/*.expected.json|scripts/monitor-sepolia.mjs|scripts/test-monitor.mjs)
+                                  script/*|sdk/*|frontend/*|clauses/*|agreements/*|assemblies/*|scripts/deploy-local.sh|scripts/check-deployment.mjs|deployments/*.expected.json|scripts/monitor-sepolia.mjs|scripts/test-*.mjs|scripts/check-deployment-*.mjs|scripts/verify-etherscan.mjs|scripts/propose-gas-constants.mjs|scripts/seed/*|scripts/prover-box/checkout-release.sh|scripts/prover-box/test-checkout-release.sh)
                                       scope=spine
                                       ;;
                               esac
@@ -297,6 +305,13 @@ jobs:
             # fails the watch.
             - name: Run the watcher's test
               run: node scripts/test-monitor.mjs
+
+            # The deploy tooling's own tests: no chain, the SDK's build.
+            - name: Run the deploy tooling's tests
+              run: |
+                  node --test scripts/test-verify-etherscan.mjs scripts/test-check-deployment-registrars.mjs \
+                      scripts/test-check-deployment-members.mjs scripts/test-propose-gas-constants.mjs
+                  bash scripts/prover-box/test-checkout-release.sh
 
             - name: Upload Playwright report
               if: failure()

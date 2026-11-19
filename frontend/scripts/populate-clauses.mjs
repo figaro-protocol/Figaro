@@ -44,6 +44,13 @@
  *                                  the reference clauses + assemblies the chain's
  *                                  registration plan gives no other wallet —
  *                                  RELEASE_READINESS Task 13)
+ *   REGISTRAR_IMPERSONATE        — fork rehearsal only: the registrar is this
+ *                                  address, impersonated on an Anvil node
+ *                                  (`anvil_impersonateAccount`), so the plan
+ *                                  is rehearsed under the real wallets'
+ *                                  addresses without their devices; refused on
+ *                                  any node that is not Anvil. It stands
+ *                                  wherever REGISTRAR_LEDGER_HD_PATH does.
  *
  * VAULT-REGISTRAR MODE (docs/RELEASE_READINESS.md Task 13). This script always
  * acts FOR exactly one registrar per invocation, and registrar is a PER-WALLET
@@ -64,6 +71,8 @@
  *                        the Ledger Live account path `m/44'/60'/N'/0/0`. The
  *                        script refuses a path that does not resolve to a
  *                        vault owner (a wrong N signs nothing).
+ *   VAULT_IMPERSONATE_OWNER — fork rehearsal only: an owner impersonated on an
+ *                        Anvil node, in place of VAULT_LEDGER_HD_PATH.
  * The vault confers no special role: any wallet — the founder's address, a
  * stranger's — is registrar of its own artifacts through the same registries.
  *
@@ -252,6 +261,41 @@ export function ledgerWalletClient({ hdPath, rpcUrl, log = console.log }) {
     };
 }
 const LEDGER_RETRIES = 60;
+
+/** A wallet client that sends as `address` on an Anvil node, which signs for it
+ *  (`anvil_impersonateAccount`): the fork rehearsal's stand-in for a device, so
+ *  the plan runs under the real wallets' addresses. Refused on a node that does
+ *  not answer Anvil's own methods — a public chain is never asked to sign. */
+async function impersonatedWalletClient({ address, chain, rpcUrl }) {
+    const probe = createPublicClient({ transport: http(rpcUrl) });
+    const isAnvil = await probe.request({ method: 'anvil_nodeInfo' }).then(() => true, () => false);
+    if (!isAnvil) throw new Error(`impersonating ${address} needs an Anvil node; ${new URL(rpcUrl).host} is not one — a public chain is signed for by its device`);
+    await probe.request({ method: 'anvil_impersonateAccount', params: [address] });
+    return createWalletClient({ account: address, chain, transport: http(rpcUrl) });
+}
+
+/** The one registrar of an invocation that is not a vault: the Ledger account
+ *  (REGISTRAR_LEDGER_HD_PATH), an address impersonated on a fork
+ *  (REGISTRAR_IMPERSONATE), or a key (REGISTRAR_PRIVATE_KEY; anvil[0] on the devnet). */
+export async function registrarWalletClient({ chain, rpcUrl }) {
+    if (process.env.REGISTRAR_LEDGER_HD_PATH && process.env.REGISTRAR_IMPERSONATE) {
+        throw new Error('REGISTRAR_LEDGER_HD_PATH and REGISTRAR_IMPERSONATE are two registrars — one per invocation');
+    }
+    if (process.env.REGISTRAR_LEDGER_HD_PATH) return ledgerWalletClient({ hdPath: process.env.REGISTRAR_LEDGER_HD_PATH, rpcUrl });
+    if (process.env.REGISTRAR_IMPERSONATE) return impersonatedWalletClient({ address: process.env.REGISTRAR_IMPERSONATE, chain, rpcUrl });
+    return createWalletClient({ account: registrarAccount(chain.id), chain, transport: http(rpcUrl) });
+}
+
+/** The vault's owner clients: each key in VAULT_OWNER_KEYS (the first executes),
+ *  then the Ledger owner (VAULT_LEDGER_HD_PATH) or an owner impersonated on a
+ *  fork (VAULT_IMPERSONATE_OWNER), which only approve. */
+export async function vaultOwnerClients({ chain, rpcUrl }) {
+    const keys = (process.env.VAULT_OWNER_KEYS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    const clients = keys.map((k) => createWalletClient({ account: privateKeyToAccount(k), chain, transport: http(rpcUrl) }));
+    if (process.env.VAULT_LEDGER_HD_PATH) clients.push(ledgerWalletClient({ hdPath: process.env.VAULT_LEDGER_HD_PATH, rpcUrl }));
+    if (process.env.VAULT_IMPERSONATE_OWNER) clients.push(await impersonatedWalletClient({ address: process.env.VAULT_IMPERSONATE_OWNER, chain, rpcUrl }));
+    return clients;
+}
 const LEDGER_RETRY_MS = 10_000;
 
 /** Route one call through the vault multisig: threshold approvals from the
@@ -728,26 +772,24 @@ async function main() {
     const publicClient = createPublicClient({ chain, transport: http(RPC_URL) });
     // ONE registrar per invocation: a key, a Ledger account, or a vault.
     const vault = process.env.REGISTRAR_VAULT;
-    if (vault && process.env.REGISTRAR_LEDGER_HD_PATH) {
-        throw new Error('REGISTRAR_VAULT and REGISTRAR_LEDGER_HD_PATH are two registrars — this script acts for exactly one per invocation');
+    const founderStyle = process.env.REGISTRAR_LEDGER_HD_PATH || process.env.REGISTRAR_IMPERSONATE;
+    if (vault && founderStyle) {
+        throw new Error('REGISTRAR_VAULT and REGISTRAR_LEDGER_HD_PATH / REGISTRAR_IMPERSONATE are two registrars — this script acts for exactly one per invocation');
     }
-    const walletClient = process.env.REGISTRAR_LEDGER_HD_PATH
-        ? ledgerWalletClient({ hdPath: process.env.REGISTRAR_LEDGER_HD_PATH, rpcUrl: RPC_URL })
-        : createWalletClient({ account: registrarAccount(chain.id), chain, transport: http(RPC_URL) });
-    const account = walletClient.account;
-
     let ownerClients;
     if (vault) {
-        const keys = (process.env.VAULT_OWNER_KEYS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-        if (keys.length === 0) {
+        if (!(process.env.VAULT_OWNER_KEYS ?? '').trim()) {
             throw new Error('REGISTRAR_VAULT is set but VAULT_OWNER_KEYS is missing — the multisig needs threshold-many owner keys to approve');
         }
         // Key owners first: ownerClients[0] executes (and pays that gas); the
-        // Ledger owner, when configured, only ever approves.
-        ownerClients = keys.map((k) => createWalletClient({ account: privateKeyToAccount(k), chain, transport: http(RPC_URL) }));
-        if (process.env.VAULT_LEDGER_HD_PATH) {
-            ownerClients.push(ledgerWalletClient({ hdPath: process.env.VAULT_LEDGER_HD_PATH, rpcUrl: RPC_URL }));
-        }
+        // Ledger (or impersonated) owner, when configured, only ever approves.
+        ownerClients = await vaultOwnerClients({ chain, rpcUrl: RPC_URL });
+    }
+    // In vault mode the executing owner sends every transaction the run sends.
+    const walletClient = vault ? ownerClients[0] : await registrarWalletClient({ chain, rpcUrl: RPC_URL });
+    const account = walletClient.account;
+
+    if (vault) {
         // Every configured signer must be a vault owner — a non-owner's
         // approveHash reverts, but only after the device tap; refuse up front.
         for (const c of ownerClients) {
@@ -791,7 +833,7 @@ async function main() {
     // as such). A chain with no plan stops the run here, before any
     // transaction (`clausesPlannedForOthers`). The devnet's one-key seeding
     // (no Ledger, no vault) is untouched.
-    if (process.env.REGISTRAR_LEDGER_HD_PATH && !vault) {
+    if (founderStyle && !vault) {
         const authored = loadAuthoredSpecs();
         const named = process.env.SEED_CLAUSES
             ? new Set(resolveAuthoredClauseNames(process.env.SEED_CLAUSES.split(',').map((s) => s.trim()).filter(Boolean)).map((k) => k.toLowerCase()))
