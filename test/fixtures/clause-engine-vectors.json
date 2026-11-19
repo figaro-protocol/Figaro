@@ -54525,6 +54525,389 @@
     }
    },
    "ok": true
+  },
+  {
+   "label": "emptyAnchor true",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "a",
+       "b"
+      ]
+     }
+    ],
+    "emptyAnchor": true
+   },
+   "ok": true
+  },
+  {
+   "label": "emptyAnchor false",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "a",
+       "b"
+      ]
+     }
+    ],
+    "emptyAnchor": false
+   },
+   "ok": false
+  },
+  {
+   "label": "emptyAnchor as a string",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "a",
+       "b"
+      ]
+     }
+    ],
+    "emptyAnchor": "true"
+   },
+   "ok": false
+  },
+  {
+   "label": "emptyAnchor beside a top-level default",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "a",
+       "b"
+      ],
+      "default": "a"
+     }
+    ],
+    "emptyAnchor": true
+   },
+   "ok": false
+  },
+  {
+   "label": "emptyAnchor beside a stage field's default",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "1": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "enum",
+       "values": [
+        "a",
+        "b"
+       ],
+       "default": "a"
+      }
+     ]
+    },
+    "emptyAnchor": true
+   },
+   "ok": true
+  }
+ ],
+ "signed": [
+  {
+   "label": "the empty anchor, declared",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "call",
+      "type": "enum",
+      "values": [
+       "arrived",
+       "berthed",
+       "sailed"
+      ],
+      "required": true
+     }
+    ],
+    "emptyAnchor": true,
+    "block": {
+     "design": {
+      "article": "harbor-log"
+     }
+    }
+   },
+   "content": {},
+   "ok": true
+  },
+  {
+   "label": "content, under a declared empty anchor",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "call",
+      "type": "enum",
+      "values": [
+       "arrived",
+       "berthed",
+       "sailed"
+      ],
+      "required": true
+     }
+    ],
+    "emptyAnchor": true,
+    "block": {
+     "design": {
+      "article": "harbor-log"
+     }
+    }
+   },
+   "content": {
+    "call": "arrived"
+   },
+   "ok": false
+  },
+  {
+   "label": "an array, under a declared empty anchor",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "call",
+      "type": "enum",
+      "values": [
+       "arrived",
+       "berthed",
+       "sailed"
+      ],
+      "required": true
+     }
+    ],
+    "emptyAnchor": true,
+    "block": {
+     "design": {
+      "article": "harbor-log"
+     }
+    }
+   },
+   "content": [],
+   "ok": false
+  },
+  {
+   "label": "null, under a declared empty anchor",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "call",
+      "type": "enum",
+      "values": [
+       "arrived",
+       "berthed",
+       "sailed"
+      ],
+      "required": true
+     }
+    ],
+    "emptyAnchor": true,
+    "block": {
+     "design": {
+      "article": "harbor-log"
+     }
+    }
+   },
+   "content": null,
+   "ok": false
+  },
+  {
+   "label": "the empty anchor, declared, beside a stage set",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "call",
+      "type": "enum",
+      "values": [
+       "arrived",
+       "berthed",
+       "sailed"
+      ],
+      "required": true
+     }
+    ],
+    "stages": {
+     "1": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "string"
+      }
+     ]
+    },
+    "emptyAnchor": true,
+    "block": {
+     "design": {
+      "article": "harbor-log"
+     }
+    }
+   },
+   "content": {},
+   "ok": true
+  },
+  {
+   "label": "the empty anchor, not declared, required field",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "call",
+      "type": "enum",
+      "values": [
+       "arrived",
+       "berthed",
+       "sailed"
+      ],
+      "required": true
+     }
+    ],
+    "block": {
+     "design": {
+      "article": "harbor-log"
+     }
+    }
+   },
+   "content": {},
+   "ok": false
+  },
+  {
+   "label": "the empty anchor, not declared, the attestations article",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "call",
+      "type": "enum",
+      "values": [
+       "arrived",
+       "berthed",
+       "sailed"
+      ],
+      "required": true
+     }
+    ],
+    "block": {
+     "design": {
+      "article": "attestations"
+     }
+    }
+   },
+   "content": {},
+   "ok": false
+  },
+  {
+   "label": "content, not declared",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "call",
+      "type": "enum",
+      "values": [
+       "arrived",
+       "berthed",
+       "sailed"
+      ],
+      "required": true
+     }
+    ],
+    "block": {
+     "design": {
+      "article": "harbor-log"
+     }
+    }
+   },
+   "content": {
+    "call": "arrived"
+   },
+   "ok": true
+  },
+  {
+   "label": "the empty anchor, not declared, no required field",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "note",
+      "type": "string",
+      "required": false
+     }
+    ]
+   },
+   "content": {},
+   "ok": true
   }
  ],
  "encodings": [

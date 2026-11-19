@@ -417,7 +417,7 @@ hash comparison cannot see:
   design: an agreement naming one is refused when its design was not read.
 - **A clause of the design dropped.** The order carries every clause of the design its
   provenance leaf names — its registered agreement's and the assembly-scoped ones — checked
-  by key: a withheld clause and a process-log clause's empty anchor count as carried. An
+  by key: a withheld clause and an empty anchor (a clause whose spec declares `emptyAnchor`) count as carried. An
   order missing one is refused, naming the clause and the assembly by slug and full hash.
 
 The gate needs your `SpecSource` to run (step 1 of the recipe above): pass `specs` and it

@@ -18,8 +18,8 @@
       "checkoutHash": "0xabb2006c04fceef1a73e4731542b83cd2346e33ae2d9566b0c016fc55a0a4ed2"
     },
     "processLog": {
-      "canonicalAgreement": "{\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"clauses\":[{\"clause\":\"0x128c1085a5bb6ac319b038833c1b41ae9ca8652e78a50cd2f4052abe586cba02\",\"data\":{\"lineItems\":[{\"itemId\":\"item-1\",\"name\":\"Test item\",\"quantity\":1,\"unitPrice\":\"1\"}]}},{\"clause\":\"0x38da978a6779809061b6681bc926e3cf479d8a2967bf58919499adbdd64e0668\",\"data\":{}}],\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"version\":\"a1\"}",
-      "checkoutHash": "0x8ea264082c1622f91afdd9a78d483c9baaf5c8195ba1126487e406ffd9d8026f"
+      "canonicalAgreement": "{\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"clauses\":[{\"clause\":\"0x128c1085a5bb6ac319b038833c1b41ae9ca8652e78a50cd2f4052abe586cba02\",\"data\":{\"lineItems\":[{\"itemId\":\"item-1\",\"name\":\"Test item\",\"quantity\":1,\"unitPrice\":\"1\"}]}},{\"clause\":\"0x705503918da56925a1e39c7c3de46b28db3d8033ce04c3c00bc393b507992da4\",\"data\":{}}],\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"version\":\"a1\"}",
+      "checkoutHash": "0x657c5802a23b0f143e3abae8d49ef3bce883f21a8e6ca51f90bbca784355e77d"
     }
   },
   "assembly": {

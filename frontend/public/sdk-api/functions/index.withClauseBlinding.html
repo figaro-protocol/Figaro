@@ -20,8 +20,8 @@
 clause's spec by its key, as <code>withSpecDefaults</code> reads it. <code>own</code> is the
 filling party's own data for the clause, as <code>withFreshBlinding</code> reads it.
 A clause whose spec is not loaded is left as it is (the sign gate refuses
-it), and a process-log clause's empty anchor stays empty at commit; any
-content it carries is blinded as any clause's is.</p>
+it), and so is a clause that signs the empty anchor (<code>emptyAnchor</code>): its
+<code>{}</code> stays empty, and the sign gate refuses any other content for it.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -32,7 +32,7 @@ content it carries is blinded as any clause's is.</p>
 <li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">own</span>: <span class="tsd-signature-type">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L592">projection.ts:592</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L581">projection.ts:581</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

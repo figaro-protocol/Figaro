@@ -30,6 +30,7 @@ import {
     specHasPrivateField,
     validateCommitmentAgreement,
     warnProcessLogFillsTrap,
+    withClauseBlinding,
     type Agreement,
     type HydratedProcessDesign,
     type ProjectionSpecView,
@@ -37,6 +38,7 @@ import {
     type Commitment,
 } from "../src/index.js";
 import * as sdk from "../src/index.js";
+import { withSpecDefaults } from "../src/projection.js";
 import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceOf, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
@@ -453,63 +455,63 @@ describe("publicForm — the public/private disposition seam", () => {
     });
 });
 
-describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap", () => {
+describe("warnProcessLogFillsTrap — a clause that signs the empty anchor and declares fills", () => {
     // A synthetic field + hints view, mirroring the specView() helper above but
-    // parameterized on the collection `hints` under test.
+    // parameterized on `emptyAnchor` and the collection `hints` under test.
     const specView = (
         clauseId: string,
+        emptyAnchor: boolean,
         hints: ProjectionSpecView["hints"],
     ): ProjectionSpecView => ({
         clauseId,
         version: 1,
         fields: [{ name: "eventType", required: true, type: "string" as const }],
+        ...(emptyAnchor && { emptyAnchor: true as const }),
         ...(hints !== undefined && { hints }),
     });
 
-    it("warns nothing for a real process-log clause with no fills — the shipped shape", () => {
-        // figaro-merchant-process / figaro-courier-process: article "attestations",
+    it("warns nothing for a clause that signs the empty anchor with no fills — the shipped shape", () => {
+        // figaro-merchant-process / figaro-courier-process: emptyAnchor,
         // design.fills / checkout.*Fills all empty.
-        const spec = specView("figaro-merchant-process", { article: "attestations" });
+        const spec = specView("figaro-merchant-process", true, { article: "attestations" });
         expect(warnProcessLogFillsTrap(spec)).toEqual([]);
     });
 
-    it("warns nothing for a non-process-log clause that declares design.fills — the normal pattern", () => {
+    it("warns nothing for a clause that signs content and declares design.fills — the normal pattern", () => {
         // figaro-utility-token: article "denomination", design.fills: ["currency"].
-        const spec = specView("figaro-utility-token", { article: "denomination", designFills: ["currency"] });
+        const spec = specView("figaro-utility-token", false, { article: "denomination", designFills: ["currency"] });
         expect(warnProcessLogFillsTrap(spec)).toEqual([]);
     });
 
-    it("warns nothing for a clause with no article at all", () => {
-        const spec = specView("untagged-clause", undefined);
+    it("warns nothing for the attestations article with fills when the spec signs content: the article is presentation", () => {
+        const spec = specView("signed-ladder", false, { article: "attestations", designFills: ["eventType"] });
         expect(warnProcessLogFillsTrap(spec)).toEqual([]);
     });
 
-    it("warns when article is 'attestations' AND design.fills is declared — the trap", () => {
-        const spec = specView("trap-clause", { article: "attestations", designFills: ["eventType"] });
+    it("warns when the spec signs the empty anchor AND design.fills is declared, whatever its article", () => {
+        const spec = specView("trap-clause", true, { article: "harbor-log", designFills: ["eventType"] });
         const warnings = warnProcessLogFillsTrap(spec);
         expect(warnings).toHaveLength(1);
         expect(warnings[0]).toContain("trap-clause");
-        expect(warnings[0]).toContain("attestations");
+        expect(warnings[0]).toContain("emptyAnchor");
         expect(warnings[0]).toContain("design.fills");
         expect(warnings[0]).toContain("empty anchor");
     });
 
-    it("warns when article is 'attestations' AND checkout.catalogueFills is declared", () => {
-        const spec = specView("trap-clause-2", { article: "attestations", catalogueFills: ["eventType"] });
+    it("warns when the spec signs the empty anchor AND checkout.catalogueFills is declared", () => {
+        const spec = specView("trap-clause-2", true, { catalogueFills: ["eventType"] });
         const warnings = warnProcessLogFillsTrap(spec);
         expect(warnings).toHaveLength(1);
         expect(warnings[0]).toContain("catalogueFills");
     });
 
-    it("warns when article is 'attestations' AND checkout.profileFills is declared", () => {
-        const spec = specView("trap-clause-3", { article: "attestations", profileFills: ["eventType"] });
-        const warnings = warnProcessLogFillsTrap(spec);
-        expect(warnings).toHaveLength(1);
+    it("warns when the spec signs the empty anchor AND checkout.profileFills is declared", () => {
+        const spec = specView("trap-clause-3", true, { profileFills: ["eventType"] });
+        expect(warnProcessLogFillsTrap(spec)).toHaveLength(1);
     });
 
-    it("warns when article is 'attestations' AND checkout.catalogueMeasures is declared", () => {
-        const spec = specView("trap-clause-5", {
-            article: "attestations",
+    it("warns when the spec signs the empty anchor AND checkout.catalogueMeasures is declared", () => {
+        const spec = specView("trap-clause-5", true, {
             catalogueMeasures: { eventType: { from: "massGrams", combine: "sum" } },
         });
         const warnings = warnProcessLogFillsTrap(spec);
@@ -518,8 +520,7 @@ describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap",
     });
 
     it("returns both warnings when design.fills AND checkout fills are both declared", () => {
-        const spec = specView("trap-clause-4", {
-            article: "attestations",
+        const spec = specView("trap-clause-4", true, {
             designFills: ["eventType"],
             catalogueFills: ["eventType"],
         });
@@ -528,6 +529,7 @@ describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap",
 
     it("matches the real shipped process-log fixtures exactly (via parseProjectionHints)", () => {
         const merchant = specSourceFromFixtures(["figaro-merchant-process"]).get(keyOf("figaro-merchant-process"))!;
+        expect(merchant.emptyAnchor).toBe(true);
         expect(warnProcessLogFillsTrap(merchant)).toEqual([]);
     });
 });
@@ -1101,7 +1103,7 @@ describe("the sign gate and the blinding value of a private clause", () => {
         expect(check.issues).toEqual([]);
     });
 
-    it("checks the content of a clause whose block says article attestations: block is presentation, so it skips only the empty anchor", () => {
+    it("checks the content of a clause whose block says article attestations and whose spec does not declare emptyAnchor: block is presentation", () => {
         const LOG = viewOf(privateRaw("test-private-log", { design: { article: "attestations" } }));
         const specs = specSourceOf([LOG]);
         // Content with no blinding value is refused, and so is a zero one.
@@ -1110,8 +1112,30 @@ describe("the sign gate and the blinding value of a private clause", () => {
         expect(missing.issues).toEqual([expect.objectContaining({ clause: LOG.clauseKey, path: "$.blinding" })]);
         const zero = gate(specs, { [LOG.clauseKey]: { grade: "b", blinding: value("00") } });
         expect(zero.issues).toEqual([expect.objectContaining({ clause: LOG.clauseKey, path: "blinding", message: expect.stringMatching(/zero/) })]);
-        // The empty anchor carries nothing to check or blind.
-        expect(gate(specs, { [LOG.clauseKey]: {} }).issues).toEqual([]);
+        // The article admits no empty anchor: `{}` is validated over the
+        // fields like any content, and its required fields are missing.
+        const empty = gate(specs, { [LOG.clauseKey]: {} });
+        expect(empty.ok).toBe(false);
+        expect(empty.issues.map((i) => i.path).sort()).toEqual(["$.blinding", "$.grade"]);
+    });
+
+    it("accepts the empty anchor for a stranger's clause that declares emptyAnchor under another article, and refuses any content for it", () => {
+        const PORT = viewOf({
+            clauseId: "harbor-port-calls", version: 3, title: "Port calls", description: "A vessel's port calls, attested as they happen.",
+            fields: [{ name: "call", type: "enum", values: ["arrived", "berthed", "sailed"], required: true }],
+            stages: { "1": [{ name: "berth", type: "string", required: true }] },
+            emptyAnchor: true,
+            block: { design: { article: "harbor-log" } },
+        });
+        expect(PORT.emptyAnchor).toBe(true);
+        const specs = specSourceOf([PORT]);
+        expect(gate(specs, { [PORT.clauseKey]: {} }).issues).toEqual([]);
+        const content = gate(specs, { [PORT.clauseKey]: { call: "arrived" } });
+        expect(content.ok).toBe(false);
+        expect(content.issues).toEqual([expect.objectContaining({ clause: PORT.clauseKey, path: "$", message: expect.stringMatching(/emptyAnchor/) })]);
+        // The tooling leaves the empty anchor as it is: no default, no blinding.
+        expect(withSpecDefaults(specs, PORT.clauseKey, {})).toEqual({});
+        expect(withClauseBlinding(specs, PORT.clauseKey, {})).toEqual({});
     });
 
     it.each([

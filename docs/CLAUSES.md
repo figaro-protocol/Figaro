@@ -345,9 +345,12 @@ A clause whose runtime evidence carries different content from its committed
 terms — a temperature reading, measured grams, a detected proximity band —
 declares that content as `spec.stages[N]`, a per-stage field set keyed by the
 on-chain `uint8 stage`. The content the parties sign is validated over
-`fields` alone, at the sign gate (`validateCommitmentAgreement` in
-`sdk/src/projection.ts`) and in the guest's gate for a re-asserted clause
-(`validate_attestation_content` in `prover/lib/src/kernel.rs`). Content
+`fields` alone, or is the empty anchor `{}` for a spec that declares
+`emptyAnchor` (§ "Clause-spec format"), at the sign gate
+(`validateCommitmentAgreement` in `sdk/src/projection.ts`) and in the guest's
+gate for a re-asserted clause (`validate_attestation_content` in
+`prover/lib/src/kernel.rs`), both through the one rule
+(`validateSignedContent`, `validate_signed_content`). Content
 attested at stage N, stage 0 included, is encoded and validated over
 `stages[N]` where the spec declares it, else over `fields`, in both engines.
 A stage key has one spelling: the decimal of an integer from 0 to 255, digits
@@ -364,9 +367,11 @@ same spec. Who witnesses is never engine policy — either party may file,
 and sufficiency is derived at read time against the committed terms. The
 evidence window closes at resolution (`DESIGN_DECISIONS.md` §6).
 
-Process-log ladders (clauses under the `attestations` article) are the other
-runtime-evidence shape: their stage is the enum ordinal, and no `stages` key is
-needed. One rule says which set an attestation's content is encoded over: at
+Process-log ladders are the other runtime-evidence shape: their stage is the
+enum ordinal, and no `stages` key is needed. A ladder signs the empty anchor
+(`emptyAnchor`), and its first event is attested at stage 0 over its
+top-level fields, as any later one is; the reference frontend groups such
+clauses under the `attestations` article, which is presentation. One rule says which set an attestation's content is encoded over: at
 stage N, `stages[N]` where the spec declares it, else the top-level `fields`.
 The SDK (`contentFieldsFor` in `sdk/src/clauses/encode.ts`) and the proof
 program (`encode_content_from_spec` in `prover/clause/src/encode.rs`) apply it
@@ -468,10 +473,11 @@ registry's seed data; the published definition of the format is
 **The spec has two halves, and the protocol ends between them.**
 
 - **Top level — the protocol**: the presentation names (`clauseId`,
-  `version`, `title`, `description`) a human reads, and the content
-  `fields`/`stages`. Stage 0 is the committed
-  content (declared by `fields`); `stages[N≥1]` are the evidence shapes attested
-  while the process is open. Each `stages` key is the decimal of the stage, from
+  `version`, `title`, `description`) a human reads, the content
+  `fields`/`stages`, and `emptyAnchor`. The committed content is declared by
+  `fields`; `stages[N]` are the evidence shapes attested while the process is
+  open, and content attested at a stage the spec does not declare is read over
+  `fields`. Each `stages` key is the decimal of the stage, from
   `"0"` to `"255"`, in one spelling (§ "Witness stages"). Every clause is a merkle leaf under the signed
   `checkoutHash`; the SDK validates the content against the spec off-chain, and
   the bonds secure what was signed. The chain registers clauses and binds
@@ -537,9 +543,9 @@ registry's seed data; the published definition of the format is
   { "from": "massGrams", "combine": "sum" }, "length": { "from": "lengthMm",
   "combine": "single-unit" }, "width": { "from": "widthMm", "combine":
   "single-unit" }, "height": { "from": "heightMm", "combine": "single-unit" },
-  "divisor": { "field": "divisor" } } } }`, the same catalog fields
-  `figaro-cargo` measures, so the billed weight is reproduced from the cargo
-  leaf of the same order.
+  "divisor": { "field": "divisor" } } } }`. The checkout computes the billed
+  weight from the order's catalog items, the same catalog fields
+  `figaro-cargo` measures, and from the divisor the seller's profile fills.
 - **`block.checkout.catalogueMeasures` reads a field from the catalog item
   itself.** It maps a content field to the catalog-item field it is read from
   and how the order's lines combine it: `{ "massGrams": { "from": "massGrams",
@@ -555,6 +561,35 @@ registry's seed data; the published definition of the format is
   measured field, or the agreement build would invent the number the catalog
   lacks. `figaro-cargo` declares its mass and volume as sums and its packaged
   dimensions as single-unit measures, with no `default` on any of them.
+
+**`emptyAnchor` declares that the parties sign the empty anchor.** A clause
+whose content is all attested while the process is open, such as a
+process-log ladder (`figaro-merchant-process`, `figaro-courier-process`),
+declares `"emptyAnchor": true` at the top level. The parties then sign `{}`
+for it, and its `fields` and `stages` are the shapes of what is attested. One
+rule decides what a party may sign for a clause, in both engines
+(`validateSignedContent` in `sdk/src/clauses/validate.ts`,
+`validate_signed_content` in `prover/clause/src/validate.rs`):
+
+1. A spec that declares `emptyAnchor` signs `{}` and nothing else. The sign
+   gate refuses any other content for it, and the guest's gate refuses a
+   re-asserted clause whose committed content is any other.
+2. Every other spec's signed content is validated over its `fields`, `{}`
+   included: `{}` passes only when no field is required.
+
+The parsers accept the attribute only as `true`, and refuse a spec that
+declares it beside a `default` on a top-level field, since a default fills the
+signed content and this one has none (`parseClauseSpec`,
+`parse_clause_spec`). A default on a stage field is allowed. The rule reads
+the top level only, never the article or anything else in `block`, so a
+stranger's clause under any article signs the empty anchor by declaring it,
+and a clause under the `attestations` article that does not declare it signs
+its content. The reference tooling fills no default and draws no blinding
+value into an empty anchor (`withSpecDefaults`, `withClauseBlinding`), and
+its checkout offers the buyer no input for such a clause. The attribute is
+part of the clause key, so declaring it is a new clause. The shared vectors
+hold both engines to the rule (`signed` in
+`test/fixtures/clause-engine-vectors.json`).
 
 **Public and private fields, and the blinding field.** A field's
 `disposition` is `"public"` (the default) or `"private"`. The leaf model
@@ -628,7 +663,8 @@ field shape:
   (`figaro-merchant-process`, `figaro-courier-process`; a supply chain runs the
   same structure at length). These are coordination attestations between
   sellers — the same runtime-evidence category as witness stages, differing in
-  shape.
+  shape. The reference frontend presents such a clause as a lifecycle; what
+  the parties sign for it is read from `emptyAnchor`, never from the article.
 - **`consent`** — documents a party accepts by signing: the agreement review
   shown before signing lists each value of a clause of this article under a
   consent notice, a fetchable document linked

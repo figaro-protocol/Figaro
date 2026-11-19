@@ -293,3 +293,22 @@ export function validateContent(
     validateObject(content, rootSpec, "$", errors);
     return errors.length > 0 ? { ok: false, errors } : { ok: true };
 }
+
+/**
+ * Validate the content the parties SIGN for a clause: the content committed
+ * under the `checkoutHash`. A spec that declares `emptyAnchor` signs the
+ * empty anchor `{}` and nothing else; every other spec's signed content,
+ * `{}` included, validates over its top-level `fields` (`validateContent`
+ * with no stage). The rule reads the spec's top level, never its `block`.
+ * The guest's engine applies the same rule (`validate_signed_content` in
+ * `prover/clause/src/validate.rs`).
+ */
+export function validateSignedContent(content: unknown, spec: ClauseSpec): ValidationResult {
+    if (spec.emptyAnchor !== true) return validateContent(content, spec);
+    const empty = content !== null && typeof content === "object" && !Array.isArray(content)
+        && Object.keys(content).length === 0;
+    return empty ? { ok: true } : {
+        ok: false,
+        errors: [{ path: "$", message: "the spec declares emptyAnchor: its signed content is the empty anchor {}" }],
+    };
+}

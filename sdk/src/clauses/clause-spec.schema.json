@@ -25,8 +25,14 @@
             "patternProperties": { "^(?:0|[1-9][0-9]?|1[0-9]{2}|2[0-4][0-9]|25[0-5])$": { "$ref": "#/$defs/fieldSet" } },
             "additionalProperties": false
         },
+        "emptyAnchor": {
+            "const": true,
+            "description": "Declares that the content the parties sign for this clause is the empty anchor {}: the clause commits no content, and every field it declares is the shape of content attested while the process is open (a process-log clause, whose first event is attested at stage 0 like any other). The sign gate accepts {} for such a clause and refuses any other content; a clause that does not declare it is validated over `fields` like any clause, {} included. It is protocol, read by the sign gate in the SDK and in the proof program, never by the clause's article or anything else in `block`. Present only as true, and never beside a top-level field's `default`, since a default fills the signed content and this clause has none."
+        },
         "block": { "$ref": "#/$defs/block" }
     },
+    "if": { "required": ["emptyAnchor"] },
+    "then": { "properties": { "fields": { "items": { "not": { "required": ["default"] } } } } },
     "$defs": {
         "fieldProps": {
             "type": "object",

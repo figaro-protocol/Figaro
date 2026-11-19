@@ -447,7 +447,9 @@ fn validate_provenance_attestation(
 ///     construction), and `keccak256(bytes) == content_ref`. For a
 ///     `ReAssert`, the content IS the committed `clause_data`
 ///     (`content_ref == keccak256(clause_data)`), which must itself
-///     validate against the spec's default fields.
+///     pass the sign gate's rule (`figaro_clause::validate_signed_content`):
+///     the empty anchor `{}` alone for a spec that declares `emptyAnchor`,
+///     content valid over the spec's default fields for every other.
 ///   Gate I — agreement inclusion: leaf
 ///     `keccak256(clause_id ++ keccak256(clause_data))` opens against
 ///     the target's signed `checkout_hash` via the sorted-pair Merkle
@@ -518,8 +520,12 @@ pub fn validate_attestation_content(
         }
         ContentKind::ReAssert => {
             // The content IS the committed clauseData — re-anchored as
-            // runtime evidence. It must be the signing-time content, so
-            // it validates against the spec's DEFAULT fields.
+            // runtime evidence. It must be the signing-time content, so it
+            // passes the sign gate's rule (`validate_signed_content`): the
+            // empty anchor `{}` and nothing else for a spec that declares
+            // `emptyAnchor`, content valid over the spec's DEFAULT fields
+            // for every other, `{}` included. The rule reads the spec's top
+            // level, never its `block`.
             if keccak256(proof.clause_data.as_bytes()) != *content_ref {
                 return Err(KernelError::ContentHashMismatch);
             }
@@ -527,11 +533,9 @@ pub fn validate_attestation_content(
                 serde_json::from_str(&proof.clause_data).map_err(|e| {
                     KernelError::ClauseContentInvalid(format!("clause_data not valid JSON: {e}"))
                 })?;
-            if let figaro_clause::ValidationResult::Err(errors) = figaro_clause::validate_content(
-                &clause_data,
-                &parsed,
-                figaro_clause::ValidateOptions::default(),
-            ) {
+            if let figaro_clause::ValidationResult::Err(errors) =
+                figaro_clause::validate_signed_content(&clause_data, &parsed)
+            {
                 let first = errors
                     .first()
                     .map(|e| format!("{}: {}", e.path, e.message))
