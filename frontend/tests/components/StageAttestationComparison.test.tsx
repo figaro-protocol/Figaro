@@ -65,7 +65,7 @@ const stageFields = [
 const blockOf = (scope: "assembly" | "agreement") => ({
     design: { article: "test-article", scope, nestsUnder: null, fills: ["designNote"], composes: null },
     checkout: { catalogueFills: [], profileFills: [] },
-    runtime: { interaction: null, fields: [] },
+    runtime: { interaction: null },
 });
 
 const specOf = (clauseId: string, scope: "assembly" | "agreement") => ({

@@ -54,7 +54,7 @@ const spec = pinSpec({
     block: {
         design: { article: "test-article", scope: "agreement", nestsUnder: null, fills: [], composes: null },
         checkout: { catalogueFills: [], profileFills: [] },
-        runtime: { interaction: null, fields: [] },
+        runtime: { interaction: null },
     },
 });
 

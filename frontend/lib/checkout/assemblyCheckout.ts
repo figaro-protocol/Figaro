@@ -194,7 +194,7 @@ export interface AssemblyCheckoutParams {
     }>;
     /** On-network compositions (external, on-chain composition) keyed by assembly node id:
      *  the composing clause's `interface` (from `block.design.composes`) plus the
-     *  buyer's `block.runtime.fields` values collected at checkout. The composition
+     *  buyer's `block.checkout.compositionFields` values collected at checkout. The composition
      *  runs alongside the order's normal commit. Interface-agnostic — the
      *  walk names no clause. */
     subOrderCompositions?: Record<string, { interface: string; fieldValues: Record<string, unknown> }>;

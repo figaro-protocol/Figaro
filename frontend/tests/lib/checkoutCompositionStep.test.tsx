@@ -1,7 +1,7 @@
 /**
  * The checkout's composition step (`useCompositionActions`), on a real
  * checkout walk. A sub-order whose clause declares `block.design.composes`
- * with runtime fields hands its interface to `compose`, and no interface has
+ * with composition fields hands its interface to `compose`, and no interface has
  * a handler: the step refuses, naming the interface, and the composing
  * sub-order is never signed, nor is the root, which the walk signs last.
  */
@@ -27,17 +27,17 @@ const CO_SELLER = "0x4444444444444444444444444444444444444444" as const;
 const TOKEN = "0x3333333333333333333333333333333333333333" as const;
 
 // A made-up clause that composes an on-network contract under an interface
-// no handler knows, and asks the buyer for one runtime input.
+// no handler knows, and asks the buyer for one composition input at checkout.
 const COMPOSING = pinSpec({
     clauseId: "test-composing",
     version: 1,
     title: "Composes a contract",
-    description: "A made-up clause that declares a composition with a runtime field.",
+    description: "A made-up clause that declares a composition with a composition field.",
     fields: [],
     block: {
         design: { article: "test-article", scope: "agreement", nestsUnder: null, fills: [], composes: { interface: "test-interface" } },
-        checkout: { catalogueFills: [], profileFills: [] },
-        runtime: { interaction: null, fields: [{ name: "target", type: "string", required: true }] },
+        checkout: { catalogueFills: [], profileFills: [], compositionFields: [{ name: "target", type: "string", required: true }] },
+        runtime: { interaction: null },
     },
 });
 

@@ -51,15 +51,15 @@ describe("parseBlockBinding — clause block-binding (sectioned UI half)", () =>
         expect(block?.design.composes).toBeNull();
         expect(block?.checkout.catalogueFills).toEqual([]);
         expect(block?.checkout.profileFills).toEqual([]);
+        expect(block?.checkout.compositionFields).toEqual([]);
         expect(block?.runtime.interaction).toBeNull();
-        expect(block?.runtime.fields).toEqual([]);
     });
 
     it("parses explicit empty values identically to absence (expressed-not-absent standard)", () => {
         const { block, errors } = parse({
             design: { article: "logistics", nestsUnder: null, fills: [], composes: null },
-            checkout: { catalogueFills: [], profileFills: [] },
-            runtime: { interaction: null, fields: [] },
+            checkout: { catalogueFills: [], profileFills: [], compositionFields: [] },
+            runtime: { interaction: null },
         });
         expect(errors).toEqual([]);
         expect(block?.design.nestsUnder).toBeNull();
@@ -172,22 +172,38 @@ describe("parseBlockBinding — clause block-binding (sectioned UI half)", () =>
         expect(block?.runtime.interaction?.interface).toBe("qr-challenge");
     });
 
-    it("parses runtime.fields through the SDK field parser (one parser for both halves)", () => {
+    it("parses checkout.compositionFields through the SDK field parser (one parser for both halves)", () => {
         const { block, errors } = parse({
             design: { article: "dispute-resolution" },
-            runtime: { fields: [{ name: "openingClaim", type: "string", required: true }] },
+            checkout: { compositionFields: [{ name: "openingClaim", type: "string", required: true }] },
         });
         expect(errors).toEqual([]);
-        expect(block?.runtime.fields[0]?.name).toBe("openingClaim");
+        expect(block?.checkout.compositionFields[0]?.name).toBe("openingClaim");
     });
 
-    it("rejects a malformed runtime field spec", () => {
+    it("rejects a malformed composition field spec", () => {
         const { block, errors } = parse({
             design: { article: "dispute-resolution" },
-            runtime: { fields: [{ name: "x", type: "enum", required: true }] },
+            checkout: { compositionFields: [{ name: "x", type: "enum", required: true }] },
         });
         expect(block).toBeNull();
-        expect(errors.some((e) => e.path.startsWith("$.block.runtime.fields[0]"))).toBe(true);
+        expect(errors.some((e) => e.path.startsWith("$.block.checkout.compositionFields[0]"))).toBe(true);
+    });
+
+    it("rejects composition fields that are not an array", () => {
+        const { block, errors } = parse({ design: { article: "dispute-resolution" }, checkout: { compositionFields: {} } });
+        expect(block).toBeNull();
+        expect(errors.some((e) => e.path === "$.block.checkout.compositionFields")).toBe(true);
+    });
+
+    it("reads no field list under runtime: the runtime part carries the interaction only", () => {
+        const { block, errors } = parse({
+            design: { article: "dispute-resolution" },
+            runtime: { interaction: null, fields: [{ name: "openingClaim", type: "string", required: true }] },
+        });
+        expect(errors).toEqual([]);
+        expect(block?.runtime).toEqual({ interaction: null });
+        expect(block?.checkout.compositionFields).toEqual([]);
     });
 
     // composes.forumUrl is rendered as a link — only https: is accepted. A

@@ -259,7 +259,7 @@ describe("projectSnapshotForReview — an order's line items are any clause's", 
             block: {
                 design: { article: "billing", scope: "agreement", nestsUnder: null, fills: [], composes: null },
                 checkout: { catalogueFills: [], profileFills: [], catalogueMeasures: {} },
-                runtime: { interaction: null, fields: [] },
+                runtime: { interaction: null },
             },
         };
         const { clauseKey, bytes } = pinSpec(stranger);

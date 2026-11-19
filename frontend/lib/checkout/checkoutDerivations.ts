@@ -273,7 +273,7 @@ export function deriveAgreementGroups(args: {
                     // `emptyAnchor`: content attested at runtime) is never
                     // fillable. A COMPOSING clause's content
                     // fields ARE fillable — the composition surface collects
-                    // only its block.runtime.fields runtime params, never its
+                    // only its block.checkout.compositionFields inputs, never its
                     // content.
                     // Less the fields the checkout walk fills MECHANICALLY (the
                     // priced lines a spec marks, the fields it derives): a buyer

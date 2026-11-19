@@ -169,11 +169,42 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         for (const key of ["article", "scope", "nestsUnder", "fills", "composes"]) {
             expect(key in spec.block.design, `${file}: block.design.${key} must be expressed`).toBe(true);
         }
-        for (const key of ["catalogueFills", "profileFills", "catalogueMeasures"]) {
+        for (const key of ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "heldValues", "compositionFields"]) {
             expect(key in spec.block.checkout, `${file}: block.checkout.${key} must be expressed`).toBe(true);
         }
-        for (const key of ["interaction", "fields"]) {
+        for (const key of ["interaction"]) {
             expect(key in spec.block.runtime, `${file}: block.runtime.${key} must be expressed`).toBe(true);
         }
+    });
+
+    // Each part of `block` declares, in the schema, the attributes the
+    // reference parser (`ClauseBlockBinding`, frontend/lib/shared/clauseBlockBinding.ts)
+    // reads under that part, and no other. The lists are the parser's.
+    it.each([
+        ["blockDesign", ["article", "scope", "nestsUnder", "fills", "composes"]],
+        ["blockCheckout", ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "heldValues", "compositionFields"]],
+        ["blockRuntime", ["interaction"]],
+    ] as const)("the schema's %s declares the parser's attributes for that part", (def, keys) => {
+        const props = (schema.$defs as Record<string, { properties: Record<string, unknown> }>)[def].properties;
+        expect(Object.keys(props).sort()).toEqual([...keys].sort());
+    });
+
+    const withCheckout = (checkout: unknown) => ({
+        clauseId: "x", version: 1, title: "T", description: "D", fields: [],
+        block: { design: { article: "terms" }, checkout },
+    });
+    const checkoutCases: ReadonlyArray<readonly [string, unknown, boolean]> = [
+        ["a priced-lines mark with its three roles", { pricedLines: { field: "lines", quantity: "q", unitPrice: "p" } }, true],
+        ["a null priced-lines mark", { pricedLines: null }, true],
+        ["a priced-lines mark without its unit price", { pricedLines: { field: "lines", quantity: "q" } }, false],
+        ["a derivation over a field and a catalog measure", { derives: { w: { rule: "r", inputs: { a: { field: "f" }, b: { from: "massGrams", combine: "sum" } } } } }, true],
+        ["a derivation with no rule", { derives: { w: { inputs: {} } } }, false],
+        ["a derivation input that is both a field and a measure", { derives: { w: { rule: "r", inputs: { a: { field: "f", from: "m", combine: "sum" } } } } }, false],
+        ["a derivation input with an unknown combinator", { derives: { w: { rule: "r", inputs: { a: { from: "m", combine: "average" } } } } }, false],
+        ["composition fields of the content-field shape", { compositionFields: [{ name: "claim", type: "string", required: true }] }, true],
+        ["composition fields that are not an array", { compositionFields: {} }, false],
+    ];
+    it.each(checkoutCases)("block.checkout with %s: accepted %s at the schema", (_name, checkout, accepted) => {
+        expect(validateAgainstSchema(withCheckout(checkout)), JSON.stringify(validateAgainstSchema.errors)).toBe(accepted);
     });
 });

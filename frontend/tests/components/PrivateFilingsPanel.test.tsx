@@ -84,7 +84,7 @@ const PRIVATE = pinSpec({
     block: {
         design: { article: "test-article", scope: "assembly", nestsUnder: null, fills: ["note"], composes: null },
         checkout: { catalogueFills: [], profileFills: [] },
-        runtime: { interaction: null, fields: [] },
+        runtime: { interaction: null },
     },
 });
 

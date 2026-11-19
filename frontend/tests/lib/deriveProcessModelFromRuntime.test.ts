@@ -330,7 +330,7 @@ describe("process-log ladders — every party advances its own log", () => {
         block: {
             design: { article: "attestations", scope: "agreement", nestsUnder: null, fills: [], composes: null },
             checkout: { catalogueFills: [], profileFills: [] },
-            runtime: { interaction: null, fields: [] },
+            runtime: { interaction: null },
         },
     };
     const pinned = pinSpec(LADDER_SPEC);
@@ -394,7 +394,7 @@ describe("cards offer no input for a blinding field", () => {
         block: {
             design: { article: "attestations", scope: "agreement", nestsUnder: null, fills: [], composes: null },
             checkout: { catalogueFills: [], profileFills: [] },
-            runtime: { interaction: null, fields: [] },
+            runtime: { interaction: null },
         },
     };
     const WITNESS_SPEC = {
@@ -454,7 +454,7 @@ describe("a process-log ladder at an ordinal that declares a stage set", () => {
         block: {
             design: { article: "attestations", scope: "agreement", nestsUnder: null, fills: [], composes: null },
             checkout: { catalogueFills: [], profileFills: [] },
-            runtime: { interaction: null, fields: [] },
+            runtime: { interaction: null },
         },
     };
     const pinned = pinSpec(HYBRID_SPEC);

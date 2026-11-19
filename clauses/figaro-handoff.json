@@ -39,13 +39,16 @@
         "checkout": {
             "catalogueFills": [],
             "profileFills": [],
-            "catalogueMeasures": {}
+            "catalogueMeasures": {},
+            "pricedLines": null,
+            "derives": {},
+            "heldValues": {},
+            "compositionFields": []
         },
         "runtime": {
             "interaction": {
                 "interface": "qr-challenge"
-            },
-            "fields": []
+            }
         }
     }
 }

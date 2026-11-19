@@ -62,11 +62,13 @@
                 "name": "name",
                 "quantity": "quantity",
                 "unitPrice": "unitPrice"
-            }
+            },
+            "derives": {},
+            "heldValues": {},
+            "compositionFields": []
         },
         "runtime": {
-            "interaction": null,
-            "fields": []
+            "interaction": null
         }
     }
 }

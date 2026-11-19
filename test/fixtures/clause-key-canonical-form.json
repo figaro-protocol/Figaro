@@ -42,7 +42,7 @@
     },
     "block": {
         "design": { "article": "none", "scope": "agreement", "nestsUnder": null, "fills": [], "composes": null },
-        "checkout": { "catalogueFills": [], "profileFills": [], "catalogueMeasures": {} },
-        "runtime": { "interaction": null, "fields": [] }
+        "checkout": { "catalogueFills": [], "profileFills": [], "catalogueMeasures": {}, "compositionFields": [] },
+        "runtime": { "interaction": null }
     }
 }

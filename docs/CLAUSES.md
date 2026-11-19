@@ -519,13 +519,24 @@ registry's seed data; the published definition of the format is
   `checkoutHash`; the SDK validates the content against the spec off-chain, and
   the bonds secure what was signed. The chain registers clauses and binds
   attestations to the signed agreement; it reads no content shape.
-- **`block` — the presentation**, organized into phase sections named for their
-  reader: `design` (`article`, `scope`, `nestsUnder`, `fills`, `composes`),
-  `checkout` (`catalogueFills`, `profileFills`, `catalogueMeasures`,
-  `pricedLines`, `derives`, `heldValues`), `runtime`
-  (`interaction`, `fields`). `runtime.fields` serves on-network composition inputs only (paired
-  with `design.composes`); reporting is witness stages (`spec.stages`), never
-  `runtime.fields`. The clause key leaves `block` out, and no fingerprint reads
+- **`block` — the presentation**, organized into phase sections, each named
+  for the phase whose actor it instructs: `design`, the designer composing
+  agreements and assemblies (`article`, `scope`, `nestsUnder`, `fills`,
+  `composes`); `checkout`, the seller binding and the buyer filling and
+  signing (`catalogueFills`, `profileFills`, `catalogueMeasures`,
+  `pricedLines`, `derives`, `heldValues`, `compositionFields`); `runtime`, the
+  parties while the process runs, after commit (`interaction`). A later phase
+  may read an earlier section; no phase reads a section named for a later
+  one; an attribute read in two phases is declared in the section of its
+  first reader. The order is held by
+  `frontend/tests/lib/blockDesignPhaseReads.test.ts` over the frontend's design
+  and checkout files, and by `sdk/tests/clauses/blockPhase.test.ts` over the
+  SDK's hints, sign gate and checkout plan. `checkout.compositionFields` are
+  the inputs the buyer gives at checkout for the contract `design.composes`
+  names (its opening parameters, collected by `CheckoutView.tsx` as
+  `compositionInputs`); they are not content fields and nothing commits them.
+  Reporting while the process runs is witness stages (`spec.stages`), never
+  `compositionFields`. The clause key leaves `block` out, and no fingerprint reads
   it. Eight of its attributes (`design.article`, `design.scope`, `design.fills`,
   `checkout.catalogueFills`, `checkout.profileFills`,
   `checkout.catalogueMeasures`, `checkout.pricedLines`, `checkout.derives`;
