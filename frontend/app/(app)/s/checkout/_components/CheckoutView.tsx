@@ -48,6 +48,7 @@ import { processDesignFollows } from "@/lib/shared/assembly";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
+import { useHeldValues } from "@/lib/composition/heldValues";
 import type { BuyerFundingRequest } from "@/lib/checkout/orderCommitmentFlow";
 import {
     translateListedPrice,
@@ -374,6 +375,22 @@ export function CheckoutView({ sellerAddress }: Props) {
     const expandedClauseFills: typeof clauseFills = pickedAssembly
         ? withCheckoutBlinding(pickedAssembly.hydratedAssembly, mergedClauseFills, specSource(), blindingKept.current, (r) => blindingRefusals.push(r))
         : mergedClauseFills;
+    // The enum values each composed clause's `block.checkout.heldValues`
+    // filters by what the chain in use holds (`useHeldValues`), read before
+    // the form offers them; a field with no hint offers every value.
+    const heldValueClauseKeys = ((): string[] => {
+        if (!pickedAssembly) return [];
+        try {
+            const hydrated = pickedAssembly.hydratedAssembly;
+            return [
+                ...Object.keys(hydrated.assembly.assemblyClauses ?? {}),
+                ...hydrated.assembly.agreements.flatMap((order) => Object.keys(agreementClauses(hydrated, order))),
+            ];
+        } catch {
+            return [];
+        }
+    })();
+    const heldValues = useHeldValues(heldValueClauseKeys, clauseSpecsLoaded);
     const subOrderPlan = (() => {
         if (!pickedAssembly || pickedAssembly.hydratedAssembly.assembly.agreements.length <= 1) return [];
         try {
@@ -1224,7 +1241,9 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                                 return (
                                                                 <FieldControl
                                                                     key={field.name}
-                                                                    field={field}
+                                                                    field={field.type === "enum"
+                                                                        ? { ...field, values: heldValues.offered(clauseKey, field.name, field.values) }
+                                                                        : field}
                                                                     value={clauseFills[group.key]?.[clauseKey]?.[field.name]}
                                                                     onChange={(v) => setClauseFill(group.key, clauseKey, field.name, v)}
                                                                     testId={`checkout-field-${group.key}-${clauseKey}-${field.name}`}

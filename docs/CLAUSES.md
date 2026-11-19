@@ -518,7 +518,7 @@ registry's seed data; the published definition of the format is
 - **`block` — the presentation**, organized into phase sections named for their
   reader: `design` (`article`, `scope`, `nestsUnder`, `fills`, `composes`),
   `checkout` (`catalogueFills`, `profileFills`, `catalogueMeasures`,
-  `pricedLines`, `derives`), `runtime`
+  `pricedLines`, `derives`, `heldValues`), `runtime`
   (`interaction`, `fields`). `runtime.fields` serves on-network composition inputs only (paired
   with `design.composes`); reporting is witness stages (`spec.stages`), never
   `runtime.fields`. The clause key leaves `block` out, and no fingerprint reads
@@ -594,6 +594,34 @@ registry's seed data; the published definition of the format is
   measured field, or the agreement build would invent the number the catalog
   lacks. `figaro-cargo` declares its mass and volume as sums and its packaged
   dimensions as single-unit measures, with no `default` on any of them.
+- **`block.checkout.heldValues` offers only the enum values the chain
+  holds.** It maps an `enum` content field to a reader standard (`reader`),
+  to the contracts that reader reads on each chain (`contracts`, keyed by the
+  decimal chain id, each address under the reader's own role name), and to
+  what the reader looks for on the chain for each value (`values`, a list of
+  strings in the reader's own terms). The checkout reads, for the chain in
+  use, which values the chain holds, and offers only those
+  (`useHeldValues`, `frontend/lib/composition/heldValues.ts`). The readers
+  are an open registry keyed by the standard's name
+  (`registerHeldValuesReader`), never by a clause, so a stranger's clause
+  that names a registered standard with its own contracts and values is
+  filtered the same way. On a chain the hint gives no contracts for, every
+  value is offered; under a reader the frontend does not know, a read that
+  fails or one that resolves empty, no value is, and a read in flight offers
+  none. The attribute is a presentation hint, read only by a frontend that
+  knows its reader's standard: it changes nothing the parties sign, the sign
+  gate does not read it, and another frontend may ignore it. Its addresses
+  are part of the spec's registered bytes, so a chain added later needs a
+  new spec version. The reference reader, `kleros-liquid-policy-courts`,
+  reads a KlerosLiquid arbitrator's court list (`courts(uint256)`, from 0 up
+  to the first revert) and each court's name in the policy document its
+  PolicyRegistry links (`policies(uint256)`); a value lists its court's
+  policy names from the root down, the root court named alone, and is held
+  when exactly one court of the chain carries that list.
+  `figaro-arbitration-kleros` declares it on `klerosCourt`, with the
+  arbitrator and PolicyRegistry of Ethereum mainnet and Ethereum Sepolia
+  from `test/fixtures/kleros-courts.json`; on Sepolia it offers `general`
+  only.
 
 **`emptyAnchor` declares that the parties sign the empty anchor.** A clause
 whose content is all attested while the process is open, such as a
