@@ -7,8 +7,9 @@
 /// read the second time as not committed. `apply_resolve` (`src/kernel.rs`) does
 /// the same. These tests hold each refusal: a repeated order at the true length
 /// and longer, a dropped order, an order of another process, an empty list, a
-/// resolve signed by a wallet that is not the root buyer, and a resolve of a
-/// process already resolved. The sequence of a correct list is free on both paths.
+/// resolve signed by a wallet that is not the root buyer, a resolve of a
+/// process already resolved, and a resolve of a process never committed. The
+/// sequence of a correct list is free on both paths.
 use alloy_primitives::{address, keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
 
@@ -301,5 +302,19 @@ fn a_resolve_of_a_resolved_process_is_refused() {
     match apply_batch(&batch(ops)) {
         Err(KernelError::NoActiveOrders) => {}
         other => panic!("expected NoActiveOrders, got {other:?}"),
+    }
+}
+
+/// A resolve of a process no commit created: the process's orders are signed,
+/// the resolve is signed by its buyer over its value, and the batch carries no
+/// commit of it. `FigaroCore` refuses this `UnknownProcess` before it reads the
+/// caller; the guest refuses it before it reads the signature.
+#[test]
+fn a_resolve_of_a_process_never_committed_is_refused() {
+    let p = process(2, 9);
+    let ops = vec![resolve_op(p.id, p.value(), p.orders.clone(), BUYER_KEY)];
+    match apply_batch(&batch(ops)) {
+        Err(KernelError::UnknownProcess) => {}
+        other => panic!("expected UnknownProcess, got {other:?}"),
     }
 }

@@ -14,6 +14,28 @@ interface IPermit2DomainSeparator {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
 
+/// @notice Forks a few blocks behind the head. An RPC endpoint is often
+///         several nodes behind one URL, and the node that answers the fork's
+///         block read may not yet hold the block another node named as the
+///         newest: `setUp` then failed with "block not found". The head is
+///         read once with `eth_blockNumber`, and the fork is made at that
+///         number less `FORK_MARGIN`, a block every node behind the URL
+///         already holds.
+abstract contract ForkBehindHead is Test {
+    /// @dev About a minute and a half of blocks on Ethereum and on Sepolia.
+    uint256 internal constant FORK_MARGIN = 8;
+
+    function _forkBehindHead(string memory rpc) internal {
+        // The answer is the quantity's bytes, big-endian.
+        bytes memory head = vm.rpc(rpc, "eth_blockNumber", "[]");
+        uint256 number;
+        for (uint256 i = 0; i < head.length; i++) {
+            number = (number << 8) | uint8(head[i]);
+        }
+        vm.createSelectFork(rpc, number - FORK_MARGIN);
+    }
+}
+
 /// @title WitnessSwapAndCommitCoordinatorForkTest — the witness digest against REAL Permit2
 /// @notice Mainnet-fork round-trip. Every other layer verifies the witness
 ///         convention against `MockWitnessPermit2` — our own reconstruction of
@@ -27,7 +49,7 @@ interface IPermit2DomainSeparator {
 ///      WitnessSwapAndCommitCoordinatorForkTest. The router stays a mock — the
 ///      swap venue is an off-protocol auxiliary; the surface under proof is the
 ///      Permit2 witness digest, nothing else.
-contract WitnessSwapAndCommitCoordinatorForkTest is Test {
+contract WitnessSwapAndCommitCoordinatorForkTest is ForkBehindHead {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
     /// @dev Canonical Permit2, same address on every chain it is deployed to.
@@ -56,7 +78,7 @@ contract WitnessSwapAndCommitCoordinatorForkTest is Test {
     function setUp() public {
         string memory rpc = vm.envOr("MAINNET_RPC_URL", string(""));
         if (bytes(rpc).length == 0) return; // tests skip themselves below
-        vm.createSelectFork(rpc);
+        _forkBehindHead(rpc);
         forked = true;
 
         buyer = vm.addr(BUYER_KEY);
@@ -233,7 +255,7 @@ interface ISwapRouter02 {
 /// @dev Gated on `SEPOLIA_RPC_URL`; without it every test is SKIPPED (never
 ///      silently passed). Run: SEPOLIA_RPC_URL=<url> forge test --match-contract
 ///      WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest.
-contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is Test {
+contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is ForkBehindHead {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
     /// @dev Canonical Permit2 — same address on Sepolia as everywhere.
@@ -268,7 +290,7 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is Test {
     function setUp() public {
         string memory rpc = vm.envOr("SEPOLIA_RPC_URL", string(""));
         if (bytes(rpc).length == 0) return; // tests skip themselves below
-        vm.createSelectFork(rpc);
+        _forkBehindHead(rpc);
         forked = true;
 
         buyer = vm.addr(BUYER_KEY);
