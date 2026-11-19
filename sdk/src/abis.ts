@@ -201,7 +201,7 @@ export const PERMIT2_ABI = parseAbi([
 // recipient. SwapRouter02's `exactOutputSingle` does exactly that: an exact
 // output (the bond) for at most `amountInMaximum` of input, pulled by
 // allowance. This is the ABI whoever builds `swapData` encodes against (the
-// venue seam: `frontend/lib/composition/swapVenue.ts`); `factory()` doubles
+// venue seam: `frontend/lib/composability/swapVenue.ts`); `factory()` doubles
 // as the probe that tells SwapRouter02 apart from the devnet stand-in.
 // Curated here so integrators import ONE canonical ABI instead of re-fetching
 // Uniswap's own.
