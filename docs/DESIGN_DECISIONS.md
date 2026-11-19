@@ -1487,8 +1487,15 @@ readers.
 `test_commit_reentry_isBlocked_resolutionStillCorrect`
 (`test/ReentrancyAdversarialTest.t.sol`) arm `MockReentrantToken` to call
 back into `FigaroCore` and assert the guard's own error and one payout each.
-No test calls back into `AttestationCoordinator` or `UsageCounter` from a
-transfer; items 2 and 3 rest on a reading of the code.
+`test/ResolutionWindowReadersTest.t.sol` calls back into
+`AttestationCoordinator` and `UsageCounter` from inside every transfer of a
+resolution: `test_eachReaderInsideAResolutionsTransfers_readsWhatTheEntrySays`
+holds items 2 and 3 (an order at status 1 is attested, one at status 2 is
+refused, the counter counts a paid order once and refuses an open one, and the
+payouts are those of a resolution with no callback), and
+`test_aResolutionThatReverts_takesTheCallbacksAttestationsAndCountWithIt`
+holds that a reverted resolution takes the callbacks' writes with it. Moving
+the status write before the transfers fails both.
 
 ---
 
