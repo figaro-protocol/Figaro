@@ -67,10 +67,15 @@ export const colorTokens = {
     // 1.4.3) on `subtle`, the darkest surface prose sits on — which leaves
     // canvas and paper with margin. `error-fg` aliases `error` because the
     // terracotta already clears the text floor at its own lightness.
+    // `warning-fg` is solved one step further, against its own tint: it is
+    // the text of every `bg-warning/10` and `/20` status surface, and the
+    // ocher fill darkens the ground it sits on. Same hue and saturation
+    // (hsl 36 57%), darkened to L 30% so it clears 4.55:1 on `bg-warning/20`
+    // over `subtle` (4.56:1; on `/10` over canvas, the banner case, 5.41:1).
     success: '#6b7a4a',
     'success-fg': '#637044',
     warning: '#a8762d',
-    'warning-fg': '#8c6326',
+    'warning-fg': '#7a5621',
     error: '#9c4a3c',
     'error-fg': '#9c4a3c',
     info: '#857c6e',
