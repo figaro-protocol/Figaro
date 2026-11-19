@@ -22,11 +22,14 @@ export interface UseAsyncMemberResourceResult<T> {
 }
 
 export interface UseAsyncMemberResourceOptions<T> {
-    /** Fetch a `T` from the resolved member-metadata URI. */
+    /** Fetch a `T` from the resolved member-metadata URI. The same function
+     *  on every render (module scope, or memoized): it keys the reset made
+     *  during render, and a new function each render re-renders without end. */
     fetcher: (metadataURI: string) => Promise<T>;
     /** Fallback toast/error string when the fetcher throws. */
     failureMessage: string;
-    /** Extra deps (e.g. a service handle) that should re-trigger the fetch. */
+    /** Extra deps (e.g. a service handle) that should re-trigger the fetch;
+     *  each stable across renders, as `fetcher` is. */
     extraDeps?: ReadonlyArray<unknown>;
 }
 
