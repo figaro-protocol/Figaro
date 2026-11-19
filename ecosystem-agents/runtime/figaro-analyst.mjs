@@ -419,7 +419,11 @@ export function makeAnalystHandler(getCorpus, config = modelConfig(), {
             }
             return send(res, 404, { error: `no route ${req.method} ${url.pathname}` });
         } catch (e) {
-            return send(res, 500, { error: e instanceof Error ? e.message : String(e) });
+            // The caller learns only that the route failed. The error itself,
+            // which can name a path, an endpoint or a provider's reply, goes to
+            // the host's stderr.
+            console.error(`figaro-analyst: ${req.method} ${url.pathname} failed — ${e instanceof Error ? e.message : String(e)}`);
+            return send(res, 500, { error: "the analyst could not answer this request" });
         }
     };
 }

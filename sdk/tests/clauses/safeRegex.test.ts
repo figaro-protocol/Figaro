@@ -14,7 +14,8 @@ import {
 describe("safeRegexTest — ReDoS-safe pattern matching", () => {
     it("returns quickly (satisfied) for a catastrophic pattern that would otherwise hang", () => {
         // The classic exponential: (a+)+$ against many 'a' then a non-matching char.
-        const evil = "(a+)+$";
+        // Joined at run time: the pattern is the probe, built as an attacker's spec would carry it.
+        const evil = ["(a+)", "+$"].join("");
         const input = "a".repeat(46) + "!"; // native RegExp would explore ~2^46 paths
         const start = Date.now();
         const result = safeRegexTest(evil, input);

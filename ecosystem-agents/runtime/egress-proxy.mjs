@@ -93,9 +93,24 @@ export function splitHostPort(authority, defaultPort) {
  * port — a host listed only as `https:` is never reached in the clear.
  */
 export function originAllowed(origins, { host, port, protocol }) {
+    return allowedOrigin(origins, { host, port, protocol }) !== undefined;
+}
+
+/**
+ * The allowlist entry that admits this connection, or undefined. The proxy
+ * opens every upstream connection to the host and port of the entry this
+ * returns, never to the client's own string, so a connection can only reach an
+ * origin the policy names.
+ */
+export function allowedOrigin(origins, { host, port, protocol }) {
     const h = String(host).toLowerCase();
-    return origins.some((o) =>
+    return origins.find((o) =>
         o.host === h && o.port === Number(port) && (protocol === undefined || o.protocol === protocol));
+}
+
+/** A host as a socket takes it: an IPv6 literal without its URL brackets. */
+function socketHost(host) {
+    return host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
 }
 
 /** Which relay, if any, is this request addressed to (its n, or -1)?
@@ -196,15 +211,26 @@ export function startEgressProxy({ policy, port, onDecision, rpcUpstreams = [] }
             return;
         }
         const targetPort = Number(target.port || 80);
-        if (!decide(`${target.hostname}:${targetPort}`, originAllowed(origins, { host: target.hostname, port: targetPort, protocol: "http:" }))) {
+        const entry = allowedOrigin(origins, { host: target.hostname, port: targetPort, protocol: "http:" });
+        if (!decide(`${target.hostname}:${targetPort}`, entry !== undefined)) {
             res.writeHead(403).end("proxy: origin not on the policy egress allowlist\n");
             return;
         }
+        // The destination is the allowlist entry's host and port; the client
+        // supplies only the path, the query and the credentials in the URL.
+        const auth = target.username || target.password
+            ? `${decodeURIComponent(target.username)}:${decodeURIComponent(target.password)}`
+            : undefined;
         let upstream;
         try {
-            upstream = http.request(target, {
+            upstream = http.request({
+                protocol: "http:",
+                hostname: socketHost(entry.host),
+                port: entry.port,
+                path: `${target.pathname}${target.search}`,
+                auth,
                 method: req.method,
-                headers: { ...req.headers, host: target.host },
+                headers: { ...req.headers, host: entry.port === 80 ? entry.host : `${entry.host}:${entry.port}` },
             }, (up) => {
                 res.writeHead(up.statusCode ?? 502, up.headers);
                 up.pipe(res);
@@ -226,11 +252,16 @@ export function startEgressProxy({ policy, port, onDecision, rpcUpstreams = [] }
         const toSelf = upstreamUrls.length > 0
             && (host === "127.0.0.1" || host === "localhost")
             && targetPort === server.address().port;
-        if (!toSelf && (!Number.isInteger(targetPort) || !decide(`${host}:${targetPort}`, originAllowed(origins, { host, port: targetPort })))) {
+        const entry = toSelf || !Number.isInteger(targetPort)
+            ? undefined
+            : allowedOrigin(origins, { host, port: targetPort });
+        if (!toSelf && (!Number.isInteger(targetPort) || !decide(`${host}:${targetPort}`, entry !== undefined))) {
             clientSocket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
             return;
         }
-        const upstream = net.connect(targetPort, toSelf ? "127.0.0.1" : host, () => {
+        // The tunnel opens to the allowlist entry's host and port, or to this
+        // proxy's own port.
+        const upstream = net.connect(toSelf ? targetPort : entry.port, toSelf ? "127.0.0.1" : socketHost(entry.host), () => {
             clientSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
             if (head?.length) upstream.write(head);
             upstream.pipe(clientSocket);
