@@ -28,7 +28,10 @@
  *
  * The sealed payload is bounded (`PRIVATE_FILINGS_MAX_COUNT` entries,
  * `PRIVATE_FILINGS_MAX_BYTES` of encoded content in all), refused over the
- * bound by the sender before it seals and by the receiver after it unseals.
+ * bound by the sender before it seals, and by the receiver twice: a sealed
+ * message longer than any payload within the bound makes
+ * (`PRIVATE_FILINGS_MAX_BLOB_CHARS`) before it is opened, and a payload
+ * over the bound after it unseals.
  */
 import type { Hex } from "viem";
 import { anchorAttestationContent } from "@figaro-protocol/sdk";
@@ -39,6 +42,7 @@ import {
     keepReceivedWitnessContent,
     readHeldWitness,
     readKeptWitnessContent,
+    type WitnessHolder,
 } from "@/lib/composition/witnessContent";
 import type { AnchorExpectation } from "./handoffAnchorState";
 import {
@@ -61,6 +65,21 @@ export const PRIVATE_FILINGS_MAX_COUNT = 64;
 /** The most encoded content, in bytes, one sealed payload carries in all:
  *  the content delivery's channel-sized cap. */
 export const PRIVATE_FILINGS_MAX_BYTES = 128 * 1024;
+
+/** The most characters of the sealed text one entry spends beside its
+ *  content's hex: the keys, the order hash, the clause key, the content
+ *  reference and the stage, written as `sendPrivateFilings` writes them
+ *  (272 at most), with room to spare. */
+const ENTRY_TEXT_BESIDE_CONTENT = 320;
+
+/** The longest sealed blob a payload within the bound makes: the JSON text
+ *  (two hex characters per content byte, plus each entry's other fields),
+ *  the AES-GCM nonce and tag (28 bytes), in base64url. The receiver refuses
+ *  a longer blob before it decrypts or parses anything, so the bound holds
+ *  whatever size the transport lets through. */
+export const PRIVATE_FILINGS_MAX_BLOB_CHARS = Math.ceil(
+    ((2 * PRIVATE_FILINGS_MAX_BYTES + PRIVATE_FILINGS_MAX_COUNT * ENTRY_TEXT_BESIDE_CONTENT + 16 + 28) * 4) / 3,
+);
 
 /** One private filing: where it sits on the chain, and its encoded bytes. */
 export interface PrivateFiling {
@@ -104,17 +123,19 @@ function boundRefusal(filings: readonly { content: string }[]): string | null {
     return null;
 }
 
-/** The copies this browser kept when it filed: each private filing on
- *  `orderHash` attested by `attester`, whose kept bytes check against the
- *  reference and which it did not receive from anyone. One per place. */
-export function heldOwnPrivateFilings(orderHash: string, attestations: readonly FiledAttestation[], attester: string): PrivateFiling[] {
+/** The copies the holder kept when it filed: each private filing on
+ *  `orderHash` attested by the holder's wallet, whose kept bytes check
+ *  against the reference and which it did not receive from anyone. One per
+ *  place; none where no wallet is connected. */
+export function heldOwnPrivateFilings(orderHash: string, attestations: readonly FiledAttestation[], holder: WitnessHolder | null | undefined): PrivateFiling[] {
     const out: PrivateFiling[] = [];
+    if (!holder) return out;
     const seen = new Set<string>();
     for (const att of attestations) {
-        if (!hexEqual(att.orderHash, orderHash) || !hexEqual(att.attester, attester)) continue;
+        if (!hexEqual(att.orderHash, orderHash) || !hexEqual(att.attester, holder.address)) continue;
         const place = placeKey(att);
         if (seen.has(place)) continue;
-        const held = readHeldWitness(att);
+        const held = readHeldWitness(holder, att);
         if (!held || held.received) continue;
         seen.add(place);
         out.push({ orderHash: orderHash as Hex, clauseId: att.clauseId as Hex, stage: att.stage, contentRef: att.contentRef as Hex, content: held.content });
@@ -123,29 +144,29 @@ export function heldOwnPrivateFilings(orderHash: string, attestations: readonly 
 }
 
 /** How many private filings `attester` made on `orderHash` whose content
- *  this browser does not hold: what the receiver may ask for. A filing
+ *  the holder does not keep: what the receiver may ask for. A filing
  *  counts once its clause's spec is read and declares the set private. */
-export function privateFilingsNotHeld(orderHash: string, attestations: readonly FiledAttestation[], attester: string): number {
+export function privateFilingsNotHeld(orderHash: string, attestations: readonly FiledAttestation[], attester: string, holder: WitnessHolder | null | undefined): number {
     const places = new Set<string>();
     for (const att of attestations) {
         if (!hexEqual(att.orderHash, orderHash) || !hexEqual(att.attester, attester)) continue;
         // A filing whose clause's spec is unread is not counted: its set
         // may be public.
-        if (encodedSetPrivacy(att.clauseId, att.stage) !== true || readKeptWitnessContent(att)) continue;
+        if (encodedSetPrivacy(att.clauseId, att.stage) !== true || readKeptWitnessContent(holder, att)) continue;
         places.add(placeKey(att));
     }
     return places.size;
 }
 
-/** Whether the private filings of `orderHash` concern the wallet `me`: the
- *  counterparty made a filing on it whose set its clause's spec, once read,
- *  declares private, or this browser kept one `me` made. The order page
+/** Whether the private filings of `orderHash` concern the holder's wallet:
+ *  the counterparty made a filing on it whose set its clause's spec, once
+ *  read, declares private, or the holder kept one it made. The order page
  *  mounts the panel only then, and reads again as specs load. */
-export function privateFilingsInPlay(orderHash: string, attestations: readonly FiledAttestation[], me: string, counterparty: string): boolean {
+export function privateFilingsInPlay(orderHash: string, attestations: readonly FiledAttestation[], holder: WitnessHolder, counterparty: string): boolean {
     return attestations.some((att) => hexEqual(att.orderHash, orderHash)
         && hexEqual(att.attester, counterparty)
         && encodedSetPrivacy(att.clauseId, att.stage) === true)
-        || heldOwnPrivateFilings(orderHash, attestations, me).length > 0;
+        || heldOwnPrivateFilings(orderHash, attestations, holder).length > 0;
 }
 
 /** Step 1 — the receiver asks for the private filings of the order: its
@@ -231,6 +252,14 @@ export async function decryptPrivateFilings(params: {
     senderPubKeyHex: string;
     blobB64: string;
 }): Promise<ReceivedPrivateFilings | null> {
+    // A blob longer than any payload within the bound can make is refused
+    // unread: nothing is decrypted or parsed.
+    if (params.blobB64.length > PRIVATE_FILINGS_MAX_BLOB_CHARS) {
+        return {
+            filings: [], dropped: 0,
+            refusal: `A delivery of private filings carries at most ${PRIVATE_FILINGS_MAX_COUNT} filings and ${Math.round(PRIVATE_FILINGS_MAX_BYTES / 1024)} KiB of content; this sealed message is larger than any such delivery, so it was not opened.`,
+        };
+    }
     const entries = await openCeremonyBlob(params, filingsCeremonyId(params.orderId), readFilingsList);
     if (entries === null) return null;
     const refusal = boundRefusal(entries.map((e) => ({
@@ -257,11 +286,11 @@ export function privateFilingAnchors(received: ReceivedPrivateFilings, sender: s
 
 /** Keep each received entry whose attestation the chain holds
  *  (`anchoredEach`, one verdict per entry in order), marked received.
- *  Returns how many entries this browser holds a copy of. */
-export function keepConfirmedPrivateFilings(received: ReceivedPrivateFilings, anchoredEach: readonly boolean[]): number {
+ *  Returns how many entries the holder keeps a copy of. */
+export function keepConfirmedPrivateFilings(holder: WitnessHolder | null | undefined, received: ReceivedPrivateFilings, anchoredEach: readonly boolean[]): number {
     let kept = 0;
     received.filings.forEach((f, i) => {
-        if (anchoredEach[i] === true && keepReceivedWitnessContent(f) === "kept") kept += 1;
+        if (anchoredEach[i] === true && keepReceivedWitnessContent(holder, f) === "kept") kept += 1;
     });
     return kept;
 }

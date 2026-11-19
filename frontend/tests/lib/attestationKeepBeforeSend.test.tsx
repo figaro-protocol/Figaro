@@ -52,7 +52,7 @@ vi.mock("@/lib/composition/witnessContent", async (importOriginal) => ({
 vi.mock("@/lib/shared/contractWrite", () => ({
     simulateWriteVerify: async ({ args }: { args: unknown[] }) => {
         const [, clauseId, stage, , , contentRef] = args as [unknown, Hex, number, unknown, unknown, Hex];
-        w.keptAtWrite.push(readKeptWitnessContent({ orderHash: ORDER, clauseId, stage, contentRef }));
+        w.keptAtWrite.push(readKeptWitnessContent({ address: "0x2222222222222222222222222222222222222222", chainId: 31337 }, { orderHash: ORDER, clauseId, stage, contentRef }));
         w.write();
         return `0x${"12".repeat(32)}`;
     },
@@ -120,7 +120,7 @@ describe("the submitter keeps a private set's content before it sends", () => {
         const { content } = prepareAttestationContent(getClauseSpec(PRIVATE_DELIVERY.clauseKey)!, { contentHash: ARTIFACT_HASH }, { stage: 1 });
         expect(await file(PRIVATE_DELIVERY.clauseKey, content)).toBeUndefined();
         expect(w.keptAtWrite).toEqual([content]);
-        const values = readKeptWitnessValues({ orderHash: ORDER, clauseId: PRIVATE_DELIVERY.clauseKey, stage: 1, contentRef: keccak256(content) });
+        const values = readKeptWitnessValues({ address: "0x2222222222222222222222222222222222222222", chainId: 31337 }, { orderHash: ORDER, clauseId: PRIVATE_DELIVERY.clauseKey, stage: 1, contentRef: keccak256(content) });
         expect(values?.contentHash).toBe(ARTIFACT_HASH);
         expect(values?.blinding).toMatch(/^0x[0-9a-f]{64}$/);
     });

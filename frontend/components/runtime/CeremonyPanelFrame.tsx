@@ -28,12 +28,17 @@ export function CeremonyPanelFrame({ testId, title, clauseKey, children }: {
 /**
  * The request control every ceremony panel shows the receiving party: one
  * click, one wallet signature over this tab's temporary public key. Once
- * the request is sent it names the seat it waits on (`waitingLabel`).
+ * the request is sent from this page it names the seat it waits on
+ * (`waitingLabel`). A request found only by this tab's stored key (an
+ * earlier load, or the tab this one was duplicated from, whose session
+ * storage the browser copied) can be sent again, with the same key.
  */
-export function CeremonyRequestButton({ label, waitingLabel, requested, busy, ready, onRequest, testId }: {
+export function CeremonyRequestButton({ label, waitingLabel, requested, requestedHere, busy, ready, onRequest, testId }: {
     label: string;
     waitingLabel: string;
     requested: boolean;
+    /** The request was sent from this page (`useCeremonyChannel`). */
+    requestedHere: boolean;
     busy: boolean;
     /** False until the channel is ready and a wallet can sign. */
     ready: boolean;
@@ -46,11 +51,11 @@ export function CeremonyRequestButton({ label, waitingLabel, requested, busy, re
             variant="outline"
             size="compact"
             onClick={() => void onRequest()}
-            disabled={busy || !ready || requested}
+            disabled={busy || !ready || (requested && requestedHere)}
             data-testid={testId}
             className="py-1.5 rounded border-default text-ink-body hover:bg-paper hover:border-default-strong"
         >
-            {requested ? waitingLabel : busy ? "Requesting…" : label}
+            {requested && requestedHere ? waitingLabel : busy ? "Requesting…" : requested ? `${waitingLabel}. Request again` : label}
         </Button>
     );
 }

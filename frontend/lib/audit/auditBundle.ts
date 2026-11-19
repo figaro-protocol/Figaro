@@ -27,7 +27,7 @@ import type { Agreement } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import { extractContract, type ContractDocument } from "./contractExtract";
-import { extractProcessLogs, type HeldWitnessReader, type ProcessLogsDocument } from "./processLogsExtract";
+import { extractProcessLogs, type HeldWitnessReader, type ProcessLogsDocument, type WITHHELD_FROM_PUBLIC_FILE } from "./processLogsExtract";
 import { extractClauseData, type ClauseDataDocument } from "./clauseDataExtract";
 import {
     extractMembersRegistry,
@@ -62,8 +62,9 @@ export interface AuditBundleInputs {
     /** The private attestation content the file's builder holds (its own,
      *  kept when it attested), checked against each `contentRef`. Absent:
      *  the builder holds none, and each private attestation is named
-     *  missing. */
-    heldWitness?: HeldWitnessReader;
+     *  missing. `WITHHELD_FROM_PUBLIC_FILE`: the file is pinned in public,
+     *  so none is read and each is named withheld by its fingerprint. */
+    heldWitness?: HeldWitnessReader | typeof WITHHELD_FROM_PUBLIC_FILE;
 }
 
 export function buildAuditBundle(

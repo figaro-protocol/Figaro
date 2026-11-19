@@ -39,7 +39,8 @@ vi.mock("@/lib/composition/indexer", () => ({ getAttestationsByOrder: async () =
 vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [], getActiveMembers: async () => [] }));
 vi.mock("@/lib/audit/processTimeline", () => ({ buildProcessTimeline: async () => ({ missing: [] }) }));
 vi.mock("@/lib/composition/witnessContent", () => ({
-    readHeldWitness: (place: { contentRef: string }) => held.byRef.get(place.contentRef.toLowerCase()) ?? null,
+    // The holder holds both witnesses: a file that read them would carry them.
+    heldWitnessReader: () => (place: { contentRef: string }) => held.byRef.get(place.contentRef.toLowerCase()) ?? null,
 }));
 // The renderer writes the data the page would print as the blob.
 vi.mock("@/lib/audit/pdfBundle", () => ({ AuditBundlePdf: ({ data }: { data: unknown }) => data }));
@@ -127,5 +128,21 @@ describe("RecoursePanel pins an evidence file with private content by its finger
         // Each private piece is still named, by its fingerprint.
         for (const contentRef of held.byRef.keys()) expect(text.toLowerCase()).toContain(contentRef.toLowerCase());
         expect(text).toContain(`Content of private clause ${clauseKey}`);
+    });
+
+    it("names each private witness withheld from the public file, by its fingerprint, never as one its builder does not hold", async () => {
+        pinned.blobs.length = 0;
+        render(<RecoursePanel processId={PROCESS} orders={ORDERS} />);
+        fireEvent.click(await screen.findByTestId("dispute-evidence-prepare"));
+        await waitFor(() => expect(pinned.blobs).toHaveLength(1));
+        const data = JSON.parse(await pinned.blobs[0].text()) as { missing: Array<{ part: string; reason: string }> };
+
+        // The builder holds both witnesses (the mock above), and leaves both out.
+        expect(data.missing.map((m) => m.reason).join("\n")).not.toContain("does not hold it");
+        for (const contentRef of held.byRef.keys()) {
+            const entry = data.missing.find((m) => m.part.includes(`contentRef ${contentRef}`));
+            expect(entry?.reason).toContain("withheld from a file pinned in public");
+            expect(entry?.reason).toContain(`its fingerprint, contentRef ${contentRef}`);
+        }
     });
 });

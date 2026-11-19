@@ -19,7 +19,8 @@ import type { Order } from "@/lib/core/store";
 import { publicForm, type Agreement } from "@figaro-protocol/sdk";
 import { getAllMemberRegistered, getActiveMembers } from "@/lib/protocol/membersRegistryIndexer";
 import { getAttestationsByOrder } from "@/lib/composition/indexer";
-import { readHeldWitness } from "@/lib/composition/witnessContent";
+import { heldWitnessReader, type WitnessHolder } from "@/lib/composition/witnessContent";
+import { WITHHELD_FROM_PUBLIC_FILE } from "@/lib/audit/processLogsExtract";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { buildAuditBundle, type AuditBundle } from "@/lib/audit/auditBundle";
 import type {
@@ -59,10 +60,17 @@ export interface BuildAuditBundlePdfOptions {
      * form (`publicForm`: a private clause, its blinding value included, is
      * withheld behind its data hash, and a clause whose spec is not loaded is
      * withheld too), and no held copy of a private attestation's content is
-     * read, kept or received alike: the file names each by its fingerprint
-     * and says its holder keeps it.
+     * read, kept or received alike: the file names each withheld, by its
+     * fingerprint.
      */
     forPublicPin?: boolean;
+    /**
+     * Whose kept private witness content a file for the party itself reads
+     * (`WitnessHolder`): the wallet connected, on the chain the page shows.
+     * Absent or null, none is read, and each private attestation is named
+     * missing. A file pinned in public reads none whatever this holds.
+     */
+    holder?: WitnessHolder | null;
 }
 
 /**
@@ -163,11 +171,12 @@ export async function buildAuditBundleData(
 
         const bundle = buildAuditBundle(order, agreement, attestations, {
             memberRegistrationEvents: memberRegisteredAll,
-            // The private attestation content this browser kept, each
+            // The private attestation content the holder kept, each
             // checked against its contentRef and decoded from those bytes:
             // the same reader the audit page passes, so both name the same
-            // pieces missing. A file pinned in public reads none.
-            ...(options.forPublicPin ? {} : { heldWitness: readHeldWitness }),
+            // pieces missing. A file pinned in public reads none, and names
+            // each withheld by its fingerprint.
+            heldWitness: options.forPublicPin ? WITHHELD_FROM_PUBLIC_FILE : heldWitnessReader(options.holder),
         });
         perOrderBundles.push(bundle);
         missing.push(...bundle.missing);

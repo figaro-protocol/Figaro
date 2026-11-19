@@ -14,7 +14,9 @@
  *     declared stage, whether the parties' filings agree (derived, never stored).
  *   - the PRIVATE FILINGS panel — per order this wallet is a party to, the
  *     request for the counterparty's private filings and the sealed send of
- *     its own (`PrivateFilingsPanel`).
+ *     its own (`PrivateFilingsPanel`), and, where the process carries a
+ *     private filing, the wallet's own export, import and removal of the
+ *     private content this browser keeps for it (`KeptPrivateContentPanel`).
  *   - the CAPABILITY rail — every action the buyer/seller can take, DERIVED by
  *     the builder (`deriveProcessModelFromRuntime`) from the clauses the
  *     agreement carries + the attestation state, executed through one path
@@ -35,6 +37,9 @@ import { CapabilityRail } from "@/components/runtime/CapabilityRail";
 import { OrderInteractionSurfaces } from "@/components/runtime/OrderInteractionSurfaces";
 import { PrivateFilingsPanel } from "@/components/runtime/PrivateFilingsPanel";
 import { privateFilingsInPlay } from "@/lib/handoff/privateFilings";
+import { KeptPrivateContentPanel } from "@/components/runtime/KeptPrivateContentPanel";
+import { useWitnessHolder } from "@/lib/composition/useWitnessHolder";
+import { encodedSetPrivacy } from "@/lib/composition/witnessContent";
 import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import { StageAttestationComparison } from "@/components/runtime/StageAttestationComparison";
 import { useSemanticProcessWorkspace } from "@/hooks/useSemanticProcessWorkspace";
@@ -61,6 +66,7 @@ interface Props {
 
 export function OrderTimelineView({ processId }: Props) {
     const { address } = useAccount();
+    const holder = useWitnessHolder();
     const workspace = useSemanticProcessWorkspace({ processId });
     const { read: listingsRead } = useMemberListings();
     // Names come only from listings the registry returned; an absent read
@@ -217,8 +223,8 @@ export function OrderTimelineView({ processId }: Props) {
                             concern this wallet: the party that does not hold
                             the content asks, its attester sends on that
                             request alone. Names no clause. */}
-                        {address && workspace.processAttestations && privateFilingsInPlay(
-                            order.orderId, workspace.processAttestations, address,
+                        {address && holder && workspace.processAttestations && privateFilingsInPlay(
+                            order.orderId, workspace.processAttestations, holder,
                             hexEqual(address, order.seller) ? order.buyer : order.seller,
                         ) && (
                             <PrivateFilingsPanel
@@ -231,6 +237,15 @@ export function OrderTimelineView({ processId }: Props) {
                         )}
                     </div>
                 ))}
+
+            {/* The wallet's own copies of private content, where this process
+                carries a filing whose set its clause's spec declares private:
+                export, import, removal. Names no clause. */}
+            {role !== "spectator" && holder && workspace.processAttestations?.some(
+                (att) => encodedSetPrivacy(att.clauseId, att.stage) === true,
+            ) && (
+                <KeptPrivateContentPanel holder={holder} refreshKey={filingsKeptRound} onChanged={onFilingsKept} />
+            )}
 
             {/* What you can do — every action the builder derived from the
                 agreement's clauses + attestation state. One execution path. */}

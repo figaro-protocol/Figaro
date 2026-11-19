@@ -26,6 +26,9 @@ const THIRD_ACCOUNT = privateKeyToAccount("0x7c852118294e51e653712a81e05800f4191
 const SELLER = SELLER_ACCOUNT.address;
 const BUYER = BUYER_ACCOUNT.address;
 const THIRD = THIRD_ACCOUNT.address;
+/** The two parties as holders of kept copies, on the chain the page shows (31337 below). */
+const AS_SELLER = { address: SELLER, chainId: 31337 };
+const AS_BUYER = { address: BUYER, chainId: 31337 };
 
 /** The wallet connected in the page under render. */
 let connected: PrivateKeyAccount | undefined;
@@ -117,7 +120,7 @@ function setup() {
 
 /** The seller's browser keeps its two filings, as the submitter does. */
 function sellerKeeps(order: Hex, ...filings: Array<{ content: Hex; event: RuntimeAttestation }>) {
-    for (const f of filings) keepPrivateWitnessContent({ orderHash: order, clauseId: f.event.clauseId, stage: f.event.stage, content: f.content });
+    for (const f of filings) keepPrivateWitnessContent(AS_SELLER, { orderHash: order, clauseId: f.event.clauseId, stage: f.event.stage, content: f.content });
 }
 
 /** Another device: the seller's kept copies are not in the buyer's browser. */
@@ -175,7 +178,7 @@ describe("the private filings of one order", () => {
         // Nothing left to ask for.
         expect(screen.queryByTestId("private-filings-request")).toBeNull();
         for (const f of [one, two]) {
-            const held = readHeldWitness(f.event);
+            const held = readHeldWitness(AS_BUYER, f.event);
             expect(held?.content).toBe(f.content);
             expect(held?.received).toBe(true);
         }
@@ -199,12 +202,12 @@ describe("the private filings of one order", () => {
         renderAs(BUYER_ACCOUNT, order, events);
         await waitFor(() => expect(screen.getByTestId("private-filings-kept").textContent).toContain("Kept 1 private filing"), { timeout: 5000 });
         expect(screen.getByTestId("private-filings-pending").textContent).toContain("1 waiting");
-        expect(readHeldWitness(one.event)?.content).toBe(one.content);
-        expect(readHeldWitness(two.event)).toBeNull();
+        expect(readHeldWitness(AS_BUYER, one.event)?.content).toBe(one.content);
+        expect(readHeldWitness(AS_BUYER, two.event)).toBeNull();
 
         chain = [one.event, two.event];
         await waitFor(() => expect(screen.getByTestId("private-filings-kept").textContent).toContain("Kept 2 private filings"), { timeout: 8000 });
-        expect(readHeldWitness(two.event)?.content).toBe(two.content);
+        expect(readHeldWitness(AS_BUYER, two.event)?.content).toBe(two.content);
     }, 15000);
 
     it("a sender that is not the order's counterparty is refused: nothing it seals is kept", async () => {
@@ -227,8 +230,8 @@ describe("the private filings of one order", () => {
         await screen.findByTestId("private-filings-request");
         await new Promise((r) => setTimeout(r, 300));
         expect(screen.queryByTestId("private-filings-kept")).toBeNull();
-        expect(readHeldWitness(one.event)).toBeNull();
-        expect(readHeldWitness(two.event)).toBeNull();
+        expect(readHeldWitness(AS_BUYER, one.event)).toBeNull();
+        expect(readHeldWitness(AS_BUYER, two.event)).toBeNull();
     });
 
     it("a message that names the seller as its sender but is signed by a third wallet is refused", async () => {
@@ -250,8 +253,30 @@ describe("the private filings of one order", () => {
         await screen.findByTestId("private-filings-request");
         await new Promise((r) => setTimeout(r, 300));
         expect(screen.queryByTestId("private-filings-received")).toBeNull();
-        expect(readHeldWitness(one.event)).toBeNull();
-        expect(readHeldWitness(two.event)).toBeNull();
+        expect(readHeldWitness(AS_BUYER, one.event)).toBeNull();
+        expect(readHeldWitness(AS_BUYER, two.event)).toBeNull();
+    });
+
+    it("a duplicated tab, whose session storage the browser copied with the temporary key, can send the request again and receives the filings", async () => {
+        const { order, one, two, events } = setup();
+        chain = [...events];
+        await buyerRequests(order, events);
+
+        // The duplicate: the same session storage, a page that sent nothing.
+        renderAs(BUYER_ACCOUNT, order, events);
+        const again = await screen.findByTestId("private-filings-request");
+        await waitFor(() => expect((again as HTMLButtonElement).disabled).toBe(false));
+        expect(again.textContent).toMatch(/Request again/);
+        await act(async () => { fireEvent.click(again); });
+        await waitFor(() => expect((screen.getByTestId("private-filings-request") as HTMLButtonElement).disabled).toBe(true));
+        expect(screen.getByTestId("private-filings-request").textContent).toMatch(/waiting for the seller$/i);
+        cleanup();
+
+        sellerKeeps(order, one, two);
+        await sellerSends(order, events, 2);
+        leaveSellerBrowser();
+        renderAs(BUYER_ACCOUNT, order, events);
+        await waitFor(() => expect(screen.getByTestId("private-filings-kept").textContent).toContain("Kept 2 private filings"), { timeout: 5000 });
     });
 
     it("the send control says what the key's offer is: a request, or the counterparty's own send", async () => {

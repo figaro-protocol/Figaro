@@ -204,15 +204,16 @@ Four limits, stated plainly:
    the order, by asking for one or by sending its own filings. The
    reference frontend keeps it in the attester's browser storage
    (`localStorage`, `keepPrivateWitnessContent` in
-   `frontend/lib/composition/witnessContent.ts`). The one submitter every
+   `frontend/lib/composition/witnessContent.ts`), under the wallet that
+   attested and the chain it attested on (point 4). The one submitter every
    filing goes through, the rail's attestations and the ceremony panels'
    evidence alike, writes it before the attestation is sent and refuses to
    send where the browser will not keep it (`submitAttestation` in
    `frontend/lib/composition/useAttestationCoordinatorActions.ts`). It keeps the bytes only, one entry per attestation, and every reader
    decodes the values, blinding value included, from the bytes it has checked
    against the content reference. A party that clears its browser's storage
-   loses it: the content is its own to keep, and the evidence file is how it
-   carries it out. A filing that was kept and never landed stays on the
+   loses it: the content is its own to keep, and its export (point 4) and the
+   evidence file are how it carries it out. A filing that was kept and never landed stays on the
    device until the site's storage is cleared, and the copy holds the content
    and its blinding value; no page shows it, since no `Attestation` event
    names its place. The submitter removes the copy only where no transaction
@@ -248,15 +249,35 @@ Four limits, stated plainly:
    The order page, the comparison of filings, the audit page and the
    evidence file read it, and the evidence file says that the copy was
    received from the attester. One delivery carries at most 64 filings and
-   128 KiB of content. What remains: a counterparty that never asks holds
+   128 KiB of content. The receiver refuses a sealed message longer than
+   any delivery within that bound makes before it decrypts or parses it
+   (`PRIVATE_FILINGS_MAX_BLOB_CHARS`), so the bound holds whatever size the
+   transport lets through; a payload within that length but over the bound
+   is refused once unsealed. A browser that duplicates a tab copies its
+   session storage, the temporary key included: the duplicate's page shows
+   the request as sent earlier and lets the party send it again, with the
+   same key. What remains: a counterparty that never asks holds
    nothing, and a copy reaches only a tab that still holds the key it
    offered; the attester's evidence file is then the one route of that
    content to a forum.
-4. The kept copy belongs to the browser profile, not to a wallet. Anyone who
-   opens that browser profile reads the decoded private content on the order
-   page and the audit page, with any wallet connected or none. A party on a
-   shared device clears the copy once it has carried it out in its evidence
-   file, or attests from a browser profile of its own that no one else opens.
+4. The kept copy belongs to a wallet on a chain, not to the browser profile.
+   Each entry is stored under the chain and the wallet that kept it (its
+   own filing) or received it (a counterparty's copy), and every reader in
+   the reference frontend reads only the entries of the wallet connected, on
+   the chain the page shows (`WitnessHolder`, `useWitnessHolder`). With no
+   wallet connected, no page reads a copy and the submitter keeps none, so
+   it sends no private filing. The copy has no expiry: an open process has
+   no timeout, and the content is evidence for as long as the process stays
+   open. On `/orders/view`, where the process carries a private filing, the
+   wallet exports its copies to a file of its own, imports such a file back
+   into any browser (each entry checked again against its content reference,
+   and only into the wallet and chain that exported it), and removes its
+   copies from the browser (`KeptPrivateContentPanel`). What the scope does
+   not do: the bytes sit in the browser profile's storage as written, so
+   anyone who opens that storage directly, outside the pages, reads them. A
+   party on a shared device exports its copies and removes them from the
+   browser, or attests from a browser profile of its own that no one else
+   opens.
 
 What the blinding value does not hide: that a clause, a private stage and a
 field set were used; the spec's structure, since the spec is public; who

@@ -47,6 +47,22 @@ export function removeStorage(key: string, area: StorageArea = "local"): void {
     }
 }
 
+/** Every key held under `prefix`; empty where storage is unavailable. */
+export function listStorageKeys(prefix: string, area: StorageArea = "local"): string[] {
+    const storage = storageArea(area);
+    if (!storage) return [];
+    try {
+        const out: string[] = [];
+        for (let i = 0; i < storage.length; i++) {
+            const key = storage.key(i);
+            if (key !== null && key.startsWith(prefix)) out.push(key);
+        }
+        return out;
+    } catch {
+        return [];
+    }
+}
+
 export function readJsonStorage<T>(key: string, fallback: T, area: StorageArea = "local"): T {
     const stored = readStorage(key, area);
     if (!stored) return fallback;

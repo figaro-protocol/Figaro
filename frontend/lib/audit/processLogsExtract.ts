@@ -86,10 +86,15 @@ export interface ProcessLogsDocument extends ExtractedDocument {
     missing: MissingPart[];
 }
 
+/** The held witnesses of a file pinned in public: none is read, and each
+ *  private attestation is named withheld by its fingerprint, whether or not
+ *  the file's builder holds its content. */
+export const WITHHELD_FROM_PUBLIC_FILE = "withheld-from-public-file";
+
 export function extractProcessLogs(
     order: Order,
     attestations: readonly AttestationRecord[],
-    heldWitness?: HeldWitnessReader,
+    heldWitness?: HeldWitnessReader | typeof WITHHELD_FROM_PUBLIC_FILE,
 ): ProcessLogsDocument {
     const groups = new Map<string, ProcessLogGroup>();
     const missing: MissingPart[] = [];
@@ -124,12 +129,15 @@ export function extractProcessLogs(
         // is the one the content was encoded from: `stages[stage]` where the
         // spec declares it, else the top-level set, a ladder event's alike.
         const isPrivate = (attestationContentFields(clauseKey, att.stage) ?? []).some((f) => f.disposition === "private");
-        const held = isPrivate ? heldWitness?.(att) ?? null : null;
+        const withheld = heldWitness === WITHHELD_FROM_PUBLIC_FILE;
+        const held = isPrivate && !withheld ? heldWitness?.(att) ?? null : null;
         if (isPrivate && !held) {
             missing.push({
                 part: `Content of the private attestation of clause ${clauseKey}, stage ${att.stage}, contentRef ${att.contentRef}`,
                 orderHash: order.orderHash,
-                reason: "the content of a private attestation is never published, and the builder of this file does not hold it; its attester keeps it",
+                reason: withheld
+                    ? `the content of a private attestation is withheld from a file pinned in public; the file names it by its fingerprint, contentRef ${att.contentRef}, and its holder hands the content to a forum, which checks it against that fingerprint`
+                    : "the content of a private attestation is never published, and the builder of this file does not hold it; its attester keeps it",
             });
         }
         group.events.push({

@@ -64,7 +64,7 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
 
     // Both parties send ECDH pubkeys on the derived content-ceremony id.
     const {
-        role, channel, peerPubKey, requested, received, anchored, busy, error, handleRequest, deliver, waitingLabel, requestLabel,
+        role, channel, peerPubKey, requested, requestedHere, received, anchored, busy, error, handleRequest, deliver, waitingLabel, requestLabel,
     } = useCeremonyPanel<DeliveredContent>({
         ceremonyId, orderHash, buyer, seller, decryptBlob: decryptContentDelivery, expectedAnchor,
         request: requestContentDelivery,
@@ -127,7 +127,7 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
             {/* Ask for the counterparty's content. */}
             {!received && (
                 <CeremonyRequestButton
-                    label={requestLabel} waitingLabel={waitingLabel} requested={requested} busy={busy}
+                    label={requestLabel} waitingLabel={waitingLabel} requested={requested} requestedHere={requestedHere} busy={busy}
                     ready={!!channel} onRequest={handleRequest} testId="interaction-content-request"
                 />
             )}

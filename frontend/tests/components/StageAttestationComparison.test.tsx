@@ -22,10 +22,11 @@ const published = new Map<string, Hex>();
 const held = new Map<string, Hex>();
 vi.mock("@/lib/composition/witnessContent", () => ({
     fetchWitnessContent: async (ref: string) => published.get(ref.toLowerCase()) ?? null,
-    resolveHeldWitnessContent: async (place: { orderHash: string; contentRef: string }) =>
+    resolveHeldWitnessContent: async (_holder: unknown, place: { orderHash: string; contentRef: string }) =>
         held.get(`${place.orderHash.toLowerCase()}:${place.contentRef.toLowerCase()}`) ?? published.get(place.contentRef.toLowerCase()) ?? null,
 }));
 vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
+vi.mock("@/lib/composition/useWitnessHolder", () => ({ useWitnessHolder: () => ({ address: "0x2222222222222222222222222222222222222222", chainId: 31337 }) }));
 
 import { StageAttestationComparison } from "@/components/runtime/StageAttestationComparison";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";

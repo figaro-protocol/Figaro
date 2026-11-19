@@ -433,7 +433,14 @@ Y", not as an open-ended build.)
   (`lib/handoff/useCeremonyChannel.ts`), whose `expectedAnchor` returns one
   expectation or one per part of the payload, each a content reference or a
   whole attestation place, and `CeremonyPanelFrame` with
-  `CeremonyRequestButton`.
+  `CeremonyRequestButton` (a request found only by the tab's stored key, as
+  in a duplicated tab, can be sent again). The kept-witness store is read
+  and written per wallet and chain (`useWitnessHolder` in
+  `lib/composition/`); `KeptPrivateContentPanel`
+  (`components/runtime/KeptPrivateContentPanel.tsx`, on `/orders/view`
+  where the process carries a private filing) exports, imports and removes
+  the connected wallet's copies (`docs/DATA_LAYER.md`, the paragraph on
+  what a party keeps).
 - **Clause-composition UI** — `app/(tools)/assemblies/designer/_components/AgreementDrawer.tsx`
   (reads ClauseRegistry live; grouping word is `block.design.article`).
 - **On-chain write flow** — `lib/member/usePublishMemberProfile.ts`

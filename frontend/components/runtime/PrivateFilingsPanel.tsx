@@ -36,6 +36,7 @@ import {
     type ReceivedPrivateFilings,
 } from "@/lib/handoff/privateFilings";
 import { useCeremonyPanel } from "@/lib/handoff/useCeremonyChannel";
+import { useWitnessHolder } from "@/lib/composition/useWitnessHolder";
 import { hexEqual } from "@/lib/shared/evm";
 import { Button } from "@/components/ui/Button";
 import { CeremonyPanelFrame, CeremonyRequestButton } from "@/components/runtime/CeremonyPanelFrame";
@@ -63,11 +64,12 @@ const expectedAnchor = (received: ReceivedPrivateFilings, _blobB64: string, send
 
 export function PrivateFilingsPanel({ orderHash, buyer, seller, attestations, onKept }: Props) {
     const { address } = useAccount();
+    const holder = useWitnessHolder();
     const [sent, setSent] = useState<number | null>(null);
     const [kept, setKept] = useState(0);
 
     const {
-        role, channel, peerPubKey, requested, received, anchoredEach, busy, error, handleRequest, deliver, waitingLabel, requestLabel,
+        role, channel, peerPubKey, requested, requestedHere, received, anchoredEach, busy, error, handleRequest, deliver, waitingLabel, requestLabel,
     } = useCeremonyPanel<ReceivedPrivateFilings>({
         ceremonyId: filingsCeremonyId(orderHash), orderHash, buyer, seller,
         decryptBlob: decryptPrivateFilings, expectedAnchor, request: requestPrivateFilings, requestLabels: REQUEST_LABELS,
@@ -77,28 +79,29 @@ export function PrivateFilingsPanel({ orderHash, buyer, seller, attestations, on
     const keptBefore = useRef(0);
     useEffect(() => {
         if (!received) return;
-        const held = keepConfirmedPrivateFilings(received, anchoredEach);
+        const held = keepConfirmedPrivateFilings(holder, received, anchoredEach);
         setKept(held);
         if (held > keptBefore.current) onKept?.();
         keptBefore.current = held;
-    }, [received, anchoredEach, onKept]);
+    }, [holder, received, anchoredEach, onKept]);
 
-    const own = address ? heldOwnPrivateFilings(orderHash, attestations, address) : [];
+    const own = heldOwnPrivateFilings(orderHash, attestations, holder);
     const counterparty = role === "buyer" ? seller : buyer;
-    const notHeld = role ? privateFilingsNotHeld(orderHash, attestations, counterparty) : 0;
+    const notHeld = role ? privateFilingsNotHeld(orderHash, attestations, counterparty, holder) : 0;
 
     const handleSend = useCallback(async () => {
         const count = await deliver("Sending the private filings failed.", async (ctx) => {
             const { count } = await sendPrivateFilings(ctx.channel, {
                 myAddress: ctx.address, recipientAddress: ctx.counterparty, orderId: orderHash,
-                recipientPubKeyHex: ctx.peerPubKey, filings: heldOwnPrivateFilings(orderHash, attestations, ctx.address),
+                recipientPubKeyHex: ctx.peerPubKey,
+                filings: heldOwnPrivateFilings(orderHash, attestations, holder && hexEqual(holder.address, ctx.address) ? holder : null),
                 signAuth: ctx.signAuth,
             });
             // The filings are attested already: this send files nothing.
             return { result: count };
         });
         if (count !== undefined) setSent(count);
-    }, [deliver, orderHash, attestations]);
+    }, [deliver, orderHash, attestations, holder]);
 
     if (!role || !address || hexEqual(counterparty, address)) return null;
     const canSend = !!peerPubKey && own.length > 0 && sent === null;
@@ -122,7 +125,7 @@ export function PrivateFilingsPanel({ orderHash, buyer, seller, attestations, on
                         content this browser does not hold.
                     </p>
                     <CeremonyRequestButton
-                        label={requestLabel} waitingLabel={waitingLabel} requested={requested} busy={busy}
+                        label={requestLabel} waitingLabel={waitingLabel} requested={requested} requestedHere={requestedHere} busy={busy}
                         ready={!!channel} onRequest={handleRequest} testId="private-filings-request"
                     />
                     <p className="text-[11px] text-ink-muted" data-testid="private-filings-wallet-note">

@@ -20,6 +20,7 @@ const m = vi.hoisted(() => ({ model: null as unknown }));
 
 vi.mock("wagmi", () => ({
     useAccount: () => ({ address: "0x1111111111111111111111111111111111111111", isConnected: true }),
+    useChainId: () => 31337,
 }));
 vi.mock("@/hooks/useSemanticProcessWorkspace", () => ({
     useSemanticProcessWorkspace: () => ({

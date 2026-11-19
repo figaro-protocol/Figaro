@@ -14,6 +14,7 @@ import { useChainId, usePublicClient } from "wagmi";
 import type { Order } from "@/lib/core/store";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
+import { useWitnessHolder } from "@/lib/composition/useWitnessHolder";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { Button } from "@/components/ui/Button";
 
@@ -36,6 +37,7 @@ function triggerDownload(blob: Blob, filename: string): void {
 export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBundleButtonProps) {
     const publicClient = usePublicClient();
     const chainId = useChainId();
+    const holder = useWitnessHolder();
     const checkoutHashes = useMemo(
         () => orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
         [orders],
@@ -56,7 +58,7 @@ export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBu
                     setBusy(true);
                     setError(null);
                     try {
-                        const blob = await buildAuditBundlePdfBlob(processId, orders, publicClient, chainId, agreements);
+                        const blob = await buildAuditBundlePdfBlob(processId, orders, publicClient, chainId, agreements, { holder });
                         triggerDownload(blob, `audit-bundle-${processId.slice(0, 10)}.pdf`);
                     } catch (e) {
                         setError(extractErrorMessage(e, "PDF generation failed."));

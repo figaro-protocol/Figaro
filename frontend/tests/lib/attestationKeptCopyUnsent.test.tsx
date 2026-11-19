@@ -100,7 +100,7 @@ async function file(content: Hex = prepareAttestationContent(getClauseSpec(PRIVA
             caught = e;
         }
     });
-    const kept = readKeptWitnessContent({ orderHash: ORDER, clauseId: PRIVATE.clauseKey, stage: 1, contentRef: keccak256(content) });
+    const kept = readKeptWitnessContent({ address: "0x2222222222222222222222222222222222222222", chainId: 31337 }, { orderHash: ORDER, clauseId: PRIVATE.clauseKey, stage: 1, contentRef: keccak256(content) });
     return { caught, kept };
 }
 
@@ -141,7 +141,7 @@ describe("a kept private copy whose attestation never reached the chain", () => 
 
     it("a copy held before the filing began stays when the wallet rejects", async () => {
         const { content } = prepareAttestationContent(getClauseSpec(PRIVATE.clauseKey)!, { reading: "4.2" }, { stage: 1 });
-        expect(keepPrivateWitnessContent({ orderHash: ORDER, clauseId: PRIVATE.clauseKey, stage: 1, content })).toBe("kept");
+        expect(keepPrivateWitnessContent({ address: "0x2222222222222222222222222222222222222222", chainId: 31337 }, { orderHash: ORDER, clauseId: PRIVATE.clauseKey, stage: 1, content })).toBe("kept");
         w.write = async () => { throw new Error("User rejected the request."); };
         const { kept } = await file(content);
         expect(kept).not.toBeNull();
