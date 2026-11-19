@@ -21,9 +21,10 @@ use figaro_kernel::types::{BatchEvents, BatchInput, KernelOp, NetPosition, Usage
 /// its fresh balance storage slot priced as live Sepolia prices state creation
 /// (EIP-8037; `BatchGasCeilingTest`, measured on live Sepolia at blocks
 /// 12106894 and 12107045). A plain ERC-20's transfer: a token whose
-/// transfer costs more is the parties' choice, and a batch whose node
-/// estimate it carries past the planned ceiling is refused before the send
-/// and isolated by splitting (`submitter::submit_batch`).
+/// transfer costs more is the parties' choice: up to twice this figure a
+/// batch lands (`settle_ceiling`), and a batch whose node estimate it
+/// carries past the batch's ceiling is refused before the send and isolated
+/// by splitting (`submitter::submit_batch`).
 pub const SETTLE_GAS_PER_POSITION: u64 = 120_000;
 /// Execution gas of one attestation event re-emitted.
 pub const SETTLE_GAS_PER_ATTESTATION: u64 = 6_000;
@@ -104,20 +105,46 @@ pub const GAS_HEADROOM_PCT: u64 = 95;
 /// and the whole batch reverts (`WalletCodeAuthorizationRefused`,
 /// `WalletCodeAttestationRefused`). A quarter over the estimate is at least
 /// `WALLET_CODE_EXECUTION_GAS` for any `settleBatch` call of two million gas or more,
-/// unless the cap at the budget cuts it.
+/// unless the batch's ceiling cuts it.
 /// Gas a transaction does not use is not charged, so the headroom costs only
-/// the block space it reserves; it is capped at the budget the batch was
-/// planned against (`settle_gas_limit`).
+/// the block space it reserves; it is capped at the batch's own ceiling
+/// (`settle_ceiling`, `settle_gas_limit`).
 pub const SETTLE_GAS_HEADROOM_PCT: u64 = 25;
 
 /// The gas limit a `settleBatch` call is sent with: the node's `estimate` with
-/// `SETTLE_GAS_HEADROOM_PCT` over it, capped at `ceiling` (the tick's budget,
-/// `settle_gas_budget`, under the chain's cap on one transaction). An
-/// estimate above `ceiling` is never sent (`submitter::submit_batch`).
+/// `SETTLE_GAS_HEADROOM_PCT` over it, capped at `ceiling` (the batch's own,
+/// `settle_ceiling`, never past the tick's budget). An estimate above
+/// `ceiling` is never sent (`submitter::submit_batch`).
 pub fn settle_gas_limit(estimate: u64, ceiling: u64) -> u64 {
     estimate
         .saturating_add(estimate / 100 * SETTLE_GAS_HEADROOM_PCT)
         .min(ceiling)
+}
+
+/// The most gas a batch planned at `planned`, with `positions` net
+/// positions, may cost the relay: its plan with one more planned transfer
+/// per position (`SETTLE_GAS_PER_POSITION`), and the send's headroom over
+/// that (`settle_gas_limit`), never past the tick's `budget`.
+///
+/// The verifier forwards a party's wallet code, and a token's transfer, all
+/// the gas left. Code that burns it and still answers yes would land a batch
+/// at whatever the relay's ceiling allows, and nothing names that party; a
+/// ceiling at the tick's budget made a batch planned at two million gas cost
+/// up to the budget. Held to its own plan, such a batch costs the relay at
+/// most this ceiling: a node's estimate above it is refused before anything
+/// is sent (`submitter::submit_batch`), and the send's gas limit never passes
+/// it. The margin of one planned transfer per position lets an honest token
+/// whose transfer costs up to twice what a position is planned at land: the
+/// parties chose that token, and refusing it would cost them their batch.
+/// The quarter over the whole covers the one-time storage a first batch
+/// writes, and keeps the send's headroom for wallet code whose cost rises
+/// between the estimate and inclusion whenever the estimate is within the
+/// plan and its margin.
+pub fn settle_ceiling(planned: u64, positions: usize, budget: u64) -> u64 {
+    settle_gas_limit(
+        planned.saturating_add((positions as u64).saturating_mul(SETTLE_GAS_PER_POSITION)),
+        budget,
+    )
 }
 
 /// The most gas one transaction may take, by default: EIP-7825's cap of
@@ -481,6 +508,31 @@ mod tests {
                 + 500_000
                 + 24_000
                 + 500_000
+        );
+    }
+
+    #[test]
+    fn a_batchs_ceiling_is_its_plan_with_a_transfer_per_position_and_a_quarter_never_past_the_budget(
+    ) {
+        // Two positions over a plan of two million: one more planned
+        // transfer each, then a quarter over the whole.
+        assert_eq!(
+            settle_ceiling(2_000_000, 2, 16_777_216),
+            (2_000_000 + 2 * SETTLE_GAS_PER_POSITION) / 4 * 5
+        );
+        // Never past the tick's budget.
+        assert_eq!(settle_ceiling(15_000_000, 10, 16_777_216), 16_777_216);
+        // A batch with no position keeps the quarter over its plan.
+        assert_eq!(settle_ceiling(800_000, 0, u64::MAX), 1_000_000);
+        // A token whose transfer costs twice the planned one fits, with the
+        // send's headroom intact over the estimate it gives.
+        let (planned, positions) = (2_000_000, 5);
+        let dearer = planned + positions as u64 * SETTLE_GAS_PER_POSITION;
+        let ceiling = settle_ceiling(planned, positions, u64::MAX);
+        assert!(dearer <= ceiling);
+        assert_eq!(
+            settle_gas_limit(dearer, ceiling),
+            dearer + dearer / 100 * SETTLE_GAS_HEADROOM_PCT
         );
     }
 

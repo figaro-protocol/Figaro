@@ -757,21 +757,9 @@ async fn batch_loop(
                 &input.operations,
                 &input.usage_claims,
             );
-            let calldata = submitter::settle_calldata(
-                &positions,
-                &events,
-                &pv.abi_encode(),
-                proof_len,
-                &stream,
-            );
-            Ok(gas::settle_gas_estimate(
-                &calldata,
-                gas::SettleItems::of(&positions, &events).with_stream(
-                    stream.len(),
-                    &input.operations,
-                    input.usage_claims.len(),
-                ),
-            ))
+            // The plan `submit_batch` holds the proved batch to, read the
+            // same way.
+            submitter::settle_plan(&positions, &events, &pv.abi_encode(), proof_len, &stream)
         };
 
         // A commit that would grow a batch-path process past what one settle
@@ -1024,6 +1012,8 @@ async fn batch_loop(
 
         // Submit on-chain (advance state mirror only on success)
         if !dry_run {
+            // The batch is held to its own plan, never the tick's whole
+            // budget: `submit_batch` derives its ceiling from what it sends.
             let outcome = submitter::submit_batch(&submitter_config, &result, budget).await;
             // The chain's root decides, not this transaction's fate alone:
             // the same batch sent on an earlier tick, its receipt unread,

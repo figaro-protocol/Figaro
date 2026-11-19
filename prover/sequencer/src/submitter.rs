@@ -1115,24 +1115,70 @@ fn names_a_reserved_key(claim: &UsageClaim) -> bool {
         || matches!(&claim.kind, UsageClaimKind::Process { agreement_hash, .. } if is_reserved_key(agreement_hash))
 }
 
+/// The gas this relay plans for a `settleBatch` call carrying these
+/// positions, events, public values, a proof of `proof_len` bytes and this
+/// operation stream (`gas::settle_gas_estimate`): what it publishes, its
+/// stream's entries and its calldata. The tick cuts a batch by it, and
+/// `submit_batch` holds the proved batch to it.
+pub fn settle_plan(
+    positions: &[NetPosition],
+    events: &BatchEvents,
+    public_values: &[u8],
+    proof_len: usize,
+    stream: &[u8],
+) -> Result<u64, String> {
+    let (operations, wallet_code_attestations, claims) =
+        figaro_kernel::operation_stream::decode_operation_stream(stream)?;
+    let mut items = crate::gas::SettleItems::of(positions, events).with_stream(
+        stream.len(),
+        &operations,
+        claims.len(),
+    );
+    // The stream decodes a wallet-code attestation into a list of its own,
+    // where `with_stream` counts it among the operations.
+    items.stream_wallet_code_attestations += wallet_code_attestations.len();
+    let calldata = settle_calldata(positions, events, public_values, proof_len, stream);
+    Ok(crate::gas::settle_gas_estimate(&calldata, items))
+}
+
+/// The plan of a proved batch, with the proof's own bytes (`settle_plan`).
+pub fn planned_settle_gas(result: &ProveResult) -> Result<u64, String> {
+    settle_plan(
+        &result.positions,
+        &result.events,
+        &result.public_values_bytes,
+        result.proof_bytes.len(),
+        &result.operations_bytes,
+    )
+}
+
 /// Submit a proved batch to the on-chain FigaroBatchVerifier, its gas limit
-/// the node's estimate with headroom, capped at `gas_ceiling`, the budget the
-/// batch was planned against (`gas::settle_gas_limit`). An estimate above
-/// `gas_ceiling` is refused before anything is sent, as a deterministic
-/// refusal: a party's wallet code can answer the relay's check within
-/// `WALLET_CODE_EXECUTION_GAS` and burn far more in the node's estimate, and a
-/// limit set at that estimate would have the relay pay past its plan, or,
-/// above the most the node takes for one transaction, be refused at the send
-/// with an error that is not a revert and read as transient.
+/// the node's estimate with headroom, capped at the batch's own ceiling: its
+/// plan (`planned_settle_gas`) with the margin `gas::settle_ceiling` states,
+/// never past `budget`, the tick's. An estimate above that ceiling is
+/// refused before anything is sent, as a deterministic refusal: a party's
+/// wallet code or token is forwarded all the gas left and can burn it and
+/// still succeed, and a limit set at that estimate would have the relay pay
+/// past this batch's plan, or, above the most the node takes for one
+/// transaction, be refused at the send with an error that is not a revert
+/// and read as transient. The ceiling is derived here, from the batch sent,
+/// so no caller can hold a batch to the tick's whole budget.
 pub async fn submit_batch(
     config: &SubmitterConfig,
     result: &ProveResult,
-    gas_ceiling: u64,
+    budget: u64,
 ) -> Result<alloy::primitives::B256, SettleError> {
     let transient = |message: String| SettleError {
         message,
         deterministic: false,
     };
+    // The same bytes fail the same way: a plan that cannot be read is a
+    // deterministic refusal, never re-proved as transient trouble.
+    let planned = planned_settle_gas(result).map_err(|e| SettleError {
+        message: format!("tx submission refused: the batch's plan could not be read: {e}"),
+        deterministic: true,
+    })?;
+    let gas_ceiling = crate::gas::settle_ceiling(planned, result.positions.len(), budget);
     // Build provider with signer
     let signer: PrivateKeySigner = config
         .private_key
@@ -1180,7 +1226,8 @@ pub async fn submit_batch(
         .map_err(|e| refused(e.to_string()))?;
     if estimate > gas_ceiling {
         let msg = format!(
-            "tx submission refused: the node's estimate of {estimate} gas exceeds the planned ceiling of {gas_ceiling}"
+            "tx submission refused: the node's estimate of {estimate} gas exceeds the planned ceiling of {gas_ceiling} (the batch is planned at {planned} gas with {} positions, under a budget of {budget})",
+            result.positions.len()
         );
         eprintln!("SUBMIT_ERROR: {msg}");
         return Err(SettleError {
@@ -1190,7 +1237,7 @@ pub async fn submit_batch(
     }
     let tx = tx.gas(crate::gas::settle_gas_limit(estimate, gas_ceiling));
 
-    info!(verifier = ?config.verifier_address, %estimate, "Submitting settleBatch transaction");
+    info!(verifier = ?config.verifier_address, %estimate, %planned, %gas_ceiling, "Submitting settleBatch transaction");
 
     let pending = match tx.send().await {
         Ok(p) => p,
@@ -2740,6 +2787,100 @@ mod tests {
         assert!(
             double.calls_to("eth_sendRawTransaction").is_empty(),
             "nothing is sent"
+        );
+    }
+
+    // A party's wallet code, or a token's transfer, is forwarded all the gas
+    // left and can burn it and still answer yes; the node's estimate carries
+    // what it burns. Whatever it burns, the relay either sends nothing or
+    // sends a gas limit within the batch's own ceiling, read from the batch
+    // it sends: never the tick's whole budget.
+    #[tokio::test]
+    async fn a_batch_whose_code_burns_the_forwarded_gas_costs_the_relay_no_more_than_its_own_ceiling(
+    ) {
+        let result = proved_canonical_batch();
+        let planned = planned_settle_gas(&result).unwrap();
+        let budget = crate::gas::DEFAULT_SETTLE_GAS_CAP;
+        let ceiling = crate::gas::settle_ceiling(planned, result.positions.len(), budget);
+        assert!(
+            ceiling < budget / 2,
+            "the canonical batch's own ceiling ({ceiling}) is well under the tick's budget"
+        );
+        for burned in [0, planned / 4, planned, 4_000_000, budget - planned] {
+            let estimate = planned + burned;
+            let (double, limit) = rising_cost_double(estimate, estimate, u64::MAX).await;
+            let outcome = submit_batch(&submit_config(double.url.clone()), &result, budget).await;
+            let sent = double.calls_to("eth_sendRawTransaction");
+            match outcome {
+                Ok(_) => {
+                    let limit = *limit.lock().unwrap();
+                    assert!(
+                        limit <= ceiling,
+                        "burning {burned}: sent with a limit of {limit}, past the batch's ceiling of {ceiling}"
+                    );
+                }
+                Err(err) => {
+                    assert!(err.deterministic, "{}", err.message);
+                    assert!(
+                        err.message.contains("exceeds the planned ceiling"),
+                        "{}",
+                        err.message
+                    );
+                    assert!(sent.is_empty(), "burning {burned}: nothing is sent");
+                    assert!(
+                        estimate > ceiling,
+                        "burning {burned}: refused within the ceiling"
+                    );
+                }
+            }
+        }
+    }
+
+    // The margin is for the parties' token: a batch in a token whose
+    // transfer costs twice what a position is planned at lands, its send
+    // carrying the whole headroom over the estimate.
+    #[tokio::test]
+    async fn a_batch_in_a_token_costing_twice_the_planned_transfer_lands() {
+        let result = proved_canonical_batch();
+        let planned = planned_settle_gas(&result).unwrap();
+        let estimate =
+            planned + result.positions.len() as u64 * crate::gas::SETTLE_GAS_PER_POSITION;
+        let (double, limit) = rising_cost_double(estimate, estimate, u64::MAX).await;
+        let landed = submit_batch(
+            &submit_config(double.url.clone()),
+            &result,
+            crate::gas::DEFAULT_SETTLE_GAS_CAP,
+        )
+        .await;
+        assert!(landed.is_ok(), "{:?}", landed.err());
+        assert_eq!(
+            *limit.lock().unwrap(),
+            crate::gas::settle_gas_limit(estimate, u64::MAX),
+            "the headroom over the estimate is whole"
+        );
+    }
+
+    // The plan the submit reads from a proved batch is the plan the tick
+    // cut it by: the same items, counted from the operations themselves.
+    #[test]
+    fn a_proved_batchs_plan_is_the_one_its_items_give() {
+        let result = proved_canonical_batch();
+        let input = figaro_prove_test::build_canonical_batch_input();
+        let calldata = settle_calldata(
+            &result.positions,
+            &result.events,
+            &result.public_values_bytes,
+            result.proof_bytes.len(),
+            &result.operations_bytes,
+        );
+        let items = crate::gas::SettleItems::of(&result.positions, &result.events).with_stream(
+            result.operations_bytes.len(),
+            &input.operations,
+            input.usage_claims.len(),
+        );
+        assert_eq!(
+            planned_settle_gas(&result).unwrap(),
+            crate::gas::settle_gas_estimate(&calldata, items)
         );
     }
 

@@ -735,6 +735,44 @@ of one approval transaction, repeatable against specific counterparties.
 3. **The direct path stays open** to every address, always: a relay's refusal
    is a liveness decision about its own batches, never a protocol outcome.
 
+### What a batch may cost the relay
+
+The relay pays the gas of every `settleBatch` call it sends. The verifier
+forwards a party's wallet code (an EIP-7702 delegation or a contract
+wallet's `isValidSignature`) and a token's `transferFrom` all the gas left.
+Code that burns that gas and then answers yes lands the batch, and nothing
+names the party. The relay therefore bounds what it pays for a batch by that
+batch's own plan, never by the tick's whole budget:
+
+1. **The plan is read from the batch sent.** `submitter::submit_batch`
+   computes the plan from the positions, events, operation stream and
+   calldata it sends (`submitter::planned_settle_gas`), by the same function
+   the tick cut the batch by (`submitter::settle_plan`,
+   `gas::settle_gas_estimate`). No caller passes a ceiling of its own.
+2. **The ceiling is the plan with a stated margin.** One more planned
+   transfer per net position (`SETTLE_GAS_PER_POSITION`), then a quarter
+   over the whole (`SETTLE_GAS_HEADROOM_PCT`), never past the tick's budget
+   (`gas::settle_ceiling`). A batch whose plan is all positions costs the
+   relay at most about two and a half times its plan; a batch with no
+   position, at most a quarter over its plan.
+3. **Above it, nothing is sent.** A node's estimate above the ceiling is a
+   deterministic refusal that names nobody. The batch's wallet-code
+   operations are dead-lettered alone and the rest re-queued; a batch with
+   none is isolated by splitting, so the operation that reverts alone is
+   dead-lettered alone (`classify_deterministic_revert`, `Mempool::isolate`).
+4. **The send never passes it.** The gas limit is the estimate with a quarter
+   of headroom, capped at the ceiling (`gas::settle_gas_limit`), so code that
+   burns whatever it is forwarded at inclusion burns at most the ceiling.
+
+The margin is sized for an honest token. A token whose transfer costs up to
+twice what a position is planned at lands, and its send keeps the whole
+headroom over the estimate. The quarter covers the one-time storage a first
+batch writes. The headroom shrinks only for an estimate past the plan and its
+per-position margin. The tests are
+`a_batch_whose_code_burns_the_forwarded_gas_costs_the_relay_no_more_than_its_own_ceiling`
+and `a_batch_in_a_token_costing_twice_the_planned_transfer_lands`
+(`prover/sequencer/src/submitter.rs`).
+
 ### Operational requirements
 
 1. **Monitor the verifier** — the relay reads `stateRoot` before every batch
