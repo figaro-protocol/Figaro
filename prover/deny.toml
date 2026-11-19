@@ -1,0 +1,82 @@
+# cargo-deny's configuration for the prover workspace, read by
+# `cargo deny check` run from prover/ (locally, and in CI by the cargo-deny job
+# of .github/workflows/supply-chain.yml). Four checks over prover/Cargo.lock:
+#
+#   advisories  fails on a RustSec vulnerability; the five vulnerabilities
+#               prover/.cargo/audit.toml sets aside for `cargo audit` are set
+#               aside here with the same reasons, and the two lists move
+#               together. An unmaintained or unsound notice fails for a crate a
+#               workspace member names directly
+#   licenses    fails on a crate whose license is not in the allow list; every
+#               entry is permissive, MPL-2.0 is allowed for three named crates
+#               only, and each can be combined with the workspace's MIT license
+#   bans        two semver-incompatible versions of one crate print a warning
+#               and never fail
+#   sources     fails on a crate from any registry but crates.io, or from a git
+#               repository not listed below
+#
+# RustSec carries none of SP1's advisories; scripts/check-sp1-advisories.mjs
+# reads them from the GitHub advisory database.
+
+[graph]
+all-features = false
+
+[advisories]
+# The first five are the entries of prover/.cargo/audit.toml; each reason is
+# written there in full.
+ignore = [
+    { id = "RUSTSEC-2026-0344", reason = "ruzstd 0.8.3 through object 0.37 on the host only; no object release takes ruzstd 0.9; see prover/.cargo/audit.toml" },
+    { id = "RUSTSEC-2026-0387", reason = "crypto-bigint 0.5.5 through elliptic-curve 0.13; no dependent takes 0.7; see prover/.cargo/audit.toml" },
+    { id = "RUSTSEC-2026-0391", reason = "zstd 0.13 through sp1-sdk on the host only; see prover/.cargo/audit.toml" },
+    { id = "RUSTSEC-2026-0403", reason = "zstd-safe 7 through sp1-sdk on the host only; see prover/.cargo/audit.toml" },
+    { id = "RUSTSEC-2026-0398", reason = "zstd-safe 7 through sp1-sdk on the host only; see prover/.cargo/audit.toml" },
+    # An unmaintained notice with no vulnerability: its team calls 1.3.3
+    # complete. SP1 reads the guest's stdin in bincode 1's format, so the
+    # proof program, the proving harness and the relay name it directly.
+    { id = "RUSTSEC-2025-0141", reason = "bincode 1.3.3, unmaintained, no vulnerability; SP1's stdin format" },
+]
+# Unmaintained and unsound notices fail only for a crate a workspace member
+# names directly; deeper in the graph they are warnings of `cargo audit`.
+unmaintained = "workspace"
+unsound = "workspace"
+
+[licenses]
+confidence-threshold = 0.9
+allow = [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "CC0-1.0",
+    "Unicode-3.0",
+    "Unlicense",
+    "0BSD",
+    "CDLA-Permissive-2.0",
+]
+# MPL-2.0 is copyleft at the level of the file: the crates below are used
+# unmodified, so the workspace's own files stay under MIT. It is allowed for
+# these crates only, so another crate under it fails until it is read.
+exceptions = [
+    { crate = "dynasm", allow = ["MPL-2.0"] },
+    { crate = "dynasmrt", allow = ["MPL-2.0"] },
+    { crate = "option-ext", allow = ["MPL-2.0"] },
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+# The two SP1 patch repositories prover/Cargo.toml's [patch.crates-io] and
+# SP1's own manifests pull in, each at a tag.
+allow-git = [
+    "https://github.com/sp1-patches/elliptic-curves",
+    "https://github.com/sp1-patches/signatures",
+]
