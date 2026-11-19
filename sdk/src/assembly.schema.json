@@ -22,6 +22,14 @@
                 }
             }
         },
+        "deployTimeCurrency": {
+            "type": "object",
+            "required": ["deployment"],
+            "description": "WRITTEN form only: the deployment's own address that fills the denomination pin the file leaves unfilled, in place of the deployment's token, named by its key in deployments/<chainId>.json (`{ \"deployment\": \"florinToken\" }` pins the deployment's own FlorinToken). Read at seeding by `deployTimeCurrencyOf` (sdk/src/projection.ts); `composeAuthoredProcessDesign` drops it, so it enters no hash and no pinned document — only the address it resolves to does, through the pin.",
+            "properties": {
+                "deployment": { "type": "string", "minLength": 1 }
+            }
+        },
         "assemblyClauses": {
             "type": "object",
             "description": "The clauses composed once for the whole design (a clause whose `block.design.scope` is `assembly`), keyed as the agreement document keys its clauses, each value the designer's fills.",

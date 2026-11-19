@@ -36,10 +36,11 @@ asserted from chain:
 | `freelancer.json` | 1 order | A digital deliverable over the encrypted hand-off, paid at the buyer's resolution | `content-delivery.devnet.spec.ts` |
 | `freelancer-value-chain.json` | 3 orders | A lead freelancer + contributors, one resolution | `freelancer-chain.devnet.spec.ts` (full cycle: three encrypted deliveries, one resolution) |
 | `tradelens.json` | 6 orders | The containerized import chain: shipper → inspection → forwarder → reefer carrier → customs → drayage; every agreement carries the property-transfer clause from signing, so a cargo sold in transit is squared by the parties, attested on each order, and paid as they agreed when the buyer resolves; the title passes by the instrument the parties fingerprint, never on chain | `scenario-tradelens` + `tradelens-runtime` |
-| `aerial-survey.json` | 1 order | A credentialed drone operator flies a committed window and route; the flight's co-produced record is part of the service (each party holds its copy) | `data-market.devnet.spec.ts` (full cycle: adopt, dual posture, ERC-20 balance assertions, self-authenticating data-terms leaf) |
+| `aerial-survey.json` | 1 order | A credentialed drone operator flies a committed window and route; the flight's co-produced log is part of the service (each party holds its copy) | `data-market.devnet.spec.ts` (full cycle: adopt, dual posture, ERC-20 balance assertions, self-authenticating data-terms leaf) |
 | `aerial-survey-open-data.json` | 1 order | The SAME flight with the disclosure regime `open` — one changed design fill, a different processDesignHash: regime variants are sibling assemblies, and whether a market flies open or closed is decided by adoption, never by the protocol | sibling of the above (`data-market.devnet.spec.ts` asserts both siblings anchored under distinct processDesignHashes) |
 | `data-stream-subscription.json` | 1 order | A window of licensed access to another member's live data — credential over the encrypted hand-off, every entry a leaf provable against the resolved agreement that produced it; gas is paid once per window, never per data point | `data-market.devnet.spec.ts` (full cycle: license anchored to the resolved flight process, encrypted hand-off evidence, self-authenticating license leaf) |
 | `equipment-hire.json` | 1 order | A renter hires equipment straight from its owner — the same shape as the point-of-sale reference, plus the designer's own denomination pinned once for the whole composition, so no token picker ever appears at checkout | `equipment-hire.devnet.spec.ts` (full cycle: no picker, the pin drives the commitment and every value leg, the commerce/pin provenance pair asserted from the committed agreement) |
+| `tradelens-florin.json`, `local-commerce-florin.json`, `courier-delivery-florin.json`, `drayage-delivery-florin.json`, `reefer-carriage-florin.json` | 6, 2, 1, 1, 1 orders | The florin-gated twins: each composes its original's agreements unchanged (the single-order ones bind one transport agreement each), plus `figaro-utility-token` pinned to the deployment's `FlorinToken` — a designer's own token as the door to its process, beside the original, which stays open to any token | `florin-gated-courier.devnet.spec.ts` (full cycle on the courier twin: no picker, the florin drives the commitment and every value leg, read from chain); `sdk/tests/florinTwins.test.ts` (the sign gate refuses a twin's order in any other token) |
 
 `documents/` ships the raw bytes of every document an assembly affixes (consent
 anchors commit the document's keccak256 and `ipfs://` locator INSIDE the
@@ -47,8 +48,8 @@ agreement — the bytes must pin byte-identical on any network for the
 `agreementHash`, and so the assembly hash, to reproduce; the populate path
 pins them first).
 
-A reference that composes `figaro-utility-token` (`equipment-hire.json`) is the
-one exception to "re-anchoring is a no-op over the checked-in bytes": the
+A reference that composes `figaro-utility-token` (`equipment-hire.json` and the
+florin-gated twins) is the one exception to "re-anchoring is a no-op over the checked-in bytes": the
 clause's `currency` is a live ERC-20 address, new on every fresh deploy, so the
 written file leaves the pin unfilled (`"figaro-utility-token": {}` — a required
 field missing, which the format refuses to sign) and the populate path fills
@@ -56,7 +57,12 @@ the deployment's token into it before anchoring (the SDK's
 `fillDeployTimeCurrency`, which reads the pin by the spec's shape: an
 assembly-scoped clause of the denomination article, its designer-filled
 `address-hex` field) — the anchored processDesignHash is over the FILLED assembly,
-never the written one. A spec that wants this reference's slug hashes the
+never the written one. A written file may instead name the deployment's own
+address that fills its pin — `"deployTimeCurrency": { "deployment": "florinToken" }`,
+as the florin-gated twins do — and the seeding fills that address in place of
+the deployment's token (the SDK's `deployTimeCurrencyOf`; the populate path
+reads the deployment record named by `DEPLOYMENT_RECORD`). The key is the
+written form's only: the build drops it, so it enters no hash. A spec that wants this reference's slug hashes the
 filled assembly too (`referenceAssemblySlugWithLiveCurrency`,
 `devnet-helpers.ts`), not the raw file.
 

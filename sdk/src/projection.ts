@@ -1643,6 +1643,43 @@ export function fillDeployTimeCurrency<T extends { assemblyClauses?: Record<stri
     return filledAny ? { ...assembly, assemblyClauses: filled } : assembly;
 }
 
+/**
+ * The token a WRITTEN reference assembly's unfilled denomination pin is filled
+ * with at seeding (`fillDeployTimeCurrency`). A written file may name, beside
+ * the pin, the deployment's own address the designer pins:
+ * `"deployTimeCurrency": { "deployment": "florinToken" }` pins the
+ * deployment's `FlorinToken`, read from `deployment`, the deployment's
+ * addresses keyed as `deployments/<chainId>.json` keys them. A file that names
+ * none takes `deploymentToken`, the deployment's token for every other pinned
+ * reference. Read from the written file, never the built assembly:
+ * `composeAuthoredProcessDesign` drops the key, so the name enters no hash;
+ * only the address it resolves to does, through the pin. Throws when the named
+ * address is not an address of the deployment, or when the file names none
+ * and no deployment token was given. Seed time only.
+ */
+export function deployTimeCurrencyOf(
+    written: object,
+    deployment: Readonly<Record<string, unknown>>,
+    deploymentToken: Address | undefined,
+): Address {
+    const named = (written as { deployTimeCurrency?: { deployment?: unknown } }).deployTimeCurrency;
+    if (named !== undefined) {
+        const entry = named?.deployment;
+        if (typeof entry !== "string" || entry.length === 0) {
+            throw new Error(`deployTimeCurrency names no address of the deployment: ${JSON.stringify(named)}`);
+        }
+        const address = deployment[entry];
+        if (typeof address !== "string" || !isAddressHex(address) || /^0x0{40}$/.test(address)) {
+            throw new Error(`the deployment's "${entry}", which deployTimeCurrency names, is not an address: ${String(address)}`);
+        }
+        return address as Address;
+    }
+    if (deploymentToken === undefined || deploymentToken === null || deploymentToken === ("" as Address)) {
+        throw new Error("not decided — no deployment token is named, and the file names no address of the deployment for its pin");
+    }
+    return deploymentToken;
+}
+
 export function serializeProcessDesign(assembly: ProcessDesign): {
     json: string;
     processDesignHash: `0x${string}`;

@@ -102,9 +102,12 @@ describe("fillDeployTimeCurrency — the deployment's token, read by the spec's 
     });
 
     it("an assembly with no denomination pin is returned as it was", () => {
-        for (const file of names("assemblies").filter((f) => f !== "equipment-hire.json")) {
+        // Every reference that composes no pin: the pinned ones (equipment
+        // hire and the florin-gated twins) are found by the spec's shape.
+        const unpinned = names("assemblies").filter((f) => denominationPins(built(f).assembly).length === 0);
+        expect(unpinned.length).toBeGreaterThan(0);
+        for (const file of unpinned) {
             const { assembly } = built(file);
-            expect(denominationPins(assembly).every((p) => p.fields.length === 0 || Object.keys(assembly.assemblyClauses?.[p.clauseKey] ?? {}).length > 0)).toBe(true);
             expect(fillDeployTimeCurrency(assembly, TOKEN, SPECS)).toBe(assembly);
         }
     });

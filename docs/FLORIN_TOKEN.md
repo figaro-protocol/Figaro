@@ -44,6 +44,22 @@ instrument.
   DAO treasury nor the founder ever sells, buys, or provides liquidity on any
   market; the first price is a stranger's to name.
 
+### What a designer may do with it
+
+A designer may make the florin the door to its own process, as it may make
+any token the door (`clauses/figaro-utility-token.json`, the assembly-scoped
+denomination pin). The reference processes show it built: florin-gated twins
+of the logistics designs, `assemblies/*-florin.json` (the import chain, local
+commerce, and one single-order design over each transport agreement), each
+composing its original's agreements unchanged plus the pin, filled at seeding
+with the deployment record's `florinToken` (the written file's
+`deployTimeCurrency`, read by the SDK's `deployTimeCurrencyOf`). The sign gate
+then refuses an order of a twin in any other token
+(`sdk/tests/florinTwins.test.ts`). The pin is a term of the twin, so each twin
+has its own `processDesignHash`. This is the designer's choice, never the
+protocol's: every original stays registered beside its twin and open to any
+ERC-20 token, so nothing above is a gate on participation.
+
 ---
 
 ## Name

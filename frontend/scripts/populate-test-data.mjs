@@ -21,6 +21,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createPublicClient, createWalletClient, http } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 // Protocol canonicals come from the SDK (@figaro-protocol/sdk, file:../sdk): the
@@ -29,10 +30,10 @@ import { mnemonicToAccount } from 'viem/accounts';
 import { MEMBERS_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import {
     AGREEMENTS_DIR, ASSEMBLIES_DIR, LOCAL_ANVIL, anchorBuiltAssembly, loadAuthoredSpecs, pinFile, pinJSON,
-    loadAuthoredAgreements, readBuiltAssembly,
+    loadAuthoredAgreements, readDeployedAssembly,
     populateClauses, populateReferenceAssemblies, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
-import { processDesignHashOf, resolveAuthoredClauseKeys, composeAuthoredAgreements, composeAuthoredProcessDesign, fillDeployTimeCurrency } from '@figaro-protocol/sdk';
+import { processDesignHashOf, resolveAuthoredClauseKeys, composeAuthoredAgreements, composeAuthoredProcessDesign } from '@figaro-protocol/sdk';
 
 // The specs in clauses/, each with its key — the set every authored clause
 // NAME below resolves against at seed time (`resolveAuthoredClauseKeys`);
@@ -71,10 +72,16 @@ const SELLERS = [
  *  the assembly AFTER the deploy-time currency fill, the same hash
  *  populateReferenceAssemblies anchored, never the raw file's. A binding
  *  records it in full. */
-function referenceProcessDesignHash(file, tokenAddress) {
-    const { assembly } = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), AUTHORED, AUTHORED_AGREEMENTS);
-    return processDesignHashOf(fillDeployTimeCurrency(assembly, tokenAddress, AUTHORED));
+function referenceProcessDesignHash(file, tokenAddress, record) {
+    const { assembly } = readDeployedAssembly(path.join(ASSEMBLIES_DIR, file), { record, deploymentToken: tokenAddress }, AUTHORED, AUTHORED_AGREEMENTS);
+    return processDesignHashOf(assembly);
 }
+
+/** The devnet's deployment record (`scripts/deploy-local.sh` writes it): the
+ *  entries a reference names for its pin (`deployTimeCurrency`, the
+ *  florin-gated twins' `florinToken`) are read here. */
+const DEVNET_RECORD = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.deployments/local.json');
+const readDevnetRecord = () => (fs.existsSync(DEVNET_RECORD) ? JSON.parse(fs.readFileSync(DEVNET_RECORD, 'utf8')) : {});
 
 const slugifyId = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Error ? err.message : String(err));
@@ -193,7 +200,7 @@ async function main() {
     }
     await anchorBuiltAssembly({ ...anchorArgs, built: seedBlank() });
     await anchorBuiltAssembly({ ...anchorArgs, built: seedChain() });
-    await populateReferenceAssemblies({ ...anchorArgs, tokenAddress: mockErc20 });
+    await populateReferenceAssemblies({ ...anchorArgs, tokenAddress: mockErc20, record: readDevnetRecord() });
 
     // ── 2. Members (catalog → profile → register, all pinned + anchored) ──
     const [tokenSymbol, tokenName] = await Promise.all([
@@ -248,7 +255,7 @@ async function main() {
             processBindings: [{
                 bindingId: `seed-${s.addressIndex}`,
                 subjectAddress: account.address,
-                processDesignHash: referenceProcessDesignHash(s.binds, mockErc20),
+                processDesignHash: referenceProcessDesignHash(s.binds, mockErc20, readDevnetRecord()),
                 coSellerBindings: s.courierIndex == null
                     ? []
                     : [{ clauseId: COURIER_CLAUSE, addresses: [mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: s.courierIndex }).address] }],
