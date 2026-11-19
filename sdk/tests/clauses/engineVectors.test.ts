@@ -331,6 +331,15 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
         values: ["a", "aa", "aaa", "ab", "ac", "b", "c", "-", "]", "^", "~", "[", "}", ".", "\\", "<", "_", " ", "n", "t", "1", "UN1234", "en-GB", "a".repeat(64), "a".repeat(65), "é", "\n", "\t", ""],
     })),
     {
+        // A pattern at the expansion bound (3 × 1024 + 960 + 62 + 2), run: the
+        // guest reads its classes in ASCII, and on a printable-ASCII value
+        // they match as JavaScript's. No group holds a quantifier, so the
+        // catastrophic-shape screen does not skip it.
+        group: "pattern at the expansion bound",
+        field: str({ pattern: `^${`(?:${"\\w".repeat(16)}){64}`.repeat(3)}(?:${"\\w".repeat(15)}){64}\\W{62}$` }),
+        values: ["a".repeat(4032) + "-".repeat(62), "a".repeat(4032) + "a".repeat(62), "a".repeat(4031) + "-".repeat(63), "-".repeat(4094)],
+    },
+    {
         group: "pattern input bound",
         field: str({ pattern: "^a$" }),
         values: ["b".repeat(4096), "b".repeat(4097), "🚚".repeat(2048), "🚚".repeat(2049)],
@@ -628,6 +637,37 @@ const SPEC_CASES: { label: string; spec: unknown }[] = [
     { label: "pattern unbalanced open", spec: specOf(f({ type: "string", pattern: "(a+" })) },
     { label: "pattern open class", spec: specOf(f({ type: "string", pattern: "[a" })) },
     { label: "pattern not a string", spec: specOf(f({ type: "string", pattern: 5 })) },
+    // The expanded size (MAX_PATTERN_EXPANSION, 4096). Counts multiply when
+    // they nest, so a short pattern can stand for millions of items: the
+    // guest's regex library refuses such a pattern past its size limit, and
+    // the bound refuses it in both engines first. Under the bound, every
+    // atom compiles in the guest, the large Unicode classes included.
+    ...[
+        "(?:(?:(?:(?:a{64}){64}){64}){64})",
+        "(?:a{64}){64}",
+        "(?:a{64}){64}a",
+        "^(?:a{64}){63}a{62}$",
+        "^(?:a{64}){63}a{63}$",
+        "(?:(?:ab|cd){64}){16}",
+        "(?:(?:ab|cd){64}){16}e",
+        "(?:a{64,}){63}",
+        "(?:a{64,}){64}",
+        "(?:a{1,64}){64}",
+        "(?:a{1,64}){64}?",
+        "(?:a{64}){64}b{0}",
+        "(?:a{64}){64}(?:bc){0}",
+        "(?:(?:(?:(?:a{64}){64}){64}){64}){0}",
+        "(?:(?:(?:(?:a{64}){64}){64}){64}){0}b",
+        "(?:a+){64}(?:b*){64}",
+        "(?:\\w{64}){64}",
+        "(?:\\W{64}){64}",
+        "(?:\\D{64}){64}",
+        "(?:\\S{64}){64}",
+        "(?:.{64}){64}",
+        "(?:[^a]{64}){64}",
+        "(?:\\b\\w{63}){64}",
+        "\\w{64}\\w{64}\\w{64}\\w{64}\\w{64}",
+    ].map((pattern) => ({ label: `pattern expansion ${pattern}`, spec: specOf(f({ type: "string", pattern })) })),
     ...[6, 7, 8, 9, 10, 11, 12, 16, 17, 32, 33].map((depth) => ({ label: `array nesting depth ${depth}`, spec: specOf([nestArrays(depth)]) })),
     { label: "stages", spec: specOf(f({ type: "boolean" }), { 1: f({ type: "integer" }) }) },
     { label: "stages not an object", spec: specOf(f({ type: "boolean" }), []) },

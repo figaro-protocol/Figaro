@@ -303,9 +303,25 @@ its manual.
   port: printable ASCII, at most 256 characters; literals, `.`, classes,
   groups `(...)` and `(?:...)`, `\d \D \w \W \s \S`, escaped punctuation,
   `^ $ \b \B`, alternation, and the quantifiers `* + ? {n} {n,} {n,m}` with
-  counts up to 64, each optionally lazy. A spec whose pattern is outside the
-  core does not parse, in either engine. A patterned field's value is
-  printable ASCII; a value outside it does not validate.
+  counts up to 64, each optionally lazy. The pattern's **expanded size** is
+  at most 4,096 (`MAX_PATTERN_EXPANSION`): each atom and each assertion
+  counts one, a group counts the sum of what it holds (every branch of an
+  alternation included), and a quantifier multiplies what it follows by `m`
+  for `{n,m}`, `n` for `{n}`, `n + 1` for `{n,}`, and one for `*`, `+` and
+  `?`. Nested counts multiply, so a short pattern such as
+  `(?:(?:(?:(?:a{64}){64}){64}){64})` stands for some sixteen million
+  items, past the guest's regex size limit; the bound refuses it in both
+  engines first. Under the bound the guest compiles every portable pattern:
+  it compiles with the Unicode tables off, which on a printable-ASCII value
+  match as JavaScript's classes do, and compiles each pattern once, when the
+  spec parses. A spec whose pattern is outside the core does not parse, in
+  either engine. A patterned field's value is printable ASCII; a value
+  outside it does not validate.
+- A `string` value holds no lone UTF-16 surrogate (`"\ud800"` with no low
+  half after it, or a low half alone). `JSON.parse` keeps one and
+  `serde_json`, which reads content in the guest, refuses it; the SDK's
+  `validateContent` refuses it too, so no party signs content the batch
+  path cannot read.
 - `encodeContentFromSpec` / `decodeContentFromSpec` — the one spec-driven
   encoder and its inverse, reading the field-to-position mapping from the
   parsed spec for any clause, with the same stage selection. There is no

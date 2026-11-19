@@ -68,6 +68,7 @@ export {
     MAX_PATTERN_TEST_INPUT,
     MAX_PATTERN_LENGTH,
     MAX_PATTERN_REPEAT,
+    MAX_PATTERN_EXPANSION,
 } from "./safeRegex.js";
 
 // ── Content encoding (generic, spec-driven) ─────────────────────────────────

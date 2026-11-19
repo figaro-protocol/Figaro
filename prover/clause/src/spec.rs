@@ -110,7 +110,9 @@ pub struct StringFieldSpec {
     pub format_from_field: Option<String>,
     pub min_length: Option<usize>,
     pub max_length: Option<usize>,
-    pub pattern: Option<String>,
+    /// The field's `pattern`, compiled once when the spec parsed
+    /// (`validate::compile_pattern`); `as_str()` gives its source.
+    pub pattern: Option<regex::bytes::Regex>,
 }
 
 #[derive(Clone, Debug)]
@@ -735,15 +737,17 @@ fn parse_field_spec_core(
                     );
                     return None;
                 }
-                if regex::Regex::new(s).is_err() {
-                    err(
-                        errors,
-                        &format!("{path}.pattern"),
-                        "pattern must be a valid regex",
-                    );
-                    return None;
+                match crate::validate::compile_pattern(s) {
+                    Some(re) => spec.pattern = Some(re),
+                    None => {
+                        err(
+                            errors,
+                            &format!("{path}.pattern"),
+                            "pattern must be a valid regex",
+                        );
+                        return None;
+                    }
                 }
-                spec.pattern = Some(s.to_string());
             }
             Some(FieldSpec::String(spec))
         }

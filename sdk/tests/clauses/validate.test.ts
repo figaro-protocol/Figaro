@@ -261,3 +261,27 @@ describe("validateContent — the geohash grain cap, keyed on the spec's own att
         expect(validateContent({ stops: ["dr5regw3pzzzz"], blinding: BLINDING_VALUE }, fine).ok).toBe(false);
     });
 });
+
+// The guest reads content with serde_json, which refuses a lone UTF-16
+// surrogate; JSON.parse keeps one. The SDK refuses it too, so a party never
+// signs content the batch path cannot read. The guest's leg of this vector is
+// `attest_content_holding_a_lone_surrogate_fails` in prover/lib/tests/parity.rs.
+describe("validateContent — a lone UTF-16 surrogate", () => {
+    const spec = specOf([{ name: "s", type: "string", required: true }]);
+
+    it("refuses a string holding a lone surrogate, high or low, as JSON.parse reads it", () => {
+        for (const text of ['{"s":"\\ud800"}', '{"s":"a\\udfffb"}', '{"s":"\\udc00\\ud800"}', '{"s":"\\ud83d"}']) {
+            const result = validateContent(JSON.parse(text), spec);
+            expect(result.ok, text).toBe(false);
+            if (!result.ok) {
+                expect(result.errors.map((e) => e.path)).toEqual(["$.s"]);
+                expect(result.errors[0].message).toMatch(/^string /);
+            }
+        }
+    });
+
+    it("accepts a surrogate pair", () => {
+        expect(validateContent(JSON.parse('{"s":"\\ud83d\\ude9a"}'), spec).ok).toBe(true);
+        expect(validateContent({ s: "🚚" }, spec).ok).toBe(true);
+    });
+});

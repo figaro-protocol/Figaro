@@ -725,6 +725,36 @@ fn attest_invalid_content_fails() {
 }
 
 #[test]
+fn attest_content_holding_a_lone_surrogate_fails() {
+    // serde_json refuses a lone UTF-16 surrogate, where JSON.parse keeps
+    // one. The SDK's leg of this vector ("validateContent — a lone UTF-16
+    // surrogate" in sdk/tests/clauses/validate.test.ts) refuses it too, so
+    // neither path takes content the other refuses.
+    let f = attest_fixture();
+    for content in [
+        r#"{"modality":"\ud800"}"#,
+        r#"{"modality":"a\udfffb"}"#,
+        r#"{"modality":"\udc00\ud800"}"#,
+    ] {
+        let proof = AttestationContentProof {
+            spec_json: f.spec_json.clone(),
+            content_json: content.to_string(),
+            clause_data: CLAUSE_DATA.to_string(),
+            inclusion_proof: vec![],
+            content_kind: ContentKind::RuntimeWitness,
+        };
+        let content_ref = keccak256(content);
+        let seller1_key = make_signing_key(SELLER1_KEY);
+        let op = seller_attest_op(&f, proof, content_ref, &seller1_key);
+
+        match run_attest_batch(&f, op) {
+            Err(KernelError::ContentEncodingFailed(_)) => {}
+            other => panic!("{content}: expected ContentEncodingFailed, got {other:?}"),
+        }
+    }
+}
+
+#[test]
 fn attest_spec_identity_mismatch_fails() {
     let f = attest_fixture();
     // Supply the figaro-handoff spec under the figaro-modalities key —

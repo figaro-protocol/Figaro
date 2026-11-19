@@ -93,6 +93,14 @@ export function isPotentiallyCatastrophicRegex(pattern: string): boolean {
 //   - alternation `|`;
 //   - quantifiers, after an atom only: `*`, `+`, `?`, `{n}`, `{n,}`, `{n,m}`
 //     with n ≤ m ≤ MAX_PATTERN_REPEAT, each optionally lazy (`?`);
+//   - the expanded size is at most MAX_PATTERN_EXPANSION: each atom and each
+//     assertion counts one, a group counts the sum of what it holds (every
+//     branch of an alternation included), and a quantifier multiplies what it
+//     follows by `m` for `{n,m}`, `n` for `{n}`, `n + 1` for `{n,}`, and one
+//     for `*`, `+` and `?`. The guest compiles a pattern into an automaton
+//     with one copy of an item per repetition, and refuses one past its size
+//     limit; nested counts multiply, so `(?:(?:(?:(?:a{64}){64}){64}){64})`
+//     is short and portable in every other way, and still too large;
 //   - a class holds literals, ranges `a-z` between two literals, the six
 //     letter escapes, escaped punctuation, and `-` first or last; it is never
 //     empty, and holds no `[`, no `&&`, `--` or `~~`.
@@ -107,6 +115,10 @@ export function isPotentiallyCatastrophicRegex(pattern: string): boolean {
 export const MAX_PATTERN_LENGTH = 256;
 /** Largest count a `{n,m}` quantifier may name. */
 export const MAX_PATTERN_REPEAT = 64;
+/** Largest expanded size a pattern may have (the statement above). Any
+ *  running total past it is held at MAX_PATTERN_EXPANSION + 1, so the count
+ *  is the same exact integer in both engines. */
+export const MAX_PATTERN_EXPANSION = 4096;
 
 const ESCAPABLE_PUNCTUATION = "\\.+*?()|[]{}^$-/#&~,:;=!@%\"'`";
 const CLASS_LETTERS = "dDwWsS";
@@ -195,6 +207,18 @@ function scanCount(pattern: string, start: number): number {
     return i + 1;
 }
 
+/** The factor a counted quantifier `pattern.slice(start, end)`, already
+ *  scanned, multiplies by: `m` for `{n,m}`, `n` for `{n}`, `n + 1` for `{n,}`. */
+function countFactor(pattern: string, start: number, end: number): number {
+    const [low, high] = pattern.slice(start + 1, end - 1).split(",");
+    if (high === undefined) return Number(low);
+    if (high === "") return Number(low) + 1;
+    return Number(high);
+}
+
+const EXPANSION_CAP = MAX_PATTERN_EXPANSION + 1;
+const capped = (n: number) => Math.min(n, EXPANSION_CAP);
+
 /**
  * Is `pattern` written in the portable core — the constructs JavaScript's
  * regex library and Rust's read alike? See the statement above.
@@ -202,9 +226,22 @@ function scanCount(pattern: string, start: number): number {
 export function isPortablePattern(pattern: string): boolean {
     if (pattern.length === 0 || pattern.length > MAX_PATTERN_LENGTH) return false;
     if (!isPrintableAscii(pattern)) return false;
-    let depth = 0;
-    // May a quantifier follow what was just read?
+    // The expanded size of each open group, the whole pattern at the bottom.
+    const sizes = [0];
+    // May a quantifier follow what was just read? If so, `last` is that
+    // item's size, and `before` is its group's size without it.
     let atom = false;
+    let last = 0;
+    let before = 0;
+    const add = (n: number) => {
+        sizes[sizes.length - 1] = capped(sizes[sizes.length - 1] + n);
+    };
+    const item = (n: number) => {
+        atom = true;
+        last = n;
+        before = sizes[sizes.length - 1];
+        add(n);
+    };
     let i = 0;
     while (i < pattern.length) {
         const c = pattern[i];
@@ -213,8 +250,9 @@ export function isPortablePattern(pattern: string): boolean {
             if (e === undefined) return false;
             if (e === "b" || e === "B") {
                 atom = false;
+                add(1);
             } else if (CLASS_LETTERS.includes(e) || ESCAPABLE_PUNCTUATION.includes(e)) {
-                atom = true;
+                item(1);
             } else {
                 return false;
             }
@@ -222,9 +260,9 @@ export function isPortablePattern(pattern: string): boolean {
         } else if (c === "[") {
             i = scanClass(pattern, i);
             if (i < 0) return false;
-            atom = true;
+            item(1);
         } else if (c === "(") {
-            depth++;
+            sizes.push(0);
             i++;
             if (pattern[i] === "?") {
                 if (pattern[i + 1] !== ":") return false;
@@ -232,31 +270,39 @@ export function isPortablePattern(pattern: string): boolean {
             }
             atom = false;
         } else if (c === ")") {
-            if (depth === 0) return false;
-            depth--;
+            if (sizes.length === 1) return false;
+            item(sizes.pop() as number);
             i++;
-            atom = true;
         } else if (c === "*" || c === "+" || c === "?" || c === "{") {
             if (!atom) return false;
+            let factor = 1;
             if (c === "{") {
-                i = scanCount(pattern, i);
-                if (i < 0) return false;
+                const end = scanCount(pattern, i);
+                if (end < 0) return false;
+                factor = countFactor(pattern, i, end);
+                i = end;
             } else {
                 i++;
             }
             if (pattern[i] === "?") i++; // lazy
+            // The item was counted once; it stands `factor` times.
+            sizes[sizes.length - 1] = capped(before + capped(last * factor));
             atom = false;
         } else if (c === "]" || c === "}") {
             return false;
-        } else if (c === "|" || c === "^" || c === "$") {
+        } else if (c === "|") {
             atom = false;
             i++;
+        } else if (c === "^" || c === "$") {
+            atom = false;
+            add(1);
+            i++;
         } else {
-            atom = true;
+            item(1);
             i++;
         }
     }
-    return depth === 0;
+    return sizes.length === 1 && sizes[0] <= MAX_PATTERN_EXPANSION;
 }
 
 /**
