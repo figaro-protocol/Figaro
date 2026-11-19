@@ -60,7 +60,8 @@ import {
     RPC_URL,
     authorizeFundingToken,
     confirmAgreementPreviews,
-    discoverAnchoredAssemblies,
+    fillFreelancerChainCheckout,
+    findFreelancerChainAssembly,
     latestMemberProfileURI,
     pinJSONToIPFS,
     readLocalDeploymentConfig,
@@ -77,7 +78,6 @@ import { formatToken } from '@/lib/shared/utils';
 import { CORE_ABI } from '@/lib/core/contracts';
 import { truncateHex } from '@/lib/shared/formatHex';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
-import type { Page } from '@playwright/test';
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 let CONTENT_CLAUSE: Hex;
@@ -165,31 +165,6 @@ async function seedChainSellers(
     return catalogs;
 }
 
-/** The checkout particulars every order of the chain takes: encrypted
- *  transfer + jurisdiction geohashes on EVERY
- *  deliverable. */
-async function fillChainCheckout(page: Page) {
-    const everyField = async (fieldPath: string, action: (c: ReturnType<typeof page.locator>) => Promise<void>) => {
-        const controls = page.locator(`[data-testid^="checkout-field-"][data-testid$="-${fieldPath}"]`);
-        const n = await controls.count();
-        expect(n, `at least one control for ${fieldPath}`).toBeGreaterThan(0);
-        for (let i = 0; i < n; i++) await action(controls.nth(i));
-    };
-    await everyField(`${CONTENT_CLAUSE}-contentHandoff-encrypted-transfer`, (c) => c.check());
-    await everyField(`${keyOf('figaro-geolocation')}-origin`, (c) => c.fill('9q8yyk'));
-    await everyField(`${keyOf('figaro-geolocation')}-destination`, (c) => c.fill('u15pk4'));
-}
-
-/** THE SHAPE: exactly three orders, every one composing the content
- *  hand-off — the freelancer-value-chain reference and nothing else. */
-async function findChainAssembly(): Promise<string> {
-    const t = (await discoverAnchoredAssemblies()).find((a) =>
-        a.agreements.length === 3
-        && a.agreements.every((o) => CONTENT_CLAUSE in (o.clauses ?? {})));
-    expect(t, 'the freelancer-value-chain reference is anchored (assemblies/ — run populate-test-data)').toBeTruthy();
-    return t!.slug;
-}
-
 test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encrypted hand-off, one resolution (devnet)', () => {
     test.setTimeout(600_000);
 
@@ -203,7 +178,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
 
-        const slug = await findChainAssembly();
+        const slug = await findFreelancerChainAssembly();
         const sellers = CHAIN_SELLERS.map((s) => ({
             ...s,
             address: mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: s.index }).address as Hex,
@@ -239,7 +214,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
         await page.getByTestId('btn-review-order').click();
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
         await waitForConnected(page);
-        await fillChainCheckout(page);
+        await fillFreelancerChainCheckout(page);
         await expect(page.getByTestId('checkout-view')).toContainText('3', { timeout: 20000 });
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'client connected + assembly bound → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
@@ -412,7 +387,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
             account: mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 0 }), chain: LOCAL_ANVIL, transport: http(RPC_URL),
         });
 
-        const slug = await findChainAssembly();
+        const slug = await findFreelancerChainAssembly();
         const sellers = CHAIN_SELLERS.map((s) => ({
             ...s,
             address: mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: s.index }).address as Hex,
@@ -485,7 +460,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
             await waitForConnected(page);
             await page.getByTestId('payment-token-picker').waitFor({ state: 'visible', timeout: 30000 });
             await page.getByTestId('payment-token-MOCK').check();
-            await fillChainCheckout(page);
+            await fillFreelancerChainCheckout(page);
 
             const translation = page.locator('[data-testid^="payment-translation-listed-node:"]');
             await expect(translation, 'one listed price is in another token: contributor-1\'s').toHaveCount(1, { timeout: 30000 });
