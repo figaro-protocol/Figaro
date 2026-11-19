@@ -1,0 +1,226 @@
+{
+    "holds": "Kleros's court list on each chain the stack deploys to, as Kleros publishes it: each court's number and parent read from the KlerosLiquid arbitrator's courts(uint256) on that chain, each court's name read from the JSON document its PolicyRegistry's policies(uint256) points to, and the default minimum juror count read from the arbitrator's MIN_JURORS(). Kleros V1 (KlerosLiquid) is the court on Ethereum mainnet and on Ethereum Sepolia; Kleros V2 runs on Arbitrum and has no arbitrator on either chain. KlerosLiquid creates a dispute with createDispute(uint256 _numberOfChoices, bytes _extraData), where _extraData packs two uint256: the court number, then the minimum juror count. A court number past the end of the list is read as 0, the General Court, and a juror count of 0 as MIN_JURORS. Refresh it by reading the same calls again; a court Kleros adds, renames or renumbers then fails sdk/tests/clauses/klerosCourts.test.ts until the clause figaro-arbitration-kleros is checked against it.",
+    "sources": {
+        "addresses": [
+            "https://docs.kleros.io/reference/contracts/deployment-addresses-v1.md",
+            "https://docs-legacy.kleros.io/developer/deployment-addresses"
+        ],
+        "v2Addresses": "https://docs.kleros.io/reference/contracts/deployment-addresses.md",
+        "arbitratorSource": "https://github.com/kleros/kleros/blob/master/contracts/kleros/KlerosLiquid.sol",
+        "extraData": "https://docs.kleros.io/developers/arbitrable-apps/v1-arbitrable-apps.md",
+        "mainnetCourtConfig": "https://github.com/kleros/kleros-v2/blob/dev/contracts/config/policies.v1.mainnet.json",
+        "policyGateway": "https://cdn.kleros.link",
+        "forum": "https://github.com/kleros/dispute-resolver"
+    },
+    "forum": {
+        "url": "https://resolve.kleros.io",
+        "chainIds": [
+            1,
+            11155111
+        ]
+    },
+    "chains": [
+        {
+            "chain": "Ethereum mainnet",
+            "chainId": 1,
+            "version": "Kleros V1",
+            "arbitrator": "0x988b3A538b618C7A603e1c11Ab82Cd16dbE28069",
+            "policyRegistry": "0xcf1f07713d5193fae5c1653c9f61953d048bece4",
+            "createDispute": "createDispute(uint256,bytes)",
+            "minJurorsDefault": 3,
+            "courts": [
+                {
+                    "id": 0,
+                    "parent": 0,
+                    "name": "General Court",
+                    "policy": "/ipfs/Qmd1TMEbtic3TSonu5dfqa5k3aSrjxRGY8oJH3ruGgazRB"
+                },
+                {
+                    "id": 1,
+                    "parent": 0,
+                    "name": "Blockchain",
+                    "policy": "/ipfs/QmYMdCkb7WULmiK6aQrgsayGG3VYisQwsHSLC3TLkzEHCm"
+                },
+                {
+                    "id": 2,
+                    "parent": 1,
+                    "name": "Non-Technical",
+                    "policy": "/ipfs/QmdJYHubLGQCt2GxpJch2riSYVxZzDC4cBg2mNPXuiY6rX"
+                },
+                {
+                    "id": 3,
+                    "parent": 2,
+                    "name": "Token Listing",
+                    "policy": "/ipfs/QmeyojE13mcQtWqQQddYypafDRChVND8z6dcHLbaarmbbx"
+                },
+                {
+                    "id": 4,
+                    "parent": 1,
+                    "name": "Technical",
+                    "policy": "/ipfs/QmcBjGYfmKmkpYc8HYkaiBa9ot2eoWAa2Mhfef7i7QKd5H"
+                },
+                {
+                    "id": 5,
+                    "parent": 0,
+                    "name": "Marketing Services",
+                    "policy": "/ipfs/QmbSwJ4acdQP9EF6DfDU6czaG8ePha3eyvcSpPgAR8tPZ4"
+                },
+                {
+                    "id": 6,
+                    "parent": 0,
+                    "name": "English Language",
+                    "policy": "/ipfs/QmSn2RJX7a4BQ8rDtfvKLjKQSC3eHWjayPTSkFo3QMbjBx"
+                },
+                {
+                    "id": 7,
+                    "parent": 0,
+                    "name": "Video Production",
+                    "policy": "/ipfs/QmXvtokEk3qPiB2WPXXUpd4xCoAr5xeceS1n4BHHqNpP7p"
+                },
+                {
+                    "id": 8,
+                    "parent": 0,
+                    "name": "Onboarding",
+                    "policy": "/ipfs/QmbC7uhDEC33V8zyp8u6xozuD3GwtMp4Eaw25EzscEJk3R/Bce1VQaKwHGhMXxqgsmzJLH79ngeP4c57hGBeQQmSCZmPJcgrq4jBj3eFuMsgXuJhfYCXbARyNDx8oNvgusd9pDLjt"
+                },
+                {
+                    "id": 9,
+                    "parent": 0,
+                    "name": "Curation",
+                    "policy": "/ipfs/QmWcf4mgnPyxUVbRMKmNjx9pzk3scQRg8bVbNjDdfgh2Nq"
+                },
+                {
+                    "id": 10,
+                    "parent": 0,
+                    "name": "Data Analysis",
+                    "policy": "/ipfs/Qmb3r65GXcoWfkpb6m3mnzgCyTyz7dk59UaY4iW6eTKkqJ"
+                },
+                {
+                    "id": 11,
+                    "parent": 10,
+                    "name": "Statistical Modeling",
+                    "policy": "/ipfs/QmSu7HxnTmQQz23EPTAMv7oF1NsBM752mEEytCDrgdoAUx"
+                },
+                {
+                    "id": 12,
+                    "parent": 9,
+                    "name": "Curation (Medium)",
+                    "policy": "/ipfs/QmeGQ5pq7eDcS3NmKXyPsRFLEXd9pJe3MHKdDviy3buDce"
+                },
+                {
+                    "id": 13,
+                    "parent": 6,
+                    "name": "Spanish-English Translation",
+                    "policy": "/ipfs/QmY79fya7FQAzvhjzS6S5w9N8TkXZTQ5TSajqdC26VVK6L"
+                },
+                {
+                    "id": 14,
+                    "parent": 6,
+                    "name": "French-English Translation",
+                    "policy": "/ipfs/QmQtCrG1EQzLiboYtQ15oWYstPrBUgftBUHmhUSZGk3jWc"
+                },
+                {
+                    "id": 15,
+                    "parent": 6,
+                    "name": "Portuguese-English Translation",
+                    "policy": "/ipfs/QmYdR9v8LzYnw9pT4ZCcWyoivFMPNyQcBFXgCW3PZRSMCF"
+                },
+                {
+                    "id": 16,
+                    "parent": 6,
+                    "name": "German-English Translation",
+                    "policy": "/ipfs/QmcqBRYin9Ug4YX7ysGf65xDjAQecuRzWp7nSucGvBcpwP"
+                },
+                {
+                    "id": 17,
+                    "parent": 6,
+                    "name": "Russian-English Translation",
+                    "policy": "/ipfs/QmXoSvQJCW4HVjB6vreL8YwXj2HHJSpwNzroMkojos7p6c"
+                },
+                {
+                    "id": 18,
+                    "parent": 6,
+                    "name": "Korean-English Translation",
+                    "policy": "/ipfs/QmUJGjgDCX9Bsn5fL6ZAZdXRLke3Pbdhwo312hJSewsKwg"
+                },
+                {
+                    "id": 19,
+                    "parent": 6,
+                    "name": "Japanese-English Translation",
+                    "policy": "/ipfs/QmWQ5NCSjZM8NK3quv72wcD7nbs9MfMxWajYnUgrZRAWch"
+                },
+                {
+                    "id": 20,
+                    "parent": 6,
+                    "name": "Turkish-English Translation",
+                    "policy": "/ipfs/QmNSpBnACohhHwSpqg5nG8ZVxED2B4pMiputfZqZdbZvuc"
+                },
+                {
+                    "id": 21,
+                    "parent": 6,
+                    "name": "Chinese-English Translation",
+                    "policy": "/ipfs/QmbuTx2dcWGSqGo7ykMhMDbvs6oM1AcbC8LvbfAQohup25"
+                },
+                {
+                    "id": 22,
+                    "parent": 0,
+                    "name": "Corte General en Español",
+                    "policy": "/ipfs/QmRPz626unSwc7fxo3ikoZzXmCpVm5EHfiSz2bfErCsHti"
+                },
+                {
+                    "id": 23,
+                    "parent": 0,
+                    "name": "Humanity Court",
+                    "policy": "/ipfs/QmQKEJbyw89Qh5AurQ4kvidCSr32ihQUdAQZ646cPkJV34"
+                },
+                {
+                    "id": 24,
+                    "parent": 0,
+                    "name": "Oracle Court",
+                    "policy": "/ipfs/QmRNKyST212j2DLLkA7WDBDH65tcGAVxiTkJ54LsZkVat7"
+                }
+            ]
+        },
+        {
+            "chain": "Ethereum Sepolia",
+            "chainId": 11155111,
+            "version": "Kleros V1",
+            "arbitrator": "0x90992fb4E15ce0C59aEFfb376460Fda4Ee19C879",
+            "policyRegistry": "0x88Fb25D399310c07d35cB9091b8346d8b1893aa5",
+            "createDispute": "createDispute(uint256,bytes)",
+            "minJurorsDefault": 3,
+            "courts": [
+                {
+                    "id": 0,
+                    "parent": 0,
+                    "name": "General Court",
+                    "policy": "/ipfs/QmVotPvG2RoZg8EFYSAweqdovWcZbt7Zb4xxrFwR9Pv3MX/general.json"
+                },
+                {
+                    "id": 1,
+                    "parent": 0,
+                    "name": "TheBadge Court",
+                    "policy": "/ipfs/QmYUciLmSQDRKHt5KF9PdXCGsmtnjTe2DSj9U2f8HXJjf6/thebadge-court.json"
+                },
+                {
+                    "id": 2,
+                    "parent": 0,
+                    "name": "Hats Finance test court",
+                    "policy": "/ipfs/QmYnv79gMJz9pFhASxN76kNnQLRjSrQAALznf4fWF4dwYN/hats-finance-court.json"
+                },
+                {
+                    "id": 3,
+                    "parent": 0,
+                    "name": "Oracle Court",
+                    "policy": "/ipfs/QmRNKyST212j2DLLkA7WDBDH65tcGAVxiTkJ54LsZkVat7"
+                },
+                {
+                    "id": 4,
+                    "parent": 0,
+                    "name": "Oracle Court with Hidden Votes",
+                    "policy": "/ipfs/QmcVDfT2UJHNQ186VBmS6kJsgMrwu2v1vfNwNjkLMK2tgB"
+                }
+            ]
+        }
+    ]
+}
