@@ -39,6 +39,7 @@ import { commitmentOrderHashes } from "@/lib/core/signedCommitment";
 import { publishAgreement } from "@/lib/core/agreementFetch";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import type { RuntimeServices } from "@/lib/shared/runtimeServices";
 import type { WalletMessageSigner } from "@/lib/handoff/handoffMessagingService";
 import { MAX_COMMITMENT_PAYLOAD_BYTES } from "@figaro-protocol/sdk/agent";
@@ -109,7 +110,9 @@ export function useIsUncommitted(): { isUncommitted: (payload: CommitmentPayload
     const enabled = !isE2EMockSession() && !!publicClient && !!chainId && !!core;
     const [committed, setCommitted] = useState<ReadonlySet<string> | null>(null);
     const committedRef = useRef(committed);
-    committedRef.current = committed;
+    useEffect(() => {
+        committedRef.current = committed;
+    }, [committed]);
     // Until a read lands nothing is known: a failed read is retried on the
     // content schedule, and again on the next order event, which says the
     // chain answers now. Neither the predicate nor `known` says "committed"
@@ -117,8 +120,16 @@ export function useIsUncommitted(): { isUncommitted: (payload: CommitmentPayload
     const [tick, setTick] = useState(0);
     const attempts = useRef(0);
 
+    // Each new read starts from "nothing known", set during render on the
+    // render its inputs change (`useDepsChanged`); the effect reads only.
+    // Keyed on whether a client is there, with the chain: the wallet library
+    // keeps one client per chain, and a render may be handed a fresh object
+    // for the same client (the export's prerender is), which as a key would
+    // never end.
+    const inputsChanged = useDepsChanged([enabled, !!publicClient, chainId, tick]);
+    if (inputsChanged) setCommitted(null);
+
     useEffect(() => {
-        setCommitted(null);
         if (!enabled || !publicClient) return;
         let canceled = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
@@ -383,7 +394,9 @@ export function useCommitmentPayloadInbox(enabled = true): InboxState {
     // subscription is re-opened when the wallet arrives, never on every
     // render in between.
     const walletClientRef = useRef<WalletMessageSigner | null>(walletClient ?? null);
-    walletClientRef.current = walletClient ?? null;
+    useEffect(() => {
+        walletClientRef.current = walletClient ?? null;
+    }, [walletClient]);
     const hasWalletClient = !!walletClient;
 
     useEffect(() => {

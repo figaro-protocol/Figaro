@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback } from "react";
 import { usePublicClient, useChainId } from "wagmi";
 import { getMemberMetadataURI } from "@/lib/protocol/membersRegistryIndexer";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 export interface UseAsyncMemberResourceResult<T> {
     data: T | null;
@@ -41,16 +42,26 @@ export function useAsyncMemberResource<T>(
     const [error, setError] = useState<string | null>(null);
     const [fetchKey, setFetchKey] = useState(0);
 
-    useEffect(() => {
+    // The synchronous resets run during render, on the render an input
+    // changes (`useDepsChanged`); the effect fetches only.
+    // Keyed on whether a client is there, with the chain: the wallet library
+    // keeps one client per chain, and a render may be handed a fresh object
+    // for the same client (the export's prerender is), which as a key would
+    // never end.
+    const inputsChanged = useDepsChanged([!!client, chainId, address, fetchKey, fetcher, failureMessage, ...(extraDeps ?? [])]);
+    if (inputsChanged) {
         if (!client || !address) {
             setData(null);
             setIsLoading(false);
-            setError(null);
-            return;
+        } else {
+            setIsLoading(true);
         }
-        let canceled = false;
-        setIsLoading(true);
         setError(null);
+    }
+
+    useEffect(() => {
+        if (!client || !address) return;
+        let canceled = false;
 
         getMemberMetadataURI(client, chainId, address)
             .then(async (metadataURI) => {

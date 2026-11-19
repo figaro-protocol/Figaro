@@ -31,6 +31,7 @@ import { getCoreEvents, walletOrders } from "@/lib/core/indexer";
 import { useWatchOrderEvents } from "@/lib/core/useWatchOrderEvents";
 import { Topology, type CoreEvents, type Hex } from "@figaro-protocol/sdk";
 import { PENDING, present, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -134,12 +135,16 @@ export function useWalletOrders(): NetworkRead<Order[]> {
     const contractAddr = CONTRACTS.core || undefined;
     const processReloadKey = useOrderStore((s) => s.processReloadKey);
 
+    // No client, chain, contract or wallet yet reads as pending, set during
+    // render on the render the inputs change (`useDepsChanged`); the effect
+    // reads only.
+    // The reset reads only the client's chain, so it is keyed on that.
+    const inputsChanged = useDepsChanged([publicClient?.chain?.id, contractAddr, address, processReloadKey]);
+    if (inputsChanged && (!publicClient || !publicClient.chain?.id || !contractAddr || !address)) setOrders(PENDING);
+
     useEffect(() => {
         const chainId = publicClient?.chain?.id;
-        if (!publicClient || !chainId || !contractAddr || !address) {
-            setOrders(PENDING);
-            return;
-        }
+        if (!publicClient || !chainId || !contractAddr || !address) return;
         let canceled = false;
 
         void readNetwork("useWalletOrders", async () => {

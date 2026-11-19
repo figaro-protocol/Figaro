@@ -41,6 +41,7 @@ import Link from "@/components/shared/Link";
 import { PublishTargetNotice } from "@/components/shared/PublishTargetNotice";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, usePublicClient } from "wagmi";
 import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";
@@ -303,8 +304,15 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
      */
     const reviewedHash = isPublishReview && review?.ok ? review.processDesignHash : null;
     const [anchoredBinding, setAnchoredBinding] = useState<{ registeredBy: `0x${string}` } | null | undefined>(undefined);
+    // Not yet read, from the render the composition or client changes in
+    // (`useDepsChanged`); the effect reads the registry only.
+    // Keyed on whether a client is there, with the chain: the wallet library
+    // keeps one client per chain, and a render may be handed a fresh object
+    // for the same client (the export's prerender is), which as a key would
+    // never end.
+    const bindingInputsChanged = useDepsChanged([reviewedHash, !!client, client?.chain?.id]);
+    if (bindingInputsChanged) setAnchoredBinding(undefined);
     useEffect(() => {
-        setAnchoredBinding(undefined);
         const registry = getProcessRegistry();
         if (!reviewedHash || !client || !registry) return;
         let canceled = false;

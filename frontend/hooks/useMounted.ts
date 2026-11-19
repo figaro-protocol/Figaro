@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 /**
- * Returns `true` after the component mounts on the client. Use to gate
+ * Returns `true` once the component renders on the client. Use to gate
  * rendering of wagmi-dependent / window-dependent / localStorage-dependent
  * UI so the server-rendered HTML matches the first client render
  * (and only diverges on subsequent client-only updates).
@@ -16,11 +16,16 @@ import { useEffect, useState } from "react";
  *   return <Form />;
  *
  * Server: returns false → renders Loading.
- * Client first render: returns false → renders Loading (matches).
- * Client after effect: true → re-renders with the actual UI.
+ * Hydration: returns false → renders Loading (matches), then React
+ * re-renders with true before the user acts.
+ * A component mounted after hydration (a client navigation): true from its
+ * first render. React's `useSyncExternalStore` takes the server snapshot only
+ * while hydrating.
  */
+const subscribeNothing = () => () => {};
+const onClient = () => true;
+const onServer = () => false;
+
 export function useMounted(): boolean {
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => setMounted(true), []);
-    return mounted;
+    return useSyncExternalStore(subscribeNothing, onClient, onServer);
 }

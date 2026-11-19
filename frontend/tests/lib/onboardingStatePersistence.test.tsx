@@ -33,11 +33,10 @@ function useFormHarness(wallet: `0x${string}` | undefined) {
     const [hydratedFor, setHydratedFor] = useState<string | null>(null);
     const hydrated = hydratedFor === subject;
 
-    useEffect(() => {
-        if (hydrated || !loaded) return;
+    if (!hydrated && loaded) {
         setName(state.profile?.name ?? "");
         setHydratedFor(subject);
-    }, [hydrated, loaded, subject, state.profile]);
+    }
 
     useEffect(() => {
         if (!hydrated) return;

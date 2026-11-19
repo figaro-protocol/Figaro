@@ -100,11 +100,10 @@ export function OnboardingAgentsForm({
 
     // Hydrate once `loaded === true` — see OnboardingProfileForm for
     // the race-condition rationale.
-    useEffect(() => {
-        if (hydrated || !loaded) return;
+    if (!hydrated && loaded) {
         setServices(state.services ?? {});
         setHydratedFor(subject);
-    }, [hydrated, loaded, subject, state.services]);
+    }
 
     useEffect(() => {
         if (!hydrated) return;

@@ -1195,10 +1195,10 @@ Per workflow, what it runs and when:
   project and the `stranger` project's `accessibility.stranger.spec.ts` run on
   a laptop.
 - **`Dependency Audit CI`** — push/PR, NOT path-filtered: three npm-audit legs (root
-  production deps at high+; frontend production deps at critical-only, through
+  production deps at high+; frontend production deps at high+, through
   `scripts/audit-frontend.mjs`, which sets aside by id the advisories named in
   `frontend/.audit-ignore.json` — each with the reason it cannot reach a static
-  export — and fails on every other critical one; docs-site production deps at
+  export — and fails on every other high or critical one; docs-site production deps at
   critical-only, since `/docs` is served from the wallet app's origin), and a
   `cargo audit` leg over
   `prover/Cargo.lock` (fails on any vulnerability advisory; unmaintained and

@@ -24,6 +24,7 @@ import {
 import { usePublishedAssemblies } from "@/lib/protocol/useProcessRegistry";
 import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
 import { ABSENT, PENDING, mapRead, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 export interface UseRegisteredCatalogsOptions {
     service?: DiscoveryService;
@@ -45,15 +46,17 @@ export function useRegisteredCatalogs(
     // rendered, and a failed assembly read never rejects every member.
     const { read: publishedAssemblies } = usePublishedAssemblies(undefined);
 
+    // The reads that end without a fetch are set during render, on the
+    // render the inputs change (`useDepsChanged`); the effect fetches only.
+    // The reset reads only whether a client is there, so it is keyed on that.
+    const inputsChanged = useDepsChanged([!!client, chainId, service, publishedAssemblies, generation]);
+    if (inputsChanged) {
+        if (!client || !service.isRegistryConfigured()) setRead(ABSENT);
+        else if (publishedAssemblies.status !== "present") setRead(publishedAssemblies);
+    }
+
     useEffect(() => {
-        if (!client || !service.isRegistryConfigured()) {
-            setRead(ABSENT);
-            return;
-        }
-        if (publishedAssemblies.status !== "present") {
-            setRead(publishedAssemblies);
-            return;
-        }
+        if (!client || !service.isRegistryConfigured() || publishedAssemblies.status !== "present") return;
         const publishedHashes = new Set(publishedAssemblies.value.map((a) => a.processDesignHash.toLowerCase()));
 
         let canceled = false;
@@ -80,7 +83,7 @@ export function useRegisteredCatalogs(
             window.removeEventListener("focus", bump);
             document.removeEventListener("visibilitychange", onVisible);
         };
-    }, []);
+    }, [bump]);
 
     return { read };
 }

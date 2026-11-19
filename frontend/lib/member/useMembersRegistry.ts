@@ -23,6 +23,7 @@ import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import { useAsyncMemberResource } from "@/lib/member/useAsyncMemberResource";
 import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
 import { PENDING, present, queryRead, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import {
     AgentServiceInfo,
     MemberAgentServices,
@@ -78,11 +79,14 @@ export function useMemberProfile(address: `0x${string}` | undefined): {
     const [read, setRead] = useState<NetworkRead<MemberRegistration>>(PENDING);
     const { generation, refetch } = useRefetchGeneration();
 
+    // A wallet or client still hydrating reads as pending, set during render
+    // on the render the inputs change (`useDepsChanged`); the effect fetches only.
+    // The reset reads only whether a client is there, so it is keyed on that.
+    const inputsChanged = useDepsChanged([!!client, chainId, address, generation]);
+    if (inputsChanged && (!client || !address)) setRead(PENDING);
+
     useEffect(() => {
-        if (!client || !address) {
-            setRead(PENDING);
-            return;
-        }
+        if (!client || !address) return;
 
         let canceled = false;
 

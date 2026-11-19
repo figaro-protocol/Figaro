@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { usePublicClient } from "wagmi";
 import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { useProcessAgreementReads } from "@/hooks/useProcessAgreements";
@@ -159,11 +160,13 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
     // A failed attestation read is absent — never `[]`, which would read as
     // "no evidence recorded".
     const [attestationsRead, setAttestationsRead] = useState<NetworkRead<Map<string, AttestationRecord[]>>>(PENDING);
+    // With no client or chain the reads are reset during render, on the render
+    // the inputs change (`useDepsChanged`); the effects below fetch only.
+    // The resets read only whether a client is there, so they are keyed on that.
+    const evidenceInputsChanged = useDepsChanged([ordersKey, chainId, !!publicClient]);
+    if (evidenceInputsChanged && (!publicClient || !chainId)) setAttestationsRead(PENDING);
     useEffect(() => {
-        if (!publicClient || !chainId) {
-            setAttestationsRead(PENDING);
-            return;
-        }
+        if (!publicClient || !chainId) return;
         let canceled = false;
         void readNetwork("ProcessClauseEvidence.attestations", async () => {
             const next = new Map<string, AttestationRecord[]>();
@@ -186,11 +189,9 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
     // failed is absent: the order shows no rows, and the list of what the
     // evidence lacks names it.
     const [signaturesByOrder, setSignaturesByOrder] = useState<Map<string, NetworkRead<OrderSignatureVerdicts>>>(new Map());
+    if (evidenceInputsChanged && (!publicClient || !chainId || orders.length === 0)) setSignaturesByOrder(new Map());
     useEffect(() => {
-        if (!publicClient || !chainId || orders.length === 0) {
-            setSignaturesByOrder(new Map());
-            return;
-        }
+        if (!publicClient || !chainId || orders.length === 0) return;
         let canceled = false;
         (async () => {
             const next = new Map<string, NetworkRead<OrderSignatureVerdicts>>();

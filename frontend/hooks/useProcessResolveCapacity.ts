@@ -15,6 +15,7 @@ import { usePublicClient } from "wagmi";
 import { readProcessResolveCapacity, type ProcessResolveCapacity } from "@figaro-protocol/sdk";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 export default function useProcessResolveCapacity(
     processId: `0x${string}` | undefined,
@@ -22,11 +23,15 @@ export default function useProcessResolveCapacity(
     const publicClient = usePublicClient();
     const [capacity, setCapacity] = useState<ProcessResolveCapacity | null>(null);
 
+    // A process with nothing to read is null from the render it changes in
+    // (`useDepsChanged`); the effect reads the chain only.
+    const noRead = !publicClient || !processId || hexEqual(processId, ZERO_PROCESS_ID);
+    // The reset reads only whether a client is there, so it is keyed on that.
+    const inputsChanged = useDepsChanged([!!publicClient, processId]);
+    if (inputsChanged && noRead) setCapacity(null);
+
     useEffect(() => {
-        if (!publicClient || !processId || hexEqual(processId, ZERO_PROCESS_ID)) {
-            setCapacity(null);
-            return;
-        }
+        if (!publicClient || !processId || hexEqual(processId, ZERO_PROCESS_ID)) return;
         let canceled = false;
         readProcessResolveCapacity(publicClient, CONTRACTS.core, processId)
             .then((c) => { if (!canceled) setCapacity(c); })

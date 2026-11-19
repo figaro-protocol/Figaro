@@ -33,6 +33,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PublicClient } from "viem";
 import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import {
     deriveInFlightOrders,
     deriveClauseWithdrawGate,
@@ -103,9 +104,13 @@ export function useWithdrawGate(clauseOrProcess: WithdrawClauseOrAssembly | null
         }
     }, [clauseOrProcess]);
 
+    // A new target reads as pending from the render it changes in
+    // (`useDepsChanged`); the effect reads the chain only.
+    const targetChanged = useDepsChanged([clauseOrAssemblyKey]);
+    if (targetChanged) setGate(PENDING);
+
     useEffect(() => {
         const core = CONTRACTS.core;
-        setGate(PENDING);
         if (!clauseOrProcess || !isValidAddress(core)) return;
         let canceled = false;
 

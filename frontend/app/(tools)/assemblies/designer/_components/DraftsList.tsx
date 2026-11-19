@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useMounted } from "@/hooks/useMounted";
 import Link from "@/components/shared/Link";
 import { Button } from "@/components/ui/Button";
 import {
@@ -12,14 +13,14 @@ import { formatRelative } from "@/lib/shared/formatTimestamp";
 
 export function DraftsList() {
     const [drafts, setDrafts] = useState<DraftIndexEntry[] | null>(null);
+    // The drafts live in this browser's storage: read once the page renders on
+    // the client (`useMounted` is false through hydration), during render.
+    const mounted = useMounted();
+    if (mounted && drafts === null) setDrafts(listNamedDrafts());
 
     const refresh = useCallback(() => {
         setDrafts(listNamedDrafts());
     }, []);
-
-    useEffect(() => {
-        refresh();
-    }, [refresh]);
 
     const handleDelete = useCallback(
         (slug: string, name: string) => {

@@ -10,6 +10,7 @@
  */
 
 import { Suspense, useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { useSearchParams } from "next/navigation";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
@@ -58,8 +59,10 @@ function SignPageContent() {
     const [channelPayloadError, setChannelPayloadError] = useState<string | null>(null);
     const [loadedFromChannel, setLoadedFromChannel] = useState(false);
 
-    // Reset approval state when a new commitment is parsed
-    useEffect(() => { setApprovalDone(false); }, [parsed]);
+    // Reset approval state when a new commitment is parsed: during render, on
+    // the render it is parsed in (`useDepsChanged`).
+    const parsedChanged = useDepsChanged([parsed]);
+    if (parsedChanged) setApprovalDone(false);
 
     const parseSerializedPayload = useCallback(async (serialized: string) => {
         try {
@@ -221,9 +224,10 @@ function SignPageContent() {
         ? registration.value.metadataURI
         : null;
     const [ownProfile, setOwnProfile] = useState<MemberProfileMetadata | null>(null);
+    const ownMetadataChanged = useDepsChanged([ownMetadataURI]);
+    if (ownMetadataChanged) setOwnProfile(null);
     useEffect(() => {
         let canceled = false;
-        setOwnProfile(null);
         if (!ownMetadataURI) return;
         fetchMemberProfile(ownMetadataURI)
             .then((parsed_) => { if (!canceled && parsed_) setOwnProfile(parsed_); })
@@ -263,9 +267,8 @@ function SignPageContent() {
     const sellerShortOfDenomination = isSeller
         && myDenominationBalance.status === "present"
         && myDenominationBalance.value < myBondAmount;
-    useEffect(() => {
-        if (sellerShortOfDenomination && sellerFundingCandidates.length > 0) setFundingOpen(true);
-    }, [sellerShortOfDenomination, sellerFundingCandidates.length]);
+    const fundingNeedChanged = useDepsChanged([sellerShortOfDenomination, sellerFundingCandidates.length]);
+    if (fundingNeedChanged && sellerShortOfDenomination && sellerFundingCandidates.length > 0) setFundingOpen(true);
 
     // Off-chain validation over what was pasted/relayed: does the inline agreement merkle
     // to the signed checkoutHash and conform to its clause specs? Computed at

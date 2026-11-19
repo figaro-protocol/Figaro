@@ -61,11 +61,12 @@ export function OnboardingBuyerForm({
     const [subscribed, setSubscribed] = useState<Set<string>>(new Set());
     const { hydrated, markHydrated } = useSubjectHydration(subject);
 
-    useEffect(() => {
-        if (hydrated || !loaded) return;
+    // Hydrate during render, once: the draft is React state already read
+    // (`loaded`), so the persistence effect below first runs with it.
+    if (!hydrated && loaded) {
         setSubscribed(new Set((state.buyerAssemblies ?? []).map((s) => s.processDesignHash)));
         markHydrated();
-    }, [hydrated, loaded, markHydrated, state.buyerAssemblies]);
+    }
 
     useEffect(() => {
         if (!hydrated) return;

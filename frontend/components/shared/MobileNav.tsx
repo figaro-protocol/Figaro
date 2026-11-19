@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { focusablesIn, trapTabFocus } from "@/lib/shared/focusTrap";
 import { createPortal } from "react-dom";
 import Menu from "@/components/icons/Menu";
@@ -94,10 +95,11 @@ export function MobileNav({ links }: MobileNavProps) {
     const groups = allGroups;
     const holder = sectionHoldingReader(groups, pathname);
 
-    // Close menu when route changes (avoids unmounting Link before navigation completes)
-    useEffect(() => {
-        setIsOpen(false);
-    }, [pathname]);
+    // Close menu when route changes (avoids unmounting Link before navigation
+    // completes): set during render, on the render the route changes in
+    // (`useDepsChanged`).
+    const routeChanged = useDepsChanged([pathname]);
+    if (routeChanged) setIsOpen(false);
 
     // Focus trap + Escape-to-close + focus restoration on the open panel.
     useEffect(() => {

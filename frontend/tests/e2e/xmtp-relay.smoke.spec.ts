@@ -110,7 +110,6 @@ function watchPage(page: Page, label: string, errors: string[]) {
     page.on('pageerror', (err) => errors.push(`[${label}] pageerror: ${err.message}`));
     page.on('console', (msg) => {
         if (msg.type() === 'error' || msg.type() === 'warning') {
-            // eslint-disable-next-line no-console
             console.log(`[smoke][${label}][console.${msg.type()}] ${msg.text()}`);
         }
     });

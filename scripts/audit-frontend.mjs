@@ -5,7 +5,7 @@
 // image optimizer, no middleware, no rewrites, no server components at
 // runtime; docs/RELEASE_READINESS.md states the posture). Each advisory in
 // frontend/.audit-ignore.json is one such, with its reason beside it. Any
-// other critical advisory fails, exactly as before.
+// other high or critical advisory fails.
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
@@ -17,6 +17,7 @@ try {
     // npm audit exits non-zero when it finds anything; the report is still on stdout
     report = JSON.parse(e.stdout);
 }
+const GATE = new Set(["high", "critical"]);
 const failing = [];
 const setAside = [];
 for (const [name, v] of Object.entries(report.vulnerabilities ?? {})) {
@@ -24,13 +25,13 @@ for (const [name, v] of Object.entries(report.vulnerabilities ?? {})) {
         if (typeof via !== "object" || !via.url) continue;
         const id = via.url.split("/").pop();
         if (id in ignore) { setAside.push(`${name}: ${id} — ${ignore[id]}`); continue; }
-        if (via.severity === "critical") failing.push(`${name} ${v.range}: ${via.title} (${via.url})`);
+        if (GATE.has(via.severity)) failing.push(`${name} ${v.range}: ${via.title} (${via.url})`);
     }
 }
 for (const line of setAside) console.log(`set aside — ${line}`);
 if (failing.length > 0) {
-    console.error("critical advisories not set aside:");
+    console.error("high or critical advisories not set aside:");
     for (const line of failing) console.error(`  ${line}`);
     process.exit(1);
 }
-console.log("frontend audit: no critical advisory reaches the static export");
+console.log("frontend audit: no high or critical advisory reaches the static export");

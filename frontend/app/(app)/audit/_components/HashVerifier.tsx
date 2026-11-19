@@ -123,34 +123,38 @@ function ErrorBox({ message }: { message: string }) {
 
 // ── Mode A — Agreement ─────────────────────────────────────────────────────
 
+/** The agreement mode's reading of the pasted JSON: idle, an error, or the
+ *  recomputed checkoutHash. */
+function readAgreementJson(json: string) {
+    if (!json.trim()) return { kind: "idle" as const };
+    try {
+        const parsed = JSON.parse(json) as Agreement;
+        if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.clauses)) {
+            return { kind: "error" as const, message: "Parsed JSON is not an Agreement (missing clauses array)." };
+        }
+        // Every clause is cleartext ({ clause, data }) — the IPFS body
+        // carries them all. Selective disclosure is a merkle inclusion proof,
+        // not a redacted agreement form.
+        for (const s of parsed.clauses as AgreementClause[]) {
+            if (!s || typeof s !== "object" || typeof s.clause !== "string") {
+                return { kind: "error" as const, message: "Each clause must have a string `clause` field." };
+            }
+            if (typeof s.data !== "object") {
+                return { kind: "error" as const, message: `Clause "${s.clause}" missing data field.` };
+            }
+        }
+        const hash = computeCheckoutHash(parsed);
+        return { kind: "ok" as const, hash };
+    } catch (e) {
+        return { kind: "error" as const, message: extractErrorMessage(e, "JSON parse failed.") };
+    }
+}
+
 function AgreementMode() {
     const [json, setJson] = useState("");
     const [expected, setExpected] = useState("");
 
-    const result = useMemo(() => {
-        if (!json.trim()) return { kind: "idle" as const };
-        try {
-            const parsed = JSON.parse(json) as Agreement;
-            if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.clauses)) {
-                return { kind: "error" as const, message: "Parsed JSON is not an Agreement (missing clauses array)." };
-            }
-            // Every clause is cleartext ({ clause, data }) — the IPFS body
-            // carries them all. Selective disclosure is a merkle inclusion proof,
-            // not a redacted agreement form.
-            for (const s of parsed.clauses as AgreementClause[]) {
-                if (!s || typeof s !== "object" || typeof s.clause !== "string") {
-                    return { kind: "error" as const, message: "Each clause must have a string `clause` field." };
-                }
-                if (typeof s.data !== "object") {
-                    return { kind: "error" as const, message: `Clause "${s.clause}" missing data field.` };
-                }
-            }
-            const hash = computeCheckoutHash(parsed);
-            return { kind: "ok" as const, hash };
-        } catch (e) {
-            return { kind: "error" as const, message: extractErrorMessage(e, "JSON parse failed.") };
-        }
-    }, [json]);
+    const result = useMemo(() => readAgreementJson(json), [json]);
 
     return (
         <div className="space-y-4" data-testid="verify-agreement-mode">

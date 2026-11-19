@@ -29,7 +29,8 @@
  * is static, and a client-only initial state would mismatch the server's).
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { Disclosure } from "@/components/ui/Disclosure";
 import { DEFAULT_IPFS_SERVICE, fetchCappedBinary } from "@/lib/shared/ipfsService";
 import {
@@ -59,16 +60,18 @@ type ReadState =
 export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredDocumentProps) {
     const [expanded, setExpanded] = useState(false);
     const [read, setRead] = useState<ReadState>({ state: "idle" });
-    // The effect must not depend on `read`: depending on it re-ran the effect
-    // the moment "reading" was set, and that re-run's cleanup canceled the
-    // fetch it had just started — the panel then read "Reading…" forever.
-    const readRef = useRef(read);
-    readRef.current = read;
+    // The effect depends on whether a read is wanted, never on `read` itself:
+    // depending on `read` re-ran the effect the moment "reading" was set, and
+    // that re-run's cleanup canceled the fetch it had just started — the panel
+    // then read "Reading…" forever. "Reading" is set during render, on the
+    // render a read becomes wanted (`useDepsChanged`); the effect fetches only.
+    const wantsRead = expanded && read.state !== "read";
+    const readInputsChanged = useDepsChanged([wantsRead, contentURI, anchoredHash, anchor]);
+    if (readInputsChanged && wantsRead) setRead({ state: "reading" });
 
     useEffect(() => {
-        if (!expanded || readRef.current.state === "read") return;
+        if (!wantsRead) return;
         let canceled = false;
-        setRead({ state: "reading" });
         (async () => {
             const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(contentURI);
             if (!url) {
@@ -93,7 +96,7 @@ export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredD
         return () => {
             canceled = true;
         };
-    }, [expanded, contentURI, anchoredHash, anchor]);
+    }, [wantsRead, contentURI, anchoredHash, anchor]);
 
     const onToggle = useCallback(() => setExpanded((v) => !v), []);
 

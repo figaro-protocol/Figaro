@@ -31,10 +31,12 @@ export { expect };
  * which starts as account[0] (buyer).
  */
 export const test = base.extend<{ page: Page }>({
-    page: async ({ page }, use) => {
+    // Playwright hands the fixture's value on through the second argument; it
+    // is named `provide`, since a `use` name reads as a React hook to lint.
+    page: async ({ page }, provide) => {
         await page.addInitScript({ path: multiInjectPath });
         attachConsoleCapture(page);
-        await use(page);
+        await provide(page);
     },
 });
 
