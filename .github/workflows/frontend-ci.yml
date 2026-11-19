@@ -97,6 +97,17 @@ jobs:
           # A build that is not a deploy: next.config.mjs requires the network named.
           NEXT_PUBLIC_XMTP_ENV: dev
 
+      # Nothing the site ships carries personal information: every text file
+      # and every paper PDF of the export just built, scanned by
+      # scripts/check-export-no-personal-info.mjs (emails, tokens that carry a
+      # personal field). The script reads a PDF's text layer with pypdf, in a
+      # virtual environment of its own, pinned by version.
+      - name: Scan the static export for personal information
+        run: |
+          python3 -m venv "$RUNNER_TEMP/pdf-text"
+          "$RUNNER_TEMP/pdf-text/bin/pip" install --quiet pypdf==6.16.2
+          PATH="$RUNNER_TEMP/pdf-text/bin:$PATH" node ../scripts/check-export-no-personal-info.mjs out
+
       # The export just built, from a clean checkout and public inputs only (no
       # secret is set above), served as any host would serve it: a static file
       # server over frontend/out. A marketing page and an app page must each
@@ -117,6 +128,19 @@ jobs:
               exit 1
             fi
           done
+
+      # The same export against WCAG 2.0 and 2.1 A and AA: the `stranger`
+      # project's accessibility sweep runs axe-core on every route the export
+      # ships. E2E_EXPORT_DIR names the export already built, so Playwright's
+      # webServer serves frontend/out as it stands and builds nothing; no chain
+      # runs here, so each read of the chain leaves its place empty, as it does
+      # for a visitor whose read fails.
+      - name: Check every exported route for accessibility
+        run: npx playwright test --project=stranger accessibility.stranger --workers=1
+        env:
+          CI: true
+          E2E_EXPORT_DIR: out
+          PLAYWRIGHT_PORT: 3300
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

@@ -6,9 +6,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-/** The dist dir the prod-mode webServer builds into for the chain under test. */
+/**
+ * The dist dir the webServer serves: the export E2E_EXPORT_DIR names when it is
+ * set (built beforehand, relative to frontend/), else the one the prod-mode
+ * webServer builds into for the chain under test.
+ */
 export function exportDistDir(): string {
-    return path.resolve(__dirname, '../..', process.env.E2E_CHAIN === 'sepolia' ? '.next-e2e-sepolia' : '.next-e2e');
+    const named = process.env.E2E_EXPORT_DIR;
+    return path.resolve(__dirname, '../..', named || (process.env.E2E_CHAIN === 'sepolia' ? '.next-e2e-sepolia' : '.next-e2e'));
 }
 
 /**

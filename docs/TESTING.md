@@ -961,6 +961,9 @@ select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
   Its second spec, `accessibility.stranger.spec.ts`, reads the same census
   (`exportCensus.ts`) and runs axe-core's WCAG 2.0 and 2.1 A and AA rules on
   every exported route; any violation fails it, named by route, rule and node.
+  With `E2E_EXPORT_DIR` set (a directory relative to `frontend/`, such as
+  `out`), both specs read the census from that export and the webServer serves
+  it without a build; `frontend-ci` runs the sweep this way.
   axe is evaluated through Playwright, never injected as a page script, so the
   pages' inline-script policy stands. The test build makes no paper PDFs
   (`frontend/scripts/build-paper-pdfs.mjs` skips itself under
@@ -1214,7 +1217,16 @@ Per workflow, what it runs and when:
   a clean checkout with every package installed from its lockfile and no
   secret set; the job then serves `frontend/out` with
   `frontend/scripts/serve-export.mjs` and fails unless `/` and the app page
-  `/orders/` each answer 200 with a body. That export targets the local chain
+  `/orders/` each answer 200 with a body. Before it serves the export, the job
+  runs `scripts/check-export-no-personal-info.mjs` over `frontend/out` (every
+  text file and the text layer of every paper PDF, read with pypdf installed
+  in a virtual environment, pinned by version) and fails on any email or any
+  token that carries a personal field. After the serve check, it runs the
+  `stranger` project's `accessibility.stranger.spec.ts` over the same export:
+  `E2E_EXPORT_DIR=out` makes Playwright's webServer serve `frontend/out` as it
+  stands, with no second build, and the sweep reads its route census from
+  there. No chain runs in this job, so each read of the chain leaves its
+  place empty on the audited pages. That export targets the local chain
   (`NEXT_PUBLIC_CHAIN` unset), and the job runs only when `frontend/**` changes.
 - **`devnet-e2e-ci`** — push/PR, path-filtered: the **bilateral spine**
   (`orders-accept`) end to end in the runner — Kubo (IPFS, CORS-configured),
@@ -1233,9 +1245,9 @@ Per workflow, what it runs and when:
   wizard. Either scope then runs the `stranger` project's crawl
   (`crawl.stranger.spec.ts`) against a fresh export and the seeded chain, so
   every pull request that touches `frontend/` runs it; the budget is 50
-  minutes for the spine and 140 for the full scope. The `devnet-standalone`
-  project and the `stranger` project's `accessibility.stranger.spec.ts` run on
-  a laptop.
+  minutes for the spine and 140 for the full scope. The `stranger` project's
+  `accessibility.stranger.spec.ts` runs in `frontend-ci`, over that job's
+  export; the `devnet-standalone` project runs on a laptop.
 - **`Dependency Audit CI`** — push/PR, NOT path-filtered: three npm-audit legs (root
   production deps at high+; frontend production deps at high+, through
   `scripts/audit-frontend.mjs`, which sets aside by id the advisories named in

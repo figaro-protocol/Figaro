@@ -92,6 +92,13 @@ const PLAYWRIGHT_BASE_URL = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;
 // iteration on app code.
 const WEB_MODE = process.env.PLAYWRIGHT_WEB_MODE === 'dev' ? 'dev' : 'prod';
 
+// E2E_EXPORT_DIR names a static export already built (relative to frontend/,
+// e.g. `out`, the directory `npm run build` writes): the webServer serves it as
+// it stands and builds nothing, and the stranger specs read their route census
+// from it (tests/e2e/exportCensus.ts). The frontend CI's accessibility sweep
+// runs this way over the export its build step made.
+const EXPORT_DIR = process.env.E2E_EXPORT_DIR;
+
 export default defineConfig({
     testDir: './tests/e2e',
     // The devnet seed precondition: a run that selects a project sharing the
@@ -120,8 +127,9 @@ export default defineConfig({
         // `.next-e2e`, which `serve` hosts (no `next start` under output:export);
         // clean-URL resolution maps `/s/view` → `.next-e2e/s/view/index.html`
         // (trailingSlash: true — the directory-per-route export shape).
-        command:
-            WEB_MODE === 'prod'
+        command: EXPORT_DIR
+            ? `SERVE_DIR=${EXPORT_DIR} PORT=${PLAYWRIGHT_PORT} npm run serve:export`
+            : WEB_MODE === 'prod'
                 // `serve:export` (scripts/serve-export.mjs), NOT `npx serve`: serve
                 // leaks a file descriptor per aborted prefetch and crashes on
                 // macOS's per-process fd cap (kern.maxfilesperproc = 10240) with an
