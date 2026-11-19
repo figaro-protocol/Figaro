@@ -1,9 +1,11 @@
 /**
  * QueryParamPage — the one shell for a page whose record rides in a query
  * parameter (a process id, a seller wallet, a design's slug). A missing or
- * malformed parameter names no record, so the page renders nothing for it:
- * no "No … in URL" copy, and the record's view never mounts on a value of the
- * wrong shape (docs/OPEN_WORLD.md § 1 "No fallbacks").
+ * malformed parameter names no subject: the subject's view never mounts on a
+ * value of the wrong shape, and the page says in one line what it shows and
+ * that its address names none, with no default subject standing in
+ * (docs/OPEN_WORLD.md § 1 "No fallbacks"; the `/orders` pattern in
+ * docs/FRONTEND.md § "The wallet is a signer, never a login").
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -63,20 +65,27 @@ describe("query-parameter pages through QueryParamPage", () => {
         mocks.params = new URLSearchParams();
     });
 
-    it.each(PAGES)("$name renders nothing for a missing parameter, and no error copy", ({ Page }) => {
-        const { container } = render(<Page />);
+    /** The one line a visit that names no subject reads: what the page shows, and the parameter that names it. */
+    const expectNoneNamed = (param: string) => {
+        const line = screen.getByTestId("query-param-none").textContent ?? "";
+        expect(line).toMatch(/^This page shows .+, and its address names none: add \?/);
+        expect(line).toContain(`?${param}=`);
+        expect(line).not.toMatch(/not found|error|failed/i);
+    };
+
+    it.each(PAGES)("$name says in one line what it shows and that its address names none, for a missing parameter", ({ Page, param }) => {
+        render(<Page />);
         expect(screen.queryByTestId("record")).toBeNull();
-        expect(container.textContent ?? "").not.toMatch(/in URL|not found|no .* id/i);
-        expect(container.textContent).toBe("");
+        expectNoneNamed(param);
     });
 
     it.each(PAGES.flatMap((p) => p.malformed.map((value) => ({ ...p, value }))))(
-        "$name renders nothing for the malformed $param $value",
+        "$name mounts no view for the malformed $param $value, and says its address names none",
         ({ Page, param, value }) => {
             mocks.params = new URLSearchParams({ [param]: value });
-            const { container } = render(<Page />);
+            render(<Page />);
             expect(screen.queryByTestId("record")).toBeNull();
-            expect(container.textContent).toBe("");
+            expectNoneNamed(param);
         },
     );
 
@@ -84,5 +93,6 @@ describe("query-parameter pages through QueryParamPage", () => {
         mocks.params = new URLSearchParams({ [param]: valid });
         render(<Page />);
         expect(screen.getByTestId("record").textContent).toBe(valid);
+        expect(screen.queryByTestId("query-param-none")).toBeNull();
     });
 });

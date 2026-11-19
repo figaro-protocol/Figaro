@@ -11,10 +11,13 @@
  * `SearchParamsBoundary` is that boundary, with the loading line as its
  * fallback, for a page that reads optional parameters itself.
  *
- * A missing parameter, or one whose shape `validate` refuses, names nothing:
- * the page renders nothing for it (docs/OPEN_WORLD.md § 1 "No fallbacks") —
- * no "No … in URL" copy, and the subject's view never mounts on a value of the
- * wrong shape.
+ * A missing parameter, or one whose shape `validate` refuses, names no
+ * subject: the subject's view never mounts on it, and the page's place says in
+ * one line what the page shows and that its address names none, the way
+ * `/orders` says its list is one address's and none is named
+ * (docs/FRONTEND.md § "The wallet is a signer, never a login"). No read
+ * starts and no default subject stands in (docs/OPEN_WORLD.md § 1 "No
+ * fallbacks").
  */
 
 import { Suspense, type ReactNode } from "react";
@@ -46,8 +49,11 @@ export const slugParam = (value: string): value is string => value.length > 0;
 export interface QueryParamPageProps<Value extends string> {
     /** The query parameter that names the subject. */
     param: string;
-    /** The parameter's shape; a value it refuses renders nothing. */
+    /** The parameter's shape; a value it refuses names no subject. */
     validate: (value: string) => value is Value;
+    /** What the page shows, as the end of "This page shows …": the one line a
+     *  visit that names no subject reads. */
+    shows: string;
     children: (value: Value) => ReactNode;
 }
 
@@ -59,8 +65,16 @@ export function QueryParamPage<Value extends string>(props: QueryParamPageProps<
     );
 }
 
-function QueryParamRecord<Value extends string>({ param, validate, children }: QueryParamPageProps<Value>) {
+function QueryParamRecord<Value extends string>({ param, validate, shows, children }: QueryParamPageProps<Value>) {
     const value = useSearchParams().get(param);
-    if (value === null || !validate(value)) return null;
+    if (value === null || !validate(value)) {
+        return (
+            <div className="container mx-auto px-6 py-12">
+                <p className="text-sm text-ink-muted" data-testid="query-param-none">
+                    This page shows {shows}, and its address names none: add <code>?{param}=…</code> to it.
+                </p>
+            </div>
+        );
+    }
     return <>{children(value)}</>;
 }

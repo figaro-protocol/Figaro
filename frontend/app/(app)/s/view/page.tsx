@@ -8,11 +8,12 @@ import { MemberDetailView } from "./_components/MemberDetailView";
  * order.
  *
  * The seller address is an open-world id (any wallet), so it rides in a query
- * param (`QueryParamPage`); a missing or malformed address renders nothing.
+ * param (`QueryParamPage`); a missing or malformed address names no seller,
+ * and the page says so in one line.
  */
 export default function SellerPage() {
     return (
-        <QueryParamPage param="seller" validate={walletParam}>
+        <QueryParamPage param="seller" validate={walletParam} shows="one member's catalog">
             {(seller) => <MemberDetailView sellerAddress={seller} />}
         </QueryParamPage>
     );

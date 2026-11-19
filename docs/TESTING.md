@@ -912,11 +912,17 @@ select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
   an unreached `(app)`/`(tools)` route is annotated (wallet-scope — connected
   chrome and runtime state own those links), and an unreached marketing-tier
   route fails. A page whose subject rides in its query (`QueryParamPage`, its
-  `param` and `validate` read from the page's own source) is never visited
-  bare: a process id is the newest the chain's `OrderCommitted` logs name, and
-  that visit must show the subject's heading and content; a wallet or a slug
-  is a fixture whose visit is not judged by content; with no process on the
-  chain the page is reported as skipped, never as a pass. External hrefs are never visited — asserted https and
+  `param` and `validate` read from the page's own source) is visited bare,
+  where it must say in one line what it shows and that its address names none
+  (`query-param-none`), and with a subject: a process id is the newest the
+  chain's `OrderCommitted` logs name, and that visit must show the subject's
+  heading and content; a wallet or a slug is a fixture whose visit is not
+  judged by content; with no process on the chain the visit with a subject is
+  reported as skipped, never as a pass. On every page, a <main> that holds a
+  connect prompt (`WalletGate`, marked `data-wallet-gate`, or a bare connect
+  control) and nothing readable beside it, headings aside, fails the crawl as
+  wallet-as-login; a self-check runs the same check on fixture pages, one
+  that gates on the wallet and one that does not. External hrefs are never visited — asserted https and
   `rel="noopener noreferrer"` where `target="_blank"`; the `/sdk-api` typedoc
   bundle and linked files are status-checked, not crawled into. Plus one
   connect-after-first-paint case: the connect affordance renders and clicks
@@ -927,9 +933,11 @@ select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
   (`exportCensus.ts`) and runs axe-core's WCAG 2.0 and 2.1 A and AA rules on
   every exported route; any violation fails it, named by route, rule and node.
   axe is evaluated through Playwright, never injected as a page script, so the
-  pages' inline-script policy stands. The test build makes no paper PDFs, so
-  the crawl reports each paper's PDF link as a 404 against it; the production
-  build makes them.
+  pages' inline-script policy stands. The test build makes no paper PDFs
+  (`frontend/scripts/build-paper-pdfs.mjs` skips itself under
+  `FIGARO_ALLOW_TEST_HELPERS=1`), so the crawl reports each paper's PDF link
+  as an annotation, unchecked; the production build makes them, and
+  `npm run check:paper-pdfs` checks a real build.
 - **`smoke`** — MAINTAINER-MANUAL smokes over real external transports the devnet
   suite deliberately mocks (the XMTP hosted `dev` network); never part of any
   suite run — explicitly `npx playwright test --project=smoke`; pass/fail is a

@@ -17,23 +17,28 @@
  *     (listeners attached before navigation; hydration awaited the way
  *     `waitForReactHydration` does), and a non-empty <main> or <h1>, waited
  *     for until the navigation budget runs out, never judged after a fixed
- *     delay. A page of `app/(app)` or `app/(tools)` whose <main> holds
- *     nothing outside the wallet gate (`WalletGate`'s disconnected branch) is
- *     a finding: the wallet signs, it is never a login (docs/FRONTEND.md
- *     § "Wallet-provider scope per route").
+ *     delay. A page whose <main> holds a connect prompt (`WalletGate`'s
+ *     disconnected branch, marked `data-wallet-gate`, or a bare connect
+ *     control) and nothing readable beside it, headings aside, is a finding:
+ *     the wallet signs, it is never a login (CLAUDE.md § "The frontend's
+ *     seams", 2; docs/FRONTEND.md § "The wallet is a signer, never a
+ *     login"). A self-check serves a fixture page that gates on the wallet
+ *     and asserts the check finds it.
  *     A page that names its subject in the address (`QueryParamPage`: a
- *     process id, a seller's wallet, a design's slug) renders nothing for a
- *     missing or malformed subject, by the open-world rule, and a visitor
- *     reaches it only by a link that names its subject. The crawl reads
- *     which pages these are, their `param` and their `validate`, from each
- *     page's own source (its `page.tsx` and the modules beside it that it
- *     imports); it keeps the query of every link to one, and never visits
- *     one bare. A process id is the newest one the chain's `OrderCommitted`
- *     logs name, and that visit must show the subject's heading and content;
- *     with no process on the chain the page is visited not at all and
- *     reported as skipped. A wallet or a slug is a fixture the network need
- *     not hold, and that visit is not judged by its content: a subject the
- *     network does not hold is absence, never a blank page. `/evidence-display` reads its subject
+ *     process id, a seller's wallet, a design's slug) says in one line, for
+ *     a missing or malformed subject, what it shows and that its address
+ *     names none (`query-param-none`); the crawl visits it bare and requires
+ *     that line. A page that reads its subject itself is visited only with
+ *     the query its link carries. The crawl reads which pages these are, their `param` and
+ *     their `validate`, from each page's own source (its `page.tsx` and the
+ *     modules beside it that it imports); it keeps the query of every link
+ *     to one, and visits each with a subject as well. A process id is the
+ *     newest one the chain's `OrderCommitted` logs name, and that visit must
+ *     show the subject's heading and content; with no process on the chain
+ *     that visit is not made and is reported as skipped. A wallet or a slug
+ *     is a fixture the network need not hold, and that visit is not judged
+ *     by its content: a subject the network does not hold is absence, never
+ *     a blank page. `/evidence-display` reads its subject
  *     from a link a forum composes (docs/FRONTEND.md, "Deliberate orphan");
  *     it is visited with that link's two required parameters.
  *  0. THE PRECONDITION — on the devnet, the chain the build reads answers
@@ -377,8 +382,27 @@ interface VisitRules {
     content: boolean;
     /** The page names a subject the chain holds: its <main> must show an <h1> past the loading line, and more text than the <h1>. */
     subjectHeading: boolean;
-    /** The page is the wallet's (`app/(app)`, `app/(tools)`): its <main> must hold more than the wallet gate. */
-    walletTier: boolean;
+    /** The page names no subject in its address: its <main> must show the line that says so. */
+    noneNamed: boolean;
+}
+
+/**
+ * The wallet-as-login check, run in the page: when <main> holds a connect
+ * prompt (a `WalletGate`, marked `data-wallet-gate`, or a bare connect
+ * control), the text of <main> outside every prompt and every heading must
+ * not be empty. Returns the finding's detail, or null.
+ */
+async function walletAsLogin(page: Page): Promise<string | null> {
+    return page.evaluate(() => {
+        const main = document.querySelector('main');
+        if (!main) return null;
+        const PROMPT = '[data-wallet-gate], [data-testid="connect-wallet"]';
+        if (main.querySelector(PROMPT) === null) return null;
+        const copy = main.cloneNode(true) as HTMLElement;
+        copy.querySelectorAll(`${PROMPT}, h1, h2, h3, h4, h5, h6`).forEach((el) => el.remove());
+        if ((copy.textContent ?? '').trim() !== '') return null;
+        return 'the page shows nothing a visitor with no wallet can read: its <main> holds a connect prompt and, headings aside, nothing else';
+    });
 }
 
 /** A crawl worker: one tab, its console/pageerror listeners attached once. */
@@ -450,19 +474,21 @@ async function makeWorker(context: BrowserContext, findings: Finding[]): Promise
         // Late console errors land on their own page before the next navigation.
         await page.waitForTimeout(SETTLE_MS);
 
-        // The wallet signs; it is never a login. A wallet-tier page whose
-        // <main> holds nothing but the wallet gate withholds its reads.
-        if (rules.walletTier) {
-            const outsideGate = await page.evaluate(() => {
-                const main = document.querySelector('main');
-                if (!main) return '';
-                const copy = main.cloneNode(true) as HTMLElement;
-                copy.querySelectorAll('[data-testid="wallet-gate"]').forEach((gate) => gate.remove());
-                return copy.textContent?.trim() ?? '';
-            });
-            const hasGate = await page.locator('main [data-testid="wallet-gate"]').count();
-            if (hasGate > 0 && outsideGate === '') {
-                findings.push({ route, kind: 'wallet-as-login', detail: 'the page shows nothing but the wallet gate to a visitor with no wallet' });
+        // The wallet signs; it is never a login. A page whose <main> holds a
+        // connect prompt and nothing readable beside it withholds its reads.
+        const login = await walletAsLogin(page);
+        if (login) findings.push({ route, kind: 'wallet-as-login', detail: login });
+
+        // A parameter page visited bare says what it shows and that its
+        // address names none, in one line, never a blank page.
+        if (rules.noneNamed) {
+            const said = await page
+                .locator('main [data-testid="query-param-none"]')
+                .first()
+                .waitFor({ timeout: NAV_TIMEOUT })
+                .then(() => true, () => false);
+            if (!said) {
+                findings.push({ route, kind: 'empty-page', detail: 'visited with no subject in its address, and no line says what it shows and that its address names none' });
             }
         }
 
@@ -498,34 +524,44 @@ test.describe('The stranger: the blind visitor', () => {
         const appDir = path.resolve(__dirname, '../../app');
         const runtimeTiers = routesOfGroups(appDir, ['(app)', '(tools)']);
         const subjects = subjectPages(appDir, await newestCommittedProcess());
+        /**
+         * A `QueryParamPage` visited bare: its subject rides in its query, and
+         * the key carries none. A page that reads its subject itself
+         * (`SELF_READ_SUBJECTS`) is reached only by the link a forum composes,
+         * and is visited with that link's query alone.
+         */
+        const isBareSubjectPage = (key: string): boolean =>
+            key === pathOfVisit(key) && subjects.routes.has(key) && !(key in SELF_READ_SUBJECTS);
         const rulesFor = (key: string): VisitRules => ({
-            content: !subjects.routes.has(pathOfVisit(key)),
+            content: !subjects.routes.has(pathOfVisit(key)) || isBareSubjectPage(key),
             subjectHeading: subjects.chainRead.has(key),
-            walletTier: runtimeTiers.has(pathOfVisit(key)),
+            noneNamed: isBareSubjectPage(key),
         });
 
         const findings: Finding[] = [];
         const visited = new Set<string>();
         const queue: string[] = [];
         /**
-         * The visit a key stands for. A parameter page (its subject rides in
-         * its query, read from its source by `subjectPages`) is never visited
-         * bare, since a visitor reaches it only by a link that names its
-         * subject: it is visited with the subject its validator's source gives
-         * (a process id from the chain, a fixture wallet or slug), and a page
-         * with no subject is visited not at all and reported as skipped.
+         * The visits a key stands for. A parameter page (its subject rides in
+         * its query, read from its source by `subjectPages`) is visited bare,
+         * where it must say that its address names none, and with the subject
+         * its validator's source gives (a process id from the chain, a fixture
+         * wallet or slug); with no subject the second visit is not made and is
+         * reported as skipped.
          */
-        const visitKeyOf = (key: string): string | null => {
+        const visitKeysOf = (key: string): string[] => {
             const route = pathOfVisit(key);
-            if (key !== route || !subjects.routes.has(route)) return key;
+            if (key !== route || !subjects.routes.has(route)) return [key];
             const query = subjects.queries.get(route);
-            return query === undefined ? null : `${route}?${query}`;
+            const bare = isBareSubjectPage(route) ? [route] : [];
+            return query === undefined ? bare : [...bare, `${route}?${query}`];
         };
         const enqueue = (key: string) => {
-            const visit = visitKeyOf(key);
-            if (visit !== null && !visited.has(visit)) {
-                visited.add(visit);
-                queue.push(visit);
+            for (const visit of visitKeysOf(key)) {
+                if (!visited.has(visit)) {
+                    visited.add(visit);
+                    queue.push(visit);
+                }
             }
         };
         const assets = new Set<string>();
@@ -586,18 +622,20 @@ test.describe('The stranger: the blind visitor', () => {
             const unreached = exportedRoutes(distDir).filter((r) => !reached.has(r));
             // Still gate every unreached route — a stranger can land on any of
             // them from a shared URL, so status/console/content run either way;
-            // a parameter page is visited with its subject (`visitKeyOf`), and
-            // so is one the links reached only with another subject.
-            const censusVisits = [...new Set([...unreached, ...subjects.routes].map(visitKeyOf))]
-                .filter((k): k is string => k !== null && !visited.has(k));
+            // a parameter page is visited bare and with its subject
+            // (`visitKeysOf`), and so is one the links reached only with
+            // another subject.
+            const censusVisits = [...new Set([...unreached, ...subjects.routes].flatMap(visitKeysOf))]
+                .filter((k) => !visited.has(k));
             for (let i = 0; i < censusVisits.length; i += workers.length) {
                 const batch = censusVisits.slice(i, i + workers.length);
                 batch.forEach((key) => visited.add(key));
                 const results = await Promise.all(batch.map((key, j) => workers[j].visit(key, rulesFor(key))));
                 batch.forEach((key, j) => ingest(key, results[j]));
             }
-            // A parameter page with no subject was visited by no key: it is
-            // reported as skipped, with its reason, and never counted a pass.
+            // A parameter page with no subject was visited bare only: its
+            // visit with a subject is reported as skipped, with its reason,
+            // and never counted a pass.
             if (subjects.skipped.size > 0) {
                 const skipped = [...subjects.skipped].map(([route, reason]) => `${route}: ${reason}`);
                 for (const line of skipped) console.log(`[skipped] ${line}`);
@@ -666,6 +704,27 @@ test.describe('The stranger: the blind visitor', () => {
             lines,
             `the blind crawl of ${visited.size} routes surfaced ${lines.length} finding(s):\n  ${lines.join('\n  ')}`,
         ).toEqual([]);
+    });
+
+    // The wallet-as-login check is proved against fixture pages before it is
+    // trusted on the site: a page that gates its content on the wallet is a
+    // finding, and a page that shows its reads beside the prompt is not.
+    test('the wallet-as-login check finds a page that gates on the wallet', async ({ page }) => {
+        const fixture = (main: string) =>
+            page.setContent(`<!doctype html><html><body><header><a href="/">Figaro</a><button data-testid="connect-wallet">Connect</button></header><main>${main}</main></body></html>`);
+        const GATE = '<div data-wallet-gate="" data-testid="orders-gate"><p>Connect a wallet to see your orders.</p><button data-testid="connect-wallet">Connect</button></div>';
+
+        await fixture(`<h1>Orders</h1>${GATE}`);
+        expect(await walletAsLogin(page), 'a heading and a wallet gate, nothing else').not.toBeNull();
+
+        await fixture('<h1>Orders</h1><button data-testid="connect-wallet">Connect wallet to continue</button>');
+        expect(await walletAsLogin(page), 'a heading and a bare connect control').not.toBeNull();
+
+        await fixture(`<h1>Orders</h1><p>Every order of one address, read from the chain.</p>${GATE}`);
+        expect(await walletAsLogin(page), 'a gate beside readable content').toBeNull();
+
+        await fixture('<h1>Papers</h1><p>The papers.</p>');
+        expect(await walletAsLogin(page), 'a page with no connect prompt').toBeNull();
     });
 
     // The first-paint experience must not require a wallet: the connect

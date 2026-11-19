@@ -24,6 +24,10 @@
  *     <RegistrationForm />
  *   </WalletGate>
  *
+ * The root carries `data-wallet-gate` whatever its `data-testid`, so a reader
+ * (the stranger crawl, `tests/e2e/crawl.stranger.spec.ts`) tells the gate
+ * from the content a page shows beside it.
+ *
  * Adding a `<ConnectWallet />` outside this wrapper should be reserved for
  * the global header. Anywhere else in the app — gate it via WalletGate so
  * the placement audit stays trivial.
@@ -105,7 +109,7 @@ export function WalletGate({
 
     if (variant === "standalone") {
         return (
-            <div className={wrapperClass} data-testid={testId ?? "wallet-gate"}>
+            <div className={wrapperClass} data-testid={testId ?? "wallet-gate"} data-wallet-gate="">
                 {title && (
                     <p className="text-sm font-semibold text-ink-primary mb-1">{title}</p>
                 )}
@@ -119,7 +123,7 @@ export function WalletGate({
     }
 
     return (
-        <div className={wrapperClass} data-testid={testId ?? "wallet-gate"}>
+        <div className={wrapperClass} data-testid={testId ?? "wallet-gate"} data-wallet-gate="">
             {explainer && <p>{explainer}</p>}
             <p>{hint}</p>
             <ConnectWallet />
