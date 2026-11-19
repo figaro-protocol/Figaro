@@ -149,8 +149,10 @@ own currency, at the moment it counts:
   agreement kind; a withdrawn stake earns nothing further.
 
 The stake is reclaimable, and use counts only while the stake is live. A designer
-who withdraws de-surfaces the entry for new compositions and stops earning on
-it, while every order already committed against it still resolves.
+who withdraws stops earning on the entry; the chain clears no binding, and
+every order already committed against it still resolves. Whether a frontend
+hides a withdrawn entry from new compositions is that frontend's choice
+(`docs/DESIGN_DECISIONS.md` § 7).
 
 What the stake does and does not do against Sybil attacks is stated at its
 honest strength in `docs/DATA_LAYER.md`; it is not restated here.

@@ -163,7 +163,7 @@ contract ProcessRegistry {
         emit ProcessRegistered(processDesignHash, msg.sender, contentURI);
     }
 
-    // ── Deposit withdrawal (registeredBy-only, post-lock) ───────────────
+    // ── Deposit withdrawal (registeredBy-only) ──────────────────────────
 
     /// @notice Reclaim the registration deposit. The composition binding
     ///         is NOT cleared — only the deposit moves, and readers

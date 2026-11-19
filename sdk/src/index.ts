@@ -80,7 +80,7 @@ export type {
     ClauseRegisteredEvent,
     ClauseWithdrawnEvent,
     MemberRegisteredEvent,
-    MemberWithdrawnEvent,
+    MemberWithdrawalRequestedEvent,
     ProcessRegisteredEvent,
     ProcessWithdrawnEvent,
     AgreementRegisteredEvent,
@@ -185,7 +185,6 @@ export {
     calculateResolution,
     calculateRootApproval,
     calculateSubOrderApproval,
-    validateBonds,
     assertApprovalCoversBond,
 } from "./bonds.js";
 

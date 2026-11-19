@@ -89,9 +89,9 @@ interface IPermit2WitnessTransfer {
 ///      The frozen FigaroCore is untouched. The coordinator carries only the commit
 ///      call, so it holds no resolution-time discretion. No owner/admin/pause —
 ///      the no-escape-hatch discipline applies to the whole protocol surface.
-///      The Uniswap pool is an off-protocol auxiliary. Permissionless
-///      first-write-wins binding means alternative coordinators with different
-///      routers or MEV policies are valid compositions; this one fixes its
+///      The Uniswap pool is an off-protocol auxiliary. A coordinator with
+///      another router or another MEV policy is another deployment, which
+///      anyone may make and nothing in this one registers; this one fixes its
 ///      router at deployment.
 ///
 ///      Per-party prerequisites (identical burden to the plain FigaroCore flow plus a

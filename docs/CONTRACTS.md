@@ -339,7 +339,10 @@ Three permissionless functions and one proof-gated writer:
   `checkoutHash`). Fingerprint only, never the preimage. The same check
   `AttestationCoordinator` performs, with the status gate inverted:
   attestation is evidence during an open process; usage is counted once it
-  has resolved. Recording is opt-in and gas-paid by whoever benefits. It
+  has resolved. Counting is opt-in and gas-paid by the caller. Any wallet
+  may call, but the call needs the signed order, the clause data hash and its
+  merkle proof against `checkoutHash`, which the parties hold: a party makes
+  it, or a wallet a party gave them to, such as the clause's designer. It
   counts under the clause kind and checks `ClauseRegistry` only.
 - `recordAgreementUsage(order, agreementHash, processDesignHash, proof)` —
   credits a registered agreement. Agreement leaves are keyed by clause, so
@@ -446,8 +449,9 @@ one billion, enforced on every mint. A minter registry with
 carries no reentrancy guard. No deployer authority after
 renounce, no upgrade, no parameter.
 
-**`src/rewards/IFlorinMinter.sol`** — `mint(address, uint256)`, the interface a
-registered minter implements.
+**`src/rewards/IFlorinMinter.sol`** — `mint(address, uint256)`, the one function
+of `FlorinToken` a registered minter calls; `RpgfMinter` holds the token under
+this interface.
 
 Genesis: the deployer deploys `RpgfMinter`, registers it with a 600M cap,
 registers itself as a one-shot minter with a 400M cap, mints 70M / 30M / 300M

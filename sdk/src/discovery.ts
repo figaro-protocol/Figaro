@@ -41,7 +41,7 @@ import type {
     ClauseRegisteredEvent,
     ClauseWithdrawnEvent,
     MemberRegisteredEvent,
-    MemberWithdrawnEvent,
+    MemberWithdrawalRequestedEvent,
     ProcessRegisteredEvent,
     ProcessWithdrawnEvent,
     AgreementRegisteredEvent,
@@ -129,12 +129,12 @@ export function parseClauseRegistryLogs(logs: Log[]): ClauseRegistryEvents {
 
 export interface MembersRegistryEvents {
     registered: MemberRegisteredEvent[];
-    withdrawn: MemberWithdrawnEvent[];
+    withdrawn: MemberWithdrawalRequestedEvent[];
 }
 
 export function parseMembersRegistryLogs(logs: Log[]): MembersRegistryEvents {
     const registered: MemberRegisteredEvent[] = [];
-    const withdrawn: MemberWithdrawnEvent[] = [];
+    const withdrawn: MemberWithdrawalRequestedEvent[] = [];
     for (const log of logs) {
         try {
             const decoded = decodeEventLog({ abi: MEMBERS_REGISTRY_ABI, data: log.data, topics: log.topics });
@@ -244,7 +244,7 @@ export interface DiscoveryEvents {
     clauseRegistered: ClauseRegisteredEvent[];
     clauseWithdrawn: ClauseWithdrawnEvent[];
     memberRegistered: MemberRegisteredEvent[];
-    memberWithdrawn: MemberWithdrawnEvent[];
+    memberWithdrawn: MemberWithdrawalRequestedEvent[];
     assemblyRegistered: ProcessRegisteredEvent[];
     assemblyWithdrawn: ProcessWithdrawnEvent[];
     agreementRegistered: AgreementRegisteredEvent[];
@@ -477,7 +477,7 @@ export class DiscoveryGraph {
         }
     }
 
-    private applyMemberEvents(registered: MemberRegisteredEvent[], withdrawn: MemberWithdrawnEvent[]): void {
+    private applyMemberEvents(registered: MemberRegisteredEvent[], withdrawn: MemberWithdrawalRequestedEvent[]): void {
         // Members cycle: register → update → request withdrawal → re-register.
         // Liveness is whichever lifecycle event is most recent, so fold the two
         // streams together in (block, logIndex) order and let the latest win.

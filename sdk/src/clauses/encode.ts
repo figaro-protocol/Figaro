@@ -26,10 +26,6 @@
 import { decodeAbiParameters, encodeAbiParameters, type AbiParameter, type Hex } from "viem";
 import { declaredStageFields, ownValue, type FieldSpec, type ClauseSpec } from "./spec.js";
 
-// ── Empty content (some clauses accept empty bytes) ─────────────────────────
-
-export const EMPTY_CONTENT: Hex = "0x";
-
 // ── Generic spec-driven encoder ─────────────────────────────────────────────
 
 /** The viem ABI-parameter descriptor for a spec field. */

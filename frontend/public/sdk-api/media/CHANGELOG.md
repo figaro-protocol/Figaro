@@ -14,6 +14,16 @@ release lives under **Unreleased**.
 
 ### Changed
 
+- **Clause `figaro-emissions`: stage 1's `evidenceUri` carries the `evidence-capture` format the
+  other specs give the same field; the clause is re-keyed.** The format is in `stages`, the signed
+  half of the spec, so the key in `test/fixtures/clause-keys.json` moves with the bytes, and so do
+  the hashes of the agreements and assemblies that compose it. The Sepolia registration is still
+  to come.
+- **SDK: the member type is named for its event, and two unused exports are deleted.**
+  `MemberWithdrawnEvent` is `MemberWithdrawalRequestedEvent`, the `MembersRegistry` event it holds.
+  `validateBonds` is deleted: no field a party signs carries a bond, and `calculateBonds` states
+  the two bonds. `EMPTY_CONTENT` is deleted. `FLORIN_TOKEN_ABI` carries `MAX_SUPPLY`,
+  `totalRegisteredCap`, `minters`, `registerMinter`, `mint` and `renounceDeployerMint`.
 - **The clause key leaves `block` out; every clause is re-keyed.** `computeClauseKey(spec)` is
   `keccak256` of `clauseKeyPreimage(spec)`, the canonical bytes of the spec without its top-level
   `block`. It covers `clauseId`, `version`, `title`, `description`, `fields`, `stages` and every

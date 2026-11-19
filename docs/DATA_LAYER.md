@@ -1,9 +1,14 @@
 # The Data Layer
 
 Every process leaves a trail: what was committed, what was attested, what was
-resolved. That trail is **data**, and a seam runs through it. The aggregate map is
-public — free to anyone who reads the chain, and deliberately so. The private detail
-belongs to the parties, who keep it sealed or sell it on their own terms.
+resolved. That trail is **data**, and a seam runs through it. The chain's events are
+public, free to anyone who reads the chain, and deliberately so: each order's parties,
+token, amounts and `checkoutHash`, each resolution's payouts, and each attestation's
+clause, stage and content fingerprint. From that fingerprint a stranger reaches the
+attestation content its attester pinned. The agreement body behind a `checkoutHash`
+is reached by a URI the chain never carries, so a stranger reads it only where a
+party publishes it. The private detail belongs to the parties, who keep it sealed or
+sell it on their own terms.
 
 This document states the seam and why it falls where it does. It does not enumerate
 graphs. A graph is something a reader DERIVES from the data it can reach, so what
@@ -25,6 +30,15 @@ instructions) **travels the per-order channel** (`@figaro-protocol/sdk/handoff`)
 **with a wallet-signed hash anchor on-chain for tamper evidence** — revealed to
 a dispute forum by the party who holds it, verifiable against the anchor, and
 crypto-shreddable until then.
+
+A committed public field is committed in the clear in the agreement body, never
+sealed: whoever holds the body reads it and checks it against `checkoutHash`. The
+chain carries only that hash, and the body's URI travels in the order's payload,
+never in an event (`frontend/lib/core/agreementFetch.ts`). A stranger reaches a
+public field only where a party publishes it: in attestation content, which a
+reader reaches from the `Attestation` event's `contentRef`
+(`frontend/lib/data/graphCorpus.ts`, `fetchWitnessContent`), or by disclosing the
+body.
 
 **The rule sorts each datum by who needs it, so no party lacks a datum its
 trade needs.** A datum the mechanism needs is public; a datum the
@@ -325,12 +339,17 @@ Making these graphs public enables:
 
 1. **Autonomous coordination** — AI agents and human members discover
    work through graph queries, not platform-mediated matching.
-2. **Heat maps and demand prediction** — Geohash clusters reveal demand
-   patterns without exposing individual transaction details.
-3. **Routing optimization** — Delivery agents optimize paths from public
-   pickup/drop-off zones.
-4. **Reputation derivation** — resolution history, on-time rates, and
-   disclosure compliance can be computed from public graph data.
+2. **Heat maps and demand prediction** — the geohash cells parties publish in
+   attestation content, reached from each `Attestation` event's `contentRef`,
+   reveal demand patterns without exposing individual transaction details; a
+   cell committed only in an agreement body reaches only those who hold the body.
+3. **Routing optimization** — Delivery agents optimize paths from the pickup
+   and drop-off cells published in attestation content or disclosed to them by
+   a party.
+4. **Reputation derivation** — resolution history is computed from the Core's
+   events alone (`OrderCommitted`, `OrderResolved`, `ProcessResolved`); on-time
+   rates and disclosure compliance also need the attestation content each
+   party published.
 5. **Cross-institution interoperability** — every assembly consumes the same
    graphs for its own coordination logic, whatever it is for; the kinds are
    unbounded and no one of them is the reference case.

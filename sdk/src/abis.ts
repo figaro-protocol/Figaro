@@ -350,9 +350,16 @@ export const FLORIN_TOKEN_ABI = parseAbi([
     "function approve(address spender, uint256 amount) external returns (bool)",
     "function allowance(address owner, address spender) view returns (uint256)",
     "function transfer(address to, uint256 amount) external returns (bool)",
-    // emissionContract removed
     "function deployerMintRenounced() view returns (bool)",
     "function deployer() view returns (address)",
+    // The supply cap and the minter registry: who may mint, up to what cap,
+    // how much each has minted, and the sum of the caps.
+    "function MAX_SUPPLY() view returns (uint256)",
+    "function totalRegisteredCap() view returns (uint256)",
+    "function minters(address minter) view returns (uint256 cap, uint256 minted)",
+    "function registerMinter(address minter, uint256 cap) external",
+    "function mint(address to, uint256 amount) external",
+    "function renounceDeployerMint() external",
 
     // ── Events (every event abi/FlorinToken.json compiles;
     //    sdk/tests/abiParity requires it) ─────────────────────────────
