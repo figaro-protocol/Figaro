@@ -59,25 +59,29 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
             ...actual.CONTRACTS,
             core: A.core,
             batchVerifier: A.batchVerifier,
-            clauseRegistry: A.clauseRegistry,
-            processRegistry: A.processRegistry,
-            agreementRegistry: "",
-            membersRegistry: A.membersRegistry,
-            usageCounter: A.counter,
         },
     };
 });
-vi.mock("@/lib/composition/contracts", () => ({
-    getRpgfMinter: () => A.minter,
-    getUsageCounter: () => A.counter,
-}));
+vi.mock("@/lib/registries/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
+    return { ...actual, REGISTRY_CONTRACTS: { ...actual.REGISTRY_CONTRACTS, clauseRegistry: A.clauseRegistry, processRegistry: A.processRegistry, agreementRegistry: "", membersRegistry: A.membersRegistry } };
+});
+vi.mock("@/lib/rewards/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/rewards/contracts")>();
+    return {
+        ...actual,
+        REWARDS_CONTRACTS: { ...actual.REWARDS_CONTRACTS, usageCounter: A.counter },
+        getRpgfMinter: () => A.minter,
+        getUsageCounter: () => A.counter,
+    };
+});
 vi.mock("@/lib/shared/viewedWallet", () => ({ useViewedWallet: (connected: unknown) => connected }));
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18 }) }));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "pending" }, refetch: () => undefined }) }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
 
 import { CLAUSE_REGISTRY_ABI, EV_PROCESS_RESOLVED, USAGE_COUNTER_ABI, USAGE_KIND_CLAUSE } from "@figaro-protocol/sdk";
-import { useRpgfRewards } from "@/lib/composition/useRpgfRewards";
+import { useRpgfRewards } from "@/lib/rewards/useRpgfRewards";
 import { RewardsView } from "@/app/(app)/rewards/_components/RewardsView";
 
 /** A clause used once on each path in period 0. */

@@ -37,15 +37,13 @@ vi.mock("@/lib/core/eventCache", async (importOriginal) => ({
 vi.mock("@/lib/core/contracts", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-}));
-vi.mock("@/lib/composition/contracts", () => ({
     getAttestationCoordinator: () => COORD,
     getBatchVerifier: () => VERIFIER,
 }));
-vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [], getActiveMembers: async () => [] }));
-vi.mock("@/lib/audit/documentProjection", () => ({ projectDocuments: () => [], projectAllFinancialStatements: () => [] }));
+vi.mock("@/lib/registries/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [], getActiveMembers: async () => [] }));
+vi.mock("@/lib/data/audit/documentProjection", () => ({ projectDocuments: () => [], projectAllFinancialStatements: () => [] }));
 
-import { buildAuditBundleData } from "@/lib/audit/auditBundlePdf";
+import { buildAuditBundleData } from "@/lib/data/audit/auditBundlePdf";
 
 const PROCESS = word(0xab);
 const BUYER = "0x00000000000000000000000000000000000000b1" as const;

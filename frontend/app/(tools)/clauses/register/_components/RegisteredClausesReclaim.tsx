@@ -22,11 +22,11 @@
 import { useEffect, useRef } from "react";
 import Link from "@/components/shared/Link";
 import { OneAddressList, RegistryListState, type ListedAddress } from "@/components/shared/RegistryListState";
-import { useRegistryWriteVersion } from "@/lib/protocol/registryWrites";
-import type { RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
-import { useRegisteredClausesByWallet } from "@/lib/protocol/useRegisterClause";
-import { useWithdrawClause } from "@/lib/protocol/useWithdrawStake";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useRegistryWriteVersion } from "@/lib/registries/registryWrites";
+import type { RegisteredClauseEvent } from "@/lib/registries/useClauseRegistry";
+import { useRegisteredClausesByWallet } from "@/lib/registries/useRegisterClause";
+import { useWithdrawClause } from "@/lib/registries/useWithdrawStake";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { ReclaimStakeRow } from "@/components/registries/ReclaimStakeRow";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";

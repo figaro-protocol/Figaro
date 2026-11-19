@@ -54,21 +54,21 @@ vi.mock("@/lib/checkout/orderCommitmentFlow", async (importOriginal) => ({
         counterSignAndReturn: vi.fn(), quoteAndReturn: vi.fn(), commitOrder: vi.fn(),
     }),
 }));
-vi.mock("@/lib/protocol/useProcessRegistry", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/protocol/useProcessRegistry")>()),
+vi.mock("@/lib/registries/useProcessRegistry", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/registries/useProcessRegistry")>()),
     fetchHydratedAssemblyByHash: async () => null,
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, clauseRegistry: "0x00000000000000000000000000000000000000c1" } };
+vi.mock("@/lib/registries/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
+    return { ...actual, REGISTRY_CONTRACTS: { ...actual.REGISTRY_CONTRACTS, clauseRegistry: "0x00000000000000000000000000000000000000c1" } };
 });
 vi.mock("@/lib/core/eventCache", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/core/eventCache")>()),
     cachedGetContractEvents: async () => m.registryRows,
 }));
 vi.mock("@/lib/checkout/orderPendingSellerSignature", () => ({ useCommitmentPayloadInbox: () => m.inbox }));
-vi.mock("@/lib/composition/useSwapFunding", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/composition/useSwapFunding")>()),
+vi.mock("@/lib/composability/useSwapFunding", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/composability/useSwapFunding")>()),
     useSwapFunding: () => ({
         contracts: null, candidates: [], fundingToken: m.swap.fundingToken, setFundingToken: () => {},
         authorizationFor: () => m.swap.authorization, authorize: () => {}, authorizeFailed: false,
@@ -76,8 +76,8 @@ vi.mock("@/lib/composition/useSwapFunding", async (importOriginal) => ({
 }));
 // The margin's chain reads (the venue quote) are the hook's own; here the venue's
 // margin is 1% and its quote 1000, and the real `fundingMargin` derives the rest.
-vi.mock("@/lib/composition/useFundingMargin", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/composition/useFundingMargin")>();
+vi.mock("@/lib/composability/useFundingMargin", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/composability/useFundingMargin")>();
     return {
         ...actual,
         useFundingMargin: () => ({
@@ -92,8 +92,8 @@ vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "p
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 6, ready: true, loading: false }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: "TKN" }) }));
 vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => null }));
-vi.mock("@/lib/member/useMembersRegistry", () => ({ useMemberProfile: () => ({ read: { status: "absent" } }) }));
-vi.mock("@/lib/member/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => ({ read: { status: "absent" } }) }));
+vi.mock("@/lib/registries/useMembersRegistry", () => ({ useMemberProfile: () => ({ read: { status: "absent" } }) }));
+vi.mock("@/lib/registries/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => ({ read: { status: "absent" } }) }));
 vi.mock("@/components/runtime/AgreementReview", () => ({ AgreementReview: () => null, pricedLineItems: () => ({ lines: [], sum: null }) }));
 vi.mock("@/components/runtime/TokenApprovalFlow", () => ({
     TokenApprovalFlow: ({ onApprovalComplete }: { onApprovalComplete: () => void }) => (

@@ -4,7 +4,7 @@ import {
     onboardingNextHref,
     onboardingPrevHref,
     onboardingStepHref,
-} from "@/lib/member/onboardingState";
+} from "@/lib/registries/onboardingState";
 
 // The wizard's order: the two assembly steps are one loop walked twice — what
 // the member sells through, then what it buys through — and both precede

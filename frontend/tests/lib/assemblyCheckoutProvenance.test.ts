@@ -7,7 +7,7 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { agreementLeaves, computeProvenanceLeaf, processDesignHashOf } from "@figaro-protocol/sdk";
 import { executeAssemblyCheckout, planProcessOrders } from "@/lib/checkout/assemblyCheckout";
-import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
+import type { BoundAssembly } from "@/lib/registries/useMemberBoundAssemblies";
 import { referenceAssembly, primeClauseSpecs } from "./primeClauseSpecs";
 
 vi.mock("@/lib/core/contracts", async (importOriginal) => {

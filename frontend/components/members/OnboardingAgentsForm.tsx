@@ -9,8 +9,8 @@ import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { HintedFieldList, type HintedFieldDef } from "@/components/ui/HintedFieldList";
 import { useMounted } from "@/hooks/useMounted";
-import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
-import type { MemberAgentServices } from "@/lib/member/memberProfileMetadata";
+import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/registries/onboardingState";
+import type { MemberAgentServices } from "@/lib/registries/memberProfileMetadata";
 import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 
 /**

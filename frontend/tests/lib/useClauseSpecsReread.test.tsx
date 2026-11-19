@@ -10,11 +10,11 @@ import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 import { canonicalize, computeClauseKey } from "@figaro-protocol/sdk";
 
 const useAllRegisteredClausesMock = vi.fn();
-vi.mock("@/lib/protocol/useClauseRegistry", () => ({
+vi.mock("@/lib/registries/useClauseRegistry", () => ({
     useAllRegisteredClauses: () => useAllRegisteredClausesMock(),
 }));
 
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 
 const validSpec = (clauseId: string) => ({
     clauseId,

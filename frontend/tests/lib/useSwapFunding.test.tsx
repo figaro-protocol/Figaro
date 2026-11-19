@@ -15,7 +15,7 @@ import { act, renderHook } from "@testing-library/react";
 import { maxUint256 } from "viem";
 import { ERC20_ABI } from "@/lib/core/contracts";
 import { activeChain } from "@/lib/shared/chains";
-import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
+import type { AcceptedTokenMetadata } from "@/lib/registries/acceptedTokenMetadata";
 
 // The wagmi surface `useTokenApproval` reads (the shape
 // `useTokenApproval.test.tsx` drives), per test.
@@ -33,12 +33,12 @@ vi.mock("wagmi", () => ({
     useWaitForTransactionReceipt: () => wagmiState.receipt,
     usePublicClient: () => ({ simulateContract: async () => ({}) }),
 }));
-vi.mock("@/lib/composition/swapFunding", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/composition/swapFunding")>()),
+vi.mock("@/lib/composability/swapFunding", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/composability/swapFunding")>()),
     resolveSwapFundingContracts: () => wagmiState.contracts,
 }));
 
-import { useSwapFunding } from "@/lib/composition/useSwapFunding";
+import { useSwapFunding } from "@/lib/composability/useSwapFunding";
 
 const PARTY = `0x${"0a".repeat(20)}` as `0x${string}`;
 const CURRENCY = `0x${"cc".repeat(20)}` as `0x${string}`;

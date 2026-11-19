@@ -20,12 +20,12 @@ const channel = {
 };
 
 vi.mock("wagmi", () => ({ useChainId: () => 31337, usePublicClient: () => ({}) }));
-vi.mock("@/lib/handoff/channel", () => ({ getHandoffChannel: async () => channel }));
-vi.mock("@/lib/handoff/ecdh", () => ({ getOrderEcdhKeypair: () => null }));
-vi.mock("@/lib/handoff/handoffAnchorState", () => ({ attestationAnchorMatches: async () => true }));
+vi.mock("@/lib/data/handoff/channel", () => ({ getHandoffChannel: async () => channel }));
+vi.mock("@/lib/data/handoff/ecdh", () => ({ getOrderEcdhKeypair: () => null }));
+vi.mock("@/lib/data/handoff/handoffAnchorState", () => ({ attestationAnchorMatches: async () => true }));
 vi.mock("@figaro-protocol/sdk/handoff", () => ({ verifyEcdhMessageAuth: async () => true }));
 
-import { useCeremonyChannel } from "@/lib/handoff/useCeremonyChannel";
+import { useCeremonyChannel } from "@/lib/data/handoff/useCeremonyChannel";
 
 const ME = "0x00000000000000000000000000000000000000a1" as const;
 const PEER = "0x00000000000000000000000000000000000000b2";

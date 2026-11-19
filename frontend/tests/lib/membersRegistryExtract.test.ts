@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractMembersRegistry, type MemberRegisteredEvent } from "@/lib/audit/membersRegistryExtract";
+import { extractMembersRegistry, type MemberRegisteredEvent } from "@/lib/data/audit/membersRegistryExtract";
 import { OrderState, type Order } from "@/lib/core/store";
 
 const SELLER = "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";

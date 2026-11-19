@@ -4,9 +4,9 @@ import {
     catalogClausesForBindings,
     catalogFieldsOfClause,
     validateCatalogClauseValues,
-} from "@/lib/member/catalogClauseValues";
+} from "@/lib/registries/catalogClauseValues";
 import { _resetClauseSpecCache_TESTING_ONLY } from "@/lib/shared/clauseSpecSource";
-import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
+import type { CatalogItemMetadata } from "@/lib/registries/memberCatalogMetadata";
 import { authoredSpecSet, primeClauseSpecs } from "./primeClauseSpecs";
 
 /** The key of a spec in clauses/ — computed from its file, so it holds with

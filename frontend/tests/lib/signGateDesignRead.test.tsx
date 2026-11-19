@@ -56,11 +56,12 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
         CONTRACTS: {
             ...actual.CONTRACTS,
             core: "0x00000000000000000000000000000000000000c0",
-            processRegistry: PROCESS_REGISTRY,
-            agreementRegistry: AGREEMENT_REGISTRY,
-            clauseRegistry: `0x${"c1".repeat(20)}`,
         },
     };
+});
+vi.mock("@/lib/registries/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
+    return { ...actual, REGISTRY_CONTRACTS: { ...actual.REGISTRY_CONTRACTS, processRegistry: PROCESS_REGISTRY, agreementRegistry: AGREEMENT_REGISTRY, clauseRegistry: `0x${"c1".repeat(20)}` } };
 });
 
 // The chain: each registry's `bindings(key)` → the contentURI the key is
@@ -116,8 +117,8 @@ vi.mock("@figaro-protocol/sdk", async (importOriginal) => {
 // check (`sellerBoundAssembly.test.tsx`) passes, so each case reaches the
 // design read it is about.
 const designed: Hex[] = [];
-vi.mock("@/lib/member/profileFetcher", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/member/profileFetcher")>()),
+vi.mock("@/lib/registries/profileFetcher", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/registries/profileFetcher")>()),
     profileReaderForChain: () => async () => ({
         name: "Seller",
         processBindings: designed.map((processDesignHash, i) => ({ bindingId: `b-${i}`, subjectAddress: SELLER, processDesignHash })),
@@ -127,7 +128,7 @@ vi.mock("@/lib/member/profileFetcher", async (importOriginal) => ({
 const commitSignedOrder = vi.fn(async () => `0x${"cc".repeat(32)}` as Hex);
 vi.mock("@/lib/core/orderCommitted", () => ({ commitSignedOrder: (...args: unknown[]) => commitSignedOrder(...(args as [])) }));
 vi.mock("@/lib/core/useFigaroActions", () => ({ useFigaroActions: () => ({ commit: vi.fn() }) }));
-vi.mock("@/lib/composition/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit: vi.fn() }) }));
+vi.mock("@/lib/composability/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit: vi.fn() }) }));
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({ useRuntimeServices: () => ({}) }));
 
 const { useOrderCommitmentFlow } = await import("@/lib/checkout/orderCommitmentFlow");

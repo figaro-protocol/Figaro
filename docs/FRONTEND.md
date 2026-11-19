@@ -55,7 +55,7 @@ writes via `WalletGate`.**
 | `/members/manage` | The registered dashboard + stake claim. |
 | `/members/{identity,agents,assemblies,buyer,catalog,endpoints,review}` | The member wizard: Identity, Sell through (`assemblies`: bind, and offer the data those trades produce), Buy through (`buyer`: subscribe, and offer the data those trades produce), Catalog, Agents, Endpoints, Review. The two assembly steps are one loop walked twice and both precede Catalog, which prices what they declare. |
 | `/members/edit/{identity,agents,assemblies,buyer,catalog,endpoints}` | Endpoints are the member's own infrastructure — device configuration via `lib/shared/userEndpoints.ts`, never pinned or published. |
-| `/orders`, `/orders/view?process=` | The actor-neutral order list of one address, the connected wallet's or the one `?wallet=0x…` names, buyer and seller both; with neither, its place says in one line that the list is one address's and none is named, with the connect control beside it, and no read starts; "Your turn" is where counter-sign/accept fires, and `resolveProcess` fires on the detail view: its confirm names how many usage writes the wallet signs next (`lib/semantic/planUsageRecords.ts` plans them, one per distinct key across the three kinds — clause, agreement, assembly — through one `UsageWrite` union that `lib/protocol/useUsageRecorder.ts` sends; each is simulated before it is sent), and a resolved order links the party's data (`/data/yours`). Beside the timeline, the detail view compares the parties' filings under every declared stage of an assembly-scoped clause, field by field, derived at read time from the attestation log and the content its fingerprints resolve to (`components/runtime/StageAttestationComparison`, `lib/composition/stageAttestationComparison.ts`). |
+| `/orders`, `/orders/view?process=` | The actor-neutral order list of one address, the connected wallet's or the one `?wallet=0x…` names, buyer and seller both; with neither, its place says in one line that the list is one address's and none is named, with the connect control beside it, and no read starts; "Your turn" is where counter-sign/accept fires, and `resolveProcess` fires on the detail view: its confirm names how many usage writes the wallet signs next (`lib/semantic/planUsageRecords.ts` plans them, one per distinct key across the three kinds — clause, agreement, assembly — through one `UsageWrite` union that `lib/rewards/useUsageRecorder.ts` sends; each is simulated before it is sent), and a resolved order links the party's data (`/data/yours`). Beside the timeline, the detail view compares the parties' filings under every declared stage of an assembly-scoped clause, field by field, derived at read time from the attestation log and the content its fingerprints resolve to (`components/runtime/StageAttestationComparison`, `lib/core/stageAttestationComparison.ts`). |
 
 The build-baked `NEXT_PUBLIC_*` values are defaults only, so a hosted deploy never
 seizes users onto the operator's provider key or pinning node. Endpoint configuration
@@ -82,7 +82,7 @@ page reads — `processId`, `coreAddress`, `chainID`, `arbitrableJsonRpcUrl`, an
 a core other than the page's deployment's, `coordinatorAddress` (the Core holds no pointer to
 its coordinator, so attestations are read only when the link names one) and
 `fromBlock` (else genesis); the header states the coordinator and the first block
-it read (`lib/audit/processTimeline.ts`). For the page's own deployment the timeline
+it read (`lib/data/audit/processTimeline.ts`). For the page's own deployment the timeline
 also reads `FigaroBatchVerifier` (the order events and its `Attestation`), each event
 tagged with its `universe` ("direct" or "batch") and the header naming the verifier;
 for any other core the site's verifier means nothing and is not read.
@@ -159,7 +159,7 @@ on `/evidence-display`.
 **Per deployment in the browser.** The reader's RPC endpoint is stored per
 chain (`lib/shared/userEndpoints.ts`), the cart per deployment
 (`lib/checkout/cartStore.ts`), the onboarding draft per chain and wallet
-(`lib/member/onboardingState.ts`), the signed-and-unsent orders per wallet and
+(`lib/registries/onboardingState.ts`), the signed-and-unsent orders per wallet and
 chain, the event cache per chain and contract. The IPFS node or pinning
 service a browser publishes through is the user's own, stored in that browser
 (`lib/shared/userEndpoints.ts`, `activePublishTarget` in
@@ -167,15 +167,64 @@ service a browser publishes through is the user's own, stored in that browser
 
 ## Key Library Areas (`lib/`)
 
-Tiered, bottom to top; each tier imports only what sits below it (enforced by the maintainers' pre-commit guard battery).
+Tiered, bottom to top: `shared/`, then `core/`, then `registries/`, then the areas above them; each tier imports only what sits below it (enforced by the maintainers' pre-commit guard battery). A folder is named for the layer it serves.
 
 - **`shared/`** — the generic leaf: the section map (`sections.json` — which section owns which route, the one owner; `sections.ts` reads it for the chrome), EVM helpers (`evm.ts`), the standalone public client and the RPC a page reads (`publicClient.ts`, with `mockTransport.ts` and the development-only `debugClient.ts`; no wallet code), wagmi/chain config (`wagmi.ts`, `chains.ts`, `connectors.ts` with the wallet-first read transport, the development-only wallet shims `devShims.ts`), the deployments a build lists and the one a page shows (`deploymentRecords.ts`, `chains.ts`; § "One site, several deployments"), IPFS (`ipfsService.ts`), clause-spec cache source (`clauseSpecSource.ts`), assembly reading vocabulary (`assembly.ts`, `clauseFields.ts`), errors/formatting/json, web storage (`storage.ts`), the clipboard write (`clipboard.ts`), the in-tab "read it again" counter (`versionStore.ts`), the Tab focus trap (`focusTrap.ts`), and the one on-chain write sequence (`contractWrite.ts` — `simulateWriteVerify`: simulate, send with `chainId: activeChain.id`, verify the receipt, translate a revert by its error name through `errors.ts` `translateContractRevert`; every write in the frontend sends through it). Imports no other `lib/` layer; the one sanctioned exception is the runtime-services DI seam (`runtimeServices.ts` + `runtimeServicesContext.tsx`), which assembles feature-layer service implementations.
-- **`core/`** — the FigaroCore seam: commit/resolve writes (`useFigaroActions.ts`, `orderCommitted.ts`), order-event reads (`indexer.ts`, which imports nothing from `wagmi`; `useWatchOrderEvents.ts`, the live watcher, a wagmi hook; `walletProcessQueries.ts`, `eventCache.ts`), the deployment-curried hash wrappers + agreement fetch (`signedCommitment.ts`, `agreementFetch.ts`), chain config (`contracts.ts` — the five core contract ABIs + ERC20, SDK-sourced), the `Order` domain types + UI store (`store.ts`). Imports only `shared/`. The wallet's writes are direct path only: commit and resolve go to `FigaroCore`, an attestation to `AttestationCoordinator` (`lib/composition/useAttestationCoordinatorActions.ts`), a usage call to `UsageCounter` (`lib/protocol/useUsageRecorder.ts`). No page of this frontend sends an order's commitment, a resolution, an attestation or a usage claim to a relay; only the SDK's `SequencerClient` does (`submitCommit`, `submitResolve`, `submitResolveByWalletCode`, `submitAttestAsSeller`, `submitAttestAsBuyer`, `submitAttestByWalletCode`, `submitUsageClaim`; `sdk/src/agent/sequencer.ts`). The app reads the batch path's events and writes none of its operations. (The agreement projection itself — `buildOrderAgreement`, the off-chain sign gate, `clauseByField` — is `@figaro-protocol/sdk`; `sdk/README.md` owns it.)
-- **`protocol/`** — the registry tier: `useClauseRegistry.ts`, `useClauseSpecs.ts`, `useAgreementRegistry.ts`, `useProcessRegistry.ts`, `assemblyChoices.ts`, `membersRegistryIndexer.ts` (liveness fold delegated to the SDK's `reconstructDiscovery`), plus the shared shapes the clause/assembly readers are built from (`registryEventScan.ts` — the paired registered+withdrawn cached scan with the `failed` contract; `registryRevertMessages.ts` — the register reverts every registry shares and the noun-parameterized withdraw revert table). Reads ClauseRegistry / MembersRegistry / AgreementRegistry / ProcessRegistry. The three registry read modules import nothing from `wagmi`; the registry hooks that need a wallet provider live beside them: `useRegisterClause.ts` (`useRegisterClause`, and `useRegisteredClausesByWallet`, which reads through wagmi's client) and `useWithdrawStake.ts` (`useWithdrawClause`, `useWithdrawAssembly`, `useWithdrawAgreement`, the `withdrawDeposit` write hooks, built by one factory). `useAgreementRegistry.ts` has the shape of `useProcessRegistry.ts`: `getAgreementRegistry`, `usePublishedAgreements(registeredBy, { includeWithdrawn })`, `agreementRegisterRevertMessage`, `readAgreementBinding(key)`, and `fetchRegisteredAgreement(key, contentURI?)`, which reads the binding whatever the stake, fetches the pinned document and anchors it with the SDK's `anchorRegisteredAgreement` — `null` on any failure, never a fallback; `hydrateProcessDesign(assembly)` runs the SDK's `hydrateProcessDesign` over that reader. `useProcessRegistry.ts` adds `fetchHydratedAssembly(contentURI, processDesignHash)`, `fetchAssemblyByHash(processDesignHash)` and `fetchHydratedAssemblyByHash(processDesignHash)` (the design the sign gate reads by an agreement's provenance); imports `core/` + `shared/`.
-- `lib/protocol/registryWrites.ts` — the one signal a registry write sends to the readers that derive from its events (`noteRegistryWrite` after a confirmed write; `useRegistryWriteVersion` in a read-at-edge panel, which refetches when it changes). Nothing stored; the chain stays the source.
+- **`core/`** — the FigaroCore seam: commit/resolve writes (`useFigaroActions.ts`, `orderCommitted.ts`), order-event reads (`indexer.ts`, which imports nothing from `wagmi`; `useWatchOrderEvents.ts`, the live watcher, a wagmi hook; `walletProcessQueries.ts`, `eventCache.ts`), the deployment-curried hash wrappers + agreement fetch (`signedCommitment.ts`, `agreementFetch.ts`), chain config (`contracts.ts` — the addresses of `FigaroCore`, `FigaroBatchVerifier` and `AttestationCoordinator`, `CORE_ABI` and the ERC-20 ABI, SDK-sourced), the `Order` domain types + UI store (`store.ts`). Imports only `shared/`, with one exception: `agreementFetch.ts` reads the `ClauseRegistry` address from `lib/registries/contracts.ts` to warm the clause specs an agreement names. The wallet's writes are direct path only: commit and resolve go to `FigaroCore`, an attestation to `AttestationCoordinator` (`lib/core/useAttestationCoordinatorActions.ts`), a usage call to `UsageCounter` (`lib/rewards/useUsageRecorder.ts`). No page of this frontend sends an order's commitment, a resolution, an attestation or a usage claim to a relay; only the SDK's `SequencerClient` does (`submitCommit`, `submitResolve`, `submitResolveByWalletCode`, `submitAttestAsSeller`, `submitAttestAsBuyer`, `submitAttestByWalletCode`, `submitUsageClaim`; `sdk/src/agent/sequencer.ts`). The app reads the batch path's events and writes none of its operations. (The agreement projection itself — `buildOrderAgreement`, the off-chain sign gate, `clauseByField` — is `@figaro-protocol/sdk`; `sdk/README.md` owns it.)
+  - *The attestation readers:* `attestationIndexer.ts` reads the `Attestation` events of
+    `AttestationCoordinator` and of `FigaroBatchVerifier`, and the verifier's `BatchSettled`;
+    `attestationPath.ts` names the path a row was emitted on; `stageAttestationComparison.ts`
+    says whether the parties' attestations under one stage agree.
+  - *The attestation choke point:* `useAttestationCoordinatorActions.ts`, which
+    every attest surface routes through; calldata carries fingerprints only.
+  - *The witness-content seam behind it:* `witnessContent.ts` publishes a
+    non-re-assert payload's ABI bytes as a RAW IPFS block multihashed keccak-256, so
+    `contentRef` IS the CID digest. The disposition gate is FAIL-CLOSED — an unknown
+    spec, or any `private` field in the `contentFieldsFor` set, withholds. Fetch
+    verifies the bytes hash back to the fingerprint; erasure is a best-effort unpin
+    of the derived CID, surfaced by `components/runtime/WitnessPinErasure.tsx`.
+    `useWitnessHolder.ts` names whose kept private content a page reads.
+- **`registries/`** — the registry tier, the four registries side by side. The registries' addresses and ABIs are `contracts.ts`. The readers: `useClauseRegistry.ts`, `useClauseSpecs.ts`, `useAgreementRegistry.ts`, `useProcessRegistry.ts`, `assemblyChoices.ts`, `membersRegistryIndexer.ts` (liveness fold delegated to the SDK's `reconstructDiscovery`), plus the shared shapes the clause/assembly readers are built from (`registryEventScan.ts` — the paired registered+withdrawn cached scan with the `failed` contract; `registryRevertMessages.ts` — the register reverts every registry shares and the noun-parameterized withdraw revert table). Reads ClauseRegistry / MembersRegistry / AgreementRegistry / ProcessRegistry. The three registry read modules import nothing from `wagmi`; the registry hooks that need a wallet provider live beside them: `useRegisterClause.ts` (`useRegisterClause`, and `useRegisteredClausesByWallet`, which reads through wagmi's client) and `useWithdrawStake.ts` (`useWithdrawClause`, `useWithdrawAssembly`, `useWithdrawAgreement`, the `withdrawDeposit` write hooks, built by one factory). `useAgreementRegistry.ts` has the shape of `useProcessRegistry.ts`: `getAgreementRegistry`, `usePublishedAgreements(registeredBy, { includeWithdrawn })`, `agreementRegisterRevertMessage`, `readAgreementBinding(key)`, and `fetchRegisteredAgreement(key, contentURI?)`, which reads the binding whatever the stake, fetches the pinned document and anchors it with the SDK's `anchorRegisteredAgreement` — `null` on any failure, never a fallback; `hydrateProcessDesign(assembly)` runs the SDK's `hydrateProcessDesign` over that reader. `useProcessRegistry.ts` adds `fetchHydratedAssembly(contentURI, processDesignHash)`, `fetchAssemblyByHash(processDesignHash)` and `fetchHydratedAssemblyByHash(processDesignHash)` (the design the sign gate reads by an agreement's provenance). Imports `core/` + `shared/`. The member forms' quick-add token suggestions sit beside their form (`components/members/commonTokens.ts`), since they read the florin's address from `lib/rewards/contracts.ts`.
+  - `registryWrites.ts` — the one signal a registry write sends to the readers that derive from its events (`noteRegistryWrite` after a confirmed write; `useRegistryWriteVersion` in a read-at-edge panel, which refetches when it changes). Nothing stored; the chain stays the source.
+  - *Members* — the participant's own data: member-profile document family (`memberProfileMetadata.ts`), branding (`memberBranding*.ts`, `useMemberBranding.ts`), the MembersRegistry write/read hooks (`useMembersRegistry.ts`, `usePublishMemberProfile.ts`, `useUpdateMemberProfile.ts`), profile geocoding (`geocode.ts`), the cached URI-fetch pipeline (`uriFetcher.ts` — a single-layer reader, so it lives here), the cached profile read path (`profileFetcher.ts`) and its erasure half (`profileErasure.ts`); the catalog family — authoring/publication/reads (`catalog*.ts`, `memberCatalogMetadata*.ts`, on the same `uriFetcher.ts` pipeline), listings + discovery (`useMemberListings.ts`, `discoveryService.ts`), the enrollment-wizard state (`onboardingState.ts` — the wizard spans profile, catalog, seller and buyer steps), the member's public-graph resolution history (`memberResolutionHistory.ts`, the Core's order and attestation reads with the MembersRegistry's registrations), and the ONE counterparty-name resolver (`memberListing.ts` `displayNameForAddress`, over any `{address, name}` collection). Both sides live here: member = what a wallet IS, seller = which side of a trade it stands on.
+  - *The `/registries` explorer's read model:* `explorer.ts` (pure).
+
+The areas above the registries. `rewards/`, `composability/` and `data/` serve their layers; `agent/`, `checkout/`, `designer/` and `semantic/` serve the UI, each reading the layers below it.
+
+- **`rewards/`** — the designer rewards: `contracts.ts` (the addresses of `UsageCounter`, `RpgfMinter` and
+  `FlorinToken`), `useRpgfRewards.ts` (the `/rewards` read of a wallet's accrual and the `claim`), and
+  `useUsageRecorder.ts` (the usage-recording writes to `UsageCounter`). Imports `core/`, `registries/` and
+  `shared/`; no Core or registry module imports it, except the florin address named under `registries/`.
+- **`composability/`** — third-party on-network contract composition (external, on-chain composition).
+  Generic dispatch is `useCompositionActions.ts`, with per-contract hooks and
+  readers beneath it. The composed contracts' addresses (the swap-and-commit
+  coordinator, Permit2, the swap venue and its quoter, the multisender) are
+  `contracts.ts`.
+  - *Held values:* `heldValues.ts` — the open registry of readers that a spec's
+    `block.checkout.heldValues` names (`registerHeldValuesReader`), and
+    `useHeldValues`, which checkout uses to offer only the enum values the named
+    contracts on the connected chain hold. A chain the hint gives no address for
+    is not filtered; an unknown reader, a failed read or an empty read offers no
+    value.
+  - *The funding leg:* `swapFunding.ts` — the venue quote/route plus the
+    party-agnostic witness-signed leg builder, the buyer's at checkout and the
+    seller's at accept: the party's own act of holding the denomination, never a
+    term of the order; no profile declares a pool for it. `translateListedPrice`
+    quotes a listed price in the buyer's picked denomination for the checkout to
+    show; the buyer may change the amount, and the amount in the pick is what the
+    buyer signs and the seller countersigns at `/sign` beside its listed price.
+    `useSwapAndCommitActions.ts` carries the `swapAndCommit` broadcast either
+    funded form routes through.
+  - *Post-resolution payout routing:* `payoutRouting.ts` +
+    `usePayoutRoutingActions.ts` — a resolved seller splits its own receipts through
+    the composed public multisender in one atomic batch; devnet rehearses
+    MockDisperse, mainnet composes canonical Disperse. Surfaced by
+    `components/runtime/PayoutRoutingPanel.tsx` beside what resolution paid out.
+- **`data/`** — the data layer.
+  - *The data explorer's read model (`/data/explore`):* `explorer.ts` (PURE — the query↔permalink parse/serialize, the layer descriptors with their truth boundaries, and the row projections with their absence postures: an unresolved clause family is a fingerprint-only row, an unattributed process is counted and said to be, a composed venue no commit was funded through is said to be, and never "empty"), `graphCorpus.ts` (the I/O — the existing event caches folded through `@figaro-protocol/sdk/derive`'s projections; every commit's receipt, read once per transaction hash through the receipt cache beside the event logs (`lib/core/eventCache.ts`), run through `readFundingLegs` so the swap legs reach the value-flow graph as edges between denominations; substance recovered at the edge from each attestation's own fingerprint, assembly attribution read from the buyer's attestation of the agreement format's reserved provenance leaf, which names the assembly hash, never a clause name), `analystEndpoint.ts` (the analyst wire — same configuration-not-doctrine posture as the batch relay: no shipped fallback, user override wins, unset means no prompt box at all)
+  - *`handoff/`* — handoff-clause runtime TRANSPORTS + persistence: the channel factory (`channel.ts` — mock/null/XMTP chosen by DERIVED facts, never a setting: XMTP iff the wallet already has an inbox, `walletHasXmtpInbox` probe — one seam, one choreography, and no per-wallet transport setting), the transport implementations (`xmtpChannel.ts`, `mockChannel.ts`, `nullChannel.ts`), the relay adapter (`relayChannel.ts` — the handoff relay's PRE-COMMIT cell speaking the SDK's `CoordinationChannel`, so the dispatch race runs ONE choreography over every transport; also home of `relayCommitmentPayload`), per-order ECDH keypair sessionStorage (`ecdh.ts`), the three ceremonies over one core (`ceremony.ts`, `useCeremonyChannel.ts`): the address detail (`addressDetail.ts`), the content delivery (`contentDelivery.ts`) and the private filings of one order (`privateFilings.ts`), handoff-messaging + handoff-persistence services (`handoffMessagingService.ts`, `handoffPersistenceService.ts`). The anchor check (`handoffAnchorState.ts`) matches an attestation from either path, and `useHandoffCleanup.ts` watches `OrderResolved` at `FigaroCore` and at `FigaroBatchVerifier`. The wire protocol itself (message shapes, ECDH derivation, AES-GCM wrapping) is `@figaro-protocol/sdk/handoff`.
+  - *`audit/`* — audit-bundle assembly + dispute evidence (read path for `/audit/view?process=<id>`). Batched orders arrive through the same order readers as direct ones (`lib/core/indexer.ts` reads `FigaroCore` and `FigaroBatchVerifier`, which emits the Core's own order events); `signatureVerdicts.ts` routes a commit the verifier logged to the "proved in a batch" verdict. The attestation readers (`getAttestationsByOrder`, `getAttestationsByProcess` in `lib/core/attestationIndexer.ts`) fold the coordinator's `Attestation` and the verifier's re-emission through `getAllAttestationRecords`; each row keeps the `universe` that emitted it, and the clause evidence, the timeline, the evidence file and the order page's filings name it in the words of `lib/core/attestationPath.ts`. The timeline and the evidence file read both paths; the evidence file's per-order bundle takes the same rows. Witness VALUES resolve from the network: an `Attestation` event's `contentRef` is the keccak-CID digest of the published preimage (`lib/core/witnessContent.ts`), so the reader derives the address from the event alone, verifies the bytes hash back to the fingerprint, and decodes them through the spec's declared stage fields (`describeWitness`); private-disposition, withheld, or erased content resolves absent and the fingerprint receipt still renders. The evidence file is whole and says what it lacks: every part the file's code could not read (an order whose agreement did not load, a failed attestation read, a failed timeline, unreadable token decimals, a clause spec that did not load) is an entry in its `missing` list (`MissingPart` in `lib/data/audit/types.ts`), drawn in the PDF on the page "What this evidence file does not contain" and on the audit page by `_components/MissingParts.tsx`. The audit page's list also names an order's signatures whose read failed or which no commit calldata and no batch carries, and leaves that order's signature rows empty; an agreement still loading (`useProcessAgreementReads`, `hooks/useProcessAgreements.ts`) shows the loading line in its order's block and is not listed; the evidence file takes the process's token from the commitment, never from a clause's copy.
 - **`agent/`** — did:web identity for agents acting for wallets (`useDidWeb.ts`)
-- **`audit/`** — audit-bundle assembly + dispute evidence (read path for `/audit/view?process=<id>`). Batched orders arrive through the same order readers as direct ones (`lib/core/indexer.ts` reads `FigaroCore` and `FigaroBatchVerifier`, which emits the Core's own order events); `signatureVerdicts.ts` routes a commit the verifier logged to the "proved in a batch" verdict. The attestation readers (`getAttestationsByOrder`, `getAttestationsByProcess` in `lib/composition/indexer.ts`) fold the coordinator's `Attestation` and the verifier's re-emission through `getAllAttestationRecords`; each row keeps the `universe` that emitted it, and the clause evidence, the timeline, the evidence file and the order page's filings name it in the words of `lib/composition/attestationPath.ts`. The timeline and the evidence file read both paths; the evidence file's per-order bundle takes the same rows. Witness VALUES resolve from the network: an `Attestation` event's `contentRef` is the keccak-CID digest of the published preimage (`lib/composition/witnessContent.ts`), so the reader derives the address from the event alone, verifies the bytes hash back to the fingerprint, and decodes them through the spec's declared stage fields (`describeWitness`); private-disposition, withheld, or erased content resolves absent and the fingerprint receipt still renders. The evidence file is whole and says what it lacks: every part the file's code could not read (an order whose agreement did not load, a failed attestation read, a failed timeline, unreadable token decimals, a clause spec that did not load) is an entry in its `missing` list (`MissingPart` in `lib/audit/types.ts`), drawn in the PDF on the page "What this evidence file does not contain" and on the audit page by `_components/MissingParts.tsx`. The audit page's list also names an order's signatures whose read failed or which no commit calldata and no batch carries, and leaves that order's signature rows empty; an agreement still loading (`useProcessAgreementReads`, `hooks/useProcessAgreements.ts`) shows the loading line in its order's block and is not listed; the evidence file takes the process's token from the commitment, never from a clause's copy.
-- **`data/`** — the data explorer's read model (`/data/explore`): `explorer.ts` (PURE — the query↔permalink parse/serialize, the layer descriptors with their truth boundaries, and the row projections with their absence postures: an unresolved clause family is a fingerprint-only row, an unattributed process is counted and said to be, a composed venue no commit was funded through is said to be, and never "empty"), `graphCorpus.ts` (the I/O — the existing event caches folded through `@figaro-protocol/sdk/derive`'s projections; every commit's receipt, read once per transaction hash through the receipt cache beside the event logs (`lib/core/eventCache.ts`), run through `readFundingLegs` so the swap legs reach the value-flow graph as edges between denominations; substance recovered at the edge from each attestation's own fingerprint, assembly attribution read from the buyer's attestation of the agreement format's reserved provenance leaf, which names the assembly hash, never a clause name), `analystEndpoint.ts` (the analyst wire — same configuration-not-doctrine posture as the batch relay: no shipped fallback, user override wins, unset means no prompt box at all)
 - **`checkout/`** — the Checkout lifecycle phase.
   - *Cart:* `cartStore.ts`, `CommerceProvider.tsx`, `useCheckout.ts`.
   - *The assembly→orders walk:* `assemblyCheckout.ts` is a thin wrapper over the
@@ -220,41 +269,8 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     gate's terms rendering is `components/runtime/AgreementReview.tsx` — the ONE
     shared agreement-terms surface, composed by `AgreementPreviewModal` and
     rendered inline on `/sign`.
-- **`composition/`** — third-party on-network contract composition (external, on-chain composition).
-  Generic dispatch is `useCompositionActions.ts`, with per-contract hooks and
-  readers beneath it.
-  - *Held values:* `heldValues.ts` — the open registry of readers that a spec's
-    `block.checkout.heldValues` names (`registerHeldValuesReader`), and
-    `useHeldValues`, which checkout uses to offer only the enum values the named
-    contracts on the connected chain hold. A chain the hint gives no address for
-    is not filtered; an unknown reader, a failed read or an empty read offers no
-    value.
-  - *The funding leg:* `swapFunding.ts` — the venue quote/route plus the
-    party-agnostic witness-signed leg builder, the buyer's at checkout and the
-    seller's at accept: the party's own act of holding the denomination, never a
-    term of the order; no profile declares a pool for it. `translateListedPrice`
-    quotes a listed price in the buyer's picked denomination for the checkout to
-    show; the buyer may change the amount, and the amount in the pick is what the
-    buyer signs and the seller countersigns at `/sign` beside its listed price.
-    `useSwapAndCommitActions.ts` carries the `swapAndCommit` broadcast either
-    funded form routes through.
-  - *The attestation choke point:* `useAttestationCoordinatorActions.ts`, which
-    every attest surface routes through; calldata carries fingerprints only.
-  - *The witness-content seam behind it:* `witnessContent.ts` publishes a
-    non-re-assert payload's ABI bytes as a RAW IPFS block multihashed keccak-256, so
-    `contentRef` IS the CID digest. The disposition gate is FAIL-CLOSED — an unknown
-    spec, or any `private` field in the `contentFieldsFor` set, withholds. Fetch
-    verifies the bytes hash back to the fingerprint; erasure is a best-effort unpin
-    of the derived CID, surfaced by `components/runtime/WitnessPinErasure.tsx`.
-  - *Post-resolution payout routing:* `payoutRouting.ts` +
-    `usePayoutRoutingActions.ts` — a resolved seller splits its own receipts through
-    the composed public multisender in one atomic batch; devnet rehearses
-    MockDisperse, mainnet composes canonical Disperse. Surfaced by
-    `components/runtime/PayoutRoutingPanel.tsx` beside what resolution paid out.
 - **`designer/`** — assembly authoring: synthetic DAG session + autosave + fork + publish (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `assemblyToDraft.ts`, `draftToAssembly.ts` — the authoring mirror of `assemblyToDraft.ts` and the ONE draft→assembly walk that publish, the hand-off panel, the canvas identity readout, and the review screen share (`projectSnapshotForReview` is that walk's review face: the composition a review renders comes out of the assembly publish anchors, never a second reading of the draft) — `publishAssembly.ts`; the assembly build itself — `buildProcessDesign`/`serializeProcessDesign` — is `@figaro-protocol/sdk`)
   - *The designer's picks, by key:* `assemblyComposedClauses` lists each agreement's composed clauses by clause key, each labeled with the spec's own `clauseId`, `version` and title read from the spec the key names (`composedClauseLabel` shows the name and version beside a short form of the key — two specs may share a name, never a key); the review face re-keys it onto the canvas's order ids as `composedClausesByOrderId`, which the review listing, the canvas chips and the drawer read.
-- **`handoff/`** — handoff-clause runtime TRANSPORTS + persistence: the channel factory (`channel.ts` — mock/null/XMTP chosen by DERIVED facts, never a setting: XMTP iff the wallet already has an inbox, `walletHasXmtpInbox` probe — one seam, one choreography, and no per-wallet transport setting), the transport implementations (`xmtpChannel.ts`, `mockChannel.ts`, `nullChannel.ts`), the relay adapter (`relayChannel.ts` — the handoff relay's PRE-COMMIT cell speaking the SDK's `CoordinationChannel`, so the dispatch race runs ONE choreography over every transport; also home of `relayCommitmentPayload`), per-order ECDH keypair sessionStorage (`ecdh.ts`), the three ceremonies over one core (`ceremony.ts`, `useCeremonyChannel.ts`): the address detail (`addressDetail.ts`), the content delivery (`contentDelivery.ts`) and the private filings of one order (`privateFilings.ts`), handoff-messaging + handoff-persistence services (`handoffMessagingService.ts`, `handoffPersistenceService.ts`). The anchor check (`handoffAnchorState.ts`) matches an attestation from either path, and `useHandoffCleanup.ts` watches `OrderResolved` at `FigaroCore` and at `FigaroBatchVerifier`. The wire protocol itself (message shapes, ECDH derivation, AES-GCM wrapping) is `@figaro-protocol/sdk/handoff`.
-- **`member/`** — the participant's own data: member-profile document family (`memberProfileMetadata.ts`), branding (`memberBranding*.ts`, `useMemberBranding.ts`), the MembersRegistry write/read hooks (`useMembersRegistry.ts`, `usePublishMemberProfile.ts`, `useUpdateMemberProfile.ts`), profile geocoding (`geocode.ts`), the cached URI-fetch pipeline (`uriFetcher.ts` — a single-layer reader, so it lives here), the cached profile read path (`profileFetcher.ts`) and its erasure half (`profileErasure.ts`); the catalog family — authoring/publication/reads (`catalog*.ts`, `memberCatalogMetadata*.ts`, on the same `uriFetcher.ts` pipeline), listings + discovery (`useMemberListings.ts`, `discoveryService.ts`), the enrollment-wizard state (`onboardingState.ts` — the wizard spans profile, catalog, seller and buyer steps), and the ONE counterparty-name resolver (`memberListing.ts` `displayNameForAddress`, over any `{address, name}` collection). Both sides live here: member = what a wallet IS, seller = which side of a trade it stands on.
 - **`semantic/`** — runtime derivation from committed state: `deriveProcessModelFromRuntime.ts`, `processTopology.ts`, `processRecourse.ts`, `models.ts`, capability execution
 
 ## Designer tool surface (`frontend/`)
@@ -415,15 +431,15 @@ Y", not as an open-ended build.)
   the visual channel at a hand-off), `ecdh-address` →
   `AddressDetailPanel` (the private-address ceremony on the geolocation
   clause: seller requests, buyer answers with the ECDH-encrypted addressee
-  block over the coordination channel — `lib/handoff/addressDetail.ts` —
+  block over the coordination channel — `lib/data/handoff/addressDetail.ts` —
   its keccak anchored on-chain as a buyer attestation; the chain never
   learns the plaintext), and `ecdh-content` → `ContentDeliveryPanel` (the
   digital-hand-off twin: the artifact itself travels the same encrypted
-  channel — `lib/handoff/contentDelivery.ts` — and its keccak256 files as
+  channel — `lib/data/handoff/contentDelivery.ts` — and its keccak256 files as
   the clause's stage-1 completion evidence, a private stage-1 set's
   blinding value sealed beside the artifact so the receiver recomputes
   the anchor; both ceremonies share the
-  two-message core in `lib/handoff/ceremony.ts`)). A third use of the same
+  two-message core in `lib/data/handoff/ceremony.ts`)). A third use of the same
   ceremony is mounted by no clause: `PrivateFilingsPanel`
   (`components/runtime/PrivateFilingsPanel.tsx`, on `/orders/view` beside
   each order's interaction surfaces) delivers the private filings of one
@@ -434,22 +450,22 @@ Y", not as an open-ended build.)
   seals every copy it kept for the order on one click ("Send the private
   filings (N)"); the receiver checks each entry against its content
   reference and the `Attestation` the chain holds, and keeps it in the
-  kept-witness store marked received (`lib/handoff/privateFilings.ts`). The
+  kept-witness store marked received (`lib/data/handoff/privateFilings.ts`). The
   three panels share `useCeremonyPanel` and `useCeremonyChannel`
-  (`lib/handoff/useCeremonyChannel.ts`), whose `expectedAnchor` returns one
+  (`lib/data/handoff/useCeremonyChannel.ts`), whose `expectedAnchor` returns one
   expectation or one per part of the payload, each a content reference or a
   whole attestation place, and `CeremonyPanelFrame` with
   `CeremonyRequestButton` (a request found only by the tab's stored key, as
   in a duplicated tab, can be sent again). The kept-witness store is read
   and written per wallet and chain (`useWitnessHolder` in
-  `lib/composition/`); `KeptPrivateContentPanel`
+  `lib/composability/`); `KeptPrivateContentPanel`
   (`components/runtime/KeptPrivateContentPanel.tsx`, on `/orders/view`
   where the process carries a private filing) exports, imports and removes
   the connected wallet's copies (`docs/DATA_LAYER.md`, the paragraph on
   what a party keeps).
 - **Clause-composition UI** — `app/(tools)/assemblies/designer/_components/AgreementDrawer.tsx`
   (reads ClauseRegistry live; grouping word is `block.design.article`).
-- **On-chain write flow** — `lib/member/usePublishMemberProfile.ts`
+- **On-chain write flow** — `lib/registries/usePublishMemberProfile.ts`
   (`simulateContract` → write → `waitForTransactionReceipt` → verify
   `status === "success"` before navigating).
 - **IPFS-hydrated reads** — `hooks/useProcessAgreements.ts` over
@@ -486,12 +502,12 @@ Y", not as an open-ended build.)
   `scenario-tradelens.devnet.spec.ts` + `tradelens-runtime.devnet.spec.ts` are
   the live producer/consumer pair (the scenario anchors the assembly, the
   runtime spec adopts it and says so in its own assertion message).
-- **Network reads** — `lib/core/indexer.ts` (order events) + `lib/protocol/membersRegistryIndexer.ts` (registry events) (the canonical read side; reconstructs
+- **Network reads** — `lib/core/indexer.ts` (order events) + `lib/registries/membersRegistryIndexer.ts` (registry events) (the canonical read side; reconstructs
   process/clause/seller state from chain events).
 
 ## Wallet-provider scope per route
 
-**The wallet is a signer, never a login.** Reading needs no wallet: every page renders what it can from the chain and the registries before any connection, a per-wallet view (`/orders`, `/rewards`, and the registration lists of `/assemblies/designer` and `/clauses/register`) takes the address to show from the connected wallet or from `?wallet=0x…` (`lib/shared/viewedWallet.ts` — the data is public); with neither, the list's place says in one line that it is one address's and none is named, and how to name one, and no gate stands in for content; and the membership wizard is filled without a wallet under an anonymous draft that the first wallet to connect adopts (`lib/member/onboardingState.ts`); its review step shows that draft and the registration stake with no wallet, and only its publish asks for one. A connection is asked for only where a signature or a transaction is: the review step that registers, checkout's place-order, counter-signing, claiming, registering a clause, publishing an assembly. A form hidden behind "connect first" is the login pattern and is wrong here.
+**The wallet is a signer, never a login.** Reading needs no wallet: every page renders what it can from the chain and the registries before any connection, a per-wallet view (`/orders`, `/rewards`, and the registration lists of `/assemblies/designer` and `/clauses/register`) takes the address to show from the connected wallet or from `?wallet=0x…` (`lib/shared/viewedWallet.ts` — the data is public); with neither, the list's place says in one line that it is one address's and none is named, and how to name one, and no gate stands in for content; and the membership wizard is filled without a wallet under an anonymous draft that the first wallet to connect adopts (`lib/registries/onboardingState.ts`); its review step shows that draft and the registration stake with no wallet, and only its publish asks for one. A connection is asked for only where a signature or a transaction is: the review step that registers, checkout's place-order, counter-signing, claiming, registering a clause, publishing an assembly. A form hidden behind "connect first" is the login pattern and is wrong here.
 
 Every route in `frontend/app/` is classified into one of three tiers
 governing wallet-provider load. **The per-tier route lists live in the ONE

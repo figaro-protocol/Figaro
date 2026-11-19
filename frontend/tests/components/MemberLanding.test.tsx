@@ -41,7 +41,7 @@ vi.mock("wagmi", () => ({
     usePublicClient: () => ({}),
 }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
-vi.mock("@/lib/member/useMembersRegistry", async () => {
+vi.mock("@/lib/registries/useMembersRegistry", async () => {
     const React = await import("react");
     return {
         useMemberProfile: () => mocks.profile,
@@ -65,10 +65,10 @@ vi.mock("@/lib/member/useMembersRegistry", async () => {
         },
     };
 });
-vi.mock("@/lib/member/profileFetcher", () => ({
+vi.mock("@/lib/registries/profileFetcher", () => ({
     fetchMemberProfile: () => mocks.fetchProfile(),
 }));
-vi.mock("@/lib/member/profileErasure", () => ({
+vi.mock("@/lib/registries/profileErasure", () => ({
     unpinSupersededProfileArtifacts: (...args: unknown[]) => mocks.unpin(...args),
 }));
 

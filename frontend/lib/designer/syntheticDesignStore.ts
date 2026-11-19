@@ -97,7 +97,7 @@ function deserializeOrder(s: SerializedOrder): Order {
  *    under its owner's key: the new design, or the named draft it opened.
  *  - **named draft** — a snapshot the user explicitly "Save"d, stored by
  *    slug via `saveNamedDraft`.
- *  - **published `ProcessDesign`** (`lib/protocol/useProcessRegistry`)
+ *  - **published `ProcessDesign`** (`lib/registries/useProcessRegistry`)
  *    — the IPFS-pinned, published version: one agreement per order, each
  *    binding a registered agreement by key. `assemblyToDraft`
  *    re-hydrates it (with its agreements) back into a `DesignSnapshot` for

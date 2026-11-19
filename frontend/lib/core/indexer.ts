@@ -228,5 +228,5 @@ export async function getReceiptLogsOf(client: PublicClient, chainId: number, lo
     });
 }
 
-// AttestationCoordinator event readers are NON-CORE — they live
-// in lib/composition/indexer.ts (core must not reference composition contracts).
+// The attestation readers (AttestationCoordinator, and the verifier's
+// re-emissions) are lib/core/attestationIndexer.ts.

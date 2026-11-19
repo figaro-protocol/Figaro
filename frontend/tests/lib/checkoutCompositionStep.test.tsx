@@ -17,8 +17,8 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
 
 import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { executeAssemblyCheckout } from "@/lib/checkout/assemblyCheckout";
-import { useCompositionActions } from "@/lib/composition/useCompositionActions";
-import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
+import { useCompositionActions } from "@/lib/composability/useCompositionActions";
+import type { BoundAssembly } from "@/lib/registries/useMemberBoundAssemblies";
 import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 
 const BUYER = "0x1111111111111111111111111111111111111111" as const;

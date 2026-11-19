@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useDesurfaced } from "@/lib/protocol/registryEventScan";
+import { useDesurfaced } from "@/lib/registries/registryEventScan";
 import { ABSENT, PENDING, present } from "@/lib/shared/networkRead";
 
 const ROWS = [

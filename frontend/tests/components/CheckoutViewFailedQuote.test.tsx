@@ -38,7 +38,7 @@ const m = vi.hoisted(() => ({
 // One stable client: the quote effect keys on its identity.
 const CLIENT = vi.hoisted(() => ({ chain: { id: 31337 } }));
 vi.mock("wagmi", () => ({ useChainId: () => 31337, usePublicClient: () => CLIENT }));
-vi.mock("@/lib/member/useRegisteredCatalogs", () => ({
+vi.mock("@/lib/registries/useRegisteredCatalogs", () => ({
     useRegisteredCatalogs: () => ({
         read: {
             status: "present",
@@ -58,7 +58,7 @@ const BOUND_LIST = vi.hoisted(() => [{
     hydratedAssembly: { assembly: { agreements: [{ id: "agreement-0" }], assemblyClauses: {} } },
 }]);
 const BOUND = { status: "present", value: BOUND_LIST };
-vi.mock("@/lib/member/useMemberBoundAssemblies", () => ({
+vi.mock("@/lib/registries/useMemberBoundAssemblies", () => ({
     useMemberBoundAssemblies: () => BOUND,
     withBoundCoSellers: (a: unknown) => a,
 }));
@@ -68,7 +68,7 @@ vi.mock("@figaro-protocol/sdk", async (importOriginal) => ({
     readUtilityTokenPin: () => DENOM,
     agreementClauses: () => ({}),
 }));
-vi.mock("@/lib/composition/swapFunding", () => ({
+vi.mock("@/lib/composability/swapFunding", () => ({
     resolveSwapFundingContracts: () => m.contracts,
     translateListedPrice: async () => {
         m.quoteAsked++;
@@ -87,18 +87,18 @@ vi.mock("@/lib/checkout", () => ({
 const CART = { items: [{ sellerId: SELLER, catalogItemId: "i1", name: "Widget", price: "5", quantity: 1 }] };
 vi.mock("@/lib/checkout/cartStore", () => ({ useCartStore: () => CART }));
 vi.mock("@/lib/checkout/dispatchRace", () => ({ useDispatchRace: () => ({ result: null }), postToAgentEndpoint: vi.fn() }));
-vi.mock("@/lib/composition/useCompositionActions", () => ({ useCompositionActions: () => ({ compose: vi.fn() }) }));
+vi.mock("@/lib/composability/useCompositionActions", () => ({ useCompositionActions: () => ({ compose: vi.fn() }) }));
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false, allowanceKnown: true }) }));
 vi.mock("@/hooks/useApproveThenAct", () => ({ useApproveThenAct: () => ({ runWithApproval: vi.fn() }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: undefined }) }));
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18 }) }));
 vi.mock("@/hooks/useConnectInjected", () => ({ useConnectInjected: () => vi.fn() }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
 vi.mock("@/components/runtime/DispatchRacePanel", () => ({ DispatchRacePanel: () => null }));
 vi.mock("@/components/runtime/SellerCatalogPicker", () => ({ SellerCatalogPicker: () => null }));
 vi.mock("@/components/runtime/CommitmentSharePanel", () => ({ CommitmentSharePanel: () => null }));
-vi.mock("@/lib/composition/useFundingMargin", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/composition/useFundingMargin")>()),
+vi.mock("@/lib/composability/useFundingMargin", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/composability/useFundingMargin")>()),
     useFundingMargin: () => ({
         marginFor: () => ({ text: "", bps: null, quotedInput: null, maxInput: null, refusal: null, venue: null, decimals: undefined, symbol: "", onChange: () => {} }),
     }),

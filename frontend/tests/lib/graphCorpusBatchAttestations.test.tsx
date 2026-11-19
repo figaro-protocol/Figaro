@@ -47,19 +47,19 @@ vi.mock("@/lib/core/eventCache", () => ({
 vi.mock("@/lib/core/contracts", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-}));
-vi.mock("@/lib/composition/contracts", () => ({
     getAttestationCoordinator: () => COORDINATOR,
     getBatchVerifier: () => VERIFIER,
+}));
+vi.mock("@/lib/composability/contracts", () => ({
     getSwapRouter: () => null,
     getWitnessSwapAndCommitCoordinator: () => null,
 }));
 // The gateway serves no content: every row stays a fingerprint, and the count
 // is the count of events.
-vi.mock("@/lib/composition/witnessContent", () => ({ fetchWitnessContent: async () => null }));
+vi.mock("@/lib/core/witnessContent", () => ({ fetchWitnessContent: async () => null }));
 vi.mock("@/lib/shared/publicClient", () => ({ publicClient: CLIENT }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => SPECS }));
-vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => ASSEMBLIES.current ?? NO_ASSEMBLIES }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => SPECS }));
+vi.mock("@/lib/registries/assemblyChoices", () => ({ useAssemblyChoices: () => ASSEMBLIES.current ?? NO_ASSEMBLIES }));
 vi.mock("@/lib/data/analystEndpoint", () => ({ getAnalystUrl: () => null, readAnalystStatus: async () => null, askAnalyst: async () => null }));
 vi.mock("next/navigation", () => ({
     useSearchParams: () => params.current,

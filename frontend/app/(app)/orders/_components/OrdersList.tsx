@@ -52,9 +52,9 @@ import {
     awaitsCounterpartySignature,
     awaitsMyBroadcast,
 } from "@/lib/checkout/orderPendingSellerSignature";
-import { useMemberListings } from "@/lib/member/useMemberListings";
-import { displayNameForAddress } from "@/lib/member/memberListing";
-import type { Listing } from "@/lib/member/memberListing";
+import { useMemberListings } from "@/lib/registries/useMemberListings";
+import { displayNameForAddress } from "@/lib/registries/memberListing";
+import type { Listing } from "@/lib/registries/memberListing";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useMounted } from "@/hooks/useMounted";
 import useTokenDecimals from "@/hooks/useTokenDecimals";

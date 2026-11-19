@@ -24,14 +24,18 @@ import {
     decodeCommitCalldata,
     verdictsForCommitCalldata,
     verifyOrderCommitSignatures,
-} from "@/lib/audit/signatureVerdicts";
+} from "@/lib/data/audit/signatureVerdicts";
 
 const CHAIN_ID = 31337;
 const CORE = "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" as const;
 
 vi.mock("@/lib/core/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" } };
+    return {
+        ...actual,
+        CONTRACTS: { ...actual.CONTRACTS, core: "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" },
+        getBatchVerifier: () => getBatchVerifierMock(),
+    };
 });
 
 const getAllOrderCommittedMock = vi.fn();
@@ -52,16 +56,15 @@ const COORDINATOR = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0" as const;
 const getCoordinatorMock = vi.fn();
 const getBatchAttestationsByOrderMock = vi.fn();
 const getAllBatchSettledMock = vi.fn();
-vi.mock("@/lib/composition/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/composition/contracts")>();
+vi.mock("@/lib/composability/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/composability/contracts")>();
     return {
         ...actual,
-        getBatchVerifier: () => getBatchVerifierMock(),
         getWitnessSwapAndCommitCoordinator: () => getCoordinatorMock(),
     };
 });
-vi.mock("@/lib/composition/indexer", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/composition/indexer")>();
+vi.mock("@/lib/core/attestationIndexer", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/attestationIndexer")>();
     return {
         ...actual,
         getBatchAttestationsByOrder: (...args: unknown[]) => getBatchAttestationsByOrderMock(...args),

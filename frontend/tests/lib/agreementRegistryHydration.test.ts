@@ -22,9 +22,9 @@ const reads = vi.hoisted(() => ({
     documents: new Map<string, string | null>(),
 }));
 
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, agreementRegistry: "0x00000000000000000000000000000000000a9e01" } };
+vi.mock("@/lib/registries/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
+    return { ...actual, REGISTRY_CONTRACTS: { ...actual.REGISTRY_CONTRACTS, agreementRegistry: "0x00000000000000000000000000000000000a9e01" } };
 });
 vi.mock("@/lib/shared/publicClient", () => ({
     publicClient: {
@@ -45,7 +45,7 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => {
     };
 });
 
-import { fetchRegisteredAgreement, getRegisteredAgreement, getRegisteredAgreementLoadError, hydrateAnchoredAssembly } from "@/lib/protocol/useAgreementRegistry";
+import { fetchRegisteredAgreement, getRegisteredAgreement, getRegisteredAgreementLoadError, hydrateAnchoredAssembly } from "@/lib/registries/useAgreementRegistry";
 import { projectSnapshotForReview } from "@/lib/designer/draftToAssembly";
 import { createSyntheticRootOrder, createSyntheticSubOrder, startSyntheticSession } from "@/lib/designer/syntheticProcess";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";

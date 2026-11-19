@@ -43,7 +43,7 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => ({
 import { getCoreEvents } from "@/lib/core/indexer";
 import { orderFromSdk, type Order } from "@/lib/core/store";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
-import { buildAuditBundleData } from "@/lib/audit/auditBundlePdf";
+import { buildAuditBundleData } from "@/lib/data/audit/auditBundlePdf";
 
 const PROCESS = word(0xba7c);
 const ROOT = word(0x0a01);

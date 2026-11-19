@@ -8,7 +8,7 @@
  * not type.
  */
 import { describe, expect, it } from "vitest";
-import { fundingMargin, marginBlocksTheAct } from "@/lib/composition/useFundingMargin";
+import { fundingMargin, marginBlocksTheAct } from "@/lib/composability/useFundingMargin";
 
 const base = { text: null, defaultBps: 100, quotedInput: 1_000n, balance: 10_000n } as const;
 

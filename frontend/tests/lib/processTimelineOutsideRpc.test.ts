@@ -12,12 +12,12 @@ vi.mock("@/lib/core/eventCache", async (importOriginal) => {
 // shown never to scan it — the Core holds no pointer to its coordinator, so on
 // another deployment only the link can name one.
 const SITE_COORD = "0x1111111111111111111111111111111111111111" as const;
-vi.mock("@/lib/composition/contracts", async (importOriginal) => {
-    const real = await importOriginal<typeof import("@/lib/composition/contracts")>();
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const real = await importOriginal<typeof import("@/lib/core/contracts")>();
     return { ...real, getAttestationCoordinator: () => SITE_COORD };
 });
 
-import { buildProcessTimeline } from "@/lib/audit/processTimeline";
+import { buildProcessTimeline } from "@/lib/data/audit/processTimeline";
 
 const PROCESS = `0x${"ab".repeat(32)}` as const;
 const CORE = "0x992f81049444A5275b4F92e69805a2F8c88B6386";

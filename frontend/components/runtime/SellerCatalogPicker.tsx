@@ -28,11 +28,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { isAddress } from "viem";
-import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
-import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
+import { useRegisteredCatalogs } from "@/lib/registries/useRegisteredCatalogs";
+import type { CatalogItemMetadata } from "@/lib/registries/memberCatalogMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 import { Input } from "@/components/ui/Input";
-import { bindsAssembly } from "@/lib/member/memberListing";
+import { bindsAssembly } from "@/lib/registries/memberListing";
 import { deriveProcessDesignSlug } from "@/lib/shared/assembly";
 
 export interface SellerSelection {

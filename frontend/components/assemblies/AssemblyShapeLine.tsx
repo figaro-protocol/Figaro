@@ -3,8 +3,8 @@
 import {
     type AssemblyChoice,
     formatAssemblyClauseList,
-} from "@/lib/protocol/assemblyChoices";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+} from "@/lib/registries/assemblyChoices";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 
 /**
  * AssemblyShapeLine — the one-line summary of an assembly's shape, shared by

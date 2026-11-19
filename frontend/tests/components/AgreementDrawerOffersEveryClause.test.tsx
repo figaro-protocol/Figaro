@@ -20,15 +20,15 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { computeClauseKey, canonicalize, type Hex } from "@figaro-protocol/sdk";
 
-vi.mock("@/lib/protocol/useAgreementRegistry", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/protocol/useAgreementRegistry")>();
+vi.mock("@/lib/registries/useAgreementRegistry", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/registries/useAgreementRegistry")>();
     return {
         ...actual,
         usePublishedAgreements: () => ({ read: { status: "present", value: [] }, refetch: async () => undefined }),
         fetchRegisteredAgreement: async (key: `0x${string}`) => actual.getRegisteredAgreement(key) ?? null,
     };
 });
-vi.mock("@/lib/protocol/useClauseRegistry", async () => {
+vi.mock("@/lib/registries/useClauseRegistry", async () => {
     const { listKnownClauses } = await import("@/lib/shared/clauseSpecSource");
     return {
         useAllRegisteredClauses: () => ({
@@ -39,7 +39,7 @@ vi.mock("@/lib/protocol/useClauseRegistry", async () => {
         }),
     };
 });
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
 
 import { AgreementDrawer } from "@/app/(tools)/assemblies/designer/_components/AgreementDrawer";
 import { AssemblyTermsPanel } from "@/app/(tools)/assemblies/designer/_components/AssemblyTermsPanel";

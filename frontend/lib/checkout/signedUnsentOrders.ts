@@ -6,7 +6,7 @@
  * only in the share panel's React state and a navigation lost it (beta r4:
  * "/orders is empty until Send via XMTP"). This store keeps the signed
  * payload for the length of the TAB — sessionStorage, the posture the
- * per-order ceremony keys already take (`lib/handoff/ecdh.ts`): a signed
+ * per-order ceremony keys already take (`lib/data/handoff/ecdh.ts`): a signed
  * payload carries the agreement's private plaintext and is never durable at
  * rest; it survives navigation, not the tab. /orders lists it under "Signed,
  * not yet sent" with Send and Discard; a successful relay forgets it, and

@@ -4,7 +4,7 @@
  * deviceLocation — the ONE Geolocation-API read. Shared-layer because every
  * device-position consumer (the member wizard's geohash assist, the geohash
  * field input, hand-off evidence capture) is a different layer; the device is
- * below them all. Moved from `lib/member/geocode.ts` (which keeps geocoding —
+ * below them all. Moved from `lib/registries/geocode.ts` (which keeps geocoding —
  * address → coordinates; a service lookup, not a device read).
  */
 

@@ -962,8 +962,8 @@ export function ladderLabelsOf(clauseKey: Hex): string[] {
  *  commitment payload the page relayed names this buyer and seller, its
  *  `commitment.payment` is `payment` to the wei, and its buyer signature
  *  recovers to the buyer under this chain's FigaroCore domain. An e2e session
- *  relays over the mock coordination channel (`lib/handoff/channel.ts`), which
- *  persists each message under `lib/handoff/mockChannel.ts`'s
+ *  relays over the mock coordination channel (`lib/data/handoff/channel.ts`), which
+ *  persists each message under `lib/data/handoff/mockChannel.ts`'s
  *  MOCK_STORAGE_KEY in the page origin's localStorage. */
 export async function expectRelayedOrder(
     page: Page,

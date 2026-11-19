@@ -28,14 +28,14 @@ import {
     useRequestWithdrawal,
     useWithdrawalStatus,
     useWithdrawalCooldown,
-} from "@/lib/member/useMembersRegistry";
+} from "@/lib/registries/useMembersRegistry";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
-import { fetchMemberProfile } from "@/lib/member/profileFetcher";
-import { sellerPageHref } from "@/lib/member/memberListing";
-import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
+import { fetchMemberProfile } from "@/lib/registries/profileFetcher";
+import { sellerPageHref } from "@/lib/registries/memberListing";
+import { unpinSupersededProfileArtifacts } from "@/lib/registries/profileErasure";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { cooldownPhrase } from "@/lib/member/cooldownPhrase";
-import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
+import { cooldownPhrase } from "@/lib/registries/cooldownPhrase";
+import type { MemberProfileMetadata } from "@/lib/registries/memberProfileMetadata";
 import { PENDING, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib/shared/networkRead";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { formatToken } from "@/lib/shared/utils";

@@ -8,7 +8,7 @@
  * order page; the attester's page then offers one control that seals every
  * copy it kept for the order to the asker's key; the asker's page checks
  * each entry against the chain and keeps it in the same store every reader
- * reads (`PrivateFilingsPanel`, `lib/handoff/privateFilings.ts`).
+ * reads (`PrivateFilingsPanel`, `lib/data/handoff/privateFilings.ts`).
  *
  *   register → a clause no file in `clauses/` holds, written here: a public
  *              committed field and a private witness stage 1 (the reading

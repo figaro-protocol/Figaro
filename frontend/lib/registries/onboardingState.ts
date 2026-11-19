@@ -1,0 +1,278 @@
+/**
+ * lib/registries/onboardingState.ts
+ *
+ * Wallet-scoped localStorage state for the multi-screen member
+ * onboarding flow at `/members/*`. The state survives page reloads and
+ * wallet reconnection, and unblocks per-step authoring: every step writes
+ * as the member types, and re-reads its own draft when the step mounts.
+ *
+ * Storage key shape: `figaro:onboarding:0x<wallet-address>`.
+ *
+ * Each top-level field is filled on the step of the same name; the order
+ * of the steps is `ONBOARDING_STEPS` below and nothing else.
+ *
+ * The `complete` flag is set after the publish path runs successfully on the
+ * review step, and used by the entry route to fast-forward returning users.
+ */
+
+"use client";
+
+import { activeChain } from "@/lib/shared/chains";
+import { useCallback, useEffect, useState } from "react";
+import { readJsonStorage, removeStorage, writeJsonStorage } from "@/lib/shared/storage";
+import type {
+    ProcessBindingRecord,
+    BuyerProcessSubscription,
+    MemberAgentServices,
+    MemberAssetReferences,
+} from "@/lib/registries/memberProfileMetadata";
+import type {
+    CatalogItemMetadata,
+    UnitSystem,
+} from "@/lib/registries/memberCatalogMetadata";
+import type { AcceptedTokenMetadata } from "@/lib/registries/acceptedTokenMetadata";
+import type { MemberBrandingMetadata } from "@/lib/registries/memberBrandingMetadata";
+
+// ── Shape ────────────────────────────────────────────────────────────────────
+
+export interface OnboardingProfileDraft {
+    name?: string;
+    description?: string;
+    specialty?: string;
+    location?: {
+        geohash?: string;
+        addressText?: string;
+    };
+    branding?: MemberBrandingMetadata;
+    assets?: MemberAssetReferences;
+    acceptedTokens?: AcceptedTokenMetadata[];
+    defaultTokenAddress?: `0x${string}`;
+    /** PROFILE-filled clause values (the member's master data: dimweight's
+     *  divisor, a declared credential id), clauseId → field → value —
+     *  checkout folds them onto composed profile-sourced leaves. Absent when
+     *  the member fills none. */
+    profileClauseValues?: Record<string, Record<string, unknown>>;
+}
+
+interface OnboardingCatalogDraft {
+    items?: CatalogItemMetadata[];
+    /** The member's preferred unit system for editor + display. Storage of
+     *  per-item mass / volume is always metric; this is a UI preference. */
+    unitSystem?: UnitSystem;
+}
+
+interface OnboardingState {
+    /** Wallet that owns this draft. Stamped on first write so reads can detect wallet-switch. */
+    walletAddress?: `0x${string}`;
+    profile?: OnboardingProfileDraft;
+    catalog?: OnboardingCatalogDraft;
+    /** Per-assembly bindings declared on the assemblies step. */
+    assemblies?: ProcessBindingRecord[];
+    /** The buyer's assembly subscriptions, declared on the buyer step —
+     *  which assemblies this wallet buys through and monetizes data
+     *  from. Independent of `assemblies` (the bindings the member sells through). */
+    buyerAssemblies?: BuyerProcessSubscription[];
+    /** Agent endpoints declared on screen 6 (advanced; optional). */
+    services?: MemberAgentServices;
+    /** True when the on-chain register/updateProfile transaction has confirmed. */
+    complete?: boolean;
+    /** ISO timestamp of last write (for staleness checks). */
+    updatedAt?: string;
+}
+
+const EMPTY_STATE: OnboardingState = {};
+
+// ── Storage primitives ───────────────────────────────────────────────────────
+
+// A draft needs no wallet: a visitor fills the wizard first and connects at
+// the last step, where the registration is signed. Until then the draft lives
+// under one anonymous key; the moment a wallet connects, a draft that wallet
+// does not yet have is adopted from it (and the anonymous copy removed), so
+// nothing typed before connecting is lost. The wallet is a signer, not a login.
+//
+// A draft is one chain's: the tokens it accepts and the assemblies it binds
+// are addresses and registrations of the page's chain, so a draft begun on
+// one network is not offered on another.
+const draftScope = () => `figaro:onboarding:${activeChain.id}`;
+
+function storageKeyFor(wallet: string | undefined): string {
+    return `${draftScope()}:${wallet ? wallet.toLowerCase() : "draft"}`;
+}
+
+function isEmptyState(state: OnboardingState): boolean {
+    return Object.keys(state).filter((k) => k !== "walletAddress" && k !== "updatedAt").length === 0;
+}
+
+function readState(wallet: string | undefined): OnboardingState {
+    return readJsonStorage<OnboardingState>(storageKeyFor(wallet), EMPTY_STATE);
+}
+
+function writeState(wallet: string | undefined, state: OnboardingState): void {
+    const stamped: OnboardingState = {
+        ...state,
+        ...(wallet ? { walletAddress: wallet as `0x${string}` } : {}),
+        updatedAt: new Date().toISOString(),
+    };
+    // localStorage may be disabled / full; a refused write is dropped.
+    writeJsonStorage(storageKeyFor(wallet), stamped);
+}
+
+function removeState(wallet: string | undefined): void {
+    removeStorage(storageKeyFor(wallet));
+}
+
+// ── Hook ─────────────────────────────────────────────────────────────────────
+
+export interface UseOnboardingStateResult {
+    /** Whose draft `state` is: the wallet address, or "anonymous" before one
+     *  connects. A form hydrates per subject and autosaves only for the
+     *  subject it hydrated for, so a wallet arriving after the form mounted
+     *  never has a stale form written over its own draft. */
+    subject: string;
+    state: OnboardingState;
+    /**
+     * `true` once the draft has been read from localStorage — the wallet's
+     * own when one is connected, the anonymous draft when none is. Forms gate
+     * hydration on this flag, never on `state.X !== undefined`: a new visitor
+     * has no draft, so `state` never leaves `EMPTY_STATE`, and a returning one
+     * can have hydration race the read. A wallet switch re-reads and re-arms.
+     */
+    loaded: boolean;
+    /** Replace the entire state. */
+    setState: (next: OnboardingState) => void;
+    /** Merge a partial update. */
+    update: (patch: Partial<OnboardingState>) => void;
+    /** Clear state (used after successful publish + final-step navigation). */
+    clear: () => void;
+}
+
+/**
+ * Wallet-scoped onboarding-state hook. Reads the current draft for
+ * `walletAddress` from localStorage on mount and on wallet switch;
+ * writes back on every update. With no wallet connected the draft is the
+ * anonymous one, adopted by the first wallet that connects without a draft.
+ */
+export function useOnboardingState(walletAddress: `0x${string}` | undefined): UseOnboardingStateResult {
+    const [state, setStateInternal] = useState<OnboardingState>(EMPTY_STATE);
+    // Whose draft `state` was read for. `loaded` is derived from it, so in the
+    // render where the subject has changed but the read has not yet run, a
+    // form sees loaded === false and waits instead of hydrating from the
+    // previous subject's state.
+    const subject = walletAddress ?? "anonymous";
+    const [loadedFor, setLoadedFor] = useState<string | null>(null);
+    const loaded = loadedFor === subject;
+
+    useEffect(() => {
+        let next = readState(walletAddress);
+        // A wallet that just connected adopts the anonymous draft when it has
+        // none of its own; the anonymous copy is removed so it is adopted once.
+        if (walletAddress && isEmptyState(next)) {
+            const anonymous = readState(undefined);
+            if (!isEmptyState(anonymous)) {
+                next = anonymous;
+                writeState(walletAddress, next);
+                removeState(undefined);
+            }
+        }
+        setStateInternal(next);
+        setLoadedFor(walletAddress ?? "anonymous");
+    }, [walletAddress]);
+
+    const setState = useCallback((next: OnboardingState) => {
+        setStateInternal(next);
+        writeState(walletAddress, next);
+    }, [walletAddress]);
+
+    const update = useCallback((patch: Partial<OnboardingState>) => {
+        setStateInternal((prev) => {
+            const next = { ...prev, ...patch };
+            writeState(walletAddress, next);
+            return next;
+        });
+    }, [walletAddress]);
+
+    const clear = useCallback(() => {
+        setStateInternal(EMPTY_STATE);
+        removeState(walletAddress);
+    }, [walletAddress]);
+
+    return { state, loaded, subject, setState, update, clear };
+}
+
+// ── Step progress ────────────────────────────────────────────────────────────
+
+export interface OnboardingStep {
+    /** Stable id used in URLs and step-indicator keys. */
+    id: "profile" | "catalog" | "assemblies" | "buyer" | "agents" | "endpoints" | "review";
+    /** 1-based step number for the visible indicator. */
+    number: number;
+    /** Human-readable label. */
+    label: string;
+    /** Sub-route under `/members/`. Always non-empty — the wizard opens on Identity. */
+    path: string;
+    /**
+     * When true, the member may ship without filling this step. The
+     * step indicator treats optional-and-past as completed (opting out
+     * IS the member's resolution) so the indicator doesn't paint a
+     * gap where the member deliberately skipped.
+     */
+    optional: boolean;
+}
+
+// No welcome step: /join owns the membership
+// pitch, so the wizard opens directly on Identity.
+//
+// The two assembly steps are one loop walked twice — the assemblies a member
+// sells through (it BINDS them) and the assemblies it buys through (it
+// SUBSCRIBES them). They sit side by side, and both precede Catalog,
+// because the authority runs that way: the assemblies a member binds decide
+// which clauses its trades carry, and the clauses decide which item fields
+// exist to fill (a freight class, a hazmat number, a cold-chain range). Ask for
+// the items first and the catalog has nothing to derive from, so it opens every
+// registered logistics field to a member selling one mug.
+export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
+    { id: "profile", number: 1, label: "Identity", path: "identity", optional: false },
+    { id: "assemblies", number: 2, label: "Sell through", path: "assemblies", optional: false },
+    // Optional: a member who buys through no assembly leaves it empty.
+    { id: "buyer", number: 3, label: "Buy through", path: "buyer", optional: true },
+    { id: "catalog", number: 4, label: "Catalog", path: "catalog", optional: false },
+    // Both postures are declared before agents, so the agents step delegates
+    // control of the member's whole profile — seller and buyer alike.
+    { id: "agents", number: 5, label: "Agents", path: "agents", optional: true },
+    // The member's OWN infrastructure — device configuration, never part of
+    // the pinned profile, which is why Review does not list it.
+    { id: "endpoints", number: 6, label: "Endpoints", path: "endpoints", optional: true },
+    { id: "review", number: 7, label: "Review", path: "review", optional: false },
+];
+
+/** The route of one wizard step — the one place a step's URL is written, so
+ *  the order above is the only thing that decides where a step sits. */
+export function onboardingStepHref(id: OnboardingStep["id"]): string {
+    const step = ONBOARDING_STEPS.find((s) => s.id === id);
+    return `/members${step?.path ? `/${step.path}` : ""}`;
+}
+
+/** The route of the step after `id`, or of the wizard's last step when `id`
+ *  is already it. Forms route their "Next" through this rather than naming a
+ *  sibling, so reordering `ONBOARDING_STEPS` reorders the walk. */
+export function onboardingNextHref(id: OnboardingStep["id"]): string {
+    const index = ONBOARDING_STEPS.findIndex((s) => s.id === id);
+    const next = ONBOARDING_STEPS[Math.min(index + 1, ONBOARDING_STEPS.length - 1)];
+    return onboardingStepHref(next.id);
+}
+
+/** How a step is named to the member — "Step 3 (Catalog)". Numbered from
+ *  the order above, so a reorder renumbers the prose with it. */
+export function onboardingStepLabel(id: OnboardingStep["id"]): string {
+    const step = ONBOARDING_STEPS.find((s) => s.id === id);
+    return step ? `Step ${step.number} (${step.label})` : "";
+}
+
+/** The route of the step before `id`, or of the first step when `id` is
+ *  already it. The default target of every step's "← Back" link. */
+export function onboardingPrevHref(id: OnboardingStep["id"]): string {
+    const index = ONBOARDING_STEPS.findIndex((s) => s.id === id);
+    const prev = ONBOARDING_STEPS[Math.max(index - 1, 0)];
+    return onboardingStepHref(prev.id);
+}
+

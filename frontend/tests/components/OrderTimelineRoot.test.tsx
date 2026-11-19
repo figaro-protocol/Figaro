@@ -34,7 +34,7 @@ vi.mock("@/hooks/useSemanticProcessWorkspace", () => ({
     }),
 }));
 vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => null }));
-vi.mock("@/lib/member/useMemberListings", () => ({ useMemberListings: () => ({ read: present([]) }) }));
+vi.mock("@/lib/registries/useMemberListings", () => ({ useMemberListings: () => ({ read: present([]) }) }));
 vi.mock("@/components/runtime/OrderInteractionSurfaces", () => ({ OrderInteractionSurfaces: () => null }));
 vi.mock("@/components/runtime/CapabilityRail", () => ({ CapabilityRail: () => null }));
 vi.mock("@/components/runtime/StageAttestationComparison", () => ({ StageAttestationComparison: () => null }));

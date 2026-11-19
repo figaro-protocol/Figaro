@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
     clauseRegisterRevertMessage,
     clauseWithdrawRevertMessage,
-} from "@/lib/protocol/useClauseRegistry";
+} from "@/lib/registries/useClauseRegistry";
 
 describe("clauseRegisterRevertMessage", () => {
     it("AlreadyRegistered names the clause and the first-write-wins rule over the spec's key", () => {

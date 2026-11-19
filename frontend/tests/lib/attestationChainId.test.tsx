@@ -21,7 +21,8 @@ vi.mock("wagmi", () => ({
     useWriteContract: () => ({ writeContractAsync: w.write, data: undefined, isPending: false }),
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false }),
 }));
-vi.mock("@/lib/composition/contracts", () => ({
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     getAttestationCoordinator: () => "0x00000000000000000000000000000000000a7701",
 }));
 vi.mock("@/lib/core/indexer", () => ({
@@ -35,7 +36,7 @@ vi.mock("@/lib/core/signedCommitment", () => ({
     restoreSignedProcessId: (c: unknown, chainId: number) => { w.restores.push(chainId); return c; },
 }));
 
-import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
+import { useAttestationCoordinatorActions } from "@/lib/core/useAttestationCoordinatorActions";
 
 async function attestCaught(): Promise<unknown> {
     const { result } = renderHook(() => useAttestationCoordinatorActions());

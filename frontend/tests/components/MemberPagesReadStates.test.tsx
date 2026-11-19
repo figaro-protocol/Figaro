@@ -42,19 +42,19 @@ vi.mock("wagmi", () => ({
     useReadContract: () => ({ data: undefined, isLoading: false }),
 }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
-vi.mock("@/lib/member/useMembersRegistry", () => ({
+vi.mock("@/lib/registries/useMembersRegistry", () => ({
     useMemberProfile: () => ({ read: m.registration }),
     useUpdateProfile: () => ({ updateProfile: async () => undefined, isPending: false, isConfirming: false, isSuccess: false, error: null, hash: undefined }),
 }));
-vi.mock("@/lib/member/profileFetcher", () => ({ fetchMemberProfile: () => m.profile() }));
-vi.mock("@/lib/member/catalogFetcher", () => ({ fetchMemberCatalog: () => m.catalog() }));
-vi.mock("@/lib/member/onboardingState", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/member/onboardingState")>()),
+vi.mock("@/lib/registries/profileFetcher", () => ({ fetchMemberProfile: () => m.profile() }));
+vi.mock("@/lib/registries/catalogFetcher", () => ({ fetchMemberCatalog: () => m.catalog() }));
+vi.mock("@/lib/registries/onboardingState", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/registries/onboardingState")>()),
     useOnboardingState: () => m.onboarding,
 }));
-vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => ({ read: m.choices }) }));
-vi.mock("@/lib/member/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => ({ read: m.choices }) }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
+vi.mock("@/lib/registries/assemblyChoices", () => ({ useAssemblyChoices: () => ({ read: m.choices }) }));
+vi.mock("@/lib/registries/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => ({ read: m.choices }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
 
 import { MemberEditProfile } from "@/components/members/MemberEditProfile";
 import { MemberEditAgents } from "@/components/members/MemberEditAgents";

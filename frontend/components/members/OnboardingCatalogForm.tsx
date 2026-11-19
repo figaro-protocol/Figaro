@@ -20,12 +20,12 @@ import {
     onboardingPrevHref,
     onboardingStepLabel,
     useOnboardingState,
-} from "@/lib/member/onboardingState";
-import { parseCatalogCsv } from "@/lib/member/parseCatalogCsv";
+} from "@/lib/registries/onboardingState";
+import { parseCatalogCsv } from "@/lib/registries/parseCatalogCsv";
 import type {
     CatalogItemMetadata,
     UnitSystem,
-} from "@/lib/member/memberCatalogMetadata";
+} from "@/lib/registries/memberCatalogMetadata";
 import {
     gramsToInput,
     lengthUnitLabel,
@@ -36,18 +36,18 @@ import {
     parseInputToMl,
     parseInputToMm,
     volumeUnitLabel,
-} from "@/lib/member/unitConversion";
+} from "@/lib/registries/unitConversion";
 import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { FieldControl } from "@/components/runtime/FieldControl";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { getClauseSpec, type KnownClause } from "@/lib/shared/clauseSpecSource";
-import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
+import { useAssemblyChoices } from "@/lib/registries/assemblyChoices";
 import {
     catalogClausesForBindings,
     catalogFieldsOfClause,
     validateCatalogClauseValues,
-} from "@/lib/member/catalogClauseValues";
+} from "@/lib/registries/catalogClauseValues";
 
 /**
  * The catalog step of the onboarding wizard. Collects the catalog items —

@@ -45,12 +45,9 @@ vi.mock("wagmi", () => ({
     useWriteContract: () => ({ writeContractAsync: s.write, data: undefined, isPending: false, error: null }),
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false }),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return {
-        ...actual,
-        CONTRACTS: { ...actual.CONTRACTS, processRegistry: "0x00000000000000000000000000000000000a5501", agreementRegistry: "0x00000000000000000000000000000000000a9e01" },
-    };
+vi.mock("@/lib/registries/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
+    return { ...actual, REGISTRY_CONTRACTS: { ...actual.REGISTRY_CONTRACTS, processRegistry: "0x00000000000000000000000000000000000a5501", agreementRegistry: "0x00000000000000000000000000000000000a9e01" } };
 });
 vi.mock("@/lib/shared/publicClient", () => ({ publicClient: {} }));
 vi.mock("@/lib/shared/ipfsService", async (importOriginal) => {

@@ -33,7 +33,7 @@ import {
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 import { specSource } from "@/lib/shared/clauseSpecSource";
-import type { FundingQuote } from "@/lib/composition/swapFunding";
+import type { FundingQuote } from "@/lib/composability/swapFunding";
 
 const BUYER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as Hex;
 const SELLER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" as Hex;
@@ -97,8 +97,8 @@ const quoteFundingLeg = vi.fn(async (args: { inputToken: Hex; currency: Hex; bon
         permit2: `0x${"a2".repeat(20)}`, coordinator: `0x${"c0".repeat(20)}`, swapData: "0xdead",
     };
 });
-vi.mock("@/lib/composition/swapFunding", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/composition/swapFunding")>()),
+vi.mock("@/lib/composability/swapFunding", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/composability/swapFunding")>()),
     quoteFundingLeg: (args: Parameters<typeof quoteFundingLeg>[0]) => quoteFundingLeg(args),
 }));
 const shareSignedOrder = vi.fn(async (..._args: unknown[]) => { s.acts.push("share"); return "ipfs://shared"; });
@@ -108,7 +108,7 @@ vi.mock("@/lib/core/orderCommitted", () => ({ commitSignedOrder: (args: Paramete
 const commit = vi.fn(async () => `0x${"c1".repeat(32)}` as Hex);
 const swapAndCommit = vi.fn(async () => `0x${"c2".repeat(32)}` as Hex);
 vi.mock("@/lib/core/useFigaroActions", () => ({ useFigaroActions: () => ({ commit }) }));
-vi.mock("@/lib/composition/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit }) }));
+vi.mock("@/lib/composability/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit }) }));
 const services = { handoffMessaging: { tag: "handoff" }, evidenceTransport: { tag: "evidence" } };
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({ useRuntimeServices: () => services }));
 

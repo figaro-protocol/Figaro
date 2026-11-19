@@ -16,14 +16,14 @@
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { FormField } from "@/components/ui/FormField";
-import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
+import type { AcceptedTokenMetadata } from "@/lib/registries/acceptedTokenMetadata";
 import { tokenFigure } from "@/lib/shared/utils";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useTokenBalance from "@/hooks/useTokenBalance";
 import { hexEqual } from "@/lib/shared/evm";
-import type { FundingAuthorization } from "@/lib/composition/useSwapFunding";
-import type { FundingMarginField } from "@/lib/composition/useFundingMargin";
-import { spendsWholeCap } from "@/lib/composition/swapVenue";
+import type { FundingAuthorization } from "@/lib/composability/useSwapFunding";
+import type { FundingMarginField } from "@/lib/composability/useFundingMargin";
+import { spendsWholeCap } from "@/lib/composability/swapVenue";
 
 const MARGIN_REFUSAL: Record<"range" | "balance", string> = {
     range: "Enter a margin from 0% to 10%.",

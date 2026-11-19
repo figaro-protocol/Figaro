@@ -16,7 +16,7 @@ const h = vi.hoisted(() => ({
 vi.mock("wagmi", () => ({ usePublicClient: () => h.client }));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: h.balance, refetch: () => {} }) }));
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 6, ready: true, loading: false }) }));
-vi.mock("@/lib/composition/swapFunding", () => ({
+vi.mock("@/lib/composability/swapFunding", () => ({
     resolveSwapFundingContracts: () => ({ coordinator: "0xc0", permit2: "0xa2", router: "0xd0" }),
     quoteFundingInput: async (...args: unknown[]) => {
         h.quotes.push(args);
@@ -24,7 +24,7 @@ vi.mock("@/lib/composition/swapFunding", () => ({
     },
 }));
 
-import { useFundingMargin } from "@/lib/composition/useFundingMargin";
+import { useFundingMargin } from "@/lib/composability/useFundingMargin";
 
 const TOKEN = `0x${"1a".repeat(20)}` as `0x${string}`;
 const CURRENCY = `0x${"cc".repeat(20)}` as `0x${string}`;

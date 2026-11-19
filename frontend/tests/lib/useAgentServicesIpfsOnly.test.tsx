@@ -10,7 +10,7 @@ import { renderHook } from "@testing-library/react";
 const fetchCappedContentMock = vi.hoisted(() => vi.fn());
 const captured = vi.hoisted(() => ({ fetcher: undefined as undefined | ((uri: string) => Promise<unknown>) }));
 
-vi.mock("@/lib/member/useAsyncMemberResource", () => ({
+vi.mock("@/lib/registries/useAsyncMemberResource", () => ({
     useAsyncMemberResource: (_address: unknown, options: { fetcher: (uri: string) => Promise<unknown> }) => {
         captured.fetcher = options.fetcher;
         return { data: null, isLoading: false, error: null, refetch: () => {} };
@@ -21,7 +21,7 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
     fetchCappedContent: fetchCappedContentMock,
 }));
 
-import { useAgentServices } from "@/lib/member/useMembersRegistry";
+import { useAgentServices } from "@/lib/registries/useMembersRegistry";
 
 const MEMBER = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as const;
 const CID = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";

@@ -11,9 +11,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { processDesignHashOf, type Hex, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { primeClauseSpecs, referenceAssembly, keyOf } from "./primeClauseSpecs";
-import type { MemberCatalog } from "@/lib/member/types";
-import { bindsAssembly } from "@/lib/member/memberListing";
-import { withBoundCoSellers, type BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
+import type { MemberCatalog } from "@/lib/registries/types";
+import { bindsAssembly } from "@/lib/registries/memberListing";
+import { withBoundCoSellers, type BoundAssembly } from "@/lib/registries/useMemberBoundAssemblies";
 import { pricedRaceCandidates } from "@/lib/checkout/dispatchRace";
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as Hex;

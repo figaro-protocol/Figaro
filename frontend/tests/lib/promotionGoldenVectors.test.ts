@@ -4,7 +4,7 @@
  * Freezes the exact bytes the LIVE frontend implementations produce for every
  * hash/serialization surface the promotion moves into `@figaro-protocol/sdk`:
  *
- *   1. ECDH shared secrets + AES-GCM wrap (lib/handoff/ecdh.ts — direction-
+ *   1. ECDH shared secrets + AES-GCM wrap (lib/data/handoff/ecdh.ts — direction-
  *      sensitive; the wrap blob is frozen once and proven through unwrap,
  *      since encryption draws a random IV),
  *   2. CommitmentPayload serialization (lib/core/signedCommitment.ts —

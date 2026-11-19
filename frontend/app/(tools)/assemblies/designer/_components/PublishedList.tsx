@@ -25,7 +25,7 @@ import { useRouter } from "next/navigation";
 import {
     type AssemblyChoice,
     useAssemblyChoices,
-} from "@/lib/protocol/assemblyChoices";
+} from "@/lib/registries/assemblyChoices";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import { truncateHex } from "@/lib/shared/formatHex";

@@ -29,10 +29,10 @@ import {
     readKeptWitnessValues,
     resolveHeldWitnessContent,
     unpinWitnessContent,
-} from "@/lib/composition/witnessContent";
+} from "@/lib/core/witnessContent";
 import { PROVENANCE_LEAF_KEY, provenanceLeafBytes } from "@figaro-protocol/sdk";
 import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
-import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
+import { extractProcessLogs } from "@/lib/data/audit/processLogsExtract";
 import type { Order } from "@/lib/core/store";
 import { keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 

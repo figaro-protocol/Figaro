@@ -15,12 +15,12 @@ vi.mock("@/lib/shared/e2e", () => ({
 }));
 const createXmtpChannelMock = vi.fn();
 const walletHasXmtpInboxMock = vi.fn(async (_address: string) => true);
-vi.mock("@/lib/handoff/xmtpChannel", () => ({
+vi.mock("@/lib/data/handoff/xmtpChannel", () => ({
     createXmtpChannel: (...args: unknown[]) => createXmtpChannelMock(...args),
     walletHasXmtpInbox: (address: string) => walletHasXmtpInboxMock(address),
 }));
 
-import { getHandoffChannel } from "@/lib/handoff/channel";
+import { getHandoffChannel } from "@/lib/data/handoff/channel";
 
 const signMessage = async () => "0xsig" as `0x${string}`;
 

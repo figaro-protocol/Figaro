@@ -18,14 +18,14 @@ const ORDERS = { status: "present", value: [{ orderHash: ORDER, processId: PROCE
 vi.mock("wagmi", () => ({ usePublicClient: () => ({ chain: { id: 31337 } }) }));
 vi.mock("@/hooks/useProcessOrders", () => ({ useProcessOrders: () => ORDERS }));
 vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreementReads: () => new Map() }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
-vi.mock("@/lib/composition/indexer", () => ({ getAttestationsByOrder: (...a: unknown[]) => getByOrderMock(...a) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
+vi.mock("@/lib/core/attestationIndexer", () => ({ getAttestationsByOrder: (...a: unknown[]) => getByOrderMock(...a) }));
 // The signatures answer, so the only read that may fail here is the attestations'.
-vi.mock("@/lib/audit/signatureVerdicts", () => ({
+vi.mock("@/lib/data/audit/signatureVerdicts", () => ({
     verifyOrderCommitSignatures: async () => ({ buyer: "valid", seller: "valid", transactionHash: null, batch: null }),
 }));
-vi.mock("@/lib/composition/witnessContent", () => ({ fetchWitnessContent: async () => null, resolveHeldWitnessContent: async () => null, heldWitnessReader: () => () => null }));
-vi.mock("@/lib/composition/useWitnessHolder", () => ({ useWitnessHolder: () => null }));
+vi.mock("@/lib/core/witnessContent", () => ({ fetchWitnessContent: async () => null, resolveHeldWitnessContent: async () => null, heldWitnessReader: () => () => null }));
+vi.mock("@/lib/core/useWitnessHolder", () => ({ useWitnessHolder: () => null }));
 vi.mock("@/components/runtime/WitnessPinErasure", () => ({ WitnessPinErasure: () => null }));
 vi.mock("@/components/runtime/CredentialVerifyButton", () => ({ CredentialVerifyButton: () => null }));
 

@@ -11,15 +11,15 @@ import { describe, expect, it, vi } from "vitest";
 
 const { buildMock, getByOrderMock } = vi.hoisted(() => ({ buildMock: vi.fn(), getByOrderMock: vi.fn() }));
 
-vi.mock("@/lib/composition/indexer", () => ({ getAttestationsByOrder: (...a: unknown[]) => getByOrderMock(...a) }));
-vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [], getActiveMembers: async () => [] }));
-vi.mock("@/lib/audit/auditBundle", () => ({ buildAuditBundle: (...a: unknown[]) => buildMock(...a) }));
-vi.mock("@/lib/audit/documentProjection", () => ({ projectDocuments: () => [], projectAllFinancialStatements: () => [] }));
-vi.mock("@/lib/audit/processTimeline", () => ({ buildProcessTimeline: async () => ({ missing: [] }) }));
+vi.mock("@/lib/core/attestationIndexer", () => ({ getAttestationsByOrder: (...a: unknown[]) => getByOrderMock(...a) }));
+vi.mock("@/lib/registries/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [], getActiveMembers: async () => [] }));
+vi.mock("@/lib/data/audit/auditBundle", () => ({ buildAuditBundle: (...a: unknown[]) => buildMock(...a) }));
+vi.mock("@/lib/data/audit/documentProjection", () => ({ projectDocuments: () => [], projectAllFinancialStatements: () => [] }));
+vi.mock("@/lib/data/audit/processTimeline", () => ({ buildProcessTimeline: async () => ({ missing: [] }) }));
 vi.mock("@react-pdf/renderer", () => ({ pdf: () => ({ toBlob: async () => new Blob([]) }) }));
-vi.mock("@/lib/audit/pdfBundle", () => ({ AuditBundlePdf: () => null }));
+vi.mock("@/lib/data/audit/pdfBundle", () => ({ AuditBundlePdf: () => null }));
 
-import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
+import { buildAuditBundlePdfBlob } from "@/lib/data/audit/auditBundlePdf";
 
 const ORDER = `0x${"0d".repeat(32)}`;
 const CHECKOUT = `0x${"cd".repeat(32)}`;

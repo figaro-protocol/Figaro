@@ -25,11 +25,11 @@ vi.mock("wagmi", () => ({
     useWriteContract: () => ({ writeContractAsync: w.write, data: undefined, isPending: false, error: null }),
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false, data: undefined }),
 }));
-vi.mock("@/lib/member/catalogPublisher", () => ({
+vi.mock("@/lib/registries/catalogPublisher", () => ({
     publishMemberCatalog: async () => ({ uri: "ipfs://bafycatalog" }),
 }));
-vi.mock("@/lib/member/memberProfileMetadata", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/member/memberProfileMetadata")>()),
+vi.mock("@/lib/registries/memberProfileMetadata", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/registries/memberProfileMetadata")>()),
     parseMemberProfileDocument: (doc: unknown) => doc,
 }));
 vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
@@ -37,7 +37,7 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
     DEFAULT_IPFS_SERVICE: { publishJSON: async () => ({ uri: "ipfs://bafyprofile" }) },
 }));
 
-import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
+import { usePublishMemberProfile } from "@/lib/registries/usePublishMemberProfile";
 
 function revert(errorName: string): ContractFunctionRevertedError {
     const abi = [{ type: "error", name: errorName, inputs: [] }] as const satisfies Abi;

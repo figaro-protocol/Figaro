@@ -1,4 +1,4 @@
-import type { MissingPart } from "@/lib/audit/types";
+import type { MissingPart } from "@/lib/data/audit/types";
 
 /**
  * The parts the evidence on the audit page does not contain, each with the

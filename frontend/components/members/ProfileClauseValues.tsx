@@ -18,7 +18,7 @@
  */
 
 import { FieldControl } from "@/components/runtime/FieldControl";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import {
     clauseProfileFills,
     getClauseSpec,

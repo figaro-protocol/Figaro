@@ -23,18 +23,16 @@ const { cachedGetLogsMock, COORD, VERIFIER, state } = vi.hoisted(() => ({
 vi.mock("@/lib/core/eventCache", () => ({
     cachedGetLogs: (...args: unknown[]) => cachedGetLogsMock(...args),
 }));
-vi.mock("@/lib/composition/contracts", () => ({
-    getAttestationCoordinator: () => COORD,
-    getBatchVerifier: () => state.verifier,
-}));
 vi.mock("@/lib/core/contracts", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: "0x3333333333333333333333333333333333333333", batchVerifier: VERIFIER },
+    getAttestationCoordinator: () => COORD,
+    getBatchVerifier: () => state.verifier,
 }));
-vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [] }));
+vi.mock("@/lib/registries/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [] }));
 
-import { getAttestationsByOrder, getAttestationsByProcess } from "@/lib/composition/indexer";
-import { attestationAnchorMatches } from "@/lib/handoff/handoffAnchorState";
+import { getAttestationsByOrder, getAttestationsByProcess } from "@/lib/core/attestationIndexer";
+import { attestationAnchorMatches } from "@/lib/data/handoff/handoffAnchorState";
 
 const CLIENT = {} as never;
 const ORDER = word(0x0d);

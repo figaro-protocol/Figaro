@@ -116,7 +116,7 @@ stand-in value, no assumed state.
 The evidence a party hands a forum is the stated exception: it is whole and says
 what it lacks. On `/audit/view` each of these is named once in the list "What
 this evidence file does not contain" (`MissingPart`,
-`frontend/lib/audit/types.ts`): the process's attestations whose read failed; an
+`frontend/lib/data/audit/types.ts`): the process's attestations whose read failed; an
 order's agreement whose read failed or found no agreement under its
 checkoutHash, or an order with no checkoutHash; an order's signatures whose read
 failed, or which no commit calldata and no batch carries; a clause or

@@ -32,7 +32,7 @@ import { CartLineList } from "@/components/runtime/CartLineList";
 import { CheckoutSigningNote } from "@/components/runtime/CheckoutSigningNote";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
-import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
+import { useRegisteredCatalogs } from "@/lib/registries/useRegisteredCatalogs";
 import { processDesignHashOf, planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses } from "@figaro-protocol/sdk";
 import { checkoutMeasureRefusals, executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import {
@@ -47,16 +47,16 @@ import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/Di
 import { processDesignFollows } from "@/lib/shared/assembly";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
-import { useCompositionActions } from "@/lib/composition/useCompositionActions";
-import { useHeldValues } from "@/lib/composition/heldValues";
+import { useCompositionActions } from "@/lib/composability/useCompositionActions";
+import { useHeldValues } from "@/lib/composability/heldValues";
 import type { BuyerFundingRequest } from "@/lib/checkout/orderCommitmentFlow";
 import {
     translateListedPrice,
     type ListedPriceTranslation,
-} from "@/lib/composition/swapFunding";
+} from "@/lib/composability/swapFunding";
 import { SwapFundingPanel } from "./SwapFundingPanel";
-import { useSwapFunding, fundingBlocksTheAct } from "@/lib/composition/useSwapFunding";
-import { useFundingMargin, marginBlocksTheAct } from "@/lib/composition/useFundingMargin";
+import { useSwapFunding, fundingBlocksTheAct } from "@/lib/composability/useSwapFunding";
+import { useFundingMargin, marginBlocksTheAct } from "@/lib/composability/useFundingMargin";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
 import { FieldControl } from "@/components/runtime/FieldControl";
@@ -67,12 +67,12 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { parseToken, tokenFigure } from "@/lib/shared/utils";
-import { useMemberBoundAssemblies, withBoundCoSellers } from "@/lib/member/useMemberBoundAssemblies";
-import { displayNameForAddress } from "@/lib/member/memberListing";
-import { formatMass, formatVolume } from "@/lib/member/unitConversion";
+import { useMemberBoundAssemblies, withBoundCoSellers } from "@/lib/registries/useMemberBoundAssemblies";
+import { displayNameForAddress } from "@/lib/registries/memberListing";
+import { formatMass, formatVolume } from "@/lib/registries/unitConversion";
 import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { freshBlindingStore, withCheckoutBlinding, type CheckoutFills } from "@/lib/checkout/checkoutBlinding";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import { resolveInputFormat, type FieldSpec } from "@figaro-protocol/sdk/clauses";
 

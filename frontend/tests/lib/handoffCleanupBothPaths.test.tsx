@@ -8,7 +8,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { useHandoffCleanup } from "@/lib/handoff/useHandoffCleanup";
+import { useHandoffCleanup } from "@/lib/data/handoff/useHandoffCleanup";
 import { word } from "./__fixtures__/coreLogs";
 
 const { CORE, VERIFIER, WALLET, watchMock } = vi.hoisted(() => ({

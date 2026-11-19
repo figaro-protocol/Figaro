@@ -16,17 +16,17 @@ import { IpfsImageUpload } from "@/components/members/IpfsImageUpload";
 import type { ProfileClauseValuesMap } from "@/components/members/ProfileClauseValues";
 import { OnboardingLoadingCard, OnboardingStepFooter, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 import { useMounted } from "@/hooks/useMounted";
-import { onboardingNextHref, useOnboardingState } from "@/lib/member/onboardingState";
-import { sellerPageHref } from "@/lib/member/memberListing";
+import { onboardingNextHref, useOnboardingState } from "@/lib/registries/onboardingState";
+import { sellerPageHref } from "@/lib/registries/memberListing";
 import type {
     OnboardingProfileDraft,
-} from "@/lib/member/onboardingState";
-import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
+} from "@/lib/registries/onboardingState";
+import type { AcceptedTokenMetadata } from "@/lib/registries/acceptedTokenMetadata";
 import { encodeGeohash } from "@figaro-protocol/sdk/derive";
 import { clampPublicGeohash, PUBLIC_GEOHASH_MAX_PRECISION } from "@figaro-protocol/sdk/clauses";
-import { geocodeAddress, type GeocodeFailureReason } from "@/lib/member/geocode";
+import { geocodeAddress, type GeocodeFailureReason } from "@/lib/registries/geocode";
 import { getDeviceLocation } from "@/lib/shared/deviceLocation";
-import { getCommonTokens, type CommonToken } from "@/lib/member/commonTokens";
+import { getCommonTokens, type CommonToken } from "@/components/members/commonTokens";
 import { hexEqual } from "@/lib/shared/evm";
 
 /**

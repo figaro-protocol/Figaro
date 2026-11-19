@@ -34,8 +34,8 @@ import {
     requestAddressDetail,
     sendAddressDetail,
     type AddresseeBlock,
-} from "@/lib/handoff/addressDetail";
-import { useCeremonyPanel } from "@/lib/handoff/useCeremonyChannel";
+} from "@/lib/data/handoff/addressDetail";
+import { useCeremonyPanel } from "@/lib/data/handoff/useCeremonyChannel";
 import { CeremonyPanelFrame, CeremonyRequestButton } from "@/components/runtime/CeremonyPanelFrame";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
 

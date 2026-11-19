@@ -31,7 +31,7 @@ vi.mock("wagmi", () => ({ useAccount: () => accountMock(), useChainId: () => 313
 const workspaceMock = vi.fn();
 vi.mock("@/hooks/useSemanticProcessWorkspace", () => ({ useSemanticProcessWorkspace: () => workspaceMock() }));
 vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => null }));
-vi.mock("@/lib/member/useMemberListings", () => ({ useMemberListings: () => ({ read: { status: "present", value: [] } }) }));
+vi.mock("@/lib/registries/useMemberListings", () => ({ useMemberListings: () => ({ read: { status: "present", value: [] } }) }));
 vi.mock("@/lib/shared/clauseSpecSource", () => ({
     describeAttestation: () => ({ clauseTitle: "A clause", eventLabel: "an event", eventCode: "event" }),
 }));

@@ -9,7 +9,7 @@
  * recoverable, PROJECT the graphs, and let the caller ANSWER. Nothing is
  * re-derived here — the projections are `@figaro-protocol/sdk/derive`'s and
  * the events come from the frontend's EXISTING caches (`lib/core/indexer.ts`
- * `getCoreEvents` for the order events, `lib/composition/indexer.ts` for
+ * `getCoreEvents` for the order events, `lib/core/attestationIndexer.ts` for
  * attestations, each across both resolution paths), so this module adds a
  * fold, never a second indexer.
  *
@@ -82,17 +82,18 @@ import {
     getReceiptLogsOf,
     type IndexedLog,
 } from "@/lib/core/indexer";
-import { getAllAttestationRecords } from "@/lib/composition/indexer";
+import { getAllAttestationRecords } from "@/lib/core/attestationIndexer";
 import { cachedGetContractEvents } from "@/lib/core/eventCache";
-import { fetchWitnessContent } from "@/lib/composition/witnessContent";
-import { getSwapRouter, getWitnessSwapAndCommitCoordinator } from "@/lib/composition/contracts";
-import { ERC20_ABI, getUsageCounter } from "@/lib/core/contracts";
+import { fetchWitnessContent } from "@/lib/core/witnessContent";
+import { ERC20_ABI } from "@/lib/core/contracts";
+import { getUsageCounter } from "@/lib/rewards/contracts";
+import { getSwapRouter, getWitnessSwapAndCommitCoordinator } from "@/lib/composability/contracts";
 import { isBytes32Hex } from "@/lib/shared/evm";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { activeChain } from "@/lib/shared/chains";
 import { publicClient } from "@/lib/shared/publicClient";
-import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useAssemblyChoices } from "@/lib/registries/assemblyChoices";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { ABSENT, PENDING, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib/shared/networkRead";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 

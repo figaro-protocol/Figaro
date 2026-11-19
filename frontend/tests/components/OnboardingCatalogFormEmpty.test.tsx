@@ -12,9 +12,9 @@ const ADDRESS = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as const;
 vi.mock("wagmi", () => ({ useAccount: () => ({ address: ADDRESS, isConnected: true }) }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/components/members/IpfsImageUpload", () => ({ IpfsImageUpload: () => null }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
-vi.mock("@/lib/protocol/assemblyChoices", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/protocol/assemblyChoices")>()),
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
+vi.mock("@/lib/registries/assemblyChoices", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/registries/assemblyChoices")>()),
     useAssemblyChoices: () => ({ read: { status: "present", value: [] } }),
 }));
 const TOKEN = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
@@ -22,8 +22,8 @@ const STATE = {
     profile: { name: "Member", defaultTokenAddress: TOKEN, acceptedTokens: [{ address: TOKEN, symbol: "TKN" }] },
     assemblies: [],
 };
-vi.mock("@/lib/member/onboardingState", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/member/onboardingState")>()),
+vi.mock("@/lib/registries/onboardingState", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/registries/onboardingState")>()),
     useOnboardingState: () => ({ state: STATE, loaded: true, subject: ADDRESS, update: vi.fn() }),
 }));
 

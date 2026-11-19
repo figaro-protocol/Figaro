@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { createDiscoveryService } from '@/lib/member/discoveryService';
+import type { createDiscoveryService } from '@/lib/registries/discoveryService';
 
 const getActiveMembersMock = vi.fn();
 const fetchDocumentMock = vi.fn();
 
-vi.mock('@/lib/protocol/membersRegistryIndexer', () => ({
+vi.mock('@/lib/registries/membersRegistryIndexer', () => ({
     getActiveMembers: (...args: unknown[]) => getActiveMembersMock(...args),
 }));
 
@@ -20,8 +20,8 @@ vi.mock('@/lib/shared/ipfsService', async (importOriginal) => {
     };
 });
 
-vi.mock('@/lib/core/contracts', () => ({
-    CONTRACTS: {
+vi.mock('@/lib/registries/contracts', () => ({
+    REGISTRY_CONTRACTS: {
         membersRegistry: '0x1111111111111111111111111111111111111111',
     },
 }));
@@ -56,7 +56,7 @@ describe('discoveryService', () => {
         fetchDocumentMock.mockReset();
         // Fresh modules per test: the fetchers' URI caches start empty.
         vi.resetModules();
-        const { createDiscoveryService } = await import('@/lib/member/discoveryService');
+        const { createDiscoveryService } = await import('@/lib/registries/discoveryService');
         discoveryService = createDiscoveryService();
     });
 

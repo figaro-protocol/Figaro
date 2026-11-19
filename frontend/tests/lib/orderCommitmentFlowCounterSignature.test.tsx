@@ -83,7 +83,7 @@ vi.mock("@/lib/checkout/orderPreview", async (importOriginal) => ({
 const commitSignedOrder = vi.fn(async (_args: { payload: CommitmentPayload }) => `0x${"cc".repeat(32)}` as Hex);
 vi.mock("@/lib/core/orderCommitted", () => ({ commitSignedOrder: (args: Parameters<typeof commitSignedOrder>[0]) => commitSignedOrder(args) }));
 vi.mock("@/lib/core/useFigaroActions", () => ({ useFigaroActions: () => ({ commit: vi.fn() }) }));
-vi.mock("@/lib/composition/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit: vi.fn() }) }));
+vi.mock("@/lib/composability/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit: vi.fn() }) }));
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({ useRuntimeServices: () => ({}) }));
 
 const { useOrderCommitmentFlow } = await import("@/lib/checkout/orderCommitmentFlow");

@@ -38,7 +38,8 @@ vi.mock("wagmi", () => ({
     useWriteContract: () => ({ writeContractAsync: vi.fn() }),
     useChainId: () => 31337,
 }));
-vi.mock("@/lib/composition/contracts", () => ({
+vi.mock("@/lib/rewards/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/rewards/contracts")>()),
     getRpgfMinter: () => "0x00000000000000000000000000000000000f1001",
     getUsageCounter: () => "0x00000000000000000000000000000000000c0c01",
 }));
@@ -53,7 +54,7 @@ vi.mock("@/lib/core/eventCache", () => ({
 vi.mock("@/lib/shared/viewedWallet", () => ({ useViewedWallet: (connected: unknown) => connected }));
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18 }) }));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "pending" }, refetch: () => undefined }) }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
 
 const READS: Record<string, unknown> = {
     periodCount: 1n,
@@ -95,7 +96,7 @@ beforeEach(() => {
     };
 });
 
-import { useRpgfRewards } from "@/lib/composition/useRpgfRewards";
+import { useRpgfRewards } from "@/lib/rewards/useRpgfRewards";
 import { RewardsView } from "@/app/(app)/rewards/_components/RewardsView";
 
 describe("useRpgfRewards — one NetworkRead", () => {

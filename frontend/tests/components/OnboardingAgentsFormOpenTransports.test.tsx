@@ -17,7 +17,7 @@ vi.mock("next/link", () => ({
     default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
 }));
 const STATE = { services: { mcp: "https://agent.example.com/mcp", nostr: "wss://relay.example.com" } };
-vi.mock("@/lib/member/onboardingState", () => ({
+vi.mock("@/lib/registries/onboardingState", () => ({
     useOnboardingState: () => ({ state: STATE, loaded: true, subject: ADDRESS, update }),
     onboardingNextHref: () => "/next",
     onboardingPrevHref: () => "/prev",

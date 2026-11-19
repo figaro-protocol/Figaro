@@ -18,7 +18,7 @@ import {
     sendAddressDetail,
     tryDecodeAddresseeBlock,
     type AddresseeBlock,
-} from "@/lib/handoff/addressDetail";
+} from "@/lib/data/handoff/addressDetail";
 import { keccak256, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { verifyEcdhMessageAuth, type AuthenticatedEcdhMessage, type HandoffChannel } from "@figaro-protocol/sdk/handoff";

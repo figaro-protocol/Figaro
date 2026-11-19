@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeAbiParameters, encodeEventTopics } from 'viem';
 import { MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { getMemberState } from '@/lib/protocol/membersRegistryIndexer';
+import { getMemberState } from '@/lib/registries/membersRegistryIndexer';
 
 // ── Mock the event cache and contract addresses ───────────────────────────────
 // getMemberState fetches the three MembersRegistry streams through
@@ -21,11 +21,11 @@ vi.mock('@/lib/core/eventCache', () => ({
 }));
 
 // Provide a non-null membersRegistry so the event fetchers don't short-circuit.
-// The indexer reads it from core's CONTRACTS (core/ never imports mechanisms/).
+// The indexer reads it from the registries' REGISTRY_CONTRACTS (`lib/registries/contracts.ts`).
 // Everything else (MEMBERS_REGISTRY_ABI) passes through from the real barrel.
-vi.mock('@/lib/core/contracts', async (importOriginal) => ({
-    ...(await importOriginal<typeof import('@/lib/core/contracts')>()),
-    CONTRACTS: {
+vi.mock('@/lib/registries/contracts', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/lib/registries/contracts')>()),
+    REGISTRY_CONTRACTS: {
         membersRegistry: '0x1111111111111111111111111111111111111111',
     },
 }));

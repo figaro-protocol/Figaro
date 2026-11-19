@@ -72,8 +72,8 @@ import {
     fetchRegisteredAgreement,
     getRegisteredAgreement,
     useRegisteredAgreementsVersion,
-} from "@/lib/protocol/useAgreementRegistry";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+} from "@/lib/registries/useAgreementRegistry";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { useChainId, usePublicClient } from "wagmi";
 import { formatRelative } from "@/lib/shared/formatTimestamp";

@@ -26,7 +26,7 @@ vi.mock("wagmi", () => ({ usePublicClient: () => undefined, useChainId: () => 31
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({
     useRuntimeServices: () => ({ evidenceTransport: { pinBlob: async () => "cid", unpin: async () => undefined } }),
 }));
-vi.mock("@/lib/audit/auditBundlePdf", () => ({ buildAuditBundlePdfBlob: async () => new Blob(["pdf"]) }));
+vi.mock("@/lib/data/audit/auditBundlePdf", () => ({ buildAuditBundlePdfBlob: async () => new Blob(["pdf"]) }));
 vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => agreementsState.map }));
 
 import { RecoursePanel } from "@/components/runtime/RecoursePanel";

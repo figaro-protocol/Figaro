@@ -24,7 +24,7 @@ vi.mock("wagmi", () => ({
     usePublicClient: () => ({ readContract: chain.readContract }),
 }));
 
-import { offeredValues, readHeldValues, useHeldValues } from "@/lib/composition/heldValues";
+import { offeredValues, readHeldValues, useHeldValues } from "@/lib/composability/heldValues";
 import { FieldControl } from "@/components/runtime/FieldControl";
 
 interface Court { id: number; parent: number; name: string; policy: string }

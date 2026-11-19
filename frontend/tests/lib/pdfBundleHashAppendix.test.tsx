@@ -18,8 +18,8 @@ vi.mock("@react-pdf/renderer", () => {
     return { Document: passthrough, Page: passthrough, View: passthrough, Text: passthrough, StyleSheet: { create: <T,>(s: T) => s } };
 });
 
-import { AuditBundlePdf } from "@/lib/audit/pdfBundle";
-import { buildAuditBundle } from "@/lib/audit/auditBundle";
+import { AuditBundlePdf } from "@/lib/data/audit/pdfBundle";
+import { buildAuditBundle } from "@/lib/data/audit/auditBundle";
 
 const BUYER = "0x1111111111111111111111111111111111111111";
 const SELLER = "0x2222222222222222222222222222222222222222";

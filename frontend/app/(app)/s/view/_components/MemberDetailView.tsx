@@ -25,18 +25,18 @@ import { MemberLogo } from "@/components/modules/MemberBrandingModule";
 import { MemberAgentIdentity } from "@/components/members/MemberAgentIdentity";
 import { useCommerce } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
-import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
+import { useRegisteredCatalogs } from "@/lib/registries/useRegisteredCatalogs";
 import { MemberResolutionHistory } from "@/components/runtime/MemberResolutionHistory";
-import { useMemberResolutionHistory } from "@/lib/member/useMemberResolutionHistory";
+import { useMemberResolutionHistory } from "@/lib/registries/useMemberResolutionHistory";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { formatMass, formatVolume } from "@/lib/member/unitConversion";
+import { formatMass, formatVolume } from "@/lib/registries/unitConversion";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
-import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import type { CatalogItemMetadata } from "@/lib/registries/memberCatalogMetadata";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 
 interface Props {
     sellerAddress: string;

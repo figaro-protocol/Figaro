@@ -8,8 +8,8 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
-import { usePayoutRoutingActions } from "@/lib/composition/usePayoutRoutingActions";
-import { validatePayoutLegs, type PayoutLeg } from "@/lib/composition/payoutRouting";
+import { usePayoutRoutingActions } from "@/lib/composability/usePayoutRoutingActions";
+import { validatePayoutLegs, type PayoutLeg } from "@/lib/composability/payoutRouting";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
 interface LegDraft {
@@ -26,7 +26,7 @@ interface Props {
 /**
  * PayoutRoutingPanel — the resolved seller splits its own receipts onward:
  * earmarked (recipient, amount) legs through the composed public multisender,
- * one atomic transaction (`lib/composition/payoutRouting`).
+ * one atomic transaction (`lib/composability/payoutRouting`).
  *
  * Wallet-side, post-resolution: FigaroCore has already paid; this is the
  * wallet spending its own balance, so the panel mounts beside the resolution

@@ -24,7 +24,7 @@ import { anchorAgreement, computeCheckoutHash, parseClauseRegistryLogs, publicFo
 import { DEFAULT_IPFS_SERVICE, extractIpfsCid, fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { getClauseSpec, loadClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
-import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
+import { CLAUSE_REGISTRY_ABI, REGISTRY_CONTRACTS } from "@/lib/registries/contracts";
 import { activeChain } from "@/lib/shared/chains";
 import { publicClient } from "@/lib/shared/publicClient";
 import { cachedGetContractEvents } from "@/lib/core/eventCache";
@@ -155,12 +155,12 @@ async function warmAgreementSpecs(agreement: Agreement): Promise<void> {
         (s) => getClauseSpec(s.clause) === undefined,
     );
     if (missing.length === 0) return;
-    const addr = CONTRACTS.clauseRegistry;
+    const addr = REGISTRY_CONTRACTS.clauseRegistry;
     if (!addr || addr.length !== 42) return;
     let registered;
     try {
         // Minimal ClauseRegistered read via the standalone client + SDK log
-        // parser (legal in lib/core — no protocol/ import). The withdraw fold is
+        // parser, not the registries' reader. The withdraw fold is
         // irrelevant here: a committed agreement resolves its clauses regardless
         // of whether the registration stake was later reclaimed.
         const logs = await cachedGetContractEvents(publicClient, publicClient.chain?.id ?? activeChain.id, {

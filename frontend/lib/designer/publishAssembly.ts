@@ -5,7 +5,7 @@
  * snapshot, registers each newly agreement on `AgreementRegistry`,
  * pins the assembly to IPFS, and registers it on `ProcessRegistry`.
  * READING published assemblies (the `AssemblyChoice` enrichment) lives in
- * `@/lib/protocol/assemblyChoices` — design is design; reading is everyone's.
+ * `@/lib/registries/assemblyChoices` — design is design; reading is everyone's.
  *
  * Publish flow:
  *   1. Build the assembly from the snapshot — one agreement per canvas
@@ -43,17 +43,17 @@ import { specSource } from "@/lib/shared/clauseSpecSource";
 import { deriveProcessDesignSlug } from "@/lib/shared/assembly";
 import { hexEqual } from "@/lib/shared/evm";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
-import { PROCESS_REGISTRY_ABI } from "@/lib/core/contracts";
+import { PROCESS_REGISTRY_ABI } from "@/lib/registries/contracts";
 import {
     getAgreementRegistry,
     readAgreementBinding,
     agreementRegisterRevertMessage,
-} from "@/lib/protocol/useAgreementRegistry";
+} from "@/lib/registries/useAgreementRegistry";
 import {
     getProcessRegistry,
     assemblyRegisterRevertMessage,
     type PublishOutcome,
-} from "@/lib/protocol/useProcessRegistry";
+} from "@/lib/registries/useProcessRegistry";
 
 /** The client a registration needs: the stake read, the simulation and the receipt. */
 type RegistrationClient = Parameters<typeof simulateWriteVerify>[0]["client"] & {

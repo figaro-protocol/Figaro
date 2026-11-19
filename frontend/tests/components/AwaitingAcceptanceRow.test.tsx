@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
-import type { Listing } from "@/lib/member/memberListing";
+import type { Listing } from "@/lib/registries/memberListing";
 
 vi.mock("@/hooks/useTokenDecimals", () => ({
     default: () => ({ decimals: 6, ready: true, loading: false }),

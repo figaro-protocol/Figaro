@@ -48,10 +48,10 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => ({
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
 }));
 vi.mock("@/lib/shared/publicClient", () => ({ publicClient: CLIENT }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => SPECS }));
-vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => NO_ASSEMBLIES }));
-vi.mock("@/lib/composition/indexer", () => ({ getAllAttestationRecords: async () => [] }));
-vi.mock("@/lib/composition/contracts", () => ({
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => SPECS }));
+vi.mock("@/lib/registries/assemblyChoices", () => ({ useAssemblyChoices: () => NO_ASSEMBLIES }));
+vi.mock("@/lib/core/attestationIndexer", () => ({ getAllAttestationRecords: async () => [] }));
+vi.mock("@/lib/composability/contracts", () => ({
     getSwapRouter: () => null,
     getWitnessSwapAndCommitCoordinator: () => null,
 }));

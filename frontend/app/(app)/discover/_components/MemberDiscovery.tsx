@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/Button";
 import {
     listingMatchesGeohash,
     type Listing,
-} from "@/lib/member/memberListing";
-import { useMemberListings } from "@/lib/member/useMemberListings";
+} from "@/lib/registries/memberListing";
+import { useMemberListings } from "@/lib/registries/useMemberListings";
 
 function listingAssemblies(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => deriveProcessDesignSlug(b.assemblyHash))));

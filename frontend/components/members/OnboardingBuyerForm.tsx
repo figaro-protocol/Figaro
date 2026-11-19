@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { useMounted } from "@/hooks/useMounted";
-import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
+import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/registries/onboardingState";
 import type {
     BuyerProcessSubscription,
-} from "@/lib/member/memberProfileMetadata";
-import { type AssemblyChoice, useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
+} from "@/lib/registries/memberProfileMetadata";
+import { type AssemblyChoice, useAssemblyChoices } from "@/lib/registries/assemblyChoices";
 import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
 import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps, toggledSet, useSubjectHydration } from "@/components/members/OnboardingStepChrome";
 

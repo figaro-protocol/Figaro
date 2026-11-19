@@ -32,15 +32,15 @@ vi.mock("wagmi", () => ({
     useAccount: () => ({ address: "0x1111111111111111111111111111111111111111", isConnected: true }),
     useChainId: () => 31337,
 }));
-vi.mock("@/lib/protocol/useClauseRegistry", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/protocol/useClauseRegistry")>()),
+vi.mock("@/lib/registries/useClauseRegistry", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/registries/useClauseRegistry")>()),
     useAllRegisteredClauses: () => ({ read: m.registry }),
 }));
 // The workspace's own subscription to spec loads is kept: it calls the real
 // `useClauseSpecs`, as `useSemanticProcessWorkspace` does, so a spec that
 // lands re-renders the page with no render call from the test.
 vi.mock("@/hooks/useSemanticProcessWorkspace", async () => {
-    const { useClauseSpecs } = await import("@/lib/protocol/useClauseSpecs");
+    const { useClauseSpecs } = await import("@/lib/registries/useClauseSpecs");
     return {
         useSemanticProcessWorkspace: () => {
             useClauseSpecs();
@@ -58,7 +58,7 @@ vi.mock("@/hooks/useSemanticProcessWorkspace", async () => {
     };
 });
 vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => null }));
-vi.mock("@/lib/member/useMemberListings", () => ({ useMemberListings: () => ({ read: present([]) }) }));
+vi.mock("@/lib/registries/useMemberListings", () => ({ useMemberListings: () => ({ read: present([]) }) }));
 vi.mock("@/components/runtime/OrderInteractionSurfaces", () => ({ OrderInteractionSurfaces: () => null }));
 vi.mock("@/components/runtime/CapabilityRail", () => ({ CapabilityRail: () => null }));
 vi.mock("@/components/runtime/StageAttestationComparison", () => ({ StageAttestationComparison: () => null }));

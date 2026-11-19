@@ -46,18 +46,21 @@ vi.mock("@/lib/core/eventCache", () => ({
 vi.mock("@/lib/core/contracts", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-    getUsageCounter: () => COUNTER,
-}));
-vi.mock("@/lib/composition/contracts", () => ({
     getAttestationCoordinator: () => COORDINATOR,
     getBatchVerifier: () => VERIFIER,
+}));
+vi.mock("@/lib/rewards/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/rewards/contracts")>()),
+    getUsageCounter: () => COUNTER,
+}));
+vi.mock("@/lib/composability/contracts", () => ({
     getSwapRouter: () => null,
     getWitnessSwapAndCommitCoordinator: () => null,
 }));
-vi.mock("@/lib/composition/witnessContent", () => ({ fetchWitnessContent: async () => null }));
+vi.mock("@/lib/core/witnessContent", () => ({ fetchWitnessContent: async () => null }));
 vi.mock("@/lib/shared/publicClient", () => ({ publicClient: CLIENT }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => SPECS }));
-vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => CHOICES.current }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => SPECS }));
+vi.mock("@/lib/registries/assemblyChoices", () => ({ useAssemblyChoices: () => CHOICES.current }));
 vi.mock("@/lib/data/analystEndpoint", () => ({ getAnalystUrl: () => null, readAnalystStatus: async () => null, askAnalyst: async () => null }));
 vi.mock("next/navigation", () => ({
     useSearchParams: () => params.current,

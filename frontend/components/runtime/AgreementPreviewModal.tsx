@@ -32,7 +32,7 @@ import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { tokenFigure } from "@/lib/shared/utils";
 import { signedFieldRows } from "@/lib/checkout/signedCommitmentFields";
-import { formatSlippagePercent } from "@/lib/composition/swapVenue";
+import { formatSlippagePercent } from "@/lib/composability/swapVenue";
 
 interface Props {
     commitment: Commitment;

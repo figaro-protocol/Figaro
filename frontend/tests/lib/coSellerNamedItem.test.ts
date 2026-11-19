@@ -9,8 +9,8 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { planProcessOrders } from "@/lib/checkout/assemblyCheckout";
 import { deriveKitBreakdown } from "@/lib/checkout/checkoutDerivations";
-import { requiredCoSellerClauses } from "@/lib/protocol/assemblyChoices";
-import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
+import { requiredCoSellerClauses } from "@/lib/registries/assemblyChoices";
+import type { BoundAssembly } from "@/lib/registries/useMemberBoundAssemblies";
 import { primeClauseSpecs, referenceAssembly } from "./primeClauseSpecs";
 
 vi.mock("@/lib/core/contracts", async (importOriginal) => {

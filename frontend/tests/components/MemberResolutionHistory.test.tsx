@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemberResolutionHistory } from "@/components/runtime/MemberResolutionHistory";
-import type { MemberResolutionHistory as ResolutionHistory } from "@/lib/composition/indexer";
+import type { MemberResolutionHistory as ResolutionHistory } from "@/lib/registries/memberResolutionHistory";
 
 const WITH_HISTORY: ResolutionHistory = {
     operatingSinceBlock: 100n,

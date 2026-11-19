@@ -7,7 +7,7 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import type { CatalogItemMetadata, MemberCatalogMetadata, UnitSystem } from "@/lib/member/memberCatalogMetadata";
+import type { CatalogItemMetadata, MemberCatalogMetadata, UnitSystem } from "@/lib/registries/memberCatalogMetadata";
 
 const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as const;
 const ITEM: CatalogItemMetadata = { id: "i1", name: "Bread", description: "", price: "2", available: true };
@@ -31,11 +31,11 @@ const m = vi.hoisted(() => {
     };
     return state;
 });
-vi.mock("@/lib/member/useMemberProfileEditor", () => ({ useMemberProfileEditor: () => m.editor }));
-vi.mock("@/lib/member/catalogFetcher", () => ({
+vi.mock("@/lib/registries/useMemberProfileEditor", () => ({ useMemberProfileEditor: () => m.editor }));
+vi.mock("@/lib/registries/catalogFetcher", () => ({
     fetchMemberCatalog: async (): Promise<MemberCatalogMetadata> => ({ subjectAddress: WALLET, items: [ITEM], version: "1.2.0" }),
 }));
-vi.mock("@/lib/member/catalogPublisher", () => ({ publishMemberCatalog: (catalog: unknown) => m.publish(catalog) }));
+vi.mock("@/lib/registries/catalogPublisher", () => ({ publishMemberCatalog: (catalog: unknown) => m.publish(catalog) }));
 // The form's own validation is its tests'; here it hands the items to onSave.
 vi.mock("@/components/members/OnboardingCatalogForm", () => ({
     OnboardingCatalogForm: ({ onSave }: { onSave: (items: CatalogItemMetadata[], unitSystem: UnitSystem) => Promise<void> }) => (

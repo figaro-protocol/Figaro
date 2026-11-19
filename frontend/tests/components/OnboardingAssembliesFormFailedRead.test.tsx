@@ -20,9 +20,9 @@ vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/lib/core/eventCache", () => ({
     cachedGetContractEvents: (...a: unknown[]) => mocks.cachedGetContractEvents(...a),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, processRegistry: "0x3333333333333333333333333333333333333333" } };
+vi.mock("@/lib/registries/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
+    return { ...actual, REGISTRY_CONTRACTS: { ...actual.REGISTRY_CONTRACTS, processRegistry: "0x3333333333333333333333333333333333333333" } };
 });
 // The seller's saved draft: one assembly bound.
 const ONBOARDING = {
@@ -31,7 +31,7 @@ const ONBOARDING = {
     subject: ADDRESS,
     update: mocks.update,
 };
-vi.mock("@/lib/member/onboardingState", () => ({
+vi.mock("@/lib/registries/onboardingState", () => ({
     useOnboardingState: () => ONBOARDING,
     onboardingNextHref: () => "/next",
     onboardingPrevHref: () => "/prev",
@@ -40,7 +40,7 @@ vi.mock("@/components/members/DisclosurePolicyEditor", () => ({ DisclosurePolicy
 vi.mock("@/components/members/ProfileClauseValues", () => ({ ProfileClauseValues: () => null }));
 vi.mock("@/components/members/PinnedTokenNote", () => ({ PinnedTokenNote: () => null }));
 vi.mock("@/components/members/AssemblyChoiceRow", () => ({ AssemblyChoiceRow: () => null }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
 
 import { OnboardingAssembliesForm } from "@/components/members/OnboardingAssembliesForm";
 

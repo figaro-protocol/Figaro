@@ -19,7 +19,7 @@
  * badge reflects reachability: consistent / inconsistent / could-not-resolve.
  */
 
-import { useAgentServices } from "@/lib/member/useMembersRegistry";
+import { useAgentServices } from "@/lib/registries/useMembersRegistry";
 import { useDidConsistency } from "@/lib/agent/useDidWeb";
 
 export function MemberAgentIdentity({ sellerAddress }: { sellerAddress: `0x${string}` | undefined }) {

@@ -54,15 +54,15 @@ import {
     discardPublishedDraft,
     loadNamedDraft,
 } from "@/lib/designer/syntheticDesignStore";
-import { PROCESS_REGISTRY_ABI } from "@/lib/core/contracts";
+import { PROCESS_REGISTRY_ABI } from "@/lib/registries/contracts";
 import {
     fetchHydratedAssembly,
     getProcessRegistry,
     usePublishedAssemblies,
-} from "@/lib/protocol/useProcessRegistry";
-import { useWithdrawAssembly } from "@/lib/protocol/useWithdrawStake";
+} from "@/lib/registries/useProcessRegistry";
+import { useWithdrawAssembly } from "@/lib/registries/useWithdrawStake";
 import { readNetwork } from "@/lib/shared/networkRead";
-import { useWithdrawGate, withdrawBlockedReason, withdrawGateOpen, withdrawUnverifiedCaveat } from "@/lib/protocol/withdrawGate";
+import { useWithdrawGate, withdrawBlockedReason, withdrawGateOpen, withdrawUnverifiedCaveat } from "@/lib/registries/withdrawGate";
 import { usePublishAssembly } from "@/lib/designer/publishAssembly";
 import { assemblyToOrders } from "@/lib/designer/assemblyToDraft";
 import {
@@ -71,11 +71,11 @@ import {
     composedClauseLabel,
     unfilledAssemblyTerms,
 } from "@/lib/designer/draftToAssembly";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import type { HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { deriveProcessDesignSlug } from "@/lib/shared/assembly";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { fetchRegisteredAgreement, useRegisteredAgreementsVersion } from "@/lib/protocol/useAgreementRegistry";
+import { fetchRegisteredAgreement, useRegisteredAgreementsVersion } from "@/lib/registries/useAgreementRegistry";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import { hexEqual } from "@/lib/shared/evm";
 import type { Order } from "@/lib/core/store";

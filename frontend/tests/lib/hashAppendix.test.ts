@@ -13,9 +13,9 @@
  */
 import { describe, expect, it } from "vitest";
 import { agreementLeaves, computeCheckoutHash, computeProvenanceLeaf, computeTopologyLeaf, type Agreement } from "@figaro-protocol/sdk";
-import { buildHashAppendix } from "@/lib/audit/hashAppendix";
+import { buildHashAppendix } from "@/lib/data/audit/hashAppendix";
 import { OrderState, type Order } from "@/lib/core/store";
-import type { AttestationRecord } from "@/lib/composition/indexer";
+import type { AttestationRecord } from "@/lib/core/attestationIndexer";
 
 const BUYER = "0x1111111111111111111111111111111111111111";
 const SELLER = "0x2222222222222222222222222222222222222222";

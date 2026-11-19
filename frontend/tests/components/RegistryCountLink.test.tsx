@@ -5,11 +5,11 @@ import { render, screen } from "@testing-library/react";
 const clausesMock = vi.fn();
 const assembliesMock = vi.fn();
 const membersMock = vi.fn();
-vi.mock("@/lib/protocol/useClauseRegistry", () => ({ useAllRegisteredClauses: () => clausesMock() }));
-vi.mock("@/lib/protocol/useAgreementRegistry", () => ({ usePublishedAgreements: () => ({ read: { status: "present", value: [] } }) }));
-vi.mock("@/lib/protocol/useProcessRegistry", () => ({
+vi.mock("@/lib/registries/useClauseRegistry", () => ({ useAllRegisteredClauses: () => clausesMock() }));
+vi.mock("@/lib/registries/useAgreementRegistry", () => ({ usePublishedAgreements: () => ({ read: { status: "present", value: [] } }) }));
+vi.mock("@/lib/registries/useProcessRegistry", () => ({
     getAssemblyLoadError: () => undefined, usePublishedAssemblies: () => assembliesMock() }));
-vi.mock("@/lib/member/useRegisteredMembers", () => ({ useRegisteredMembers: () => membersMock() }));
+vi.mock("@/lib/registries/useRegisteredMembers", () => ({ useRegisteredMembers: () => membersMock() }));
 vi.mock("next/link", () => ({
     default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
 }));

@@ -11,7 +11,7 @@ import { loadClauseSpec, setClauseSpecFetcher, specSource } from "@/lib/shared/c
 import { planProcessOrders } from "@/lib/checkout/assemblyCheckout";
 import { freshBlindingStore, withCheckoutBlinding, type CheckoutFills } from "@/lib/checkout/checkoutBlinding";
 import { draftRaceCandidates } from "@/lib/checkout/dispatchRace";
-import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
+import type { BoundAssembly } from "@/lib/registries/useMemberBoundAssemblies";
 import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 
 vi.mock("@/lib/core/contracts", async (importOriginal) => {

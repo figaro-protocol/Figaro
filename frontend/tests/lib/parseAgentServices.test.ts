@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseAgentServices } from '@/lib/member/useMembersRegistry';
+import { parseAgentServices } from '@/lib/registries/useMembersRegistry';
 
 describe('parseAgentServices', () => {
     it('returns reachable=false when no services key is present', () => {

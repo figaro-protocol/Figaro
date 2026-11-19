@@ -33,7 +33,7 @@ import {
     type Hex,
     type HydratedProcessDesign,
 } from "@figaro-protocol/sdk";
-import { getRegisteredAgreement } from "@/lib/protocol/useAgreementRegistry";
+import { getRegisteredAgreement } from "@/lib/registries/useAgreementRegistry";
 import { clauseDesignFills, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { isFilledValue } from "@/lib/checkout/checkoutDerivations";
 import { deriveProcessDesignSlug, type ProcessDesign } from "@/lib/shared/assembly";

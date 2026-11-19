@@ -31,7 +31,7 @@ import {
     withdrawBlockedReason,
     withdrawUnverifiedCaveat,
     type WithdrawClauseOrAssembly,
-} from "@/lib/protocol/withdrawGate";
+} from "@/lib/registries/withdrawGate";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export function ReclaimStakeRow({

@@ -57,8 +57,8 @@ vi.mock("next/navigation", () => ({
     useSearchParams: () => new URLSearchParams(m.search),
     useRouter: () => ({ push: () => undefined, replace: () => undefined }),
 }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
-vi.mock("@/lib/member/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => ({ read: m.catalogs }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
+vi.mock("@/lib/registries/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => ({ read: m.catalogs }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: m.symbol }) }));
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: m.decimals, ready: m.decimals !== undefined, loading: false }) }));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: present(10n ** 30n), refetch: () => undefined }) }));
@@ -70,20 +70,20 @@ vi.mock("@/hooks/useTokenApproval", () => ({
 }));
 // The swap composition is configured, so the funding candidates are the
 // party's accepted tokens: what the page shows of them comes from the read.
-vi.mock("@/lib/composition/swapFunding", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/composition/swapFunding")>()),
+vi.mock("@/lib/composability/swapFunding", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/composability/swapFunding")>()),
     resolveSwapFundingContracts: () => ({
         coordinator: `0x${"c0".repeat(20)}`, permit2: `0x${"22".repeat(20)}`, router: `0x${"77".repeat(20)}`,
     }),
 }));
-vi.mock("@/lib/composition/useFundingMargin", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/composition/useFundingMargin")>()),
+vi.mock("@/lib/composability/useFundingMargin", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/composability/useFundingMargin")>()),
     useFundingMargin: () => ({ marginFor: () => ({ bps: null, maxInput: null }) }),
 }));
 vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => m.capacity }));
 
 // /s/checkout
-vi.mock("@/lib/member/useMemberBoundAssemblies", () => ({
+vi.mock("@/lib/registries/useMemberBoundAssemblies", () => ({
     useMemberBoundAssemblies: () => m.bound,
     withBoundCoSellers: (a: unknown) => a,
 }));
@@ -98,7 +98,7 @@ vi.mock("@/lib/checkout", () => ({
 }));
 vi.mock("@/lib/checkout/cartStore", () => ({ useCartStore: () => ({ items: m.cart }) }));
 vi.mock("@/lib/checkout/dispatchRace", () => ({ useDispatchRace: () => ({ result: null }), postToAgentEndpoint: vi.fn() }));
-vi.mock("@/lib/composition/useCompositionActions", () => ({ useCompositionActions: () => ({ compose: vi.fn() }) }));
+vi.mock("@/lib/composability/useCompositionActions", () => ({ useCompositionActions: () => ({ compose: vi.fn() }) }));
 vi.mock("@/hooks/useApproveThenAct", () => ({ useApproveThenAct: () => ({ runWithApproval: vi.fn() }) }));
 vi.mock("@/hooks/useConnectInjected", () => ({ useConnectInjected: () => vi.fn() }));
 vi.mock("@/components/runtime/DispatchRacePanel", () => ({ DispatchRacePanel: () => null }));
@@ -117,8 +117,8 @@ vi.mock("@/lib/checkout/orderCommitmentFlow", () => ({
 vi.mock("@/lib/checkout/orderPendingSellerSignature", () => ({
     useCommitmentPayloadInbox: () => ({ entries: [], status: "idle", error: null }),
 }));
-vi.mock("@/lib/member/useMembersRegistry", () => ({ useMemberProfile: () => ({ read: m.registration }) }));
-vi.mock("@/lib/member/profileFetcher", () => ({ fetchMemberProfile: () => m.profile() }));
+vi.mock("@/lib/registries/useMembersRegistry", () => ({ useMemberProfile: () => ({ read: m.registration }) }));
+vi.mock("@/lib/registries/profileFetcher", () => ({ fetchMemberProfile: () => m.profile() }));
 vi.mock("@/components/runtime/AgreementReview", () => ({ AgreementReview: () => null, pricedLineItems: () => ({ lines: [], sum: null }) }));
 vi.mock("@/components/runtime/TokenApprovalFlow", () => ({ TokenApprovalFlow: () => null }));
 

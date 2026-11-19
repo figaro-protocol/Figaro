@@ -7,7 +7,7 @@ import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
-import type { Listing } from "@/lib/member/memberListing";
+import type { Listing } from "@/lib/registries/memberListing";
 import type { SignedUnsentOrder } from "@/lib/checkout/signedUnsentOrders";
 
 vi.mock("@/hooks/useTokenDecimals", () => ({

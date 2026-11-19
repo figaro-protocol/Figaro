@@ -3,7 +3,7 @@
 import type { ProcessDesign } from "@figaro-protocol/sdk";
 import { readUtilityTokenPin } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
-import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 
 /**

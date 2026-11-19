@@ -27,15 +27,15 @@
 import { useEffect, useState } from "react";
 import { MemberEditGate } from "@/components/members/MemberEditGate";
 import { Button } from "@/components/ui/Button";
-import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
-import { fetchMemberCatalog } from "@/lib/member/catalogFetcher";
+import { useMemberProfileEditor } from "@/lib/registries/useMemberProfileEditor";
+import { fetchMemberCatalog } from "@/lib/registries/catalogFetcher";
 import { toError } from "@/lib/shared/errors";
 import type {
     MemberCatalogMetadata,
     UnitSystem,
     CatalogItemMetadata,
-} from "@/lib/member/memberCatalogMetadata";
-import { publishMemberCatalog } from "@/lib/member/catalogPublisher";
+} from "@/lib/registries/memberCatalogMetadata";
+import { publishMemberCatalog } from "@/lib/registries/catalogPublisher";
 import { OnboardingCatalogForm } from "@/components/members/OnboardingCatalogForm";
 
 export function MemberEditCatalog() {
@@ -96,7 +96,7 @@ export function MemberEditCatalog() {
                     return;
                 }
 
-                // The ONE cached catalog read path (lib/member/catalogFetcher).
+                // The ONE cached catalog read path (lib/registries/catalogFetcher).
                 const catalog = await fetchMemberCatalog(existingProfile.catalogURI);
                 if (canceled) return;
                 // A catalog that could not be read is absent: no error text,

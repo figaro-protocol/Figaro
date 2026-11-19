@@ -27,18 +27,18 @@ const FILLED = {
     assemblies: [{ processDesignHash: `0x${"ab".repeat(32)}` }],
     catalog: { items: [{ id: "i", name: "Item", description: "", price: "1", available: true }] },
 };
-vi.mock("@/lib/member/onboardingState", () => ({
+vi.mock("@/lib/registries/onboardingState", () => ({
     useOnboardingState: () => ({ state: FILLED, clear: vi.fn() }),
     onboardingStepLabel: (s: string) => s,
 }));
-vi.mock("@/lib/member/useMembersRegistry", () => ({
+vi.mock("@/lib/registries/useMembersRegistry", () => ({
     useMemberProfile: (address: string | undefined) => (address
         ? { read: { status: "present", value: { registered: false } } }
         : { read: { status: "pending" } }),
     useRegistrationDeposit: () => ({ status: "present", value: 10n ** 16n }),
     useWithdrawalCooldown: () => ({ data: 60n }),
 }));
-vi.mock("@/lib/member/usePublishMemberProfile", () => ({
+vi.mock("@/lib/registries/usePublishMemberProfile", () => ({
     usePublishMemberProfile: () => ({ publish: vi.fn(), isPending: false, isConfirming: false, isSuccess: false, error: null }),
 }));
 vi.mock("@/components/shared/ContentImage", () => ({ ContentImage: () => null }));

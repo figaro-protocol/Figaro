@@ -28,8 +28,6 @@ vi.mock("@/lib/core/eventCache", async (importOriginal) => ({
 vi.mock("@/lib/core/contracts", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-}));
-vi.mock("@/lib/composition/contracts", () => ({
     getAttestationCoordinator: () => COORD,
     getBatchVerifier: () => VERIFIER,
 }));
@@ -37,7 +35,7 @@ vi.mock("@/lib/shared/clauseSpecSource", () => ({
     describeAttestation: () => ({ clauseTitle: "Clause", eventLabel: "Stage" }),
 }));
 
-import { buildProcessTimeline } from "@/lib/audit/processTimeline";
+import { buildProcessTimeline } from "@/lib/data/audit/processTimeline";
 
 const PROCESS = word(0xab);
 const ORDER = word(0x0d);

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useEffect, useState } from "react";
-import { useOnboardingState } from "@/lib/member/onboardingState";
+import { useOnboardingState } from "@/lib/registries/onboardingState";
 
 /**
  * The wizard draft survives a page reload.

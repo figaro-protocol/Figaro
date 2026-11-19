@@ -29,18 +29,18 @@ vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => new
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false, approve: vi.fn(), refetchAllowance: vi.fn() }) }));
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18, ready: true }) }));
 vi.mock("@/lib/core/useFigaroActions", () => ({ useFigaroActions: () => ({ resolveProcess: vi.fn(), hash: undefined, isPending: false }) }));
-vi.mock("@/lib/protocol/useUsageRecorder", () => ({ useUsageRecorder: () => ({}) }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0 }) }));
-vi.mock("@/lib/composition/useAttestationCoordinatorActions", () => ({
+vi.mock("@/lib/rewards/useUsageRecorder", () => ({ useUsageRecorder: () => ({}) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0 }) }));
+vi.mock("@/lib/core/useAttestationCoordinatorActions", () => ({
     useAttestationCoordinatorActions: () => ({ isPending: false, isConfirming: false, isSuccess: false, submitAttestation: vi.fn() }),
 }));
-vi.mock("@/lib/member/useMembersRegistry", () => ({
+vi.mock("@/lib/registries/useMembersRegistry", () => ({
     useRegisterMember: () => ({ register: mocks.register, isPending: false, isConfirming: false, isSuccess: false }),
     useUpdateProfile: () => ({ updateProfile: vi.fn(), isPending: false, isConfirming: false, isSuccess: false }),
     useWithdrawDeposit: () => ({ withdraw: vi.fn(), isPending: false, isConfirming: false, isSuccess: false }),
     useWithdrawalCooldown: () => ({ data: 60n }),
 }));
-vi.mock("@/lib/composition/indexer", () => ({ getAttestationsByProcess: (...a: unknown[]) => mocks.attestations(...a) }));
+vi.mock("@/lib/core/attestationIndexer", () => ({ getAttestationsByProcess: (...a: unknown[]) => mocks.attestations(...a) }));
 vi.mock("@/lib/semantic/deriveProcessModelFromRuntime", () => ({
     deriveProcessModelFromRuntime: (...a: unknown[]) => mocks.derive(...a),
 }));

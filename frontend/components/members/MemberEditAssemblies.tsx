@@ -17,8 +17,8 @@
  */
 
 import { MemberEditGate } from "@/components/members/MemberEditGate";
-import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
-import type { ProcessBindingRecord } from "@/lib/member/memberProfileMetadata";
+import { useMemberProfileEditor } from "@/lib/registries/useMemberProfileEditor";
+import type { ProcessBindingRecord } from "@/lib/registries/memberProfileMetadata";
 import { OnboardingAssembliesForm } from "@/components/members/OnboardingAssembliesForm";
 
 export function MemberEditAssemblies() {

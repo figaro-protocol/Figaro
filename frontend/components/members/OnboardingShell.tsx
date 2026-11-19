@@ -2,7 +2,7 @@
 
 import { ReactNode } from "react";
 import { OnboardingStepIndicator } from "@/components/members/OnboardingStepIndicator";
-import { type OnboardingStep } from "@/lib/member/onboardingState";
+import { type OnboardingStep } from "@/lib/registries/onboardingState";
 
 interface OnboardingShellProps {
     stepId: OnboardingStep["id"];
@@ -18,7 +18,7 @@ interface OnboardingShellProps {
  * an optional lead paragraph, the draft-persistence line, and the step body.
  *
  * The persistence line is rendered here, once, for every step: the draft is
- * wallet-keyed browser storage (`lib/member/onboardingState`), so saying so
+ * wallet-keyed browser storage (`lib/registries/onboardingState`), so saying so
  * on one step and not the next would be a lie on the quiet step.
  *
  * Wallet-not-connected case: each step decides whether to render its

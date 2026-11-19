@@ -12,7 +12,7 @@ import { keyOf, primeClauseSpecs } from "../lib/primeClauseSpecs";
  * and no field carries a required mark — a seller authors what applies.
  */
 
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 1 }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 1 }) }));
 
 beforeAll(async () => {
     await primeClauseSpecs(["figaro-dimweight", "figaro-credential", "figaro-commerce"]);

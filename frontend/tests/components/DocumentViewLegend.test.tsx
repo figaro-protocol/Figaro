@@ -8,7 +8,7 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { DocumentView } from "@/app/(app)/audit/_components/DocumentView";
-import { FINANCIAL_STATEMENT_LEGEND, projectFinancialStatements } from "@/lib/audit/documentProjection";
+import { FINANCIAL_STATEMENT_LEGEND, projectFinancialStatements } from "@/lib/data/audit/documentProjection";
 import { OrderState, type Order } from "@/lib/core/store";
 
 const ORDER: Order = {

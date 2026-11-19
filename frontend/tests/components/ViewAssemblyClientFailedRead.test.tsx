@@ -27,21 +27,21 @@ vi.mock("wagmi", () => ({
 }));
 // The one registry reader answers with the registration the slug derives from.
 const PUBLISHED = vi.hoisted(() => ({ value: null as unknown }));
-vi.mock("@/lib/protocol/useProcessRegistry", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/protocol/useProcessRegistry")>()),
+vi.mock("@/lib/registries/useProcessRegistry", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/registries/useProcessRegistry")>()),
     getProcessRegistry: () => "0x3333333333333333333333333333333333333333",
     usePublishedAssemblies: () => PUBLISHED.value,
     fetchHydratedAssembly: async () => ({ assembly: { name: "Point of sale", agreements: [] }, agreements: {} }),
 }));
-vi.mock("@/lib/protocol/useWithdrawStake", () => ({ useWithdrawAssembly: () => ({ withdraw: vi.fn() }) }));
-vi.mock("@/lib/protocol/withdrawGate", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/protocol/withdrawGate")>();
+vi.mock("@/lib/registries/useWithdrawStake", () => ({ useWithdrawAssembly: () => ({ withdraw: vi.fn() }) }));
+vi.mock("@/lib/registries/withdrawGate", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/registries/withdrawGate")>();
     const gate = { status: "present", value: { canWithdraw: true, inFlightCount: 0, unverifiedCount: 0 } };
     return { ...actual, useWithdrawGate: () => ({ gate }) };
 });
 vi.mock("@/lib/designer/assemblyToDraft", () => ({ assemblyToOrders: () => [] }));
 vi.mock("@/lib/designer/publishAssembly", () => ({ usePublishAssembly: () => ({ publish: vi.fn() }) }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
 vi.mock("@/components/runtime/TopologyCanvas", () => ({ TopologyCanvas: () => null }));
 vi.mock("@/app/(tools)/assemblies/designer/_components/AgreementDrawer", () => ({ AgreementDrawer: () => null }));
 vi.mock("@/app/(tools)/assemblies/designer/_components/AssemblyTermsPanel", () => ({ AssemblyTermsPanel: () => null }));

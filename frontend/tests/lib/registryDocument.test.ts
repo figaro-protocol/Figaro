@@ -25,7 +25,7 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => {
     };
 });
 
-import { fetchPinnedDocument, readRegistryBinding } from "@/lib/protocol/registryDocument";
+import { fetchPinnedDocument, readRegistryBinding } from "@/lib/registries/registryDocument";
 
 const REGISTRY = "0x00000000000000000000000000000000000a9e01" as const;
 const KEY = `0x${"ab".repeat(32)}` as const;

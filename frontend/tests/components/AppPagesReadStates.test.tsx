@@ -19,7 +19,7 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import type { ProcessTimeline } from "@/lib/audit/processTimeline";
+import type { ProcessTimeline } from "@/lib/data/audit/processTimeline";
 import { ABSENT, PENDING, present, type NetworkRead } from "@/lib/shared/networkRead";
 
 const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as const;
@@ -59,7 +59,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/lib/shared/viewedWallet", () => ({ useViewedWallet: (connected: unknown) => connected }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
 
 // /orders/view
 vi.mock("@/hooks/useSemanticProcessWorkspace", () => ({
@@ -77,10 +77,10 @@ vi.mock("@/hooks/useSemanticProcessWorkspace", () => ({
     },
 }));
 vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => null }));
-vi.mock("@/lib/member/useMemberListings", () => ({ useMemberListings: () => ({ read: m.listingsRead }) }));
+vi.mock("@/lib/registries/useMemberListings", () => ({ useMemberListings: () => ({ read: m.listingsRead }) }));
 
 // /rewards
-vi.mock("@/lib/composition/useRpgfRewards", () => ({
+vi.mock("@/lib/rewards/useRpgfRewards", () => ({
     useRpgfRewards: () => ({ available: true, account: WALLET, read: m.rewardsRead, claim: async () => undefined, refresh: () => undefined }),
 }));
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: m.decimals, ready: m.decimals !== undefined, loading: false }) }));
@@ -94,7 +94,7 @@ vi.mock("@/hooks/useProcessOrders", () => ({
 vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => m.agreements, useProcessAgreementReads: () => new Map() }));
 
 // /evidence-display
-vi.mock("@/lib/audit/processTimeline", () => ({ buildProcessTimeline: () => m.timeline() }));
+vi.mock("@/lib/data/audit/processTimeline", () => ({ buildProcessTimeline: () => m.timeline() }));
 
 // /data/explore: the graph corpus is the page's one network read; no analyst
 // endpoint is configured, so the prompt box reads nothing.

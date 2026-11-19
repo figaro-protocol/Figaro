@@ -89,7 +89,7 @@ direct path the count is a separate transaction, never part of the resolve:
 `FigaroCore.resolveProcess` calls no contract. The buyer's wallet in this
 frontend sends the usage calls right after its resolve confirms
 (`frontend/lib/semantic/createCapabilityExecutors.ts`, through
-`frontend/lib/protocol/useUsageRecorder.ts`), and the SDK's agent sends them
+`frontend/lib/rewards/useUsageRecorder.ts`), and the SDK's agent sends them
 with `recordProcessUsage` (`sdk/src/agent/autonomous.ts`). A resolve that no
 usage call follows leaves its uses uncounted until someone sends one. A use in a
 proved batch reaches the counter through the verifier alone, in the batch's own

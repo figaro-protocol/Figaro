@@ -12,8 +12,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
     DEFAULT_HANDOFF_PERSISTENCE_SERVICE,
     HANDOFF_PURGE_QUEUE_KEY,
-} from "@/lib/handoff/handoffPersistenceService";
-import { getOrCreateOrderEcdhKeypair, getOrderEcdhKeypair } from "@/lib/handoff/ecdh";
+} from "@/lib/data/handoff/handoffPersistenceService";
+import { getOrCreateOrderEcdhKeypair, getOrderEcdhKeypair } from "@/lib/data/handoff/ecdh";
 
 const ADDR = "0xAbC0000000000000000000000000000000000001";
 

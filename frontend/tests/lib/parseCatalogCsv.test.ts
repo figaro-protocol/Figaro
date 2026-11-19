@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCatalogCsv } from "@/lib/member/parseCatalogCsv";
+import { parseCatalogCsv } from "@/lib/registries/parseCatalogCsv";
 
 describe("parseCatalogCsv", () => {
     it("parses a minimal CSV with the required columns", () => {

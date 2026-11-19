@@ -34,7 +34,7 @@ const ONBOARDING = {
     subject: ADDRESS,
     update: mocks.update,
 };
-vi.mock("@/lib/member/onboardingState", () => ({
+vi.mock("@/lib/registries/onboardingState", () => ({
     useOnboardingState: () => ONBOARDING,
     onboardingNextHref: () => "/next",
     onboardingPrevHref: () => "/prev",
@@ -45,17 +45,17 @@ const CHOICES = vi.hoisted(() => ({
         value: [{ processDesignHash: `0x${"ab".repeat(32)}`, slug: "asm-ab", state: "loaded", hydratedAssembly: {}, clauses: [] }],
     },
 }));
-vi.mock("@/lib/protocol/assemblyChoices", () => ({
+vi.mock("@/lib/registries/assemblyChoices", () => ({
     useAssemblyChoices: () => CHOICES,
     requiredCoSellerClauses: () => [`0x${"cd".repeat(32)}`],
 }));
-vi.mock("@/lib/member/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => mocks.catalogs }));
+vi.mock("@/lib/registries/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => mocks.catalogs }));
 vi.mock("@/components/members/ProfileClauseValues", () => ({ ProfileClauseValues: () => null }));
 vi.mock("@/components/members/PinnedTokenNote", () => ({ PinnedTokenNote: () => null }));
 vi.mock("@/components/members/AssemblyChoiceRow", () => ({
     AssemblyChoiceRow: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 }));
-vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
+vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
 
 import { OnboardingAssembliesForm } from "@/components/members/OnboardingAssembliesForm";
 

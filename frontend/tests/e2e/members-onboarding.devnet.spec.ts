@@ -45,7 +45,7 @@ import { PROCESS_REGISTRY_ABI, MEMBERS_REGISTRY_ABI, readUtilityTokenPin } from 
 import { specSource } from '@/lib/shared/clauseSpecSource';
 // The one place the seller-page route is written — the spec follows the same
 // route the site links, never a second copy of the string.
-import { sellerPageHref } from '@/lib/member/memberListing';
+import { sellerPageHref } from '@/lib/registries/memberListing';
 
 const RPC_URL = "http://127.0.0.1:8545";
 const LOCAL_ANVIL = defineChain({

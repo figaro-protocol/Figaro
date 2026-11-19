@@ -28,7 +28,7 @@ import {
 } from "@figaro-protocol/sdk";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { processDesignHashOf, type ProcessDesign } from "@/lib/shared/assembly";
-import { fetchRegisteredAgreement } from "@/lib/protocol/useAgreementRegistry";
+import { fetchRegisteredAgreement } from "@/lib/registries/useAgreementRegistry";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { extractErrorMessage } from "@/lib/shared/errors";

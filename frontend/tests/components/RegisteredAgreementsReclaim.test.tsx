@@ -48,7 +48,7 @@ vi.mock("wagmi", () => ({
     useAccount: () => ({ address: mocks.address, isConnected: !!mocks.address }),
 }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
-vi.mock("@/lib/protocol/useAgreementRegistry", () => ({
+vi.mock("@/lib/registries/useAgreementRegistry", () => ({
     usePublishedAgreements: (registeredBy: `0x${string}` | undefined) => {
         mocks.scopedTo.push(registeredBy);
         return mocks.scan;
@@ -57,11 +57,11 @@ vi.mock("@/lib/protocol/useAgreementRegistry", () => ({
     getRegisteredAgreement: (key: string) => mocks.docs.get(key.toLowerCase()),
     useRegisteredAgreementsVersion: () => 0,
 }));
-vi.mock("@/lib/protocol/useWithdrawStake", () => ({
+vi.mock("@/lib/registries/useWithdrawStake", () => ({
     useWithdrawAgreement: () => ({ withdraw: mocks.withdraw, isPending: false }),
 }));
-vi.mock("@/lib/protocol/withdrawGate", async () => {
-    const actual = await vi.importActual<typeof import("@/lib/protocol/withdrawGate")>("@/lib/protocol/withdrawGate");
+vi.mock("@/lib/registries/withdrawGate", async () => {
+    const actual = await vi.importActual<typeof import("@/lib/registries/withdrawGate")>("@/lib/registries/withdrawGate");
     return { ...actual, useWithdrawGate: () => ({ gate: mocks.gate }) };
 });
 

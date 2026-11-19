@@ -29,7 +29,7 @@ vi.mock("wagmi", () => ({
 vi.mock("@/lib/core/eventCache", () => ({
     cachedGetContractEvents: (...a: unknown[]) => mocks.cachedGetContractEvents(...a),
 }));
-vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({
+vi.mock("@/lib/registries/membersRegistryIndexer", () => ({
     getAllMemberRegistered: (...a: unknown[]) => mocks.getAllMemberRegistered(...a),
     getActiveMembers: (...a: unknown[]) => mocks.getActiveMembers(...a),
     getMemberState: (...a: unknown[]) => mocks.getMemberState(...a),
@@ -46,22 +46,25 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
         CONTRACTS: {
             ...actual.CONTRACTS,
             core: "0x2222222222222222222222222222222222222222",
-            membersRegistry: "0x1111111111111111111111111111111111111111",
         },
     };
 });
-vi.mock("@/lib/protocol/useProcessRegistry", () => ({
+vi.mock("@/lib/registries/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
+    return { ...actual, REGISTRY_CONTRACTS: { ...actual.REGISTRY_CONTRACTS, membersRegistry: "0x1111111111111111111111111111111111111111" } };
+});
+vi.mock("@/lib/registries/useProcessRegistry", () => ({
     usePublishedAssemblies: () => ({ read: mocks.published, refetch: () => undefined }),
 }));
 
-import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
-import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
-import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
-import { useMemberProfile } from "@/lib/member/useMembersRegistry";
+import { createRegistryEventScan } from "@/lib/registries/registryEventScan";
+import { useRegisteredMembers } from "@/lib/registries/useRegisteredMembers";
+import { useRegisteredCatalogs } from "@/lib/registries/useRegisteredCatalogs";
+import { useMemberProfile } from "@/lib/registries/useMembersRegistry";
 import { fetchAgreement } from "@/lib/core/agreementFetch";
 import { useProcessOrders, useWalletOrders } from "@/hooks/useProcessOrders";
 import { useWalletProcessRows } from "@/lib/core/walletProcessQueries";
-import type { DiscoveryService } from "@/lib/member/discoveryService";
+import type { DiscoveryService } from "@/lib/registries/discoveryService";
 
 const RPC_DOWN = new Error("fetch failed: RPC unreachable");
 const PROCESS_ID = `0x${"ab".repeat(32)}`;

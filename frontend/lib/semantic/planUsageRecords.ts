@@ -37,7 +37,7 @@ import {
     type UsageClaimContext,
 } from "@figaro-protocol/sdk";
 import { isBytes32Hex } from "@/lib/shared/evm";
-import type { UsageWrite } from "@/lib/protocol/useUsageRecorder";
+import type { UsageWrite } from "@/lib/rewards/useUsageRecorder";
 
 /** One resolved order's inputs: the SIGNED commitment the counter re-hashes,
  *  its hydrated agreement, the counter's facts, and — when the agreement
