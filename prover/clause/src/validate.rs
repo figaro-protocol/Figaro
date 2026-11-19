@@ -206,6 +206,15 @@ fn is_potentially_catastrophic_regex(pattern: &str) -> bool {
 const MAX_PATTERN_LENGTH: usize = 256;
 /// Largest count a `{n,m}` quantifier may name.
 const MAX_PATTERN_REPEAT: u32 = 64;
+/// Largest expanded size a pattern may have: each atom and each assertion
+/// counts one, a group the sum of what it holds, and a quantifier multiplies
+/// what it follows by `m` for `{n,m}`, `n` for `{n}`, `n + 1` for `{n,}`,
+/// and one for `*`, `+` and `?`. A running total past it is held at
+/// `MAX_PATTERN_EXPANSION + 1`, so the count is the same exact integer as
+/// the SDK's. Mirror of `MAX_PATTERN_EXPANSION` in
+/// `sdk/src/clauses/safeRegex.ts`.
+const MAX_PATTERN_EXPANSION: u32 = 4096;
+const EXPANSION_CAP: u32 = MAX_PATTERN_EXPANSION + 1;
 
 const ESCAPABLE_PUNCTUATION: &[u8] = b"\\.+*?()|[]{}^$-/#&~,:;=!@%\"'`";
 const CLASS_LETTERS: &[u8] = b"dDwWsS";
@@ -314,6 +323,18 @@ fn scan_count(p: &[u8], start: usize) -> Option<usize> {
     Some(i + 1)
 }
 
+/// The factor a counted quantifier `p[start..end]`, already scanned,
+/// multiplies by: `m` for `{n,m}`, `n` for `{n}`, `n + 1` for `{n,}`.
+fn count_factor(p: &[u8], start: usize, end: usize) -> u32 {
+    let number = |s: &[u8]| s.iter().fold(0u32, |n, d| n * 10 + u32::from(d - b'0'));
+    let body = &p[start + 1..end - 1];
+    match body.iter().position(|&b| b == b',') {
+        None => number(body),
+        Some(comma) if comma + 1 == body.len() => number(&body[..comma]) + 1,
+        Some(comma) => number(&body[comma + 1..]),
+    }
+}
+
 /// Is `pattern` written in the portable core?
 pub(crate) fn is_portable_pattern(pattern: &str) -> bool {
     let p = pattern.as_bytes();
@@ -322,12 +343,22 @@ pub(crate) fn is_portable_pattern(pattern: &str) -> bool {
     if !is_printable_ascii(pattern) || p.is_empty() || p.len() > MAX_PATTERN_LENGTH {
         return false;
     }
-    let mut depth = 0usize;
-    // May a quantifier follow what was just read?
+    // The expanded size of each open group, the whole pattern at the bottom.
+    let mut sizes: Vec<u32> = vec![0];
+    // May a quantifier follow what was just read? If so, `last` is that
+    // item's size, and `before` is its group's size without it.
     let mut atom = false;
+    let mut last = 0u32;
+    let mut before = 0u32;
+    fn add(sizes: &mut [u32], n: u32) {
+        let top = sizes.len() - 1;
+        sizes[top] = (sizes[top] + n).min(EXPANSION_CAP);
+    }
     let mut i = 0usize;
     while i < p.len() {
         let c = p[i];
+        // An item a quantifier may follow, of size `Some(n)`.
+        let mut item: Option<u32> = None;
         match c {
             b'\\' => {
                 let e = match p.get(i + 1) {
@@ -336,8 +367,9 @@ pub(crate) fn is_portable_pattern(pattern: &str) -> bool {
                 };
                 if e == b'b' || e == b'B' {
                     atom = false;
+                    add(&mut sizes, 1);
                 } else if CLASS_LETTERS.contains(&e) || ESCAPABLE_PUNCTUATION.contains(&e) {
-                    atom = true;
+                    item = Some(1);
                 } else {
                     return false;
                 }
@@ -348,10 +380,10 @@ pub(crate) fn is_portable_pattern(pattern: &str) -> bool {
                     Some(next) => next,
                     None => return false,
                 };
-                atom = true;
+                item = Some(1);
             }
             b'(' => {
-                depth += 1;
+                sizes.push(0);
                 i += 1;
                 if p.get(i) == Some(&b'?') {
                     if p.get(i + 1) != Some(&b':') {
@@ -362,42 +394,58 @@ pub(crate) fn is_portable_pattern(pattern: &str) -> bool {
                 atom = false;
             }
             b')' => {
-                if depth == 0 {
+                if sizes.len() == 1 {
                     return false;
                 }
-                depth -= 1;
+                item = sizes.pop();
                 i += 1;
-                atom = true;
             }
             b'*' | b'+' | b'?' | b'{' => {
                 if !atom {
                     return false;
                 }
+                let mut factor = 1u32;
                 if c == b'{' {
-                    i = match scan_count(p, i) {
+                    let end = match scan_count(p, i) {
                         Some(next) => next,
                         None => return false,
                     };
+                    factor = count_factor(p, i, end);
+                    i = end;
                 } else {
                     i += 1;
                 }
                 if p.get(i) == Some(&b'?') {
                     i += 1; // lazy
                 }
+                // The item was counted once; it stands `factor` times.
+                let top = sizes.len() - 1;
+                sizes[top] = (before + (last * factor).min(EXPANSION_CAP)).min(EXPANSION_CAP);
                 atom = false;
             }
             b']' | b'}' => return false,
-            b'|' | b'^' | b'$' => {
+            b'|' => {
                 atom = false;
                 i += 1;
             }
+            b'^' | b'$' => {
+                atom = false;
+                add(&mut sizes, 1);
+                i += 1;
+            }
             _ => {
-                atom = true;
+                item = Some(1);
                 i += 1;
             }
         }
+        if let Some(n) = item {
+            atom = true;
+            last = n;
+            before = sizes[sizes.len() - 1];
+            add(&mut sizes, n);
+        }
     }
-    depth == 0
+    sizes.len() == 1 && sizes[0] <= MAX_PATTERN_EXPANSION
 }
 
 /// ReDoS-safe `pattern.test(value)`. Returns `false` when the value leaves
@@ -405,20 +453,37 @@ pub(crate) fn is_portable_pattern(pattern: &str) -> bool {
 /// match. Returns `true` (satisfied) when the pattern matches, when it is
 /// unsafe to run, when it is not a valid regex, or when the input is
 /// over-long. Mirror of `safeRegexTest` in `sdk/src/clauses/safeRegex.ts`.
-fn safe_regex_test(pattern: &str, value: &str) -> bool {
+/// The pattern was compiled once, when its spec parsed
+/// (`compile_pattern`); a pattern that does not compile never parses.
+fn safe_regex_test(pattern: &regex::bytes::Regex, value: &str) -> bool {
     if !is_printable_ascii(value) {
         return false;
     }
     if utf16_len(value) > MAX_PATTERN_TEST_INPUT {
         return true;
     }
-    if is_potentially_catastrophic_regex(pattern) {
+    if is_potentially_catastrophic_regex(pattern.as_str()) {
         return true;
     }
-    match regex::Regex::new(pattern) {
-        Ok(re) => re.is_match(value),
-        Err(_) => true,
-    }
+    pattern.is_match(value.as_bytes())
+}
+
+/// Compiles a portable pattern, once, when its spec parses.
+///
+/// Unicode mode is off. A patterned value is printable ASCII, and on it
+/// the ASCII readings of `\d \w \s \b`, `.` and a negated class match what
+/// the Unicode readings match, and what JavaScript's read. The Unicode
+/// tables only grow the automaton: a Unicode `\w` compiles to some fifty
+/// thousand bytes, so a pattern under `MAX_PATTERN_EXPANSION` could pass the
+/// crate's size limit and be refused here while the SDK accepts it. With
+/// the tables off, every portable pattern compiles. Without Unicode a
+/// pattern may match bytes that are not UTF-8, which only the bytes regex
+/// permits; the value it is run on is printable ASCII.
+pub(crate) fn compile_pattern(pattern: &str) -> Option<regex::bytes::Regex> {
+    regex::bytes::RegexBuilder::new(pattern)
+        .unicode(false)
+        .build()
+        .ok()
 }
 
 fn validate_string(
@@ -462,7 +527,7 @@ fn validate_string(
         if !safe_regex_test(pat, s) {
             errors.push(ValidationError {
                 path: path.to_string(),
-                message: format!("string does not match pattern {pat}"),
+                message: format!("string does not match pattern {}", pat.as_str()),
             });
         }
     }

@@ -66,9 +66,29 @@ function isObject(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+/** Does `value` hold a UTF-16 surrogate that is not half of a pair? */
+function hasLoneSurrogate(value: string): boolean {
+    for (let i = 0; i < value.length; i++) {
+        const code = value.charCodeAt(i);
+        if (code < 0xd800 || code > 0xdfff) continue;
+        if (code >= 0xdc00) return true;
+        const next = value.charCodeAt(i + 1);
+        if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
+        i++;
+    }
+    return false;
+}
+
 function validateString(value: unknown, spec: StringFieldSpec, path: string, errors: ValidationError[]): void {
     if (typeof value !== "string") {
         errors.push({ path, message: `expected string, got ${typeof value}` });
+        return;
+    }
+    // JSON.parse keeps a lone UTF-16 surrogate (`"\ud800"`); serde_json, which
+    // reads the content in the guest (prover/lib/src/kernel.rs), refuses it.
+    // A string the batch path cannot read is refused here too.
+    if (hasLoneSurrogate(value)) {
+        errors.push({ path, message: "string holds a lone UTF-16 surrogate" });
         return;
     }
     if (spec.minLength !== undefined && value.length < spec.minLength) {
