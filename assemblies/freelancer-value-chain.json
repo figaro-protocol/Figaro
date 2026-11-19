@@ -9,14 +9,14 @@
         },
         {
             "id": "agreement-1",
-            "agreement": "freelance-contribution",
+            "agreement": "freelance-deliverable",
             "follows": [
                 "agreement-0"
             ]
         },
         {
             "id": "agreement-2",
-            "agreement": "freelance-contribution",
+            "agreement": "freelance-deliverable",
             "follows": [
                 "agreement-0"
             ]
