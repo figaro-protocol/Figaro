@@ -347,7 +347,14 @@ jobs:
               working-directory: ./sdk
               env:
                   REQUIRE_BATCH_E2E: "1"
-              run: npx vitest run tests/batch-e2e.test.ts tests/batch-revoke-e2e.test.ts tests/batch-accrual-skip-e2e.test.ts
+              # One vitest process per file: run together in one process, the runner
+              # is shut down about three minutes in, while each file passes alone.
+              # `set -e` fails the step at the first file that fails.
+              run: |
+                  set -e
+                  npx vitest run tests/batch-e2e.test.ts
+                  npx vitest run tests/batch-revoke-e2e.test.ts
+                  npx vitest run tests/batch-accrual-skip-e2e.test.ts
 
             - name: Anvil log on failure
               if: failure()

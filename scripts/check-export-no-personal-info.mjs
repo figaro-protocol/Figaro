@@ -3,7 +3,8 @@
 //
 // Frontend invariant S-0: no email, name or other personal identifier leaves the project in
 // the bundle, in any token inside it, or in a document it publishes. Run over the export
-// before every upload (work/deploy/site-build.sh) and over the documents the repository pins
+// before every upload (work/deploy/site-build.sh), in the frontend CI after its build
+// (.github/workflows/frontend-ci.yml), and over the documents the repository pins
 // (clauses/, agreements/, assemblies/, members/).
 //
 // What it reads, in every text file under the given directories and in the text layer of
@@ -16,9 +17,9 @@
 // Usage: node scripts/check-export-no-personal-info.mjs <dir>...   (exit 0 clean, 1 on a hit)
 //        node scripts/check-export-no-personal-info.mjs --self-test
 
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, extname, join, resolve } from 'node:path';
+import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pdfPages } from './pdf-text.mjs';
 
@@ -76,6 +77,15 @@ function isCitation(text, at, len) {
     );
 }
 
+// The two founding papers are served as written, and their title pages name their authors:
+// attribution of a published work, not a disclosure. For these export paths (relative to the
+// scanned directory, exact file name) the private-token check alone is skipped; the email and
+// token-in-JWT checks still run.
+const FOUNDING_PAPERS = new Set([
+    'papers/figaro-2022-proof-of-delivery.pdf',
+    'papers/figaro-2023-compositional-market-design.pdf',
+]);
+
 // The findings in one text.
 export function scanText(text, { tokens = [] } = {}) {
     const findings = [];
@@ -114,7 +124,8 @@ function scanDir(dir, tokens) {
     const out = [];
     for (const file of files) {
         const text = pdfs[file] ? pdfs[file].join('\n') : readFileSync(file, 'utf8');
-        for (const f of scanText(text, { tokens })) out.push(`${file}: ${f}`);
+        const founding = FOUNDING_PAPERS.has(relative(dir, file).split(sep).join('/'));
+        for (const f of scanText(text, { tokens: founding ? [] : tokens })) out.push(`${file}: ${f}`);
     }
     return out;
 }
@@ -181,8 +192,24 @@ function selfTest() {
             console.log(`  FAIL ${label}`);
         } else console.log(`  ok   ${label}`);
     }
+    // The two founding papers skip the private-token check only.
+    mkdirSync(join(dir, 'papers'));
+    const foundingCases = [
+        ['quiet: a private token in a founding paper', 'by Jane Example', 'papers/figaro-2022-proof-of-delivery.pdf', false],
+        ['fires: a private token in another PDF name', 'by Jane Example', 'papers/other-paper.pdf', true],
+        ['fires: an email in a founding paper', 'contact someone@example.org now', 'papers/figaro-2023-compositional-market-design.pdf', true],
+    ];
+    for (const [label, text, rel, fires] of foundingCases) {
+        writeFileSync(join(dir, rel), minimalPdf(text));
+        const got = scanDir(dir, ['jane example']).length > 0;
+        rmSync(join(dir, rel));
+        if (got !== fires) {
+            failed++;
+            console.log(`  FAIL ${label}`);
+        } else console.log(`  ok   ${label}`);
+    }
     rmSync(dir, { recursive: true, force: true });
-    const total = cases.length + pdfCases.length;
+    const total = cases.length + pdfCases.length + foundingCases.length;
     console.log(failed ? `[personal-info] self-test: ${failed} case(s) failed` : `[personal-info] self-test: ${total} cases pass`);
     return failed ? 1 : 0;
 }
