@@ -43,9 +43,15 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
         // document may be keyed under another format than the one in force, so
         // it need not key to its registration and an assembly over it need not
         // hydrate.
-        const withdrawnAgreements = new Set((await scanContractEvents(publicClient, { address: config.agreementRegistry as `0x${string}`, abi: AGREEMENT_REGISTRY_ABI, eventName: 'DepositWithdrawn' }))
+        // A stake is withdrawn once either event names its key: a registry
+        // deployed with the withdrawal cooldown emits `WithdrawalRequested` at
+        // the request, and one deployed before it emits only `DepositWithdrawn`.
+        const withdrawnLogs = (address: `0x${string}`, abi: typeof AGREEMENT_REGISTRY_ABI | typeof PROCESS_REGISTRY_ABI) =>
+            Promise.all((['WithdrawalRequested', 'DepositWithdrawn'] as const).map((eventName) =>
+                scanContractEvents(publicClient, { address, abi, eventName }))).then((all) => all.flat());
+        const withdrawnAgreements = new Set((await withdrawnLogs(config.agreementRegistry as `0x${string}`, AGREEMENT_REGISTRY_ABI))
             .map((e) => String((e.args as { agreementHash?: string }).agreementHash ?? '').toLowerCase()).filter(Boolean));
-        const withdrawnSlugs = new Set((await scanContractEvents(publicClient, { address: config.processRegistry as `0x${string}`, abi: PROCESS_REGISTRY_ABI, eventName: 'DepositWithdrawn' }))
+        const withdrawnSlugs = new Set((await withdrawnLogs(config.processRegistry as `0x${string}`, PROCESS_REGISTRY_ABI))
             .map((e) => deriveProcessDesignSlug((e.args as { processDesignHash: `0x${string}` }).processDesignHash)));
         const memberEvents = await scanContractEvents(publicClient, { address: config.membersRegistry as `0x${string}`, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberRegistered' });
         const members = new Set(memberEvents.map((e) => String((e.args as { member?: string }).member ?? '').toLowerCase()).filter(Boolean));

@@ -13,9 +13,10 @@ contract AgreementRegistryTest is Test {
     bytes32 constant AGREEMENT_HASH = keccak256("canonical-agreement-clauses");
     string constant CONTENT_URI = "ipfs://QmAgreement";
     uint256 constant DEPOSIT = 0.001 ether;
+    uint256 constant COOLDOWN = 28 days;
 
     function setUp() public {
-        registry = new AgreementRegistry(DEPOSIT);
+        registry = new AgreementRegistry(DEPOSIT, COOLDOWN);
         vm.deal(alice, 10 ether);
         vm.deal(bob, 10 ether);
     }
@@ -125,107 +126,170 @@ contract AgreementRegistryTest is Test {
         assertEq(address(registry).balance, DEPOSIT * 2);
     }
 
-    // ── Stake withdrawal ─────────────────────────────────────────────────
+    // ── Stake withdrawal: request, then claim after the cooldown ──────────
 
-    function test_withdrawDeposit_happy() public {
+    function test_requestWithdrawal_flagsAtOnce_paysNothing_bindingStays() public {
         vm.prank(alice);
         registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
 
         uint256 balanceBefore = alice.balance;
         vm.prank(alice);
-        registry.withdrawDeposit(AGREEMENT_HASH);
+        registry.requestWithdrawal(AGREEMENT_HASH);
 
-        assertEq(alice.balance, balanceBefore + DEPOSIT);
-        assertEq(address(registry).balance, 0);
-
-        // Binding stays — only the withdrawn flag flips.
-        (address registeredBy,, bool withdrawn, string memory uri) = registry.bindings(AGREEMENT_HASH);
-        assertEq(registeredBy, alice, "registeredBy preserved after withdraw");
-        assertEq(withdrawn, true);
-        assertEq(uri, CONTENT_URI, "contentURI preserved after withdraw");
+        // The stake stops counting as live at the request; the ETH stays.
+        (,, bool withdrawn,) = registry.bindings(AGREEMENT_HASH);
+        assertTrue(withdrawn, "withdrawn at the request");
+        assertEq(alice.balance, balanceBefore, "nothing paid at the request");
+        assertEq(address(registry).balance, DEPOSIT, "the stake stays locked");
+        assertEq(registry.releaseAt(AGREEMENT_HASH), block.timestamp + COOLDOWN);
+        assertFalse(registry.withdrawable(AGREEMENT_HASH));
     }
 
-    function test_withdrawDeposit_emitsEvent() public {
+    function test_requestWithdrawal_emitsWithdrawalRequested() public {
         vm.prank(alice);
         registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
 
         vm.expectEmit(true, true, false, true, address(registry));
+        emit AgreementRegistry.WithdrawalRequested(AGREEMENT_HASH, alice, DEPOSIT, block.timestamp + COOLDOWN);
+        vm.prank(alice);
+        registry.requestWithdrawal(AGREEMENT_HASH);
+    }
+
+    function test_withdraw_beforeCooldown_reverts() public {
+        vm.prank(alice);
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
+        vm.prank(alice);
+        registry.requestWithdrawal(AGREEMENT_HASH);
+        uint256 unlockAt = block.timestamp + COOLDOWN;
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.CooldownActive.selector, unlockAt));
+        registry.withdraw(AGREEMENT_HASH);
+
+        vm.warp(unlockAt - 1);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.CooldownActive.selector, unlockAt));
+        registry.withdraw(AGREEMENT_HASH);
+        assertEq(address(registry).balance, DEPOSIT, "no early release");
+    }
+
+    function test_withdraw_afterCooldown_paysOnce() public {
+        vm.prank(alice);
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
+        vm.prank(alice);
+        registry.requestWithdrawal(AGREEMENT_HASH);
+
+        vm.warp(block.timestamp + COOLDOWN);
+        assertTrue(registry.withdrawable(AGREEMENT_HASH));
+        uint256 balanceBefore = alice.balance;
+        vm.expectEmit(true, true, false, true, address(registry));
         emit AgreementRegistry.DepositWithdrawn(AGREEMENT_HASH, alice, DEPOSIT);
+        vm.prank(alice);
+        registry.withdraw(AGREEMENT_HASH);
+
+        assertEq(alice.balance, balanceBefore + DEPOSIT);
+        assertEq(address(registry).balance, 0);
+        assertEq(registry.releaseAt(AGREEMENT_HASH), 0);
+        assertFalse(registry.withdrawable(AGREEMENT_HASH));
 
         vm.prank(alice);
-        registry.withdrawDeposit(AGREEMENT_HASH);
+        vm.expectRevert(AgreementRegistry.NothingPending.selector);
+        registry.withdraw(AGREEMENT_HASH);
     }
 
-    function test_withdrawDeposit_immediately() public {
-        // No time lock: the stake is reclaimable at any time. The
-        // round-trip is priced off-chain — a withdrawn agreement
-        // de-surfaces from discovery (readers filter on the live stake).
+    function test_withdraw_withoutRequest_reverts() public {
         vm.prank(alice);
         registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
 
         vm.prank(alice);
-        registry.withdrawDeposit(AGREEMENT_HASH);
+        vm.expectRevert(AgreementRegistry.NothingPending.selector);
+        registry.withdraw(AGREEMENT_HASH);
     }
 
-    function test_withdrawDeposit_revertsOnDoubleWithdraw() public {
+    function test_zeroCooldown_claimableInTheSameBlock() public {
+        AgreementRegistry free = new AgreementRegistry(DEPOSIT, 0);
+        vm.startPrank(alice);
+        free.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
+        free.requestWithdrawal(AGREEMENT_HASH);
+        assertTrue(free.withdrawable(AGREEMENT_HASH));
+        free.withdraw(AGREEMENT_HASH);
+        vm.stopPrank();
+        assertEq(address(free).balance, 0);
+    }
+
+    function test_requestWithdrawal_onlyOnce() public {
         vm.prank(alice);
         registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
-
         vm.prank(alice);
-        registry.withdrawDeposit(AGREEMENT_HASH);
+        registry.requestWithdrawal(AGREEMENT_HASH);
 
         vm.prank(alice);
         vm.expectRevert(AgreementRegistry.AlreadyWithdrawn.selector);
-        registry.withdrawDeposit(AGREEMENT_HASH);
+        registry.requestWithdrawal(AGREEMENT_HASH);
     }
 
-    function test_withdrawDeposit_revertsByNonRegisteredBy() public {
+    function test_withdrawal_registeredByOnly() public {
         vm.prank(alice);
         registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.NotRegisteredBy.selector, bob, alice));
-        registry.withdrawDeposit(AGREEMENT_HASH);
+        registry.requestWithdrawal(AGREEMENT_HASH);
+
+        vm.prank(alice);
+        registry.requestWithdrawal(AGREEMENT_HASH);
+        vm.warp(block.timestamp + COOLDOWN);
+
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.NotRegisteredBy.selector, bob, alice));
+        registry.withdraw(AGREEMENT_HASH);
     }
 
-    function test_withdrawDeposit_revertsOnUnknownAgreement() public {
+    function test_withdrawal_revertsOnUnknownKey() public {
+        bytes32 unknown = keccak256("never-existed");
         vm.prank(alice);
         vm.expectRevert(AgreementRegistry.NotRegistered.selector);
-        registry.withdrawDeposit(keccak256("never-existed"));
+        registry.requestWithdrawal(unknown);
+        vm.prank(alice);
+        vm.expectRevert(AgreementRegistry.NotRegistered.selector);
+        registry.withdraw(unknown);
     }
 
-    function test_withdrawDeposit_revertsWhenRefundRejected() public {
+    function test_withdraw_revertsWhenPaymentRejected() public {
         // A registrant that cannot receive ETH: its code reverts on every call
-        // (PUSH1 0 PUSH1 0 REVERT), so the refund's plain call returns false
-        // and the withdrawal reverts as a whole — the stake stays held and
-        // un-withdrawn rather than being flagged against a refund that never
-        // landed.
+        // (PUSH1 0 PUSH1 0 REVERT), so the payment's plain call returns false
+        // and the claim reverts as a whole — the stake stays held and still
+        // pending, rather than cleared against a payment that never landed.
         address rejecter = address(0x4E7EC7);
         vm.etch(rejecter, hex"60006000fd");
         vm.deal(rejecter, DEPOSIT);
 
         vm.prank(rejecter);
         registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
+        vm.prank(rejecter);
+        registry.requestWithdrawal(AGREEMENT_HASH);
+        uint256 unlockAt = block.timestamp + COOLDOWN;
+        vm.warp(unlockAt);
 
         vm.prank(rejecter);
         vm.expectRevert(AgreementRegistry.TransferFailed.selector);
-        registry.withdrawDeposit(AGREEMENT_HASH);
+        registry.withdraw(AGREEMENT_HASH);
 
-        (,, bool withdrawn,) = registry.bindings(AGREEMENT_HASH);
-        assertFalse(withdrawn);
+        assertEq(registry.releaseAt(AGREEMENT_HASH), unlockAt, "still pending");
         assertEq(address(registry).balance, DEPOSIT);
     }
 
-    function test_withdrawDeposit_doesNotAllowReRegistration() public {
-        // Permanence guarantee: once an agreement is bound, withdrawing the
-        // stake does NOT release the binding for re-registration.
+    function test_withdrawal_doesNotAllowReRegistration() public {
+        // Permanence: requesting and claiming the stake does NOT release the
+        // binding for re-registration.
         vm.prank(alice);
         registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
-
         vm.prank(alice);
-        registry.withdrawDeposit(AGREEMENT_HASH);
+        registry.requestWithdrawal(AGREEMENT_HASH);
+        vm.warp(block.timestamp + COOLDOWN);
+        vm.prank(alice);
+        registry.withdraw(AGREEMENT_HASH);
 
-        // Bob tries to take over the agreement — must fail.
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.AgreementAlreadyRegistered.selector, AGREEMENT_HASH));
         registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, "ipfs://hijack");

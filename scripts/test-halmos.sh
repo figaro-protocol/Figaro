@@ -173,11 +173,13 @@ echo ""
 
 # ── Passes 5, 6 + 7: the clause, assembly and agreement registry stake machines ──
 #
-# MembersRegistry's siblings minus the cooldown: solvency under arbitrary
-# interleavings, first-write-wins permanence, one-shot withdrawal, eligibility
-# ends at withdraw with nothing restoring it, cross-key isolation. These
-# stakes are held-at-claim for RpgfMinter._isAuthor, so their state machines
-# carry the designer half of the Sybil bound.
+# MembersRegistry's siblings on a key, with the same two-step withdrawal:
+# solvency under arbitrary request/claim interleavings, a requested stake
+# claimable in full after the cooldown and never before, first-write-wins
+# permanence, a one-shot claim, liveness ends at the request with nothing
+# restoring it, cross-key isolation. UsageCounter reads the withdrawn flag
+# when it counts a use and RpgfMinter._isAuthor reads it at the claim, so
+# these state machines carry the designer half of the Sybil bound.
 
 run_halmos \
     --contract HalmosClauseRegistry \

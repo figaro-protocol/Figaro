@@ -44,7 +44,7 @@ contract OperationStreamVectorsTest is Test {
 
     function setUp() public {
         sp1 = new MockSP1Verifier();
-        registry = new ClauseRegistry(0.001 ether);
+        registry = new ClauseRegistry(0.001 ether, 0);
         core = new FigaroCore();
         members = new MembersRegistry(0, 0);
         uint64[] memory periods = new uint64[](1);

@@ -13,9 +13,10 @@ contract ProcessRegistryTest is Test {
     bytes32 constant PROCESS_DESIGN_HASH = keccak256("canonical-composition-subset");
     string constant CONTENT_URI = "ipfs://QmCoffeeShop";
     uint256 constant DEPOSIT = 0.001 ether;
+    uint256 constant COOLDOWN = 28 days;
 
     function setUp() public {
-        registry = new ProcessRegistry(DEPOSIT);
+        registry = new ProcessRegistry(DEPOSIT, COOLDOWN);
         vm.deal(alice, 10 ether);
         vm.deal(bob, 10 ether);
     }
@@ -108,107 +109,170 @@ contract ProcessRegistryTest is Test {
         assertEq(address(registry).balance, DEPOSIT * 2);
     }
 
-    // ── Deposit withdrawal ───────────────────────────────────────────────
+    // ── Stake withdrawal: request, then claim after the cooldown ──────────
 
-    function test_withdrawDeposit_happy() public {
+    function test_requestWithdrawal_flagsAtOnce_paysNothing_bindingStays() public {
         vm.prank(alice);
         registry.registerProcess{value: DEPOSIT}(PROCESS_DESIGN_HASH, CONTENT_URI);
 
         uint256 balanceBefore = alice.balance;
         vm.prank(alice);
-        registry.withdrawDeposit(PROCESS_DESIGN_HASH);
+        registry.requestWithdrawal(PROCESS_DESIGN_HASH);
 
-        assertEq(alice.balance, balanceBefore + DEPOSIT);
-        assertEq(address(registry).balance, 0);
-
-        // Binding stays — only the withdrawn flag flips.
-        (address registeredBy,, bool withdrawn, string memory uri) = registry.bindings(PROCESS_DESIGN_HASH);
-        assertEq(registeredBy, alice, "registeredBy preserved after withdraw");
-        assertEq(withdrawn, true);
-        assertEq(uri, CONTENT_URI, "contentURI preserved after withdraw");
+        // The stake stops counting as live at the request; the ETH stays.
+        (,, bool withdrawn,) = registry.bindings(PROCESS_DESIGN_HASH);
+        assertTrue(withdrawn, "withdrawn at the request");
+        assertEq(alice.balance, balanceBefore, "nothing paid at the request");
+        assertEq(address(registry).balance, DEPOSIT, "the stake stays locked");
+        assertEq(registry.releaseAt(PROCESS_DESIGN_HASH), block.timestamp + COOLDOWN);
+        assertFalse(registry.withdrawable(PROCESS_DESIGN_HASH));
     }
 
-    function test_withdrawDeposit_emitsEvent() public {
+    function test_requestWithdrawal_emitsWithdrawalRequested() public {
         vm.prank(alice);
         registry.registerProcess{value: DEPOSIT}(PROCESS_DESIGN_HASH, CONTENT_URI);
 
         vm.expectEmit(true, true, false, true, address(registry));
+        emit ProcessRegistry.WithdrawalRequested(PROCESS_DESIGN_HASH, alice, DEPOSIT, block.timestamp + COOLDOWN);
+        vm.prank(alice);
+        registry.requestWithdrawal(PROCESS_DESIGN_HASH);
+    }
+
+    function test_withdraw_beforeCooldown_reverts() public {
+        vm.prank(alice);
+        registry.registerProcess{value: DEPOSIT}(PROCESS_DESIGN_HASH, CONTENT_URI);
+        vm.prank(alice);
+        registry.requestWithdrawal(PROCESS_DESIGN_HASH);
+        uint256 unlockAt = block.timestamp + COOLDOWN;
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(ProcessRegistry.CooldownActive.selector, unlockAt));
+        registry.withdraw(PROCESS_DESIGN_HASH);
+
+        vm.warp(unlockAt - 1);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(ProcessRegistry.CooldownActive.selector, unlockAt));
+        registry.withdraw(PROCESS_DESIGN_HASH);
+        assertEq(address(registry).balance, DEPOSIT, "no early release");
+    }
+
+    function test_withdraw_afterCooldown_paysOnce() public {
+        vm.prank(alice);
+        registry.registerProcess{value: DEPOSIT}(PROCESS_DESIGN_HASH, CONTENT_URI);
+        vm.prank(alice);
+        registry.requestWithdrawal(PROCESS_DESIGN_HASH);
+
+        vm.warp(block.timestamp + COOLDOWN);
+        assertTrue(registry.withdrawable(PROCESS_DESIGN_HASH));
+        uint256 balanceBefore = alice.balance;
+        vm.expectEmit(true, true, false, true, address(registry));
         emit ProcessRegistry.DepositWithdrawn(PROCESS_DESIGN_HASH, alice, DEPOSIT);
+        vm.prank(alice);
+        registry.withdraw(PROCESS_DESIGN_HASH);
+
+        assertEq(alice.balance, balanceBefore + DEPOSIT);
+        assertEq(address(registry).balance, 0);
+        assertEq(registry.releaseAt(PROCESS_DESIGN_HASH), 0);
+        assertFalse(registry.withdrawable(PROCESS_DESIGN_HASH));
 
         vm.prank(alice);
-        registry.withdrawDeposit(PROCESS_DESIGN_HASH);
+        vm.expectRevert(ProcessRegistry.NothingPending.selector);
+        registry.withdraw(PROCESS_DESIGN_HASH);
     }
 
-    function test_withdrawDeposit_immediately() public {
-        // No time lock (K4): the stake is reclaimable at any time. The
-        // round-trip is priced off-chain — a withdrawn assembly
-        // de-surfaces from discovery (readers filter on the live stake).
+    function test_withdraw_withoutRequest_reverts() public {
         vm.prank(alice);
         registry.registerProcess{value: DEPOSIT}(PROCESS_DESIGN_HASH, CONTENT_URI);
 
         vm.prank(alice);
-        registry.withdrawDeposit(PROCESS_DESIGN_HASH);
+        vm.expectRevert(ProcessRegistry.NothingPending.selector);
+        registry.withdraw(PROCESS_DESIGN_HASH);
     }
 
-    function test_withdrawDeposit_revertsOnDoubleWithdraw() public {
+    function test_zeroCooldown_claimableInTheSameBlock() public {
+        ProcessRegistry free = new ProcessRegistry(DEPOSIT, 0);
+        vm.startPrank(alice);
+        free.registerProcess{value: DEPOSIT}(PROCESS_DESIGN_HASH, CONTENT_URI);
+        free.requestWithdrawal(PROCESS_DESIGN_HASH);
+        assertTrue(free.withdrawable(PROCESS_DESIGN_HASH));
+        free.withdraw(PROCESS_DESIGN_HASH);
+        vm.stopPrank();
+        assertEq(address(free).balance, 0);
+    }
+
+    function test_requestWithdrawal_onlyOnce() public {
         vm.prank(alice);
         registry.registerProcess{value: DEPOSIT}(PROCESS_DESIGN_HASH, CONTENT_URI);
-
         vm.prank(alice);
-        registry.withdrawDeposit(PROCESS_DESIGN_HASH);
+        registry.requestWithdrawal(PROCESS_DESIGN_HASH);
 
         vm.prank(alice);
         vm.expectRevert(ProcessRegistry.AlreadyWithdrawn.selector);
-        registry.withdrawDeposit(PROCESS_DESIGN_HASH);
+        registry.requestWithdrawal(PROCESS_DESIGN_HASH);
     }
 
-    function test_withdrawDeposit_revertsByNonRegisteredBy() public {
+    function test_withdrawal_registeredByOnly() public {
         vm.prank(alice);
         registry.registerProcess{value: DEPOSIT}(PROCESS_DESIGN_HASH, CONTENT_URI);
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(ProcessRegistry.NotRegisteredBy.selector, bob, alice));
-        registry.withdrawDeposit(PROCESS_DESIGN_HASH);
+        registry.requestWithdrawal(PROCESS_DESIGN_HASH);
+
+        vm.prank(alice);
+        registry.requestWithdrawal(PROCESS_DESIGN_HASH);
+        vm.warp(block.timestamp + COOLDOWN);
+
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(ProcessRegistry.NotRegisteredBy.selector, bob, alice));
+        registry.withdraw(PROCESS_DESIGN_HASH);
     }
 
-    function test_withdrawDeposit_revertsOnUnknownAssembly() public {
+    function test_withdrawal_revertsOnUnknownKey() public {
+        bytes32 unknown = keccak256("never-existed");
         vm.prank(alice);
         vm.expectRevert(ProcessRegistry.NotRegistered.selector);
-        registry.withdrawDeposit(keccak256("never-existed"));
+        registry.requestWithdrawal(unknown);
+        vm.prank(alice);
+        vm.expectRevert(ProcessRegistry.NotRegistered.selector);
+        registry.withdraw(unknown);
     }
 
-    function test_withdrawDeposit_revertsWhenRefundRejected() public {
+    function test_withdraw_revertsWhenPaymentRejected() public {
         // A registrant that cannot receive ETH: its code reverts on every call
-        // (PUSH1 0 PUSH1 0 REVERT), so the refund's plain call returns false
-        // and the withdrawal reverts as a whole — the stake stays held and
-        // un-withdrawn rather than being flagged against a refund that never
-        // landed.
+        // (PUSH1 0 PUSH1 0 REVERT), so the payment's plain call returns false
+        // and the claim reverts as a whole — the stake stays held and still
+        // pending, rather than cleared against a payment that never landed.
         address rejecter = address(0x4E7EC7);
         vm.etch(rejecter, hex"60006000fd");
         vm.deal(rejecter, DEPOSIT);
 
         vm.prank(rejecter);
         registry.registerProcess{value: DEPOSIT}(PROCESS_DESIGN_HASH, CONTENT_URI);
+        vm.prank(rejecter);
+        registry.requestWithdrawal(PROCESS_DESIGN_HASH);
+        uint256 unlockAt = block.timestamp + COOLDOWN;
+        vm.warp(unlockAt);
 
         vm.prank(rejecter);
         vm.expectRevert(ProcessRegistry.TransferFailed.selector);
-        registry.withdrawDeposit(PROCESS_DESIGN_HASH);
+        registry.withdraw(PROCESS_DESIGN_HASH);
 
-        (,, bool withdrawn,) = registry.bindings(PROCESS_DESIGN_HASH);
-        assertFalse(withdrawn);
+        assertEq(registry.releaseAt(PROCESS_DESIGN_HASH), unlockAt, "still pending");
         assertEq(address(registry).balance, DEPOSIT);
     }
 
-    function test_withdrawDeposit_doesNotAllowReRegistration() public {
-        // Permanence guarantee: once a composition is bound, withdrawing the
-        // deposit does NOT release the binding for re-registration.
+    function test_withdrawal_doesNotAllowReRegistration() public {
+        // Permanence: requesting and claiming the stake does NOT release the
+        // binding for re-registration.
         vm.prank(alice);
         registry.registerProcess{value: DEPOSIT}(PROCESS_DESIGN_HASH, CONTENT_URI);
-
         vm.prank(alice);
-        registry.withdrawDeposit(PROCESS_DESIGN_HASH);
+        registry.requestWithdrawal(PROCESS_DESIGN_HASH);
+        vm.warp(block.timestamp + COOLDOWN);
+        vm.prank(alice);
+        registry.withdraw(PROCESS_DESIGN_HASH);
 
-        // Bob tries to take over the composition — must fail.
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(ProcessRegistry.ProcessAlreadyRegistered.selector, PROCESS_DESIGN_HASH));
         registry.registerProcess{value: DEPOSIT}(PROCESS_DESIGN_HASH, "ipfs://hijack");

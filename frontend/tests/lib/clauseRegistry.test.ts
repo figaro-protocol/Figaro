@@ -43,8 +43,16 @@ describe("clauseRegisterRevertMessage", () => {
 });
 
 describe("clauseWithdrawRevertMessage", () => {
-    it("AlreadyWithdrawn", () => {
-        expect(clauseWithdrawRevertMessage("AlreadyWithdrawn")).toMatch(/already been reclaimed/i);
+    it("AlreadyWithdrawn names that the stake was already requested back", () => {
+        expect(clauseWithdrawRevertMessage("AlreadyWithdrawn")).toMatch(/already been requested back/i);
+    });
+
+    it("NothingPending names that no stake waits to be claimed", () => {
+        expect(clauseWithdrawRevertMessage("NothingPending")).toMatch(/no stake is waiting to be claimed/i);
+    });
+
+    it("CooldownActive names that the cooldown has not passed", () => {
+        expect(clauseWithdrawRevertMessage("CooldownActive")).toMatch(/cooldown has not passed/i);
     });
 
     it("NotRegisteredBy names that only the registeredBy can reclaim", () => {
@@ -55,10 +63,10 @@ describe("clauseWithdrawRevertMessage", () => {
         expect(clauseWithdrawRevertMessage("NotRegistered")).toMatch(/no registration binding/i);
     });
 
-    it("TransferFailed names that no state changed", () => {
+    it("TransferFailed names that the stake still waits to be claimed", () => {
         const msg = clauseWithdrawRevertMessage("TransferFailed");
         expect(msg).toMatch(/transfer failed/i);
-        expect(msg).toMatch(/no state changed/i);
+        expect(msg).toMatch(/still waiting to be claimed/i);
     });
 
     it("returns null for an unrecognized or absent error name", () => {

@@ -3,12 +3,15 @@
  * end to end: a designer registers an agreement on its own from the canvas's
  * AgreementDrawer (staked intent), then reclaims the stake from the designer
  * landing's "Your registered agreements" list (`RegisteredAgreementsReclaim`,
- * one `ReclaimStakeRow` per registration), and the registry refunds exactly
- * the deposit.
+ * one `ReclaimStakeRow` per registration) in two steps, a request and a claim,
+ * and the registry pays back exactly the deposit at the claim.
  *
  * ONE spec, registeredBy-driven, in the shape of assembly-withdraw: publish
- * (staked intent) → reclaim + exact refund. `AgreementRegistry.withdrawDeposit`
- * is once-only per PERMANENT binding, so nothing survives for a runtime spec.
+ * (staked intent) → request (de-surfaces, moves no ETH) → claim + exact
+ * payment. The devnet deploys the registry with a cooldown of 0
+ * (`script/Deploy.s.sol`), so the claim is due in the request's block.
+ * `AgreementRegistry.requestWithdrawal` is once-only per PERMANENT binding, so
+ * nothing survives for a runtime spec.
  *
  * Fresh binding per run — the probeAssembly nonce. An agreement's identity is
  * its composition (`AgreementRegistry`'s notice: the merkle root over one leaf
@@ -208,8 +211,8 @@ test.describe('AgreementRegistry withdraw — the designer reclaims an agreement
         const reclaimBtn = row.getByTestId('agreement-withdraw-button');
         await reclaimBtn.waitFor({ state: 'visible', timeout: 30000 });
         await expect(reclaimBtn, 'no composed trade in flight → the reclaim is enabled').toBeEnabled({ timeout: 60000 });
-        await expect(reclaimBtn).toHaveText('Reclaim stake');
-        await expect(reclaimBtn).toHaveAttribute('title', /^Reclaim your registration stake\./);
+        await expect(reclaimBtn).toHaveText('Request stake back');
+        await expect(reclaimBtn).toHaveAttribute('title', /^Ask for your registration stake back\./);
 
         // Foreign in-flight orders (an active order of an unresolved process)
         // are never witnessed by this fresh context → the caveat strip renders
@@ -234,19 +237,45 @@ test.describe('AgreementRegistry withdraw — the designer reclaims an agreement
             await expect(caveat, 'no unverifiable trades → no caveat').toBeHidden();
         }
 
-        // ── RECLAIM + VALUE LEG: click; DepositWithdrawn lands; the registry
-        //    escrow drops by exactly the deposit and the designer's ETH rises by
-        //    exactly deposit − gas (both read from the chain). ──
-        const withdrawFrom = await publicClient.getBlockNumber();
-        const [registryEth2, designerEth2] = await Promise.all([
-            publicClient.getBalance({ address: registry }),
-            publicClient.getBalance({ address: DESIGNER }),
-        ]);
+        // ── REQUEST: click; WithdrawalRequested lands; the row reads requested
+        //    and offers no second request; no ETH moves. ──
+        const requestFrom = await publicClient.getBlockNumber();
+        const registryEth2 = await publicClient.getBalance({ address: registry });
 
         await reclaimBtn.click();
-        await expect(reclaimBtn, 'the affordance reflects the reclaim').toHaveText('Stake reclaimed', { timeout: 60000 });
-        await expect(reclaimBtn).toBeDisabled();
+        await expect(
+            page.getByTestId(`agreement-reclaim-state-${agreementHash}`),
+            'the row reflects the request',
+        ).toHaveText('withdrawal requested', { timeout: 60000 });
+        await expect(row.getByTestId('agreement-withdraw-button'), 'no second request').toHaveCount(0);
         await expect(page.getByTestId('agreement-withdraw-error')).toHaveCount(0);
+
+        const requestedEvents = await publicClient.getContractEvents({
+            address: registry, abi: AGREEMENT_REGISTRY_ABI, eventName: 'WithdrawalRequested',
+            args: { agreementHash }, fromBlock: requestFrom + 1n,
+        });
+        expect(requestedEvents, 'exactly one WithdrawalRequested for this binding').toHaveLength(1);
+        expect((requestedEvents[0].args.registeredBy as string).toLowerCase()).toBe(DESIGNER.toLowerCase());
+        expect(requestedEvents[0].args.amount, 'the event carries the exact deposit').toBe(deposit);
+        expect(await publicClient.getBalance({ address: registry }), 'the request moves no ETH').toBe(registryEth2);
+        expect((await readAgreementBinding(agreementHash))?.stakeWithdrawn, 'the binding marks the request').toBe(true);
+
+        // ── CLAIM + VALUE LEG: the devnet cooldown is 0, so the chain's
+        //    `withdrawable` is true at once; click; DepositWithdrawn lands; the
+        //    registry escrow drops by exactly the deposit and the designer's ETH
+        //    rises by exactly deposit − gas (both read from the chain). ──
+        const claimBtn = row.getByTestId('agreement-claim-button');
+        await expect(claimBtn, 'the chain says the stake is withdrawable').toBeEnabled({ timeout: 60000 });
+        const withdrawFrom = await publicClient.getBlockNumber();
+        const designerEth2 = await publicClient.getBalance({ address: DESIGNER });
+
+        await claimBtn.click();
+        await expect(
+            page.getByTestId(`agreement-reclaim-state-${agreementHash}`),
+            'the row reflects the claim',
+        ).toHaveText('stake reclaimed', { timeout: 60000 });
+        await expect(row.getByTestId('agreement-claim-button'), 'nothing left to claim').toHaveCount(0);
+        await expect(page.getByTestId('agreement-claim-error')).toHaveCount(0);
 
         // The event, from strictly after the pre-click head (pattern 17), keyed
         // by THIS run's agreementHash.
@@ -262,10 +291,10 @@ test.describe('AgreementRegistry withdraw — the designer reclaims an agreement
         const registryEth3 = await publicClient.getBalance({ address: registry });
         expect(registryEth2 - registryEth3, 'registry escrow decreased by exactly the deposit').toBe(deposit);
 
-        // Designer wallet: exact, gas-accounted — the withdraw is the designer's
+        // Designer wallet: exact, gas-accounted — the claim is the designer's
         // only transaction between the two reads.
         const withdrawReceipt = await publicClient.getTransactionReceipt({ hash: withdrawnEvents[0].transactionHash });
-        expect(withdrawReceipt.status, 'the withdraw transaction succeeded').toBe('success');
+        expect(withdrawReceipt.status, 'the claim transaction succeeded').toBe('success');
         const withdrawGas = withdrawReceipt.gasUsed * withdrawReceipt.effectiveGasPrice;
         const designerEth3 = await publicClient.getBalance({ address: DESIGNER });
         expect(designerEth3 - designerEth2, 'designer received exactly the deposit minus gas').toBe(deposit - withdrawGas);
@@ -273,15 +302,15 @@ test.describe('AgreementRegistry withdraw — the designer reclaims an agreement
         // The binding is permanent; only the stake moved.
         const after = await readAgreementBinding(agreementHash);
         expect(after?.registeredBy.toLowerCase(), 'the binding stays anchored to the designer').toBe(DESIGNER.toLowerCase());
-        expect(after?.stakeWithdrawn, 'the binding records the reclaim').toBe(true);
+        expect(after?.stakeWithdrawn, 'the binding marks the withdrawal').toBe(true);
         test.info().annotations.push({
             type: 'DepositWithdrawn',
             description: `agreement=${agreementHash} deposit=${deposit} gas=${withdrawGas} tx=${withdrawReceipt.transactionHash}`,
         });
 
         // ── CHAIN-DERIVED REFLECTION: a fresh read of the landing folds
-        //    DepositWithdrawn into the row (the wallet-scoped read keeps
-        //    withdrawn rows, flagged) — "stake reclaimed", the button disabled. ──
+        //    WithdrawalRequested into the row and reads `releaseAt` back as 0
+        //    (paid out) — "stake reclaimed", nothing to request or claim. ──
         await page.reload({ waitUntil: 'domcontentloaded' });
         await page.getByTestId('agreements-reclaim-list').waitFor({ timeout: 30000 });
         await waitForConnected(page);
@@ -291,9 +320,8 @@ test.describe('AgreementRegistry withdraw — the designer reclaims an agreement
             page.getByTestId(`agreement-reclaim-state-${agreementHash}`),
             'the withdrawn state is chain-derived, not session state',
         ).toHaveText('stake reclaimed', { timeout: 30000 });
-        const reloadedBtn = reloadedRow.getByTestId('agreement-withdraw-button');
-        await expect(reloadedBtn).toHaveText('Stake reclaimed', { timeout: 30000 });
-        await expect(reloadedBtn).toBeDisabled();
+        await expect(reloadedRow.getByTestId('agreement-withdraw-button')).toHaveCount(0);
+        await expect(reloadedRow.getByTestId('agreement-claim-button')).toHaveCount(0);
     });
 
     test('a verified in-flight trade composed from the agreement disables the reclaim; the buyer\'s resolution enables it', async ({ page }) => {
@@ -442,7 +470,7 @@ test.describe('AgreementRegistry withdraw — the designer reclaims an agreement
         // ── GATE, OPEN: the same row, read again, offers the reclaim. ──
         const openBtn = await designerRowButton();
         await expect(openBtn, 'every composed trade resolved → the reclaim is enabled').toBeEnabled({ timeout: 60000 });
-        await expect(openBtn).toHaveAttribute('title', /^Reclaim your registration stake\./);
-        await expect(openBtn).toHaveText('Reclaim stake');
+        await expect(openBtn).toHaveAttribute('title', /^Ask for your registration stake back\./);
+        await expect(openBtn).toHaveText('Request stake back');
     });
 });

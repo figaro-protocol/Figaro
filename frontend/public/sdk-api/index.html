@@ -2199,10 +2199,12 @@ the registering call (<code>register</code> / <code>registerClause</code> / <cod
 <code>payable</code>) — a stake no party can seize, and <code>msg.value</code>
 must equal it EXACTLY (there is no sweep). The amount is a deploy-time immutable;
 read it from the contract's <code>registrationDeposit()</code> view rather than hardcoding a
-figure. Clause, agreement and assembly stakes come back in one call —
-<code>withdrawDeposit(clauseKey | agreementHash | processDesignHash)</code>, which de-surfaces the entry while
-leaving the binding permanent, because orders already committed against them still
-resolve.</p>
+figure. Clause, agreement and assembly stakes come back in two calls, as a member's
+does: <code>requestWithdrawal(clauseKey | agreementHash | processDesignHash)</code> de-surfaces the entry at
+once (<code>WithdrawalRequested</code>), and <code>withdraw(sameKey)</code> pays the stake out once the
+registry's <code>withdrawable(key)</code> view is true, after its <code>withdrawalCooldown()</code>. The binding
+stays permanent, because orders already committed against them still resolve. The
+cooldown prices an attempt to register a key ahead of its designer and withdraw it.</p>
 <p><strong>A member's stake comes back in TWO calls</strong>, and the split is load-bearing:</p>
 <pre><code class="ts"><span class="hl-3">// 1. Leave the surface. Takes effect immediately: the dedup guard clears, the</span><br/><span class="hl-3">//    member disappears from discovery, and the wallet may register again at once.</span><br/><span class="hl-3">//    MembersRegistry.requestWithdrawal()</span><br/><span class="hl-3">// 2. Take the stake back, once `withdrawalCooldown` seconds have passed.</span><br/><span class="hl-3">//    MembersRegistry.withdraw()          // reverts CooldownActive(releaseAt) before then</span>
 </code><button type="button">Copy</button></pre>

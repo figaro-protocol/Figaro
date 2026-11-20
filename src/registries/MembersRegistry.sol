@@ -62,9 +62,9 @@ contract MembersRegistry {
     ///      identity for the cooldown, and the capital cost of sustaining N
     ///      identities across a reward period P becomes `deposit · N · T / P`.
     ///
-    ///      The three key-addressed registries (Clause, Agreement, Process)
-    ///      need no equivalent: their withdrawal is one-shot per key and the
-    ///      key's binding is permanent, so there is nothing to recycle.
+    ///      The three key registries (Clause, Agreement, Process) carry it too:
+    ///      without it one stake takes any number of pending keys from their
+    ///      designers, registered and withdrawn in one transaction, for gas.
     uint256 public immutable withdrawalCooldown;
 
     /// @dev Dedup guard — prevents double-registration for the same address.

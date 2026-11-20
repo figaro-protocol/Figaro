@@ -58,7 +58,7 @@ export interface RegisteredClauseEvent {
 
 /** Decode raw registry logs through the SDK parser and shape the UI rows.
  *  Shared by both readers so the row shape can't drift between them. The
- *  withdraw fold (`DepositWithdrawn` by clause key) rides the same parse. */
+ *  withdrawal fold (`WithdrawalRequested` by clause key) rides the same parse. */
 function toRegisteredClauseEvents(registeredLogs: Log[], withdrawnLogs: Log[]): RegisteredClauseEvent[] {
     const withdrawnKeys = new Set(
         parseClauseRegistryLogs(withdrawnLogs).withdrawn.map((w) => w.clauseKey.toLowerCase()),
@@ -73,7 +73,7 @@ function toRegisteredClauseEvents(registeredLogs: Log[], withdrawnLogs: Log[]): 
     }));
 }
 
-/** The one paired (ClauseRegistered + DepositWithdrawn) cached scan behind
+/** The one paired (ClauseRegistered + WithdrawalRequested) cached scan behind
  *  both readers, `useAllRegisteredClauses` here and the wallet-scoped
  *  `useRegisteredClausesByWallet` — the shared factory shape
  *  (`createRegistryEventScan`), so the fetch, the registeredBy narrowing, the
@@ -82,7 +82,7 @@ export const useClauseRegistryScan = createRegistryEventScan<RegisteredClauseEve
     getRegistry: getClauseRegistry,
     abi: CLAUSE_REGISTRY_ABI,
     registeredEventName: "ClauseRegistered",
-    withdrawnEventName: "DepositWithdrawn",
+    withdrawnEventName: "WithdrawalRequested",
     label: "useClauseRegistry",
     toRows: (registeredLogs, withdrawnLogs) => {
         const items = toRegisteredClauseEvents(registeredLogs, withdrawnLogs);
@@ -123,7 +123,7 @@ export function clauseRegisterRevertMessage(
     }
 }
 
-/** The clause noun's binding of the shared `withdrawDeposit` revert table
+/** The clause noun's binding of the shared withdrawal revert table
  *  (`withdrawRevertMessage` — the on-chain guards only; the commits==resolves
  *  gate is off-chain/advisory via `useWithdrawGate`). */
 export const clauseWithdrawRevertMessage = withdrawRevertMessage("clause");

@@ -172,7 +172,7 @@ contract CoreBatchEquivalenceTest is Test {
 
         FigaroCore unusedCore = new FigaroCore();
         MockSP1Verifier sp1 = new MockSP1Verifier();
-        ClauseRegistry registry = new ClauseRegistry(0.001 ether);
+        ClauseRegistry registry = new ClauseRegistry(0.001 ether, 0);
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
         counterB = new UsageCounter(
             address(unusedCore), address(members), address(stake), address(stake), address(stake), predicted, 1, periods
