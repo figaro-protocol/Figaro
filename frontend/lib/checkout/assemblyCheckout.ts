@@ -10,7 +10,7 @@
  *
  *   - the resolve-ceiling refusal before any signature,
  *   - per-node fills from the cart / the contributor's own catalog,
- *   - buyer-assigned selections + on-network compositions per node,
+ *   - buyer-assigned selections per node,
  *   - off-chain validation through the SAME confirm gate the seller's accept
  *     uses (no checkout-only bypass),
  *   - sub-orders signed + relayed as the walk realizes them; the ROOT signed
@@ -73,23 +73,12 @@ export interface AssemblyCheckoutDeps {
      *  node passes the winner's countersignature so the relayed payload
      *  carries BOTH signatures — commit-ready on arrival. */
     signAndShare: (preview: OrderPreview, opts?: { sellerSig?: `0x${string}` }) => Promise<CommitmentPayload>;
-    /** Invokes a sub-order's on-network composition (external, on-chain composition) — the
-     *  surface routes the standard `interface` to its handler and owns the tx +
-     *  receipt wait (useCompositionActions). The composition runs alongside the
-     *  order's normal commit. */
     /** Runs once every order of the checkout is built and checked, before
      *  the first signature, with every order (the sub-orders in walk order,
      *  the root last). The buyer's swap legs are quoted here
      *  (`quoteBuyerFunding`), so a leg the allowance cannot cover refuses the
      *  checkout before anything is signed. */
     prepareSignatures?: (previews: OrderPreview[]) => Promise<void>;
-    compose?: (args: {
-        interface: string;
-        fieldValues: Record<string, unknown>;
-        processId: `0x${string}`;
-        currency: `0x${string}`;
-        tokenDecimals: number;
-    }) => Promise<void>;
 }
 
 /** Off-chain validation, early: surface an invalid agreement BEFORE the wallet opens. The
@@ -157,7 +146,7 @@ export function checkoutMeasureRefusals(params: Omit<AssemblyCheckoutParams, "bu
     }
     const refusals: string[] = [];
     const nodes = checkoutNodes(params, {
-        rootId, boundSellerByNode, compositionByNode: new Map(), specs: specSource(),
+        rootId, boundSellerByNode, specs: specSource(),
         onMissingMeasure: (refusal) => refusals.push(refusal),
     });
     for (const order of planned) {
@@ -192,12 +181,6 @@ export interface AssemblyCheckoutParams {
         price: string;
         item: { id: string; name: string };
     }>;
-    /** On-network compositions (external, on-chain composition) keyed by assembly node id:
-     *  the composing clause's `interface` (from `block.design.composes`) plus the
-     *  buyer's `block.checkout.compositionFields` values collected at checkout. The composition
-     *  runs alongside the order's normal commit. Interface-agnostic — the
-     *  walk names no clause. */
-    subOrderCompositions?: Record<string, { interface: string; fieldValues: Record<string, unknown> }>;
     /** The buyer's checkout-entered units per assembly node id — the
      *  "checkout-quantity" rate source's input (hours, seats, …). Only
      *  read for a node whose contributor prices by such a rate. */
@@ -292,7 +275,6 @@ export async function executeAssemblyCheckout(
     // Per-node state the realization callbacks share: the sub's line items are
     // decided at pricing time (nodes) and folded/committed at realization
     // (the walk's agreement build).
-    const compositionByNode = new Map<string, { interface: string; fieldValues: Record<string, unknown> }>();
     const deadline = params.deadline ?? await chainDeadline();
     let rootPreview: OrderPreview | null = null;
     // The sub-orders in walk order, signed and relayed once every order is
@@ -325,7 +307,7 @@ export async function executeAssemblyCheckout(
         specs,
         salt: params.salt ?? (() => generateSalt()),
         deadline,
-        nodes: checkoutNodes(params, { rootId, boundSellerByNode, compositionByNode, specs }),
+        nodes: checkoutNodes(params, { rootId, boundSellerByNode, specs }),
         onOrder: async (order) => {
             const preview = previewOf(order);
             if (order.nodeId === rootId) {
@@ -336,23 +318,6 @@ export async function executeAssemblyCheckout(
                 assertValidToSign(preview, hydrated, "This order");
                 rootPreview = preview;
                 return;
-            }
-            // On-network composition (external, on-chain composition): a sub-order whose clause
-            // declares `block.design.composes` invokes the composed contract ALONGSIDE
-            // its normal commit — the interface is routed to its handler by the
-            // surface (`deps.compose`); the walk names no clause.
-            const composition = compositionByNode.get(order.nodeId);
-            if (composition) {
-                if (!deps.compose) {
-                    throw new Error("This assembly composes an on-network contract for a sub-order, but no composition mechanism is available.");
-                }
-                await deps.compose({
-                    interface: composition.interface,
-                    fieldValues: composition.fieldValues,
-                    processId: order.processId,
-                    currency,
-                    tokenDecimals: params.tokenDecimals,
-                });
             }
             assertValidToSign(preview, hydrated, "A sub-order");
             // A race-formed node: the winner already countersigned the drafted
@@ -391,14 +356,13 @@ function checkoutNodes(
         /** Each sub-order's bound co-seller and the item the binding names
          *  for it in that co-seller's own catalog (null when none). */
         boundSellerByNode: Map<string, { seller: `0x${string}` | null; itemId: string | null }>;
-        compositionByNode: Map<string, { interface: string; fieldValues: Record<string, unknown> }>;
         specs: SpecSource;
         /** Collects a missing-measure refusal instead of throwing it
          *  (`checkoutMeasureRefusals`); absent on every signing walk. */
         onMissingMeasure?: (refusal: string) => void;
     },
 ): (planned: PlannedProcessOrder) => ReconstructNodeSpec {
-    const { rootId, boundSellerByNode, compositionByNode, specs, onMissingMeasure } = ctx;
+    const { rootId, boundSellerByNode, specs, onMissingMeasure } = ctx;
     const { leadSellerAddress, payment, lineItems, sellerCatalogs, tokenDecimals, subOrderSelections } = params;
     const hydrated = params.assembly.hydratedAssembly;
     return (planned) => {
@@ -432,8 +396,6 @@ function checkoutNodes(
 
         const bound = boundSellerByNode.get(planned.nodeId);
         const boundSeller = bound?.seller ?? null;
-        const composition = boundSeller ? undefined : params.subOrderCompositions?.[planned.nodeId];
-        if (composition) compositionByNode.set(planned.nodeId, composition);
         const selection = boundSeller ? undefined : subOrderSelections?.[planned.nodeId];
         const subSeller = boundSeller ?? selection?.seller ?? null;
         if (!subSeller) {
@@ -557,6 +519,6 @@ export async function planProcessOrders(
         specs,
         salt: params.salt,
         deadline: params.deadline,
-        nodes: checkoutNodes(params, { rootId, boundSellerByNode, compositionByNode: new Map(), specs }),
+        nodes: checkoutNodes(params, { rootId, boundSellerByNode, specs }),
     });
 }

@@ -36,6 +36,8 @@ import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { WalletGate } from "@/components/runtime/WalletGate";
+import { OneWalletBothSidesNote } from "@/components/runtime/OneWalletBothSidesNote";
+import { awaitsOwnSellerSignature } from "@/lib/checkout/signState";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
@@ -125,6 +127,10 @@ export function YourTurnCard({ act, payload, onAct, onDismiss, isActing, listing
     const { ensureApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError });
     const isApproving = isApprovePending || isApproveConfirming;
     const handleAct = () => onAct(() => ensureApproval(myBond));
+    // One wallet on both sides of a buyer-signed order: this frontend cannot
+    // add the seller's signature (`awaitsOwnSellerSignature`), so the card
+    // says so in place of the act, before any wallet prompt.
+    const ownSellerSignature = act === "accept" && awaitsOwnSellerSignature(payload, address);
 
     return (
         <Card className="rounded-lg p-5 space-y-4" data-testid={words.cardTestId}>
@@ -147,10 +153,13 @@ export function YourTurnCard({ act, payload, onAct, onDismiss, isActing, listing
                     <span className="text-ink-muted ml-1">{words.bondNote}</span>
                 </p>
             </div>
+            {ownSellerSignature && <OneWalletBothSidesNote testId="orders-one-wallet-both-sides" />}
             <div className="flex gap-2">
-                <Button type="button" onClick={handleAct} disabled={isActing || isApproving} className="flex-1" data-testid={words.actTestId}>
-                    {isApproving ? "Approving bond…" : isActing ? words.acting : words.act}
-                </Button>
+                {!ownSellerSignature && (
+                    <Button type="button" onClick={handleAct} disabled={isActing || isApproving} className="flex-1" data-testid={words.actTestId}>
+                        {isApproving ? "Approving bond…" : isActing ? words.acting : words.act}
+                    </Button>
+                )}
                 <Button
                     type="button"
                     variant="outline"

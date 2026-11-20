@@ -51,7 +51,7 @@ writes via `WalletGate`.**
 | Route | Notes |
 |---|---|
 | `/sign` | |
-| `/s/checkout?seller=` | Order review + commit. |
+| `/s/checkout?seller=` | Order review + commit. This frontend does not place an order with one wallet on both sides: the accept takes the role by address, buyer first (`acceptOrder` in `lib/checkout/orderCommitmentFlow.ts`), so it cannot add the seller's signature to an order the same wallet signed as buyer. The Core admits such an order (`FigaroCore` checks each signature against its own party and never compares the two), and the SDK signs both sides of it (`sdk/src/signer/gate.ts`). Where a party would meet that dead end, the checkout, `/sign` and the `/orders` accept card say so in one line before any wallet prompt (`awaitsOwnSellerSignature` in `lib/checkout/signState.ts`). |
 | `/members/manage` | The registered dashboard + stake claim. |
 | `/members/{identity,agents,assemblies,buyer,catalog,endpoints,review}` | The member wizard: Identity, Sell through (`assemblies`: bind, and offer the data those trades produce), Buy through (`buyer`: subscribe, and offer the data those trades produce), Catalog, Agents, Endpoints, Review. The two assembly steps are one loop walked twice and both precede Catalog, which prices what they declare. |
 | `/members/edit/{identity,agents,assemblies,buyer,catalog,endpoints}` | Endpoints are the member's own infrastructure — device configuration via `lib/shared/userEndpoints.ts`, never pinned or published. |
@@ -196,10 +196,13 @@ The areas above the registries. `rewards/`, `composability/` and `data/` serve t
   `useUsageRecorder.ts` (the usage-recording writes to `UsageCounter`). Imports `core/`, `registries/` and
   `shared/`; no Core or registry module imports it, except the florin address named under `registries/`.
 - **`composability/`** — third-party on-network contract composition (external, on-chain composition).
-  Generic dispatch is `useCompositionActions.ts`, with per-contract hooks and
-  readers beneath it. The composed contracts' addresses (the swap-and-commit
-  coordinator, Permit2, the swap venue and its quoter, the multisender) are
-  `contracts.ts`.
+  Each composed contract has its own hook or reader here. No generic dispatch
+  runs a clause's declared composition: the checkout performs none, collects
+  none of its `block.checkout.compositionFields`, and places the order with one
+  line that says so (`CheckoutView`). A composition with a `forumUrl` is linked
+  from the dispute panel after the commit. The composed contracts' addresses
+  (the swap-and-commit coordinator, Permit2, the swap venue and its quoter, the
+  multisender) are `contracts.ts`.
   - *Held values:* `heldValues.ts` — the open registry of readers that a spec's
     `block.checkout.heldValues` names (`registerHeldValuesReader`), and
     `useHeldValues`, which checkout uses to offer only the enum values the named

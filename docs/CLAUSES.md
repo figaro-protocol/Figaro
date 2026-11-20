@@ -559,9 +559,11 @@ registry's seed data; the published definition of the format is
   `frontend/tests/lib/blockDesignPhaseReads.test.ts` over the frontend's design
   and checkout files, and by `sdk/tests/clauses/blockPhase.test.ts` over the
   SDK's hints, sign gate and checkout plan. `checkout.compositionFields` are
-  the inputs the buyer gives at checkout for the contract `design.composes`
-  names (its opening parameters, collected by `CheckoutView.tsx` as
-  `compositionInputs`); they are not content fields and nothing commits them.
+  the inputs a frontend may ask the buyer for at checkout, for the contract
+  `design.composes` names (its opening parameters); they are not content
+  fields and nothing commits them. This frontend performs no such call: its
+  checkout collects none of them and places the order, with one line that
+  says so (`CheckoutView.tsx`).
   Reporting while the process runs is witness stages (`spec.stages`), never
   `compositionFields`. The clause key leaves `block` out, and no fingerprint reads
   it. Eight of its attributes (`design.article`, `design.scope`, `design.fills`,

@@ -87,7 +87,6 @@ vi.mock("@/lib/checkout/dispatchRace", () => ({
     }),
     postToAgentEndpoint: vi.fn(),
 }));
-vi.mock("@/lib/composability/useCompositionActions", () => ({ useCompositionActions: () => ({ compose: vi.fn() }) }));
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false, allowanceKnown: true }) }));
 vi.mock("@/hooks/useApproveThenAct", () => ({ useApproveThenAct: () => ({ runWithApproval: (_amount: unknown, act: () => void) => act() }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: undefined }) }));

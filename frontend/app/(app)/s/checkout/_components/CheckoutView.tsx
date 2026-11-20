@@ -38,7 +38,6 @@ import { checkoutMeasureRefusals, executeAssemblyCheckout, type AssemblyCheckout
 import {
     deriveAgreementGroups,
     deriveKitBreakdown,
-    isFilledValue,
     unfilledRequiredFills,
     mergeAssemblyTermFills,
 } from "@/lib/checkout/checkoutDerivations";
@@ -47,7 +46,7 @@ import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/Di
 import { processDesignFollows } from "@/lib/shared/assembly";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
-import { useCompositionActions } from "@/lib/composability/useCompositionActions";
+import { OneWalletBothSidesNote } from "@/components/runtime/OneWalletBothSidesNote";
 import { useHeldValues } from "@/lib/composability/heldValues";
 import type { BuyerFundingRequest } from "@/lib/checkout/orderCommitmentFlow";
 import {
@@ -74,7 +73,7 @@ import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { freshBlindingStore, withCheckoutBlinding, type CheckoutFills } from "@/lib/checkout/checkoutBlinding";
 import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
-import { resolveInputFormat, type FieldSpec } from "@figaro-protocol/sdk/clauses";
+import { resolveInputFormat } from "@figaro-protocol/sdk/clauses";
 
 interface Props {
     sellerAddress: string;
@@ -93,13 +92,13 @@ interface ListedPrice {
     quantity: number;
 }
 
-/** One order's on-network composition (external, on-chain composition): the composing clause, its
- *  standard interface, and the `block.checkout.compositionFields` the buyer fills. */
-interface OrderComposition {
-    nodeId: string;
+/** A clause of the assembly that declares a composition with composition
+ *  fields: an interface this frontend does not perform. Its title and the
+ *  interface it names, for the one line the page shows. */
+interface UnperformedComposition {
     clauseKey: string;
+    title: string;
     interface: string;
-    fields: readonly FieldSpec[];
 }
 
 export function CheckoutView({ sellerAddress }: Props) {
@@ -112,7 +111,6 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Shown off the local development chain only, whose per-run addresses have
     // no canonical deployment record to check against.
     const deploymentFp = useMemo(() => deploymentFingerprint(), []);
-    const { compose } = useCompositionActions();
     const { read: catalogsRead } = useRegisteredCatalogs();
     // The discovered catalogs, read only once present: the page renders
     // nothing below until then (see the early returns).
@@ -259,11 +257,6 @@ export function CheckoutView({ sellerAddress }: Props) {
     } = useCheckout(currency);
     // Nothing is priced, parsed or shown as a magnitude until the chain has answered decimals().
     const decimalsReady = tokenDecimals !== undefined;
-    // Inputs for any order that composes an on-network contract — the
-    // clause's `block.checkout.compositionFields`, filled at checkout (like the cart line items),
-    // keyed by assembly node id then field name. Interface-agnostic: the form
-    // renders whatever fields the composing clause declares, naming no clause.
-    const [compositionInputs, setCompositionInputs] = useState<Record<string, Record<string, unknown>>>({});
     // The buyer's GENERAL-clause field fills, nodeId → clause key → values.
     // Design time is structural: general clauses arrive
     // from the assembly as `{}`; their transaction particulars are filled
@@ -285,13 +278,6 @@ export function CheckoutView({ sellerAddress }: Props) {
                 [clauseKey]: { ...prev[nodeId]?.[clauseKey], [field]: value },
             },
         }));
-    const setCompositionField = (nodeId: string, fieldName: string, value: unknown) =>
-        setCompositionInputs((prev) => {
-            const nextNode = { ...(prev[nodeId] ?? {}) };
-            if (value === undefined) delete nextNode[fieldName];
-            else nextNode[fieldName] = value;
-            return { ...prev, [nodeId]: nextNode };
-        });
 
     // Clear a stale choice the seller no longer offers; auto-select the sole
     // option (a one-option dropdown is noise — the static line shows it).
@@ -562,44 +548,51 @@ export function CheckoutView({ sellerAddress }: Props) {
     // (seller-assigned). The fill mechanism is DERIVED from binding state +
     // composition — there is no coordination field.
     const unboundSubOrders = subOrderPlan.filter((p) => !p.seller);
-    // Any order that composes an on-network contract (external, on-chain composition) —
-    // discovered by reading `block.design.composes` + `block.checkout.compositionFields`
-    // off the clause spec, naming no clause and no interface. Applies to ANY
-    // order (root, sub, 136th), not just sub-orders. The buyer fills each
-    // composition's input fields below.
-    const orderCompositions = ((): OrderComposition[] => {
+    // A clause of any order (root, bound or unbound sub-order) that declares
+    // `block.design.composes` with composition fields asks for inputs to a
+    // contract call at checkout. This frontend performs no such call, and the
+    // fields are never signed, so the page asks for none of them and holds
+    // the order on none: it says so in one line per clause. A composition
+    // with no fields (a forum linked from `forumUrl` after the commit) is
+    // performed elsewhere and gets no line. Read off the spec, naming no
+    // clause and no interface.
+    const unperformedCompositions = ((): UnperformedComposition[] => {
         if (!pickedAssembly) return [];
-        const out: OrderComposition[] = [];
+        const out = new Map<string, UnperformedComposition>();
         for (const order of pickedAssembly.hydratedAssembly.assembly.agreements) {
             for (const cid of Object.keys(agreementClauses(pickedAssembly.hydratedAssembly, order))) {
-                const block = getClauseSpec(cid)?.block;
-                if (block?.design.composes && block.checkout.compositionFields.length > 0) {
-                    out.push({ nodeId: order.id, clauseKey: cid, interface: block.design.composes.interface, fields: block.checkout.compositionFields });
-                    break; // one composition per order
+                const spec = getClauseSpec(cid);
+                const composes = spec?.block?.design.composes;
+                if (composes && spec.block!.checkout.compositionFields.length > 0 && !out.has(cid)) {
+                    out.set(cid, { clauseKey: cid, title: spec.title, interface: composes.interface });
                 }
             }
         }
-        return out;
+        return [...out.values()];
     })();
-    // A composition never supplies a co-seller: it invokes an on-network
-    // contract, it does not name a seller. So every unbound sub-order is the
-    // buyer's pick, whether or not the order also composes.
+    // A composition never supplies a co-seller. So every unbound sub-order is
+    // the buyer's pick.
     const buyerPickSubOrders = unboundSubOrders;
     const buyerChoosesCoSeller = buyerPickSubOrders.length > 0;
-    // Every composition's REQUIRED block.checkout.compositionFields must be filled before
-    // placing — the same emptiness rule the general-clause fill gate applies.
-    const compositionsReady = orderCompositions.every((c) =>
-        c.fields.every((f) => !f.required || isFilledValue(compositionInputs[c.nodeId]?.[f.name])),
+    // The connected buyer is also the seller of an order of this checkout:
+    // the lead, a bound co-seller, or the co-seller the buyer picked. The
+    // Core and the SDK admit such an order; this frontend's accept does not
+    // (`awaitsOwnSellerSignature`), so the page says so before the first
+    // signature prompt. It refuses nothing: the signed order still leaves
+    // the page.
+    const buyerSellsAnOrder = !!buyer && (
+        hexEqual(buyer, memberCatalog?.address ?? sellerAddressLower)
+        || subOrderPlan.some(({ seller }) => hexEqual(buyer, seller))
+        || hexEqual(buyer, sellerSelection?.seller)
+        || hexEqual(buyer, raceOutcome?.selection.seller)
     );
     // Ready to place when a profile-bound assembly is resolved (chosen, when the
-    // seller offers more than one), any buyer-chosen co-seller is selected,
-    // and every composition's inputs are complete.
+    // seller offers more than one) and any buyer-chosen co-seller is selected.
     const orderReady = !!pickedAssembly
         && !!currency
         && decimalsReady
         && !translationHeld
-        && (!buyerChoosesCoSeller || !!sellerSelection || !!raceOutcome)
-        && compositionsReady;
+        && (!buyerChoosesCoSeller || !!sellerSelection || !!raceOutcome);
     // The root order carries the design-time clauses the buyer is bonding to.
     // Surfaced inline below so the buyer reviews the terms before placing the
     // order; the final per-order sign confirmation is the shared agreement-preview
@@ -747,12 +740,6 @@ export function CheckoutView({ sellerAddress }: Props) {
             sellerCatalogs,
             tokenDecimals,
             subOrderSelections: Object.keys(selections).length > 0 ? selections : undefined,
-            subOrderCompositions: orderCompositions.length > 0
-                ? Object.fromEntries(orderCompositions.map((c) => [
-                    c.nodeId,
-                    { interface: c.interface, fieldValues: compositionInputs[c.nodeId] ?? {} },
-                ]))
-                : undefined,
             subOrderQuantities,
             subOrderUnitPrices: Object.keys(subOrderUnitPrices).length > 0 ? subOrderUnitPrices : undefined,
             clauseFills: expandedClauseFills,
@@ -882,7 +869,6 @@ export function CheckoutView({ sellerAddress }: Props) {
                         }
                         return payload;
                     },
-                    compose,
                 },
             );
         } catch (cause: unknown) {
@@ -1371,26 +1357,17 @@ export function CheckoutView({ sellerAddress }: Props) {
                             </p>
                         )}
 
-                        {/* On-network composition inputs (external, on-chain composition): any
-                            order whose clause declares block.design.composes +
-                            block.checkout.compositionFields gets those fields
-                            rendered here generically — one form, naming no
-                            clause or interface — a novel composition surfaces
-                            its own fields with zero code. */}
-                        {orderCompositions.map((c) => (
-                            <div key={c.nodeId} data-testid={`composition-${c.nodeId}`} className="space-y-2">
-                                {c.fields.map((field) => (
-                                    <FieldControl
-                                        key={field.name}
-                                        field={field}
-                                        mode="runtime"
-                                        value={compositionInputs[c.nodeId]?.[field.name]}
-                                        onChange={(v) => setCompositionField(c.nodeId, field.name, v)}
-                                        testId={`composition-${c.nodeId}-${field.name}`}
-                                    />
-                                ))}
-                            </div>
+                        {/* A declared composition this frontend does not
+                            perform: one line per clause, and no input. */}
+                        {unperformedCompositions.map((c) => (
+                            <p key={c.clauseKey} className="text-xs text-ink-muted" data-testid="checkout-composition-not-performed">
+                                {c.title} declares the {c.interface} interface, which this frontend does not perform; the order is placed without it.
+                            </p>
                         ))}
+
+                        {/* One wallet on both sides of an order: said before
+                            the first wallet prompt, which the button opens. */}
+                        {buyerSellsAnOrder && <OneWalletBothSidesNote testId="checkout-one-wallet-both-sides" />}
 
                         <CheckoutSigningNote />
 

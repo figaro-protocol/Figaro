@@ -28,6 +28,30 @@ export interface SignState {
     myBondLabel: string;
     /** The 2× bond THIS seat locks — zero for a spectator. */
     myBondAmount: bigint;
+    /** This wallet is both the buyer and the seller and only the buyer has
+     *  signed: this frontend cannot add the seller's signature
+     *  (`awaitsOwnSellerSignature`). */
+    awaitsOwnSellerSignature: boolean;
+}
+
+/**
+ * The connected wallet is both the buyer and the seller of the order, the
+ * buyer's signature is on it and the seller's is not. The Core admits such
+ * an order and the SDK signs both sides of it. This frontend does not: its
+ * accept takes the role by address, buyer first (`acceptOrder` in
+ * `orderCommitmentFlow`), so it looks for the seller's signature it was
+ * meant to add, and refuses. A page shows `OneWalletBothSidesNote` in place
+ * of that act.
+ */
+export function awaitsOwnSellerSignature(
+    payload: Pick<CommitmentPayload, "commitment" | "buyerSig" | "sellerSig"> | null | undefined,
+    address: string | undefined,
+): boolean {
+    if (!payload) return false;
+    return hexEqual(address, payload.commitment.buyer)
+        && hexEqual(address, payload.commitment.seller)
+        && !!payload.buyerSig
+        && !payload.sellerSig;
 }
 
 export function deriveSignState(
@@ -57,5 +81,6 @@ export function deriveSignState(
     return {
         isRoot, hasBuyerSig, hasSellerSig, isDraft, quoteTerms, isQuoteRequest,
         isBuyer, isSeller, needsMySignature, myBondLabel, myBondAmount,
+        awaitsOwnSellerSignature: awaitsOwnSellerSignature(parsed, address),
     };
 }

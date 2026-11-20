@@ -77,7 +77,6 @@ vi.mock("@/lib/checkout/assemblyCheckout", async (importOriginal) => ({
 }));
 vi.mock("@/lib/checkout/cartStore", () => ({ useCartStore: () => CART }));
 vi.mock("@/lib/checkout/dispatchRace", () => ({ useDispatchRace: () => ({ result: null }), postToAgentEndpoint: vi.fn() }));
-vi.mock("@/lib/composability/useCompositionActions", () => ({ useCompositionActions: () => ({ compose: vi.fn() }) }));
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false, allowanceKnown: true }) }));
 vi.mock("@/hooks/useApproveThenAct", () => ({ useApproveThenAct: () => ({ runWithApproval: vi.fn() }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: undefined }) }));
