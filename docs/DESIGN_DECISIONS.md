@@ -227,9 +227,8 @@ receive the resolved process's complete, closed evidentiary data as input.
 key and any URI, placing the fixed registration stake
 (`registrationDeposit`, immutable at deploy). There is no approval and no identity check.
 First write wins per key (`AlreadyRegistered` revert) and
-the binding is permanent — `requestWithdrawal` and, after the cooldown,
-`withdraw` return the stake without clearing it; readers de-surface a withdrawn
-clause for new compositions from the request (§ 41).
+the binding is permanent — `withdrawDeposit` returns the stake without
+clearing it; readers de-surface a withdrawn clause for new compositions.
 The key is `keccak256` of the canonical bytes of the spec without its
 top-level `block` (`computeClauseKey(spec)`); `block` is presentation and
 stays outside the key, and the spec's `clauseId` and `version` are words
@@ -264,10 +263,10 @@ first-write-wins design KEPT, for two reasons. First, the shared flat keyspace
 IS the coordination commons — namespacing keys under the designer's address
 (the structural fix) would fragment it, and signature-based registration breaks the designer-is-staker assumption the reward's live-stake gate rests on. Second, reward
 follows real USAGE (network truth): a squatted key earns nothing unless the
-ecosystem actually composes it, which the squatter cannot force, and the stake still prices the attempt: a front-runner that withdraws the key it took holds its stake locked for the cooldown (§ 41). The reactive-front-run window is already minimal —
+ecosystem actually composes it, which the squatter cannot force, and a squatter that KEEPS the key keeps its stake live to claim, so the stake prices that attempt. A front-runner that registers a key and withdraws it in the same transaction pays only gas; the stake prices nothing there, and § 41 states that residual. The reactive-front-run window is already minimal —
 registration pins the spec to the designer's OWN node and registers in one atomic UI
 action, so nothing is publicly observable before the register tx hits the mempool.
-The residual — a mempool front-run of that tx — is the accepted,
+The residual — a mempool front-run of that tx by a wallet that keeps the key — is the accepted,
 stake-priced cost; no registry has a guessable id to claim in advance,
 since a clause key, an `agreementHash` and an assembly's `processDesignHash` are all derived from
 content. The same holds on `AgreementRegistry` and `ProcessRegistry`: anyone can
@@ -563,10 +562,10 @@ The ETH is not stuck, on any reading:
   member is never held on a surface they asked to leave, so discovery removal and
   erasure of the published declaration are unaffected.
 
-**Scope**: the recycling argument is `MembersRegistry`'s. `ClauseRegistry`,
-`AgreementRegistry` and `ProcessRegistry` carry the same cooldown for another
-reason, a front-run their one-call withdrawal left open (§ 41); the "not stuck"
-reading above holds for them word for word.
+**Scope**: `MembersRegistry` only. `ClauseRegistry`, `AgreementRegistry` and
+`ProcessRegistry` return a stake in one call and need no wait: a key holds no
+identity to recycle and no name to take, and its stake prices it through the
+reward (§ 41).
 
 ---
 
@@ -720,12 +719,31 @@ The counter reads its whole-call gates (the writer, the period, the provenance l
 loop, for a few thousand gas; a failed call that hands back less than 1/32 of the gas the frame
 held before it therefore consumed what it was given, and `settleBatch` reverts
 (`AccrualStarvedOfGas`, `_applyAccrual`). The 1/32 leaves room for a registry read one frame down,
-which hands the counter back at most 1/64 of its remainder. The probe
-`test_settleBatch_gasStarvationProbe` (`test/core/verifier/FigaroBatchVerifierTest.t.sol`) walks
-the gas limit down from a full run at one, sixteen and sixty-four uses and asserts that no limit
-lands the batch with `BatchAccrualSkipped`; `test_settleBatch_aStarvedAccrualRevertsTheBatch`
-lands sixty-four uses at 95% of a full run, inside the band that landed them uncounted before the
-check, and holds the revert by name.
+which hands the counter back at most 1/64 of its remainder.
+
+The revert stays because `settleBatch` is open to anyone. An observer can copy a relay's pending
+call and send it first with a gas limit inside the band. Without the revert, that copy lands the
+batch with its uses uncounted. The relay's own send then fails its root check, because the root
+has moved. So anyone could leave designers' uses uncounted for the price of one batch's gas. With
+the revert, the copy fails, the root stays, and the relay's batch lands with every use counted.
+
+The relay that sends its own batch keeps it out of the band: a batch that carries uses is sent with
+at least its plan, which counts `SETTLE_GAS_PER_USE` for each use, never past the batch's ceiling
+(`gas::settle_send_gas_limit`, `docs/SCALING_STRATEGY.md` § "What a batch may cost the relay").
+The node's estimate is the lowest gas at which the call does not revert. A limit at that estimate
+plus its headroom is not tied to the cost of a use, so it could still revert the relay's batch here. A use a batch leaves uncounted for another reason, a
+gate of the counter, is proved again by whoever sends its claim; a stranger's relay may choose
+another gas limit, and loses only its designers' counts until someone sends their claims again.
+
+The probe `test_settleBatch_gasStarvationProbe` (`test/core/verifier/FigaroBatchVerifierTest.t.sol`)
+walks the gas limit down from a full run at one, sixteen, thirty-two and sixty-four uses. It
+asserts that no limit lands the batch with `BatchAccrualSkipped`, and that the relay's plan is at
+or above the lowest gas that lands the batch. `test_settleBatch_aStarvedAccrualRevertsTheBatch`
+sends sixty-four uses at 95% of a full run, inside the band that landed them uncounted before the
+check, and the batch reverts by name.
+`test_settleBatch_aCopiedCallSentFirstAtAStarvingLimitRevertsAndTheRelaysSendLands` holds the
+reason: a third party's copy at a starving limit reverts, and the same batch sent afterwards at
+its plan lands with every use counted.
 
 ## 20. The member-stake gate on the seller of record is retroactive — usage must be recorded while the stake is live
 
@@ -1759,66 +1777,66 @@ and no failure text.
 
 ---
 
-## 41. The key registries take the members registry's cooldown; a withdrawn key forfeits its unclaimed periods
+## 41. A withdrawn key forfeits its unclaimed periods; the key registries return a stake in one call
 
-**Pattern**: `ClauseRegistry`, `AgreementRegistry` and `ProcessRegistry` return a
-stake in two calls, as `MembersRegistry` does. `requestWithdrawal(key)`, by the
-stored `registeredBy` only, sets the withdrawn flag at once and
-`releaseAt[key] = block.timestamp + withdrawalCooldown`, and emits
-`WithdrawalRequested`; `withdraw(key)` pays the stake out only from `releaseAt`
-(`CooldownActive` before it). `withdrawalCooldown` is an immutable constructor
-argument; nothing releases a stake early. `RpgfMinter._isAuthor` requires the
-key's stake to be live at the claim, so a designer that requests its stake back
-before claiming loses every closed period of that key not yet claimed.
+**Pattern**: `RpgfMinter._isAuthor` requires the key's registration stake to be
+live at the claim. A designer that withdraws the stake of a clause, an
+agreement or an assembly before claiming loses every closed period of that key
+not yet claimed. `ClauseRegistry`, `AgreementRegistry` and `ProcessRegistry`
+return the stake in one call, `withdrawDeposit(key)`, by the stored
+`registeredBy`, once, with no wait.
 
-**Why it looks wrong**: § 14's argument does not reach the key registries: a key
-is withdrawn once and its binding is permanent, so no stake is recycled across
-identities. A timer on a stake whose key can never be registered again looks like
-a hold with no purpose. And a closed period the counter scored under a live stake,
-lost because the stake was withdrawn later, looks like earned rewards taken back.
+**Why it looks wrong**: a closed period the counter scored under a live stake,
+lost because the stake was withdrawn later, looks like earned rewards taken
+back. And `MembersRegistry` holds its stake for a cooldown (§ 14), so the three
+key registries returning theirs at once looks like a missing guard.
 
-**Why it is correct**: the cooldown's purpose is a front-run. With a one-call
-withdrawal, a front-runner that sees a designer's `registerClause`,
-`registerAgreement` or `registerProcess` in the mempool registers the same key
-first and takes its stake back in the same transaction. The key is then withdrawn
-for good: no use of it is ever counted (§ 18), the designer's transaction reverts
-as a second registration, and the front-runner's cost is gas. One stake serves any
-number of keys, which is the recycling § 14 rules out, aimed at keys instead of
-identities. § 7 accepts the front-run that takes a key's reward because the stake
-prices the attempt, and a one-call withdrawal returns that stake in the attempt's
-own transaction. With the cooldown, every key a front-runner takes and withdraws
-holds one stake locked for the cooldown, the price § 7 relies on. The deploy
-scripts pass the members' value, 28 days, on Sepolia and mainnet, and zero on the
-devnet, as for members. The request flips the flag at once, so a key stops
-counting as live at the request, as with a one-call withdrawal: only the payment
-waits. The front-run itself stays possible, as § 7 accepts; a designer still
-escapes it by changing a clause's bytes or an agreement's composition, and a
-private mempool closes the window.
+**Why it is correct**: the forfeit is the claim-time half of the live-stake
+check, and the check runs at both ends: at the count (§ 18) and at the claim.
+The paper at `/papers/substrate-broadening-rpgf` grounds it: it closes the path
+of registering, farming and withdrawing, because the stake that makes a
+registration costly cannot be recovered while the registration still earns. A
+check at the count alone would let a designer withdraw as soon as its last use
+counted and still claim. The capital behind the paid replication lever (§ 18)
+would then be held only through the farming, not through the period and its
+claim. `script/DeployMainnet.s.sol` sizes the stake on that whole span. The
+forfeited share stays in the period's total and is never minted, so the pool
+under-pays and never over-pays. The order that keeps a period is claim first,
+then withdraw, and that order costs the designer nothing.
 
-The forfeit is the claim-time half of the live-stake check, and the check runs at
-both ends: at the count (§ 18) and at the claim. The paper at
-`/papers/substrate-broadening-rpgf` grounds it: it closes the path of
-registering, farming and withdrawing, because the stake that makes a registration
-costly cannot be recovered while the registration still earns. A check at the
-count alone would let a designer withdraw as soon as its last use counted and
-still claim, so the capital behind the paid replication lever (§ 18) would be held
-only through the farming, not through the period and its claim, which is what
-`script/DeployMainnet.s.sol` sizes the stake on. The forfeited share stays in the
-period's total and is never minted, so the pool under-pays and never over-pays.
-The order that keeps a period is claim first, then request the stake back; the
-cooldown runs after the request, so that order costs the designer nothing.
+The key registries need no wait. § 14's wait stops one stake being recycled
+across identities, and a key registry holds no identity. A key is the hash of
+the content, and the registry holds no name, so there is nothing to take but
+bytes (§ 7). A designer whose exact bytes another registered first registers a
+new key. A clause's designer gets one by any change to the spec outside
+`block`. An agreement's key covers only its clauses' keys and the values filled
+for them (`agreementHashOf`, `sdk/src/assembly.ts`), so a new agreement key
+needs a changed clause or a changed value. An assembly's key is the root over
+its agreements, so a new one needs a changed agreement. The stake prices a key
+through the reward: the key earns only while its stake is live, at the count
+and at the claim. A designer releases a new version by withdrawing the old key
+and registering the new one. A wait would hold a second stake for its whole
+length on every release.
 
-**Tests**: `test/rewards/KeyWithdrawalRegressionTest.t.sol`: a front-runner that
-registers a key and requests it back in one transaction leaves its stake in each
-registry until the cooldown, and a claim of the stake before that reverts
-`CooldownActive`; a designer that requests its stake back after a period closed
-and before claiming cannot claim it, and the share is never minted; a designer
-that claims first and then requests keeps the period. Each registry's suite
-(`test/registries/*RegistryTest.t.sol`) holds the two steps, the cooldown and the
-payout; `RpgfMinterTest` holds the forfeit on each kind. The three Halmos contracts
-in `test/registries/HalmosClauseAgreementAndAssemblyRegistries.t.sol` prove
-solvency over request and claim interleavings and that a requested stake is
-claimable in full once the cooldown has elapsed and never before.
+**The accepted residual: a key burned for the price of gas.** With a one-call
+withdrawal, a rival that sees a designer's registration in the mempool can
+register the same key first and withdraw it in the same transaction. Its stake
+comes back at once, so it pays only gas. The key stays registered and
+withdrawn for good: no use of it is ever counted (§ 18), and the designer's
+transaction reverts as a second registration. The rival can do so again for
+each new key the designer tries. The stake prices a front-runner that keeps
+the key, because that stake must stay live for the key to earn; it prices
+nothing for one that burns the key. What bounds the burn is that the
+registering page pins the content and registers in one act, so nothing shows
+before the transaction reaches the mempool, and a private mempool closes the
+rest.
+
+**Tests**: `test/rewards/KeyWithdrawalRegressionTest.t.sol`: a designer that
+withdraws its stake after a period closed and before claiming cannot claim it,
+and the share is never minted; a designer that claims first and then withdraws
+keeps the period. Each registry's suite (`test/registries/*RegistryTest.t.sol`)
+holds the one-call withdrawal by the registrant, once; `RpgfMinterTest` holds
+the forfeit on each kind.
 
 ---
 
@@ -1942,7 +1960,7 @@ of the content's total.
 | 16 | Recorded usage can score zero (`minSellers` floor) | reward-path | Real resolved trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; the floor reads the one tally both routes feed, and a seller counts toward it once |
 | 17 | No per-recording charge or burn | reward-path | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed charge inserts an institution + usage-coupled revenue into an identity-free mechanism |
 | 18 | Usage needs a live clause, agreement or assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |
-| 19 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a skipped use stays uncounted and may be proved again in a later batch (conservative under-pay); the sequencer pre-filters what the counter would skip; an accrual starved of gas reverts the batch, never skips |
+| 19 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a skipped use stays uncounted and may be proved again in a later batch (conservative under-pay); the sequencer pre-filters what the counter would skip; an accrual starved of gas reverts the batch, never skips, since anyone could send a copied call starved first |
 | 20 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal stops resolved-but-uncounted trades counting — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is read when a use is counted; counting at resolution closes the normal window; an uncounted use counts in whichever period is open once its seller stakes again, lost only after the last period closes; residual grief is self-limiting (griefer forfeits own eligibility while unstaked) |
 | 21 | Batch resolve: nonce-less, deadline-less `ResolveProcess(processId, runningTotal)` authorization, by the buyer's key or its wallet code | batch-path | The canonical EIP-712 replay shape | The authorization binds a cumulative value, so it pays exactly the prefix of the process that value names and a later commit invalidates it; resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; a wallet-code attestation's refusal reverts the batch by name, a call that ran out of gas included, so no gas limit lands a batch without it, and the relay dead-letters it alone |
 | 22 | No site pinning account; a browser with no node and no service publishes nothing | site/pinning | A visitor without a node cannot publish until it sets one | A bundled credential names its holder and makes one account a central dependency; each publishing wallet pins through its own node or a service it chose, on every chain; with neither, a publishing page shows one line and the setting, and nothing is sent |
@@ -1964,5 +1982,5 @@ of the content's total.
 | 38 | `RpgfMinter.claim` checks the period budget consistent counter data already bounds | reward-path | A check that cannot fire reads as dead code | A backstop like § 28: it states the budget in the minter, so a fault in the counter's tally is refused rather than minted from other designers' share |
 | 39 | `AttestBuyer` signs `processId` beside `orderHash`; `AttestSeller` does not | batch-path/evidence | The seller's message looks one field short | `orderHash = keccak256(processId ‖ structHash)` binds the process on every path, and both ids derive from the one target commitment; the buyer's extra field adds nothing to what is bound, and changing a type changes every signature and the verification key |
 | 40 | The reference frontend reads a clause spec only when its bytes hash to the CID in the registered URI | frontend/reader | The key already anchors everything a party signs, and the registry accepts any URI | The key leaves the `block` out, so without the CID the `block` read is the transport's choice; with it, the registrant's; a URI form the frontend cannot recompute is the unchecked transport, so it is refused |
-| 41 | The key registries take the members' withdrawal cooldown; a withdrawn key forfeits its unclaimed periods | registry/reward-path | A key withdrawn once recycles nothing, so a timer on its stake looks purposeless; a period scored under a live stake and lost at a later withdrawal looks like earned rewards taken back | A one-call withdrawal lets a front-runner take a pending key and its stake back in one transaction, at gas cost; the cooldown makes the stake price the attempt (§ 7). The live-stake check runs at the count and at the claim, so the stake stays held through the period and its claim (`/papers/substrate-broadening-rpgf`); a designer claims first, then requests |
+| 41 | A withdrawn key forfeits its unclaimed periods; the key registries return a stake in one call | registry/reward-path | A period scored under a live stake and lost at a later withdrawal looks like earned rewards taken back; no wait beside the members' cooldown looks like a missing guard | The live-stake check runs at the count and at the claim, so the stake stays held through the period and its claim (`/papers/substrate-broadening-rpgf`); a designer claims first, then withdraws. A key holds no identity and no name, only bytes (§ 7); the stake prices it through the reward, and a wait would hold a second stake on every new version. Accepted residual: a rival can register a key and withdraw it in one transaction for gas, burning it, once per key tried; the one-act pin and register and a private mempool bound it |
 | 42 | A pattern past a size is refused at parse, and long values are refused rather than run | spec format/clause engine | Both engines are linear in the value, so a limit looks like the skip it replaced; a matching value or list can be refused; the fuller count refuses patterns a narrower count would admit | Linear is not cheap: the cost per character is the automaton's size, which the fuller count measures and the old one did not; a skip leaves a signed term unchecked, a refusal keeps every admitted term checked; the limit keeps the two engines' parse verdicts one, and the budgets bound one value's and one content's work in both |

@@ -1,7 +1,7 @@
 /**
  * A withdrawn clause, agreement or assembly leaves view in the registry hooks
  * (K4: surfacing derives from the LIVE stake). Each hook reads real encoded
- * `Registered` and `WithdrawalRequested` logs through its own row projection:
+ * `Registered` and `DepositWithdrawn` logs through its own row projection:
  *  - `usePublishedAgreements` and `useAllPublishedAssemblies` (the network-wide
  *    read) drop a withdrawn entry; the registering wallet's read and
  *    `includeWithdrawn` keep it, flagged.
@@ -93,7 +93,7 @@ describe("a withdrawn entry leaves view in the registry hooks", () => {
                 rawLog(abi, "AgreementRegistered", { agreementHash: KEY_LIVE, registeredBy: REGISTRANT, contentURI: "ipfs://live" }, 5n),
                 rawLog(abi, "AgreementRegistered", { agreementHash: KEY_GONE, registeredBy: REGISTRANT, contentURI: "ipfs://gone" }, 4n),
             ],
-            [rawLog(abi, "WithdrawalRequested", { agreementHash: KEY_GONE, registeredBy: REGISTRANT, amount: 1n, releaseAt: 99n }, 6n)],
+            [rawLog(abi, "DepositWithdrawn", { agreementHash: KEY_GONE, registeredBy: REGISTRANT, amount: 1n }, 6n)],
             "AgreementRegistered",
         );
 
@@ -121,7 +121,7 @@ describe("a withdrawn entry leaves view in the registry hooks", () => {
                 rawLog(abi, "ProcessRegistered", { processDesignHash: KEY_LIVE, registeredBy: REGISTRANT, contentURI: "ipfs://live" }, 5n),
                 rawLog(abi, "ProcessRegistered", { processDesignHash: KEY_GONE, registeredBy: REGISTRANT, contentURI: "ipfs://gone" }, 4n),
             ],
-            [rawLog(abi, "WithdrawalRequested", { processDesignHash: KEY_GONE, registeredBy: REGISTRANT, amount: 1n, releaseAt: 99n }, 6n)],
+            [rawLog(abi, "DepositWithdrawn", { processDesignHash: KEY_GONE, registeredBy: REGISTRANT, amount: 1n }, 6n)],
             "ProcessRegistered",
         );
 
@@ -145,7 +145,7 @@ describe("a withdrawn entry leaves view in the registry hooks", () => {
                 rawLog(abi, "ClauseRegistered", { clauseKey: KEY_LIVE, contentURI: "ipfs://live", registeredBy: REGISTRANT }, 5n),
                 rawLog(abi, "ClauseRegistered", { clauseKey: KEY_GONE, contentURI: "ipfs://gone", registeredBy: REGISTRANT }, 4n),
             ],
-            [rawLog(abi, "WithdrawalRequested", { clauseKey: KEY_GONE, registeredBy: REGISTRANT, amount: 1n, releaseAt: 99n }, 6n)],
+            [rawLog(abi, "DepositWithdrawn", { clauseKey: KEY_GONE, registeredBy: REGISTRANT, amount: 1n }, 6n)],
             "ClauseRegistered",
         );
 

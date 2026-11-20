@@ -95,7 +95,7 @@ export function assemblyRegisterRevertMessage(attemptedSlug: string): RevertMess
  * processDesignHash shouldn't occur, but if they do (e.g. a stale fork
  * chain), the most-recent block wins.
  *
- * SURFACING DERIVES FROM THE LIVE STAKE (K4): `WithdrawalRequested` events
+ * SURFACING DERIVES FROM THE LIVE STAKE (K4): `DepositWithdrawn` events
  * fold in as `stakeWithdrawn`. The network-wide read (registeredBy === undefined
  * — every discovery/inventory/checkout surface) DROPS withdrawn
  * assemblies: withdraw = de-surface. The registeredBy-scoped read keeps them,
@@ -112,7 +112,7 @@ const useProcessRegistryScan = createRegistryEventScan<PublishedAssembly>({
     getRegistry: getProcessRegistry,
     abi: PROCESS_REGISTRY_ABI,
     registeredEventName: "ProcessRegistered",
-    withdrawnEventName: "WithdrawalRequested",
+    withdrawnEventName: "DepositWithdrawn",
     label: "usePublishedAssemblies",
     toRows: (registeredLogs, withdrawnLogs, registeredBy) => {
         // Decoding is the SDK's — one parse per family.

@@ -243,9 +243,6 @@ contract DeployWiringTest is Test {
         assertEq(d.agreements().registrationDeposit(), 0.001 ether, "devnet agreement stake");
         assertEq(d.members().registrationDeposit(), 0.001 ether, "devnet member deposit");
         assertEq(d.members().withdrawalCooldown(), 0, "devnet cooldown");
-        assertEq(d.clauses().withdrawalCooldown(), 0, "devnet clause cooldown");
-        assertEq(d.assemblies().withdrawalCooldown(), 0, "devnet assembly cooldown");
-        assertEq(d.agreements().withdrawalCooldown(), 0, "devnet agreement cooldown");
 
         FlorinToken f = d.florin();
         assertTrue(f.deployerMintRenounced(), "deployer mint renounced");
@@ -328,9 +325,6 @@ contract DeployWiringTest is Test {
         assertEq(AgreementRegistry(d.agreements()).registrationDeposit(), 0.05 ether, "mainnet agreement stake");
         assertEq(MembersRegistry(d.members()).registrationDeposit(), 0.05 ether, "mainnet member deposit");
         assertEq(MembersRegistry(d.members()).withdrawalCooldown(), 28 days, "mainnet cooldown");
-        assertEq(ClauseRegistry(d.clauses()).withdrawalCooldown(), 28 days, "mainnet clause cooldown");
-        assertEq(ProcessRegistry(d.assemblies()).withdrawalCooldown(), 28 days, "mainnet assembly cooldown");
-        assertEq(AgreementRegistry(d.agreements()).withdrawalCooldown(), 28 days, "mainnet agreement cooldown");
     }
 
     // ── Sepolia full deploy ──────────────────────────────────────
@@ -390,9 +384,9 @@ contract DeployWiringTest is Test {
     function test_sepoliaPairDeploy_wiresThePairToTheExistingStack() public {
         FigaroCore core = new FigaroCore();
         MembersRegistry members = new MembersRegistry(0.05 ether, 28 days);
-        ClauseRegistry clauses = new ClauseRegistry(0.05 ether, 28 days);
-        ProcessRegistry assemblies = new ProcessRegistry(0.05 ether, 28 days);
-        AgreementRegistry agreements = new AgreementRegistry(0.05 ether, 28 days);
+        ClauseRegistry clauses = new ClauseRegistry(0.05 ether);
+        ProcessRegistry assemblies = new ProcessRegistry(0.05 ether);
+        AgreementRegistry agreements = new AgreementRegistry(0.05 ether);
         address gateway = address(new MockSP1Verifier());
         bytes32 vkey = keccak256("pair-vkey");
         uint64 genesis = uint64(block.timestamp);
@@ -436,9 +430,9 @@ contract DeployWiringTest is Test {
     ///      pair must never bind to an address that merely exists.
     function test_sepoliaPairDeploy_refusesAnExistingAddressWithoutCode() public {
         MembersRegistry members = new MembersRegistry(0.05 ether, 28 days);
-        ClauseRegistry clauses = new ClauseRegistry(0.05 ether, 28 days);
-        ProcessRegistry assemblies = new ProcessRegistry(0.05 ether, 28 days);
-        AgreementRegistry agreements = new AgreementRegistry(0.05 ether, 28 days);
+        ClauseRegistry clauses = new ClauseRegistry(0.05 ether);
+        ProcessRegistry assemblies = new ProcessRegistry(0.05 ether);
+        AgreementRegistry agreements = new AgreementRegistry(0.05 ether);
         address gateway = address(new MockSP1Verifier());
 
         SepoliaPairDeployHarness d = new SepoliaPairDeployHarness();

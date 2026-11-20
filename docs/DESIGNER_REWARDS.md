@@ -149,18 +149,16 @@ own currency, at the moment it counts:
   agreement kind. The entry's stake is also read when each use counts, so the
   check runs at both ends.
 
-The stake is reclaimable, in two calls: the request de-surfaces the entry at
-once, and the stake is paid back after the registry's withdrawal cooldown
-(`docs/CONTRACTS.md` § "The cooldown"). The request ends the entry's earning,
-and it forfeits every closed period of the entry not yet claimed: the claim
-refuses a key whose stake is withdrawn, the share stays in the period's total,
-and nobody mints it. Nothing restores it, because the key can never be
-registered again. So a designer claims its closed periods first and requests
-its stake back after; the cooldown runs after the request, so the order costs
-nothing. The chain clears no binding, and every order already committed
-against the entry still resolves. Whether a frontend hides a withdrawn entry
-from new compositions is that frontend's choice (`docs/DESIGN_DECISIONS.md`
-§ 7).
+The stake is reclaimable in one call, `withdrawDeposit(key)`, by the wallet
+that registered the entry, with no wait. The withdrawal ends the entry's
+earning, and it forfeits every closed period of the entry not yet claimed: the
+claim refuses a key whose stake is withdrawn, the share stays in the period's
+total, and nobody mints it. Nothing restores it, because the key can never be
+registered again. So a designer claims its closed periods first and withdraws
+its stake after. The chain clears no binding, and every order already
+committed against the entry still resolves. Whether a frontend hides a
+withdrawn entry from new compositions is that frontend's choice
+(`docs/DESIGN_DECISIONS.md` § 7).
 
 What the stake does and does not do against Sybil attacks is stated at its
 honest strength in `docs/DATA_LAYER.md`; it is not restated here.

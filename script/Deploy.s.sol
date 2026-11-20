@@ -100,14 +100,9 @@ contract Deploy is Script {
 
         // ── ClauseRegistry ──────────────────────────────────────────
         // Deposit = staked intent (K4): registering costs 0.001 ETH,
-        // reclaimable via requestWithdrawal — which de-surfaces the clause
-        // at once — then withdraw after the cooldown. Pollution is priced by
-        // deposit × time-surfaced.
-        // COOLDOWN 0 ON DEVNET, for the reason MembersRegistry's is 0 below:
-        // e2e runs that request and claim a stake do not warp a chain they
-        // share with the frontend. The cooldown's behavior is covered in
-        // Foundry against a non-zero value (the three registry tests).
-        _clauses = new ClauseRegistry(0.001 ether, 0);
+        // reclaimable via withdrawDeposit — which de-surfaces the clause.
+        // No time lock; pollution is priced by deposit × time-surfaced.
+        _clauses = new ClauseRegistry(0.001 ether);
         console.log("ClauseRegistry deployed at:", address(_clauses));
 
         // Clauses are NOT registered here. They are pinned to IPFS + anchored
@@ -136,22 +131,21 @@ contract Deploy is Script {
         // MembersRegistry uses but adapted: withdraw returns the ETH and
         // de-surfaces the assembly, but the composition binding stays
         // permanently because buyers and sellers rely on content stability.
-        // Pollution costs deposit × time-surfaced; the cooldown is 0 on
-        // devnet, as for ClauseRegistry above.
+        // No time lock (K4): pollution costs deposit × time-surfaced.
         //
         // Devnet value: 0.001 ETH deposit so test wallets can register
         // without faucet drama. Mainnet picks its own value via
         // DeployMainnet.s.sol — record the reasoning there.
-        _assemblies = new ProcessRegistry(0.001 ether, 0);
+        _assemblies = new ProcessRegistry(0.001 ether);
         console.log("ProcessRegistry deployed at:", address(_assemblies));
 
         // ── AgreementRegistry ───────────────────────────────────────
         // Permissionless first-write-wins anchor for registered agreements:
         // the clauses composed for one order, a reusable unit any
         // assembly binds. Its own family beside ClauseRegistry and
-        // ProcessRegistry, with the same reclaimable stake, the same
-        // devnet value and the same devnet cooldown of 0.
-        _agreements = new AgreementRegistry(0.001 ether, 0);
+        // ProcessRegistry, with the same reclaimable stake and the same
+        // devnet value.
+        _agreements = new AgreementRegistry(0.001 ether);
         console.log("AgreementRegistry deployed at:", address(_agreements));
 
         // ── MembersRegistry ────────────────────────────────────────

@@ -353,13 +353,16 @@ ceiling several-fold and negates the batch path's gas advantage entirely.
    commitments. It emits `OrderCommitted`, `OrderSeller`, `OrderResolved` and
    `ProcessResolved` from the operation stream, with the Core's signatures and
    ids derived under its own domain, so a reader filters them by contract
-   address. The order of the events differs from the direct path. A batch emits
-   every `Attestation` before any order event: a wallet-code attestation's
-   during the walk that checks the batch, then the proof's attestations, then
-   the order events (`FigaroBatchVerifier`, steps 4 and 6). Within one order it
-   emits `OrderSeller` before `OrderCommitted` (`_emitCommitted`), where
-   `FigaroCore.commit` emits `OrderCommitted` first. A reader that depends on
-   the order of logs within a transaction treats the two paths apart.
+   address. Within one order it emits `OrderCommitted`, then `OrderSeller`,
+   as `FigaroCore.commit` does (`_emitCommitted`). A batch is one transaction,
+   so the order of its events across orders differs from the direct path. It
+   emits every `Attestation` before any order event: a wallet-code
+   attestation's during the walk that checks the batch, then the proof's
+   attestations, then the order events, then the counter's `UsageRecorded`
+   (`FigaroBatchVerifier`, steps 4, 6 and 7). A reader that depends on the
+   order of logs within a transaction treats the two paths apart.
+   `CoreBatchEquivalenceTest` compares the two paths' whole sequences under
+   that one normalization.
 6. **The deadline clock**: the proof program checks each commitment's
    `commitDeadline` against the clock the batch commits in its public values, never
    against the landing block. Whoever builds and proves the batch chooses that
@@ -768,6 +771,13 @@ of one approval transaction, repeatable against specific counterparties.
    proving window itself still reverts the batch; the chain's evaluated
    refusal is deterministic, so the batch is dead-lettered on the first
    attempt, never re-proved, and its operations are re-submittable.
+   The door reads a commit's bonds from the landed chain alone. A commit
+   whose bond would come from a payout of a resolution sent earlier in the
+   same round is refused there (`unfunded commitment`), though `FigaroCore`
+   accepts it, because there the two are separate transactions. That is the
+   batch path's own rule: `settleBatch` makes every pull before any payout,
+   so a payout of a batch cannot fund a pull of the same batch. The order
+   lands in a later batch, once the payout has landed.
 2. **The door is bounded.** A per-IP submit rate limit (`429`), an in-flight
    cap and a request timeout stand in front of the mempool's queue caps and
    body cap; an operation re-queued after transient submission trouble is
@@ -803,6 +813,29 @@ batch's own plan, never by the tick's whole budget:
 4. **The send never passes it.** The gas limit is the estimate with a quarter
    of headroom, capped at the ceiling (`gas::settle_gas_limit`), so code that
    burns whatever it is forwarded at inclusion burns at most the ceiling.
+5. **A batch with uses is sent with at least its plan.** The verifier
+   reverts a batch whose call to the counter ran out of the gas it was
+   handed (`AccrualStarvedOfGas`, `docs/DESIGN_DECISIONS.md` § 19). The
+   node's estimate is the lowest gas at which the call does not revert, and
+   it can sit near the band where the counter's call is starved. A relay
+   that sent only the estimate with its headroom could see its own batch
+   revert there. A batch that carries a use is therefore sent with the larger
+   of the estimate with its headroom and the batch's plan, which counts
+   `SETTLE_GAS_PER_USE` for each use, and never past the ceiling
+   (`gas::settle_send_gas_limit`). A batch with no use keeps item 4's rule.
+   The plan fits under the ceiling for every batch the relay forms, because
+   the tick cuts a batch's claims until its plan fits the budget
+   (`gas::trim_claims_to_budget`) and the ceiling is at least the plan under
+   that budget. The Forge probe `test_settleBatch_gasStarvationProbe` holds
+   the plan at or above the lowest gas at which the batch lands, at one,
+   sixteen, thirty-two and sixty-four uses.
+
+A use a batch leaves uncounted for a gate of the counter, such as a period
+that closed in flight, is not lost: the verifier logs the batch's operation
+stream, and whoever sends its claim again has a later batch prove it
+(`fetchSkippedBatchUses`, `SequencerClient.submitUsageClaim`). This relay
+keeps no claim once its batch lands. A stranger's relay may set its gas limit
+otherwise; a limit that starves the counter only reverts its own batch.
 
 The margin is sized for an honest token. A token whose transfer costs up to
 twice what a position is planned at lands, and its send keeps the whole

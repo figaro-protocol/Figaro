@@ -62,7 +62,7 @@ contract FigaroBatchVerifierTest is Test {
 
     function setUp() public {
         sp1 = new MockSP1Verifier();
-        registry = new ClauseRegistry(DEPOSIT, 0);
+        registry = new ClauseRegistry(DEPOSIT);
         core = new FigaroCore();
         members = new MembersRegistry(0, 0);
         vm.prank(seller);
@@ -1654,18 +1654,52 @@ contract FigaroBatchVerifierTest is Test {
     /// (EIP-150), so the accrual can run out of gas while the outer call
     /// keeps 1/64; at sixty-four uses that 1/64 covers the tail after the
     /// call, so before the gas check a band of limits landed the batch with
-    /// `BatchAccrualSkipped`. The verifier now reads the gas left after a
-    /// failed accrual and reverts the batch (`AccrualStarvedOfGas`) when the
-    /// call consumed what it was handed. The probe walks the gas limit down
-    /// from a full run at one, sixteen and sixty-four uses and records, per
-    /// limit, whether the batch landed with its uses counted, landed with
+    /// `BatchAccrualSkipped`. The verifier reads the gas left after a failed
+    /// accrual and reverts the batch (`AccrualStarvedOfGas`) when the call
+    /// consumed what it was handed. The probe walks the gas limit down from a
+    /// full run at one, sixteen, thirty-two and sixty-four uses and records,
+    /// per limit, whether the batch landed with its uses counted, landed with
     /// `BatchAccrualSkipped`, or reverted whole. It asserts the invariant
-    /// every outcome shares, a batch never lands part-way, and that at no
-    /// size does any limit land the batch with the accrual starved.
+    /// every outcome shares, a batch never lands part-way, and that at no size
+    /// does any limit land the batch with the accrual starved. It also records
+    /// the lowest gas at which the batch lands at all, and holds the relay's
+    /// plan for the batch at or above it: the relay sends a batch with uses
+    /// with at least its plan (`gas::settle_send_gas_limit`,
+    /// `prover/sequencer/src/gas.rs`), so its own batch never reverts for want
+    /// of gas. Thirty-two uses is just past the most the relay plans into one
+    /// batch under a cap of 2^24 gas at `PLAN_GAS_PER_USE` each, and
+    /// sixty-four is far past it.
     function test_settleBatch_gasStarvationProbe() public {
         _gasStarvationProbe(1);
         _gasStarvationProbe(16);
+        _gasStarvationProbe(32);
         _gasStarvationProbe(64);
+    }
+
+    // The relay's per-item plan (`prover/sequencer/src/gas.rs`), restated
+    // from its constants. Each is a ceiling measured by `BatchGasCeilingTest`;
+    // `PLAN_GAS_PER_USE` covers a use whose key, seller and process are all
+    // new to the counter, measured at about 366,000 on live Sepolia at block
+    // 12106674 (three fresh storage slots under EIP-8037).
+    uint256 internal constant PLAN_FIXED_EXEC_GAS = 105_000;
+    uint256 internal constant PLAN_GAS_PER_POSITION = 120_000;
+    uint256 internal constant PLAN_GAS_PER_ATTESTATION = 6_000;
+    uint256 internal constant PLAN_GAS_PER_SPEC_BINDING = 4_500;
+    uint256 internal constant PLAN_GAS_PER_USE = 500_000;
+
+    /// The part of the relay's plan (`gas::settle_gas_estimate`) spent inside
+    /// the `settleBatch` call this test measures. The plan's other terms only
+    /// add to it: the calldata and the transaction's base cost are charged
+    /// outside the call, the proof's verification (`SETTLE_PROOF_VERIFY_GAS`)
+    /// is the mock's here, and this batch carries an empty operation stream.
+    function _relayPlanInsideTheCall(
+        FigaroBatchVerifier.NetPosition[] memory positions,
+        FigaroBatchVerifier.BatchEventData memory events,
+        uint256 uses
+    ) internal pure returns (uint256) {
+        return PLAN_FIXED_EXEC_GAS + positions.length * PLAN_GAS_PER_POSITION + events.attestations.length
+            * PLAN_GAS_PER_ATTESTATION + events.specBindings.length * PLAN_GAS_PER_SPEC_BINDING + uses
+            * PLAN_GAS_PER_USE;
     }
 
     /// The probe's working set, in memory so the loop keeps few locals on the
@@ -1680,10 +1714,11 @@ contract FigaroBatchVerifierTest is Test {
         uint256 skippedHi; // most gas at which it landed with the accrual skipped
         uint256 skippedLo; // least gas at which it landed with the accrual skipped
         uint256 revertedHi; // most gas at which the whole call reverted
+        uint256 landedLo; // least gas at which it landed at all
+        uint256 plan; // the relay's plan for the batch, inside the call (`_relayPlanInsideTheCall`)
     }
 
-    function _gasStarvationProbe(uint256 uses) internal {
-        Probe memory pr;
+    function _gasStarvationProbe(uint256 uses) internal returns (Probe memory pr) {
         pr.uses = uses;
         {
             FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, uses);
@@ -1694,6 +1729,7 @@ contract FigaroBatchVerifierTest is Test {
                 bytes32 newRoot
             ) = _batchWithUsage(usage);
             pr.newRoot = newRoot;
+            pr.plan = _relayPlanInsideTheCall(positions, events, uses);
             pr.sellerBefore = token.balanceOf(seller);
             uint256 snap = vm.snapshotState();
             uint256 g0 = gasleft();
@@ -1721,9 +1757,13 @@ contract FigaroBatchVerifierTest is Test {
         emit log_named_uint("most gas landing with the accrual skipped", pr.skippedHi);
         emit log_named_uint("least gas landing with the accrual skipped", pr.skippedLo);
         emit log_named_uint("most gas at which the whole call reverted", pr.revertedHi);
+        emit log_named_uint("least gas landing at all", pr.landedLo);
+        emit log_named_uint("the relay's plan inside the call", pr.plan);
         assertTrue(pr.revertedHi != 0, "the walk reached the gas at which the call reverts whole");
         assertEq(pr.skippedHi, 0, "no limit lands the batch with the accrual starved");
         assertTrue(pr.counted != 0, "the walk started at a limit that lands the batch with its uses counted");
+        assertEq(pr.landedLo, pr.counted, "every landing counts its uses");
+        assertGe(pr.plan, pr.landedLo, "the relay's plan covers the lowest gas that lands the batch");
     }
 
     /// One probe at gas limit `g`: the batch lands whole, lands with the accrual
@@ -1738,6 +1778,7 @@ contract FigaroBatchVerifierTest is Test {
         vm.recordLogs();
         (bool ok,) = address(this).call(callData);
         if (ok) {
+            pr.landedLo = g;
             assertEq(verifier.stateRoot(), pr.newRoot, "a landed batch advances the root");
             assertEq(token.balanceOf(seller) - pr.sellerBefore, 300 ether, "a landed batch pays the seller");
             (uint64 c,,) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
@@ -1800,6 +1841,57 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(verifier.stateRoot(), newRoot, "the batch lands");
         (uint64 c,,) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
         assertEq(c, 64, "every use counted");
+    }
+
+    /// The reason the revert stays (DESIGN_DECISIONS § 19): `settleBatch` is
+    /// open to anyone, so an observer can copy a relay's pending call and send
+    /// it first with a starving gas limit. The copy reverts, the root does not
+    /// move, and the relay's own send of the same batch at its plan lands with
+    /// every use counted. Without the revert the copy would land the batch
+    /// with its uses uncounted, and the relay's send would fail its root check.
+    function test_settleBatch_aCopiedCallSentFirstAtAStarvingLimitRevertsAndTheRelaysSendLands() public {
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 64);
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _batchWithUsage(usage);
+        uint256 plan = _relayPlanInsideTheCall(positions, events, usage.uses.length);
+        bytes memory call =
+            abi.encodeCall(FigaroBatchVerifier.settleBatch, (hex"", pv, positions, events, usage, hex""));
+        uint256 full = _fullRunGas(call);
+
+        // A third party sends the same calldata first, at a starving limit.
+        _sendCopyStarved(call, full * 95 / 100);
+        assertEq(verifier.stateRoot(), GENESIS, "the root does not move");
+
+        // The relay's send of the same batch, at its plan, lands with every use counted.
+        assertGe(plan, full, "the plan covers a full run");
+        uint256 sellerBefore = token.balanceOf(seller);
+        this.landWith(plan, pv, positions, events, usage);
+        assertEq(verifier.stateRoot(), newRoot, "the relay's batch lands");
+        assertEq(token.balanceOf(seller) - sellerBefore, 300 ether, "the seller is paid");
+        (uint64 c,,) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
+        assertEq(c, 64, "every use counted");
+    }
+
+    /// The gas a full run of `call` on the verifier takes; the chain is rolled back.
+    function _fullRunGas(bytes memory call) internal returns (uint256 full) {
+        uint256 snap = vm.snapshotState();
+        uint256 g0 = gasleft();
+        (bool ok,) = address(verifier).call(call);
+        full = g0 - gasleft();
+        assertTrue(ok, "a full run lands");
+        vm.revertToState(snap);
+    }
+
+    /// A third party's copy of `call`, sent at `limit`: it reverts by name.
+    function _sendCopyStarved(bytes memory call, uint256 limit) internal {
+        vm.prank(address(0xC0B1E5));
+        (bool ok, bytes memory reason) = address(verifier).call{gas: limit}(call);
+        assertFalse(ok, "the starved copy does not land");
+        assertEq(bytes4(reason), bytes4(keccak256("AccrualStarvedOfGas()")), "refused by name");
     }
 
     /// A counter bound to another verifier would refuse every accrual this
@@ -1949,7 +2041,7 @@ contract FigaroBatchVerifierTest is Test {
         members.register("ipfs://stranger");
         bytes32 asmKey = keccak256("an-assembly-credited-on-the-batch-path");
 
-        ProcessRegistry assemblies = new ProcessRegistry(0, 0);
+        ProcessRegistry assemblies = new ProcessRegistry(0);
         vm.prank(designer);
         assemblies.registerProcess(asmKey, "ipfs://asm");
         vm.deal(stranger, DEPOSIT);
@@ -1998,7 +2090,7 @@ contract FigaroBatchVerifierTest is Test {
         internal
         returns (RpgfMinter minter, FlorinToken florin)
     {
-        AgreementRegistry agreements = new AgreementRegistry(0, 0);
+        AgreementRegistry agreements = new AgreementRegistry(0);
         uint64[] memory periods = new uint64[](1);
         periods[0] = PERIOD_END;
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);

@@ -339,9 +339,6 @@ async function main() {
     await expectValue("clauseRegistry.registrationDeposit()", e.registries?.clauseRegistrationDeposit, String(await read(record.clauseRegistry, "registrationDeposit")));
     await expectValue("processRegistry.registrationDeposit()", e.registries?.assemblyRegistrationDeposit, String(await read(record.processRegistry, "registrationDeposit")));
     await expectValue("agreementRegistry.registrationDeposit()", e.registries?.agreementRegistrationDeposit, String(await read(record.agreementRegistry, "registrationDeposit")));
-    await expectValue("clauseRegistry.withdrawalCooldown()", e.registries?.clauseWithdrawalCooldown, String(await read(record.clauseRegistry, "withdrawalCooldown")));
-    await expectValue("processRegistry.withdrawalCooldown()", e.registries?.assemblyWithdrawalCooldown, String(await read(record.processRegistry, "withdrawalCooldown")));
-    await expectValue("agreementRegistry.withdrawalCooldown()", e.registries?.agreementWithdrawalCooldown, String(await read(record.agreementRegistry, "withdrawalCooldown")));
 
     console.log("\nThe usage counter and the reward minter");
     const u = e.usageCounter ?? {};

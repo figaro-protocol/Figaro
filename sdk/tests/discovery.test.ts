@@ -208,11 +208,11 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
             transactionIndex: 0, blockHash: "0x" as Hex, removed: false } as unknown as Log;
     }
 
-    it("parses ClauseRegistered + WithdrawalRequested under the clause key", () => {
+    it("parses ClauseRegistered + DepositWithdrawn under the clause key", () => {
         const reg = mkLog("ClauseRegistered(bytes32,string,address)", [KEY_1, addrTopic(CLAUSE_REGISTERED_BY)],
             [{ type: "string" }], ["ipfs://c"], 1n, 0);
-        const wd = mkLog("WithdrawalRequested(bytes32,address,uint256,uint256)", [KEY_1, addrTopic(CLAUSE_REGISTERED_BY)],
-            [{ type: "uint256" }, { type: "uint256" }], [10n, 99n], 2n, 0);
+        const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [KEY_1, addrTopic(CLAUSE_REGISTERED_BY)],
+            [{ type: "uint256" }], [10n], 2n, 0);
         const parsed = parseClauseRegistryLogs([reg, wd]);
         expect(parsed.registered[0].clauseKey).toBe(KEY_1);
         expect(parsed.registered[0].contentURI).toBe("ipfs://c");
@@ -242,23 +242,23 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
         expect(parseMembersRegistryLogs([claim]).withdrawn).toHaveLength(0);
     });
 
-    it("parses ProcessRegistered + WithdrawalRequested keyed by processDesignHash", () => {
+    it("parses ProcessRegistered + DepositWithdrawn keyed by processDesignHash", () => {
         const reg = mkLog("ProcessRegistered(bytes32,address,string)", [COMP_1, addrTopic(ASM_REGISTERED_BY)],
             [{ type: "string" }], ["ipfs://a"], 1n, 0);
-        const wd = mkLog("WithdrawalRequested(bytes32,address,uint256,uint256)", [COMP_1, addrTopic(ASM_REGISTERED_BY)],
-            [{ type: "uint256" }, { type: "uint256" }], [10n, 99n], 2n, 0);
+        const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [COMP_1, addrTopic(ASM_REGISTERED_BY)],
+            [{ type: "uint256" }], [10n], 2n, 0);
         const parsed = parseProcessRegistryLogs([reg, wd]);
         expect(parsed.registered[0].processDesignHash).toBe(COMP_1);
         expect(parsed.registered[0].contentURI).toBe("ipfs://a");
         expect(parsed.withdrawn[0].processDesignHash).toBe(COMP_1);
     });
 
-    it("parses AgreementRegistered + WithdrawalRequested keyed by agreementHash", () => {
+    it("parses AgreementRegistered + DepositWithdrawn keyed by agreementHash", () => {
         const AGR = ("0x" + "e1".repeat(32)) as Hex;
         const reg = mkLog("AgreementRegistered(bytes32,address,string)", [AGR, addrTopic(ASM_REGISTERED_BY)],
             [{ type: "string" }], ["ipfs://g"], 5n, 2);
-        const wd = mkLog("WithdrawalRequested(bytes32,address,uint256,uint256)", [AGR, addrTopic(ASM_REGISTERED_BY)],
-            [{ type: "uint256" }, { type: "uint256" }], [10n, 99n], 6n, 0);
+        const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [AGR, addrTopic(ASM_REGISTERED_BY)],
+            [{ type: "uint256" }], [10n], 6n, 0);
         const parsed = parseAgreementRegistryLogs([reg, wd]);
         expect(parsed.registered[0]).toMatchObject({ agreementHash: AGR, contentURI: "ipfs://g", blockNumber: 5, logIndex: 2 });
         expect(parsed.registered[0].registeredBy.toLowerCase()).toBe(ASM_REGISTERED_BY);
@@ -267,20 +267,6 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
         const clause = mkLog("ClauseRegistered(bytes32,string,address)", [KEY_1, addrTopic(CLAUSE_REGISTERED_BY)],
             [{ type: "string" }], ["ipfs://c"], 1n, 0);
         expect(parseAgreementRegistryLogs([clause]).registered).toHaveLength(0);
-    });
-
-    it("de-surfaces a key on the REQUEST, not on the payout after the cooldown", () => {
-        // DepositWithdrawn is the payout and lands a whole cooldown after the
-        // request; folding it would keep a withdrawn entry live for that window.
-        for (const [parse, key] of [
-            [parseClauseRegistryLogs, KEY_1],
-            [parseProcessRegistryLogs, COMP_1],
-            [parseAgreementRegistryLogs, COMP_1],
-        ] as const) {
-            const payout = mkLog("DepositWithdrawn(bytes32,address,uint256)", [key, addrTopic(ASM_REGISTERED_BY)],
-                [{ type: "uint256" }], [10n], 9n, 0);
-            expect(parse([payout]).withdrawn).toHaveLength(0);
-        }
     });
 
     it("end-to-end: decoded logs fold to the correct live view", () => {

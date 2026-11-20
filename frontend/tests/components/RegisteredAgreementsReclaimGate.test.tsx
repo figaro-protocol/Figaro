@@ -63,13 +63,7 @@ vi.mock("@/lib/registries/useAgreementRegistry", () => ({
     useRegisteredAgreementsVersion: () => 0,
 }));
 vi.mock("@/lib/registries/useWithdrawStake", () => ({
-    useWithdrawAgreement: () => ({ requestWithdrawal: vi.fn(), withdraw: vi.fn(), isPending: false }),
-    useKeyWithdrawalStatus: () => ({
-        releaseAt: { status: "present", value: 0n },
-        withdrawable: { status: "present", value: false },
-        cooldown: { status: "present", value: 0n },
-        refetch: () => {},
-    }),
+    useWithdrawAgreement: () => ({ withdraw: vi.fn(), isPending: false }),
 }));
 vi.mock("@/lib/core/agreementFetch", () => ({
     witnessedAgreementUri: (checkoutHash: string) => (bodies.has(checkoutHash.toLowerCase()) ? `ipfs://witnessed-${checkoutHash.slice(2, 10)}` : null),
@@ -146,7 +140,7 @@ describe.each([
         render(<RegisteredAgreementsReclaim />);
         const button = await reclaimButton();
         await waitFor(() => expect(button.disabled).toBe(false));
-        expect(button.title).toMatch(/^Ask for your registration stake back\./);
+        expect(button.title).toMatch(/^Reclaim your registration stake\./);
     });
 
     it("allows while the only open, verified trade composes another agreement", async () => {

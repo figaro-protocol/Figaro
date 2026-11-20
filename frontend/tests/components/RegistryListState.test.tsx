@@ -34,14 +34,8 @@ vi.mock("@/lib/registries/useRegisterClause", () => ({
     useRegisteredClausesByWallet: () => mocks.scan,
 }));
 vi.mock("@/lib/registries/useWithdrawStake", () => ({
-    useWithdrawClause: () => ({ requestWithdrawal: async () => undefined, withdraw: async () => undefined }),
-    useWithdrawAgreement: () => ({ requestWithdrawal: async () => undefined, withdraw: async () => undefined }),
-    useKeyWithdrawalStatus: () => ({
-        releaseAt: { status: "present", value: 0n },
-        withdrawable: { status: "present", value: false },
-        cooldown: { status: "present", value: 0n },
-        refetch: () => {},
-    }),
+    useWithdrawClause: () => ({ withdraw: async () => undefined }),
+    useWithdrawAgreement: () => ({ withdraw: async () => undefined }),
 }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({}) }));
 vi.mock("@/lib/registries/registryWrites", () => ({ useRegistryWriteVersion: () => 0 }));

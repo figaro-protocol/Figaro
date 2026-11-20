@@ -25,19 +25,42 @@ import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
 ///         `UsageCounter`), and through `FigaroBatchVerifier` under the mock SP1
 ///         verifier (with its own `UsageCounter`), the steps grouped into batches
 ///         of one to three. Beside each commit both parties attest on the new
-///         order; each resolution alternates between the buyer's ECDSA signature
-///         and its wallet's code (ERC-1271 on the batch path, a call from the
-///         buyer's address on the Core); each resolution claims the root order's
-///         clause for designer rewards.
+///         order, each attestation in one of two forms: the party's ECDSA
+///         signature, or its wallet's code (on the Core both are a call from the
+///         party's own address; on the batch path the first is a signed
+///         attestation and the second the stream's `0x05` entry, which the
+///         party's code validates under ERC-1271). Each resolution alternates
+///         between the buyer's ECDSA signature and its wallet's code in the same
+///         way, and claims the root order's clause for designer rewards.
 ///
 ///         Compared, per row of `docs/VERIFICATION_MAP.md` § E-13's table: every
 ///         wallet and each contract's holding against the model and against the
 ///         other path (the Core after every step, the batch path after every
-///         batch); the Core's process record against the model; and, per event
-///         kind, the sequence of `OrderCommitted`, `OrderSeller`,
-///         `OrderResolved`, `ProcessResolved`, `Attestation` and `UsageRecorded`,
-///         each id checked against its own path's EIP-712 derivation and then
-///         read as the model's order and process index.
+///         batch); the Core's process record against the model; and the whole
+///         ordered sequence of the Core's events on each path, `OrderCommitted`,
+///         `OrderSeller`, `OrderResolved`, `ProcessResolved`, `Attestation` and
+///         `UsageRecorded`, each id checked against its own path's EIP-712
+///         derivation and then read as the model's order and process index.
+///
+///         The one normalization, for what cannot be equal by construction. Ids
+///         are derived under each contract's own domain, so each is read as the
+///         model's index. A batch is one transaction: the verifier asks each
+///         wallet-code attestation's code while it walks the stream, before any
+///         token moves, emits the signed attestations after the transfers, then
+///         the batch's order events, and hands the batch's uses to its counter
+///         last. So the Core's events of the steps one batch carries are put in
+///         that order before they are compared: the wallet-code attestations,
+///         then the signed ones, then the order events, then `UsageRecorded`,
+///         each group in the order the Core emitted it. Any other difference,
+///         in an event, its fields or its place, fails the run.
+///
+///         What the normalization does not check: the placement of the groups
+///         themselves, which it sets. Within one batch a wallet-code
+///         `Attestation` is logged before its own order's `OrderCommitted`, so
+///         a reader that needs the commit first matches the two by their ids,
+///         never by log order. Each Core attestation is filed under the role
+///         its call carried, in call order, never under the role its
+///         attester's address suggests.
 ///
 ///         The batch path's inputs a guest would compute — the net positions,
 ///         the attestation events, the uses and the stream — are computed here
@@ -129,8 +152,16 @@ contract CoreBatchEquivalenceTest is Test {
     address[] internal touched;
     bytes32 internal nextRoot;
 
-    // The folded event sequences, [path][kind].
-    bytes32[E_KINDS][2] internal chain;
+    // The folded event sequences: the batch path's as emitted, the Core's put
+    // in the normalization's order at each batch boundary (the header).
+    bytes32[] internal seqDirect;
+    bytes32[] internal seqBatch;
+    bytes32[] internal heldWalletCode; // the Core's, since the last batch: wallet-code attestations
+    bytes32[] internal heldSigned; // signed attestations
+    bytes32[] internal heldOther; // the order events
+    bytes32[] internal heldUsage; // `UsageRecorded`
+    bool[] internal directAttestRoles; // each Core attestation's role, in call order (true: seller)
+    uint256 internal directAttestNext; // the next of them a folded `Attestation` takes
     uint256[E_KINDS][2] internal count;
 
     // Totals over the run, for the report.
@@ -138,8 +169,11 @@ contract CoreBatchEquivalenceTest is Test {
     uint256 internal totalBatches;
     uint256 internal totalWalletCodeResolves;
     uint256 internal totalSignedResolves;
+    uint256 internal totalWalletCodeAttestations;
+    uint256 internal totalSignedAttestations;
 
     bool internal breakPayout;
+    bool internal breakOrder;
     bool internal mixKinds;
     // Batches whose guest order lists a payout before the pull that funds it
     // (one pass in that order would push more than the verifier holds).
@@ -172,7 +206,7 @@ contract CoreBatchEquivalenceTest is Test {
 
         FigaroCore unusedCore = new FigaroCore();
         MockSP1Verifier sp1 = new MockSP1Verifier();
-        ClauseRegistry registry = new ClauseRegistry(0.001 ether, 0);
+        ClauseRegistry registry = new ClauseRegistry(0.001 ether);
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
         counterB = new UsageCounter(
             address(unusedCore), address(members), address(stake), address(stake), address(stake), predicted, 1, periods
@@ -192,10 +226,12 @@ contract CoreBatchEquivalenceTest is Test {
             if (i >= 2) members.register("ipfs://seller");
             vm.stopPrank();
         }
-        // The buyers' wallets carry code that answers ERC-1271 for the batch
-        // path's second resolve form; their keys still sign as before.
-        vm.etch(party[0], type(MockERC1271Wallet).runtimeCode);
-        vm.etch(party[1], type(MockERC1271Wallet).runtimeCode);
+        // Every party's wallet carries code that answers ERC-1271 for the batch
+        // path's second resolve form and second attestation form; their keys
+        // still sign as before.
+        for (uint256 i = 0; i < PARTIES; i++) {
+            vm.etch(party[i], type(MockERC1271Wallet).runtimeCode);
+        }
     }
 
     // ── The run ─────────────────────────────────────────────────────
@@ -230,15 +266,20 @@ contract CoreBatchEquivalenceTest is Test {
             _replay(t);
             (uint256 steps, uint256 batches, uint256 wc, uint256 signed) =
                 (totalSteps, totalBatches, totalWalletCodeResolves, totalSignedResolves);
+            (uint256 wcAtt, uint256 signedAtt) = (totalWalletCodeAttestations, totalSignedAttestations);
             vm.revertToState(snap);
             (totalSteps, totalBatches, totalWalletCodeResolves, totalSignedResolves) = (steps, batches, wc, signed);
+            (totalWalletCodeAttestations, totalSignedAttestations) = (wcAtt, signedAtt);
         }
         console.log("traces", from, "to", to);
         console.log("steps", totalSteps);
         console.log("batches", totalBatches);
         console.log("resolves by signature / by wallet code", totalSignedResolves, totalWalletCodeResolves);
+        console.log("attestations by signature / by wallet code", totalSignedAttestations, totalWalletCodeAttestations);
         assertGt(totalWalletCodeResolves, 0, "both resolve forms ran");
         assertGt(totalSignedResolves, 0, "both resolve forms ran");
+        assertGt(totalWalletCodeAttestations, 0, "both attestation forms ran");
+        assertGt(totalSignedAttestations, 0, "both attestation forms ran");
     }
 
     /// @dev The comparison is not vacuous: a batch path that pays one token
@@ -285,6 +326,24 @@ contract CoreBatchEquivalenceTest is Test {
         assertGe(paysFirst, MIXED_BATCHES_WANTED, "the run reached batches that pay before they pull");
     }
 
+    /// @dev The sequence comparison is not vacuous: two adjacent events of the
+    ///      batch path swapped, every token and every event otherwise the
+    ///      same, diverge on the sequence.
+    function test_aSwappedEventOrderDivergesOnTheSequence() public {
+        breakOrder = true;
+        try this.replayOne(0) {
+            fail();
+        } catch (bytes memory reason) {
+            assertEq(bytes4(reason), ObservableDiverges.selector, "a divergence, not another revert");
+            bytes memory args = new bytes(reason.length - 4);
+            for (uint256 i = 0; i < args.length; i++) {
+                args[i] = reason[i + 4];
+            }
+            (string memory observable,,) = abi.decode(args, (string, uint256, uint256));
+            assertEq(observable, "events: the ordered sequence");
+        }
+    }
+
     function replayOne(uint256 t) external {
         _replay(t);
     }
@@ -323,7 +382,29 @@ contract CoreBatchEquivalenceTest is Test {
     function _settleAndCheck(uint256 t, uint256 step, uint256[] memory row) internal {
         _settle(t);
         _foldLogs(t);
+        _releaseHeld();
         _checkBatch(t, step, row);
+    }
+
+    /// @dev The batch boundary: the Core's events of the steps this batch
+    ///      carried join its sequence in the normalization's order (the header).
+    function _releaseHeld() internal {
+        for (uint256 i = 0; i < heldWalletCode.length; i++) {
+            seqDirect.push(heldWalletCode[i]);
+        }
+        for (uint256 i = 0; i < heldSigned.length; i++) {
+            seqDirect.push(heldSigned[i]);
+        }
+        for (uint256 i = 0; i < heldOther.length; i++) {
+            seqDirect.push(heldOther[i]);
+        }
+        for (uint256 i = 0; i < heldUsage.length; i++) {
+            seqDirect.push(heldUsage[i]);
+        }
+        delete heldWalletCode;
+        delete heldSigned;
+        delete heldOther;
+        delete heldUsage;
     }
 
     // ── Commit, and the two attestations beside it ───────────────────
@@ -374,8 +455,10 @@ contract CoreBatchEquivalenceTest is Test {
         bytes32 contentRef = keccak256(abi.encode("content", oid));
         vm.prank(o.d.seller);
         coordinator.attestAsSeller(o.d, CLAUSE, STAGE, o.dataHash, proof, contentRef);
+        directAttestRoles.push(true);
         vm.prank(o.d.buyer);
         coordinator.attestAsBuyer(o.d, CLAUSE, STAGE, o.dataHash, proof, contentRef);
+        directAttestRoles.push(false);
     }
 
     /// @dev The guest's `apply_commit` and `apply_attest_as_*` outputs: the
@@ -398,12 +481,80 @@ contract CoreBatchEquivalenceTest is Test {
         _deposit(o.b.buyer, 2 * o.b.payment);
         _deposit(o.b.seller, 2 * o.b.runningTotal);
 
+        _attestBatch(oid, true, processId, orderHash);
+        _attestBatch(oid, false, processId, orderHash);
+    }
+
+    /// @dev Which form a party's attestation on an order takes: its wallet's
+    ///      code, or its signature. Drawn per order and per role, so a batch
+    ///      mixes both forms.
+    function _attestsByWalletCode(uint256 oid, bool asSeller) internal pure returns (bool) {
+        return uint256(keccak256(abi.encode("attestation form", oid, asSeller))) % 2 == 0;
+    }
+
+    /// @dev One party's attestation on the batch path, in its form: the
+    ///      guest's `0x05` entry, after the order's commit in the stream, with
+    ///      the party's code approving the role's digest; or a signed
+    ///      attestation among the batch's attestation events.
+    function _attestBatch(uint256 oid, bool asSeller, bytes32 processId, bytes32 orderHash) internal {
+        Order storage o = orders[oid];
         bytes32 contentRef = keccak256(abi.encode("content", oid));
-        pendingAttestations.push(
-            FigaroBatchVerifier.AttestationData(orderHash, processId, o.b.seller, CLAUSE, STAGE, contentRef)
+        address attester = asSeller ? o.b.seller : o.b.buyer;
+        if (!_attestsByWalletCode(oid, asSeller)) {
+            pendingAttestations.push(
+                FigaroBatchVerifier.AttestationData(orderHash, processId, attester, CLAUSE, STAGE, contentRef)
+            );
+            totalSignedAttestations++;
+            return;
+        }
+        bytes memory authorization = abi.encode("wallet-code attestation", oid, asSeller);
+        MockERC1271Wallet(attester)
+            .approve(
+                _typed(_verifierDomain(), _attestStructHash(asSeller, processId, orderHash, contentRef)), authorization
+            );
+        opsStream = bytes.concat(
+            opsStream,
+            hex"05",
+            asSeller ? bytes1(0x00) : bytes1(0x01),
+            _packCommitment(o.b),
+            CLAUSE,
+            bytes1(STAGE),
+            contentRef,
+            bytes2(uint16(authorization.length)),
+            authorization
         );
-        pendingAttestations.push(
-            FigaroBatchVerifier.AttestationData(orderHash, processId, o.b.buyer, CLAUSE, STAGE, contentRef)
+        totalWalletCodeAttestations++;
+    }
+
+    /// @dev The role's attestation struct the party's code validates: the
+    ///      guest's `AttestSeller` / `AttestBuyer`.
+    function _attestStructHash(bool asSeller, bytes32 processId, bytes32 orderHash, bytes32 contentRef)
+        internal
+        pure
+        returns (bytes32)
+    {
+        if (asSeller) {
+            return keccak256(
+                abi.encode(
+                    keccak256("AttestSeller(bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)"),
+                    orderHash,
+                    CLAUSE,
+                    STAGE,
+                    contentRef
+                )
+            );
+        }
+        return keccak256(
+            abi.encode(
+                keccak256(
+                    "AttestBuyer(bytes32 processId,bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)"
+                ),
+                processId,
+                orderHash,
+                CLAUSE,
+                STAGE,
+                contentRef
+            )
         );
     }
 
@@ -643,8 +794,23 @@ contract CoreBatchEquivalenceTest is Test {
             ) continue;
             (bool known, uint256 kind, bytes memory record) = _normalize(t, path, l);
             if (!known) revert ObservableDiverges("events: an event this test does not list", t, uint256(l.topics[0]));
-            chain[path][kind] = keccak256(abi.encode(chain[path][kind], record));
+            bytes32 entry = keccak256(abi.encode(kind, record));
             count[path][kind]++;
+            if (path == BATCH) {
+                seqBatch.push(entry);
+            } else if (kind == E_USAGE) {
+                heldUsage.push(entry);
+            } else if (kind != E_ATTESTATION) {
+                heldOther.push(entry);
+            } else {
+                // The role is the one the call carried, in call order, never
+                // read from the attester's address: a party on both sides of
+                // an order would otherwise be filed under the wrong role.
+                uint256 oid = _oid(t, l.topics[1]);
+                bool asSeller = directAttestRoles[directAttestNext++];
+                if (_attestsByWalletCode(oid, asSeller)) heldWalletCode.push(entry);
+                else heldSigned.push(entry);
+            }
         }
     }
 
@@ -700,7 +866,9 @@ contract CoreBatchEquivalenceTest is Test {
         if (pid == 0) revert ObservableDiverges("ids: a processId neither path derived", t, uint256(processId));
     }
 
-    function _compareEvents(uint256 t) internal view {
+    /// @dev Every kind ran on the Core as often as on the batch path, and the
+    ///      two ordered sequences are one, event for event.
+    function _compareEvents(uint256 t) internal {
         string[E_KINDS] memory names = [
             "events: OrderCommitted",
             "events: OrderSeller",
@@ -710,9 +878,16 @@ contract CoreBatchEquivalenceTest is Test {
             "events: UsageRecorded"
         ];
         for (uint256 k = 0; k < E_KINDS; k++) {
-            if (count[DIRECT][k] == 0 || chain[DIRECT][k] != chain[BATCH][k]) {
+            if (count[DIRECT][k] == 0 || count[DIRECT][k] != count[BATCH][k]) {
                 revert ObservableDiverges(names[k], t, k);
             }
+        }
+        if (breakOrder) (seqBatch[0], seqBatch[1]) = (seqBatch[1], seqBatch[0]);
+        if (seqDirect.length != seqBatch.length) {
+            revert ObservableDiverges("events: the ordered sequence", t, seqDirect.length);
+        }
+        for (uint256 i = 0; i < seqDirect.length; i++) {
+            if (seqDirect[i] != seqBatch[i]) revert ObservableDiverges("events: the ordered sequence", t, i);
         }
     }
 

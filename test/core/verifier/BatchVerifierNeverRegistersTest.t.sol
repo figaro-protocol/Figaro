@@ -58,9 +58,9 @@ contract BatchVerifierNeverRegistersTest is Test {
 
     function setUp() public {
         MockSP1Verifier sp1 = new MockSP1Verifier();
-        clauses = new ClauseRegistry(DEPOSIT, 0);
-        agreements = new AgreementRegistry(0, 0);
-        assemblies = new ProcessRegistry(0, 0);
+        clauses = new ClauseRegistry(DEPOSIT);
+        agreements = new AgreementRegistry(0);
+        assemblies = new ProcessRegistry(0);
         members = new MembersRegistry(0, 0);
         FigaroCore core = new FigaroCore();
 
@@ -92,17 +92,14 @@ contract BatchVerifierNeverRegistersTest is Test {
     }
 
     /// Every write function of the four registries: the signature of each.
-    function _writes() internal pure returns (bytes4[13] memory sels) {
+    function _writes() internal pure returns (bytes4[10] memory sels) {
         sels = [
             ClauseRegistry.registerClause.selector,
-            ClauseRegistry.requestWithdrawal.selector,
-            ClauseRegistry.withdraw.selector,
+            ClauseRegistry.withdrawDeposit.selector,
             AgreementRegistry.registerAgreement.selector,
-            AgreementRegistry.requestWithdrawal.selector,
-            AgreementRegistry.withdraw.selector,
+            AgreementRegistry.withdrawDeposit.selector,
             ProcessRegistry.registerProcess.selector,
-            ProcessRegistry.requestWithdrawal.selector,
-            ProcessRegistry.withdraw.selector,
+            ProcessRegistry.withdrawDeposit.selector,
             MembersRegistry.register.selector,
             MembersRegistry.updateProfile.selector,
             MembersRegistry.requestWithdrawal.selector,
@@ -144,7 +141,7 @@ contract BatchVerifierNeverRegistersTest is Test {
         pure
         returns (uint256 n)
     {
-        bytes4[13] memory sels = _writes();
+        bytes4[10] memory sels = _writes();
         for (uint256 r = 0; r < regs.length; r++) {
             for (uint256 s = 0; s < sels.length; s++) {
                 n += _count(log, address(0), regs[r], sels[s]);

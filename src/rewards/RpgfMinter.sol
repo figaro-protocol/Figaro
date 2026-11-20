@@ -334,10 +334,10 @@ contract RpgfMinter {
     ///      hold a live member stake (`claim`'s `NotLiveMember`, read on the
     ///      claimant before any key). The check runs at both ends: the counter
     ///      reads the key's stake when it counts a use, and this function reads
-    ///      it at the claim. So withdrawing a key's stake (the request, in its
-    ///      registry) ends its earning AND forfeits every closed period of the
-    ///      key not yet claimed: the share stays in the period's total and is
-    ///      never minted. A designer claims before it requests its stake back.
+    ///      it at the claim. So withdrawing a key's stake, in its registry, ends its
+    ///      earning AND forfeits every closed period of the key not yet claimed:
+    ///      the share stays in the period's total and is never minted. A
+    ///      designer claims before it withdraws its stake.
     ///      The stake is aligned upside (more trade → more base-currency demand
     ///      → ETH appreciates for every registry staker), not a cost, so keeping
     ///      it live is the honest designer's default.

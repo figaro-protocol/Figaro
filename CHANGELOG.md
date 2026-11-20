@@ -14,18 +14,9 @@ release lives under **Unreleased**.
 
 ### Changed
 
-- **The clause, agreement and assembly registries return a stake in two calls, after a
-  cooldown.** `withdrawDeposit(key)` is gone
-  from `ClauseRegistry`, `AgreementRegistry` and `ProcessRegistry`. `requestWithdrawal(key)` marks
-  the stake withdrawn at once and emits `WithdrawalRequested(key, registeredBy, amount,
-  releaseAt)`; `withdraw(key)` pays it once `withdrawable(key)` is true and emits
-  `DepositWithdrawn`. Each constructor takes `withdrawalCooldown` beside `registrationDeposit`.
-  `RpgfMinter.claim` still requires the key's stake live at the claim, so a designer claims its
-  closed periods before it requests the stake back. The SDK's three registry ABIs carry the new
-  functions, events and errors, and `parseClauseRegistryLogs`, `parseAgreementRegistryLogs` and
-  `parseProcessRegistryLogs` fold `WithdrawalRequested` as the de-surfacing event
-  (`docs/DESIGN_DECISIONS.md` § 41). The live Sepolia registries keep the one-call withdrawal
-  until the redeploy.
+- **The batch path emits `OrderCommitted`, then `OrderSeller`, for each commit, as `FigaroCore.commit`
+  does.** A reader that depends on the two events' log order within one commit reads both paths
+  alike.
 - **Clause `figaro-emissions`: stage 1's `evidenceUri` carries the `evidence-capture` format the
   other specs give the same field; the clause is re-keyed.** The format is in `stages`, the signed
   half of the spec, so the key in `test/fixtures/clause-keys.json` moves with the bytes, and so do

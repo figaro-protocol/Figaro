@@ -1039,11 +1039,12 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     /// @dev The ids FigaroCore derives at commit, under this contract's domain:
     ///      a root order's processId is its EIP-712 digest, an extension names
     ///      its process; the orderHash is keccak256(processId ‖ structHash).
+    ///      The two events in `FigaroCore.commit`'s order: `OrderCommitted`,
+    ///      then `OrderSeller`.
     function _emitCommitted(CommitmentTypes.Commitment memory c) private {
         bytes32 structHash = c.hashStruct();
         bytes32 processId = c.processId == bytes32(0) ? _hashTypedDataV4(structHash) : c.processId;
         bytes32 orderHash = keccak256(abi.encodePacked(processId, structHash));
-        emit OrderSeller(orderHash, c.seller);
         emit OrderCommitted(
             orderHash,
             processId,
@@ -1056,6 +1057,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             c.salt,
             c.commitDeadline
         );
+        emit OrderSeller(orderHash, c.seller);
     }
 
     /// @dev The payouts FigaroCore.resolveProcess computes: the seller its bond

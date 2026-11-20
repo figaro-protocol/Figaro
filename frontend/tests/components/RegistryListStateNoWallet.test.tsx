@@ -6,9 +6,9 @@
  * Reading needs no wallet: the address is the connected wallet's or the one
  * `?wallet=0x…` names (`useViewedWallet`, the helper `/orders` reads it with).
  * - A named address with no wallet connected: the rows are that address's
- *   registrations, read-only; no "Request stake back" control is offered.
+ *   registrations, read-only; no "Reclaim stake" control is offered.
  * - A connected wallet that is not the address shown: no reclaim either; only
- *   the registrant signs `requestWithdrawal` and `withdraw`.
+ *   the registrant signs `withdrawDeposit`.
  * - No address at all: the list is by definition one address's and has
  *   nothing to show. Its place carries one line saying so, with a link to
  *   `/registries`; the per-address read is never started with no address
@@ -75,14 +75,8 @@ vi.mock("@/lib/registries/useAgreementRegistry", () => ({
     useRegisteredAgreementsVersion: () => 0,
 }));
 vi.mock("@/lib/registries/useWithdrawStake", () => ({
-    useWithdrawClause: () => ({ requestWithdrawal: async () => undefined, withdraw: async () => undefined }),
-    useWithdrawAgreement: () => ({ requestWithdrawal: async () => undefined, withdraw: async () => undefined }),
-    useKeyWithdrawalStatus: () => ({
-        releaseAt: { status: "present", value: 0n },
-        withdrawable: { status: "present", value: false },
-        cooldown: { status: "present", value: 0n },
-        refetch: () => {},
-    }),
+    useWithdrawClause: () => ({ withdraw: async () => undefined }),
+    useWithdrawAgreement: () => ({ withdraw: async () => undefined }),
 }));
 vi.mock("@/lib/registries/withdrawGate", async () => {
     const actual = await vi.importActual<typeof import("@/lib/registries/withdrawGate")>("@/lib/registries/withdrawGate");

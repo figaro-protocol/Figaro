@@ -62,7 +62,7 @@ contract AttestationCoordinatorTest is Test {
         }
 
         // ── ClauseRegistry: register all local-commerce clauses ────────
-        clauses = new ClauseRegistry(0, 0); // zero-deposit deploy keeps this suite focused on attestation
+        clauses = new ClauseRegistry(0); // zero-deposit deploy keeps this suite focused on attestation
         string memory testUri = "ipfs://figaro-test-uri";
         clauses.registerClause(LIFECYCLE_CLAUSE, testUri);
         clauses.registerClause(EMISSIONS_CLAUSE, testUri);

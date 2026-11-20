@@ -363,19 +363,14 @@ README. Read the section; never reconstruct one from the ABI.
 
 ## Reclaiming a registration stake — apply the K4 withdraw gate yourself
 
-If the owner registered a clause, an agreement or an assembly, its stake comes back in two
-calls on the registry its kind names (`ClauseRegistry`, `AgreementRegistry` or
-`ProcessRegistry`), each taking the key (`clauseKey`, `agreementHash` or `processDesignHash`):
-
-1. `requestWithdrawal(key)` — **de-surfaces the entry for new compositions at once while the
-   binding stays permanent**, because orders already committed against it still resolve. From
-   this call the entry's uses stop counting toward designer rewards, and every closed period
-   of the entry not yet claimed is forfeited: the claim requires the stake live. Claim first
-   ("Claiming the designer's mint"), then request.
-2. `withdraw(key)` — pays the stake back once the registry's `withdrawable(key)` view returns
-   true, after its `withdrawalCooldown()` (read it; it is a deploy-time immutable). Before
-   that it reverts `CooldownActive(releaseAt)`. Ask the chain, never your clock: `releaseAt`
-   is a block timestamp. The rule the stake
+If the owner registered a clause, an agreement or an assembly, its stake comes back with one call
+(`ClauseRegistry.withdrawDeposit(clauseKey)` / `AgreementRegistry.withdrawDeposit(agreementHash)` /
+`ProcessRegistry.withdrawDeposit(processDesignHash)`)
+— which **de-surfaces the entry for new compositions while the binding stays permanent**,
+because orders already committed against it still resolve. From this call the entry's uses
+stop counting toward designer rewards, and every closed period of the entry not yet claimed
+is forfeited: the claim requires the stake live. Claim first ("Claiming the designer's
+mint"), then withdraw. The rule the stake
 encodes: do not reclaim it while processes composed from that clause, agreement or assembly are still
 in flight. Derive that before withdrawing:
 
@@ -393,7 +388,7 @@ const inFlight = deriveInFlightOrders(
 // You resolve each ref's pinned agreement (the SDK does no IPFS I/O), pairing it as
 // { processId, agreement }; a null agreement is party-private and counted, never blocking.
 const gate = deriveClauseWithdrawGate(clauseKey, agreements);  // the key you registered, never a name
-if (!gate.canWithdraw) { /* report inFlightCount + unverifiedCount; do not request */ }
+if (!gate.canWithdraw) { /* report inFlightCount + unverifiedCount; do not withdraw */ }
 // an agreement or an assembly: the same shape, attributed by each verified agreement's
 // decoded provenance { agreementHash, processDesignHash }
 ```

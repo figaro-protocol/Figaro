@@ -1234,7 +1234,15 @@ pub async fn submit_batch(
             deterministic: true,
         });
     }
-    let tx = tx.gas(crate::gas::settle_gas_limit(estimate, gas_ceiling));
+    // A batch with uses is sent with at least its plan, so the counter's
+    // call is never starved and the verifier never reverts the batch for it
+    // (`gas::settle_send_gas_limit`).
+    let tx = tx.gas(crate::gas::settle_send_gas_limit(
+        estimate,
+        planned,
+        result.events.uses.len(),
+        gas_ceiling,
+    ));
 
     info!(verifier = ?config.verifier_address, %estimate, %planned, %gas_ceiling, "Submitting settleBatch transaction");
 
@@ -2833,6 +2841,81 @@ mod tests {
                 }
             }
         }
+    }
+
+    // ── The floor a batch's uses put under its gas limit ─────────────────────
+
+    // The verifier reverts a batch whose call to the counter ran out of the
+    // gas it was handed (`AccrualStarvedOfGas`). The node's estimate is the
+    // lowest gas at which the call does not revert, and a limit near it can
+    // starve the counter at inclusion. A batch that carries uses is therefore
+    // sent with at least its own plan, which counts `SETTLE_GAS_PER_USE` for
+    // each use: here the batch lands only at the plan's gas, and the estimate
+    // is half of it.
+    #[tokio::test]
+    async fn a_batch_with_uses_is_sent_with_at_least_its_plan_when_the_estimate_is_lower() {
+        let result = proved_canonical_batch();
+        assert!(
+            !result.events.uses.is_empty(),
+            "the canonical batch carries a use"
+        );
+        let planned = planned_settle_gas(&result).unwrap();
+        let budget = crate::gas::DEFAULT_SETTLE_GAS_CAP;
+        let ceiling = crate::gas::settle_ceiling(planned, result.positions.len(), budget);
+        let estimate = planned / 2;
+        let (double, limit) = rising_cost_double(estimate, planned, u64::MAX).await;
+        let landed = submit_batch(&submit_config(double.url.clone()), &result, budget).await;
+        assert!(landed.is_ok(), "{:?}", landed.err());
+        let limit = *limit.lock().unwrap();
+        assert!(
+            limit >= planned,
+            "sent with {limit}, under the plan of {planned}"
+        );
+        assert!(
+            limit <= ceiling,
+            "sent with {limit}, past the ceiling of {ceiling}"
+        );
+    }
+
+    // A batch with no use keeps the rule it had: the estimate with its
+    // headroom, capped at the ceiling.
+    #[tokio::test]
+    async fn a_batch_with_no_use_is_sent_at_its_estimate_with_headroom() {
+        let mut result = proved_canonical_batch();
+        result.events.uses.clear();
+        let planned = planned_settle_gas(&result).unwrap();
+        let budget = crate::gas::DEFAULT_SETTLE_GAS_CAP;
+        let ceiling = crate::gas::settle_ceiling(planned, result.positions.len(), budget);
+        let estimate = planned / 2;
+        let (double, limit) = rising_cost_double(estimate, estimate, u64::MAX).await;
+        submit_batch(&submit_config(double.url.clone()), &result, budget)
+            .await
+            .unwrap();
+        assert_eq!(
+            *limit.lock().unwrap(),
+            crate::gas::settle_gas_limit(estimate, ceiling),
+            "the estimate with its headroom, as before"
+        );
+    }
+
+    // The floor never takes the limit past the batch's ceiling: under a
+    // budget below the plan, a batch with uses is sent at the ceiling.
+    #[tokio::test]
+    async fn a_batch_with_uses_never_sends_past_its_ceiling() {
+        let result = proved_canonical_batch();
+        let planned = planned_settle_gas(&result).unwrap();
+        let budget = planned / 2;
+        let ceiling = crate::gas::settle_ceiling(planned, result.positions.len(), budget);
+        assert!(
+            ceiling < planned,
+            "the budget holds the ceiling under the plan"
+        );
+        let estimate = ceiling / 2;
+        let (double, limit) = rising_cost_double(estimate, estimate, u64::MAX).await;
+        submit_batch(&submit_config(double.url.clone()), &result, budget)
+            .await
+            .unwrap();
+        assert_eq!(*limit.lock().unwrap(), ceiling, "capped at the ceiling");
     }
 
     // The margin is for the parties' token: a batch in a token whose
