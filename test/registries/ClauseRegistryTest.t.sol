@@ -11,7 +11,7 @@ contract ClauseRegistryTest is Test {
     // stand-in for the canonical JSON `canonicalize` emits), and the clause key
     // is keccak256 of exactly those bytes — the registry's one identity rule,
     // the argument to registerClause, registered(), depositOf(),
-    // requestWithdrawal() and withdraw(). The spec's clauseId and
+    // and withdrawDeposit(). The spec's clauseId and
     // version are presentation fields inside the bytes; nothing here reads
     // them. contentURI is the IPFS pointer a reader fetches the bytes from.
     bytes constant MODALITIES_SPEC = bytes('{"clauseId":"figaro-modalities","version":1}');
@@ -31,10 +31,9 @@ contract ClauseRegistryTest is Test {
     address mechanism = address(0xBEEF);
 
     uint256 constant DEPOSIT = 0.001 ether;
-    uint256 constant COOLDOWN = 28 days;
 
     function setUp() public {
-        registry = new ClauseRegistry(DEPOSIT, COOLDOWN);
+        registry = new ClauseRegistry(DEPOSIT);
         vm.deal(alice, 10 ether);
         vm.deal(bob, 10 ether);
         vm.deal(address(this), 10 ether);
@@ -90,7 +89,7 @@ contract ClauseRegistryTest is Test {
     }
 
     function test_registerClause_zeroDepositDeploy() public {
-        ClauseRegistry freeRegistry = new ClauseRegistry(0, COOLDOWN);
+        ClauseRegistry freeRegistry = new ClauseRegistry(0);
         vm.prank(alice);
         freeRegistry.registerClause(MODALITIES_KEY, MODALITIES_URI);
         assertTrue(freeRegistry.registered(MODALITIES_KEY));
@@ -133,185 +132,94 @@ contract ClauseRegistryTest is Test {
         assertTrue(registry.registered(keyB));
     }
 
-    // ── Stake withdrawal: request, then claim after the cooldown ──────────
+    // ── Deposit withdrawal (no time lock — K4: withdraw de-surfaces) ──
 
-    function test_requestWithdrawal_flagsAtOnce_paysNothing_bindingStays() public {
+    function test_withdrawDeposit_returnsStake_bindingStays() public {
         vm.prank(alice);
         registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
 
-        uint256 balanceBefore = alice.balance;
+        uint256 balBefore = alice.balance;
         vm.prank(alice);
-        registry.requestWithdrawal(MODALITIES_KEY);
+        registry.withdrawDeposit(MODALITIES_KEY);
 
-        // The stake stops counting as live at the request; the ETH stays.
+        assertEq(alice.balance, balBefore + DEPOSIT);
+        // The binding is PERMANENT — registered stays true so committed
+        // agreements keep resolving the clause; only surfacing derives
+        // from the withdrawn stake.
+        assertTrue(registry.registered(MODALITIES_KEY));
         (, bool withdrawn) = registry.depositOf(MODALITIES_KEY);
-        assertTrue(withdrawn, "withdrawn at the request");
-        assertEq(alice.balance, balanceBefore, "nothing paid at the request");
-        assertEq(address(registry).balance, DEPOSIT, "the stake stays locked");
-        assertEq(registry.releaseAt(MODALITIES_KEY), block.timestamp + COOLDOWN);
-        assertFalse(registry.withdrawable(MODALITIES_KEY));
+        assertTrue(withdrawn);
     }
 
-    function test_requestWithdrawal_emitsWithdrawalRequested() public {
+    function test_withdrawDeposit_emitsEvent() public {
         vm.prank(alice);
         registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
 
-        vm.expectEmit(true, true, false, true, address(registry));
-        emit ClauseRegistry.WithdrawalRequested(MODALITIES_KEY, alice, DEPOSIT, block.timestamp + COOLDOWN);
         vm.prank(alice);
-        registry.requestWithdrawal(MODALITIES_KEY);
-    }
-
-    function test_withdraw_beforeCooldown_reverts() public {
-        vm.prank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
-        vm.prank(alice);
-        registry.requestWithdrawal(MODALITIES_KEY);
-        uint256 unlockAt = block.timestamp + COOLDOWN;
-
-        vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.CooldownActive.selector, unlockAt));
-        registry.withdraw(MODALITIES_KEY);
-
-        vm.warp(unlockAt - 1);
-        vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.CooldownActive.selector, unlockAt));
-        registry.withdraw(MODALITIES_KEY);
-        assertEq(address(registry).balance, DEPOSIT, "no early release");
-    }
-
-    function test_withdraw_afterCooldown_paysOnce() public {
-        vm.prank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
-        vm.prank(alice);
-        registry.requestWithdrawal(MODALITIES_KEY);
-
-        vm.warp(block.timestamp + COOLDOWN);
-        assertTrue(registry.withdrawable(MODALITIES_KEY));
-        uint256 balanceBefore = alice.balance;
-        vm.expectEmit(true, true, false, true, address(registry));
+        vm.expectEmit(true, true, false, true);
         emit ClauseRegistry.DepositWithdrawn(MODALITIES_KEY, alice, DEPOSIT);
-        vm.prank(alice);
-        registry.withdraw(MODALITIES_KEY);
-
-        assertEq(alice.balance, balanceBefore + DEPOSIT);
-        assertEq(address(registry).balance, 0);
-        assertEq(registry.releaseAt(MODALITIES_KEY), 0);
-        assertFalse(registry.withdrawable(MODALITIES_KEY));
-
-        vm.prank(alice);
-        vm.expectRevert(ClauseRegistry.NothingPending.selector);
-        registry.withdraw(MODALITIES_KEY);
+        registry.withdrawDeposit(MODALITIES_KEY);
     }
 
-    function test_withdraw_withoutRequest_reverts() public {
+    function test_withdrawDeposit_registeredByOnly() public {
+        vm.prank(alice);
+        registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
+
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.NotRegisteredBy.selector, bob, alice));
+        registry.withdrawDeposit(MODALITIES_KEY);
+    }
+
+    function test_withdrawDeposit_onlyOnce() public {
         vm.prank(alice);
         registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
 
         vm.prank(alice);
-        vm.expectRevert(ClauseRegistry.NothingPending.selector);
-        registry.withdraw(MODALITIES_KEY);
-    }
-
-    function test_zeroCooldown_claimableInTheSameBlock() public {
-        ClauseRegistry free = new ClauseRegistry(DEPOSIT, 0);
-        vm.startPrank(alice);
-        free.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
-        free.requestWithdrawal(MODALITIES_KEY);
-        assertTrue(free.withdrawable(MODALITIES_KEY));
-        free.withdraw(MODALITIES_KEY);
-        vm.stopPrank();
-        assertEq(address(free).balance, 0);
-    }
-
-    function test_requestWithdrawal_onlyOnce() public {
-        vm.prank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
-        vm.prank(alice);
-        registry.requestWithdrawal(MODALITIES_KEY);
+        registry.withdrawDeposit(MODALITIES_KEY);
 
         vm.prank(alice);
         vm.expectRevert(ClauseRegistry.AlreadyWithdrawn.selector);
-        registry.requestWithdrawal(MODALITIES_KEY);
+        registry.withdrawDeposit(MODALITIES_KEY);
     }
 
-    function test_withdrawal_registeredByOnly() public {
+    function test_withdrawDeposit_revertsUnregistered() public {
         vm.prank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
-
-        vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.NotRegisteredBy.selector, bob, alice));
-        registry.requestWithdrawal(MODALITIES_KEY);
-
-        vm.prank(alice);
-        registry.requestWithdrawal(MODALITIES_KEY);
-        vm.warp(block.timestamp + COOLDOWN);
-
-        vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.NotRegisteredBy.selector, bob, alice));
-        registry.withdraw(MODALITIES_KEY);
+        vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.NotRegistered.selector, MODALITIES_KEY));
+        registry.withdrawDeposit(MODALITIES_KEY);
     }
 
-    function test_withdrawal_revertsOnUnknownKey() public {
-        bytes32 unknown = keccak256("never-existed");
-        vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.NotRegistered.selector, unknown));
-        registry.requestWithdrawal(unknown);
-        vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.NotRegistered.selector, unknown));
-        registry.withdraw(unknown);
-    }
-
-    function test_withdraw_revertsWhenPaymentRejected() public {
+    function test_withdrawDeposit_revertsWhenRefundRejected() public {
         // A registrant that cannot receive ETH: its code reverts on every call
-        // (PUSH1 0 PUSH1 0 REVERT), so the payment's plain call returns false
-        // and the claim reverts as a whole — the stake stays held and still
-        // pending, rather than cleared against a payment that never landed.
+        // (PUSH1 0 PUSH1 0 REVERT), so the refund's plain call returns false
+        // and the withdrawal reverts as a whole — the stake stays held and
+        // un-withdrawn rather than being flagged against a refund that never
+        // landed.
         address rejecter = address(0x4E7EC7);
         vm.etch(rejecter, hex"60006000fd");
         vm.deal(rejecter, DEPOSIT);
 
         vm.prank(rejecter);
         registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
-        vm.prank(rejecter);
-        registry.requestWithdrawal(MODALITIES_KEY);
-        uint256 unlockAt = block.timestamp + COOLDOWN;
-        vm.warp(unlockAt);
 
         vm.prank(rejecter);
         vm.expectRevert(ClauseRegistry.TransferFailed.selector);
-        registry.withdraw(MODALITIES_KEY);
+        registry.withdrawDeposit(MODALITIES_KEY);
 
-        assertEq(registry.releaseAt(MODALITIES_KEY), unlockAt, "still pending");
+        (, bool withdrawn) = registry.depositOf(MODALITIES_KEY);
+        assertFalse(withdrawn);
         assertEq(address(registry).balance, DEPOSIT);
     }
 
-    function test_withdrawal_doesNotAllowReRegistration() public {
-        // Permanence: requesting and claiming the stake does NOT release the
-        // binding for re-registration.
-        vm.prank(alice);
-        registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
-        vm.prank(alice);
-        registry.requestWithdrawal(MODALITIES_KEY);
-        vm.warp(block.timestamp + COOLDOWN);
-        vm.prank(alice);
-        registry.withdraw(MODALITIES_KEY);
-
-        vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.AlreadyRegistered.selector, MODALITIES_KEY));
-        registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, "ipfs://hijack");
-    }
-
-    function test_requestThenRegisterAnotherSpec() public {
-        // A designer moves its stake from one spec to another by requesting
-        // the withdrawal on the first key and registering the second. The
-        // first binding stays permanent (its committed agreements are
-        // untouched); it de-surfaces at the request.
+    function test_withdrawThenRegisterAnotherSpec() public {
+        // A designer moves its stake from one spec to another by withdrawing
+        // from the first key and registering the second. The first binding
+        // stays permanent (its committed agreements are untouched); it merely
+        // de-surfaces.
         bytes32 first = keccak256(bytes('{"clauseId":"figaro-geolocation","version":2}'));
         bytes32 second = keccak256(bytes('{"clauseId":"figaro-geolocation","version":3}'));
         vm.startPrank(alice);
         registry.registerClause{value: DEPOSIT}(first, "ipfs://geo/a");
-        registry.requestWithdrawal(first);
+        registry.withdrawDeposit(first);
         registry.registerClause{value: DEPOSIT}(second, "ipfs://geo/b");
         vm.stopPrank();
 

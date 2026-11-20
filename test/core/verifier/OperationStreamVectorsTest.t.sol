@@ -44,7 +44,7 @@ contract OperationStreamVectorsTest is Test {
 
     function setUp() public {
         sp1 = new MockSP1Verifier();
-        registry = new ClauseRegistry(0.001 ether, 0);
+        registry = new ClauseRegistry(0.001 ether);
         core = new FigaroCore();
         members = new MembersRegistry(0, 0);
         uint64[] memory periods = new uint64[](1);
@@ -136,8 +136,7 @@ contract OperationStreamVectorsTest is Test {
 
     function _expectCommitted(CommitmentTypes.Commitment memory c) internal {
         (bytes32 orderHash, bytes32 processId) = _ids(c);
-        vm.expectEmit(true, true, true, true, address(verifier));
-        emit FigaroBatchVerifier.OrderSeller(orderHash, c.seller);
+        // `FigaroCore.commit`'s order: `OrderCommitted`, then `OrderSeller`.
         vm.expectEmit(true, true, true, true, address(verifier));
         emit FigaroBatchVerifier.OrderCommitted(
             orderHash,
@@ -151,6 +150,8 @@ contract OperationStreamVectorsTest is Test {
             c.salt,
             c.commitDeadline
         );
+        vm.expectEmit(true, true, true, true, address(verifier));
+        emit FigaroBatchVerifier.OrderSeller(orderHash, c.seller);
     }
 
     function _expectResolved(bytes32 processId, CommitmentTypes.Commitment memory c) internal {

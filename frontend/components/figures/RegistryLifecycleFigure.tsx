@@ -46,15 +46,10 @@ export type RegistryLifecycleFigureProps = BaseFigureProps;
  *    "SDK/frontend refuse while commits > resolves", because the usage count is
  *    the indexer's and "FigaroCore carries no composition
  *    provenance, so there is no on-chain hardening of this gate."
- *  - `requestWithdrawal(key)` is callable ONLY by the stored `registeredBy`
- *    (`NotRegisteredBy`), exactly once (`AlreadyWithdrawn`); it flips the
- *    withdrawn flag at once — the de-surfacing signal readers fold
- *    (`WithdrawalRequested`) — and sets `releaseAt = block.timestamp +
- *    withdrawalCooldown`.
- *  - `withdraw(key)` reverts `CooldownActive(releaseAt)` before that timestamp
- *    and otherwise returns the ETH, once (`NothingPending` after). The same
- *    `withdrawable(key)` VIEW as a member's answers "may I claim yet".
- *  - The binding is NOT cleared by either call: `registered[clauseKey]` is never
+ *  - `withdrawDeposit(key)` is callable ONLY by the recorded `registeredBy`
+ *    (`NotRegisteredBy`), exactly once (`AlreadyWithdrawn`), with no cooldown
+ *    of any kind — one call, no waiting.
+ *  - The binding is NOT cleared by that call: `registered[clauseKey]` is never
  *    cleared ("the binding is permanent even
  *    after the deposit is withdrawn"), so orders already committed still resolve
  *    while readers de-surface the entry for NEW compositions.
@@ -120,13 +115,11 @@ const CLAUSE: Machine = {
     states: [
         { label: "unregistered", note: "nothing anchored under the key" },
         { label: "live", note: "surfaced for new compositions", live: true },
-        { label: "withdrawal requested", note: "de-surfaced for NEW compositions" },
-        { label: "withdrawn", note: "ETH back in the wallet" },
+        { label: "stake withdrawn", note: "de-surfaced for NEW compositions" },
     ],
     edges: [
         { call: "register{Clause|Agreement|Assembly}", note: "first-write-wins, exact deposit" },
-        { call: "requestWithdrawal(key)", note: "registeredBy only, once" },
-        { call: "withdraw(key)", note: "after withdrawalCooldown, not before" },
+        { call: "withdrawDeposit(key)", note: "registeredBy only, once, no cooldown" },
     ],
     nonTransition: [
         "no way back, and none needed: the key",
@@ -138,7 +131,7 @@ const CLAUSE: Machine = {
         "registered, so orders already committed",
         "against it still resolve.",
         "",
-        "The protocol surface refuses the request",
+        "One call — but the protocol surface refuses",
         "while commits outnumber resolves. That count",
         "lives in the indexer; FigaroCore carries",
         "no composition provenance to harden the gate.",
@@ -193,12 +186,11 @@ export function RegistryLifecycleFigure({
                     clause, keyed by the hash of its spec without its block, an agreement,
                     keyed by the merkle root over its composed clauses, or an
                     assembly, keyed by the assembly hash of its pinned document, moves from
-                    unregistered to live on the same kind of deposit. Its
-                    designer of record requests the stake back, which
-                    de-surfaces the entry for new compositions at once, and
-                    claims it after the same kind of cooldown — though the
-                    protocol surface refuses the request while commits outnumber
-                    resolves. The withdrawal never clears the binding, so orders
+                    unregistered to live on the same kind of stake, and its
+                    designer can withdraw that stake in a single call with no
+                    wait, though the reference page refuses while commits
+                    outnumber resolves. That withdrawal de-surfaces the entry for
+                    new compositions but never clears the binding, so orders
                     already committed against it still resolve.
                 </>
             }

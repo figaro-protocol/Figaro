@@ -45,9 +45,7 @@ pragma solidity 0.8.26;
 ///         declaring intent to generate transactions. Surfacing derives
 ///         from the live stake: readers hide assemblies whose deposit has
 ///         been withdrawn (withdraw = de-surface), so polluting the
-///         registry costs deposit × time-surfaced. Withdrawal takes two steps:
-///         `requestWithdrawal` de-surfaces at once, and `withdraw` pays the
-///         stake out after `withdrawalCooldown`.
+///         registry costs deposit × time-surfaced. There is no time lock.
 ///         The composition binding is permanent — it is NOT cleared on
 ///         withdraw, because buyers and sellers that reference the
 ///         assembly rely on its content staying stable; only the stake
@@ -58,7 +56,7 @@ pragma solidity 0.8.26;
 ///         flight. The in-flight count lives in the indexer (commits without
 ///         resolution, attributed by each order's decoded provenance), so
 ///         the gate is advisory: the SDK derives it and the frontend offers no
-///         reclaim while an open trade this wallet witnessed composes it or the gate cannot be read; `requestWithdrawal` checks none of it. `FigaroCore` never calls the registries
+///         reclaim while an open trade this wallet witnessed composes it or the gate cannot be read; `withdrawDeposit` checks none of it. `FigaroCore` never calls the registries
 ///         and carries no usage, so no contract can learn the count and there
 ///         is no on-chain hardening of this gate.
 ///
@@ -81,24 +79,11 @@ contract ProcessRegistry {
     ///         at deploy.
     /// @dev Sybil-resistance stake, not a fee. The protocol does not
     ///      redistribute it; no party has authority to seize it. The
-    ///      registering wallet reclaims the exact amount via `requestWithdrawal`, which
-    ///      de-surfaces at once, then `withdraw` after `withdrawalCooldown` —
+    ///      registering wallet reclaims the exact amount via `withdrawDeposit` —
     ///      which de-surfaces the assembly (readers filter on the live
     ///      stake), so spam costs deposit × time-surfaced plus an
-    ///      irrevocably burned composition binding.
+    ///      irrevocably burned composition binding. No time lock.
     uint256 public immutable registrationDeposit;
-
-    /// @notice Seconds between requesting a withdrawal and being able to
-    ///         claim the stake. Immutable at deploy. Zero means claimable in
-    ///         the same block (still a two-call sequence).
-    /// @dev The same parameter `MembersRegistry` carries, for a different
-    ///      attack. A one-step withdrawal let a front-runner register a
-    ///      pending key and take its stake back in the same transaction,
-    ///      leaving the key withdrawn for good and its intended designer
-    ///      locked out at the price of gas. With the cooldown, every key so
-    ///      taken holds one stake locked for the cooldown: the stake prices
-    ///      the attempt (`docs/DESIGN_DECISIONS.md` § 7).
-    uint256 public immutable withdrawalCooldown;
 
     struct ProcessBinding {
         address registeredBy;
@@ -112,11 +97,6 @@ contract ProcessRegistry {
     ///         agreements and terms) → binding details.
     mapping(bytes32 => ProcessBinding) public bindings;
 
-    /// @notice processDesignHash → timestamp from which the requested stake may be
-    ///         claimed. Zero means no pending withdrawal: never requested, or
-    ///         already paid out.
-    mapping(bytes32 => uint256) public releaseAt;
-
     // ── Events ──────────────────────────────────────────────────────────
 
     /// @notice Emitted when an assembly is registered.
@@ -128,25 +108,12 @@ contract ProcessRegistry {
     ///                        (typically IPFS).
     event ProcessRegistered(bytes32 indexed processDesignHash, address indexed registeredBy, string contentURI);
 
-    /// @notice Emitted when the registering wallet requests its stake back.
-    ///         THE DE-SURFACING SIGNAL: the stake stops counting as live at
-    ///         this event, while the ETH stays locked until `releaseAt`.
-    ///         The binding stays in place.
-    /// @param processDesignHash The key the stake was placed on.
-    /// @param registeredBy Address that requested the withdrawal.
-    /// @param amount       Stake to be returned (always equals `registrationDeposit`).
-    /// @param releaseAt    Timestamp from which `withdraw` pays it out.
-    event WithdrawalRequested(
-        bytes32 indexed processDesignHash, address indexed registeredBy, uint256 amount, uint256 releaseAt
-    );
-
-    /// @notice Emitted when the registering wallet is paid its stake back,
-    ///         after the cooldown. The binding stays in place; readers
-    ///         de-surfaced the assembly at `WithdrawalRequested`.
-    /// @param processDesignHash The key the stake was placed on.
-    /// @param registeredBy Address paid.
-    /// @param amount       Stake returned (always equals
-    ///                     `registrationDeposit`).
+    /// @notice Emitted when the registering wallet withdraws its deposit. The
+    ///         composition binding stays in place; only the deposit moves.
+    /// @param processDesignHash The composition whose deposit was withdrawn.
+    /// @param registeredBy    Address that withdrew.
+    /// @param amount          Deposit amount returned (always equals
+    ///                        `registrationDeposit`).
     event DepositWithdrawn(bytes32 indexed processDesignHash, address indexed registeredBy, uint256 amount);
 
     // ── Errors ──────────────────────────────────────────────────────────
@@ -159,26 +126,12 @@ contract ProcessRegistry {
     error NotRegisteredBy(address caller, address registeredBy);
     error AlreadyWithdrawn();
     error TransferFailed();
-    error NothingPending();
-    error CooldownActive(uint256 releaseAt);
 
     // ── Constructor ─────────────────────────────────────────────────────
 
-    /// @param _registrationDeposit Required deposit per registration (wei).
-    /// @param _withdrawalCooldown  Seconds a requested withdrawal stays locked.
-    constructor(uint256 _registrationDeposit, uint256 _withdrawalCooldown) {
+    /// @param _registrationDeposit  Required deposit per registration (wei).
+    constructor(uint256 _registrationDeposit) {
         registrationDeposit = _registrationDeposit;
-        withdrawalCooldown = _withdrawalCooldown;
-    }
-
-    // ── Views ───────────────────────────────────────────────────────────
-
-    /// @notice Whether the requested stake on a key can be claimed now.
-    /// @dev The chain answers this, never a client clock — the same view
-    ///      `MembersRegistry.withdrawable` gives for a member.
-    function withdrawable(bytes32 key) external view returns (bool) {
-        uint256 unlockAt = releaseAt[key];
-        return unlockAt != 0 && block.timestamp >= unlockAt;
     }
 
     // ── Assembly registration (permissionless, first-write-wins) ────────
@@ -210,45 +163,24 @@ contract ProcessRegistry {
         emit ProcessRegistered(processDesignHash, msg.sender, contentURI);
     }
 
-    // ── Stake withdrawal (registeredBy-only, two steps) ─────────────────
+    // ── Deposit withdrawal (registeredBy-only) ──────────────────────────
 
-    /// @notice Start reclaiming the registration stake. Marks the stake
-    ///         withdrawn at once, so readers de-surface the assembly and it stops
-    ///         counting as live from this call; the ETH becomes claimable
-    ///         through `withdraw` after `withdrawalCooldown`. The binding is NOT
-    ///         cleared. Callable only by the stored `registeredBy`, and only
-    ///         once per key.
+    /// @notice Reclaim the registration stake. The composition binding
+    ///         is NOT cleared — only the deposit moves, and readers
+    ///         de-surface the assembly for new orders. Callable only by
+    ///         the recorded `registeredBy`, and only once per binding.
     /// @dev The commits == resolves gate is advisory and off-chain (indexer
     ///      count; see the contract notice): this function does not check it,
     ///      since the chain carries no composition provenance to check.
-    /// @param processDesignHash The key whose stake to reclaim.
-    function requestWithdrawal(bytes32 processDesignHash) external {
+    /// @param processDesignHash The composition whose deposit to withdraw.
+    function withdrawDeposit(bytes32 processDesignHash) external {
         ProcessBinding storage binding = bindings[processDesignHash];
         if (binding.registeredAt == 0) revert NotRegistered();
         if (msg.sender != binding.registeredBy) revert NotRegisteredBy(msg.sender, binding.registeredBy);
         if (binding.depositWithdrawn) revert AlreadyWithdrawn();
 
+        // Checks-effects-interactions: flag THEN transfer.
         binding.depositWithdrawn = true;
-        uint256 unlockAt = block.timestamp + withdrawalCooldown;
-        releaseAt[processDesignHash] = unlockAt;
-
-        emit WithdrawalRequested(processDesignHash, msg.sender, registrationDeposit, unlockAt);
-    }
-
-    /// @notice Claim a requested stake whose cooldown has elapsed. Callable
-    ///         only by the stored `registeredBy`; pays `registrationDeposit`
-    ///         once. No one can release it early.
-    /// @param processDesignHash The key whose stake to claim.
-    function withdraw(bytes32 processDesignHash) external {
-        ProcessBinding storage binding = bindings[processDesignHash];
-        if (binding.registeredAt == 0) revert NotRegistered();
-        if (msg.sender != binding.registeredBy) revert NotRegisteredBy(msg.sender, binding.registeredBy);
-        uint256 unlockAt = releaseAt[processDesignHash];
-        if (unlockAt == 0) revert NothingPending();
-        if (block.timestamp < unlockAt) revert CooldownActive(unlockAt);
-
-        // Checks-effects-interactions: clear THEN transfer.
-        delete releaseAt[processDesignHash];
         emit DepositWithdrawn(processDesignHash, msg.sender, registrationDeposit);
 
         (bool ok,) = msg.sender.call{value: registrationDeposit}("");

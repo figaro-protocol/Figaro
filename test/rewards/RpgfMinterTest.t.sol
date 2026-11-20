@@ -93,9 +93,9 @@ contract RpgfMinterTest is Test {
     function setUp() public {
         florin = new FlorinToken();
         counter = new StubCounter();
-        clauses = new ClauseRegistry(0, 0);
-        assemblies = new ProcessRegistry(0, 0);
-        agreements = new AgreementRegistry(0, 0);
+        clauses = new ClauseRegistry(0);
+        assemblies = new ProcessRegistry(0);
+        agreements = new AgreementRegistry(0);
 
         vm.prank(alice);
         clauses.registerClause(A_KEY, "ipfs://a");
@@ -274,7 +274,7 @@ contract RpgfMinterTest is Test {
         counter.setScore(KIND_AGREEMENT, AGR, 0, 100);
         counter.setClosed(0, true);
         vm.prank(dave);
-        agreements.requestWithdrawal(AGR);
+        agreements.withdrawDeposit(AGR);
 
         vm.prank(dave);
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_AGREEMENT, AGR, dave));
@@ -329,7 +329,7 @@ contract RpgfMinterTest is Test {
         counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
         counter.setClosed(0, true);
         vm.prank(alice);
-        clauses.requestWithdrawal(A_KEY);
+        clauses.withdrawDeposit(A_KEY);
 
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_CLAUSE, A_KEY, alice));
@@ -346,7 +346,7 @@ contract RpgfMinterTest is Test {
         counter.setScore(KIND_PROCESS, ASM, 0, 100);
         counter.setClosed(0, true);
         vm.prank(carol);
-        assemblies.requestWithdrawal(ASM);
+        assemblies.withdrawDeposit(ASM);
 
         vm.prank(carol);
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_PROCESS, ASM, carol));

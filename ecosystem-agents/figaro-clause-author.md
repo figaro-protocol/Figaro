@@ -178,12 +178,11 @@ validator — there is none, by design.
    deployment. The parameter types are the function's identity —
    `registerClause(bytes32,string)` — so a mistyped one fails as an opaque selector
    mismatch, not a friendly error. The stake is reclaimable, not a charge:
-   `requestWithdrawal(key)` de-surfaces the clause for new compositions at once while the
-   binding stays permanent, and `withdraw(key)` returns the stake once the registry's
-   `withdrawable(key)` view is true, after its `withdrawalCooldown()`. The live stake is also
-   the designer-rewards gate, read at the count and at the claim: from the request, the
+   `withdrawDeposit(key)` returns it in one call, de-surfacing the clause for new
+   compositions while the binding stays permanent. The live stake is also the
+   designer-rewards gate, read at the count and at the claim: from the withdrawal, the
    clause's uses stop counting and every closed period not yet claimed is forfeited, so
-   claim first and request the stake back after. First-write-wins: the key binds
+   claim first and withdraw the stake after. First-write-wins: the key binds
    permanently. A behavior change is a NEW spec — bump its `version` label so readers can
    tell the revisions apart — and therefore a new key and a new registration; a registered
    key never changes.

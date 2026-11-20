@@ -6,11 +6,6 @@
         "name": "_registrationDeposit",
         "type": "uint256",
         "internalType": "uint256"
-      },
-      {
-        "name": "_withdrawalCooldown",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "stateMutability": "nonpayable"
@@ -108,26 +103,7 @@
   },
   {
     "type": "function",
-    "name": "releaseAt",
-    "inputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "requestWithdrawal",
+    "name": "withdrawDeposit",
     "inputs": [
       {
         "name": "agreementHash",
@@ -137,51 +113,6 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "withdraw",
-    "inputs": [
-      {
-        "name": "agreementHash",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "withdrawable",
-    "inputs": [
-      {
-        "name": "key",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "withdrawalCooldown",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "event",
@@ -234,37 +165,6 @@
     "anonymous": false
   },
   {
-    "type": "event",
-    "name": "WithdrawalRequested",
-    "inputs": [
-      {
-        "name": "agreementHash",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "registeredBy",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "releaseAt",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
     "type": "error",
     "name": "AgreementAlreadyRegistered",
     "inputs": [
@@ -279,17 +179,6 @@
     "type": "error",
     "name": "AlreadyWithdrawn",
     "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "CooldownActive",
-    "inputs": [
-      {
-        "name": "releaseAt",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ]
   },
   {
     "type": "error",
@@ -316,11 +205,6 @@
         "internalType": "address"
       }
     ]
-  },
-  {
-    "type": "error",
-    "name": "NothingPending",
-    "inputs": []
   },
   {
     "type": "error",

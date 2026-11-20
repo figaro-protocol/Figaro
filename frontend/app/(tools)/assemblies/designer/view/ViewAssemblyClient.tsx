@@ -61,7 +61,6 @@ import {
     usePublishedAssemblies,
 } from "@/lib/registries/useProcessRegistry";
 import { useWithdrawAssembly } from "@/lib/registries/useWithdrawStake";
-import { KeyStakeClaim } from "@/components/registries/ReclaimStakeRow";
 import { readNetwork } from "@/lib/shared/networkRead";
 import { useWithdrawGate, withdrawBlockedReason, withdrawGateOpen, withdrawUnverifiedCaveat } from "@/lib/registries/withdrawGate";
 import { usePublishAssembly } from "@/lib/designer/publishAssembly";
@@ -130,12 +129,12 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const [publishError, setPublishError] = useState<string | null>(null);
     const { publish } = usePublishAssembly();
     const { address } = useAccount();
-    const { requestWithdrawal, withdraw } = useWithdrawAssembly();
+    const { withdraw } = useWithdrawAssembly();
     const [withdrawing, setWithdrawing] = useState(false);
     const [withdrawError, setWithdrawError] = useState<string | null>(null);
     // The advisory commits==resolves gate for THIS assembly — in-flight trades
     // composed from it (derived from chain + IPFS by the SDK). Null (no
-    // assembly) for drafts/errors; the hook no-ops. The withdrawal request
+    // assembly) for drafts/errors; the hook no-ops. The reclaim affordance
     // reads `.canWithdraw`.
     const { gate: withdrawGate } = useWithdrawGate(
         resolved.kind === "published"
@@ -401,18 +400,17 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         setWithdrawing(true);
         setWithdrawError(null);
         try {
-            await requestWithdrawal(resolved.processDesignHash);
-            // Reflect the request locally — the binding stays; the assembly
-            // de-surfaces now, and the stake is claimed after the cooldown.
+            await withdraw(resolved.processDesignHash);
+            // Reflect the reclaim locally — the binding stays; only the stake moved.
             setResolved((prev) => (prev.kind === "published"
                 ? { ...prev, binding: { ...prev.binding, stakeWithdrawn: true } }
                 : prev));
         } catch (err) {
-            setWithdrawError(extractErrorMessage(err, "Requesting the stake back failed."));
+            setWithdrawError(extractErrorMessage(err, "Withdrawing the stake failed."));
         } finally {
             setWithdrawing(false);
         }
-    }, [resolved, requestWithdrawal]);
+    }, [resolved, withdraw]);
 
     const handleFork = useCallback(async () => {
         if (resolved.kind !== "published") return;
@@ -593,28 +591,30 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         </Link>
     ) : (
         <div className="ml-auto flex items-center gap-2">
-            {isAuthor && !stakeWithdrawn && withdrawGate.status !== "absent" && (
+            {isAuthor && (stakeWithdrawn || withdrawGate.status !== "absent") && (
                 <Button
                     type="button"
                     variant="outline"
                     size="compact"
                     onClick={handleWithdraw}
-                    // Designer-only request, gated by the advisory commits==resolves
+                    // The designer alone withdraws its stake; the advisory commits==resolves
                     // gate: disabled while any VERIFIED in-flight trade composes
-                    // this assembly, or while the gate is still being read; a
-                    // gate that could not be read offers no request at all.
-                    // Unverified trades never disable — they render as the
-                    // caveat strip below the toolbar. The title names why. Once
-                    // requested, the claim band below takes over.
-                    disabled={withdrawing || !withdrawGateOpen(withdrawGate)}
+                    // this assembly, while the gate is still being read, or once
+                    // already reclaimed; a gate that could not be read offers no
+                    // reclaim at all. Unverified trades never disable — they
+                    // render as the caveat strip below the toolbar. The title
+                    // names why.
+                    disabled={withdrawing || stakeWithdrawn || !withdrawGateOpen(withdrawGate)}
                     className="border-default text-ink-heading font-semibold"
                     data-testid="view-withdraw-button"
                     title={
-                        withdrawBlockedReason(withdrawGate)
-                            ?? "Ask for your registration stake back. The binding stays anchored; the assembly de-surfaces for new orders now, and the stake can be claimed after the cooldown this chain sets. Claim its closed reward periods on /rewards first: requesting the stake back forfeits any not yet claimed."
+                        stakeWithdrawn
+                            ? "This assembly's registration stake has already been reclaimed."
+                            : (withdrawBlockedReason(withdrawGate)
+                                ?? "Reclaim your registration stake. The binding stays anchored; the assembly de-surfaces for new orders. Claim its closed reward periods on /rewards first: withdrawing the stake forfeits any not yet claimed.")
                     }
                 >
-                    {withdrawing ? "Requesting…" : "Request stake back"}
+                    {stakeWithdrawn ? "Stake reclaimed" : withdrawing ? "Reclaiming…" : "Reclaim stake"}
                 </Button>
             )}
             <Button
@@ -806,18 +806,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             {withdrawError && (
                 <div className="px-6 py-3 border-b border-default bg-subtle">
                     <p className="text-sm text-error-fg" role="alert" data-testid="withdraw-error">
-                        Request failed: {withdrawError}
+                        Reclaim failed: {withdrawError}
                     </p>
                 </div>
-            )}
-            {isAuthor && stakeWithdrawn && resolved.kind === "published" && (
-                <KeyStakeClaim
-                    family="assembly"
-                    registrationKey={resolved.processDesignHash}
-                    claim={withdraw}
-                    onClaimed={() => {}}
-                    className="px-6 py-3 border-b border-default bg-subtle flex flex-col gap-1 text-xs"
-                />
             )}
             {withdrawCaveat && (
                 <div className="px-6 py-3 border-b border-default bg-subtle">

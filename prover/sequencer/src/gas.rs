@@ -121,6 +121,26 @@ pub fn settle_gas_limit(estimate: u64, ceiling: u64) -> u64 {
         .min(ceiling)
 }
 
+/// The gas limit a `settleBatch` call is sent with, given the batch's plan
+/// and its number of `uses`. With no use it is `settle_gas_limit`. With a
+/// use it is never below `planned`, the plan that counts
+/// `SETTLE_GAS_PER_USE` for each use: the verifier reverts a batch whose
+/// call to the counter ran out of the gas it was handed
+/// (`AccrualStarvedOfGas`), and a limit at the node's estimate plus its
+/// headroom is not tied to the cost of a use, so it can starve the counter's
+/// call at inclusion. Never past
+/// `ceiling`; the tick cuts a batch's claims until its plan fits the budget
+/// (`trim_claims_to_budget`), so the plan fits under the ceiling of every
+/// batch the relay forms.
+pub fn settle_send_gas_limit(estimate: u64, planned: u64, uses: usize, ceiling: u64) -> u64 {
+    let limit = settle_gas_limit(estimate, ceiling);
+    if uses == 0 {
+        limit
+    } else {
+        limit.max(planned).min(ceiling)
+    }
+}
+
 /// The most gas a batch planned at `planned`, with `positions` net
 /// positions, may cost the relay: its plan with one more planned transfer
 /// per position (`SETTLE_GAS_PER_POSITION`), and the send's headroom over
@@ -508,6 +528,31 @@ mod tests {
                 + 500_000
                 + 24_000
                 + 500_000
+        );
+    }
+
+    #[test]
+    fn a_batch_with_uses_is_sent_with_at_least_its_plan_and_never_past_its_ceiling() {
+        let planned = 2_000_000;
+        // With a use, an estimate under the plan is raised to the plan.
+        assert_eq!(
+            settle_send_gas_limit(1_000_000, planned, 1, 3_000_000),
+            planned
+        );
+        // An estimate whose headroom passes the plan keeps its headroom.
+        assert_eq!(
+            settle_send_gas_limit(1_800_000, planned, 1, 3_000_000),
+            settle_gas_limit(1_800_000, 3_000_000)
+        );
+        // The ceiling bounds both.
+        assert_eq!(
+            settle_send_gas_limit(1_000_000, planned, 1, 1_500_000),
+            1_500_000
+        );
+        // With no use, the rule is the estimate with its headroom.
+        assert_eq!(
+            settle_send_gas_limit(1_000_000, planned, 0, 3_000_000),
+            settle_gas_limit(1_000_000, 3_000_000)
         );
     }
 

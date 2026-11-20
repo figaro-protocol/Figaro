@@ -489,9 +489,9 @@ contract UsageCounterTest is Test {
         uint64[] memory periods = new uint64[](2);
         periods[0] = P0_END;
         periods[1] = P1_END;
-        clauses_ = new ClauseRegistry(0, 0);
-        assemblies_ = new ProcessRegistry(0, 0);
-        agreements_ = new AgreementRegistry(0, 0);
+        clauses_ = new ClauseRegistry(0);
+        assemblies_ = new ProcessRegistry(0);
+        agreements_ = new AgreementRegistry(0);
         real = new UsageCounter(
             address(core),
             address(members),
@@ -766,10 +766,10 @@ contract UsageCounterTest is Test {
         assertFalse(real.processCounted(KIND_CLAUSE, k, _pid(agrOrder)), "an agreement use is no clause's");
         assertFalse(real.processCounted(KIND_PROCESS, k, _pid(agrOrder)), "an agreement use is no assembly's");
 
-        // The agreement's own stake is withdrawn (requested): its kind closes, and the
+        // The agreement's own stake is withdrawn: its kind closes, and the
         // live clause and assembly stakes at the same bytes do not reopen it.
         vm.prank(address(0xA6));
-        agreements_.requestWithdrawal(k);
+        agreements_.withdrawDeposit(k);
         (CommitmentTypes.Commitment memory late, bytes32[] memory lateProof) = _settledUnderAgreement(k, k, 4);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseAgreementOrProcessNotRegistered.selector, k));
         real.recordAgreementUsage(late, k, k, lateProof);
@@ -854,10 +854,10 @@ contract UsageCounterTest is Test {
         assertEq(unknownC, 0, "a kind beyond the three is skipped");
         assertEq(real.totalScoreIn(0), _score(5, 3) + _score(1, 1));
 
-        // The assembly's own stake is withdrawn (requested): its kind's gate closes, and the
+        // The assembly's own stake is withdrawn: its kind's gate closes, and the
         // live clause stake at the same bytes does not reopen it.
         vm.prank(designer);
-        assemblies_.requestWithdrawal(root);
+        assemblies_.withdrawDeposit(root);
         UsageCounter.BatchUse[] memory uses5 = _cd(root, KIND_PROCESS, 1, 1, 5);
         vm.prank(batchVerifier);
         real.applyBatchAccrual(0, PROVENANCE_LEAF, uses5);

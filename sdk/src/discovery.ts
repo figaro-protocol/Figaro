@@ -15,7 +15,7 @@
  * Surfacing derives from the LIVE stake (the registries' staked-intent model):
  * an entry whose stake has been withdrawn is de-surfaced. The families
  * withdraw differently, and the reducer honors each:
- *   - clauses/agreements/assemblies — binding permanent, the withdrawal REQUEST terminal ⇒
+ *   - clauses/agreements/assemblies — binding permanent, withdraw terminal ⇒
  *     set-difference (a withdrawn agreement stays readable by key, so an
  *     assembly composed from it keeps hydrating: `getAgreementBinding`).
  *   - members — requesting withdrawal clears the guard and allows re-registration
@@ -128,10 +128,7 @@ export function parseClauseRegistryLogs(logs: Log[]): ClauseRegistryEvents {
                     logIndex: Number(log.logIndex ?? 0),
                     transactionHash: (log.transactionHash ?? null) as Hex | null,
                 });
-            } else if (decoded.eventName === "WithdrawalRequested") {
-                // The DE-SURFACING event, as for a member: the stake stops
-                // counting as live at the request, while the ETH stays locked
-                // for the cooldown. `DepositWithdrawn` is only the payout.
+            } else if (decoded.eventName === "DepositWithdrawn") {
                 withdrawn.push({
                     clauseKey: log.topics[1] as Hex,
                     registeredBy: a.registeredBy as Address,
@@ -206,10 +203,7 @@ export function parseProcessRegistryLogs(logs: Log[]): ProcessRegistryEvents {
                     logIndex: Number(log.logIndex ?? 0),
                     transactionHash: (log.transactionHash ?? null) as Hex | null,
                 });
-            } else if (decoded.eventName === "WithdrawalRequested") {
-                // The DE-SURFACING event, as for a member: the stake stops
-                // counting as live at the request, while the ETH stays locked
-                // for the cooldown. `DepositWithdrawn` is only the payout.
+            } else if (decoded.eventName === "DepositWithdrawn") {
                 withdrawn.push({
                     processDesignHash: a.processDesignHash as Hex,
                     registeredBy: a.registeredBy as Address,
@@ -245,10 +239,7 @@ export function parseAgreementRegistryLogs(logs: Log[]): AgreementRegistryEvents
                     logIndex: Number(log.logIndex ?? 0),
                     transactionHash: (log.transactionHash ?? null) as Hex | null,
                 });
-            } else if (decoded.eventName === "WithdrawalRequested") {
-                // The DE-SURFACING event, as for a member: the stake stops
-                // counting as live at the request, while the ETH stays locked
-                // for the cooldown. `DepositWithdrawn` is only the payout.
+            } else if (decoded.eventName === "DepositWithdrawn") {
                 withdrawn.push({
                     agreementHash: a.agreementHash as Hex,
                     registeredBy: a.registeredBy as Address,
@@ -456,7 +447,7 @@ export class DiscoveryGraph {
         }
         for (const w of withdrawn) {
             const entry = this.clauses.get(w.clauseKey.toLowerCase());
-            if (entry) entry.clause = { ...entry.clause, stakeWithdrawn: true }; // a withdrawal request is terminal for a clause key
+            if (entry) entry.clause = { ...entry.clause, stakeWithdrawn: true }; // withdraw is terminal for a clause key
         }
     }
 
@@ -476,7 +467,7 @@ export class DiscoveryGraph {
         }
         for (const w of withdrawn) {
             const entry = this.assemblies.get(w.processDesignHash);
-            if (entry) entry.withdrawn = true; // a withdrawal request is terminal for a composition
+            if (entry) entry.withdrawn = true; // withdraw is terminal for a composition
         }
     }
 
@@ -498,7 +489,7 @@ export class DiscoveryGraph {
         }
         for (const w of withdrawn) {
             const entry = this.agreements.get(w.agreementHash.toLowerCase());
-            if (entry) entry.agreement = { ...entry.agreement, stakeWithdrawn: true }; // a withdrawal request is terminal for an agreement hash
+            if (entry) entry.agreement = { ...entry.agreement, stakeWithdrawn: true }; // withdraw is terminal for an agreement hash
         }
     }
 

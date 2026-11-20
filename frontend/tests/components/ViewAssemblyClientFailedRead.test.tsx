@@ -1,7 +1,7 @@
 /**
  * ViewAssemblyClient — only a registration whose stake is read surfaces. A
  * failed `ProcessRegistry.bindings` read renders nothing, so the page never
- * offers "Request stake back" on a live-stake assumption built from the event's
+ * offers "Reclaim stake" on a live-stake assumption built from the event's
  * registeredBy; a read binding offers the author the reclaim.
  */
 import React from "react";
@@ -33,15 +33,7 @@ vi.mock("@/lib/registries/useProcessRegistry", async (importOriginal) => ({
     usePublishedAssemblies: () => PUBLISHED.value,
     fetchHydratedAssembly: async () => ({ assembly: { name: "Point of sale", agreements: [] }, agreements: {} }),
 }));
-vi.mock("@/lib/registries/useWithdrawStake", () => ({
-    useWithdrawAssembly: () => ({ requestWithdrawal: vi.fn(), withdraw: vi.fn() }),
-    useKeyWithdrawalStatus: () => ({
-        releaseAt: { status: "present", value: 0n },
-        withdrawable: { status: "present", value: false },
-        cooldown: { status: "present", value: 0n },
-        refetch: () => {},
-    }),
-}));
+vi.mock("@/lib/registries/useWithdrawStake", () => ({ useWithdrawAssembly: () => ({ withdraw: vi.fn() }) }));
 vi.mock("@/lib/registries/withdrawGate", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/registries/withdrawGate")>();
     const gate = { status: "present", value: { canWithdraw: true, inFlightCount: 0, unverifiedCount: 0 } };
@@ -64,7 +56,7 @@ import { ViewAssemblyClient } from "@/app/(tools)/assemblies/designer/view/ViewA
 import { CONNECT_PROMPT } from "../lib/__fixtures__/noWallet";
 
 describe("ViewAssemblyClient — a failed binding read surfaces nothing", () => {
-    it("bindings read fails: nothing renders, so no 'Request stake back' for the event's registeredBy", async () => {
+    it("bindings read fails: nothing renders, so no 'Reclaim stake' for the event's registeredBy", async () => {
         vi.spyOn(console, "warn").mockImplementation(() => undefined);
         mocks.readContract.mockRejectedValue(new Error("fetch failed: RPC unreachable"));
         const { container } = render(<ViewAssemblyClient slug={SLUG} />);

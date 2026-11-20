@@ -45,7 +45,7 @@ export function getAgreementRegistry(): `0x${string}` | null {
 }
 
 /** One registered agreement, reconstructed from an `AgreementRegistered`
- *  event; `stakeWithdrawn` folds the registry's `WithdrawalRequested` events. */
+ *  event; `stakeWithdrawn` folds the registry's `DepositWithdrawn` events. */
 export interface PublishedAgreement {
     agreementHash: `0x${string}`;
     registeredBy: `0x${string}`;
@@ -75,7 +75,7 @@ const useAgreementRegistryScan = createRegistryEventScan<PublishedAgreement>({
     getRegistry: getAgreementRegistry,
     abi: AGREEMENT_REGISTRY_ABI,
     registeredEventName: "AgreementRegistered",
-    withdrawnEventName: "WithdrawalRequested",
+    withdrawnEventName: "DepositWithdrawn",
     label: "usePublishedAgreements",
     toRows: (registeredLogs, withdrawnLogs) => {
         const withdrawn = new Set(

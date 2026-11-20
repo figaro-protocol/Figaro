@@ -10,32 +10,25 @@ import {AgreementRegistry} from "src/registries/AgreementRegistry.sol";
 ///        — the key-bound stake machines designer-of-record eligibility rests on
 ///
 /// @notice `ClauseRegistry`, `ProcessRegistry` and `AgreementRegistry` are
-///         `MembersRegistry`'s siblings on a key: each key (the clause key,
-///         keccak256 of the spec's pinned bytes / the processDesignHash / the
-///         agreementHash) is bound FIRST-WRITE-WINS and PERMANENTLY, and its
-///         stake comes back in two steps, as a member's does:
-///         `requestWithdrawal` flips the withdrawn flag at once, and
-///         `withdraw` pays the stake out only after `withdrawalCooldown`. A
-///         withdrawn key can never be registered again by anyone
-///         (`AlreadyRegistered` / `ProcessAlreadyRegistered` /
+///         `MembersRegistry`'s siblings minus the cooldown: each key (the
+///         clause key, keccak256 of the spec's pinned bytes / the
+///         processDesignHash / the agreementHash) is bound FIRST-WRITE-WINS and
+///         PERMANENTLY: the stake is withdrawn in one call, and there is nothing
+///         to recycle, because a withdrawn key can never be re-registered by
+///         anyone (`AlreadyRegistered` / `ProcessAlreadyRegistered` /
 ///         `AgreementAlreadyRegistered` guard the key forever, not just the
-///         wallet that staked it). The withdrawn flag is read at both ends,
-///         by `UsageCounter` when it counts a use and by
-///         `RpgfMinter._isAuthor` at the claim —
-///         `depositOf[key].withdrawn == false` for a clause,
-///         `bindings[key].depositWithdrawn == false` for an assembly and for
-///         an agreement. These properties are those assumptions, proved
-///         symbolically:
+///         wallet that staked it). `RpgfMinter._isAuthor` reads this machine
+///         directly at CLAIM time — `depositOf[key].withdrawn == false` for a
+///         clause, `bindings[key].depositWithdrawn == false` for an assembly
+///         and for an agreement — with no timestamp and no snapshot. These
+///         properties are those assumptions, proved symbolically:
 ///
 ///           P1  stake solvency             — the registry holds at least
-///                                            what it owes (every live or
-///                                            pending stake), under arbitrary
-///                                            register/request/claim
-///                                            interleavings by two symbolic
-///                                            actors; a requested stake is
-///                                            claimable in full once the
-///                                            cooldown has elapsed, and never
-///                                            before.
+///                                            what it owes, under arbitrary
+///                                            register/withdraw interleavings
+///                                            by two symbolic actors, and a
+///                                            live stake is withdrawable in
+///                                            full (no cooldown, no residue).
 ///           P2  first-write-wins           — once a key is bound, no SECOND
 ///               permanence                   registration for it ever
 ///                                            succeeds, for ANY caller
@@ -45,56 +38,54 @@ import {AgreementRegistry} from "src/registries/AgreementRegistry.sol";
 ///                                            binding (registeredBy, or
 ///                                            registeredBy/contentURI) never
 ///                                            changes.
-///           P3  the claim is one-shot      — a second claim for an
-///                                            already-paid key cannot move
-///                                            ETH, for any caller.
-///           P4  the request ends           — the exact bit the counter
-///               liveness, permanently        reads flips to "withdrawn" at
-///                                            the request and no reachable
+///           P3  withdrawal is one-shot     — a second withdraw for an
+///                                            already-withdrawn key cannot
+///                                            move ETH, for any caller.
+///           P4  withdrawal ends            — the exact bit `_isAuthor`
+///               eligibility, permanently     reads flips to "not eligible"
+///                                            at withdraw and no reachable
 ///                                            call sequence (re-registration
-///                                            attempt, second request) ever
-///                                            restores it.
-///           P5  cross-key isolation        — registering, requesting, or
+///                                            attempt, second withdrawal
+///                                            attempt) ever restores it.
+///           P5  cross-key isolation        — registering, withdrawing, or
 ///                                            attempting to hijack key A
 ///                                            never touches key B's binding
 ///                                            or stake state.
 ///
 ///         Each registry takes the key directly from the caller, so every
-///         key below is fully symbolic. The cooldown is the deployed 28 days;
-///         the claim-timing property takes a symbolic elapsed time.
+///         key below is fully symbolic.
 ///
-///         Halmos convention: `check_` prefix, not `test_`.
+///         Halmos convention: `check_` prefix, not `test_`. No `vm.warp` /
+///         cooldown anywhere in this file — that parameter does not exist on
+///         these three contracts (`docs/DESIGN_DECISIONS.md` §14 "Scope").
 ///
-/// @dev    WHAT THIS DOES NOT PROVE: that the stake or the cooldown is priced
-///         correctly, or anything about `RpgfMinter`'s reward arithmetic. It
-///         proves the three registries the counter and the minter read are
-///         the machine the sentences above describe. Companion:
-///         `HalmosMembersRegistry.t.sol` (the members' cooldown;
-///         `reference_halmos_operations` memory has the run recipe).
+/// @dev    WHAT THIS DOES NOT PROVE: that the stake is priced correctly, or
+///         anything about `RpgfMinter`'s reward arithmetic. It proves the three
+///         registries `_isAuthor` reads are the machine the eligibility
+///         sentence above describes. Companion: `HalmosMembersRegistry.t.sol`
+///         (the cooldown-bearing sibling; `reference_halmos_operations`
+///         memory has the run recipe).
 contract HalmosClauseRegistry is Test {
     address internal constant ALICE = address(0xA11CE);
     address internal constant BOB = address(0xB0B);
-    uint256 internal constant COOLDOWN = 28 days;
 
     // ── P1: deposit solvency ─────────────────────────────────────────
 
     /// The registry holds at least what it owes: the sum of live
-    /// (un-withdrawn) deposits, under arbitrary register/request/claim
+    /// (un-withdrawn) deposits, under arbitrary register/withdraw
     /// interleavings by two symbolic actors and any deposit size.
     function check_solvency_holdsWhateverTwoActorsDo(
         uint96 deposit,
         bytes32 keyA,
         bytes32 keyB,
         bool aliceWithdraws,
-        bool bobWithdraws,
-        bool aliceClaims,
-        bool bobClaims
+        bool bobWithdraws
     ) public {
         vm.assume(keyA != bytes32(0));
         vm.assume(keyB != bytes32(0));
         vm.assume(keyA != keyB);
 
-        ClauseRegistry r = new ClauseRegistry(deposit, COOLDOWN);
+        ClauseRegistry r = new ClauseRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) + 1 ether);
         vm.deal(BOB, uint256(deposit) + 1 ether);
 
@@ -105,67 +96,47 @@ contract HalmosClauseRegistry is Test {
 
         if (aliceWithdraws) {
             vm.prank(ALICE);
-            r.requestWithdrawal(keyA);
+            r.withdrawDeposit(keyA);
         }
         if (bobWithdraws) {
             vm.prank(BOB);
-            r.requestWithdrawal(keyB);
-        }
-        vm.warp(block.timestamp + COOLDOWN);
-        if (aliceWithdraws && aliceClaims) {
-            vm.prank(ALICE);
-            r.withdraw(keyA);
-        }
-        if (bobWithdraws && bobClaims) {
-            vm.prank(BOB);
-            r.withdraw(keyB);
+            r.withdrawDeposit(keyB);
         }
 
-        // A stake is owed until it is paid out: live, or requested and
-        // still pending. The flag `depositOf` holds flips at the request;
-        // the pending half is `releaseAt`.
         (, bool aWithdrawn) = r.depositOf(keyA);
         (, bool bWithdrawn) = r.depositOf(keyB);
-        bool aPaid = aWithdrawn && r.releaseAt(keyA) == 0;
-        bool bPaid = bWithdrawn && r.releaseAt(keyB) == 0;
-        uint256 owed = (aPaid ? 0 : uint256(deposit)) + (bPaid ? 0 : uint256(deposit));
+        uint256 owed = (aWithdrawn ? 0 : uint256(deposit)) + (bWithdrawn ? 0 : uint256(deposit));
 
         assertGe(address(r).balance, owed, "the registry must hold every live deposit");
     }
 
-    /// A requested deposit is claimable in full once the cooldown has
-    /// elapsed, and no call moves it before: the request pays nothing, and
-    /// the claim pays exactly what was booked.
-    function check_requestedDepositIsClaimableInFull_onlyAfterTheCooldown(uint96 deposit, bytes32 keyA, uint32 elapsed)
-        public
-    {
+    /// A live deposit is withdrawable in full, immediately — there is no
+    /// cooldown on this contract, so "claimable" and "registered" are the
+    /// same instant, and the claim pays exactly what was booked.
+    function check_liveDepositIsAlwaysWithdrawableInFull(uint96 deposit, bytes32 keyA) public {
         vm.assume(keyA != bytes32(0));
 
-        ClauseRegistry r = new ClauseRegistry(deposit, COOLDOWN);
+        ClauseRegistry r = new ClauseRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) + 1 ether);
 
         vm.prank(ALICE);
         r.registerClause{value: deposit}(keyA, "ipfs://a");
-        vm.prank(ALICE);
-        r.requestWithdrawal(keyA);
-        assertEq(address(r).balance, deposit, "the request pays nothing");
 
-        vm.warp(block.timestamp + elapsed);
         uint256 before = ALICE.balance;
         vm.prank(ALICE);
-        (bool ok,) = address(r).call(abi.encodeCall(ClauseRegistry.withdraw, (keyA)));
+        r.withdrawDeposit(keyA);
 
-        if (elapsed < COOLDOWN) {
-            assertFalse(ok, "no claim before the cooldown");
-            assertEq(ALICE.balance, before, "no ETH moves early");
-            assertEq(address(r).balance, deposit, "the stake stays locked");
-        } else {
-            assertTrue(ok, "the claim succeeds once the cooldown has elapsed");
-            assertEq(ALICE.balance, before + deposit, "paid in full");
-            assertEq(address(r).balance, 0, "and nothing is left owed");
-        }
+        assertEq(ALICE.balance, before + deposit, "paid in full, immediately, no cooldown");
+        assertEq(address(r).balance, 0, "and nothing is left owed");
     }
 
+    // ── P2: first-write-wins permanence ─────────────────────────────
+
+    /// Once a key is registered, NO second registration for it ever
+    /// succeeds — not from the original registrant, not from anyone else,
+    /// whether the deposit is still live or already withdrawn — and the
+    /// stored binding never changes. This is the property the "committed
+    /// agreements reference it forever" guarantee stands on.
     function check_firstWriteWins_noSecondRegistrationEverSucceeds(
         uint96 deposit,
         bytes32 keyA,
@@ -174,7 +145,7 @@ contract HalmosClauseRegistry is Test {
     ) public {
         vm.assume(keyA != bytes32(0));
 
-        ClauseRegistry r = new ClauseRegistry(deposit, COOLDOWN);
+        ClauseRegistry r = new ClauseRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) * 2 + 1 ether);
         vm.deal(BOB, uint256(deposit) * 2 + 1 ether);
 
@@ -183,7 +154,7 @@ contract HalmosClauseRegistry is Test {
 
         if (aliceWithdrawsFirst) {
             vm.prank(ALICE);
-            r.requestWithdrawal(keyA);
+            r.withdrawDeposit(keyA);
         }
 
         address secondCaller = secondCallerIsAlice ? ALICE : BOB;
@@ -197,40 +168,36 @@ contract HalmosClauseRegistry is Test {
         assertTrue(r.registered(keyA), "and the binding stays registered forever");
     }
 
-    // ── P3: the claim is one-shot ────────────────────────────────────
+    // ── P3: withdrawal is one-shot ───────────────────────────────────
 
-    /// A second claim for an already-paid key cannot move ETH,
+    /// A second withdraw for an already-withdrawn key cannot move ETH,
     /// for the registering wallet or anyone else.
     function check_withdrawalIsOneShot_secondWithdrawCannotMoveEth(uint96 deposit, bytes32 keyA) public {
         vm.assume(keyA != bytes32(0));
 
-        ClauseRegistry r = new ClauseRegistry(deposit, COOLDOWN);
+        ClauseRegistry r = new ClauseRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) + 1 ether);
 
         vm.prank(ALICE);
         r.registerClause{value: deposit}(keyA, "ipfs://a");
         vm.prank(ALICE);
-        r.requestWithdrawal(keyA);
-        vm.warp(block.timestamp + COOLDOWN);
-        vm.prank(ALICE);
-        r.withdraw(keyA);
+        r.withdrawDeposit(keyA);
 
         uint256 balAfterFirst = ALICE.balance;
         uint256 contractBalAfterFirst = address(r).balance;
 
         vm.prank(ALICE);
-        (bool ok,) = address(r).call(abi.encodeCall(ClauseRegistry.withdraw, (keyA)));
+        (bool ok,) = address(r).call(abi.encodeCall(ClauseRegistry.withdrawDeposit, (keyA)));
 
-        assertFalse(ok, "a second claim for this key cannot succeed");
+        assertFalse(ok, "a second withdraw for this key cannot succeed");
         assertEq(ALICE.balance, balAfterFirst, "no ETH moves on the second attempt");
         assertEq(address(r).balance, contractBalAfterFirst, "contract balance is unchanged");
     }
 
-    // ── P4: the request ends liveness, permanently ──────────────────
+    // ── P4: withdrawal ends eligibility, permanently ────────────────
 
-    /// `depositOf(key).withdrawn` — the EXACT bit `UsageCounter` reads at
-    /// the count and `RpgfMinter._isAuthor` at the claim — flips true at the
-    /// request and no reachable call
+    /// `depositOf(key).withdrawn` — the EXACT bit `RpgfMinter._isAuthor`
+    /// reads at claim time — flips true at withdraw and no reachable call
     /// sequence afterward (a re-registration attempt, a second withdrawal
     /// attempt, from any caller) ever restores it.
     function check_withdrawalEndsEligibility_andNothingRestoresIt(
@@ -241,7 +208,7 @@ contract HalmosClauseRegistry is Test {
     ) public {
         vm.assume(keyA != bytes32(0));
 
-        ClauseRegistry r = new ClauseRegistry(deposit, COOLDOWN);
+        ClauseRegistry r = new ClauseRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) * 2 + 1 ether);
         vm.deal(BOB, uint256(deposit) + 1 ether);
 
@@ -252,10 +219,10 @@ contract HalmosClauseRegistry is Test {
         assertFalse(withdrawnBefore, "deposit starts live");
 
         vm.prank(ALICE);
-        r.requestWithdrawal(keyA);
+        r.withdrawDeposit(keyA);
 
         (, bool withdrawnAfter) = r.depositOf(keyA);
-        assertTrue(withdrawnAfter, "liveness ends at the request (withdrawn == true)");
+        assertTrue(withdrawnAfter, "eligibility ends at withdraw (withdrawn == true)");
 
         // Try every call that MIGHT restore eligibility.
         if (attemptReRegister) {
@@ -264,11 +231,11 @@ contract HalmosClauseRegistry is Test {
         }
         if (attemptSecondWithdraw) {
             vm.prank(ALICE);
-            address(r).call(abi.encodeCall(ClauseRegistry.requestWithdrawal, (keyA)));
+            address(r).call(abi.encodeCall(ClauseRegistry.withdrawDeposit, (keyA)));
         }
 
         (, bool withdrawnFinal) = r.depositOf(keyA);
-        assertTrue(withdrawnFinal, "and nothing restores it -- this is the bit read at the count and at the claim");
+        assertTrue(withdrawnFinal, "and nothing restores it -- this is exactly the RPGF held-at-claim read");
     }
 
     // ── P5: cross-key isolation ──────────────────────────────────────
@@ -286,7 +253,7 @@ contract HalmosClauseRegistry is Test {
         vm.assume(keyB != bytes32(0));
         vm.assume(keyA != keyB);
 
-        ClauseRegistry r = new ClauseRegistry(deposit, COOLDOWN);
+        ClauseRegistry r = new ClauseRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) * 2 + 1 ether);
         vm.deal(BOB, uint256(deposit) + 1 ether);
 
@@ -300,7 +267,7 @@ contract HalmosClauseRegistry is Test {
         r.registerClause{value: deposit}(keyA, "ipfs://a");
         if (aliceWithdraws) {
             vm.prank(ALICE);
-            r.requestWithdrawal(keyA);
+            r.withdrawDeposit(keyA);
         }
         if (attemptHijackA) {
             vm.prank(BOB);
@@ -320,7 +287,6 @@ contract HalmosClauseRegistry is Test {
 contract HalmosProcessRegistry is Test {
     address internal constant ALICE = address(0xA11CE);
     address internal constant BOB = address(0xB0B);
-    uint256 internal constant COOLDOWN = 28 days;
 
     // ── P1: deposit solvency ─────────────────────────────────────────
 
@@ -329,15 +295,13 @@ contract HalmosProcessRegistry is Test {
         bytes32 hashA,
         bytes32 hashB,
         bool aliceWithdraws,
-        bool bobWithdraws,
-        bool aliceClaims,
-        bool bobClaims
+        bool bobWithdraws
     ) public {
         vm.assume(hashA != bytes32(0));
         vm.assume(hashB != bytes32(0));
         vm.assume(hashA != hashB);
 
-        ProcessRegistry r = new ProcessRegistry(deposit, COOLDOWN);
+        ProcessRegistry r = new ProcessRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) + 1 ether);
         vm.deal(BOB, uint256(deposit) + 1 ether);
 
@@ -348,20 +312,11 @@ contract HalmosProcessRegistry is Test {
 
         if (aliceWithdraws) {
             vm.prank(ALICE);
-            r.requestWithdrawal(hashA);
+            r.withdrawDeposit(hashA);
         }
         if (bobWithdraws) {
             vm.prank(BOB);
-            r.requestWithdrawal(hashB);
-        }
-        vm.warp(block.timestamp + COOLDOWN);
-        if (aliceWithdraws && aliceClaims) {
-            vm.prank(ALICE);
-            r.withdraw(hashA);
-        }
-        if (bobWithdraws && bobClaims) {
-            vm.prank(BOB);
-            r.withdraw(hashB);
+            r.withdrawDeposit(hashB);
         }
 
         // NOTE: deliberately NOT re-read via `r.bindings(...)` here. Two
@@ -372,50 +327,38 @@ contract HalmosProcessRegistry is Test {
         // dynamic tail whose length-encoding bit is itself symbolic; see
         // https://github.com/a16z/halmos/wiki/warnings#internal-error). Every
         // OTHER property in this file reads `bindings()` with a symbolic key,
-        // including after a conditional withdrawal, and passes — this is the
+        // including after a conditional withdraw, and passes — this is the
         // one place two such reads combine in one property. `aliceWithdraws`
         // / `bobWithdraws` already determine the owed amount exactly: both
-        // `requestWithdrawal` and `withdraw` calls above are unconditionally successful by
+        // `withdrawDeposit` calls above are unconditionally successful by
         // construction (fresh registry, valid registrant, called at most
         // once), so recomputing "still owed" from them is not a weaker
         // statement, just one that avoids the decoder boundary. The
-        // getter's own correctness after a withdrawal is covered concretely in
-        // `ProcessRegistryTest.t.sol` (`test_withdraw_afterCooldown_paysOnce`).
-        uint256 owed =
-            (aliceWithdraws && aliceClaims ? 0 : uint256(deposit)) + (bobWithdraws && bobClaims ? 0 : uint256(deposit));
+        // getter's own correctness after withdraw is covered concretely in
+        // `ProcessRegistryTest.t.sol` (`test_withdrawDeposit_happy`).
+        uint256 owed = (aliceWithdraws ? 0 : uint256(deposit)) + (bobWithdraws ? 0 : uint256(deposit));
 
         assertGe(address(r).balance, owed, "the registry must hold every live deposit");
     }
 
-    function check_requestedDepositIsClaimableInFull_onlyAfterTheCooldown(uint96 deposit, bytes32 hashA, uint32 elapsed)
-        public
-    {
+    function check_liveDepositIsAlwaysWithdrawableInFull(uint96 deposit, bytes32 hashA) public {
         vm.assume(hashA != bytes32(0));
 
-        ProcessRegistry r = new ProcessRegistry(deposit, COOLDOWN);
+        ProcessRegistry r = new ProcessRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) + 1 ether);
 
         vm.prank(ALICE);
         r.registerProcess{value: deposit}(hashA, "ipfs://a");
-        vm.prank(ALICE);
-        r.requestWithdrawal(hashA);
-        assertEq(address(r).balance, deposit, "the request pays nothing");
 
-        vm.warp(block.timestamp + elapsed);
         uint256 before = ALICE.balance;
         vm.prank(ALICE);
-        (bool ok,) = address(r).call(abi.encodeCall(ProcessRegistry.withdraw, (hashA)));
+        r.withdrawDeposit(hashA);
 
-        if (elapsed < COOLDOWN) {
-            assertFalse(ok, "no claim before the cooldown");
-            assertEq(ALICE.balance, before, "no ETH moves early");
-            assertEq(address(r).balance, deposit, "the stake stays locked");
-        } else {
-            assertTrue(ok, "the claim succeeds once the cooldown has elapsed");
-            assertEq(ALICE.balance, before + deposit, "paid in full");
-            assertEq(address(r).balance, 0, "and nothing is left owed");
-        }
+        assertEq(ALICE.balance, before + deposit, "paid in full, immediately, no cooldown");
+        assertEq(address(r).balance, 0, "and nothing is left owed");
     }
+
+    // ── P2: first-write-wins permanence ─────────────────────────────
 
     function check_firstWriteWins_noSecondRegistrationEverSucceeds(
         uint96 deposit,
@@ -425,7 +368,7 @@ contract HalmosProcessRegistry is Test {
     ) public {
         vm.assume(hashA != bytes32(0));
 
-        ProcessRegistry r = new ProcessRegistry(deposit, COOLDOWN);
+        ProcessRegistry r = new ProcessRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) * 2 + 1 ether);
         vm.deal(BOB, uint256(deposit) * 2 + 1 ether);
 
@@ -434,7 +377,7 @@ contract HalmosProcessRegistry is Test {
 
         if (aliceWithdrawsFirst) {
             vm.prank(ALICE);
-            r.requestWithdrawal(hashA);
+            r.withdrawDeposit(hashA);
         }
 
         address secondCaller = secondCallerIsAlice ? ALICE : BOB;
@@ -449,34 +392,31 @@ contract HalmosProcessRegistry is Test {
         assertGt(registeredAt, 0, "and the binding stays registered forever");
     }
 
-    // ── P3: the claim is one-shot ────────────────────────────────────
+    // ── P3: withdrawal is one-shot ───────────────────────────────────
 
     function check_withdrawalIsOneShot_secondWithdrawCannotMoveEth(uint96 deposit, bytes32 hashA) public {
         vm.assume(hashA != bytes32(0));
 
-        ProcessRegistry r = new ProcessRegistry(deposit, COOLDOWN);
+        ProcessRegistry r = new ProcessRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) + 1 ether);
 
         vm.prank(ALICE);
         r.registerProcess{value: deposit}(hashA, "ipfs://a");
         vm.prank(ALICE);
-        r.requestWithdrawal(hashA);
-        vm.warp(block.timestamp + COOLDOWN);
-        vm.prank(ALICE);
-        r.withdraw(hashA);
+        r.withdrawDeposit(hashA);
 
         uint256 balAfterFirst = ALICE.balance;
         uint256 contractBalAfterFirst = address(r).balance;
 
         vm.prank(ALICE);
-        (bool ok,) = address(r).call(abi.encodeCall(ProcessRegistry.withdraw, (hashA)));
+        (bool ok,) = address(r).call(abi.encodeCall(ProcessRegistry.withdrawDeposit, (hashA)));
 
-        assertFalse(ok, "a second claim for this processDesignHash cannot succeed");
+        assertFalse(ok, "a second withdraw for this processDesignHash cannot succeed");
         assertEq(ALICE.balance, balAfterFirst, "no ETH moves on the second attempt");
         assertEq(address(r).balance, contractBalAfterFirst, "contract balance is unchanged");
     }
 
-    // ── P4: the request ends liveness, permanently ──────────────────
+    // ── P4: withdrawal ends eligibility, permanently ────────────────
 
     function check_withdrawalEndsEligibility_andNothingRestoresIt(
         uint96 deposit,
@@ -486,7 +426,7 @@ contract HalmosProcessRegistry is Test {
     ) public {
         vm.assume(hashA != bytes32(0));
 
-        ProcessRegistry r = new ProcessRegistry(deposit, COOLDOWN);
+        ProcessRegistry r = new ProcessRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) * 2 + 1 ether);
         vm.deal(BOB, uint256(deposit) + 1 ether);
 
@@ -497,10 +437,10 @@ contract HalmosProcessRegistry is Test {
         assertFalse(withdrawnBefore, "deposit starts live");
 
         vm.prank(ALICE);
-        r.requestWithdrawal(hashA);
+        r.withdrawDeposit(hashA);
 
         (,, bool withdrawnAfter,) = r.bindings(hashA);
-        assertTrue(withdrawnAfter, "liveness ends at the request (depositWithdrawn == true)");
+        assertTrue(withdrawnAfter, "eligibility ends at withdraw (depositWithdrawn == true)");
 
         if (attemptReRegister) {
             vm.prank(BOB);
@@ -508,11 +448,11 @@ contract HalmosProcessRegistry is Test {
         }
         if (attemptSecondWithdraw) {
             vm.prank(ALICE);
-            address(r).call(abi.encodeCall(ProcessRegistry.requestWithdrawal, (hashA)));
+            address(r).call(abi.encodeCall(ProcessRegistry.withdrawDeposit, (hashA)));
         }
 
         (,, bool withdrawnFinal,) = r.bindings(hashA);
-        assertTrue(withdrawnFinal, "and nothing restores it -- this is the bit read at the count and at the claim");
+        assertTrue(withdrawnFinal, "and nothing restores it -- this is exactly the RPGF held-at-claim read");
     }
 
     // ── P5: cross-key isolation ──────────────────────────────────────
@@ -544,7 +484,7 @@ contract HalmosProcessRegistry is Test {
         vm.assume(hashB != bytes32(0));
         vm.assume(hashA != hashB);
 
-        ProcessRegistry r = new ProcessRegistry(deposit, COOLDOWN);
+        ProcessRegistry r = new ProcessRegistry(deposit);
         vm.deal(ALICE, uint256(deposit) * 2 + 1 ether);
         vm.deal(BOB, uint256(deposit) + 1 ether);
 
@@ -556,7 +496,7 @@ contract HalmosProcessRegistry is Test {
         r.registerProcess{value: deposit}(hashA, "ipfs://a");
         if (aliceWithdraws) {
             vm.prank(ALICE);
-            r.requestWithdrawal(hashA);
+            r.withdrawDeposit(hashA);
         }
         if (attemptHijackA) {
             vm.prank(BOB);
@@ -578,7 +518,6 @@ contract HalmosProcessRegistry is Test {
 contract HalmosAgreementRegistry is Test {
     address internal constant ALICE = address(0xA11CE);
     address internal constant BOB = address(0xB0B);
-    uint256 internal constant COOLDOWN = 28 days;
 
     /// @dev A key the registry takes: non-zero and neither reserved format
     ///      key (the provenance leaf key, the assembly terms leaf key), which
@@ -596,15 +535,13 @@ contract HalmosAgreementRegistry is Test {
         bytes32 keyA,
         bytes32 keyB,
         bool aliceWithdraws,
-        bool bobWithdraws,
-        bool aliceClaims,
-        bool bobClaims
+        bool bobWithdraws
     ) public {
         _assumeRegistrable(keyA);
         _assumeRegistrable(keyB);
         vm.assume(keyA != keyB);
 
-        AgreementRegistry r = new AgreementRegistry(stake, COOLDOWN);
+        AgreementRegistry r = new AgreementRegistry(stake);
         vm.deal(ALICE, uint256(stake) + 1 ether);
         vm.deal(BOB, uint256(stake) + 1 ether);
 
@@ -615,20 +552,11 @@ contract HalmosAgreementRegistry is Test {
 
         if (aliceWithdraws) {
             vm.prank(ALICE);
-            r.requestWithdrawal(keyA);
+            r.withdrawDeposit(keyA);
         }
         if (bobWithdraws) {
             vm.prank(BOB);
-            r.requestWithdrawal(keyB);
-        }
-        vm.warp(block.timestamp + COOLDOWN);
-        if (aliceWithdraws && aliceClaims) {
-            vm.prank(ALICE);
-            r.withdraw(keyA);
-        }
-        if (bobWithdraws && bobClaims) {
-            vm.prank(BOB);
-            r.withdraw(keyB);
+            r.withdrawDeposit(keyB);
         }
 
         // NOTE: deliberately NOT re-read via `r.bindings(...)` here. Two
@@ -639,50 +567,38 @@ contract HalmosAgreementRegistry is Test {
         // dynamic tail whose length-encoding bit is itself symbolic; see
         // https://github.com/a16z/halmos/wiki/warnings#internal-error). Every
         // OTHER property in this file reads `bindings()` with a symbolic key,
-        // including after a conditional withdrawal, and passes — this is the
+        // including after a conditional withdraw, and passes — this is the
         // one place two such reads combine in one property. `aliceWithdraws`
         // / `bobWithdraws` already determine the owed amount exactly: both
-        // `requestWithdrawal` and `withdraw` calls above are unconditionally successful by
+        // `withdrawDeposit` calls above are unconditionally successful by
         // construction (fresh registry, valid registrant, called at most
         // once), so recomputing "still owed" from them is not a weaker
         // statement, just one that avoids the decoder boundary. The
-        // getter's own correctness after a withdrawal is covered concretely in
-        // `AgreementRegistryTest.t.sol` (`test_withdraw_afterCooldown_paysOnce`).
-        uint256 owed =
-            (aliceWithdraws && aliceClaims ? 0 : uint256(stake)) + (bobWithdraws && bobClaims ? 0 : uint256(stake));
+        // getter's own correctness after withdraw is covered concretely in
+        // `AgreementRegistryTest.t.sol` (`test_withdrawDeposit_happy`).
+        uint256 owed = (aliceWithdraws ? 0 : uint256(stake)) + (bobWithdraws ? 0 : uint256(stake));
 
         assertGe(address(r).balance, owed, "the registry must hold every live stake");
     }
 
-    function check_requestedStakeIsClaimableInFull_onlyAfterTheCooldown(uint96 stake, bytes32 keyA, uint32 elapsed)
-        public
-    {
-        vm.assume(keyA != bytes32(0));
+    function check_liveStakeIsAlwaysWithdrawableInFull(uint96 stake, bytes32 keyA) public {
+        _assumeRegistrable(keyA);
 
-        AgreementRegistry r = new AgreementRegistry(stake, COOLDOWN);
+        AgreementRegistry r = new AgreementRegistry(stake);
         vm.deal(ALICE, uint256(stake) + 1 ether);
 
         vm.prank(ALICE);
         r.registerAgreement{value: stake}(keyA, "ipfs://a");
-        vm.prank(ALICE);
-        r.requestWithdrawal(keyA);
-        assertEq(address(r).balance, stake, "the request pays nothing");
 
-        vm.warp(block.timestamp + elapsed);
         uint256 before = ALICE.balance;
         vm.prank(ALICE);
-        (bool ok,) = address(r).call(abi.encodeCall(AgreementRegistry.withdraw, (keyA)));
+        r.withdrawDeposit(keyA);
 
-        if (elapsed < COOLDOWN) {
-            assertFalse(ok, "no claim before the cooldown");
-            assertEq(ALICE.balance, before, "no ETH moves early");
-            assertEq(address(r).balance, stake, "the stake stays locked");
-        } else {
-            assertTrue(ok, "the claim succeeds once the cooldown has elapsed");
-            assertEq(ALICE.balance, before + stake, "paid in full");
-            assertEq(address(r).balance, 0, "and nothing is left owed");
-        }
+        assertEq(ALICE.balance, before + stake, "paid in full, immediately, no cooldown");
+        assertEq(address(r).balance, 0, "and nothing is left owed");
     }
+
+    // ── P2: first-write-wins permanence ─────────────────────────────
 
     function check_firstWriteWins_noSecondRegistrationEverSucceeds(
         uint96 stake,
@@ -692,7 +608,7 @@ contract HalmosAgreementRegistry is Test {
     ) public {
         _assumeRegistrable(keyA);
 
-        AgreementRegistry r = new AgreementRegistry(stake, COOLDOWN);
+        AgreementRegistry r = new AgreementRegistry(stake);
         vm.deal(ALICE, uint256(stake) * 2 + 1 ether);
         vm.deal(BOB, uint256(stake) * 2 + 1 ether);
 
@@ -701,7 +617,7 @@ contract HalmosAgreementRegistry is Test {
 
         if (aliceWithdrawsFirst) {
             vm.prank(ALICE);
-            r.requestWithdrawal(keyA);
+            r.withdrawDeposit(keyA);
         }
 
         address secondCaller = secondCallerIsAlice ? ALICE : BOB;
@@ -716,34 +632,31 @@ contract HalmosAgreementRegistry is Test {
         assertGt(registeredAt, 0, "and the binding stays registered forever");
     }
 
-    // ── P3: the claim is one-shot ────────────────────────────────────
+    // ── P3: withdrawal is one-shot ───────────────────────────────────
 
     function check_withdrawalIsOneShot_secondWithdrawCannotMoveEth(uint96 stake, bytes32 keyA) public {
         _assumeRegistrable(keyA);
 
-        AgreementRegistry r = new AgreementRegistry(stake, COOLDOWN);
+        AgreementRegistry r = new AgreementRegistry(stake);
         vm.deal(ALICE, uint256(stake) + 1 ether);
 
         vm.prank(ALICE);
         r.registerAgreement{value: stake}(keyA, "ipfs://a");
         vm.prank(ALICE);
-        r.requestWithdrawal(keyA);
-        vm.warp(block.timestamp + COOLDOWN);
-        vm.prank(ALICE);
-        r.withdraw(keyA);
+        r.withdrawDeposit(keyA);
 
         uint256 balAfterFirst = ALICE.balance;
         uint256 contractBalAfterFirst = address(r).balance;
 
         vm.prank(ALICE);
-        (bool ok,) = address(r).call(abi.encodeCall(AgreementRegistry.withdraw, (keyA)));
+        (bool ok,) = address(r).call(abi.encodeCall(AgreementRegistry.withdrawDeposit, (keyA)));
 
-        assertFalse(ok, "a second claim for this agreementHash cannot succeed");
+        assertFalse(ok, "a second withdraw for this agreementHash cannot succeed");
         assertEq(ALICE.balance, balAfterFirst, "no ETH moves on the second attempt");
         assertEq(address(r).balance, contractBalAfterFirst, "contract balance is unchanged");
     }
 
-    // ── P4: the request ends liveness, permanently ──────────────────
+    // ── P4: withdrawal ends eligibility, permanently ────────────────
 
     function check_withdrawalEndsEligibility_andNothingRestoresIt(
         uint96 stake,
@@ -753,7 +666,7 @@ contract HalmosAgreementRegistry is Test {
     ) public {
         _assumeRegistrable(keyA);
 
-        AgreementRegistry r = new AgreementRegistry(stake, COOLDOWN);
+        AgreementRegistry r = new AgreementRegistry(stake);
         vm.deal(ALICE, uint256(stake) * 2 + 1 ether);
         vm.deal(BOB, uint256(stake) + 1 ether);
 
@@ -764,10 +677,10 @@ contract HalmosAgreementRegistry is Test {
         assertFalse(withdrawnBefore, "stake starts live");
 
         vm.prank(ALICE);
-        r.requestWithdrawal(keyA);
+        r.withdrawDeposit(keyA);
 
         (,, bool withdrawnAfter,) = r.bindings(keyA);
-        assertTrue(withdrawnAfter, "liveness ends at the request (depositWithdrawn == true)");
+        assertTrue(withdrawnAfter, "eligibility ends at withdraw (depositWithdrawn == true)");
 
         if (attemptReRegister) {
             vm.prank(BOB);
@@ -775,7 +688,7 @@ contract HalmosAgreementRegistry is Test {
         }
         if (attemptSecondWithdraw) {
             vm.prank(ALICE);
-            address(r).call(abi.encodeCall(AgreementRegistry.requestWithdrawal, (keyA)));
+            address(r).call(abi.encodeCall(AgreementRegistry.withdrawDeposit, (keyA)));
         }
 
         (,, bool withdrawnFinal,) = r.bindings(keyA);
@@ -811,7 +724,7 @@ contract HalmosAgreementRegistry is Test {
         _assumeRegistrable(keyB);
         vm.assume(keyA != keyB);
 
-        AgreementRegistry r = new AgreementRegistry(stake, COOLDOWN);
+        AgreementRegistry r = new AgreementRegistry(stake);
         vm.deal(ALICE, uint256(stake) * 2 + 1 ether);
         vm.deal(BOB, uint256(stake) + 1 ether);
 
@@ -823,7 +736,7 @@ contract HalmosAgreementRegistry is Test {
         r.registerAgreement{value: stake}(keyA, "ipfs://a");
         if (aliceWithdraws) {
             vm.prank(ALICE);
-            r.requestWithdrawal(keyA);
+            r.withdrawDeposit(keyA);
         }
         if (attemptHijackA) {
             vm.prank(BOB);

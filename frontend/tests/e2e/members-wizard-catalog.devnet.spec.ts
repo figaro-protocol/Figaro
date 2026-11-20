@@ -95,7 +95,7 @@ async function pinnedCatalog(): Promise<CatalogDoc> {
 
 /** The slugs the Assemblies step must list, in the order it must list them,
  *  from the registry's events alone: every anchored assembly whose stake is
- *  not requested back (`WithdrawalRequested`), the most recently anchored first (a block's own logs keep their
+ *  still held, the most recently anchored first (a block's own logs keep their
  *  log order). */
 async function expectedAssemblyOrder(): Promise<string[]> {
     const client = localPublicClient();
@@ -103,7 +103,7 @@ async function expectedAssemblyOrder(): Promise<string[]> {
     const address = (process.env.NEXT_PUBLIC_PROCESS_REGISTRY ?? config.processRegistry) as Hex;
     const [registered, withdrawn] = await Promise.all([
         client.getContractEvents({ address, abi: PROCESS_REGISTRY_ABI, eventName: 'ProcessRegistered', fromBlock: 0n }),
-        client.getContractEvents({ address, abi: PROCESS_REGISTRY_ABI, eventName: 'WithdrawalRequested', fromBlock: 0n }),
+        client.getContractEvents({ address, abi: PROCESS_REGISTRY_ABI, eventName: 'DepositWithdrawn', fromBlock: 0n }),
     ]);
     const gone = new Set(withdrawn.map((e) => String(e.args.processDesignHash).toLowerCase()));
     return registered

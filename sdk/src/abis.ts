@@ -230,24 +230,13 @@ export const UNISWAP_V3_FEE_TIERS = [100, 500, 3000, 10000] as const;
 // A clause is its spec: the key is keccak256 of the canonical bytes of the
 // spec without its top-level `block` — `computeClauseKey(spec)` — and a reader
 // verifies a fetched spec by recomputing that key (`anchorClauseSpec`).
-//
-// The three key registries (clause, assembly, agreement) take a stake back in
-// MembersRegistry's two calls: `requestWithdrawal(key)` marks it withdrawn
-// at once (the de-surfacing event is `WithdrawalRequested`), and
-// `withdraw(key)` pays it out once `withdrawable(key)` — the chain's answer,
-// never a client clock — is true. `DepositWithdrawn` is only the payout.
 export const CLAUSE_REGISTRY_ABI = parseAbi([
     "function registered(bytes32 clauseKey) view returns (bool)",
     "function registerClause(bytes32 clauseKey, string contentURI) external payable",
-    "function requestWithdrawal(bytes32 clauseKey) external",
-    "function withdraw(bytes32 clauseKey) external",
+    "function withdrawDeposit(bytes32 clauseKey) external",
     "function registrationDeposit() view returns (uint256)",
-    "function withdrawalCooldown() view returns (uint256)",
-    "function releaseAt(bytes32 key) view returns (uint256)",
-    "function withdrawable(bytes32 key) view returns (bool)",
     "function depositOf(bytes32 clauseKey) view returns (address registeredBy, bool withdrawn)",
     "event ClauseRegistered(bytes32 indexed clauseKey, string contentURI, address indexed registeredBy)",
-    "event WithdrawalRequested(bytes32 indexed clauseKey, address indexed registeredBy, uint256 amount, uint256 releaseAt)",
     "event DepositWithdrawn(bytes32 indexed clauseKey, address indexed registeredBy, uint256 amount)",
     "error AlreadyRegistered(bytes32 clauseKey)",
     "error NotRegistered(bytes32 clauseKey)",
@@ -257,8 +246,6 @@ export const CLAUSE_REGISTRY_ABI = parseAbi([
     "error NotRegisteredBy(address caller, address registeredBy)",
     "error AlreadyWithdrawn()",
     "error TransferFailed()",
-    "error NothingPending()",
-    "error CooldownActive(uint256 releaseAt)",
 ]);
 
 
@@ -313,15 +300,10 @@ export const MEMBERS_REGISTRY_ABI = parseAbi([
 
 export const PROCESS_REGISTRY_ABI = parseAbi([
     "function registerProcess(bytes32 processDesignHash, string contentURI) external payable",
-    "function requestWithdrawal(bytes32 processDesignHash) external",
-    "function withdraw(bytes32 processDesignHash) external",
+    "function withdrawDeposit(bytes32 processDesignHash) external",
     "function bindings(bytes32 processDesignHash) view returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)",
     "function registrationDeposit() view returns (uint256)",
-    "function withdrawalCooldown() view returns (uint256)",
-    "function releaseAt(bytes32 key) view returns (uint256)",
-    "function withdrawable(bytes32 key) view returns (bool)",
     "event ProcessRegistered(bytes32 indexed processDesignHash, address indexed registeredBy, string contentURI)",
-    "event WithdrawalRequested(bytes32 indexed processDesignHash, address indexed registeredBy, uint256 amount, uint256 releaseAt)",
     "event DepositWithdrawn(bytes32 indexed processDesignHash, address indexed registeredBy, uint256 amount)",
     "error EmptyContentURI()",
     "error ZeroProcessDesignHash()",
@@ -331,8 +313,6 @@ export const PROCESS_REGISTRY_ABI = parseAbi([
     "error NotRegisteredBy(address caller, address registeredBy)",
     "error AlreadyWithdrawn()",
     "error TransferFailed()",
-    "error NothingPending()",
-    "error CooldownActive(uint256 releaseAt)",
 ]);
 
 // ── AgreementRegistry ABI ─────────────────────────────────────────────────
@@ -343,15 +323,10 @@ export const PROCESS_REGISTRY_ABI = parseAbi([
 
 export const AGREEMENT_REGISTRY_ABI = parseAbi([
     "function registerAgreement(bytes32 agreementHash, string contentURI) external payable",
-    "function requestWithdrawal(bytes32 agreementHash) external",
-    "function withdraw(bytes32 agreementHash) external",
+    "function withdrawDeposit(bytes32 agreementHash) external",
     "function bindings(bytes32 agreementHash) view returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)",
     "function registrationDeposit() view returns (uint256)",
-    "function withdrawalCooldown() view returns (uint256)",
-    "function releaseAt(bytes32 key) view returns (uint256)",
-    "function withdrawable(bytes32 key) view returns (bool)",
     "event AgreementRegistered(bytes32 indexed agreementHash, address indexed registeredBy, string contentURI)",
-    "event WithdrawalRequested(bytes32 indexed agreementHash, address indexed registeredBy, uint256 amount, uint256 releaseAt)",
     "event DepositWithdrawn(bytes32 indexed agreementHash, address indexed registeredBy, uint256 amount)",
     "error EmptyContentURI()",
     "error ZeroAgreementHash()",
@@ -362,8 +337,6 @@ export const AGREEMENT_REGISTRY_ABI = parseAbi([
     "error NotRegisteredBy(address caller, address registeredBy)",
     "error AlreadyWithdrawn()",
     "error TransferFailed()",
-    "error NothingPending()",
-    "error CooldownActive(uint256 releaseAt)",
 ]);
 
 // ── Florin Token ABIs ─────────────────────────────────────────────────────────

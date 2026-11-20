@@ -11,7 +11,7 @@
 //   mint           a florin token whose deployer never renounced registers
 //                  a minter and mints outside RpgfMinter.claim
 //                                                          → mint-…
-//   withdrawals    three clause deposits requested back in the window
+//   withdrawals    three clause deposits withdrawn in the window
 //                                                          → withdrawal-burst-…
 //   insolvency     an order committed in a rebasing token, then rebased down:
 //                  FigaroCore holds less than its open bonds (the rebasing
@@ -135,10 +135,10 @@ async function main() {
     const minted = await watch("mint", { ...base, florinToken: florin.address });
     check("mint-… raised", keysOf(minted).some((k) => k.startsWith("mint-")), minted.failed ?? JSON.stringify(keysOf(minted)));
 
-    console.log("\nThree deposits requested back in the window");
+    console.log("\nThree deposits withdrawn in the window");
     const clauses = parseAbi([
         "function registerClause(bytes32 clauseKey, string contentURI) payable",
-        "function requestWithdrawal(bytes32 clauseKey)",
+        "function withdrawDeposit(bytes32 idHash)",
         "function registrationDeposit() view returns (uint256)",
     ]);
     const deposit = await pub.readContract({ address: base.clauseRegistry, abi: clauses, functionName: "registrationDeposit" });
@@ -146,7 +146,7 @@ async function main() {
     for (let i = 0; i < 3; i++) {
         const id = `monitor-test-${stamp}-${i}`;
         await send(KEYS.registrant, base.clauseRegistry, clauses, "registerClause", [keccak256(toHex(id)), `ipfs://${id}`], deposit);
-        await send(KEYS.registrant, base.clauseRegistry, clauses, "requestWithdrawal", [keccak256(toHex(id))]);
+        await send(KEYS.registrant, base.clauseRegistry, clauses, "withdrawDeposit", [keccak256(toHex(id))]);
     }
     const withdrawn = await watch("withdrawals", base);
     check("withdrawal-burst-… raised", keysOf(withdrawn).some((k) => k.startsWith("withdrawal-burst-")), withdrawn.failed ?? JSON.stringify(keysOf(withdrawn)));

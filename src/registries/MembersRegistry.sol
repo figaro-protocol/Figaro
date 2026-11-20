@@ -62,9 +62,16 @@ contract MembersRegistry {
     ///      identity for the cooldown, and the capital cost of sustaining N
     ///      identities across a reward period P becomes `deposit · N · T / P`.
     ///
-    ///      The three key registries (Clause, Agreement, Process) carry it too:
-    ///      without it one stake takes any number of pending keys from their
-    ///      designers, registered and withdrawn in one transaction, for gas.
+    ///      The three key registries (Clause, Agreement, Process) need no
+    ///      wait. A key is the hash of its content and holds no name, so there
+    ///      is nothing to take but bytes: a designer whose bytes another
+    ///      registered first registers a changed content under a new key. A
+    ///      key a rival keeps is priced by its stake being live at the count
+    ///      and at the claim (`RpgfMinter._isAuthor`), and a designer releases
+    ///      a new version by withdrawing the old key and registering the new
+    ///      one. A rival that registers a key and withdraws it in one
+    ///      transaction pays only gas and burns that key; that is the accepted
+    ///      residual (`docs/DESIGN_DECISIONS.md` § 41).
     uint256 public immutable withdrawalCooldown;
 
     /// @dev Dedup guard — prevents double-registration for the same address.

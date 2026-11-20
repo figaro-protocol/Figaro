@@ -161,7 +161,7 @@ contract ReentrancyAdversarialTest is Test {
         // hand-built public values (this suite exercises the reentrancy guard,
         // not the proof — the proof path is covered in FigaroBatchVerifierTest).
         MockSP1Verifier sp1 = new MockSP1Verifier();
-        ClauseRegistry registry = new ClauseRegistry(0, 0);
+        ClauseRegistry registry = new ClauseRegistry(0);
 
         // A counter is required for construction; this batch credits no usage,
         // so the verifier's call to it is a no-op and only the guard is under

@@ -22,10 +22,7 @@
         "membersWithdrawalCooldown": "2419200",
         "clauseRegistrationDeposit": "50000000000000000",
         "assemblyRegistrationDeposit": "50000000000000000",
-        "agreementRegistrationDeposit": "50000000000000000",
-        "clauseWithdrawalCooldown": "2419200",
-        "assemblyWithdrawalCooldown": "2419200",
-        "agreementWithdrawalCooldown": "2419200"
+        "agreementRegistrationDeposit": "50000000000000000"
     },
     "usageCounter": {
         "minSellers": "3",

@@ -582,8 +582,8 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         const contentURI = await pinJSON(ipfsApiUrl, canonicalize(spec));
 
         // Registering = staked intent (K4): every registration posts the
-        // registry's deposit, reclaimable via requestWithdrawal (which
-        // de-surfaces the clause) and then withdraw, after the cooldown.
+        // registry's deposit, reclaimable via withdrawDeposit (which
+        // de-surfaces the clause).
         const deposit = await publicClient.readContract({
             address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registrationDeposit',
         });
