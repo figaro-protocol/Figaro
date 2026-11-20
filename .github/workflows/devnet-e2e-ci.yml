@@ -7,9 +7,10 @@ name: Devnet E2E CI
 # Every run of the e2e job first runs the walletless four-family registries
 # spec on the bare genesis the deploy leaves, before any test population.
 #
-# Three jobs. `scope` decides what the run covers; `devnet-e2e` runs it, one
-# job and one copy of the stack setup whatever the scope; `gate` is the one
-# result a branch protection rule requires.
+# Four jobs. `scope` decides what the run covers; `relay` builds the relay
+# for the full scope; `devnet-e2e` runs the scope, one job and one copy of
+# the stack setup whatever the scope; `gate` is the one result a branch
+# protection rule requires.
 #
 # The scopes:
 #   - full: the whole Playwright `devnet` project — every runtime
@@ -18,7 +19,8 @@ name: Devnet E2E CI
 #     `devnet-standalone` project's four specs on the same chain. The nightly
 #     schedule, a dispatch with suite=full, and a pull request that touches a
 #     flow path (the app routes, frontend/lib, the SDK's source, the
-#     contracts, or this file).
+#     contracts, or this file). The full scope deploys with the relay this
+#     tree builds, so the batch-events spec runs, and a skip of it fails.
 #   - spine: the `orders-accept` spec (the bilateral spine) only. A push to
 #     main or develop, a dispatch with suite=spine, and a pull request that
 #     touches the rest of the stack the push trigger watches (the deploy, the
@@ -139,10 +141,101 @@ jobs:
                   echo "Scope: $scope"
                   echo "scope=$scope" >> "$GITHUB_OUTPUT"
 
+    # The relay (prover/sequencer) this tree builds, for the full scope only.
+    # The batch-events spec drives a batched order through it, and the deploy
+    # pins the guest fingerprint it reports (scripts/deploy-local.sh, `sequencer
+    # --vkey`), so the relay passes its own startup check against the devnet
+    # verifier. The toolchain is installed as prover-ci.yml's `sp1` job does.
+    # A job of its own, passing only the binary on: the e2e job keeps its disk
+    # for the stack, and the relay's build directory never enters it.
+    relay:
+        name: Relay build (full scope)
+        needs: scope
+        if: needs.scope.outputs.scope == 'full'
+        runs-on: ubuntu-24.04
+        timeout-minutes: 90
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+            - name: Read pinned Rust toolchain
+              run: |
+                  RUST_TOOLCHAIN=$(awk -F'"' '/^channel/{print $2}' prover/rust-toolchain.toml)
+                  if [ -z "$RUST_TOOLCHAIN" ]; then
+                      echo "could not read channel from prover/rust-toolchain.toml"
+                      exit 1
+                  fi
+                  echo "RUST_TOOLCHAIN=$RUST_TOOLCHAIN" >> "$GITHUB_ENV"
+
+            - name: Install Rust ${{ env.RUST_TOOLCHAIN }}
+              run: |
+                  rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+                  rustup default "$RUST_TOOLCHAIN"
+                  rustc --version
+
+            - name: Read pinned SP1 version
+              run: |
+                  SP1_VERSION=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' prover/Cargo.lock)
+                  if [ "$SP1_VERSION" = "v" ]; then
+                      echo "could not read the sp1-sdk version from prover/Cargo.lock"
+                      exit 1
+                  fi
+                  echo "SP1_VERSION=$SP1_VERSION" >> "$GITHUB_ENV"
+
+            - name: Install SP1 ${{ env.SP1_VERSION }}
+              env:
+                  GITHUB_TOKEN: ${{ github.token }}
+              run: |
+                  mkdir -p "$HOME/.sp1/bin"
+                  curl -sSfL "https://raw.githubusercontent.com/succinctlabs/sp1/${SP1_VERSION}/sp1up/sp1up" \
+                      -o "$HOME/.sp1/bin/sp1up"
+                  chmod +x "$HOME/.sp1/bin/sp1up"
+                  "$HOME/.sp1/bin/sp1up" --version "$SP1_VERSION"
+                  echo "$HOME/.sp1/bin" >> "$GITHUB_PATH"
+
+            - name: Install protoc
+              run: |
+                  sudo apt-get update -qq && sudo apt-get install -y -qq protobuf-compiler
+                  protoc --version
+
+            # Restore only, under prover-ci.yml's `sp1` key: that job owns the
+            # cache and saves it on main, and a second save here would store a
+            # second copy of the same build directory.
+            - name: Restore cargo registry + target
+              uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      prover/target
+                  key: ${{ runner.os }}-prover-sp1-${{ env.SP1_VERSION }}-${{ hashFiles('prover/Cargo.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-prover-sp1-${{ env.SP1_VERSION }}-
+
+            # The release binary, at the path the spec and the deploy read
+            # (prover/target/release/sequencer).
+            - name: Build the relay
+              working-directory: ./prover
+              run: cargo build --release --locked -p figaro-sequencer --bin sequencer
+
+            - name: Upload the relay binary
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: devnet-relay
+                  path: prover/target/release/sequencer
+                  retention-days: 1
+                  if-no-files-found: error
+
     devnet-e2e:
         name: ${{ needs.scope.outputs.scope == 'full' && 'Full devnet suite' || 'Bilateral spine (orders-accept)' }}
-        needs: scope
-        if: needs.scope.outputs.scope != 'none'
+        needs: [scope, relay]
+        # The relay job is skipped outside the full scope, and this job runs
+        # then too; in the full scope it runs only after a relay build that
+        # passed.
+        if: >-
+            ${{ !cancelled()
+            && needs.scope.outputs.scope != 'none'
+            && (needs.relay.result == 'success' || (needs.scope.outputs.scope != 'full' && needs.relay.result == 'skipped')) }}
         runs-on: ubuntu-24.04
         # The spine: 30 minutes. The full suite: 38 spec files (37 in `devnet`
         # plus the `devnet-authoring` wizard), one worker, one retry per test,
@@ -152,8 +245,11 @@ jobs:
         # export again: 30 minutes more, an estimate no run has measured yet.
         # Either scope then runs the stranger crawl, which builds the export
         # once more and visits every route under a 20-minute test budget: 20
-        # minutes more.
-        timeout-minutes: ${{ needs.scope.outputs.scope == 'full' && 170 || 50 }}
+        # minutes more. The full scope's deploy derives the relay's guest
+        # fingerprint once, and the batch-events spec starts the relay and
+        # lands three batches: 15 minutes more, an estimate no run has
+        # measured yet.
+        timeout-minutes: ${{ needs.scope.outputs.scope == 'full' && 185 || 50 }}
         env:
             FULL_SUITE: ${{ needs.scope.outputs.scope == 'full' }}
 
@@ -231,6 +327,24 @@ jobs:
                   NEXT_PUBLIC_ENABLE_TEST_HELPERS=true
                   EOF
 
+            # The full scope's relay, where the deploy and the batch-events
+            # spec look for it. An artifact keeps no file mode, so the binary
+            # is made executable again: the deploy reads the guest fingerprint
+            # only from an executable binary. Its first `--vkey` derives the
+            # fingerprint (minutes) and caches it for the deploy and the spec.
+            - name: Download the relay binary
+              if: env.FULL_SUITE == 'true'
+              uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+              with:
+                  name: devnet-relay
+                  path: prover/target/release
+
+            - name: Make the relay executable
+              if: env.FULL_SUITE == 'true'
+              run: |
+                  chmod +x prover/target/release/sequencer
+                  prover/target/release/sequencer --vkey
+
             - name: Deploy protocol stack (+ clauses, agreements, reference assemblies)
               run: bash scripts/deploy-local.sh
 
@@ -265,6 +379,9 @@ jobs:
             # ── The whole devnet project (the full scope) ────────────────
             # test:e2e:devnet = the same preflight + seed, then every runtime
             # devnet spec after the devnet-authoring wizard, one worker.
+            # REQUIRE_BATCH_E2E turns the batch-events spec's skip, when no
+            # relay binary is found, into a failure: the binary is provided
+            # here, so a skip would pass a run that never read a batched trade.
             - name: Run the full devnet e2e suite
               if: env.FULL_SUITE == 'true'
               run: |
@@ -272,6 +389,7 @@ jobs:
                   npm run test:e2e:devnet
               env:
                   CI: true
+                  REQUIRE_BATCH_E2E: "1"
 
             # ── The devnet-standalone project (the full scope) ───────────
             # test:e2e:devnet selects the `devnet` project only. The four
@@ -352,11 +470,11 @@ jobs:
 
     # The required check. It reports on every run, so a branch protection rule
     # can require it: a needed job that failed or was canceled fails it; a
-    # job skipped by its `if` (the e2e job on a pull request with scope none)
-    # passes it.
+    # job skipped by its `if` (the e2e job on a pull request with scope none,
+    # the relay job outside the full scope) passes it.
     gate:
         name: devnet-e2e gate
-        needs: [scope, devnet-e2e]
+        needs: [scope, relay, devnet-e2e]
         if: always()
         runs-on: ubuntu-24.04
         timeout-minutes: 5

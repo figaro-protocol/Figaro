@@ -144,6 +144,20 @@ function resolved(address: Address, orderN: number, blockNumber: bigint, logInde
     } as unknown as Log;
 }
 
+function processResolved(address: Address, processN: number, blockNumber: bigint, logIndex: number): Log {
+    return {
+        address,
+        blockNumber,
+        logIndex,
+        data: encodeAbiParameters(parseAbiParameters("uint256"), [1n]),
+        topics: encodeEventTopics({
+            abi: CORE_ABI,
+            eventName: "ProcessResolved",
+            args: { processId: id(processN), buyer: BUYER },
+        }),
+    } as unknown as Log;
+}
+
 /** Answers each `getLogs` with the logs under the queried address only. */
 function twoContractClient(allLogs: Log[]): PublicClient {
     const getLogs = vi.fn(async ({ address, fromBlock, toBlock }: { address: Address; fromBlock: bigint; toBlock: bigint }) =>
@@ -185,6 +199,34 @@ describe("fetchCoreEvents folds both resolution paths", () => {
         expect(client.getLogs).toHaveBeenCalledWith({ address: CORE, fromBlock: 0n, toBlock: 50n });
         expect(events.orderCommitted.map((e) => e.orderHash)).toEqual([id(1), id(4)]);
         expect(events.orderResolved.map((e) => e.orderHash)).toEqual([id(1)]);
+    });
+
+    it("parses the verifier's ProcessResolved beside the Core's", async () => {
+        const client = twoContractClient([
+            ...LOGS,
+            processResolved(CORE, 1, 8n, 3),
+            processResolved(VERIFIER, 2, 9n, 1),
+        ]);
+        const events = await fetchCoreEvents(client, { core: CORE, batchVerifier: VERIFIER }, 0n, 50n);
+        expect(events.processResolved.map((e) => e.processId)).toEqual([id(1), id(2)]);
+        expect(events.processResolved.every((e) => e.buyer.toLowerCase() === BUYER && e.orderCount === 1n)).toBe(true);
+    });
+});
+
+describe("FigaroContext — a batched order is read as the direct one is", () => {
+    it("reads the verifier's commit and resolution when the batch verifier is configured", async () => {
+        const client = twoContractClient([
+            committed(CORE, 1, 3n, 0),
+            committed(VERIFIER, 2, 4n, 0),
+            resolved(VERIFIER, 2, 9n, 0),
+        ]);
+        const ctx = new FigaroContext(client, { core: CORE, batchVerifier: VERIFIER });
+        const synced = await ctx.sync();
+        expect(synced.newCommits).toBe(2);
+        expect(synced.newResolutions).toBe(1);
+        expect(ctx.getOrder(id(2))!.state).toBe(OrderState.Resolved);
+        expect(ctx.getOrder(id(1))!.state).toBe(OrderState.Active);
+        expect(ctx.getOrdersAsSeller(SELLER).map((o) => o.orderHash).sort()).toEqual([id(1), id(2)]);
     });
 });
 

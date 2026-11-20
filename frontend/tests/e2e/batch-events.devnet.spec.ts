@@ -32,8 +32,14 @@
  *              evidence lists the batched attestation, tagged batch;
  *              /evidence-display lists the commit, the attestation and the
  *              resolution, each tagged batch
+ *   payout   → the seller, paid by the batch, splits part of its receipts to
+ *              two recipients through the composed public multisender on its
+ *              order page; both recipients' balances and its own are read
+ *              from the token, out of band
  *
- * Skips when no sequencer binary is built. Depends on populate-test-data, as
+ * Skips when no sequencer binary is built, unless REQUIRE_BATCH_E2E=1 (the
+ * name the SDK's batch e2e reads): then a missing binary fails the test, as
+ * the full devnet suite in CI sets it. Depends on populate-test-data, as
  * every devnet spec does; needs nothing it seeds.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
@@ -41,9 +47,9 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createWalletClient, hashTypedData, http, keccak256, parseAbi, stringToHex, type Hex } from 'viem';
+import { createWalletClient, hashTypedData, http, keccak256, maxUint256, parseAbi, parseEther, stringToHex, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { LOCAL_ANVIL, RPC_URL, keyOf, localPublicClient, pinJSONToIPFS, primeRegisteredClauseSpecs, readLocalDeploymentConfig } from './devnet-helpers';
+import { LOCAL_ANVIL, RPC_URL, keyOf, localPublicClient, pinJSONToIPFS, primeRegisteredClauseSpecs, readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import {
     BATCH_VERIFIER_ABI,
@@ -62,6 +68,9 @@ import { specSource } from '@/lib/shared/clauseSpecSource';
 const SEQUENCER_BIN = path.resolve(__dirname, '../../../prover/target/release/sequencer');
 const RELAY_PORT = 3011;
 const RELAY_URL = `http://127.0.0.1:${RELAY_PORT}`;
+// Set where the binary is built for this run (the full devnet suite in CI): a
+// missing binary is then a failure, never a skip that passes.
+const REQUIRE = process.env.REQUIRE_BATCH_E2E === '1';
 const MINT_ABI = parseAbi(['function mint(address to, uint256 amount) external']);
 
 // anvil[0] is the fixture buyer; anvil[14] serves as a counterparty across the
@@ -118,6 +127,9 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
     test.setTimeout(900_000);
 
     test('one order through a relay rebuilt from the chain, attested and resolved in batches: the chain names each, and every surface shows it tagged batch', async ({ page }) => {
+        if (REQUIRE && !fs.existsSync(SEQUENCER_BIN)) {
+            throw new Error(`REQUIRE_BATCH_E2E=1 but no sequencer binary is at ${SEQUENCER_BIN}`);
+        }
         test.skip(!fs.existsSync(SEQUENCER_BIN), `no sequencer binary at ${SEQUENCER_BIN} (cargo build --release -p figaro-sequencer)`);
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
@@ -338,6 +350,40 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
             for (const path of await paths.all()) await expect(path).toHaveAttribute('data-universe', 'batch');
             await expect(page.getByText('Order Committed').first()).toBeVisible();
             await expect(page.getByText('Order Resolved').first()).toBeVisible();
+
+            // ── PAYOUT ROUTING: the seller, paid by the batch, splits part of its receipts
+            //    onward through the composed public multisender (devnet: MockDisperse), one
+            //    atomic disperse, as local-commerce does on the direct path. The panel keys
+            //    on a resolved order and the seller's role, read from either emitter. VALUE
+            //    LEGS from the token, out of band, never from the screen. ──
+            const PAYOUT_FIRST = '0x00000000000000000000000000000000000000c3' as Hex;
+            const PAYOUT_SECOND = '0x00000000000000000000000000000000000000d4' as Hex;
+            const multisender = config.multisender as Hex;
+            expect(multisender, 'the devnet names its multisender').toMatch(/^0x[0-9a-fA-F]{40}$/);
+            const allowanceToMultisender = () =>
+                publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'allowance', args: [SELLER.address, multisender] }) as Promise<bigint>;
+            const [first0, second0, sellerPaid, allowance0] = await Promise.all([
+                balanceOf(PAYOUT_FIRST), balanceOf(PAYOUT_SECOND), balanceOf(SELLER.address), allowanceToMultisender(),
+            ]);
+            await gotoAsWallet(page, SELLER.address, `/orders/view?process=${processId}&e2e=devnet`);
+            await page.getByTestId('order-timeline-view').waitFor({ timeout: 60000 });
+            await waitForConnected(page);
+            await expect(page.getByTestId('payout-routing'), 'the routing surface derives for the seller of a batch-resolved order')
+                .toBeVisible({ timeout: 60000 });
+            await page.getByTestId('payout-routing-recipient-0').fill(PAYOUT_FIRST);
+            await page.getByTestId('payout-routing-amount-0').fill('0.3');
+            await page.getByTestId('payout-routing-add-leg').click();
+            await page.getByTestId('payout-routing-recipient-1').fill(PAYOUT_SECOND);
+            await page.getByTestId('payout-routing-amount-1').fill('0.25');
+            await page.getByTestId('payout-routing-execute').click();
+            await expect(page.getByTestId('payout-routing-success'), 'the split routes (approve + one atomic disperse)')
+                .toBeVisible({ timeout: 60000 });
+            expect(await balanceOf(PAYOUT_FIRST) - first0, 'the first leg arrived exactly').toBe(parseEther('0.3'));
+            expect(await balanceOf(PAYOUT_SECOND) - second0, 'the second leg arrived exactly').toBe(parseEther('0.25'));
+            const splitTotal = parseEther('0.55');
+            expect(sellerPaid - await balanceOf(SELLER.address), 'the seller paid exactly the split total').toBe(splitTotal);
+            expect(await allowanceToMultisender(), 'the seller authorized the multisender for exactly the split total')
+                .toBe(allowance0 === maxUint256 ? maxUint256 : allowance0 >= splitTotal ? allowance0 - splitTotal : 0n);
         } finally {
             await stopRelay(relay);
             fs.rmSync(scratch, { recursive: true, force: true });
