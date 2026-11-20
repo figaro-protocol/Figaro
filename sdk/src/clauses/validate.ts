@@ -36,7 +36,14 @@ import type {
 } from "./spec.js";
 import { hasLoneSurrogate, ownValue, resolveFormatWith, resolveInputFormat, siblingDefaults } from "./spec.js";
 import { contentFieldsFor } from "./encode.js";
-import { safeRegexTest } from "./safeRegex.js";
+import {
+    MAX_CONTENT_PATTERN_WORK,
+    isPrintableAscii,
+    isRunnablePattern,
+    patternWorkExceeded,
+    portablePatternSize,
+    safeRegexTest,
+} from "./safeRegex.js";
 import { GEOHASH_FORMAT, capOfDisposition, grainCapOf, grainOf } from "./grain.js";
 import { isBytes32Hex, isAddressHex } from "../types.js";
 
@@ -67,7 +74,30 @@ function isObject(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function validateString(value: unknown, spec: StringFieldSpec, path: string, errors: ValidationError[]): void {
+/**
+ * The pattern work one content has spent: the sum, over every value a
+ * pattern is run on, of the value's length in UTF-16 units times the
+ * pattern's expanded size. Values are visited in one order in both
+ * engines: a spec's fields in the order it declares them, an array's items
+ * by index, depth first. When the next value would take the total past
+ * MAX_CONTENT_PATTERN_WORK, the content is refused once, at `$`, and no
+ * further pattern runs. The guest keeps the same total (`PatternWork`,
+ * `prover/clause/src/validate.rs`).
+ */
+interface PatternWork {
+    total: number;
+    refused: boolean;
+}
+
+const CONTENT_WORK_REFUSAL = "content too long for its patterns";
+
+function validateString(
+    value: unknown,
+    spec: StringFieldSpec,
+    path: string,
+    errors: ValidationError[],
+    work: PatternWork,
+): void {
     if (typeof value !== "string") {
         errors.push({ path, message: `expected string, got ${typeof value}` });
         return;
@@ -86,16 +116,37 @@ function validateString(value: unknown, spec: StringFieldSpec, path: string, err
     if (overMaxLength) {
         errors.push({ path, message: `string longer than maxLength ${spec.maxLength}` });
     }
-    // A value over `maxLength` is already refused, so its pattern is not run.
-    // The guest runs it and adds a second error; the verdict is the same.
+    // A value over `maxLength` is already refused, so its pattern is not run;
+    // the guest does the same.
     if (spec.pattern !== undefined && !overMaxLength) {
         // `pattern` comes from a permissionless clause spec, so it is
-        // untrusted. `safeRegexTest` matches it in time linear in the value
-        // (safeRegex.ts), and applies the guest's two skips
-        // (prover/clause/src/validate.rs, `safe_regex_test`), so the two
-        // engines give one verdict.
-        if (!safeRegexTest(spec.pattern, value)) {
+        // untrusted. A value that would cost it more than MAX_PATTERN_WORK is
+        // refused unrun, and so is the whole content once its values would
+        // cost their patterns more than MAX_CONTENT_PATTERN_WORK; every other
+        // value is matched in time linear in its length (safeRegex.ts), as
+        // the guest does (prover/clause/src/validate.rs, `safe_regex_test`),
+        // so the two engines give one verdict.
+        // A pattern that cannot be run refuses the value: a parsed spec never
+        // carries one, but a spec built in code may, and no value is counted
+        // as matching unchecked.
+        const size = portablePatternSize(spec.pattern);
+        if (size === null || !isRunnablePattern(spec.pattern)) {
+            errors.push({ path, message: `pattern ${spec.pattern} cannot be run` });
+        } else if (patternWorkExceeded(spec.pattern, value)) {
+            errors.push({ path, message: `string too long for pattern ${spec.pattern}` });
+        } else if (!isPrintableAscii(value)) {
             errors.push({ path, message: `string does not match pattern ${spec.pattern}` });
+        } else if (!work.refused) {
+            const cost = value.length * size;
+            if (work.total + cost > MAX_CONTENT_PATTERN_WORK) {
+                work.refused = true;
+                errors.push({ path: "$", message: CONTENT_WORK_REFUSAL });
+            } else {
+                work.total += cost;
+                if (!safeRegexTest(spec.pattern, value)) {
+                    errors.push({ path, message: `string does not match pattern ${spec.pattern}` });
+                }
+            }
         }
     }
     if (spec.format !== undefined) {
@@ -174,7 +225,13 @@ function validateEnum(value: unknown, spec: EnumFieldSpec, path: string, errors:
     }
 }
 
-function validateArray(value: unknown, spec: ArrayFieldSpec, path: string, errors: ValidationError[]): void {
+function validateArray(
+    value: unknown,
+    spec: ArrayFieldSpec,
+    path: string,
+    errors: ValidationError[],
+    work: PatternWork,
+): void {
     if (!Array.isArray(value)) {
         errors.push({ path, message: `expected array, got ${typeof value}` });
         return;
@@ -190,12 +247,18 @@ function validateArray(value: unknown, spec: ArrayFieldSpec, path: string, error
     const itemFormat = resolveInputFormat(spec.items, [], undefined);
     for (let i = 0; i < value.length; i++) {
         const itemPath = `${path}[${i}]`;
-        validateField(value[i], spec.items, itemPath, errors);
+        validateField(value[i], spec.items, itemPath, errors, work);
         validateGrain(value[i], itemFormat, spec.disposition, itemPath, errors);
     }
 }
 
-function validateObject(value: unknown, spec: ObjectFieldSpec, path: string, errors: ValidationError[]): void {
+function validateObject(
+    value: unknown,
+    spec: ObjectFieldSpec,
+    path: string,
+    errors: ValidationError[],
+    work: PatternWork,
+): void {
     if (!isObject(value)) {
         errors.push({ path, message: `expected object, got ${typeof value}` });
         return;
@@ -212,7 +275,7 @@ function validateObject(value: unknown, spec: ObjectFieldSpec, path: string, err
             }
             continue;
         }
-        validateField(childValue, field, childPath, errors);
+        validateField(childValue, field, childPath, errors, work);
         const resolved = resolveFormatWith(field, value, (name) => defaults?.get(name));
         validateGrain(childValue, resolved, field.disposition, childPath, errors);
     }
@@ -260,9 +323,15 @@ function validateGrain(
     }
 }
 
-function validateField(value: unknown, spec: FieldSpec, path: string, errors: ValidationError[]): void {
+function validateField(
+    value: unknown,
+    spec: FieldSpec,
+    path: string,
+    errors: ValidationError[],
+    work: PatternWork,
+): void {
     switch (spec.type) {
-        case "string": validateString(value, spec, path, errors); return;
+        case "string": validateString(value, spec, path, errors, work); return;
         case "integer": validateInteger(value, spec, path, errors); return;
         case "bigint": validateBigint(value, spec, path, errors); return;
         case "boolean":
@@ -271,15 +340,18 @@ function validateField(value: unknown, spec: FieldSpec, path: string, errors: Va
             }
             return;
         case "enum": validateEnum(value, spec, path, errors); return;
-        case "array": validateArray(value, spec, path, errors); return;
-        case "object": validateObject(value, spec, path, errors); return;
+        case "array": validateArray(value, spec, path, errors, work); return;
+        case "object": validateObject(value, spec, path, errors, work); return;
     }
 }
 
 /**
  * Validate content against a ClauseSpec. If `options.stage` is set and the
  * spec defines a matching stage override, those fields are used; otherwise
- * the spec's default `fields` apply.
+ * the spec's default `fields` apply. One call is one content: the pattern
+ * work it may spend, MAX_CONTENT_PATTERN_WORK, is counted over this call
+ * alone — one clause entry's signed content, or one attestation's stage
+ * content.
  */
 export function validateContent(
     content: unknown,
@@ -290,7 +362,7 @@ export function validateContent(
     const errors: ValidationError[] = [];
     // Treat the root content as a pseudo-object with the spec's top-level fields.
     const rootSpec: ObjectFieldSpec = { name: "$", required: true, type: "object", fields };
-    validateObject(content, rootSpec, "$", errors);
+    validateObject(content, rootSpec, "$", errors, { total: 0, refused: false });
     return errors.length > 0 ? { ok: false, errors } : { ok: true };
 }
 

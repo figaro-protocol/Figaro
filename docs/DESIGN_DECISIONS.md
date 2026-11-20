@@ -1822,6 +1822,104 @@ claimable in full once the cooldown has elapsed and never before.
 
 ---
 
+## 42. A pattern past a size is refused at parse, and long values are refused rather than run
+
+**Pattern**: a string field's `pattern` has one expanded size, computed alike
+by `portablePatternSize` (`sdk/src/clauses/safeRegex.ts`) and
+`portable_pattern_size` (`prover/clause/src/validate.rs`). A spec whose pattern
+is past `MAX_PATTERN_EXPANSION` (4,096) does not parse, in either engine. A
+value whose length in UTF-16 units times its pattern's size is past
+`MAX_PATTERN_WORK` (4,194,304) is refused with its own reason, "string too long
+for pattern", without the pattern run. One content, one call of
+`validateContent` or `validate_content`, adds that work over every value a
+pattern is run on. Its values are visited in the spec's field order and by
+array index, depth first. When the next value would take the total past
+`MAX_CONTENT_PATTERN_WORK` (16,777,216), the content is refused once, at `$`,
+with the reason "content too long for its patterns". Every other value is run
+against its pattern, whatever the pattern's shape and the value's length.
+
+**Why it looks wrong**: both engines match in time linear in the value, so a
+limit on what they run looks like the skip it replaced. A value that matches
+its pattern can be refused because it is long, and a list of values can be
+refused because it is long. Three numbers decide this, and nothing in the
+mechanism fixes them. The size limit also refuses patterns both engines used
+to accept. Before, a counted quantifier multiplied its item by its count and
+nothing more, and a group, a `|`, `*`, `+` and `?` added nothing. So counted
+items under counts at the old bound parsed: `(?:a{64}){64}`, `(?:\w{64}){64}`,
+`(?:a{1,64}){64}` and `^(?:a{64}){63}a{62}$`. Alternation under counts parsed
+too, such as `(?:(?:ab|cd){64}){16}`, and so did nested quantifiers under
+counts, such as `^(?:(?:a+){64}){63}$`. The guest compiled all of them, and
+none of them parses now.
+
+**Why it is correct**: linear in the value is not cheap. The cost per
+character is the size of the pattern's automaton, and the old count did not
+measure it. An automaton holds a state for each item, a split for each `|`, a
+split and a jump for each `*`, `+` or `?`, and a split for each optional copy
+a counted range writes. The old count left those out, so a pattern under its
+bound could hold several times as many states as it counted. A pattern with
+`*` nested twenty deep under two counts counted 4,034 and cost the guest about
+7 ms a character in a release build. The fuller count is the true one because
+it counts what both automata hold. Under it the SDK's automaton holds at most
+three instructions per unit, and the guest's no more than a small constant
+number of states. The relay runs the same check when it admits an operation,
+and a proof pays it again in cycles. The two engines used to skip such a
+pattern, or a value past 4,096 characters, and count the field as satisfied. A
+skip lets a stranger's clause carry a term the parties sign and nothing checks.
+A refusal keeps every admitted term checked and puts the cost on the party that
+wrote the large pattern or the long values. The per-value budget alone bounds
+one value, not one content: before the total, 1,000 values at the budget's
+edge in one content of about 1 MiB cost the guest 29 seconds. The guest
+compiles every pattern under the size limit within its explicit 8 MiB size
+limit, so no spec parses in one engine and not the other. That margin is a
+property of the `regex` crate the guest builds with, 1.13.1 with
+`regex-automata` 0.4.18 (`prover/Cargo.lock`). That version counts 8 bytes
+for each byte range of a class, and a portable class holds at most 49
+ranges: every other printable character, negated, with the bytes outside
+printable ASCII. So the classes of a pattern at the size limit cost at most
+4,096 units × 49 ranges × 8 bytes, some 1.6 MB, and its states some 134 bytes
+a unit more in every shape measured. The widest class found,
+`` [^ "$&(*,.02468:<>@BDFHJLNPRTVXZ\\\^`bdfhjlnprtvxz|~] `` under counts at the
+limit, needs 1,002,192 bytes, about 244 bytes a unit. The maintainer approved
+this design: one shared measure, a parse limit, and a work budget that
+refuses, per value and per content. An agent set the numbers from
+measurements, natively in a release build on a machine other jobs also
+loaded, so each figure is a range over repeated runs. At the per-value edge
+the costliest pattern found cost the guest 50 to 175 ms, the widest classes
+the most, and the SDK up to about 150 ms. At the content's edge the costliest
+content found cost the guest 0.2 to 0.53 seconds, which is above a quarter of
+a second and below one second, and the SDK about 0.6 seconds. The
+1,000-value content is refused after four values, in that time. The list of
+reasons a refused content carries is not bounded; one reason per value at
+most, so the number of values, which the relay's 1 MiB request body bounds,
+bounds its cost, and the proof program reads only the first reason. The reference
+patterns are far under all three numbers: the domain-name pattern counts 13
+and runs on up to 322,638 characters, and a content holds 1,925 32-byte
+hashes. A field that wants short values declares `maxLength`, which is
+refused first and adds nothing to the total.
+
+**Tests**: `sdk/tests/clauses/safeRegex.test.ts` holds the measure on each
+construct and on the reference patterns, the size limit at 4,096 and 4,097,
+the per-value budget at its edge and one character past it, the content's
+total at 1,925 and 1,926 hashes, each refusal's reason, and the costliest
+patterns at the edge in bounded time.
+`sdk/tests/clauses/engineVectors.test.ts` fits each costly shape to the limit,
+under the largest count that keeps it and one more, and checks that every one
+the SDK parses builds its automaton. The frozen verdicts in
+`test/fixtures/clause-engine-vectors.json` lock both edges of each limit to
+the guest's (`prover/clause/tests/engine_vectors.rs`), the many-small-values
+shape and a total over two fields included.
+`prover/clause/tests/conformance.rs` holds the same limits, the reasons and
+the costliest patterns at the edge; it compiles the widest classes and the
+other costly shapes in a quarter of `PATTERN_SIZE_LIMIT`, and runs the widest
+classes at both budgets' edges. The SDK refuses a value under a pattern it
+cannot run, with a reason of its own, and builds the automaton when the spec
+parses (`safeRegex.test.ts`). The clause leg of
+`scripts/test-cross-impl-fuzz.sh` draws patterns on both sides of the size
+limit, values at both edges of the per-value budget, and lists at both edges
+of the content's total.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -1867,3 +1965,4 @@ claimable in full once the cooldown has elapsed and never before.
 | 39 | `AttestBuyer` signs `processId` beside `orderHash`; `AttestSeller` does not | batch-path/evidence | The seller's message looks one field short | `orderHash = keccak256(processId ‖ structHash)` binds the process on every path, and both ids derive from the one target commitment; the buyer's extra field adds nothing to what is bound, and changing a type changes every signature and the verification key |
 | 40 | The reference frontend reads a clause spec only when its bytes hash to the CID in the registered URI | frontend/reader | The key already anchors everything a party signs, and the registry accepts any URI | The key leaves the `block` out, so without the CID the `block` read is the transport's choice; with it, the registrant's; a URI form the frontend cannot recompute is the unchecked transport, so it is refused |
 | 41 | The key registries take the members' withdrawal cooldown; a withdrawn key forfeits its unclaimed periods | registry/reward-path | A key withdrawn once recycles nothing, so a timer on its stake looks purposeless; a period scored under a live stake and lost at a later withdrawal looks like earned rewards taken back | A one-call withdrawal lets a front-runner take a pending key and its stake back in one transaction, at gas cost; the cooldown makes the stake price the attempt (§ 7). The live-stake check runs at the count and at the claim, so the stake stays held through the period and its claim (`/papers/substrate-broadening-rpgf`); a designer claims first, then requests |
+| 42 | A pattern past a size is refused at parse, and long values are refused rather than run | spec format/clause engine | Both engines are linear in the value, so a limit looks like the skip it replaced; a matching value or list can be refused; the fuller count refuses patterns a narrower count would admit | Linear is not cheap: the cost per character is the automaton's size, which the fuller count measures and the old one did not; a skip leaves a signed term unchecked, a refusal keeps every admitted term checked; the limit keeps the two engines' parse verdicts one, and the budgets bound one value's and one content's work in both |

@@ -14,7 +14,7 @@
  * never code — a new clause adds a spec, not a code path.
  */
 
-import { isPortablePattern } from "./safeRegex.js";
+import { isPortablePattern, isRunnablePattern } from "./safeRegex.js";
 
 export type FieldType =
     | "string"
@@ -538,6 +538,13 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
                 }
                 try { new RegExp(raw.pattern); } catch {
                     errors.push({ path: `${path}.pattern`, message: "pattern must be a valid regex" });
+                    return null;
+                }
+                // The automaton is built now, as the guest compiles the
+                // pattern when the spec parses: a pattern that cannot be
+                // built never reaches a value.
+                if (!isRunnablePattern(raw.pattern)) {
+                    errors.push({ path: `${path}.pattern`, message: "pattern must compile to an automaton" });
                     return null;
                 }
                 spec.pattern = raw.pattern;

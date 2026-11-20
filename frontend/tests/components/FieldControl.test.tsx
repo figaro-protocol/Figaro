@@ -241,6 +241,15 @@ describe("FieldControl constraint guidance", () => {
         expect(alert.textContent).toMatch(/required format/);
     });
 
+    it("a value past its pattern's work budget reads as too long, not as a format mismatch", () => {
+        // Expanded size 4,096: the budget runs at most 1,024 characters.
+        const wide: FieldSpec = { name: "wide", type: "string", required: true, pattern: "(?:a{0,31}){64}" };
+        render(<FieldControl field={wide} value={"a".repeat(1025)} onChange={() => {}} testId="f-wide" />);
+        const alert = screen.getByTestId("f-wide-constraint");
+        expect(alert.textContent).toMatch(/at most 1024 characters/);
+        expect(alert.textContent).not.toMatch(/required format/);
+    });
+
     it("a conforming value shows no constraint error", () => {
         render(<FieldControl field={lawField} value="US-NY" onChange={() => {}} testId="f-law2" />);
         expect(screen.queryByTestId("f-law2-constraint")).toBeNull();

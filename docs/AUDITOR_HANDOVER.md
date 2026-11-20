@@ -216,8 +216,7 @@ Every state-changing external function in scope, and who may call it:
 | `AttestationCoordinator` | `attestAsSeller`, `attestAsBuyer` | the order's seller, the order's buyer |
 | `FigaroBatchVerifier` | `settleBatch` | anyone, with a valid proof over the current state root |
 | `ClauseRegistry`, `AgreementRegistry`, `ProcessRegistry` | `registerClause`, `registerAgreement`, `registerProcess` | anyone, with the exact stake; first write wins; the zero key refused, and in `AgreementRegistry` the two reserved keys |
-| the three registries | `withdrawDeposit` | the registrant, once |
-| `ClauseRegistry` | `setMechanismClause` | anyone, for a registered key; emits an event, writes nothing |
+| the three registries | `requestWithdrawal`; `withdraw` | the registrant, once per key; the registrant, once the cooldown has passed |
 | `UsageCounter` | `recordClauseUsage`, `recordAgreementUsage`, `recordProcessDesignUsage` | anyone, with merkle proofs over a resolved direct-path order |
 | `UsageCounter` | `applyBatchAccrual` | `FigaroBatchVerifier` only |
 | `RpgfMinter` | `claim` | a live member that registered every key it passes, once per closed period |
@@ -322,7 +321,7 @@ neither covers:
 - `FlorinToken.renounceDeployerMint` emits no event; `deployerMintRenounced` is the state.
 - `FlorinToken` reads a cap of zero as "not a minter": a minter registered with a zero cap is indistinguishable from an unregistered one, and can be registered again.
 - `UsageCounter._count` holds the scope's one `unchecked` block, `c` and `d` each incremented by one; a process is counted once ever, so `c` is bounded by resolved processes and `d` by `c`.
-- A clause `pattern` is a regex in the portable core (`docs/CLAUSES.md`); a pattern of the catastrophic shape, or an input over 4,096 UTF-16 units, is treated as satisfied by both engines, the safe direction for a check whose binding form is the merkle commitment.
+- A clause `pattern` is a regex in the portable core (`docs/CLAUSES.md`). Both engines refuse at parse a pattern whose expanded size is past 4,096; refuse a value whose length times that size is past 4,194,304; and refuse a content whose values' work sums past 16,777,216. Every other value is run (`DESIGN_DECISIONS.md` #42).
 - No crate in scope has an `unsafe` block. The mirror returns every refusal as a `KernelError`; the guest's entry point ends on it, so a batch the mirror refuses has no proof.
 
 ## Accepted risks and known limitations

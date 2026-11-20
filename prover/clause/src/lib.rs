@@ -54,5 +54,5 @@ pub use spec::{
 };
 pub use validate::{
     resolve_input_format, validate_content, validate_signed_content, ValidateOptions,
-    ValidationError, ValidationResult,
+    ValidationError, ValidationResult, PATTERN_SIZE_LIMIT,
 };

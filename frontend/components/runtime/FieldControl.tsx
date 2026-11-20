@@ -52,7 +52,7 @@
 
 import { useLayoutEffect, useRef } from "react";
 import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
-import { safeRegexTest } from "@figaro-protocol/sdk/clauses";
+import { MAX_PATTERN_WORK, patternWorkExceeded, portablePatternSize, safeRegexTest } from "@figaro-protocol/sdk/clauses";
 import { labelEnumValue } from "@/lib/shared/clauseSpecSource";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -126,7 +126,12 @@ function scalarConstraintIssue(field: FieldSpec, raw: string): string | null {
         // `field.pattern` comes from a permissionless clause spec, so it is
         // untrusted, and this runs on every keystroke: a backtracking engine
         // would hang the tab on a pattern such as `(a|a)*`. `safeRegexTest` matches in time linear in the value,
-        // and gives the verdict the SDK's sign gate gives.
+        // and gives the verdict the SDK's sign gate gives. A value too long for
+        // its pattern's work budget is refused for its length, not its format.
+        if (patternWorkExceeded(field.pattern, raw)) {
+            const longest = Math.floor(MAX_PATTERN_WORK / (portablePatternSize(field.pattern) ?? 1));
+            return `Too long to check against the spec's pattern: at most ${longest} characters.`;
+        }
         if (!safeRegexTest(field.pattern, raw)) {
             return `Doesn't match the spec's required format (${field.pattern}).`;
         }

@@ -18,7 +18,14 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { canonicalize } from "../../src/agreement.js";
-import { encodeContentFromSpec, parseClauseSpec, validateContent, validateSignedContent } from "../../src/clauses/index.js";
+import {
+    encodeContentFromSpec,
+    parseClauseSpec,
+    portablePatternMatches,
+    portablePatternSize,
+    validateContent,
+    validateSignedContent,
+} from "../../src/clauses/index.js";
 
 const FIXTURE_PATH = path.resolve(__dirname, "../../../test/fixtures/clause-engine-vectors.json");
 
@@ -137,8 +144,9 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
         field: str({ pattern: "^[a-z]+$" }),
         values: ["abc", "", "ABC", "ab1", "a"],
     },
-    // The screen: a pattern it refuses is SATISFIED by any value, so a value
-    // the pattern would reject shows which way the screen decided.
+    // Quantified groups whose body holds a quantifier, and their near
+    // misses. Both engines run every one of them on every value, so a value
+    // the pattern rejects is refused in both.
     ...[
         "(a+)+$",
         "(a*)*$",
@@ -179,7 +187,7 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
         "^(a[+]b+)+$",
         "^([+]b)+$",
     ].map((pattern) => ({
-        group: `screen ${pattern}`,
+        group: `nested ${pattern}`,
         field: str({ pattern }),
         values: ["zzz", "a", "aa", "ab", "aab", "abc", "(a)", "+", "a+", ""],
     })),
@@ -331,18 +339,81 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
         values: ["a", "aa", "aaa", "ab", "ac", "b", "c", "-", "]", "^", "~", "[", "}", ".", "\\", "<", "_", " ", "n", "t", "1", "UN1234", "en-GB", "a".repeat(64), "a".repeat(65), "é", "\n", "\t", ""],
     })),
     {
-        // A pattern at the expansion bound (3 × 1024 + 960 + 62 + 2), run: the
-        // guest reads its classes in ASCII, and on a printable-ASCII value
-        // they match as JavaScript's. No group holds a quantifier, so the
-        // catastrophic-shape screen does not skip it.
-        group: "pattern at the expansion bound",
-        field: str({ pattern: `^${`(?:${"\\w".repeat(16)}){64}`.repeat(3)}(?:${"\\w".repeat(15)}){64}\\W{62}$` }),
-        values: ["a".repeat(4032) + "-".repeat(62), "a".repeat(4032) + "a".repeat(62), "a".repeat(4031) + "-".repeat(63), "-".repeat(4094)],
+        // Expanded size 4,034, run: the guest reads its classes in ASCII,
+        // and on a printable-ASCII value they match as JavaScript's. The
+        // budget lets it run on 1,039 characters (4,194,304 / 4,034).
+        group: "pattern near the size limit",
+        field: str({ pattern: "^(?:\\w{1,31}){63}$" }),
+        values: ["a".repeat(63), "a".repeat(62), "a".repeat(1039), "a".repeat(1040), "-".repeat(100), ""],
     },
     {
-        group: "pattern input bound",
+        // Expanded size 4,096, MAX_PATTERN_EXPANSION itself; it matches
+        // every value, so only the budget refuses: 1,024 characters run,
+        // 1,025 are refused, in UTF-16 units.
+        group: "pattern at the size limit, values at the work budget",
+        field: str({ pattern: "(?:a{0,31}){64}" }),
+        values: ["a".repeat(1024), "a".repeat(1025), "", "🚚".repeat(512), "🚚".repeat(513)],
+    },
+    {
+        // Expanded size 2,048: 2,048 characters run, 2,049 are refused.
+        group: "pattern of size 2048, values at the work budget",
+        field: str({ pattern: "(?:a{0,31}){32}" }),
+        values: ["a".repeat(2048), "a".repeat(2049), "b".repeat(2048)],
+    },
+    {
+        // The widest negated class, size 4,032: 1,040 characters run, 1,041
+        // are refused. A space is in the class, `!` is not.
+        group: "pattern, the widest class near the size limit, values at the work budget",
+        field: str({ pattern: String.raw`^(?:[^!#%')+\-/13579;=?ACEGIKMOQSUWY\[\]_acegikmoqsuwy{}]{0,64}){31}$` }),
+        values: [" ".repeat(1040), " ".repeat(1041), " ".repeat(1039) + "!", "b".repeat(64), "a"],
+    },
+    {
+        // Expanded size 4,097: the spec parses in neither engine.
+        group: "pattern just over the size limit",
+        field: str({ pattern: "(?:a{31}){64}a" }),
+        values: ["a".repeat(1985), "b"],
+    },
+    {
+        group: "pattern on values around 4,096 characters",
         field: str({ pattern: "^a$" }),
         values: ["b".repeat(4096), "b".repeat(4097), "🚚".repeat(2048), "🚚".repeat(2049)],
+    },
+    {
+        // A field with no maxLength: a value of any length is tested.
+        group: "pattern on values over 4,096 characters",
+        field: str({ pattern: "^a+$" }),
+        values: ["a".repeat(5000), "a".repeat(4999) + "b", "b".repeat(5000)],
+    },
+    {
+        group: "pattern, a quantified group holding a quantifier",
+        field: str({ pattern: "^([a-z0-9-]+\\.)+[a-z]{2,}$" }),
+        values: ["example.com", "a.b-c.example.org", "example", "Example.com", "example.c", "-.io", ".io", ""],
+    },
+    {
+        // Overlapping alternation, on a long value that does not match.
+        group: "pattern, overlapping alternation",
+        field: str({ pattern: ["^(a", "|a)*$"].join("") }),
+        values: ["a".repeat(20_000) + "!", "a".repeat(20_000), ""],
+    },
+    {
+        // Quantifiers nested twenty deep, under counts: the SDK folds them
+        // into one, the guest compiles them as written, and the verdicts
+        // agree.
+        group: "pattern, quantifiers nested under counts",
+        field: str({ pattern: `^(?:(?:${"(?:".repeat(20)}a${")+".repeat(20)}){4}){4}$` }),
+        values: ["a".repeat(16), "a".repeat(300), "a".repeat(15), "b", ""],
+    },
+    {
+        group: "pattern, optional items nested under counts",
+        field: str({ pattern: `^(?:(?:${"(?:".repeat(20)}a${")?".repeat(20)}){4}){4}$` }),
+        values: ["", "a".repeat(16), "a".repeat(17), "b"],
+    },
+    {
+        // The same shapes under counts that take them past the size limit:
+        // refused at parse in both engines.
+        group: "pattern, quantifiers nested past the size limit",
+        field: str({ pattern: `^(?:(?:${"(?:".repeat(20)}a${")*".repeat(20)}){64}){63}$` }),
+        values: ["a", "b"],
     },
     {
         group: "integer",
@@ -514,6 +585,39 @@ const CONTENT_CASES: { label: string; fields: Field[]; content: unknown }[] = [
     { label: "absent required", fields: [{ name: "v", type: "integer", required: true }], content: {} },
     { label: "unknown field", fields: [{ name: "v", type: "integer", required: false }], content: { w: 1 } },
     { label: "unknown field beside a known one", fields: [{ name: "v", type: "integer", required: true }], content: { v: 1, w: 1 } },
+    // The content's total, MAX_CONTENT_PATTERN_WORK (16,777,216), under a
+    // pattern of size 4,032. Four values of 1,040 characters cost 16,773,120
+    // and run; a fifth is refused. The many-small-values shape: 260 values
+    // of 16 characters cost 16,773,120; 261 are refused.
+    ...[4, 5].map((count) => ({
+        label: `content total, ${count} values of 1040 characters`,
+        fields: [{ name: "v", type: "array", required: true, items: { type: "string", pattern: "^(?:a{0,64}){31}$" } }],
+        content: { v: Array.from({ length: count }, () => "a".repeat(1040)) },
+    })),
+    ...[260, 261].map((count) => ({
+        label: `content total, ${count} values of 16 characters`,
+        fields: [{ name: "v", type: "array", required: true, items: { type: "string", pattern: "^(?:a{0,64}){31}$" } }],
+        content: { v: Array.from({ length: count }, () => "a".repeat(16)) },
+    })),
+    // Two fields add to one total, in the order the spec declares them.
+    ...[[2, 2], [2, 3]].map(([first, second]) => ({
+        label: `content total over two fields, ${first} and ${second} values`,
+        fields: [
+            { name: "a", type: "array", required: true, items: { type: "string", pattern: "^(?:a{0,64}){31}$" } },
+            { name: "b", type: "array", required: true, items: { type: "string", pattern: "^(?:a{0,64}){31}$" } },
+        ],
+        content: {
+            a: Array.from({ length: first }, () => "a".repeat(1040)),
+            b: Array.from({ length: second }, () => "a".repeat(1040)),
+        },
+    })),
+    // A value refused for its maxLength adds nothing to the total, so the
+    // content's verdict is that refusal alone in both engines.
+    {
+        label: "content total, values over maxLength add nothing",
+        fields: [{ name: "v", type: "array", required: true, items: { type: "string", maxLength: 1039, pattern: "^(?:a{0,64}){31}$" } }],
+        content: { v: Array.from({ length: 20 }, () => "a".repeat(1040)) },
+    },
     { label: "content is an array", fields: [{ name: "v", type: "integer", required: false }], content: [] },
     { label: "content is null", fields: [{ name: "v", type: "integer", required: false }], content: null },
     { label: "content is a string", fields: [{ name: "v", type: "integer", required: false }], content: "x" },
@@ -656,6 +760,31 @@ const nestArrays = (depth: number): Field =>
         ? { name: "leaf", type: "boolean", required: true }
         : { name: `n${depth}`, type: "array", required: true, items: nestArrays(depth - 1) };
 
+/** Shapes that cost an automaton the most per unit of expanded size —
+ *  quantifiers nested on quantifiers, capturing groups nested in groups,
+ *  alternation, counted ranges — each under the largest outer count that
+ *  keeps it at or under MAX_PATTERN_EXPANSION, and under one count more. */
+function nearLimitPatterns(): string[] {
+    const nested = (k: number, q: string, open: string) => open.repeat(k) + "a" + `)${q}`.repeat(k);
+    const bodies: string[] = [];
+    for (const q of ["*", "+", "?", "{0,}", "{1,}", "{0,1}"]) {
+        for (const k of [1, 5, 20, 40]) {
+            bodies.push(nested(k, q, "(?:"), nested(k, q, "("));
+        }
+    }
+    bodies.push("a|b", "a|a", "a|", "a|b|c|d|e|f|g|h", "(?:a|a)*", "a?|b?", "a*|b*", "a{0,64}", "a{1,64}", "(?:a{0,8}){8}", "(?:\\ba)*", "\\w*\\W?");
+    const out: string[] = [];
+    for (const body of bodies) {
+        for (const wrap of [(m: number) => `^(?:(?:${body}){64}){${m}}$`, (m: number) => `^(?:${body}){${m}}$`]) {
+            let fit = 0;
+            for (let m = 1; m <= 64; m++) if (portablePatternSize(wrap(m)) !== null) fit = m;
+            if (fit > 0) out.push(wrap(fit));
+            if (fit < 64) out.push(wrap(fit + 1));
+        }
+    }
+    return [...new Set(out)];
+}
+
 const SPEC_CASES: { label: string; spec: unknown }[] = [
     { label: "minimal", spec: specOf(f({ type: "boolean" })) },
     { label: "empty field name", spec: specOf([{ name: "", type: "boolean", required: true }]) },
@@ -737,6 +866,21 @@ const SPEC_CASES: { label: string; spec: unknown }[] = [
     // the bound refuses it in both engines first. Under the bound, every
     // atom compiles in the guest, the large Unicode classes included.
     ...[
+        "(?:a{31}){64}",
+        "(?:a{31}){64}a",
+        "(?:a{0,31}){64}",
+        "(?:\\w{31}){64}",
+        "(?:\\W{31}){64}",
+        "(?:.{31}){64}",
+        "(?:[^a]{31}){64}",
+        "(?:\\b\\w{30}){64}",
+        // The widest classes: every other printable character, plain and
+        // negated, 48 and 49 byte ranges, at the size limit and one past it.
+        "(?:[!#%')+/13579;=?ACEGIKMOQSUWY_acegikmoqsuwy{}]{0,63}){32}",
+        "(?:[!#%')+/13579;=?ACEGIKMOQSUWY_acegikmoqsuwy{}]{0,63}){32}a",
+        String.raw`(?:[^!#%')+\-/13579;=?ACEGIKMOQSUWY\[\]_acegikmoqsuwy{}]{0,63}){32}`,
+        String.raw`(?:[^!#%')+\-/13579;=?ACEGIKMOQSUWY\[\]_acegikmoqsuwy{}]{0,63}){32}a`,
+        String.raw`^(?:[^!#%')+\-/13579;=?ACEGIKMOQSUWY\[\]_acegikmoqsuwy{}]{0,64}){31}$`,
         "(?:(?:(?:(?:a{64}){64}){64}){64})",
         "(?:a{64}){64}",
         "(?:a{64}){64}a",
@@ -762,6 +906,11 @@ const SPEC_CASES: { label: string; spec: unknown }[] = [
         "(?:\\b\\w{63}){64}",
         "\\w{64}\\w{64}\\w{64}\\w{64}\\w{64}",
     ].map((pattern) => ({ label: `pattern expansion ${pattern}`, spec: specOf(f({ type: "string", pattern })) })),
+    // Shapes fitted to the size limit, each under the largest count that
+    // keeps it at or under MAX_PATTERN_EXPANSION and under one count more.
+    // The guest compiles every one the SDK parses, so no spec parses in one
+    // engine and not the other.
+    ...nearLimitPatterns().map((pattern) => ({ label: `pattern near the size limit ${pattern}`, spec: specOf(f({ type: "string", pattern })) })),
     ...[6, 7, 8, 9, 10, 11, 12, 16, 17, 32, 33].map((depth) => ({ label: `array nesting depth ${depth}`, spec: specOf([nestArrays(depth)]) })),
     { label: "stages", spec: specOf(f({ type: "boolean" }), { 1: f({ type: "integer" }) }) },
     { label: "stages not an object", spec: specOf(f({ type: "boolean" }), []) },
@@ -989,6 +1138,22 @@ describe("Clause-engine vectors — the hand-written leg of the clause-engine lo
         expect(built.specs.some((c) => !c.ok)).toBe(true);
         expect(built.signed.some((c) => c.ok)).toBe(true);
         expect(built.signed.some((c) => !c.ok)).toBe(true);
+    });
+
+    it("every pattern near the size limit that parses builds its automaton, and none past it parses", () => {
+        const patterns = nearLimitPatterns();
+        expect(patterns.length).toBeGreaterThan(150);
+        let parsed = 0;
+        for (const pattern of patterns) {
+            const size = portablePatternSize(pattern);
+            const ok = parseClauseSpec(specOf(f({ type: "string", pattern }))).ok;
+            expect(ok, pattern).toBe(size !== null);
+            if (size === null) continue;
+            parsed++;
+            expect(size, pattern).toBeLessThanOrEqual(4096);
+            expect(portablePatternMatches(pattern, "a"), pattern).not.toBeNull();
+        }
+        expect(parsed).toBeGreaterThan(50);
     });
 
     it("the canonical bytes keep a key named __proto__, so two contents that differ there differ in their bytes", () => {
