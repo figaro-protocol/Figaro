@@ -39,6 +39,9 @@ import {
     parseClauseSpec,
     stageOfKey,
     validateContent,
+    portablePatternSize,
+    MAX_PATTERN_WORK,
+    MAX_CONTENT_PATTERN_WORK,
     type ClauseSpec,
     type FieldDisposition,
     type FieldSpec,
@@ -88,6 +91,19 @@ function geohashArb(disposition: FieldDisposition | undefined, careful: boolean)
     );
 }
 
+/** Values at both edges of a large pattern's work budget: the longest the
+ *  pattern runs on, and one character more, which both engines refuse. Only
+ *  for a pattern of expanded size 256 or more, so a value stays under
+ *  16,385 characters and the stream stays small. */
+function workEdgeArb(pattern: string): fc.Arbitrary<string> | null {
+    const size = portablePatternSize(pattern);
+    if (size === null || size < 256) return null;
+    const edge = Math.floor(MAX_PATTERN_WORK / size);
+    return fc
+        .tuple(fc.constantFrom(edge, edge + 1), fc.constantFrom("a", "b", "-", "a-"))
+        .map(([length, unit]) => unit.repeat(Math.ceil(length / unit.length)).slice(0, length));
+}
+
 /** `careful` draws aim inside the field's bounds; the others also cross them.
  *  `disposition` is the one that governs the value: the field's own, or the
  *  array field's for an item. */
@@ -127,11 +143,13 @@ function stringArb(
                 // Short values over the pattern alphabet's letters hit a
                 // generated pattern far more often than free strings do.
                 const near = fc.string({ unit: fc.constantFrom(..."abc019 .-UN"), minLength: min, maxLength: Math.max(min, 6) });
+                const long = workEdgeArb(field.pattern);
+                const arms = long === null ? [near] : [near, long];
                 try {
                     const matching = fc.stringMatching(new RegExp(field.pattern));
-                    return careful ? fc.oneof(matching, near) : fc.oneof(matching, near, anyString(min, max));
+                    return careful ? fc.oneof(matching, ...arms) : fc.oneof(matching, ...arms, anyString(min, max));
                 } catch {
-                    return fc.oneof(near, anyString(min, max));
+                    return fc.oneof(...arms, anyString(min, max));
                 }
             }
             return anyString(min, max);
@@ -250,6 +268,19 @@ const patternArb = fc.oneof(
         arbitrary: fc
             .array(fc.constantFrom(...PATTERN_ALPHABET), { minLength: 1, maxLength: 8 })
             .map((parts) => parts.join("")),
+    },
+    // Large patterns: a short body under two counts, its expanded size on
+    // both sides of MAX_PATTERN_EXPANSION, so the parse limit and the work
+    // budget are both crossed.
+    {
+        weight: 2,
+        arbitrary: fc
+            .tuple(
+                fc.constantFrom("a", "[a-c]", "\\w", "a|b", "a*", "(?:a)+", "(a)?", "a?b", "(?:(?:a)*)*", "\\ba"),
+                fc.integer({ min: 1, max: 64 }),
+                fc.integer({ min: 1, max: 64 }),
+            )
+            .map(([body, m, n]) => `^(?:(?:${body}){${m}}){${n}}$`),
     },
 );
 
@@ -511,6 +542,40 @@ function build(seed: number, perSpec: number, generatedSpecs: number): Vector[] 
                 vectors.push(answer(vectors.length, origin, spec, stage, content));
             }
         }
+    });
+
+    // A list of values under one large pattern, at both edges of the
+    // content's total: the most values it runs on, and one value more, which
+    // both engines refuse. Only for a pattern of expanded size 256 or more,
+    // so a content stays under 65,537 characters.
+    // Most draws are a counted range that matches the values, so the total
+    // alone decides the verdict at its edge; the rest are large patterns of
+    // any shape.
+    const rangeArb = fc
+        .tuple(fc.integer({ min: 4, max: 31 }), fc.integer({ min: 4, max: 64 }), fc.boolean())
+        .map(([k, m, anchored]) => (anchored ? `^(?:[ab]{0,${k}}){${m}}$` : `(?:[ab]{0,${k}}){${m}}`));
+    const totals = fc.sample(
+        fc.tuple(
+            fc.oneof({ weight: 3, arbitrary: rangeArb }, { weight: 1, arbitrary: patternArb }),
+            fc.constantFrom(1, 16, 64, 255),
+            fc.constantFrom("a", "b", "c"),
+            fc.constantFrom(0, 1),
+        ),
+        { seed: seed + 13, numRuns: generatedSpecs * 2 },
+    );
+    totals.forEach(([pattern, length, unit, over], i) => {
+        const size = portablePatternSize(pattern);
+        if (size === null || size < 256 || length * size > MAX_PATTERN_WORK) return;
+        const spec = {
+            clauseId: "p",
+            version: 1,
+            title: "P",
+            description: "D",
+            fields: [{ name: "v", type: "array", required: true, items: { type: "string", pattern } }],
+        };
+        const count = Math.floor(MAX_CONTENT_PATTERN_WORK / (length * size)) + over;
+        const content = { v: Array.from({ length: count }, () => unit.repeat(length)) };
+        vectors.push(answer(vectors.length, `pattern-total-${i}`, spec, null, content));
     });
     return vectors;
 }

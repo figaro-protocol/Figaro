@@ -11,7 +11,7 @@
 
 use figaro_clause::{
     parse_clause_spec, parse_stage_key, validate_content, ClauseSpec, ParseClauseSpecResult,
-    ValidateOptions, MAX_FIELD_DEPTH,
+    ValidateOptions, MAX_FIELD_DEPTH, PATTERN_SIZE_LIMIT,
 };
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -200,23 +200,257 @@ fn enforces_pattern() {
 }
 
 #[test]
-fn skips_catastrophic_pattern_matching_layer_a() {
-    // A ReDoS-shaped pattern (nested quantifiers) is SKIPPED, not run — the
-    // field validates as satisfied. Layer A's `safeRegexTest` does the same, so
-    // both engines accept; the catastrophic pattern can never hang the prover.
-    // This is the conformance case for the coordinated ReDoS screen.
-    let spec = spec_of(json!([
+fn enforces_a_pattern_whose_quantified_group_holds_a_quantifier() {
+    // Every pattern runs, whatever its shape. The SDK's `safeRegexTest` gives
+    // the same verdicts (`sdk/tests/clauses/validate.test.ts`).
+    let nested = spec_of(json!([
         { "name": "s", "type": "string", "required": true, "pattern": "(a+)+$" },
     ]));
-    // Both a would-match and a would-not-match input are accepted (screen skips).
-    assert!(ok(&json!({ "s": "aaaa" }), &spec));
-    assert!(ok(&json!({ "s": &"a".repeat(40).to_string() }), &spec));
-    // A safe pattern still enforces normally.
-    let safe = spec_of(json!([
+    assert!(ok(&json!({ "s": "aaaa" }), &nested));
+    assert!(!ok(&json!({ "s": "a".repeat(40) + "!" }), &nested));
+    assert!(!ok(&json!({ "s": "b" }), &nested));
+    let domain = spec_of(json!([
+        { "name": "s", "type": "string", "required": true, "pattern": "^([a-z0-9-]+\\.)+[a-z]{2,}$" },
+    ]));
+    assert!(ok(&json!({ "s": "example.com" }), &domain));
+    assert!(ok(&json!({ "s": "a.b-c.example.org" }), &domain));
+    assert!(!ok(&json!({ "s": "example" }), &domain));
+    assert!(!ok(&json!({ "s": "Example.com" }), &domain));
+    assert!(!ok(&json!({ "s": "example.c" }), &domain));
+    let plain = spec_of(json!([
         { "name": "s", "type": "string", "required": true, "pattern": "^a+$" },
     ]));
-    assert!(ok(&json!({ "s": "aaa" }), &safe));
-    assert!(!ok(&json!({ "s": "aab" }), &safe));
+    assert!(ok(&json!({ "s": "aaa" }), &plain));
+    assert!(!ok(&json!({ "s": "aab" }), &plain));
+}
+
+#[test]
+fn tests_a_value_over_4096_characters_against_its_pattern() {
+    // A field with no `maxLength`: the value is tested like any other.
+    let spec = spec_of(json!([
+        { "name": "s", "type": "string", "required": true, "pattern": "^a+$" },
+    ]));
+    assert!(ok(&json!({ "s": "a".repeat(5000) }), &spec));
+    assert!(!ok(&json!({ "s": "a".repeat(4999) + "b" }), &spec));
+    let other = spec_of(json!([
+        { "name": "s", "type": "string", "required": true, "pattern": "^y+$" },
+    ]));
+    assert!(!ok(&json!({ "s": "x".repeat(5000) }), &other));
+}
+
+fn parses(pattern: &str) -> bool {
+    matches!(
+        parse_clause_spec(&json!({
+            "clauseId": "t",
+            "version": 1,
+            "title": "T",
+            "description": "D",
+            "fields": [{ "name": "s", "type": "string", "required": true, "pattern": pattern }],
+        })),
+        ParseClauseSpecResult::Ok(_)
+    )
+}
+
+#[test]
+fn refuses_a_pattern_past_the_size_limit() {
+    // The expanded size, the SDK's `portablePatternSize`: 4,096 parses and
+    // 4,097 does not. Each level of `(?:…)*` counts two, so nested
+    // quantifiers no longer hide their cost.
+    assert!(parses("(?:a{31}){64}"));
+    assert!(parses("(?:a{0,31}){64}"));
+    assert!(!parses("(?:a{31}){64}a"));
+    assert!(!parses("(?:a{64}){64}"));
+    let nested = |k: usize, q: &str| format!("{}a{}", "(?:".repeat(k), format!("){q}").repeat(k));
+    assert!(!parses(&format!(
+        "^(?:(?:{}){{64}}){{63}}$",
+        nested(20, "*")
+    )));
+    assert!(parses(&format!("^(?:(?:{}){{8}}){{11}}$", nested(20, "*"))));
+}
+
+#[test]
+fn refuses_a_value_past_the_work_budget_with_its_own_reason() {
+    // Size 4,096, and it matches every value: 1,024 characters run, 1,025
+    // are refused, never counted as matching (4,194,304 / 4,096).
+    let spec = spec_of(json!([
+        { "name": "s", "type": "string", "required": true, "pattern": "(?:a{0,31}){64}" },
+    ]));
+    assert!(ok(&json!({ "s": "a".repeat(1024) }), &spec));
+    let over = validate_content(
+        &json!({ "s": "a".repeat(1025) }),
+        &spec,
+        ValidateOptions::default(),
+    );
+    let messages: Vec<&str> = over.errors().iter().map(|e| e.message.as_str()).collect();
+    assert_eq!(messages, ["string too long for pattern (?:a{0,31}){64}"]);
+    // `^a+$` has size 4: 1,048,576 characters run.
+    let small = spec_of(json!([
+        { "name": "s", "type": "string", "required": true, "pattern": "^a+$" },
+    ]));
+    assert!(ok(&json!({ "s": "a".repeat(1 << 20) }), &small));
+    assert!(!ok(&json!({ "s": "a".repeat((1 << 20) + 1) }), &small));
+    // A value over `maxLength` is refused with that reason alone.
+    let capped = spec_of(json!([
+        { "name": "s", "type": "string", "required": true, "maxLength": 1024, "pattern": "(?:a{0,31}){64}" },
+    ]));
+    let over = validate_content(
+        &json!({ "s": "a".repeat(1025) }),
+        &capped,
+        ValidateOptions::default(),
+    );
+    let messages: Vec<&str> = over.errors().iter().map(|e| e.message.as_str()).collect();
+    assert_eq!(messages, ["string longer than maxLength 1024"]);
+}
+
+/// The widest portable classes: every other printable character, plain (48
+/// byte ranges) and negated (49 with the bytes outside printable ASCII).
+const WIDE: &str = "[!#%')+/13579;=?ACEGIKMOQSUWY_acegikmoqsuwy{}]";
+const WIDE_NEGATED_EVEN: &str = r#"[^ "$&(*,.02468:<>@BDFHJLNPRTVXZ\\\^`bdfhjlnprtvxz|~]"#;
+const WIDE_NEGATED_ODD: &str = r"[^!#%')+\-/13579;=?ACEGIKMOQSUWY\[\]_acegikmoqsuwy{}]";
+
+#[test]
+fn compiles_every_pattern_under_the_size_limit_within_pattern_size_limit() {
+    // The costliest shapes for the automaton's memory at the size limit:
+    // the widest classes, nested capturing groups, alternation. Each parses
+    // under `PATTERN_SIZE_LIMIT`, and compiles in a quarter of it, so the
+    // limit holds a fourfold margin over every one. The shared vectors and
+    // `sdk/tests/clauses/engineVectors.test.ts` fit many more shapes to the
+    // size limit, and the guest parses every one the SDK parses.
+    let mut patterns = Vec::new();
+    for class in [
+        WIDE,
+        WIDE_NEGATED_EVEN,
+        WIDE_NEGATED_ODD,
+        r"[\w\s]",
+        r"\W",
+        ".",
+    ] {
+        patterns.push(format!("(?:{class}{{0,63}}){{32}}"));
+        patterns.push(format!("^(?:{class}{{0,64}}){{31}}$"));
+        patterns.push(format!("^(?:(?:{class}{{0,8}}){{8}}){{28}}$"));
+    }
+    patterns.push("^(?:(?:((((((((((a)*)*)*)*)*)*)*)*)*)*){13}){13}$".to_string());
+    patterns.push("^(?:(?:a|b|c|d|e|f|g|h){64}){3}$".to_string());
+    for p in &patterns {
+        assert!(parses(p), "{p}");
+        let quarter = regex::bytes::RegexBuilder::new(p)
+            .unicode(false)
+            .size_limit(PATTERN_SIZE_LIMIT / 4)
+            .build();
+        assert!(quarter.is_ok(), "{p}");
+    }
+    // One past the size limit, the widest class parses in neither engine.
+    assert!(!parses(&format!("(?:{WIDE_NEGATED_EVEN}{{0,63}}){{32}}a")));
+}
+
+#[test]
+fn matches_the_widest_classes_at_the_budget_edge_in_bounded_time() {
+    // Size 4,032: 1,040 characters run, each in the class, the last one
+    // out of it; four such values run in one content, a fifth refuses it.
+    for (class, hit, miss) in [
+        (WIDE, '!', ' '),
+        (WIDE_NEGATED_EVEN, '!', ' '),
+        (WIDE_NEGATED_ODD, ' ', '!'),
+    ] {
+        let p = format!("^(?:{class}{{0,64}}){{31}}$");
+        let value: String = std::iter::repeat(hit)
+            .take(1039)
+            .chain(std::iter::once(miss))
+            .collect();
+        let one =
+            spec_of(json!([{ "name": "s", "type": "string", "required": true, "pattern": p }]));
+        let start = std::time::Instant::now();
+        assert!(!ok(&json!({ "s": value }), &one), "{p}");
+        let list = list_spec(json!({ "type": "string", "pattern": p }));
+        assert_eq!(
+            messages(&json!({ "v": vec![value; 5] }), &list)
+                .last()
+                .map(String::as_str),
+            Some("$ content too long for its patterns")
+        );
+        assert!(start.elapsed() < std::time::Duration::from_secs(60), "{p}");
+    }
+}
+
+fn list_spec(items: Value) -> ClauseSpec {
+    spec_of(json!([{ "name": "v", "type": "array", "required": true, "items": items }]))
+}
+
+fn messages(content: &Value, spec: &ClauseSpec) -> Vec<String> {
+    validate_content(content, spec, ValidateOptions::default())
+        .errors()
+        .iter()
+        .map(|e| format!("{} {}", e.path, e.message))
+        .collect()
+}
+
+#[test]
+fn bounds_one_contents_pattern_work_and_refuses_it_once_at_the_root() {
+    // The total, 16,777,216: 1,925 32-byte hashes (size 132, 66 characters)
+    // run, 1,926 are refused. The SDK's leg is
+    // `sdk/tests/clauses/safeRegex.test.ts`.
+    let hashes = list_spec(json!({ "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" }));
+    let hash = format!("0x{}", "ab".repeat(32));
+    assert!(ok(&json!({ "v": vec![hash.clone(); 1925] }), &hashes));
+    assert_eq!(
+        messages(&json!({ "v": vec![hash; 1926] }), &hashes),
+        ["$ content too long for its patterns"]
+    );
+    // The many-values shape: four values run, then the content is refused
+    // and no further pattern runs.
+    let worst = list_spec(json!({ "type": "string", "pattern": "^(?:a{0,64}){31}$" }));
+    let start = std::time::Instant::now();
+    let got = messages(&json!({ "v": vec!["a".repeat(1039) + "!"; 1000] }), &worst);
+    assert!(start.elapsed() < std::time::Duration::from_secs(30));
+    let mut want: Vec<String> = (0..4)
+        .map(|i| format!("$.v[{i}] string does not match pattern ^(?:a{{0,64}}){{31}}$"))
+        .collect();
+    want.push("$ content too long for its patterns".to_string());
+    assert_eq!(got, want);
+    // A value refused for its maxLength or its own budget adds nothing.
+    let capped =
+        list_spec(json!({ "type": "string", "maxLength": 1039, "pattern": "^(?:a{0,64}){31}$" }));
+    assert!(
+        messages(&json!({ "v": vec!["a".repeat(1040); 20] }), &capped)
+            .iter()
+            .all(|m| m.ends_with("string longer than maxLength 1039"))
+    );
+    assert!(
+        messages(&json!({ "v": vec!["a".repeat(1041); 20] }), &worst)
+            .iter()
+            .all(|m| m.ends_with("string too long for pattern ^(?:a{0,64}){31}$"))
+    );
+}
+
+#[test]
+fn matches_the_costliest_patterns_at_the_budget_edge_in_bounded_time() {
+    // The costliest shapes found at the size limit, each with its expanded
+    // size, on the longest value the budget lets it run on. In a release
+    // build the worst takes some 50 ms; this debug build is slower. The
+    // SDK's leg is `sdk/tests/clauses/safeRegex.test.ts`.
+    let patterns: [(&str, usize); 8] = [
+        ("^(?:a{0,64}){31}$", 4032),
+        ("^(?:(?:a{0,8}){8}){28}$", 4090),
+        ("^(?:(?:(?:(?:a)*)*){64}){9}$", 4052),
+        ("^(?:(?:(?:(?:[a-c])+)+){64}){9}$", 4052),
+        ("^(?:(?:a*|b*){24}){24}$", 4082),
+        ("^(?:(?:(a)+){28}){28}$", 3978),
+        ("^(?:(?:((((((((((a)*)*)*)*)*)*)*)*)*)*){13}){13}$", 3915),
+        ("b", 1),
+    ];
+    for (p, size) in patterns {
+        let spec = spec_of(json!([
+            { "name": "s", "type": "string", "required": true, "pattern": p },
+        ]));
+        let value = "a".repeat((1 << 22) / size - 1) + "!";
+        let start = std::time::Instant::now();
+        assert!(!ok(&json!({ "s": value }), &spec), "{p}");
+        let elapsed = start.elapsed();
+        assert!(
+            elapsed < std::time::Duration::from_secs(30),
+            "{p}: {elapsed:?}"
+        );
+    }
 }
 
 // ── String formats — the four canonical + the open axis ──────────────

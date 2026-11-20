@@ -335,20 +335,35 @@ its manual.
   port: printable ASCII, at most 256 characters; literals, `.`, classes,
   groups `(...)` and `(?:...)`, `\d \D \w \W \s \S`, escaped punctuation,
   `^ $ \b \B`, alternation, and the quantifiers `* + ? {n} {n,} {n,m}` with
-  counts up to 64, each optionally lazy. The pattern's **expanded size** is
-  at most 4,096 (`MAX_PATTERN_EXPANSION`): each atom and each assertion
-  counts one, a group counts the sum of what it holds (every branch of an
-  alternation included), and a quantifier multiplies what it follows by `m`
-  for `{n,m}`, `n` for `{n}`, `n + 1` for `{n,}`, and one for `*`, `+` and
-  `?`. Nested counts multiply, so a short pattern such as
-  `(?:(?:(?:(?:a{64}){64}){64}){64})` stands for some sixteen million
-  items, past the guest's regex size limit; the bound refuses it in both
-  engines first. Under the bound the guest compiles every portable pattern:
-  it compiles with the Unicode tables off, which on a printable-ASCII value
-  match as JavaScript's classes do, and compiles each pattern once, when the
-  spec parses. A spec whose pattern is outside the core does not parse, in
-  either engine. A patterned field's value is printable ASCII; a value
-  outside it does not validate.
+  counts up to 64, each optionally lazy. The pattern's **expanded size**
+  (`portablePatternSize`, `portable_pattern_size`) is one integer, computed
+  alike in both engines with integer arithmetic. Each atom and each
+  assertion counts one, and each `|` counts one. A group counts one more
+  than what it holds, and `*`, `+` and `?` count one more than what they
+  follow. A counted quantifier counts what it follows plus one, times `m`
+  for `{n,m}`, `n` for `{n}` and `n + 1` for `{n,}`. The size counts every
+  state an automaton holds, so nesting cannot hide cost: `(?:(?:a)*)*`
+  counts five. The domain-name pattern `^([a-z0-9-]+\.)+[a-z]{2,}$` counts
+  13, and the longest in `clauses/`, `^[A-Za-z0-9][A-Za-z0-9 ./-]{0,63}$`,
+  counts 129.
+- A pattern whose expanded size is past 4,096 (`MAX_PATTERN_EXPANSION`)
+  does not parse, in either engine. Nested counts multiply, so a short
+  pattern such as `(?:(?:(?:(?:a{64}){64}){64}){64})` stands for millions of
+  states. Under the limit the guest compiles every portable pattern, with
+  an explicit size limit of 8 MiB (`PATTERN_SIZE_LIMIT`), for `regex`
+  1.13.1 with `regex-automata` 0.4.18. A portable class holds at most 49
+  byte ranges of 8 bytes each, so the classes of a pattern at the limit
+  cost at most some 1.6 MB; the widest class found needs 1,002,192 bytes in
+  all, about 244 bytes a unit. It compiles with the Unicode tables off,
+  which on a printable-ASCII value match as JavaScript's classes do, and
+  compiles each pattern once, when the spec parses. Under the limit the
+  SDK's automaton holds at most three instructions per unit of size, and
+  the SDK builds it when the spec parses, so a pattern that cannot be built
+  is a parse refusal in both engines. A value under a pattern the SDK
+  cannot run, as in a spec built in code, is refused with the reason
+  "cannot be run", never counted as matching. A spec whose pattern is
+  outside the core does not parse, in either engine. A patterned field's
+  value is printable ASCII; a value outside it does not validate.
 - A pattern is untrusted, since anyone registers a spec, and neither engine
   runs it by backtracking. The guest's `regex` crate is an automaton engine.
   The SDK never runs a spec's pattern on JavaScript's `RegExp`, which takes
@@ -356,15 +371,34 @@ its manual.
   the pattern once, into a Thompson automaton over the portable core, and
   runs it as a state set, so a value is matched in time linear in its length
   (`portablePatternMatches`, `sdk/src/clauses/safeRegex.ts`). The SDK reads
-  the classes as the guest reads them with its Unicode tables off. Both
-  engines apply the same two skips, each of which counts the pattern as
-  satisfied: a value longer than 4,096 characters is not tested, and a
-  pattern with a quantified group whose body holds a quantifier is not run
-  (`isPotentiallyCatastrophicRegex`, `is_potentially_catastrophic_regex`).
-  A value over the field's `maxLength` is refused without its pattern run.
+  the classes as the guest reads them with its Unicode tables off.
+- The work of matching a value is its length in UTF-16 units times its
+  pattern's expanded size. A value whose work is past 4,194,304
+  (`MAX_PATTERN_WORK`) is refused with the reason "string too long for
+  pattern", without the pattern run, in both engines; it never counts as
+  matching. Every other value is run against its pattern. A pattern of
+  size 4,096 runs on up to 1,024 characters, the domain-name pattern on
+  322,638, and `^0x[0-9a-fA-F]{40}$` (size 84) on 49,932. A value over the
+  field's `maxLength` is refused with that reason alone, and its pattern is
+  not run.
+- One content's pattern work is bounded too. One call of `validateContent`
+  or `validate_content` is one content: one clause entry's signed content
+  at the sign gate, or one attestation's stage content in the guest and the
+  relay. Both engines visit its values in one order: the spec's fields in
+  the order it declares them, an array's items by index, depth first. They
+  add the work of each value a pattern is run on; a value refused for its
+  `maxLength` or its own budget adds nothing. When the next value would
+  take the total past 16,777,216 (`MAX_CONTENT_PATTERN_WORK`), the content
+  is refused once, at `$`, with the reason "content too long for its
+  patterns", and no further pattern runs. The total admits 1,925 32-byte
+  hashes (`^0x[0-9a-fA-F]{64}$`, size 132) or about 4,700 addresses. At the
+  per-value edge the costliest pattern found, the widest classes, cost the
+  guest 50 to 175 ms natively in a release build. At the content's edge the
+  costliest content found cost the guest 0.2 to 0.53 seconds, and the SDK
+  about 0.6 seconds (`docs/DESIGN_DECISIONS.md` #42).
   `sdk/tests/clauses/safeRegex.test.ts` compares the automaton with
   `RegExp` on every pattern in `clauses/`, and the shared vectors lock the
-  verdicts to the guest's.
+  verdicts, every limit included, to the guest's.
 - A `string` value holds no lone UTF-16 surrogate (`"\ud800"` with no low
   half after it, or a low half alone). `JSON.parse` keeps one and
   `serde_json`, which reads content in the guest, refuses it; the SDK's

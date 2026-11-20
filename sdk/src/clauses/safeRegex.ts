@@ -16,75 +16,12 @@
  * (`prover/clause/src/validate.rs`) is also an automaton engine, and the two
  * give one verdict on every portable pattern.
  *
- * `safeRegexTest` keeps two rules the guest also applies, so that the two
- * engines give one verdict on every value (`safe_regex_test`,
- * `prover/clause/src/validate.rs`): a value longer than
- * MAX_PATTERN_TEST_INPUT is not tested, and a pattern of the nested
- * quantifier shape (`isPotentiallyCatastrophicRegex`) is not run. Either one
- * counts the pattern as satisfied. Neither one bounds the time, which the
- * automaton bounds; both hold the two engines to one verdict.
+ * Two bounds, the guest's too, keep that work small. A pattern whose
+ * expanded size (the statement below) is past MAX_PATTERN_EXPANSION does not
+ * parse. A value whose length times its pattern's expanded size is past
+ * MAX_PATTERN_WORK is refused without the pattern run
+ * (`patternWorkExceeded`). Every other value is run against its pattern.
  */
-
-/** Inputs longer than this are not pattern-tested (returns satisfied). Clause
- *  string fields are identifier/short-text scale; this clears every real value
- *  with wide margin. The guest applies the same bound. */
-export const MAX_PATTERN_TEST_INPUT = 4096;
-
-/**
- * The nested quantifier shape: a group `(...)` whose body contains a
- * quantifier (`*`, `+`, or `{…,}`) and which is itself immediately
- * quantified. Catches `(a+)+`, `(a*)*`, `(a+)*`, `(a{2,})+`, `((x+))+`, etc.
- * Escaped metacharacters and character classes are skipped so `\(` / `[+*]`
- * do not count. `safeRegexTest` does not run a pattern of this shape, because
- * the guest does not either (`is_potentially_catastrophic_regex`,
- * `prover/clause/src/validate.rs`, its exact port). It is not what keeps
- * matching linear: the automaton does that, for every pattern, this shape and
- * overlapping alternation such as `(a|a)*` alike.
- */
-export function isPotentiallyCatastrophicRegex(pattern: string): boolean {
-    // Stack entry per open group: whether its body has seen a quantifier yet.
-    const groupHasQuantifier: boolean[] = [];
-    for (let i = 0; i < pattern.length; i++) {
-        const c = pattern[i];
-        if (c === "\\") {
-            i++; // skip the escaped character
-            continue;
-        }
-        if (c === "[") {
-            // Skip a character class wholesale — quantifier chars inside it are literals.
-            i++;
-            while (i < pattern.length && pattern[i] !== "]") {
-                if (pattern[i] === "\\") i++;
-                i++;
-            }
-            continue;
-        }
-        if (c === "(") {
-            groupHasQuantifier.push(false);
-            continue;
-        }
-        const isQuantifier = c === "*" || c === "+" || c === "{";
-        if (c === ")") {
-            const bodyHadQuantifier = groupHasQuantifier.pop() ?? false;
-            // Is this group itself quantified?
-            const next = pattern[i + 1];
-            const groupQuantified = next === "*" || next === "+" || next === "{";
-            if (bodyHadQuantifier && groupQuantified) return true;
-            // Any quantifier at or below this group — whether inside its body or
-            // applied to the group itself — counts toward the ENCLOSING group's
-            // body, so a deeper nesting (`((x+))+`) is still detected when the
-            // outer group closes.
-            if ((bodyHadQuantifier || groupQuantified) && groupHasQuantifier.length > 0) {
-                groupHasQuantifier[groupHasQuantifier.length - 1] = true;
-            }
-            continue;
-        }
-        if (isQuantifier && groupHasQuantifier.length > 0) {
-            groupHasQuantifier[groupHasQuantifier.length - 1] = true;
-        }
-    }
-    return false;
-}
 
 // ── The portable pattern ─────────────────────────────────────────────────────
 //
@@ -102,14 +39,16 @@ export function isPotentiallyCatastrophicRegex(pattern: string): boolean {
 //   - alternation `|`;
 //   - quantifiers, after an atom only: `*`, `+`, `?`, `{n}`, `{n,}`, `{n,m}`
 //     with n ≤ m ≤ MAX_PATTERN_REPEAT, each optionally lazy (`?`);
-//   - the expanded size is at most MAX_PATTERN_EXPANSION: each atom and each
-//     assertion counts one, a group counts the sum of what it holds (every
-//     branch of an alternation included), and a quantifier multiplies what it
-//     follows by `m` for `{n,m}`, `n` for `{n}`, `n + 1` for `{n,}`, and one
-//     for `*`, `+` and `?`. The guest compiles a pattern into an automaton
-//     with one copy of an item per repetition, and refuses one past its size
-//     limit; nested counts multiply, so `(?:(?:(?:(?:a{64}){64}){64}){64})`
-//     is short and portable in every other way, and still too large;
+//   - the expanded size is at most MAX_PATTERN_EXPANSION. Each atom and each
+//     assertion counts one; each `|` counts one; a group counts one more than
+//     what it holds; `*`, `+` and `?` count one more than what they follow;
+//     and a counted quantifier counts what it follows plus one, times `m` for
+//     `{n,m}`, `n` for `{n}` and `n + 1` for `{n,}`. The size counts every
+//     state an automaton holds, so it bounds the work per character of the
+//     value, in both engines: the SDK's automaton holds at most three
+//     instructions per unit, and the guest's no more. Nested counts multiply,
+//     so `(?:(?:(?:(?:a{64}){64}){64}){64})` is short and portable in every
+//     other way, and still too large;
 //   - a class holds literals, ranges `a-z` between two literals, the six
 //     letter escapes, escaped punctuation, and `-` first or last; it is never
 //     empty, and holds no `[`, no `&&`, `--` or `~~`.
@@ -128,6 +67,16 @@ export const MAX_PATTERN_REPEAT = 64;
  *  running total past it is held at MAX_PATTERN_EXPANSION + 1, so the count
  *  is the same exact integer in both engines. */
 export const MAX_PATTERN_EXPANSION = 4096;
+/** Largest work a value may cost its pattern: the value's length in UTF-16
+ *  units times the pattern's expanded size. A value past it is refused,
+ *  never counted as matching. A pattern at MAX_PATTERN_EXPANSION may run on
+ *  1,024 characters; a pattern of size 10 on 419,430. */
+export const MAX_PATTERN_WORK = 1 << 22;
+/** Largest work one content may cost its patterns: the sum, over every
+ *  value a pattern is run on, of its length times its pattern's expanded
+ *  size (`validateContent`). Past it the content is refused. It admits some
+ *  1,900 values under a 32-byte-hash pattern (size 132, 66 characters). */
+export const MAX_CONTENT_PATTERN_WORK = 1 << 24;
 
 const ESCAPABLE_PUNCTUATION = "\\.+*?()|[]{}^$-/#&~,:;=!@%\"'`";
 const CLASS_LETTERS = "dDwWsS";
@@ -233,8 +182,17 @@ const capped = (n: number) => Math.min(n, EXPANSION_CAP);
  * regex library and Rust's read alike? See the statement above.
  */
 export function isPortablePattern(pattern: string): boolean {
-    if (pattern.length === 0 || pattern.length > MAX_PATTERN_LENGTH) return false;
-    if (!isPrintableAscii(pattern)) return false;
+    return portablePatternSize(pattern) !== null;
+}
+
+/**
+ * The expanded size of a portable `pattern` (the statement above), or null
+ * when the pattern is outside the portable core. The guest's
+ * `portable_pattern_size` computes the same integer.
+ */
+export function portablePatternSize(pattern: string): number | null {
+    if (pattern.length === 0 || pattern.length > MAX_PATTERN_LENGTH) return null;
+    if (!isPrintableAscii(pattern)) return null;
     // The expanded size of each open group, the whole pattern at the bottom.
     const sizes = [0];
     // May a quantifier follow what was just read? If so, `last` is that
@@ -256,51 +214,56 @@ export function isPortablePattern(pattern: string): boolean {
         const c = pattern[i];
         if (c === "\\") {
             const e = pattern[i + 1];
-            if (e === undefined) return false;
+            if (e === undefined) return null;
             if (e === "b" || e === "B") {
                 atom = false;
                 add(1);
             } else if (CLASS_LETTERS.includes(e) || ESCAPABLE_PUNCTUATION.includes(e)) {
                 item(1);
             } else {
-                return false;
+                return null;
             }
             i += 2;
         } else if (c === "[") {
             i = scanClass(pattern, i);
-            if (i < 0) return false;
+            if (i < 0) return null;
             item(1);
         } else if (c === "(") {
             sizes.push(0);
             i++;
             if (pattern[i] === "?") {
-                if (pattern[i + 1] !== ":") return false;
+                if (pattern[i + 1] !== ":") return null;
                 i += 2;
             }
             atom = false;
         } else if (c === ")") {
-            if (sizes.length === 1) return false;
-            item(sizes.pop() as number);
+            if (sizes.length === 1) return null;
+            // A group counts one more than what it holds.
+            item(capped((sizes.pop() as number) + 1));
             i++;
         } else if (c === "*" || c === "+" || c === "?" || c === "{") {
-            if (!atom) return false;
-            let factor = 1;
+            if (!atom) return null;
+            let stands: number;
             if (c === "{") {
                 const end = scanCount(pattern, i);
-                if (end < 0) return false;
-                factor = countFactor(pattern, i, end);
+                if (end < 0) return null;
+                // The item and its one unit stand `factor` times.
+                stands = capped((last + 1) * countFactor(pattern, i, end));
                 i = end;
             } else {
+                // `*`, `+` and `?` count one more than the item.
+                stands = capped(last + 1);
                 i++;
             }
             if (pattern[i] === "?") i++; // lazy
-            // The item was counted once; it stands `factor` times.
-            sizes[sizes.length - 1] = capped(before + capped(last * factor));
+            // The item was counted once; it stands as `stands`.
+            sizes[sizes.length - 1] = capped(before + stands);
             atom = false;
         } else if (c === "]" || c === "}") {
-            return false;
+            return null;
         } else if (c === "|") {
             atom = false;
+            add(1);
             i++;
         } else if (c === "^" || c === "$") {
             atom = false;
@@ -311,7 +274,20 @@ export function isPortablePattern(pattern: string): boolean {
             i++;
         }
     }
-    return sizes.length === 1 && sizes[0] <= MAX_PATTERN_EXPANSION;
+    return sizes.length === 1 && sizes[0] <= MAX_PATTERN_EXPANSION ? sizes[0] : null;
+}
+
+/**
+ * Would running `pattern` on `value` cost more than MAX_PATTERN_WORK: is
+ * the value's length in UTF-16 units times the pattern's expanded size past
+ * it? Such a value is refused without the pattern run. False for a pattern
+ * outside the portable core, which never parses and which `safeRegexTest`
+ * refuses on its own. The guest's `pattern_work_exceeded` gives the same
+ * answer.
+ */
+export function patternWorkExceeded(pattern: string, value: string): boolean {
+    const size = portablePatternSize(pattern);
+    return size !== null && value.length * size > MAX_PATTERN_WORK;
 }
 
 // ── The linear-time matcher ──────────────────────────────────────────────────
@@ -487,26 +463,46 @@ function isEmptyNode(node: PatternNode): boolean {
     }
 }
 
-/** The node with every empty part dropped, and an alternation's empty
- *  branches kept as one. No verdict changes. The expanded size counts an
- *  empty group as zero, so without this `(?:||||){64}` nested four deep
- *  would compile to millions of instructions; with it, the automaton is a few
- *  instructions per counted item. */
+/** Is the repetition one of `?`, `*` and `+`, in whatever written form? */
+const isPlainRep = (min: number, max: number) => (min === 0 || min === 1) && (max === 1 || max === Infinity);
+
+/** `node` repeated `min` to `max` times, written with the fewest
+ *  instructions. A plain repetition of a plain repetition is one: `(x?)?`
+ *  is `x?`, `(x+)?`, `(x?)*` and `(x*)+` are `x*`, `(x+)+` is `x+`. */
+function repeat(node: PatternNode, min: number, max: number): PatternNode {
+    if (min === 1 && max === 1) return node;
+    if (node.t === "rep" && isPlainRep(min, max) && isPlainRep(node.min, node.max)) {
+        const inner = node.max === Infinity || max === Infinity ? Infinity : 1;
+        return repeat(node.node, node.min * min, inner);
+    }
+    return { t: "rep", node, min, max };
+}
+
+/** The node with every empty part dropped, an alternation's empty branches
+ *  kept as one, and the wrappers that hold no character removed: a sequence
+ *  or an alternation of one item is that item, an alternation of one item
+ *  and the empty branch is `?`, and a plain repetition of a plain repetition
+ *  is one (`repeat`). No verdict changes, and the automaton only shrinks:
+ *  `(?:(?:(?:a)+)+)+` compiles as `a+`. */
 function simplify(node: PatternNode): PatternNode {
     if (isEmptyNode(node)) return EMPTY_NODE;
     switch (node.t) {
         case "set":
         case "assert":
             return node;
-        case "cat":
-            return { t: "cat", items: node.items.filter((n) => !isEmptyNode(n)).map(simplify) };
+        case "cat": {
+            const items = node.items.filter((n) => !isEmptyNode(n)).map(simplify);
+            return items.length === 1 ? items[0] : { t: "cat", items };
+        }
         case "alt": {
             const alts = node.alts.filter((n) => !isEmptyNode(n)).map(simplify);
-            if (alts.length < node.alts.length) alts.push(EMPTY_NODE);
+            const hadEmpty = alts.length < node.alts.length;
+            if (alts.length === 1) return hadEmpty ? repeat(alts[0], 0, 1) : alts[0];
+            if (hadEmpty) alts.push(EMPTY_NODE);
             return { t: "alt", alts };
         }
         case "rep":
-            return { t: "rep", node: simplify(node.node), min: node.min, max: node.max };
+            return repeat(simplify(node.node), node.min, node.max);
     }
 }
 
@@ -525,9 +521,15 @@ interface PatternProgram {
     target: number[];
 }
 
-/** Largest automaton compiled. A portable pattern's automaton stays far
- *  under it; past it the pattern is treated as outside the core. */
-const MAX_PROGRAM_SIZE = 1 << 16;
+/** Largest automaton compiled; no portable pattern reaches it, so every
+ *  portable pattern compiles. By induction over the tree, a node of
+ *  expanded size `s` compiles to at most `3s` instructions: a set or an
+ *  assertion is one; an alternation adds a split and a jump per `|`, which
+ *  counts one; `*`, `+` and `?` add at most two, and count one more than
+ *  what they follow, which counts at least one; a counted quantifier writes
+ *  its item at most `m` times with a split each, and counts `m` times the
+ *  item plus one. The simplification only removes instructions. */
+const MAX_PROGRAM_SIZE = 3 * MAX_PATTERN_EXPANSION + 1;
 
 function compilePortable(root: PatternNode): PatternProgram | null {
     const prog: PatternProgram = { op: [], arg: [], target: [] };
@@ -563,14 +565,24 @@ function compilePortable(root: PatternNode): PatternProgram | null {
                 return true;
             }
             case "rep": {
-                for (let k = 0; k < node.min; k++) if (!emitNode(node.node)) return false;
                 if (node.max === Infinity) {
+                    // `x{n,}` is n − 1 copies of x, then one copy that may
+                    // repeat; `x*` is a split over one copy. One copy loops,
+                    // so `x+` is never written twice.
+                    for (let k = 1; k < node.min; k++) if (!emitNode(node.node)) return false;
+                    if (node.min > 0) {
+                        const start = prog.op.length;
+                        if (!emitNode(node.node)) return false;
+                        emit(OP_SPLIT, null, start);
+                        return true;
+                    }
                     const split = emit(OP_SPLIT);
                     if (!emitNode(node.node)) return false;
                     emit(OP_JMP, null, split);
                     prog.target[split] = prog.op.length;
                     return true;
                 }
+                for (let k = 0; k < node.min; k++) if (!emitNode(node.node)) return false;
                 const splits: number[] = [];
                 for (let k = node.min; k < node.max; k++) {
                     splits.push(emit(OP_SPLIT));
@@ -677,17 +689,25 @@ export function portablePatternMatches(pattern: string, value: string): boolean 
 }
 
 /**
- * Tests `value` against a clause's `pattern` in linear time. Returns `false`
- * when the value leaves printable ASCII, or when the pattern does not match.
- * Returns `true` (satisfied) when the pattern matches, when the value is
- * longer than MAX_PATTERN_TEST_INPUT, when the pattern has the nested
- * quantifier shape, or when it is outside the portable core (a spec with such
- * a pattern never parses). The guest's `safe_regex_test` gives the same
- * verdict on every case a parsed spec reaches.
+ * Can `pattern` be run: is it portable, and does its automaton build? A spec
+ * parses only with such a pattern (`parseClauseSpec`), as the guest parses
+ * one only when the pattern compiles.
+ */
+export function isRunnablePattern(pattern: string): boolean {
+    return programOf(pattern) !== null;
+}
+
+/**
+ * Tests `value` against a clause's `pattern` in linear time. Returns `true`
+ * only when the pattern matches. Returns `false` when the value leaves
+ * printable ASCII, when it would cost the pattern more than MAX_PATTERN_WORK
+ * (`patternWorkExceeded`), when the pattern cannot be run
+ * (`isRunnablePattern`), or when it does not match: a value that was not
+ * checked never counts as matching. The guest's `safe_regex_test` gives the
+ * same verdict on every case a parsed spec reaches.
  */
 export function safeRegexTest(pattern: string, value: string): boolean {
     if (!isPrintableAscii(value)) return false;
-    if (value.length > MAX_PATTERN_TEST_INPUT) return true;
-    if (isPotentiallyCatastrophicRegex(pattern)) return true;
-    return portablePatternMatches(pattern, value) ?? true;
+    if (patternWorkExceeded(pattern, value)) return false;
+    return portablePatternMatches(pattern, value) ?? false;
 }

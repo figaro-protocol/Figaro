@@ -135,67 +135,6 @@ fn utf16_len(s: &str) -> usize {
     s.chars().map(char::len_utf16).sum()
 }
 
-/// Inputs longer than this (UTF-16 units, matching Layer A) are not
-/// pattern-tested. Mirror of `MAX_PATTERN_TEST_INPUT` in
-/// `sdk/src/clauses/safeRegex.ts`.
-const MAX_PATTERN_TEST_INPUT: usize = 4096;
-
-/// Conservatively detect the exponential-backtracking shape — a quantified
-/// group whose body is itself quantified. EXACT port of
-/// `isPotentiallyCatastrophicRegex` in `sdk/src/clauses/safeRegex.ts`; the two
-/// are conformance-locked, so the skip decision must be byte-for-byte identical.
-fn is_potentially_catastrophic_regex(pattern: &str) -> bool {
-    let chars: Vec<char> = pattern.chars().collect();
-    let mut group_has_quantifier: Vec<bool> = Vec::new();
-    let mut i = 0usize;
-    while i < chars.len() {
-        let c = chars[i];
-        if c == '\\' {
-            i += 1; // skip the escaped character
-            i += 1;
-            continue;
-        }
-        if c == '[' {
-            // Skip a character class wholesale.
-            i += 1;
-            while i < chars.len() && chars[i] != ']' {
-                if chars[i] == '\\' {
-                    i += 1;
-                }
-                i += 1;
-            }
-            i += 1;
-            continue;
-        }
-        if c == '(' {
-            group_has_quantifier.push(false);
-            i += 1;
-            continue;
-        }
-        let is_quantifier = c == '*' || c == '+' || c == '{';
-        if c == ')' {
-            let body_had_quantifier = group_has_quantifier.pop().unwrap_or(false);
-            let next = chars.get(i + 1).copied();
-            let group_quantified = matches!(next, Some('*') | Some('+') | Some('{'));
-            if body_had_quantifier && group_quantified {
-                return true;
-            }
-            if (body_had_quantifier || group_quantified) && !group_has_quantifier.is_empty() {
-                let last = group_has_quantifier.len() - 1;
-                group_has_quantifier[last] = true;
-            }
-            i += 1;
-            continue;
-        }
-        if is_quantifier && !group_has_quantifier.is_empty() {
-            let last = group_has_quantifier.len() - 1;
-            group_has_quantifier[last] = true;
-        }
-        i += 1;
-    }
-    false
-}
-
 // ── The portable pattern ──────────────────────────────────────────────
 //
 // The port of `isPortablePattern` in `sdk/src/clauses/safeRegex.ts`, which
@@ -208,15 +147,57 @@ fn is_potentially_catastrophic_regex(pattern: &str) -> bool {
 const MAX_PATTERN_LENGTH: usize = 256;
 /// Largest count a `{n,m}` quantifier may name.
 const MAX_PATTERN_REPEAT: u32 = 64;
-/// Largest expanded size a pattern may have: each atom and each assertion
-/// counts one, a group the sum of what it holds, and a quantifier multiplies
-/// what it follows by `m` for `{n,m}`, `n` for `{n}`, `n + 1` for `{n,}`,
-/// and one for `*`, `+` and `?`. A running total past it is held at
-/// `MAX_PATTERN_EXPANSION + 1`, so the count is the same exact integer as
-/// the SDK's. Mirror of `MAX_PATTERN_EXPANSION` in
-/// `sdk/src/clauses/safeRegex.ts`.
+/// Largest expanded size a pattern may have. Each atom and each assertion
+/// counts one; each `|` counts one; a group counts one more than what it
+/// holds; `*`, `+` and `?` count one more than what they follow; and a
+/// counted quantifier counts what it follows plus one, times `m` for
+/// `{n,m}`, `n` for `{n}` and `n + 1` for `{n,}`. The size counts every
+/// state of the automaton, so it bounds the work per character of a value.
+/// A running total past it is held at `MAX_PATTERN_EXPANSION + 1`, so the
+/// count is the same exact integer as the SDK's. Mirror of
+/// `MAX_PATTERN_EXPANSION` in `sdk/src/clauses/safeRegex.ts`.
 const MAX_PATTERN_EXPANSION: u32 = 4096;
 const EXPANSION_CAP: u32 = MAX_PATTERN_EXPANSION + 1;
+/// Largest work a value may cost its pattern: its length in UTF-16 units
+/// times the pattern's expanded size. A value past it is refused, never
+/// counted as matching. Mirror of `MAX_PATTERN_WORK` in
+/// `sdk/src/clauses/safeRegex.ts`.
+const MAX_PATTERN_WORK: u64 = 1 << 22;
+/// Largest work one content may cost its patterns: the sum, over every
+/// value a pattern is run on, of its length times its pattern's expanded
+/// size. Past it the content is refused. Mirror of
+/// `MAX_CONTENT_PATTERN_WORK` in `sdk/src/clauses/safeRegex.ts`.
+const MAX_CONTENT_PATTERN_WORK: u64 = 1 << 24;
+/// The one reason a content past `MAX_CONTENT_PATTERN_WORK` is refused
+/// with, at `$`, whichever value tripped it.
+const CONTENT_WORK_REFUSAL: &str = "content too long for its patterns";
+
+/// The pattern work one content has spent. Values are visited in one order
+/// in both engines: a spec's fields in the order it declares them, an
+/// array's items by index, depth first. When the next value would take the
+/// total past `MAX_CONTENT_PATTERN_WORK`, the content is refused once and
+/// no further pattern runs. Mirror of `PatternWork` in
+/// `sdk/src/clauses/validate.ts`.
+#[derive(Default)]
+struct PatternWork {
+    total: u64,
+    refused: bool,
+}
+/// The compiled automaton's size limit, in bytes, given to the `regex`
+/// crate (1.13.1, `regex-automata` 0.4.18 in `prover/Cargo.lock`; the
+/// margin below is a property of that version). The crate counts 32 bytes
+/// per NFA state, 8 per byte range of a class and 4 per alternate of a
+/// union. A portable class holds at most 49 byte ranges (every other
+/// printable character, negated), and each unit of expanded size holds at
+/// most one class, so the classes of a pattern at `MAX_PATTERN_EXPANSION`
+/// cost at most 4,096 × 49 × 8 bytes, some 1.6 MB. The states cost at most
+/// some 134 bytes a unit in every shape measured, some 0.55 MB more. The
+/// widest class measured needs 1,002,192 bytes, so this limit is about
+/// eight times what any portable pattern was found to need and nearly four
+/// times the ceiling. No spec parses in the SDK and fails here
+/// (`compiles_every_pattern_under_the_size_limit_within_pattern_size_limit`,
+/// `tests/conformance.rs`).
+pub const PATTERN_SIZE_LIMIT: usize = 1 << 23;
 
 const ESCAPABLE_PUNCTUATION: &[u8] = b"\\.+*?()|[]{}^$-/#&~,:;=!@%\"'`";
 const CLASS_LETTERS: &[u8] = b"dDwWsS";
@@ -339,11 +320,18 @@ fn count_factor(p: &[u8], start: usize, end: usize) -> u32 {
 
 /// Is `pattern` written in the portable core?
 pub(crate) fn is_portable_pattern(pattern: &str) -> bool {
+    portable_pattern_size(pattern).is_some()
+}
+
+/// The expanded size of a portable `pattern`, or `None` when the pattern
+/// is outside the portable core. Mirror of `portablePatternSize` in
+/// `sdk/src/clauses/safeRegex.ts`.
+pub(crate) fn portable_pattern_size(pattern: &str) -> Option<u32> {
     let p = pattern.as_bytes();
     // Printable ASCII first: past it a byte is not a character, and Layer
     // A's length is in UTF-16 units.
     if !is_printable_ascii(pattern) || p.is_empty() || p.len() > MAX_PATTERN_LENGTH {
-        return false;
+        return None;
     }
     // The expanded size of each open group, the whole pattern at the bottom.
     let mut sizes: Vec<u32> = vec![0];
@@ -363,25 +351,19 @@ pub(crate) fn is_portable_pattern(pattern: &str) -> bool {
         let mut item: Option<u32> = None;
         match c {
             b'\\' => {
-                let e = match p.get(i + 1) {
-                    Some(e) => *e,
-                    None => return false,
-                };
+                let e = *p.get(i + 1)?;
                 if e == b'b' || e == b'B' {
                     atom = false;
                     add(&mut sizes, 1);
                 } else if CLASS_LETTERS.contains(&e) || ESCAPABLE_PUNCTUATION.contains(&e) {
                     item = Some(1);
                 } else {
-                    return false;
+                    return None;
                 }
                 i += 2;
             }
             b'[' => {
-                i = match scan_class(p, i) {
-                    Some(next) => next,
-                    None => return false,
-                };
+                i = scan_class(p, i)?;
                 item = Some(1);
             }
             b'(' => {
@@ -389,7 +371,7 @@ pub(crate) fn is_portable_pattern(pattern: &str) -> bool {
                 i += 1;
                 if p.get(i) == Some(&b'?') {
                     if p.get(i + 1) != Some(&b':') {
-                        return false;
+                        return None;
                     }
                     i += 2;
                 }
@@ -397,37 +379,39 @@ pub(crate) fn is_portable_pattern(pattern: &str) -> bool {
             }
             b')' => {
                 if sizes.len() == 1 {
-                    return false;
+                    return None;
                 }
-                item = sizes.pop();
+                // A group counts one more than what it holds.
+                item = sizes.pop().map(|n| (n + 1).min(EXPANSION_CAP));
                 i += 1;
             }
             b'*' | b'+' | b'?' | b'{' => {
                 if !atom {
-                    return false;
+                    return None;
                 }
-                let mut factor = 1u32;
-                if c == b'{' {
-                    let end = match scan_count(p, i) {
-                        Some(next) => next,
-                        None => return false,
-                    };
-                    factor = count_factor(p, i, end);
+                let stands = if c == b'{' {
+                    let end = scan_count(p, i)?;
+                    // The item and its one unit stand `factor` times.
+                    let stands = ((last + 1) * count_factor(p, i, end)).min(EXPANSION_CAP);
                     i = end;
+                    stands
                 } else {
+                    // `*`, `+` and `?` count one more than the item.
                     i += 1;
-                }
+                    (last + 1).min(EXPANSION_CAP)
+                };
                 if p.get(i) == Some(&b'?') {
                     i += 1; // lazy
                 }
-                // The item was counted once; it stands `factor` times.
+                // The item was counted once; it stands as `stands`.
                 let top = sizes.len() - 1;
-                sizes[top] = (before + (last * factor).min(EXPANSION_CAP)).min(EXPANSION_CAP);
+                sizes[top] = (before + stands).min(EXPANSION_CAP);
                 atom = false;
             }
-            b']' | b'}' => return false,
+            b']' | b'}' => return None,
             b'|' => {
                 atom = false;
+                add(&mut sizes, 1);
                 i += 1;
             }
             b'^' | b'$' => {
@@ -447,25 +431,29 @@ pub(crate) fn is_portable_pattern(pattern: &str) -> bool {
             add(&mut sizes, n);
         }
     }
-    sizes.len() == 1 && sizes[0] <= MAX_PATTERN_EXPANSION
+    (sizes.len() == 1 && sizes[0] <= MAX_PATTERN_EXPANSION).then_some(sizes[0])
 }
 
-/// ReDoS-safe `pattern.test(value)`. Returns `false` when the value leaves
-/// printable ASCII, or when a safe, valid pattern definitively does not
-/// match. Returns `true` (satisfied) when the pattern matches, when it is
-/// unsafe to run, when it is not a valid regex, or when the input is
-/// over-long. Mirror of `safeRegexTest` in `sdk/src/clauses/safeRegex.ts`.
+/// Would running `pattern` on `value` cost more than `MAX_PATTERN_WORK`:
+/// is the value's length in UTF-16 units times the pattern's expanded size
+/// past it? Such a value is refused without the pattern run. Mirror of
+/// `patternWorkExceeded` in `sdk/src/clauses/safeRegex.ts`.
+fn pattern_work_exceeded(pattern: &regex::bytes::Regex, value: &str) -> bool {
+    match portable_pattern_size(pattern.as_str()) {
+        Some(size) => utf16_len(value) as u64 * u64::from(size) > MAX_PATTERN_WORK,
+        None => false,
+    }
+}
+
+/// `pattern.test(value)` in time linear in the value. Returns `false` when
+/// the value leaves printable ASCII, when it would cost the pattern more
+/// than `MAX_PATTERN_WORK`, or when the pattern does not match; `true` when
+/// it matches. Mirror of `safeRegexTest` in `sdk/src/clauses/safeRegex.ts`.
 /// The pattern was compiled once, when its spec parsed
 /// (`compile_pattern`); a pattern that does not compile never parses.
 fn safe_regex_test(pattern: &regex::bytes::Regex, value: &str) -> bool {
-    if !is_printable_ascii(value) {
+    if !is_printable_ascii(value) || pattern_work_exceeded(pattern, value) {
         return false;
-    }
-    if utf16_len(value) > MAX_PATTERN_TEST_INPUT {
-        return true;
-    }
-    if is_potentially_catastrophic_regex(pattern.as_str()) {
-        return true;
     }
     pattern.is_match(value.as_bytes())
 }
@@ -478,12 +466,14 @@ fn safe_regex_test(pattern: &regex::bytes::Regex, value: &str) -> bool {
 /// tables only grow the automaton: a Unicode `\w` compiles to some fifty
 /// thousand bytes, so a pattern under `MAX_PATTERN_EXPANSION` could pass the
 /// crate's size limit and be refused here while the SDK accepts it. With
-/// the tables off, every portable pattern compiles. Without Unicode a
-/// pattern may match bytes that are not UTF-8, which only the bytes regex
-/// permits; the value it is run on is printable ASCII.
+/// the tables off, every portable pattern compiles under
+/// `PATTERN_SIZE_LIMIT`. Without Unicode a pattern may match bytes that are
+/// not UTF-8, which only the bytes regex permits; the value it is run on is
+/// printable ASCII.
 pub(crate) fn compile_pattern(pattern: &str) -> Option<regex::bytes::Regex> {
     regex::bytes::RegexBuilder::new(pattern)
         .unicode(false)
+        .size_limit(PATTERN_SIZE_LIMIT)
         .build()
         .ok()
 }
@@ -493,6 +483,7 @@ fn validate_string(
     spec: &StringFieldSpec,
     path: &str,
     errors: &mut Vec<ValidationError>,
+    work: &mut PatternWork,
 ) {
     let s = match value.as_str() {
         Some(s) => s,
@@ -512,24 +503,49 @@ fn validate_string(
             });
         }
     }
-    if let Some(max_len) = spec.max_length {
-        if utf16_len(s) > max_len {
-            errors.push(ValidationError {
-                path: path.to_string(),
-                message: format!("string longer than maxLength {max_len}"),
-            });
-        }
+    let over_max_length = spec
+        .max_length
+        .is_some_and(|max_len| utf16_len(s) > max_len);
+    if let Some(max_len) = spec.max_length.filter(|_| over_max_length) {
+        errors.push(ValidationError {
+            path: path.to_string(),
+            message: format!("string longer than maxLength {max_len}"),
+        });
     }
-    if let Some(pat) = &spec.pattern {
-        // ReDoS-safe, conformance-locked with Layer A (`safeRegexTest` in
-        // sdk/src/clauses/safeRegex.ts): screen the catastrophic-backtracking
-        // shape and bound the input, treating an unsafe/over-long/invalid
-        // pattern as satisfied. Both engines must skip identically or the
-        // batch-resolution conformance diverges.
-        if !safe_regex_test(pat, s) {
+    // A value over `maxLength` is already refused, so its pattern is not
+    // run, as in the SDK's engine.
+    if let Some(pat) = spec.pattern.as_ref().filter(|_| !over_max_length) {
+        // Conformance-locked with the SDK's engine (`validateContent` and
+        // `safeRegexTest` in sdk/src/clauses/): a value that would cost the
+        // pattern more than `MAX_PATTERN_WORK` is refused unrun, and so is
+        // the whole content once its values would cost their patterns more
+        // than `MAX_CONTENT_PATTERN_WORK`; every other value is matched in
+        // time linear in its length.
+        let mut message = None;
+        if pattern_work_exceeded(pat, s) {
+            message = Some(format!("string too long for pattern {}", pat.as_str()));
+        } else if !is_printable_ascii(s) {
+            message = Some(format!("string does not match pattern {}", pat.as_str()));
+        } else if !work.refused {
+            let size = portable_pattern_size(pat.as_str()).unwrap_or(0);
+            let cost = utf16_len(s) as u64 * u64::from(size);
+            if work.total + cost > MAX_CONTENT_PATTERN_WORK {
+                work.refused = true;
+                errors.push(ValidationError {
+                    path: "$".to_string(),
+                    message: CONTENT_WORK_REFUSAL.to_string(),
+                });
+            } else {
+                work.total += cost;
+                if !safe_regex_test(pat, s) {
+                    message = Some(format!("string does not match pattern {}", pat.as_str()));
+                }
+            }
+        }
+        if let Some(message) = message {
             errors.push(ValidationError {
                 path: path.to_string(),
-                message: format!("string does not match pattern {}", pat.as_str()),
+                message,
             });
         }
     }
@@ -739,6 +755,7 @@ fn validate_array(
     spec: &ArrayFieldSpec,
     path: &str,
     errors: &mut Vec<ValidationError>,
+    work: &mut PatternWork,
 ) {
     let arr = match value.as_array() {
         Some(a) => a,
@@ -771,7 +788,7 @@ fn validate_array(
     let item_format = resolve_input_format(&spec.items, &[], None);
     for (i, item) in arr.iter().enumerate() {
         let item_path = format!("{path}[{i}]");
-        validate_field(item, &spec.items, &item_path, errors);
+        validate_field(item, &spec.items, &item_path, errors, work);
         validate_grain(item, item_format, spec.base.disposition, &item_path, errors);
     }
 }
@@ -781,6 +798,7 @@ fn validate_object(
     spec: &ObjectFieldSpec,
     path: &str,
     errors: &mut Vec<ValidationError>,
+    work: &mut PatternWork,
 ) {
     let obj = match value.as_object() {
         Some(o) => o,
@@ -812,7 +830,7 @@ fn validate_object(
                 }
             }
             Some(child_value) => {
-                validate_field(child_value, field, &child_path, errors);
+                validate_field(child_value, field, &child_path, errors, work);
                 let resolved = resolve_format_with(field, Some(obj), |name| {
                     sibling_defaults
                         .as_ref()
@@ -950,9 +968,15 @@ fn validate_grain(
     });
 }
 
-fn validate_field(value: &Value, spec: &FieldSpec, path: &str, errors: &mut Vec<ValidationError>) {
+fn validate_field(
+    value: &Value,
+    spec: &FieldSpec,
+    path: &str,
+    errors: &mut Vec<ValidationError>,
+    work: &mut PatternWork,
+) {
     match spec {
-        FieldSpec::String(s) => validate_string(value, s, path, errors),
+        FieldSpec::String(s) => validate_string(value, s, path, errors, work),
         FieldSpec::Integer(s) => validate_integer(value, s, path, errors),
         FieldSpec::Bigint(s) => validate_bigint(value, s, path, errors),
         FieldSpec::Boolean(_) => {
@@ -964,8 +988,8 @@ fn validate_field(value: &Value, spec: &FieldSpec, path: &str, errors: &mut Vec<
             }
         }
         FieldSpec::Enum(s) => validate_enum(value, s, path, errors),
-        FieldSpec::Array(s) => validate_array(value, s, path, errors),
-        FieldSpec::Object(s) => validate_object(value, s, path, errors),
+        FieldSpec::Array(s) => validate_array(value, s, path, errors, work),
+        FieldSpec::Object(s) => validate_object(value, s, path, errors, work),
     }
 }
 
@@ -994,7 +1018,10 @@ fn format_name(f: &StringFormat) -> &str {
 
 /// Validate `content` against `spec`. If `options.stage` is set and the
 /// spec defines a matching stage override, those fields are used;
-/// otherwise the spec's default `fields` apply.
+/// otherwise the spec's default `fields` apply. One call is one content:
+/// the pattern work it may spend, `MAX_CONTENT_PATTERN_WORK`, is counted
+/// over this call alone — one attestation's content, or one committed
+/// clause entry's.
 pub fn validate_content(
     content: &Value,
     spec: &ClauseSpec,
@@ -1020,7 +1047,13 @@ pub fn validate_content(
         },
         fields: fields.to_vec(),
     };
-    validate_object(content, &root_spec, "$", &mut errors);
+    validate_object(
+        content,
+        &root_spec,
+        "$",
+        &mut errors,
+        &mut PatternWork::default(),
+    );
     if errors.is_empty() {
         ValidationResult::Ok
     } else {

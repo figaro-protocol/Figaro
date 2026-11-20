@@ -107,19 +107,17 @@ describe("validateContent — happy paths", () => {
         expect(validateContent({ tags: ["a", ""] }, spec).ok).toBe(false);
     });
 
-    it("enforces a safe pattern, but SKIPS a catastrophic one (ReDoS screen — Rust-mirror conformance)", () => {
-        // A safe pattern is enforced.
-        const safe = specOf([{ name: "s", type: "string", required: true, pattern: "^a+$" }]);
-        expect(validateContent({ s: "aaa" }, safe).ok).toBe(true);
-        expect(validateContent({ s: "aab" }, safe).ok).toBe(false);
+    it("enforces every pattern, a quantified group holding a quantifier included (Rust-mirror conformance)", () => {
+        const plain = specOf([{ name: "s", type: "string", required: true, pattern: "^a+$" }]);
+        expect(validateContent({ s: "aaa" }, plain).ok).toBe(true);
+        expect(validateContent({ s: "aab" }, plain).ok).toBe(false);
 
-        // A ReDoS-shaped pattern (nested quantifiers) is skipped → satisfied,
-        // for both a would-match and a would-not-match input. The Rust prover
-        // mirror (prover/clause conformance test) accepts the same cases, so
-        // the batch-resolution path stays conformant.
-        const evil = specOf([{ name: "s", type: "string", required: true, pattern: "(a+)+$" }]);
-        expect(validateContent({ s: "aaaa" }, evil).ok).toBe(true);
-        expect(validateContent({ s: "a".repeat(40) }, evil).ok).toBe(true);
+        // The guest's conformance test (`prover/clause/tests/conformance.rs`)
+        // asserts the same verdicts, so the batch path reads the field alike.
+        const nested = specOf([{ name: "s", type: "string", required: true, pattern: "(a+)+$" }]);
+        expect(validateContent({ s: "aaaa" }, nested).ok).toBe(true);
+        expect(validateContent({ s: "a".repeat(40) + "!" }, nested).ok).toBe(false);
+        expect(validateContent({ s: "b" }, nested).ok).toBe(false);
     });
 
     it("validates nested objects", () => {

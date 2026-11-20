@@ -70,13 +70,16 @@ export { validateContent, validateSignedContent } from "./validate.js";
 export {
     safeRegexTest,
     portablePatternMatches,
-    isPotentiallyCatastrophicRegex,
     isPortablePattern,
+    isRunnablePattern,
+    portablePatternSize,
+    patternWorkExceeded,
     isPrintableAscii,
-    MAX_PATTERN_TEST_INPUT,
     MAX_PATTERN_LENGTH,
     MAX_PATTERN_REPEAT,
     MAX_PATTERN_EXPANSION,
+    MAX_PATTERN_WORK,
+    MAX_CONTENT_PATTERN_WORK,
 } from "./safeRegex.js";
 
 // ── Content encoding (generic, spec-driven) ─────────────────────────────────
