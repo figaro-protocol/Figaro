@@ -276,6 +276,8 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         await addBtn.click();
         await page.getByTestId('btn-review-order').click();
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
+        // The probe clause's one field names no filler, so the buyer fills it.
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${idHash}-probeStage-probe-opened"]`).check();
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
         await place.click();
