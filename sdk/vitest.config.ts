@@ -24,6 +24,7 @@ export default defineConfig({
             ["tests/batch-e2e.test.ts", "forks"],
             ["tests/batch-revoke-e2e.test.ts", "forks"],
             ["tests/batch-accrual-skip-e2e.test.ts", "forks"],
+            ["tests/batch-traces-e2e.test.ts", "forks"],
         ],
         poolOptions: {
             forks: {

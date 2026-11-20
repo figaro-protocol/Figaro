@@ -355,6 +355,7 @@ jobs:
                   npx vitest run tests/batch-e2e.test.ts
                   npx vitest run tests/batch-revoke-e2e.test.ts
                   npx vitest run tests/batch-accrual-skip-e2e.test.ts
+                  npx vitest run tests/batch-traces-e2e.test.ts
 
             - name: Anvil log on failure
               if: failure()
