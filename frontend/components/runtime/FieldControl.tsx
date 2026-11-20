@@ -5,8 +5,8 @@
  * matching control (enum → radios, array-of-enum → checkboxes, boolean →
  * checkbox, object → recursive sub-fields, scalar → text/number input). It knows
  * no clause and no interface — the same renderer drives a clause's content
- * `fields` (design-time, in the AgreementDrawer) and a composition's
- * `block.checkout.compositionFields` (checkout-time, in the composition-inputs form). One parser
+ * `fields` at design time (the AgreementDrawer) and the inputs a party fills
+ * now (a witness form, a catalog item, a profile value). One parser
  * (`parseFieldSpec`), one renderer.
  *
  * The one axis that differs between those two uses is the fill-vs-defer policy
@@ -21,9 +21,9 @@
  *     legacy, deleted): a value not filled here comes from its PRODUCING
  *     surface (catalog fold, derivation, spec default, companion routing)
  *     or stays absent.
- *   - `"runtime"` — the composition form's policy: every scalar (string / integer
- *     / bigint) is an input the party fills NOW. Nothing defers — these fields ARE
- *     the runtime input.
+ *   - `"runtime"` — the policy of a form the party fills now: every scalar
+ *     (string / integer / bigint) is an input the party fills NOW. Nothing
+ *     defers — these fields ARE the input.
  *
  * enum / array-of-enum / boolean / object render identically in both modes.
  *

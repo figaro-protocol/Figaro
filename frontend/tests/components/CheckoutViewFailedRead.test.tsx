@@ -29,7 +29,6 @@ vi.mock("@/lib/checkout", () => ({
 }));
 vi.mock("@/lib/checkout/cartStore", () => ({ useCartStore: () => ({ items: [] }) }));
 vi.mock("@/lib/checkout/dispatchRace", () => ({ useDispatchRace: () => ({}), postToAgentEndpoint: vi.fn() }));
-vi.mock("@/lib/composability/useCompositionActions", () => ({ useCompositionActions: () => ({ compose: vi.fn() }) }));
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false }) }));
 vi.mock("@/hooks/useApproveThenAct", () => ({ useApproveThenAct: () => ({ runWithApproval: vi.fn() }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: undefined }) }));

@@ -272,9 +272,8 @@ export function deriveAgreementGroups(args: {
                     // clause that signs the empty anchor (its spec's
                     // `emptyAnchor`: content attested at runtime) is never
                     // fillable. A COMPOSING clause's content
-                    // fields ARE fillable — the composition surface collects
-                    // only its block.checkout.compositionFields inputs, never its
-                    // content.
+                    // fields ARE fillable; its block.checkout.compositionFields
+                    // are no content and the checkout collects none of them.
                     // Less the fields the checkout walk fills MECHANICALLY (the
                     // priced lines a spec marks, the fields it derives): a buyer
                     // input the walk would overwrite is a false affordance, so a

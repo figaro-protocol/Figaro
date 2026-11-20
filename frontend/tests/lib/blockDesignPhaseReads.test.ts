@@ -40,7 +40,6 @@ const PHASE_FILES: Readonly<Record<"design" | "checkout", readonly string[]>> = 
         "lib/registries",
         "components/members",
         "lib/composability/heldValues.ts",
-        "lib/composability/useCompositionActions.ts",
         "components/runtime/AgreementReview.tsx",
         "components/runtime/AgreementPreviewModal.tsx",
         "components/runtime/CommitmentSignPreviewProvider.tsx",

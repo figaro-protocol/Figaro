@@ -29,6 +29,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { followedOrderIssues, validateCommitmentAgreement, type FollowedOrderRead, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
+import { OneWalletBothSidesNote } from "@/components/runtime/OneWalletBothSidesNote";
 import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
 import { useSwapFunding, fundingBlocksTheAct } from "@/lib/composability/useSwapFunding";
 import { useFundingMargin, marginBlocksTheAct } from "@/lib/composability/useFundingMargin";
@@ -204,8 +205,13 @@ function SignPageContent() {
     // lib/checkout/signState; this page keeps only the React-bound rest.
     const {
         isRoot, hasBuyerSig, hasSellerSig, isDraft, quoteTerms, isQuoteRequest,
-        isBuyer, isSeller, needsMySignature, myBondLabel, myBondAmount,
+        isBuyer, isSeller, needsMySignature: signatureOwed, myBondLabel, myBondAmount, awaitsOwnSellerSignature,
     } = useMemo(() => deriveSignState(parsed, address), [parsed, address]);
+    // The signature this page can add. One wallet on both sides of a
+    // buyer-signed order owes the seller's, which this frontend cannot add
+    // (`awaitsOwnSellerSignature`): the page says so in one line and offers
+    // no authorization and no counter-sign that would end in a refusal.
+    const needsMySignature = signatureOwed && !awaitsOwnSellerSignature;
     // Sub-orders only — the hook itself returns null for roots/zero ids.
     const processCapacity = useProcessResolveCapacity(commitment?.processId);
 
@@ -538,6 +544,8 @@ function SignPageContent() {
                             Your connected wallet ({truncateHex(address)}) is neither the buyer nor the seller in this commitment.
                         </p>
                     )}
+
+                    {awaitsOwnSellerSignature && <OneWalletBothSidesNote testId="sign-one-wallet-both-sides" />}
 
                     {/* Payment authorization before counter-signing */}
                     {needsMySignature && !approvalDone && approvalCurrency && (
