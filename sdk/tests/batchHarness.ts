@@ -56,12 +56,19 @@ export async function anvilReachable(): Promise<boolean> {
 
 // ── Contract bytecode loaders ───────────────────────────────────────────────
 
-function loadBytecode(contractPath: string): Hex {
+function loadArtifact(contractPath: string): { bytecode: { object: Hex }; deployedBytecode: { object: Hex } } {
     const repoRoot = path.resolve(import.meta.dirname, "../..");
-    const artifact = JSON.parse(
-        fs.readFileSync(path.join(repoRoot, "out", contractPath), "utf-8"),
-    );
-    return artifact.bytecode.object as Hex;
+    return JSON.parse(fs.readFileSync(path.join(repoRoot, "out", contractPath), "utf-8"));
+}
+
+/** A contract's creation bytecode, from the artifact Foundry wrote to out/. */
+export function loadBytecode(contractPath: string): Hex {
+    return loadArtifact(contractPath).bytecode.object;
+}
+
+/** A contract's runtime bytecode, the code an address carries after deployment. */
+export function loadRuntimeBytecode(contractPath: string): Hex {
+    return loadArtifact(contractPath).deployedBytecode.object;
 }
 
 // ── The witness clause: figaro-modalities, the bytes its key hashes ─────────
