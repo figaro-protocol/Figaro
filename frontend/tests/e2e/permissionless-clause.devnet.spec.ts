@@ -250,6 +250,8 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         // code (assemblies arrive value-free by construction).
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${WITNESS_KEY}-probePolicy"]`).first()
             .fill('probe-policy-token');
+        // The never-seen lifecycle clause's one field names no filler, so the buyer fills it.
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${NOVEL_KEY}-probeStage-probe-opened"]`).check();
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
         await place.click();

@@ -92,7 +92,7 @@ test.describe('ProcessRegistry withdraw — the commits==resolves gate (devnet)'
         //    binding, so the once-only withdraw is drivable every run. The
         //    slug is the network's answer (publish receipt). ──
         await gotoAsWallet(page, REGISTERED_BY, '/?e2e=devnet');
-        const { slug } = await publishProbeAssembly(page);
+        const { slug, clauseKey: probeClauseKey } = await publishProbeAssembly(page);
 
         // The binding this run anchors — processDesignHash found by deriving each
         // ProcessRegistered event's slug (the slug exists nowhere on-chain).
@@ -158,6 +158,8 @@ test.describe('ProcessRegistry withdraw — the commits==resolves gate (devnet)'
         await addBtn.click();
         await page.getByTestId('btn-review-order').click();
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
+        // The probe clause's one field names no filler, so the buyer fills it.
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${probeClauseKey}-probeStage-probe-opened"]`).check();
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
         await place.click();
