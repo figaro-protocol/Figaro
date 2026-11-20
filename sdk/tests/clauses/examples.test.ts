@@ -55,11 +55,14 @@ describe("example clause specs — parse + validate sample content", () => {
 
     // ── figaro-content-handoff ──
 
-    it("figaro-content-handoff spec parses cleanly and declares its stage-1 witness", () => {
+    it("figaro-content-handoff spec parses cleanly and declares its stage-1 witness as a private set with one blinding field", () => {
         const parsed = parseClauseSpec(contentHandoffSpecRaw);
         expect(parsed.ok).toBe(true);
-        const stages = (contentHandoffSpecRaw as { stages?: Record<string, unknown[]> }).stages;
-        expect(stages?.["1"]?.length).toBe(2);
+        if (!parsed.ok) return;
+        const stage = parsed.spec.stages?.[1] ?? [];
+        expect(stage.map((f) => f.name)).toEqual(["contentHash", "contentUri", "blinding"]);
+        expect(stage.every((f) => f.disposition === "private")).toBe(true);
+        expect(stage.filter((f) => f.blinding === true).map((f) => f.name)).toEqual(["blinding"]);
     });
 
     it("figaro-content-handoff accepts a mode set and rejects an empty one (the digital twin of the hand-off point)", () => {

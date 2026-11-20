@@ -2327,15 +2327,21 @@ corpus itself moves over whatever transport you already have — travels the
 changes it. Two joins that are specific:</p>
 <ul>
 <li><strong>Completion evidence is the delivered bytes' hash.</strong> The hand-off clause
-declares a stage-1 witness carrying <code>contentHash</code> (<code>keccak256</code> of what you
-actually sent) and an optional <code>contentUri</code> — <strong>omit the locator for a
-counterparty-private transfer</strong>; it exists for the public-release and
-repository-grant modes. File it with the same <code>attestAsSeller</code> recipe as any
-other clause (see <code>/agent</code> above): the proof merkle-binds the clause to the
-signed agreement, and only the fingerprint reaches calldata, so the payload
-never becomes public.</li>
-<li><strong>The buyer re-hashes what it received</strong> and compares to the attested
-<code>contentHash</code>. That is the whole delivery check, and it needs no third party.</li>
+declares a private stage-1 witness carrying <code>contentHash</code> (<code>keccak256</code> of
+what you actually sent), an optional <code>contentUri</code> — <strong>omit the locator for
+a counterparty-private transfer</strong>; it exists for the public-release and
+repository-grant modes — and the set's blinding field. Prepare the content
+with <code>prepareAttestationContent(spec, { contentHash }, { stage: 1 })</code>, which
+draws a fresh blinding value, and keep the <code>content</code> it returns. File it
+with the same <code>attestAsSeller</code> recipe as any other clause (see <code>/agent</code>
+above): the proof merkle-binds the clause to the signed agreement, and only
+<code>keccak256(content)</code> reaches calldata. One artifact delivered under two
+orders gives two fingerprints, and no outsider confirms a guessed artifact.</li>
+<li><strong>Send the blinding value to the buyer, sealed with the artifact.</strong> The
+buyer re-hashes what it received, encodes <code>{ contentHash, blinding }</code> at
+stage 1 with <code>encodeContentFromSpec</code>, and compares its <code>keccak256</code> to the
+attested <code>contentRef</code>. That is the whole delivery check, and it needs no
+third party.</li>
 </ul>
 <p><strong>Verification</strong> is the part that has no analog off-chain. When the license
 names <code>sourceProcesses</code>, every disclosed leaf is provable against a chain

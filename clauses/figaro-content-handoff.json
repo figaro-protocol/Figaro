@@ -2,7 +2,7 @@
     "clauseId": "figaro-content-handoff",
     "version": 1,
     "title": "Content hand-off",
-    "description": "How the DIGITAL hand-off happens for this agreement's exchange \u2014 the twin of the physical hand-off clause, for value added in the digital medium (a production chain's cut, a design file, a dataset, an access credential; the freelancer's deliverable). Each bonded order with a digital deliverable carries its own content hand-off. Completion evidence is the delivered artifact's keccak256 content hash, filed as a runtime attestation at stage 1 and merkle-bound to the agreement \u2014 any counterparty verifies by rehashing what it received. Compose figaro-geolocation ALONGSIDE for territory/jurisdiction geofencing (a licensed territory, the jurisdiction of the work) \u2014 geofencing is that clause's concern, never fields here.",
+    "description": "How the DIGITAL hand-off happens for this agreement's exchange \u2014 the twin of the physical hand-off clause, for value added in the digital medium (a production chain's cut, a design file, a dataset, an access credential; the freelancer's deliverable). Each bonded order with a digital deliverable carries its own content hand-off. Completion evidence is the delivered artifact's keccak256 content hash, filed as a runtime attestation at stage 1 and merkle-bound to the agreement. Stage 1 is a private set: its content carries a blinding value the attesting party draws fresh for each attestation, so its public fingerprint links no two orders and confirms no guessed artifact. The attesting party sends the blinding value sealed to the counterparty with the artifact, and the counterparty verifies by rehashing what it received and recomputing the fingerprint. Compose figaro-geolocation ALONGSIDE for territory/jurisdiction geofencing (a licensed territory, the jurisdiction of the work) \u2014 geofencing is that clause's concern, never fields here.",
     "fields": [
         {
             "name": "contentHandoff",
@@ -33,7 +33,8 @@
                 "required": true,
                 "pattern": "^0x[0-9a-fA-F]{64}$",
                 "label": "Delivered content hash",
-                "description": "keccak256 of the delivered artifact's bytes \u2014 the completion evidence. A counterparty verifies by rehashing what it received."
+                "disposition": "private",
+                "description": "keccak256 of the delivered artifact's bytes \u2014 the completion evidence. Only the fingerprint of the stage-1 set, its blinding value included, is public. A counterparty verifies by rehashing what it received."
             },
             {
                 "name": "contentUri",
@@ -42,7 +43,18 @@
                 "minLength": 0,
                 "maxLength": 512,
                 "label": "Content locator",
-                "description": "Optional network locator for the delivered artifact (e.g. ipfs://\u2026) \u2014 for public-release and repository-grant modes; omit for counterparty-private transfers."
+                "disposition": "private",
+                "description": "Optional network locator for the delivered artifact (e.g. ipfs://\u2026) \u2014 for public-release and repository-grant modes; omit for counterparty-private transfers. It is private with the rest of the set; a party that publishes the artifact publishes its locator where it chooses."
+            },
+            {
+                "name": "blinding",
+                "type": "string",
+                "format": "bytes32-hex",
+                "required": true,
+                "disposition": "private",
+                "blinding": true,
+                "label": "Blinding value",
+                "description": "32 random bytes the attesting party draws fresh for each attestation, so the set's fingerprint links no two orders and confirms no guessed artifact. It travels sealed to the counterparty with the content."
             }
         ]
     },

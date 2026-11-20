@@ -9,7 +9,8 @@
  * device's OWN capabilities, detected at runtime (`availableCaptures`) —
  * geolocation cross-check everywhere, NFC tap on Android Chrome, BLE
  * sighting on Chromium — never a fixed set. A capture PINS the mechanism-
- * grain PUBLIC artifact (the cell + hashed identifiers + rawCaptureHash —
+ * grain PUBLIC artifact (the cell + identifier fingerprints blinded per
+ * capture + rawCaptureHash —
  * evidence nobody can fetch is not shared evidence, but raw coordinates
  * never leave the device) and its URI fills the field; the full-fidelity
  * raw capture is retained locally for dispute-time revelation, purgeable

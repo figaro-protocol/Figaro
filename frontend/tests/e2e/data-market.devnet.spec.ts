@@ -17,8 +17,9 @@
  *      terms filled at checkout, `sourceProcesses` anchored to process 1's
  *      resolved processId (the clause's provenance field); the access
  *      credential delivers via figaro-content-handoff (encrypted-transfer:
- *      the stage-1 attestation anchors keccak256 of the credential bytes,
- *      the content-delivery ceremony's chain shape); commit → resolve.
+ *      the stage-1 attestation anchors a blinded fingerprint of keccak256
+ *      of the credential bytes, the content-delivery ceremony's chain
+ *      shape); commit → resolve.
  *
  * Asserted, ALL from fresh chain reads (never the writing test's state):
  *   - VALUE LEGS per process: bond lock at commit (buyer 2×payment, seller
@@ -67,7 +68,7 @@ import {
     verifyInclusionProof,
     type ReconstructedOrder,
 } from '@figaro-protocol/sdk';
-import { encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
+import { prepareAttestationContent } from '@figaro-protocol/sdk/agent';
 import { getClauseSpec, specSource } from '@/lib/shared/clauseSpecSource';
 import { LOCAL_ANVIL, RPC_URL, chainProfileReader, discoverAnchoredAssemblies, localPublicClient, pinJSONToIPFS, readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs, type DiscoveredAssembly } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
@@ -447,15 +448,20 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
 
         // The hand-off ceremony, chain shape (the content-delivery exemplar's
         // out-of-band leg): while the order is LIVE, the seller's stage-1
-        // attestation anchors keccak of the stage content — encoded per the
+        // attestation anchors keccak of the stage content — prepared per the
         // REGISTERED spec (ClauseRegistered → IPFS, the same read every
-        // consumer does) — over the credential bytes' hash. The chain never
-        // learns the bytes; the buyer verifies by rehashing what it received.
+        // consumer does) over the credential bytes' hash, with the blinding
+        // value its private set carries drawn fresh. The chain never learns
+        // the bytes; the buyer verifies by rehashing what it received, with
+        // the value the sealed envelope carries.
         const handoffSpec = getClauseSpec(CONTENT_HANDOFF);
         expect(handoffSpec, 'the content-handoff clause is anchored on ClauseRegistry and its pinned spec loads').toBeTruthy();
-        const expectedContentRef = keccak256(
-            encodeContentFromSpec(handoffSpec!, { contentHash: CREDENTIAL_HASH }, { stage: 1 }),
-        );
+        const handoffEvidence = prepareAttestationContent(handoffSpec!, { contentHash: CREDENTIAL_HASH }, { stage: 1 });
+        const expectedContentRef = keccak256(handoffEvidence.content);
+        expect(
+            keccak256(prepareAttestationContent(handoffSpec!, { contentHash: CREDENTIAL_HASH }, { stage: 1 }).content),
+            'the same credential under another attestation gives another public fingerprint',
+        ).not.toBe(expectedContentRef);
         const handoffClause = stream.order.agreement.clauses.find((s) => s.clause.toLowerCase() === CONTENT_HANDOFF)!;
         const { proof: handoffProof } = buildSignedClauseInclusionProof(stream.order.agreement, handoffClause.clause);
         await receipt(await walletB.writeContract({

@@ -14,7 +14,10 @@
  * answering party files the spec's stage-1 attestation with the artifact's
  * keccak256 — the completion evidence, merkle-bound to the agreement — and
  * the receiver verifies by REHASHING what it decrypted against that
- * on-chain anchor. The chain never learns the bytes.
+ * on-chain anchor. The chain never learns the bytes. Where the stage-1 set
+ * is private, the anchor is the fingerprint of the hash and a blinding
+ * value the envelope carries, and the receiver keeps the rebuilt content
+ * once the anchor is verified (`keepVerifiedCompletionEvidence`).
  *
  * The channel subscription, authentication contract, and anchor polling
  * live in `useCeremonyChannel`; this panel owns the artifact codec (the
@@ -24,7 +27,7 @@
  * clause; `clauseKey` identifies the declaring clause for the attestation
  * and the title, never a dispatch.
  */
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
     COMPLETION_STAGE,
     CONTENT_DELIVERY_MAX_BYTES,
@@ -32,6 +35,7 @@ import {
     contentCeremonyId,
     contentHashOfBytes,
     decryptContentDelivery,
+    keepVerifiedCompletionEvidence,
     prepareCompletionEvidence,
     requestContentDelivery,
     sendContentDelivery,
@@ -39,6 +43,7 @@ import {
 } from "@/lib/data/handoff/contentDelivery";
 import { useCeremonyPanel } from "@/lib/data/handoff/useCeremonyChannel";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { useWitnessHolder } from "@/lib/core/useWitnessHolder";
 import { Button } from "@/components/ui/Button";
 import { CeremonyPanelFrame, CeremonyRequestButton } from "@/components/runtime/CeremonyPanelFrame";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
@@ -72,6 +77,16 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller, path
         // materials the same way.
         requestLabels: { buyer: "Request the deliverable", seller: "Request counterparty content" },
     });
+
+    // Once the chain holds the sender's anchor for what was decrypted, the
+    // receiver keeps a private set's rebuilt content as its copy of the
+    // sender's filing, so its audit page and evidence file read it.
+    const holder = useWitnessHolder();
+    useEffect(() => {
+        if (anchored !== "verified" || !received) return;
+        const spec = getClauseSpec(clauseKey);
+        if (spec) keepVerifiedCompletionEvidence(holder, spec, { orderHash, clauseId: clauseKey }, received);
+    }, [anchored, received, holder, clauseKey, orderHash]);
 
     const handleSend = useCallback(async (file: File) => {
         const contentHash = await deliver("Delivering the content failed.", async (ctx) => {
@@ -120,8 +135,8 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller, path
         <CeremonyPanelFrame testId="interaction-content-panel" title="Content delivery (private)" clauseKey={clauseKey}>
             <p className="text-xs text-ink-body">
                 The artifact travels encrypted to this order&apos;s counterparty alone;
-                its keccak256 anchors on-chain as the completion evidence. The chain
-                never learns the bytes.
+                a fingerprint of its keccak256 anchors on-chain as the completion
+                evidence. The chain never learns the bytes.
             </p>
 
             {/* Ask for the counterparty's content. */}
@@ -173,8 +188,8 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller, path
                     <p className="text-xs text-ink-body">
                         Deliver the artifact ({Math.round(CONTENT_DELIVERY_MAX_BYTES / 1024)} KiB max —
                         larger deliverables use the repository-grant or public-release mode).
-                        It is encrypted to this order&apos;s counterparty; only its keccak256
-                        goes on-chain.
+                        It is encrypted to this order&apos;s counterparty; only a fingerprint
+                        of its keccak256 goes on-chain.
                     </p>
                     {/* Raw: a file picker, which the Input primitive does not model. */}
                     <input

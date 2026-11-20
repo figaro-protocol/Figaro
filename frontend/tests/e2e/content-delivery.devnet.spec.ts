@@ -6,8 +6,9 @@
  * The scenario: a buyer orders a digital deliverable; the artifact travels
  * the per-order ECDH channel counterparty-private (wallet-authenticated —
  * the transport proves nothing), the seller's stage-1 attestation anchors
- * keccak256 of the artifact's bytes as the completion evidence, and the
- * buyer VERIFIES BY REHASHING what it decrypted against that on-chain
+ * a fingerprint of keccak256 of the artifact's bytes and a blinding value
+ * as the completion evidence, and the buyer VERIFIES BY REHASHING what it
+ * decrypted, with the value the envelope carried, against that on-chain
  * anchor. The chain never learns the bytes.
  *
  *   compose  → the assembly composing figaro-content-handoff is authored on
@@ -26,9 +27,11 @@
  *              sees the rehash match the on-chain evidence, and saves the
  *              artifact
  *
- * Out-of-band: the Attestation event's contentRef equals keccak of the
- * stage-1 content encoded per the REGISTERED spec (ClauseRegistered → IPFS
- * — the same read every consumer does) over the artifact's keccak256.
+ * Out-of-band: the REGISTERED spec (ClauseRegistered → IPFS — the same read
+ * every consumer does) declares the stage-1 set private. The Attestation
+ * event's contentRef equals keccak of the content the seller's browser kept,
+ * which holds the artifact's keccak256 and a blinding value drawn for this
+ * attestation; the artifact's hash with an invented value misses it.
  *
  * No resolve — the rung precedent: the bond LOCK is the commit's on-chain
  * effect; full-cycle resolution is permissionless-clause's assertion.
@@ -54,9 +57,21 @@ import {
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
 import { calculateBonds, ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
-import { encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
+import { decodeContentFromSpec, encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
 import { getClauseSpec } from '@/lib/shared/clauseSpecSource';
 import type { Page } from '@playwright/test';
+
+/** The kept private witness entry in this browser whose place ends at the
+ *  content reference, read out of band from localStorage; null when none. */
+function keptEntryAt(page: Page, contentRef: string): Promise<string | null> {
+    return page.evaluate((suffix) => {
+        for (let i = 0; i < window.localStorage.length; i++) {
+            const key = window.localStorage.key(i)!;
+            if (key.startsWith('figaro-kept-witness-content:') && key.endsWith(suffix)) return window.localStorage.getItem(key);
+        }
+        return null;
+    }, contentRef);
+}
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -328,27 +343,35 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
             'the artifact delivers privately and the completion evidence anchors',
         ).toBeVisible({ timeout: 60000 });
 
-        // Out-of-band: the Attestation event landed at stage 1 with
-        // contentRef = keccak of the stage-1 content encoded per the
-        // REGISTERED spec (ClauseRegistered → IPFS) over the artifact hash.
+        // Out-of-band: the Attestation event landed at stage 1, by the
+        // seller. The REGISTERED spec (ClauseRegistered → IPFS) declares the
+        // stage-1 set private, so the event's contentRef is keccak of the
+        // content the seller's browser kept: the artifact hash and a
+        // blinding value drawn for this attestation. The hash alone, encoded
+        // with any value an outsider could invent, gives another reference.
         const registeredSpec = getClauseSpec(TARGET_CLAUSE);
         expect(registeredSpec, 'the clause is anchored on ClauseRegistry and its pinned spec loads').toBeTruthy();
-        const expectedRef = keccak256(
-            encodeContentFromSpec(registeredSpec!, { contentHash: ARTIFACT_HASH }, { stage: 1 }),
-        ).toLowerCase();
-        await expect.poll(async () => {
-            const logs = await publicClient.getContractEvents({
-                address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
-                eventName: 'Attestation', args: { processId }, fromBlock: 0n,
-            });
-            return logs.slice(attestationsBefore).some((log) =>
-                Number(log.args.stage) === 1
-                && (log.args.contentRef as string).toLowerCase() === expectedRef
-                && (log.args.attester as string).toLowerCase() === SELLER.toLowerCase());
-        }, {
-            timeout: 60000,
-            message: "the seller's stage-1 completion evidence — keccak over the ENCODED artifact hash — lands on-chain",
-        }).toBe(true);
+        const sellerFilings = async () => (await publicClient.getContractEvents({
+            address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
+            eventName: 'Attestation', args: { processId }, fromBlock: 0n,
+        })).slice(attestationsBefore).filter((log) =>
+            Number(log.args.stage) === 1
+            && (log.args.attester as string).toLowerCase() === SELLER.toLowerCase());
+        await expect.poll(async () => (await sellerFilings()).length, {
+            timeout: 60000, message: "the seller's stage-1 completion evidence lands on-chain",
+        }).toBe(1);
+        const contentRef = ((await sellerFilings())[0].args.contentRef as string).toLowerCase();
+        const sellerKept = await keptEntryAt(page, contentRef);
+        expect(sellerKept, "the seller's browser keeps the private stage-1 content it attested").toBeTruthy();
+        const keptContent = (JSON.parse(sellerKept!) as { content: Hex }).content;
+        expect(keccak256(keptContent).toLowerCase(), 'the kept bytes hash to the on-chain contentRef').toBe(contentRef);
+        const keptValues = decodeContentFromSpec(registeredSpec!, keptContent, { stage: 1 });
+        expect(keptValues.contentHash, 'the kept content holds the artifact hash').toBe(ARTIFACT_HASH);
+        expect(String(keptValues.blinding)).toMatch(/^0x[0-9a-f]{64}$/);
+        expect(
+            keccak256(encodeContentFromSpec(registeredSpec!, { contentHash: ARTIFACT_HASH, blinding: `0x${'00'.repeat(32)}` }, { stage: 1 })).toLowerCase(),
+            'the artifact hash with an invented blinding value does not confirm the artifact against the chain',
+        ).not.toBe(contentRef);
 
         // ── CEREMONY, buyer side again: decrypt, REHASH, verify against the
         //    anchor, save the artifact. The chain never learned the bytes —
@@ -368,6 +391,15 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
             page.getByTestId('interaction-content-verified'),
             'the rehash matches the on-chain completion evidence',
         ).toBeVisible({ timeout: 60000 });
+        // Out of band: the buyer's browser keeps the content it verified as a
+        // copy received from the seller, at the place the chain names.
+        await expect.poll(() => keptEntryAt(page, contentRef), {
+            timeout: 30000, message: "the buyer keeps the seller's stage-1 content it verified",
+        }).toBeTruthy();
+        const buyerKept = await keptEntryAt(page, contentRef);
+        const buyerEntry = JSON.parse(buyerKept!) as { content: Hex; received?: boolean };
+        expect(buyerEntry.content.toLowerCase(), 'the buyer holds the bytes the seller attested').toBe(keptContent.toLowerCase());
+        expect(buyerEntry.received, 'the copy is marked received from the seller').toBe(true);
         const download = page.waitForEvent('download');
         await page.getByTestId('interaction-content-download').click();
         expect((await download).suggestedFilename(), 'the buyer saves what it paid for').toBe(ARTIFACT_NAME);

@@ -331,6 +331,12 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
         await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
+        // The client decrypts each deliverable and checks it against its
+        // seller's stage-1 fingerprint; the page keeps each verified content.
+        await expect(
+            page.getByTestId('interaction-content-verified'),
+            "every deliverable's rehash matches its seller's on-chain completion evidence",
+        ).toHaveCount(3, { timeout: 90000 });
         const resolveBtn = page.getByTestId('capability-execute-resolve-process');
         await expect(resolveBtn, 'the client can resolve the active process').toBeEnabled({ timeout: 30000 });
         await resolveBtn.click();
@@ -349,10 +355,11 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
             .toBe(base.get(core.toLowerCase())!);
 
         // ── AUDIT: three content-hand-off witness receipts, each DECODED. ──
-        // The chain carries only the fingerprint (WS2); the attester published
-        // the public-disposition preimage at the keccak-CID that fingerprint
-        // derives, so the audit reader resolves, verifies, and renders the
-        // values again — from network state, not calldata.
+        // The chain carries only the fingerprint, and the clause's stage-1
+        // set is private, so no preimage is pinned. The client's browser
+        // kept each delivery's stage-1 content once it verified it against
+        // the chain (above), so the client's audit reads those copies,
+        // checks each against its fingerprint, and renders the values.
         await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
