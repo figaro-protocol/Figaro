@@ -61,6 +61,12 @@ function toneClasses(tone: Tone): string {
     }
 }
 
+/** What a party to an open process on the batch path reads in place of its
+ *  actions. The names are the SDK's own exports. */
+const BATCH_PATH_NOTE =
+    "This order is on the batch path; this page reads it and sends no operation to a relay. " +
+    "To act on it, use the SDK's relay client, SequencerClient, or a relay of your own started with proveAndSettle.";
+
 interface Props {
     processId: string;
 }
@@ -219,6 +225,7 @@ export function OrderTimelineView({ processId }: Props) {
                             checkoutHash={order.checkoutHash}
                             buyer={order.buyer}
                             seller={order.seller}
+                            path={order.path}
                         />
                         {/* The private filings of this order, where any
                             concern this wallet: the party that does not hold
@@ -248,9 +255,20 @@ export function OrderTimelineView({ processId }: Props) {
                 <KeptPrivateContentPanel holder={holder} refreshKey={filingsKeptRound} onChanged={onFilingsKept} />
             )}
 
+            {/* A process on the batch path: FigaroCore and the attestation
+                coordinator do not know it, so the model derives no act for it
+                and this page sends nothing to a relay. One line names what
+                does act on it. Derived from the emitter of the order events,
+                in the same read as the orders. */}
+            {role !== "spectator" && !isResolved && processModel.onBatchPath && (
+                <p className="text-sm text-ink-body" data-testid="order-batch-path-note">
+                    {BATCH_PATH_NOTE}
+                </p>
+            )}
+
             {/* What you can do — every action the builder derived from the
                 agreement's clauses + attestation state. One execution path. */}
-            {role !== "spectator" && (
+            {role !== "spectator" && !processModel.onBatchPath && (
                 <CapabilityRail
                     capabilities={workspace.runtimeCapabilities}
                     executableCapabilityIds={workspace.executableCapabilityIds}

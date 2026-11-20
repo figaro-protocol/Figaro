@@ -384,7 +384,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `didWebEndpointResolver` | `/agent` | Resolve a seller's coordination endpoint through `did:web`, address-checked. |
 | `DISABLED_SWAP_FUNDING_LEG` | root | The inert swap-funding leg — pass it for the party that is not swapping. |
 | `encodeContentFromSpec` | `/clauses` | JSON clause content to canonical ABI bytes — one generic encoder, no per-clause path. |
-| `executeAction` | `/agent` | The single dispatch point for any `ProposedAction`; restores each root's signed `processId` for you. |
+| `executeAction` | `/agent` | The single dispatch point for any `ProposedAction`; restores each root's signed `processId` for you. A resolve or an attestation of a process on the batch path goes to the relay client its sixth argument names (`{ relay: SequencerClient }`), signed under the verifier's domain; with none, nothing is sent and the result is `sent: "nothing"`. It returns `ActionResult`: `sent: "transaction"` with the hash, `sent: "relay"` with the relay's operation id, or `sent: "nothing"`. |
 | `filterActions` | `/agent` | The proposed actions of one type, typed to that type. |
 | `extractOverlays` | `/derive` | Group attestations into one overlay graph per clause family PRESENT — the open graph class. |
 | `extractServiceEndpoints` | `/agent` | Read a DID document's `service` entries — WHERE to reach the agent behind it. |
@@ -395,7 +395,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `fetchProcessesResolved` | root | For each process id, whether it has resolved and the block of its `ProcessResolved`: the Core's `processes(id)` getter decides the direct path, the verifier's `ProcessResolved` the batch path. |
 | `fetchSkippedBatchUses` | root | Each batch whose call to the counter reverted whole (`BatchAccrualSkipped`), with the period, the usage claims and the uses read from the `BatchOperations` log of the same transaction, on every call route. `fromBlock` is required (the deployment's `deploymentBlock`); a failed read throws. Each claim can be sent again with `SequencerClient.submitUsageClaim`, without the agreement, and a later batch may prove it while a period is open. |
 | `fetchUsageRecords` | root | `UsageRecorded` events — the direct-path half of the rewards mirror. |
-| `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalog and process set. |
+| `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalog and process set, reading each order emitter apart so every order and process carries the path that emitted it (`Order.path`, `Process.path`: "direct" or "batch"). |
 | `fillCatalogueMeasures` | root | Fold the measures each composed spec declares in `block.checkout.catalogueMeasures` from the lines' catalog items; a missing measure stays missing. |
 | `fillClassClauses` | root | Fold catalog-filled class values (freight class, hazmat, cold chain, …) onto their leaves. |
 | `fillCheckoutDerivations` | root | Compute each field a composed spec derives (`block.checkout.derives`), by its declared rule over its declared inputs; a rule the registry does not hold, or inputs it cannot derive from, leave the field as it was. |
@@ -445,7 +445,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `projectResolutionGraph` | `/derive` | Per-order bonds locked and payouts at resolve, grouped into `FigaroCore`'s LINEAR per-process chains. |
 | `projectValueFlow` | `/derive` | Denomination nodes and flow edges: resolutions per denomination, swap legs between denominations; no venue list is bundled. |
 | `proveAndSettle` | `/relay` | Prove and land the buyer's resolve on the batch path with a relay of your own, started on the state it rebuilds from the chain. |
-| `proposeActions` | `/agent` | Every action a wallet may take on a process it is already in. |
+| `proposeActions` | `/agent` | Every action a wallet may take on a process it is already in, each carrying the process's `path`. |
 | `proposeInitiations` | `/agent` | Every process a wallet could START — one per live-staked assembly. |
 | `readChainTimestamp` | root | The chain's `block.timestamp`: the only clock a protocol deadline may be computed from. |
 | `readFundingLegs` | `/derive` | The swap legs one commit transaction carries, read from its receipt's ERC-20 transfers: one per party that funded its bond through the coordinator. |
@@ -1018,7 +1018,12 @@ console.log(approved.approvalContext?.runtimeSummary);
 const result = await commit(walletClient, publicClient, coreAddress, commitment, buyerSig, sellerSig);
 // Or dispatch from a proposed action. resolve-process is self-contained; commit/
 // attest/initiate take signed `inputs` — the SDK never fabricates a signature.
-const result = await executeAction(walletClient, publicClient, addresses, approvedAction);
+// FigaroCore and the attestation coordinator do not know a process on the batch
+// path (`action.path === "batch"`): its resolve and attestations go to the relay
+// client passed last, signed under the verifier's domain (addresses.batchVerifier).
+// With no relay, nothing is sent and the result says why.
+const result = await executeAction(walletClient, publicClient, addresses, approvedAction, inputs, { relay });
+if (result.sent === "nothing") console.log(result.detail); // the batch path, no relay configured
 
 // Attest one clause end-to-end from a hydrated Agreement. Pick the clause from
 // the agreement's OWN clauses — never a bundled list.

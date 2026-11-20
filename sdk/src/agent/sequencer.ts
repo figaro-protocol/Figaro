@@ -175,6 +175,35 @@ export interface SequencerUsageClaim {
     inclusion_proof: Hex[];
 }
 
+// ── The typed data a batched attestation is signed over ─────────────────────
+
+/** EIP-712 types of the seller's batch-path attestation authorization, the
+ *  signed form of the coordinator's `msg.sender == target.seller`. Signed
+ *  under the verifier's domain (`buildDomain(chainId, batchVerifier)`);
+ *  `orderHash` is the order's id there (`computeOrderHash` with the verifier's
+ *  address). The proof recovers the signer from the same struct
+ *  (`prover/lib/src/eip712.rs`). */
+export const ATTEST_SELLER_TYPES = {
+    AttestSeller: [
+        { name: "orderHash", type: "bytes32" },
+        { name: "clauseId", type: "bytes32" },
+        { name: "stage", type: "uint8" },
+        { name: "contentRef", type: "bytes32" },
+    ],
+} as const;
+
+/** EIP-712 types of the buyer's batch-path attestation authorization, as
+ *  {@link ATTEST_SELLER_TYPES} with the order's process id first. */
+export const ATTEST_BUYER_TYPES = {
+    AttestBuyer: [
+        { name: "processId", type: "bytes32" },
+        { name: "orderHash", type: "bytes32" },
+        { name: "clauseId", type: "bytes32" },
+        { name: "stage", type: "uint8" },
+        { name: "contentRef", type: "bytes32" },
+    ],
+} as const;
+
 // ── Response types ──────────────────────────────────────────────────────────
 
 export interface SubmitResult {

@@ -78,7 +78,7 @@ const EVENTS: CoreEvents = { orderCommitted: [COMMITTED], orderResolved: [], pro
 describe("the order consumers read through getCoreEvents", () => {
     beforeEach(() => {
         getCoreEventsMock.mockReset();
-        getCoreEventsMock.mockResolvedValue({ events: EVENTS, committedLogs: [] });
+        getCoreEventsMock.mockResolvedValue({ events: EVENTS, committedLogs: [], byPath: [{ path: "direct", events: EVENTS }] });
     });
 
     it("useProcessOrders", async () => {

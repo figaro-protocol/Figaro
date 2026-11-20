@@ -117,6 +117,30 @@ starting a NEW process on `FigaroCore`, not migrating a batched one. There is no
 migration between the paths and none is planned; the disjointness is the
 design, not a gap in it.
 
+**What a party cannot do on the batch path through this project's tools.**
+The app and the SDK read both paths. Each marks an order with the path whose
+contract emitted it, from the emitter's address at read time
+(`frontend/lib/core/indexer.ts` `parseCoreLogsByPath`; `FigaroContext.sync`,
+`Order.path`, `Process.path`). What a party can do on the direct path and
+cannot do on the batch path, as the code stands:
+
+- Through the app (`docs/FRONTEND.md` § "The batch path through this app"):
+  - The app starts no trade on the batch path; every commit it sends goes to `FigaroCore`.
+  - The app offers no resolve and no attestation for a batched process; its order page names the SDK's relay client in their place.
+  - The app offers no send of an address detail or a content delivery on a batched order, because the send files its anchor through the coordinator.
+  - The app cannot commit a sub-order that follows an order of a batched process, because the commit goes to `FigaroCore`, which reverts with `UnknownProcess`.
+  - The app sends no usage claim to a relay, so a batched process's uses reach the counter only through a claim sent by other means.
+  - No reader of the app shows the operations a relay holds in its queue for one process.
+- Through the SDK:
+  - The agents start trades on the direct path only: `originateProcess`, the seller loop and `executeAction`'s `initiate-process` commit through `FigaroCore`.
+  - `executeAction` sends a batched process's resolve or attestation to a relay only when it is given one (`ExecuteActionConfig.relay`); without one it sends nothing and returns `sent: "nothing"`.
+  - `recordProcessUsage` counts the uses of a direct resolution only; a batched one's go through `buildUsageClaims` and `SequencerClient.submitUsageClaim`, which the agent loop does not call.
+  - `SequencerClient.status` reports the relay's counts, and no reader lists the operations it holds for one process.
+
+`SequencerClient` itself submits every batch-path operation, the commit
+included (`submitCommit`); the lists above say what the app and the agent
+loop do with it, not what the relay accepts.
+
 ## Proof-Based `FigaroCore` Scaling
 
 `FigaroCore` scaling problem: how do you batch many `commit` and

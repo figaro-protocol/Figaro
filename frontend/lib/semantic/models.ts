@@ -3,6 +3,7 @@
 
 import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
+import type { ResolutionUniverse } from "@figaro-protocol/sdk";
 
 type TruthClass =
     | "protocol-enforced"
@@ -207,6 +208,9 @@ export interface OrderNodeModel {
      *  agreement and read its clauses (e.g. a courier handoff's
      *  proximity-policy band). */
     checkoutHash: `0x${string}`;
+    /** The path whose contract emitted the order's commit (`Order.path`),
+     *  where the read derived it. */
+    path?: ResolutionUniverse;
     capabilities: CapabilityModel[];
     resolutionBreakdown?: EconomicBreakdownModel;
 }
@@ -223,4 +227,9 @@ export interface ProcessModel {
     rootModality?: string | null;
     orders: OrderNodeModel[];
     capabilities: CapabilityModel[];
+    /** True when an order of the process was committed on the batch path.
+     *  The two paths share no state, so the whole process is then on the
+     *  batch path: FigaroCore and the attestation coordinator do not know
+     *  it, and this frontend derives no capability for it. */
+    onBatchPath: boolean;
 }

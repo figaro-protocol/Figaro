@@ -5,6 +5,8 @@
  * definitions plus the two dependency-free hex shape predicates.
  */
 
+import type { ResolutionUniverse } from "./events.js";
+
 // ── Hex-branded type (matches viem's convention) ────────────────────────────
 
 export type Hex = `0x${string}`;
@@ -58,6 +60,12 @@ export interface Order {
     sellerPayout?: bigint;
     /** Set when resolved. */
     buyerPayout?: bigint;
+    /** The path whose contract emitted the order's `OrderCommitted`:
+     *  "direct" for `FigaroCore`, "batch" for `FigaroBatchVerifier`. Derived
+     *  from the emitter's address by a reader that fetched each emitter
+     *  apart (`FigaroContext.sync`); absent where the events were folded
+     *  without their emitter. */
+    path?: ResolutionUniverse;
 }
 
 // ── Process (aggregated from orders) ────────────────────────────────────────
@@ -76,6 +84,10 @@ export interface Process {
     runningTotal: bigint;
     orders: Map<Hex, Order>;
     resolved: boolean;
+    /** The path the process runs on, read from the emitter of its first
+     *  commit, as for `Order.path`. The two paths share no state, so every
+     *  order of one process is on that one path. */
+    path?: ResolutionUniverse;
 }
 
 // ── Parsed event types ──────────────────────────────────────────────────────
@@ -425,6 +437,8 @@ export interface AgentProcessContext {
     activeOrderCount: number;
     resolved: boolean;
     orders: AgentOrderContext[];
+    /** The path the process runs on (`Process.path`), where the reader knew it. */
+    path?: ResolutionUniverse;
 }
 
 export interface AgentOrderContext {

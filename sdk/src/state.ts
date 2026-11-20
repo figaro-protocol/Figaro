@@ -18,6 +18,7 @@ import type {
     AgentOrderContext,
 } from "./types.js";
 import { OrderState as OS } from "./types.js";
+import type { ResolutionUniverse } from "./events.js";
 
 // ── One-shot reconstruction ─────────────────────────────────────────────────
 
@@ -64,12 +65,16 @@ export class Topology {
     readonly processes = new Map<Hex, Process>();
     private readonly orderIndex = new Map<Hex, Order>();
 
-    /** Apply a batch of events (e.g. from fetchCoreEvents). */
-    applyEvents(events: CoreEvents): void {
+    /** Apply a batch of events (e.g. from fetchCoreEvents). `path` names the
+     *  path of the one contract that emitted every event of the batch, and
+     *  marks each order and process those commits create (`Order.path`,
+     *  `Process.path`); omitted, the events carry no path, as when both
+     *  emitters' events arrive folded together. */
+    applyEvents(events: CoreEvents, path?: ResolutionUniverse): void {
         // 1. Process commits (sorted by block for deterministic replay)
         const sorted = [...events.orderCommitted].sort((a, b) => a.blockNumber - b.blockNumber);
         for (const e of sorted) {
-            this.applyOrderCommitted(e);
+            this.applyOrderCommitted(e, path);
         }
 
         // 2. Apply resolutions
@@ -140,12 +145,13 @@ export class Topology {
             ).length,
             resolved: process.resolved,
             orders,
+            ...(process.path ? { path: process.path } : {}),
         };
     }
 
     // ── Internal event handlers ─────────────────────────────────────────────
 
-    private applyOrderCommitted(e: OrderCommittedEvent): void {
+    private applyOrderCommitted(e: OrderCommittedEvent, path: ResolutionUniverse | undefined): void {
         const order: Order = {
             orderHash: e.orderHash,
             processId: e.processId,
@@ -159,6 +165,7 @@ export class Topology {
             commitDeadline: e.commitDeadline,
             state: OS.Active,
             blockNumber: e.blockNumber,
+            ...(path ? { path } : {}),
         };
 
         this.orderIndex.set(e.orderHash, order);
@@ -172,6 +179,7 @@ export class Topology {
                 runningTotal: e.runningTotal,
                 orders: new Map(),
                 resolved: false,
+                ...(path ? { path } : {}),
             };
             this.processes.set(e.processId, process);
         } else {

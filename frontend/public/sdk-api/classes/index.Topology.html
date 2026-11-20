@@ -16,7 +16,7 @@
 This is the &quot;shadow state&quot; an agent maintains.</p>
 </div></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L63">state.ts:63</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L64">state.ts:64</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -57,7 +57,7 @@ This is the &quot;shadow state&quot; an agent maintains.</p>
 <h3 class="tsd-anchor-link" id="processes"><code class="tsd-tag">Readonly</code><span>processes</span><a href="#processes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">processes</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Map</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">,</span> <a href="../interfaces/index.Process.html" class="tsd-signature-type tsd-kind-interface">Process</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L64">state.ts:64</a></li></ul></aside></section></section></details>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L65">state.ts:65</a></li></ul></aside></section></section></details>
 <details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
 <h2 class="tsd-anchor-link" id="methods-1">Methods<a href="#methods-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
 <section>
@@ -65,17 +65,22 @@ This is the &quot;shadow state&quot; an agent maintains.</p>
 <h3 class="tsd-anchor-link" id="applyevents"><span>apply<wbr/>Events</span><a href="#applyevents" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
 <li class="">
-<div class="tsd-signature tsd-anchor-link" id="applyevents-1"><span class="tsd-kind-call-signature">applyEvents</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">events</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.CoreEvents.html" class="tsd-signature-type tsd-kind-interface">CoreEvents</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#applyevents-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-signature tsd-anchor-link" id="applyevents-1"><span class="tsd-kind-call-signature">applyEvents</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">events</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.CoreEvents.html" class="tsd-signature-type tsd-kind-interface">CoreEvents</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">path</span><span class="tsd-signature-symbol">?:</span> <a href="../types/index.ResolutionUniverse.html" class="tsd-signature-type tsd-kind-type-alias">ResolutionUniverse</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#applyevents-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Apply a batch of events (e.g. from fetchCoreEvents).</p>
+<div class="tsd-comment tsd-typography"><p>Apply a batch of events (e.g. from fetchCoreEvents). <code>path</code> names the
+path of the one contract that emitted every event of the batch, and
+marks each order and process those commits create (<code>Order.path</code>,
+<code>Process.path</code>); omitted, the events carry no path, as when both
+emitters' events arrive folded together.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
-<li><span><span class="tsd-kind-parameter">events</span>: <a href="../interfaces/index.CoreEvents.html" class="tsd-signature-type tsd-kind-interface">CoreEvents</a></span></li></ul></div>
+<li><span><span class="tsd-kind-parameter">events</span>: <a href="../interfaces/index.CoreEvents.html" class="tsd-signature-type tsd-kind-interface">CoreEvents</a></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">path</span>: <a href="../types/index.ResolutionUniverse.html" class="tsd-signature-type tsd-kind-type-alias">ResolutionUniverse</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L68">state.ts:68</a></li></ul></aside></div></li></ul></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L73">state.ts:73</a></li></ul></aside></div></li></ul></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="buildagentcontext"><span>build<wbr/>Agent<wbr/>Context</span><a href="#buildagentcontext" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -91,7 +96,7 @@ This is the JSON briefing an LLM or specialized agent receives.</p>
 <li><span><span class="tsd-kind-parameter">processId</span>: <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/index.AgentProcessContext.html" class="tsd-signature-type tsd-kind-interface">AgentProcessContext</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L120">state.ts:120</a></li></ul></aside></div></li></ul></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L125">state.ts:125</a></li></ul></aside></div></li></ul></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="getactiveprocesses"><span>get<wbr/>Active<wbr/>Processes</span><a href="#getactiveprocesses" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -102,7 +107,7 @@ This is the JSON briefing an LLM or specialized agent receives.</p>
 </div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/index.Process.html" class="tsd-signature-type tsd-kind-interface">Process</a><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L96">state.ts:96</a></li></ul></aside></div></li></ul></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L101">state.ts:101</a></li></ul></aside></div></li></ul></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="getorder"><span>get<wbr/>Order</span><a href="#getorder" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -117,7 +122,7 @@ This is the JSON briefing an LLM or specialized agent receives.</p>
 <li><span><span class="tsd-kind-parameter">orderHash</span>: <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/index.Order.html" class="tsd-signature-type tsd-kind-interface">Order</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L91">state.ts:91</a></li></ul></aside></div></li></ul></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L96">state.ts:96</a></li></ul></aside></div></li></ul></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="getordersbyseller"><span>get<wbr/>Orders<wbr/>By<wbr/>Seller</span><a href="#getordersbyseller" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -132,7 +137,7 @@ This is the JSON briefing an LLM or specialized agent receives.</p>
 <li><span><span class="tsd-kind-parameter">seller</span>: <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/index.Order.html" class="tsd-signature-type tsd-kind-interface">Order</a><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L109">state.ts:109</a></li></ul></aside></div></li></ul></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L114">state.ts:114</a></li></ul></aside></div></li></ul></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="getprocess"><span>get<wbr/>Process</span><a href="#getprocess" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -147,7 +152,7 @@ This is the JSON briefing an LLM or specialized agent receives.</p>
 <li><span><span class="tsd-kind-parameter">processId</span>: <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/index.Process.html" class="tsd-signature-type tsd-kind-interface">Process</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L86">state.ts:86</a></li></ul></aside></div></li></ul></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L91">state.ts:91</a></li></ul></aside></div></li></ul></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="getprocessesbybuyer"><span>get<wbr/>Processes<wbr/>By<wbr/>Buyer</span><a href="#getprocessesbybuyer" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -162,7 +167,7 @@ This is the JSON briefing an LLM or specialized agent receives.</p>
 <li><span><span class="tsd-kind-parameter">buyer</span>: <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/index.Process.html" class="tsd-signature-type tsd-kind-interface">Process</a><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L101">state.ts:101</a></li></ul></aside></div></li></ul></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/state.ts#L106">state.ts:106</a></li></ul></aside></div></li></ul></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

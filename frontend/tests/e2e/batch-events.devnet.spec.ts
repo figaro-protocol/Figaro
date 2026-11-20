@@ -22,7 +22,10 @@
  *   resolve  → the buyer signs the resolution, the relay lands it; the verifier
  *              emits `OrderResolved` and `ProcessResolved`, FigaroCore none
  *   read     → each surface, with no relay endpoint anywhere:
- *              /orders/view lists the batched attestation, tagged batch, and
+ *              /orders/view lists the batched attestation, tagged batch, offers
+ *              the buyer of the open process no resolve and no attestation (the
+ *              Core does not know the process, read out of band) and names the
+ *              relay client in their place, and
  *              the sealed handoff key the buyer's tab held for the order is
  *              purged when the batched resolution lands (useHandoffCleanup);
  *              once the resolution lands, /orders/view reads the order as
@@ -53,6 +56,7 @@ import { LOCAL_ANVIL, RPC_URL, keyOf, localPublicClient, pinJSONToIPFS, primeReg
 import { ANVIL_KEYS } from '../anvilAccounts';
 import {
     BATCH_VERIFIER_ABI,
+    CORE_ABI,
     ERC20_ABI,
     buildCommitment,
     buildDomain,
@@ -64,6 +68,7 @@ import {
 } from '@figaro-protocol/sdk';
 import { SequencerClient } from '@figaro-protocol/sdk/agent';
 import { specSource } from '@/lib/shared/clauseSpecSource';
+import { ZERO_ADDRESS } from '@/lib/shared/evm';
 
 const SEQUENCER_BIN = path.resolve(__dirname, '../../../prover/target/release/sequencer');
 const RELAY_PORT = 3011;
@@ -284,6 +289,19 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
             await expect(page.getByTestId('timeline-event-prep-started').getByTestId('timeline-event-path'), 'the order page lists the batched attestation, tagged batch')
                 .toHaveAttribute('data-universe', 'batch', { timeout: 60000 });
             expect(await ecdhHeld(), 'the buyer\'s tab holds the sealed-handoff key while the order is open').toBe(true);
+
+            // ── The order page offers the buyer of the open batched process no act that goes to
+            //    FigaroCore or the coordinator, and names what does act on it (OrderTimelineView;
+            //    the unit-level twin is tests/components/OrderTimelineBatchPathActs.test.tsx). ──
+            const [coreRootBuyer] = await publicClient.readContract({
+                address: config.figaroCore as Hex, abi: CORE_ABI, functionName: 'processes', args: [processId],
+            });
+            expect(coreRootBuyer, 'FigaroCore does not know the batched process, so a resolve sent there would revert')
+                .toBe(ZERO_ADDRESS);
+            await expect(page.getByTestId('order-batch-path-note'), 'the order page names the relay client in place of the actions')
+                .toContainText('This order is on the batch path', { timeout: 60000 });
+            await expect(page.getByTestId('capability-resolve-process'), 'no resolve is offered for the batched process').toHaveCount(0);
+            await expect(page.locator('[data-testid^="capability-"]'), 'no attestation card and no capability rail on the batched process').toHaveCount(0);
 
             // ── The buyer's resolution, through the relay. ──
             const resolveSig = await BUYER.signTypedData({

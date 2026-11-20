@@ -16,6 +16,7 @@ import type { Hex, Address, Process, Commitment, ResolutionBreakdown, Registered
 import { OrderState } from "../types.js";
 import { calculateResolution } from "../bonds.js";
 import { orderToCommitment, ZERO_PROCESS_ID } from "../commitments.js";
+import type { ResolutionUniverse } from "../events.js";
 
 // ── Action types ────────────────────────────────────────────────────────────
 
@@ -31,6 +32,12 @@ export interface BaseAction {
     description: string;
     /** Process this action operates on. */
     processId: Hex;
+    /** The path the process runs on (`Process.path`), copied from the
+     *  process the action was proposed for. `executeAction` sends an action
+     *  on the batch path to a relay, never to `FigaroCore` or the
+     *  attestation coordinator, which do not know a batched process. Absent,
+     *  the action goes to the direct path, as it always has. */
+    path?: ResolutionUniverse;
 }
 
 export interface InitiateProcessAction extends BaseAction {
@@ -113,6 +120,11 @@ export type ProposedAction =
  */
 export function proposeActions(process: Process, myAddress: Address): ProposedAction[] {
     const actions: ProposedAction[] = [];
+    // Each action carries its process's path. On the batch path the
+    // executor can do what it does on the direct path, a resolve and an
+    // attestation, through a relay: the same actions are proposed, and the
+    // executor sends each one where it can land.
+    const onPath = process.path ? { path: process.path } : {};
     const lc = myAddress.toLowerCase();
     const isBuyer = process.rootBuyer.toLowerCase() === lc;
 
@@ -144,9 +156,11 @@ export function proposeActions(process: Process, myAddress: Address): ProposedAc
         );
 
         actions.push({
+            ...onPath,
             type: "resolve-process",
             description: `Resolve process with ${activeOrders.length} active order(s). ` +
-                `You receive ${totalBuyerPayout} back; sellers receive ${totalSellerPayout} total.`,
+                `You receive ${totalBuyerPayout} back; sellers receive ${totalSellerPayout} total.` +
+                (process.path === "batch" ? " The process is on the batch path: the resolve goes through a relay." : ""),
             processId: process.processId,
             caller: process.rootBuyer,
             // Reconstructed from the active orders; the executor restores each
@@ -165,6 +179,7 @@ export function proposeActions(process: Process, myAddress: Address): ProposedAc
 
         // 2. Attest as buyer
         actions.push({
+            ...onPath,
             type: "attest-as-buyer",
             description: `Submit an attestation for ${activeOrders.length} order(s) as the buyer.`,
             processId: process.processId,
@@ -183,6 +198,7 @@ export function proposeActions(process: Process, myAddress: Address): ProposedAc
         if (activeSellerOrders.length > 0) {
             // Attest as seller
             actions.push({
+                ...onPath,
                 type: "attest-as-seller",
                 description: `Submit an attestation for ${activeSellerOrders.length} order(s) as the seller.`,
                 processId: process.processId,

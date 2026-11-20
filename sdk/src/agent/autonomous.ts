@@ -19,12 +19,15 @@ import { CORE_ABI, ATTESTATION_COORDINATOR_ABI, USAGE_COUNTER_ABI } from "../abi
 import { validateContent, encodeContentFromSpec, contentFieldsFor, fieldSetRuleErrors, type ClauseSpec } from "../clauses/index.js";
 import { isZeroBlindingValue, withFreshBlinding } from "../projection.js";
 import { assertOrderFitsResolveCap } from "../gasCeilings.js";
-import { restoreSignedProcessId } from "../commitments.js";
+import {
+    restoreSignedProcessId, buildDomain, RESOLVE_PROCESS_TYPES, computeOrderHash, computeCommitmentProcessId,
+} from "../commitments.js";
 import type { Agreement } from "../agreement.js";
 import type { ProcessDesign } from "../assembly.js";
 import { buildUsageClaims, fetchUsageClaimContext, usageClaimKindCode, usageKeyId } from "../rpgf/index.js";
 import { isBytes32Hex, type Hex, type Address, type FigaroAddresses, type Commitment } from "../types.js";
-import type { ProposedAction, ResolveProcessAction } from "./proposer.js";
+import type { ProposedAction, ResolveProcessAction, AttestAction } from "./proposer.js";
+import { ATTEST_SELLER_TYPES, ATTEST_BUYER_TYPES, type SequencerClient } from "./sequencer.js";
 
 // ── Transaction result ──────────────────────────────────────────────────────
 
@@ -428,6 +431,26 @@ export interface ActionExecutionInputs {
     };
 }
 
+/** What `executeAction` did with an action. */
+export type ActionResult =
+    /** A transaction to `FigaroCore` or the attestation coordinator: the direct path. */
+    | ({ sent: "transaction" } & TxResult)
+    /** A signed operation the relay took into its queue: the batch path. The
+     *  relay proves it in a later batch; the outcome is read from the chain
+     *  (`fetchCoreEvents`, `fetchAttestationRecords`), never from the relay. */
+    | { sent: "relay"; operationId: number }
+    /** Nothing was sent: the process is on the batch path, which `FigaroCore`
+     *  and the attestation coordinator do not know, and no relay is
+     *  configured. `detail` says so in one sentence. */
+    | { sent: "nothing"; reason: "batch-path-without-relay"; detail: string };
+
+/** What `executeAction` is configured with, beside the addresses. */
+export interface ExecuteActionConfig {
+    /** The relay a batched process's resolve and attestations go to. Absent,
+     *  an action on the batch path is reported back unsent. */
+    relay?: SequencerClient;
+}
+
 /**
  * Execute a ProposedAction — the single dispatch point for every action the
  * proposer can surface. What each needs:
@@ -440,9 +463,17 @@ export interface ActionExecutionInputs {
  *     gathered off-SDK; without it this throws rather than fabricate one.
  *     (There is NO runtime compose verb — extending a live process ad hoc was
  *     the deleted commit-sub-order arm; multi-order processes originate from
- *     an assembly.)
+ *     an assembly.) A process always starts on the direct path here.
  *   - attest-as-seller / attest-as-buyer — pass `inputs.attestation` (the
  *     merkle-bound payload built from the hydrated agreement).
+ *
+ * An action whose `path` is "batch" never goes to `FigaroCore` or the
+ * attestation coordinator, which do not know a batched process. With
+ * `config.relay`, the wallet signs the operation under the verifier's domain
+ * (`addresses.batchVerifier`) and the relay client submits it
+ * (`SequencerClient.submitResolve`, `submitAttestAsSeller`,
+ * `submitAttestAsBuyer`). Without one, nothing is sent, nothing is signed,
+ * and the result says so (`sent: "nothing"`).
  *
  * Throws a clear, typed error when a chosen action's inputs are absent.
  */
@@ -452,20 +483,19 @@ export async function executeAction(
     addresses: FigaroAddresses,
     action: ProposedAction,
     inputs: ActionExecutionInputs = {},
-): Promise<TxResult> {
+    config: ExecuteActionConfig = {},
+): Promise<ActionResult> {
+    if (action.path === "batch" && action.type !== "initiate-process") {
+        return executeOnBatchPath(walletClient, publicClient, addresses, action, inputs, config.relay);
+    }
+    const sent = (tx: TxResult): ActionResult => ({ sent: "transaction", ...tx });
     switch (action.type) {
         case "resolve-process": {
             const a = action as ResolveProcessAction;
-            const raw = inputs.commitments ?? a.commitments;
-            if (!raw || raw.length === 0) {
-                throw new Error(
-                    "resolve-process: no commitments to resolve. The proposer reconstructs " +
-                    "them from the process's active orders — pass a populated action or inputs.commitments.",
-                );
-            }
+            const raw = commitmentsToResolve(a, inputs);
             const chainId = await publicClient.getChainId();
             const commitments = raw.map((c) => restoreSignedProcessId(c, chainId, addresses.core));
-            return resolveProcess(walletClient, addresses.core, a.processId, commitments);
+            return sent(await resolveProcess(walletClient, addresses.core, a.processId, commitments));
         }
         case "initiate-process": {
             if (!inputs.commitment || !inputs.buyerSig || !inputs.sellerSig) {
@@ -476,34 +506,139 @@ export async function executeAction(
                     `{ commitment, buyerSig, sellerSig }. The SDK will not fabricate a signature.`,
                 );
             }
-            return commit(
+            return sent(await commit(
                 walletClient, publicClient, addresses.core,
                 inputs.commitment, inputs.buyerSig, inputs.sellerSig,
-            );
+            ));
         }
         case "attest-as-seller":
         case "attest-as-buyer": {
-            const at = inputs.attestation;
-            if (!at) {
-                throw new Error(
-                    `${action.type}: requires inputs.attestation ` +
-                    `{ target, clauseId, stage, clauseDataHash, proof, contentRef } built from the hydrated agreement.`,
-                );
-            }
+            const at = attestationToFile(action, inputs);
             if (!addresses.attestationCoordinator) {
                 throw new Error(`${action.type}: addresses.attestationCoordinator is not configured.`);
             }
-            return action.type === "attest-as-seller"
-                ? attestAsSeller(
+            return sent(action.type === "attest-as-seller"
+                ? await attestAsSeller(
                     walletClient, addresses.attestationCoordinator,
                     at.target, at.clauseId, at.stage, at.clauseDataHash, at.proof, at.contentRef,
                 )
-                : attestAsBuyer(
+                : await attestAsBuyer(
                     walletClient, addresses.attestationCoordinator,
                     at.target, at.clauseId, at.stage, at.clauseDataHash, at.proof, at.contentRef,
-                );
+                ));
         }
         default:
             throw new Error(`Cannot execute unknown action type "${(action as { type: string }).type}".`);
     }
+}
+
+/** A resolve's commitments: the caller's, else the action's own; never none. */
+function commitmentsToResolve(action: ResolveProcessAction, inputs: ActionExecutionInputs): Commitment[] {
+    const raw = inputs.commitments ?? action.commitments;
+    if (!raw || raw.length === 0) {
+        throw new Error(
+            "resolve-process: no commitments to resolve. The proposer reconstructs " +
+            "them from the process's active orders — pass a populated action or inputs.commitments.",
+        );
+    }
+    return raw;
+}
+
+/** An attestation's merkle-bound payload, which the caller supplies. */
+function attestationToFile(
+    action: AttestAction,
+    inputs: ActionExecutionInputs,
+): NonNullable<ActionExecutionInputs["attestation"]> {
+    if (!inputs.attestation) {
+        throw new Error(
+            `${action.type}: requires inputs.attestation ` +
+            `{ target, clauseId, stage, clauseDataHash, proof, contentRef } built from the hydrated agreement.`,
+        );
+    }
+    return inputs.attestation;
+}
+
+/**
+ * A resolve or an attestation of a process on the batch path. The direct
+ * path's contracts do not know the process, so nothing goes to them: the
+ * wallet signs the batch path's authorization under the verifier's domain,
+ * and the relay client submits it. Without a relay, nothing is signed or
+ * sent, and the result says so.
+ */
+async function executeOnBatchPath(
+    walletClient: WalletClient,
+    publicClient: PublicClient,
+    addresses: FigaroAddresses,
+    action: ResolveProcessAction | AttestAction,
+    inputs: ActionExecutionInputs,
+    relay: SequencerClient | undefined,
+): Promise<ActionResult> {
+    if (!relay) {
+        return {
+            sent: "nothing",
+            reason: "batch-path-without-relay",
+            detail: `${action.type}: process ${action.processId} is on the batch path and no relay is configured, so nothing was sent.`,
+        };
+    }
+    const verifier = addresses.batchVerifier;
+    if (!verifier) {
+        throw new Error(
+            `${action.type}: process ${action.processId} is on the batch path, and its operations are ` +
+            `signed under the batch verifier's domain: addresses.batchVerifier is not configured.`,
+        );
+    }
+    const account = walletClient.account;
+    if (!account) throw new Error(`${action.type}: the wallet client has no account to sign with.`);
+    const chainId = await publicClient.getChainId();
+    const domain = buildDomain(chainId, verifier);
+
+    if (action.type === "resolve-process") {
+        // The order ids and a root's process id are the verifier's: each root
+        // is restored to its signed processId 0 under the verifier's domain.
+        const commitments = commitmentsToResolve(action, inputs).map((c) => restoreSignedProcessId(c, chainId, verifier));
+        // The cumulative value the buyer accepts: every order of the process
+        // is active until the resolve, so it is the largest running total.
+        const runningTotal = commitments.reduce((max, c) => (c.runningTotal > max ? c.runningTotal : max), 0n);
+        const buyerSig = await walletClient.signTypedData({
+            account,
+            domain,
+            types: RESOLVE_PROCESS_TYPES,
+            primaryType: "ResolveProcess",
+            message: { processId: action.processId, runningTotal },
+        });
+        const { id } = await relay.submitResolve(action.processId, runningTotal, commitments, buyerSig);
+        return { sent: "relay", operationId: id };
+    }
+
+    const at = attestationToFile(action, inputs);
+    const orderHash = computeOrderHash(at.target, chainId, verifier);
+    const witness = {
+        target: at.target,
+        clauseId: at.clauseId,
+        stage: at.stage,
+        contentRef: at.contentRef,
+        clauseDataHash: at.clauseDataHash,
+        inclusionProof: [...at.proof],
+    };
+    if (action.type === "attest-as-seller") {
+        const sellerSig = await walletClient.signTypedData({
+            account,
+            domain,
+            types: ATTEST_SELLER_TYPES,
+            primaryType: "AttestSeller",
+            message: { orderHash, clauseId: at.clauseId, stage: at.stage, contentRef: at.contentRef },
+        });
+        const { id } = await relay.submitAttestAsSeller({ ...witness, sellerSig });
+        return { sent: "relay", operationId: id };
+    }
+    const processId = computeCommitmentProcessId(at.target, chainId, verifier);
+    const buyerSig = await walletClient.signTypedData({
+        account,
+        domain,
+        types: ATTEST_BUYER_TYPES,
+        primaryType: "AttestBuyer",
+        message: { processId, orderHash, clauseId: at.clauseId, stage: at.stage, contentRef: at.contentRef },
+    });
+    const { id } = await relay.submitAttestAsBuyer({ ...witness, buyerSig });
+    return { sent: "relay", operationId: id };
 }

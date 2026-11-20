@@ -89,6 +89,10 @@ function roleCapabilities(
 ): CapabilityModel[] {
     const order = _order;
     if (order.state !== OrderState.Active || !order.token) return [];
+    // Every capability here is a write to the attestation coordinator, which
+    // does not know an order committed on the batch path: none is derived
+    // for one. This frontend reads such an order and sends nothing to a relay.
+    if (order.path === "batch") return [];
 
     const normalized = _address?.toLowerCase();
     const isBuyer = hexEqual(order.buyer, normalized);
@@ -352,6 +356,9 @@ function deriveProcessCapabilities(
     address?: string,
 ): CapabilityModel[] {
     if (!address) return [];
+    // The resolve is a write to FigaroCore, which does not know a process
+    // committed on the batch path: none is derived for one.
+    if (orders.some((order) => order.path === "batch")) return [];
 
     const normalized = address?.toLowerCase();
     const capabilities: CapabilityModel[] = [];
@@ -493,6 +500,7 @@ function deriveOrderNodeModelFromOrder(
         state: OrderState[order.state],
         follows,
         checkoutHash: (order.checkoutHash ?? ZERO_BYTES32) as `0x${string}`,
+        ...(order.path ? { path: order.path } : {}),
         capabilities: roleCapabilities(order, agreements, indexes, address),
         resolutionBreakdown: deriveResolutionBreakdown(order, follows, address),
     };
@@ -529,5 +537,6 @@ export function deriveProcessModelFromRuntime(
         rootModality,
         orders: semanticOrders,
         capabilities: deriveProcessCapabilities(summary.processId, processOrders, address),
+        onBatchPath: processOrders.some((order) => order.path === "batch"),
     };
 }
