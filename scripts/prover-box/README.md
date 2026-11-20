@@ -17,10 +17,16 @@ On a fresh Ubuntu x86_64 host (16 cores / 30 GB RAM / 150 GB disk is the
 proven sizing):
 
 ```sh
-./provision.sh <release-commit>   # toolchains, the repo at that commit, sp1 image, 48G swapfile
-./build-guest.sh        # docker-reproducible ELF + inject + print the vkey
-./build-sequencer.sh    # sequencer release binary + guest drift tests
+./provision.sh <release-commit> [<checkout dir>]   # toolchains, the repo at that commit, sp1 image, 48G swapfile
+<checkout dir>/scripts/prover-box/build-guest.sh <release sha>   # the release-revision check, then the docker-reproducible ELF + inject + print the vkey
+<checkout dir>/scripts/prover-box/build-sequencer.sh             # sequencer release binary + guest drift tests
 ```
+
+The checkout directory is the second argument or `FIGARO_DIR`, default
+`$HOME/Figaro`; `run-sequencer.sh` reads the same `FIGARO_DIR`. A second box
+reproduces the key from any path. `build-guest.sh` refuses to build unless
+`scripts/check-release-revision.mjs` holds for the full sha it is given (the
+`RELEASE_COMMIT=` line `checkout-release.sh` prints last).
 
 The checkout ends detached at the release commit the maintainer names
 (`checkout-release.sh`, which `provision.sh` calls and which a box left from an

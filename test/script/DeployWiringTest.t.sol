@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import {Deploy} from "script/Deploy.s.sol";
 import {DeployMainnet} from "script/DeployMainnet.s.sol";
+import {DeploySepolia} from "script/DeploySepolia.s.sol";
 import {DeploySepoliaPair} from "script/DeploySepoliaPair.s.sol";
 import {FigaroCore} from "src/core/kernel/FigaroCore.sol";
 import {AttestationCoordinator} from "src/core/attestation/AttestationCoordinator.sol";
@@ -116,6 +117,22 @@ contract MainnetDeployHarness is DeployMainnet {
 
     function batchVerifier() external view returns (address) {
         return _batchVerifier;
+    }
+}
+
+/// @dev The same for the full Sepolia script: the florin, its minter and the
+///      mock DAO vault the script deploys in place of DAO_WALLET.
+contract SepoliaDeployHarness is DeploySepolia {
+    function florin() external view returns (address) {
+        return _florin;
+    }
+
+    function rpgfMinter() external view returns (address) {
+        return _rpgfMinter;
+    }
+
+    function daoTreasury() external view returns (address) {
+        return _daoTreasury;
     }
 }
 
@@ -314,6 +331,50 @@ contract DeployWiringTest is Test {
         assertEq(ClauseRegistry(d.clauses()).withdrawalCooldown(), 28 days, "mainnet clause cooldown");
         assertEq(ProcessRegistry(d.assemblies()).withdrawalCooldown(), 28 days, "mainnet assembly cooldown");
         assertEq(AgreementRegistry(d.agreements()).withdrawalCooldown(), 28 days, "mainnet agreement cooldown");
+    }
+
+    // ── Sepolia full deploy ──────────────────────────────────────
+
+    /// @dev The full Sepolia script, run as it broadcasts, then the florin read
+    ///      back: the deployer's minter right is renounced, so neither a mint
+    ///      nor a new minter can follow the genesis. Every environment value is
+    ///      the one the mainnet test sets (the same names, the same contracts
+    ///      created in the same order), because vm.setEnv is process-global and
+    ///      the tests run in parallel.
+    function test_sepoliaDeploy_renouncesTheDeployerMint() public {
+        address founder = makeAddr("founder");
+        address supporters = makeAddr("supporters");
+        address permit2 = address(new MockWitnessPermit2());
+        address router = address(new SwapRouterShape());
+        address gateway = address(new MockSP1Verifier());
+
+        vm.setEnv("PRIVATE_KEY", vm.toString(DEPLOYER_KEY));
+        vm.setEnv("FOUNDER_WALLET", vm.toString(founder));
+        vm.setEnv("SUPPORTERS_WALLET", vm.toString(supporters));
+        vm.setEnv("RPGF_GENESIS", vm.toString(block.timestamp));
+        vm.setEnv("PERMIT2", vm.toString(permit2));
+        vm.setEnv("SWAP_ROUTER", vm.toString(router));
+        vm.setEnv("SP1_VERIFIER", vm.toString(gateway));
+        vm.setEnv("SP1_PROGRAM_VKEY", vm.toString(keccak256(abi.encodePacked("figaro-kernel-dev"))));
+
+        SepoliaDeployHarness d = new SepoliaDeployHarness();
+        d.run();
+
+        FlorinToken f = FlorinToken(d.florin());
+        address deployer = vm.addr(DEPLOYER_KEY);
+        assertEq(f.deployer(), deployer, "the florin's deployer is the deploy key");
+        assertTrue(f.deployerMintRenounced(), "deployer mint renounced");
+        assertEq(f.totalSupply(), 400_000_000 ether, "the genesis 400M minted, the 600M reserved");
+        assertEq(f.balanceOf(founder), 70_000_000 ether, "founder 7%");
+        assertEq(f.balanceOf(supporters), 30_000_000 ether, "supporters 3%");
+        assertEq(f.balanceOf(d.daoTreasury()), 300_000_000 ether, "DAO 30%, to the mock vault");
+
+        vm.startPrank(deployer);
+        vm.expectRevert(FlorinToken.DeployerMintRenounced.selector);
+        f.mint(deployer, 1);
+        vm.expectRevert(FlorinToken.DeployerMintRenounced.selector);
+        f.registerMinter(makeAddr("late-minter"), 1);
+        vm.stopPrank();
     }
 
     // ── Sepolia pair-only redeploy ───────────────────────────────

@@ -11,6 +11,12 @@ set -e
 # testnet divergence; see DeploySepolia.s.sol's header for all three
 # divergences and their rulings).
 #
+#   - refuses to run, in every mode, unless RELEASE_COMMIT names the full sha
+#     of the release revision and this checkout builds it: a clean tree that
+#     does not differ from it in the code, the guest, the proofs or the build
+#     (scripts/check-release-revision.mjs); the deployment record stores it
+#     as `releaseCommit` (PAIR_ONLY leaves the stored one: the rest of the
+#     stack was built at it)
 #   - refuses to run unless every required env var is set
 #   - refuses to run without an explicit SEPOLIA_DEPLOY_CONFIRM=yes
 #   - reads the target RPC's chain id back and refuses unless it is
@@ -24,12 +30,13 @@ set -e
 #     landed leaves the record written and exits 1; VERIFY_ONLY=1 then
 #     verifies the deployment the record names, sending no transaction:
 #
-#       VERIFY_ONLY=1 ETHERSCAN_API_KEY=... ./scripts/deploy-sepolia.sh
+#       VERIFY_ONLY=1 RELEASE_COMMIT=<full sha> ETHERSCAN_API_KEY=... ./scripts/deploy-sepolia.sh
 #
 #   - RECORD_DIR names the directory the record is written to (default
 #     deployments/; under SKIP_VERIFY=1, ${TMPDIR:-/tmp}/figaro-rehearsal-deployments)
 #
 # Usage:
+#   RELEASE_COMMIT=<full sha> \
 #   SEPOLIA_DEPLOY_CONFIRM=yes \
 #   RPC_URL=https://... \
 #   PRIVATE_KEY=0x... \
@@ -50,7 +57,7 @@ set -e
 # renounced) — usage accrued through the new counter is not claimable on
 # Sepolia; docs/AUDITOR_HANDOVER.md records it.
 #
-#   PAIR_ONLY=1 SEPOLIA_DEPLOY_CONFIRM=yes \
+#   PAIR_ONLY=1 RELEASE_COMMIT=<full sha> SEPOLIA_DEPLOY_CONFIRM=yes \
 #   RPC_URL=https://... PRIVATE_KEY=0x... \
 #   SP1_VERIFIER_GATEWAY=0x... SP1_PROGRAM_VKEY=0x... \
 #   ETHERSCAN_API_KEY=... \
@@ -61,6 +68,17 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DEPLOY_DIR="$REPO_ROOT/deployments"
 SEPOLIA_CHAIN_ID=11155111
 
+# ── Guard 0: the checkout builds the release revision ──────────────────────
+# RELEASE_COMMIT names the full sha every bench ran at and the guest key was
+# built from. The tree must be clean and must not differ from it in the code,
+# the guest, the proofs or the build (scripts/check-release-revision.mjs).
+# A missing RELEASE_COMMIT refuses; it is never skipped. It runs first, for
+# VERIFY_ONLY and PAIR_ONLY too, since each compiles this tree.
+node "$REPO_ROOT/scripts/check-release-revision.mjs" "${RELEASE_COMMIT:-}" || {
+  echo "❌ Refusing to run: this checkout is not the release revision (RELEASE_COMMIT)."
+  exit 1
+}
+
 # ── Verify only: the deployment the record names, no transaction ────────────
 verify_record() { # <record path>
   echo ""
@@ -70,7 +88,7 @@ verify_record() { # <record path>
   else
     echo "❌ Verification did not complete. The record stands at $1;"
     echo "   rerun only the verification, which sends no transaction:"
-    echo "   VERIFY_ONLY=1 RECORD_DIR=$(dirname "$1") ETHERSCAN_API_KEY=... $0"
+    echo "   VERIFY_ONLY=1 RELEASE_COMMIT=$RELEASE_COMMIT RECORD_DIR=$(dirname "$1") ETHERSCAN_API_KEY=... $0"
     exit 1
   fi
 }
@@ -383,7 +401,8 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "permit2": "$PERMIT2",
   "multisender": "0xD152f549545093347A162Dce210e7293f1452150",
   "daoTreasury": "$DAO_TREASURY_ADDR",
-  "deploymentBlock": $DEPLOYMENT_BLOCK
+  "deploymentBlock": $DEPLOYMENT_BLOCK,
+  "releaseCommit": "$RELEASE_COMMIT"
 }
 EOF
 if [ -n "$RECORD_RPC_URL" ]; then

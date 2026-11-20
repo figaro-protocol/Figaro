@@ -24,6 +24,7 @@ One file per network, named `<chainId>.json`, in the same shape
   "batchVerifier": "0x...",
   "programVKey": "0x...",
   "deploymentBlock": 0,
+  "releaseCommit": "<full sha>",
   "rpcUrl": "https://..."
 }
 ```
@@ -42,6 +43,12 @@ broadcasting — at or below every contract's creation block. Frontends and
 agents start their event scans there (`NEXT_PUBLIC_DEPLOYMENT_BLOCK`): public
 RPC gateways cap an `eth_getLogs` range (1 000 / 10 000 / 50 000 blocks by
 gateway), so a from-genesis scan of a real network never completes.
+
+`releaseCommit` is the full sha of the release revision the deploy wrapper ran
+at, after `scripts/check-release-revision.mjs` held for it. A deployment record
+written before the wrappers stored it has none. `scripts/check-deployment.mjs`
+prints it, and fails when its own checkout differs from it in the code, the
+guest, the proofs or the build.
 
 `rpcUrl` is a keyless public JSON-RPC endpoint for the chain: what a reader
 with no provider of its own reads through. The site reads a page of this

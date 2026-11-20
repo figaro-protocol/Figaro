@@ -1252,12 +1252,16 @@ Per workflow, what it runs and when:
   scheduled run here) and on a dispatch with `suite=full`, the same job runs
   the whole `devnet` project through `npm run test:e2e:devnet` in place of
   the spine spec — every runtime devnet spec after the `devnet-authoring`
-  wizard. Either scope then runs the `stranger` project's crawl
+  wizard. The full scope then runs the `devnet-standalone` project's four
+  specs on the same seeded chain, one worker, after that suite: they share
+  anvil accounts with the `devnet` specs, and `clause-coverage` composes the
+  registered protocol clauses. Either scope then runs the `stranger` project's crawl
   (`crawl.stranger.spec.ts`) against a fresh export and the seeded chain, so
   every pull request that touches `frontend/` runs it; the budget is 50
-  minutes for the spine and 140 for the full scope. The `stranger` project's
+  minutes for the spine and 170 for the full scope. The `stranger` project's
   `accessibility.stranger.spec.ts` runs in `frontend-ci`, over that job's
-  export; the `devnet-standalone` project runs on a laptop.
+  export. `batch-events.devnet.spec.ts` skips in this job, which builds no
+  relay binary.
 - **`Dependency Audit CI`** — push/PR, NOT path-filtered: three npm-audit legs (root
   production deps at high+; frontend production deps at high+, through
   `scripts/audit-frontend.mjs`, which sets aside by id the advisories named in

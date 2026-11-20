@@ -14,7 +14,8 @@ name: Devnet E2E CI
 # The scopes:
 #   - full: the whole Playwright `devnet` project — every runtime
 #     *.devnet.spec.ts after its `devnet-authoring` dependency — through
-#     `npm run test:e2e:devnet`, the same command a laptop runs. The nightly
+#     `npm run test:e2e:devnet`, the same command a laptop runs, then the
+#     `devnet-standalone` project's four specs on the same chain. The nightly
 #     schedule, a dispatch with suite=full, and a pull request that touches a
 #     flow path (the app routes, frontend/lib, the SDK's source, the
 #     contracts, or this file).
@@ -64,6 +65,7 @@ on:
             - "scripts/test-monitor.mjs"
             # The deploy tooling and its tests.
             - "scripts/check-deployment-*.mjs"
+            - "scripts/check-release-revision.mjs"
             - "scripts/verify-etherscan.mjs"
             - "scripts/propose-gas-constants.mjs"
             - "scripts/test-*.mjs"
@@ -123,7 +125,7 @@ jobs:
                                       ;;
                                   # The rest of the stack the push trigger
                                   # watches: the spine.
-                                  script/*|sdk/*|frontend/*|clauses/*|agreements/*|assemblies/*|scripts/deploy-local.sh|scripts/check-deployment.mjs|deployments/*.expected.json|scripts/monitor-sepolia.mjs|scripts/test-*.mjs|scripts/check-deployment-*.mjs|scripts/verify-etherscan.mjs|scripts/propose-gas-constants.mjs|scripts/seed/*|scripts/prover-box/checkout-release.sh|scripts/prover-box/test-checkout-release.sh)
+                                  script/*|sdk/*|frontend/*|clauses/*|agreements/*|assemblies/*|scripts/deploy-local.sh|scripts/check-deployment.mjs|deployments/*.expected.json|scripts/monitor-sepolia.mjs|scripts/test-*.mjs|scripts/check-deployment-*.mjs|scripts/check-release-revision.mjs|scripts/verify-etherscan.mjs|scripts/propose-gas-constants.mjs|scripts/seed/*|scripts/prover-box/checkout-release.sh|scripts/prover-box/test-checkout-release.sh)
                                       scope=spine
                                       ;;
                               esac
@@ -145,10 +147,13 @@ jobs:
         # The spine: 30 minutes. The full suite: 38 spec files (37 in `devnet`
         # plus the `devnet-authoring` wizard), one worker, one retry per test,
         # about 40 minutes on a laptop; the runner has two cores and builds the
-        # export inside the run, so the budget is three times that. Either
-        # scope then runs the stranger crawl, which builds the export once more
-        # and visits every route under a 20-minute test budget: 20 minutes more.
-        timeout-minutes: ${{ needs.scope.outputs.scope == 'full' && 140 || 50 }}
+        # export inside the run, so the budget is three times that. The full
+        # scope then runs the four `devnet-standalone` specs, which build the
+        # export again: 30 minutes more, an estimate no run has measured yet.
+        # Either scope then runs the stranger crawl, which builds the export
+        # once more and visits every route under a 20-minute test budget: 20
+        # minutes more.
+        timeout-minutes: ${{ needs.scope.outputs.scope == 'full' && 170 || 50 }}
         env:
             FULL_SUITE: ${{ needs.scope.outputs.scope == 'full' }}
 
@@ -268,6 +273,25 @@ jobs:
               env:
                   CI: true
 
+            # ── The devnet-standalone project (the full scope) ───────────
+            # test:e2e:devnet selects the `devnet` project only. The four
+            # self-contained acceptance specs (permissionless-clause,
+            # clause-coverage, assembly-withdraw, clause-authoring) live in
+            # `devnet-standalone`: each registers its own clause or assembly
+            # under a per-run nonce and onboards its own seller, so it pulls
+            # no authoring gate. They still need the registered protocol clauses
+            # (clause-coverage composes them) and serial use of the anvil
+            # accounts they share with the `devnet` specs, so they run here:
+            # after the full suite, on the same seeded chain, one worker.
+            # The webServer builds the export again (CI reuses no server).
+            - name: Run the devnet-standalone project
+              if: env.FULL_SUITE == 'true'
+              run: |
+                  cd frontend
+                  npx playwright test --project=devnet-standalone --workers=1
+              env:
+                  CI: true
+
             # ── The blind visitor's crawl, either scope ──────────────────
             # The `stranger` project's crawl: no wallet, no test signer, every
             # exported route from `/` and the nav, against the same static
@@ -310,7 +334,8 @@ jobs:
             - name: Run the deploy tooling's tests
               run: |
                   node --test scripts/test-verify-etherscan.mjs scripts/test-check-deployment-registrars.mjs \
-                      scripts/test-check-deployment-members.mjs scripts/test-propose-gas-constants.mjs
+                      scripts/test-check-deployment-members.mjs scripts/test-propose-gas-constants.mjs \
+                      scripts/test-check-release-revision.mjs
                   bash scripts/prover-box/test-checkout-release.sh
 
             - name: Upload Playwright report

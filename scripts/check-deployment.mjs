@@ -22,7 +22,9 @@
 // "absent": the deployed contract predates the getter, so the read must
 // revert (a stated divergence until that contract's redeploy).
 //
-// Checked, whatever the expectations: the RPC's chain is the record's; every
+// Checked, whatever the expectations: the RPC's chain is the record's; the
+// checkout's HEAD builds what the record's `releaseCommit` builds, when the
+// record names one (scripts/check-release-revision.mjs, cleanliness aside); every
 // record address holds code; every contract-to-contract link the deploy wires
 // reads back as the record's addresses. With --artifacts <dir> (a build with
 // the deploy's settings: `forge build --via-ir`, at the release commit for
@@ -49,6 +51,7 @@ import { createPublicClient, http, parseAbi, parseAbiItem } from "viem";
 import { computeClauseKey } from "../sdk/dist/discovery.js";
 import { checkRegistrars, plannedRegistrations } from "./check-deployment-registrars.mjs";
 import { checkMembers, plannedMembers } from "./check-deployment-members.mjs";
+import { checkReleaseRevision } from "./check-release-revision.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -226,6 +229,20 @@ async function main() {
     const chainId = await client.getChainId();
     if (chainId === record.chainId && chainId === expected.chainId) ok(`chain ${chainId}`);
     else bad("chain", `the node is on ${chainId}; the record says ${record.chainId}, the expectations ${expected.chainId}`);
+
+    // The record's `releaseCommit` is the revision the deploy wrapper was
+    // guarded on (scripts/check-release-revision.mjs). The code below is
+    // compared with --artifacts built from this checkout, so the checkout's
+    // HEAD must build what that revision builds. A record written before the
+    // wrappers recorded it names none, which is noted, never failed.
+    console.log("\nThe release revision");
+    if (!record.releaseCommit) {
+        console.log("  · the record names no releaseCommit (written before the deploy wrappers recorded it)");
+    } else {
+        const rev = checkReleaseRevision({ repo: root, release: record.releaseCommit, requireClean: false });
+        if (rev.holds) ok(`release revision ${record.releaseCommit}: HEAD ${rev.head} builds the same ${rev.compared.join(", ")}`);
+        else bad(`release revision ${record.releaseCommit}`, rev.problems.join("; ").replace(/\n/g, " "));
+    }
 
     console.log("\nCode at every address");
     for (const [key, name] of Object.entries(CONTRACTS)) {
