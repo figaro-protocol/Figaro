@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { calculateBonds, OrderState, type Order as SdkOrder } from "@figaro-protocol/sdk";
+import { calculateBonds, OrderState, type Order as SdkOrder, type ResolutionUniverse } from "@figaro-protocol/sdk";
 
 // Re-export so existing consumers keep working
 export { OrderState };
@@ -41,6 +41,11 @@ export interface Order {
     blockNumber?: number;
     /** Event-derived: block.timestamp from OrderResolved (seconds). */
     resolvedAt?: number;
+    /** The path whose contract emitted the order's OrderCommitted: "direct"
+     *  (FigaroCore) or "batch" (FigaroBatchVerifier), derived from the
+     *  emitter's address at read time (`useProcessOrders`). Absent where the
+     *  reader did not split the events by emitter, and on designer drafts. */
+    path?: ResolutionUniverse;
 }
 
 /**
@@ -69,6 +74,7 @@ export function orderFromSdk(order: SdkOrder): Order {
         salt: order.salt,
         commitDeadline: order.commitDeadline,
         blockNumber: order.blockNumber,
+        ...(order.path ? { path: order.path } : {}),
     };
 }
 

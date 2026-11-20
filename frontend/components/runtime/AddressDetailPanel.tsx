@@ -42,7 +42,7 @@ import type { InteractionSurfaceProps } from "@/components/runtime/interactionSu
 /** The stage the address detail's anchor is filed at, and read back at. */
 const ADDRESS_DETAIL_STAGE = 0;
 
-export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: InteractionSurfaceProps) {
+export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller, path }: InteractionSurfaceProps) {
     const [sent, setSent] = useState(false);
     const [form, setForm] = useState<AddresseeBlock>({
         name: "", street: "", unit: "", instructions: "",
@@ -152,7 +152,10 @@ export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: Inte
             )}
 
             {/* Share MY detail once the counterparty's key is known. */}
-            {peerPubKey && !sent && (
+            {/* The send files its anchor through the attestation
+                coordinator, which does not know an order on the batch path:
+                no send is offered for one. */}
+            {peerPubKey && !sent && path !== "batch" && (
                 <div className="space-y-2 border-t border-default pt-3">
                     <p className="text-xs text-ink-body">
                         Share your door-level detail. It is encrypted to this order&apos;s

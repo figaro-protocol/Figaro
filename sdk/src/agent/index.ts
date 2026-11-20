@@ -63,7 +63,7 @@ export {
     executeAction,
     recordProcessUsage,
 } from "./autonomous.js";
-export type { TxResult, ActionExecutionInputs, UsageRecordingEntry, UsageRecordingReport } from "./autonomous.js";
+export type { TxResult, ActionResult, ExecuteActionConfig, ActionExecutionInputs, UsageRecordingEntry, UsageRecordingReport } from "./autonomous.js";
 
 // Coordination channel + offer envelope (the two-party origination transport)
 export {
@@ -184,6 +184,8 @@ export {
     toSequencerCommitment,
     toSequencerSig,
     MAX_SEQUENCER_RESPONSE_BYTES,
+    ATTEST_SELLER_TYPES,
+    ATTEST_BUYER_TYPES,
 } from "./sequencer.js";
 export type {
     SequencerClientConfig,

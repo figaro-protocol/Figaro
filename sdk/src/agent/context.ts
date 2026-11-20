@@ -49,7 +49,9 @@ export interface SyncResult {
  * Wraps Topology with chain sync capabilities.
  */
 export class FigaroContext {
-    /** The processes this agent is in — reconstructed from FigaroCore events. */
+    /** The processes this agent is in — reconstructed from the order events
+     *  of both paths, each order and process marked with the path that
+     *  emitted it. */
     readonly topology: Topology;
     /** What EXISTS on the network — the live clause/seller/assembly catalog.
      *  A parallel family (registries have no on-chain edges to FigaroCore), so
@@ -96,18 +98,28 @@ export class FigaroContext {
             };
         }
 
-        const [events, discoveryEvents] = await Promise.all([
-            fetchCoreEvents(this.client, this.addresses, fromBlock, currentBlock),
+        // Each order emitter is read apart, so every order and process carries
+        // the path whose contract emitted it (`Order.path`, `Process.path`):
+        // `fetchCoreEvents` reads the emitters it is given, and given one
+        // address it reads that one. The two paths share no state, so the
+        // two streams fold into one topology without meeting.
+        const verifier = this.addresses.batchVerifier;
+        const [direct, batch, discoveryEvents] = await Promise.all([
+            fetchCoreEvents(this.client, { core: this.addresses.core }, fromBlock, currentBlock),
+            verifier
+                ? fetchCoreEvents(this.client, { core: verifier }, fromBlock, currentBlock)
+                : Promise.resolve(null),
             fetchDiscoveryEvents(this.client, this.addresses, fromBlock, currentBlock),
         ]);
 
-        this.topology.applyEvents(events);
+        this.topology.applyEvents(direct, "direct");
+        if (batch) this.topology.applyEvents(batch, "batch");
         this.discovery.applyEvents(discoveryEvents);
         this.lastSyncedBlock = currentBlock;
 
         return {
-            newCommits: events.orderCommitted.length,
-            newResolutions: events.orderResolved.length,
+            newCommits: direct.orderCommitted.length + (batch?.orderCommitted.length ?? 0),
+            newResolutions: direct.orderResolved.length + (batch?.orderResolved.length ?? 0),
             newClauses: discoveryEvents.clauseRegistered.length,
             newMembers: discoveryEvents.memberRegistered.length,
             newAssemblies: discoveryEvents.assemblyRegistered.length,

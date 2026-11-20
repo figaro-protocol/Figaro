@@ -14,6 +14,7 @@
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { getInteractionSurface } from "@/components/runtime/interactionSurfaces";
+import type { ResolutionUniverse } from "@figaro-protocol/sdk";
 
 export function OrderInteractionSurfaces({
     processId,
@@ -21,12 +22,14 @@ export function OrderInteractionSurfaces({
     checkoutHash,
     buyer,
     seller,
+    path,
 }: {
     processId: string;
     orderHash: string;
     checkoutHash: `0x${string}`;
     buyer: `0x${string}`;
     seller: `0x${string}`;
+    path?: ResolutionUniverse;
 }) {
     const agreements = useProcessAgreements([checkoutHash]);
     const agreement = agreements.get(checkoutHash);
@@ -51,6 +54,7 @@ export function OrderInteractionSurfaces({
                     clauseKey={clauseKey}
                     buyer={buyer}
                     seller={seller}
+                    path={path}
                 />
             ))}
         </div>

@@ -36,11 +36,39 @@ import {
     type Address,
     type CoreEvents,
     type Order,
+    type ResolutionUniverse,
 } from "@figaro-protocol/sdk";
 import { projectProcessGraph, walletRecord } from "@figaro-protocol/sdk/derive";
 
 /** Every contract that emits the Core's order and process events. */
 export const ORDER_EMITTERS = (): string[] => [CONTRACTS.core, CONTRACTS.batchVerifier];
+
+/** The two order emitters, each with the path it is. The two emit one set of
+ *  topics, so the address of a log is what says which path a row is on. */
+const EMITTER_PATHS = (): ReadonlyArray<readonly [ResolutionUniverse, string]> => [
+    ["direct", CONTRACTS.core],
+    ["batch", CONTRACTS.batchVerifier],
+];
+
+/** Each path's share of a mixed set of order-emitter logs, parsed: the logs a
+ *  path's own contract emitted, read by their address at read time. A path
+ *  whose contract is not configured, or emitted none of the logs, is absent. */
+export function parseCoreLogsByPath(logs: {
+    committed: readonly unknown[];
+    resolved: readonly unknown[];
+    processResolved: readonly unknown[];
+}): Array<{ path: ResolutionUniverse; events: CoreEvents }> {
+    const out: Array<{ path: ResolutionUniverse; events: CoreEvents }> = [];
+    for (const [path, emitter] of EMITTER_PATHS()) {
+        if (!emitter) continue;
+        const mine = (rows: readonly unknown[]) =>
+            rows.filter((log) => hexEqual((log as { address?: string }).address, emitter));
+        const own = { committed: mine(logs.committed), resolved: mine(logs.resolved), processResolved: mine(logs.processResolved) };
+        if (own.committed.length + own.resolved.length + own.processResolved.length === 0) continue;
+        out.push({ path, events: parseCoreLogs(own) });
+    }
+    return out;
+}
 
 export type IndexedLog = Awaited<ReturnType<typeof cachedGetLogs>>[number];
 type IndexedLogWithArgs = IndexedLog & { args?: Record<string, unknown> };
@@ -129,7 +157,7 @@ type SdkLogs = Parameters<typeof parseOrderCommittedLogs>[0];
 
 /** Decode raw order-emitter logs into the SDK's `CoreEvents` triple; each
  *  parser keeps only its own event, so a mixed batch decodes in one pass. */
-export function parseCoreLogs(logs: {
+function parseCoreLogs(logs: {
     committed: readonly unknown[];
     resolved: readonly unknown[];
     processResolved: readonly unknown[];
@@ -144,17 +172,27 @@ export function parseCoreLogs(logs: {
 /** The Core's order and process history across every order emitter, parsed
  *  — the one read every order consumer starts from. `committedLogs` are the
  *  raw `OrderCommitted` rows, kept for a reader that follows a commit to its
- *  transaction's receipt (`getReceiptLogsOf`). */
+ *  transaction's receipt (`getReceiptLogsOf`). `byPath` is the same history
+ *  split by the path whose contract emitted each row, for a reader that marks
+ *  each order with its path (`Topology.applyEvents(events, path)`). */
 export async function getCoreEvents(
     client: PublicClient,
     chainId: number,
-): Promise<{ events: CoreEvents; committedLogs: IndexedLog[] }> {
+): Promise<{
+    events: CoreEvents;
+    committedLogs: IndexedLog[];
+    byPath: Array<{ path: ResolutionUniverse; events: CoreEvents }>;
+}> {
     const [committed, resolved, processResolved] = await Promise.all([
         getAllOrderCommitted(client, chainId),
         getAllOrderResolved(client, chainId),
         getAllProcessResolved(client, chainId),
     ]);
-    return { events: parseCoreLogs({ committed, resolved, processResolved }), committedLogs: committed };
+    return {
+        events: parseCoreLogs({ committed, resolved, processResolved }),
+        committedLogs: committed,
+        byPath: parseCoreLogsByPath({ committed, resolved, processResolved }),
+    };
 }
 
 /** Every order `wallet` is a party to (buyer or seller), once each — an order
