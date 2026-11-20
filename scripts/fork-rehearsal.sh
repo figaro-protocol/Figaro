@@ -3,7 +3,12 @@
 # deploy and the whole genesis seeding against an Anvil fork of the target
 # chain, then what must hold, checked — before anything is broadcast for real.
 #
-#   FORK_URL=<keyed RPC of the target chain> scripts/fork-rehearsal.sh
+#   RELEASE_COMMIT=<full sha> FORK_URL=<keyed RPC of the target chain> scripts/fork-rehearsal.sh
+#
+# Before anything else, scripts/check-release-revision.mjs: the checkout must
+# be clean and must build what RELEASE_COMMIT builds. A missing RELEASE_COMMIT
+# refuses. The wrapper it runs checks the same revision again and writes it into the
+# deployment record.
 #
 # The chain is the one FORK_URL answers for, and every chain value comes from
 # that chain's own files: the wrapper (scripts/deploy-sepolia.sh for 11155111,
@@ -36,6 +41,7 @@
 # the device taps are not. PRIVATE_KEY unset deploys from a throwaway key the
 # fork funds; the vault's key owner is then that key.
 #
+#   RELEASE_COMMIT  required; the full sha of the release revision
 #   FORK_URL        required; never printed
 #   FORK_PORT       default 8546
 #   REHEARSAL_DIR   default ${TMPDIR:-/tmp}/figaro-fork-rehearsal-<chainId>
@@ -50,6 +56,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# ── 0. The release revision, first: the rehearsal runs what the broadcast will ──
+node "$REPO_ROOT/scripts/check-release-revision.mjs" "${RELEASE_COMMIT:-}" || {
+  echo "❌ Refusing to rehearse: this checkout is not the release revision (RELEASE_COMMIT)."
+  exit 1
+}
+export RELEASE_COMMIT
 : "${FORK_URL:?FORK_URL (a keyed RPC of the target chain) is required}"
 CHAIN_ID=$(cast chain-id --rpc-url "$FORK_URL")
 FORK_PORT="${FORK_PORT:-8546}"

@@ -3,14 +3,15 @@
 # the box-local fork (default) for layer 2, or the live chain for the real
 # resolve. Every address comes from the deployment record of the chain
 # RPC_TARGET answers for (DEPLOYMENT_RECORD, default
-# ~/Figaro/deployments/<chainId>.json): the batch pair (BATCH_VERIFIER /
+# $FIGARO_DIR/deployments/<chainId>.json): the batch pair (BATCH_VERIFIER /
 # USAGE_COUNTER, which override it for a fork-deployed validation pair) and the
 # registries. The relay rebuilds the state behind the verifier's root from the
 # chain at every start (REBUILD_FROM_CHAIN=1), scanning from the record's
 # deployment block, which is at or before the verifier's. The record must name
 # the chain RPC_TARGET answers for; a mismatch refuses.
 # SEQUENCER_PRIVATE_KEY arrives via the invocation environment — never
-# written to disk.
+# written to disk. FIGARO_DIR names the checkout, the one provision.sh put at
+# the release commit (default $HOME/Figaro); the binary is built there.
 #
 # The full sequencer environment table is prover/sequencer/README.md's.
 set -euo pipefail

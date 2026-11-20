@@ -382,10 +382,19 @@ hold before the deployment record is published. The registry stakes and the memb
 time are decided: `script/DeployMainnet.s.sol` deploys 0.05 ETH for each of the four
 registries and 28 days, the values Sepolia runs. A deployment record's remaining `null`s are values
 that exist only at the deploy: the wallets' addresses and the key built from the
-release guest. The broadcast itself runs
-from a clean checkout of the release commit, so the wrapper compiles the tree
-the release commit names; the check, at the same commit, is what binds the
-result to it (the code, the guest key, the gateway). The list below is the procedure around it:
+release guest. `jq '[paths(. == null)]' deployments/<chainId>.expected.json`
+lists them. A wallet name the plan uses with no entry in `wallets` is not
+listed there; the written plan (`scripts/seed/seed.sh plan`) prints it as a
+wallet the expectations file does not name.
+One revision ties the release together: `RELEASE_COMMIT`, the full sha every
+bench ran at. `scripts/check-release-revision.mjs` refuses a missing sha, a
+tree that is not clean, and a HEAD that differs from it in the code, the
+guest, the proofs or the build. The prover box's key build
+(`scripts/prover-box/build-guest.sh <sha>`), the fork rehearsal and both
+deploy wrappers run it before anything else. The wrapper writes the sha into
+the deployment record as `releaseCommit`, and `scripts/check-deployment.mjs`
+fails when its own checkout differs from it. The check binds the result to
+the code, the guest key and the gateway. The list below is the procedure around it:
 
 - Verify the `--rpc-url` target by hand immediately before every `--broadcast`.
   The Sepolia and mainnet wrappers read the chain id back and refuse any other

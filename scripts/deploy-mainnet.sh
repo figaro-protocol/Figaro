@@ -17,6 +17,11 @@ set -e
 #     _deployProtocol()/_deployFlorinEcosystem() require()s — this script
 #     re-checks them so the failure happens before any RPC call, not mid-
 #     broadcast with gas already spent)
+#   - refuses to run, in every mode, unless RELEASE_COMMIT names the full sha
+#     of the release revision and this checkout builds it: a clean tree that
+#     does not differ from it in the code, the guest, the proofs or the build
+#     (scripts/check-release-revision.mjs); the deployment record stores it
+#     as `releaseCommit`
 #   - refuses to run without an explicit MAINNET_DEPLOY_CONFIRM=yes
 #   - reads the target RPC's chain id back and refuses to broadcast unless
 #     it is 1 (Ethereum mainnet) — this script has exactly one target chain
@@ -27,7 +32,7 @@ set -e
 #     leaves the record written and exits 1; VERIFY_ONLY=1 then verifies the
 #     deployment the record names, sending no transaction:
 #
-#       VERIFY_ONLY=1 ETHERSCAN_API_KEY=... ./scripts/deploy-mainnet.sh
+#       VERIFY_ONLY=1 RELEASE_COMMIT=<full sha> ETHERSCAN_API_KEY=... ./scripts/deploy-mainnet.sh
 #
 #   - SKIP_VERIFY=1 is the fork rehearsal only (an Anvil fork of mainnet keeps
 #     chain id 1): no verification, and the record is diverted to
@@ -35,6 +40,7 @@ set -e
 #     never written by a rehearsal. RECORD_DIR names the directory instead.
 #
 # Usage:
+#   RELEASE_COMMIT=<full sha> \
 #   MAINNET_DEPLOY_CONFIRM=yes \
 #   RPC_URL=https://... \
 #   PRIVATE_KEY=0x... \
@@ -49,6 +55,17 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DEPLOY_DIR="$REPO_ROOT/deployments"
 MAINNET_CHAIN_ID=1
 
+# ── Guard 0: the checkout builds the release revision ──────────────────────
+# RELEASE_COMMIT names the full sha every bench ran at and the guest key was
+# built from. The tree must be clean and must not differ from it in the code,
+# the guest, the proofs or the build (scripts/check-release-revision.mjs).
+# A missing RELEASE_COMMIT refuses; it is never skipped. It runs first, for
+# VERIFY_ONLY too, since verification compiles this tree.
+node "$REPO_ROOT/scripts/check-release-revision.mjs" "${RELEASE_COMMIT:-}" || {
+  echo "❌ Refusing to run: this checkout is not the release revision (RELEASE_COMMIT)."
+  exit 1
+}
+
 # ── Verify only: the deployment the record names, no transaction ────────────
 verify_record() { # <record path>
   echo ""
@@ -58,7 +75,7 @@ verify_record() { # <record path>
   else
     echo "❌ Verification did not complete. The record stands at $1;"
     echo "   rerun only the verification, which sends no transaction:"
-    echo "   VERIFY_ONLY=1 RECORD_DIR=$(dirname "$1") ETHERSCAN_API_KEY=... $0"
+    echo "   VERIFY_ONLY=1 RELEASE_COMMIT=$RELEASE_COMMIT RECORD_DIR=$(dirname "$1") ETHERSCAN_API_KEY=... $0"
     exit 1
   fi
 }
@@ -313,7 +330,8 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "swapRouter": "$SWAP_ROUTER",
   "permit2": "$PERMIT2",
   "multisender": "0xD152f549545093347A162Dce210e7293f1452150",
-  "deploymentBlock": $DEPLOYMENT_BLOCK
+  "deploymentBlock": $DEPLOYMENT_BLOCK,
+  "releaseCommit": "$RELEASE_COMMIT"
 }
 EOF
 if [ -n "$RECORD_RPC_URL" ]; then

@@ -5,7 +5,8 @@
         "founder": null,
         "supporters": null,
         "dao": null,
-        "daoVault": null
+        "daoVault": null,
+        "daoOperator": null
     },
     "batchVerifier": {
         "programVKey": null,

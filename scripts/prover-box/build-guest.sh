@@ -17,6 +17,15 @@ export PATH="$HOME/.sp1/bin:$HOME/.cargo/bin:$PATH"
 # compiler.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# The key is built only from the release revision, the one every bench ran at
+# and the stack is broadcast from: the checkout must be clean and must build
+# what it builds (scripts/check-release-revision.mjs). The revision is the
+# first argument or RELEASE_COMMIT, a full sha (checkout-release.sh prints it);
+# a missing one refuses.
+#
+#   ./build-guest.sh <release sha>        (or RELEASE_COMMIT=<sha> ./build-guest.sh)
+node "$REPO_ROOT/scripts/check-release-revision.mjs" "${1:-${RELEASE_COMMIT:-}}"
+
 # The SP1 release the guest is built in is the lock's sp1-sdk version — the
 # read the CI workflows make — so the box, CI and the library agree.
 SP1_TAG=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' "$REPO_ROOT/prover/Cargo.lock")

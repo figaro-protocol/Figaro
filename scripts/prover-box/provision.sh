@@ -9,16 +9,21 @@
 # lived only on the deleted host); the build/run scripts beside this one are
 # verbatim from that session.
 #
-#   ./provision.sh <release-commit>        (or RELEASE_COMMIT=<sha> ./provision.sh)
+#   ./provision.sh <release-commit> [<checkout dir>]
+#   RELEASE_COMMIT=<sha> FIGARO_DIR=<checkout dir> ./provision.sh
 #
 # The checkout is put at the release commit the maintainer names
 # (checkout-release.sh), never at `main`: the verification key is a function
 # of the guest's bytes, and the SP1 release below is read from that commit's
-# prover/Cargo.lock.
+# prover/Cargo.lock. The checkout directory is the second argument or
+# FIGARO_DIR, default $HOME/Figaro; a second box at another path builds the
+# same key, since the build reads only paths inside the workspace
+# (build-guest.sh).
 set -euxo pipefail
 
 RELEASE_COMMIT="${1:-${RELEASE_COMMIT:-}}"
-[ -n "$RELEASE_COMMIT" ] || { echo "usage: provision.sh <release-commit> (or RELEASE_COMMIT=<sha>)"; exit 1; }
+FIGARO_DIR="${2:-${FIGARO_DIR:-$HOME/Figaro}}"
+[ -n "$RELEASE_COMMIT" ] || { echo "usage: provision.sh <release-commit> [<checkout dir>] (or RELEASE_COMMIT=<sha> FIGARO_DIR=<dir>)"; exit 1; }
 
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -29,12 +34,12 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 
-bash "$(dirname "${BASH_SOURCE[0]}")/checkout-release.sh" "$RELEASE_COMMIT" "$HOME/Figaro"
+bash "$(dirname "${BASH_SOURCE[0]}")/checkout-release.sh" "$RELEASE_COMMIT" "$FIGARO_DIR"
 
 # SP1 (cargo prove + the succinct toolchain), at the release the lock names:
 # the verification key is a function of the toolchain release, and a bare
 # `sp1up` installs whatever is newest that day.
-SP1_TAG=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' "$HOME/Figaro/prover/Cargo.lock")
+SP1_TAG=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' "$FIGARO_DIR/prover/Cargo.lock")
 [ "$SP1_TAG" != "v" ] || { echo "could not read the sp1-sdk version from Cargo.lock"; exit 1; }
 curl -L https://sp1up.succinct.xyz | bash
 "$HOME/.sp1/bin/sp1up" --version "$SP1_TAG"
