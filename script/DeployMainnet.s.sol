@@ -146,33 +146,33 @@ contract DeployMainnet is Script {
             console.log("WitnessSwapAndCommitCoordinator:", _swapCoordinator);
         }
 
-        // ── Author-side stakes (Clause / Assembly) ──
-        // 0.05 ETH per registration, NO cooldown (withdrawal is one-shot per key
-        // with a permanent binding — nothing can be recycled). What sizes it:
-        // author-side RPGF eligibility requires the deposit LIVE AT CLAIM
-        // (RpgfMinter._isAuthor), so unlike the member stake this capital is
-        // held for the WHOLE accrual period, undiscounted — and it is the
-        // price of the registration-REPLICATION lever: an adversary multiplying
-        // score across m self-authored clauses committed into the same
-        // fabricated agreements holds m of these for the full period. The
-        // spam floor is cleared ~100× over registration gas. Derivation:
-        // RELEASE_READINESS "Resolve Mainnet Registry Parameters"; the bound
-        // itself is the RPGF paper §7.
-        ClauseRegistry clauses = new ClauseRegistry(0.05 ether);
+        // ── Designer-side stakes (Clause / Assembly / Agreement) ──
+        // 0.05 ETH per registration, with the members' 28-day withdrawal
+        // cooldown: a key taken from its intended designer by a front-runner
+        // holds one stake locked for that long (DESIGN_DECISIONS § 7, § 41).
+        // What sizes the stake: designer-side RPGF eligibility requires the
+        // deposit LIVE AT CLAIM (RpgfMinter._isAuthor), so unlike the member
+        // stake this capital is held for the WHOLE accrual period,
+        // undiscounted — and it is the price of the registration-REPLICATION
+        // lever: an adversary multiplying score across m self-registered
+        // clauses committed into the same fabricated agreements holds m of
+        // these for the full period. The spam floor is cleared ~100× over
+        // registration gas; the bound itself is the RPGF paper §7.
+        ClauseRegistry clauses = new ClauseRegistry(0.05 ether, 28 days);
         _clauses = address(clauses);
         console.log("ClauseRegistry:         ", _clauses);
 
         // ProcessRegistry — the process registry family's anchor, parallel to
         // ClauseRegistry and MembersRegistry. RpgfMinter reads it for the
         // assembly author of record. Same stake, same reasoning as above.
-        ProcessRegistry assemblies = new ProcessRegistry(0.05 ether);
+        ProcessRegistry assemblies = new ProcessRegistry(0.05 ether, 28 days);
         _assemblies = address(assemblies);
         console.log("ProcessRegistry:       ", _assemblies);
 
         // AgreementRegistry — the registered agreements' anchor, parallel to
         // ClauseRegistry and ProcessRegistry. RpgfMinter reads it for the
         // agreement's designer of record. Same stake, same reasoning as above.
-        AgreementRegistry agreements = new AgreementRegistry(0.05 ether);
+        AgreementRegistry agreements = new AgreementRegistry(0.05 ether, 28 days);
         _agreements = address(agreements);
         console.log("AgreementRegistry:      ", _agreements);
 

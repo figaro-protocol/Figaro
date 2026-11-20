@@ -62,7 +62,7 @@ contract FigaroBatchVerifierTest is Test {
 
     function setUp() public {
         sp1 = new MockSP1Verifier();
-        registry = new ClauseRegistry(DEPOSIT);
+        registry = new ClauseRegistry(DEPOSIT, 0);
         core = new FigaroCore();
         members = new MembersRegistry(0, 0);
         vm.prank(seller);
@@ -1949,7 +1949,7 @@ contract FigaroBatchVerifierTest is Test {
         members.register("ipfs://stranger");
         bytes32 asmKey = keccak256("an-assembly-credited-on-the-batch-path");
 
-        ProcessRegistry assemblies = new ProcessRegistry(0);
+        ProcessRegistry assemblies = new ProcessRegistry(0, 0);
         vm.prank(designer);
         assemblies.registerProcess(asmKey, "ipfs://asm");
         vm.deal(stranger, DEPOSIT);
@@ -1998,7 +1998,7 @@ contract FigaroBatchVerifierTest is Test {
         internal
         returns (RpgfMinter minter, FlorinToken florin)
     {
-        AgreementRegistry agreements = new AgreementRegistry(0);
+        AgreementRegistry agreements = new AgreementRegistry(0, 0);
         uint64[] memory periods = new uint64[](1);
         periods[0] = PERIOD_END;
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);

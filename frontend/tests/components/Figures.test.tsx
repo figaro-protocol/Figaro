@@ -299,12 +299,14 @@ describe("RegistryLifecycleFigure", () => {
         expect(text).toContain("after withdrawalCooldown, not before");
     });
 
-    it("renders the clause/assembly machine as one-shot, with the binding permanent", () => {
+    it("renders the clause/assembly machine as a request then a claim after the cooldown, with the binding permanent", () => {
         const { container } = render(<RegistryLifecycleFigure />);
         const text = container.textContent ?? "";
-        expect(text).toContain("deposit withdrawn");
+        expect(text).toContain("withdrawal requested");
         expect(text).toContain("de-surfaced for NEW compositions");
-        expect(text).toContain("registeredBy only, once, no cooldown");
+        expect(text).toContain("requestWithdrawal(key)");
+        expect(text).toContain("withdraw(key)");
+        expect(text).not.toContain("no cooldown");
         expect(text).toContain("The binding is never cleared: the key stays");
     });
 
@@ -321,7 +323,7 @@ describe("RegistryLifecycleFigure", () => {
     it("states the withdraw gate as a PROTOCOL-SURFACE refusal, not a contract check", () => {
         const { container } = render(<RegistryLifecycleFigure />);
         const text = container.textContent ?? "";
-        expect(text).toContain("One call — but the protocol surface refuses");
+        expect(text).toContain("The protocol surface refuses the request");
         expect(text).toContain("while commits outnumber resolves. That count");
         expect(text).toContain("no composition provenance to harden the gate.");
     });

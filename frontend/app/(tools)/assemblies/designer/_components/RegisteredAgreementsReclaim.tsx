@@ -2,14 +2,15 @@
 
 /**
  * RegisteredAgreementsReclaim — one address's registered agreements, each
- * with a stake-reclaim affordance (`AgreementRegistry.withdrawDeposit`
- * through `useWithdrawAgreement`) when the connected wallet registered it.
+ * with a two-step stake reclaim (`AgreementRegistry.requestWithdrawal`, then
+ * `AgreementRegistry.withdraw` after the cooldown, through
+ * `useWithdrawAgreement`) when the connected wallet registered it.
  *
  * The address is the connected wallet's or the one `?wallet=0x…` names
  * (`OneAddressList`); with neither, the list's place says so and reads
  * nothing. Derived from chain events only: `usePublishedAgreements(subject)`
  * filters `AgreementRegistered` to `registeredBy == subject` and folds
- * `DepositWithdrawn` in as `stakeWithdrawn` (the wallet-scoped read KEEPS
+ * `WithdrawalRequested` in as `stakeWithdrawn` (the wallet-scoped read KEEPS
  * withdrawn rows, flagged). The rows are narrowed again to the address. Each
  * row is labeled by its pinned document's name, read and verified against its
  * key (`fetchRegisteredAgreement`), and is the shared `ReclaimStakeRow` — the
@@ -43,7 +44,7 @@ export function RegisteredAgreementsReclaim() {
 function AgreementRows({ subject, signer }: ListedAddress) {
     const { read, refetch } = usePublishedAgreements(subject);
     const data = read.status === "present" ? read.value : null;
-    const { withdraw } = useWithdrawAgreement();
+    const { requestWithdrawal, withdraw } = useWithdrawAgreement();
     // Re-renders as each document is read and verified (the labels read the
     // session cache).
     useRegisteredAgreementsVersion();
@@ -68,7 +69,8 @@ function AgreementRows({ subject, signer }: ListedAddress) {
                         <ReclaimAgreementRow
                             key={`${row.agreementHash}-${row.blockNumber.toString()}`}
                             row={row}
-                            withdraw={withdraw}
+                            requestWithdrawal={requestWithdrawal}
+                            claim={withdraw}
                             onReclaimed={refetch}
                             signerIsRegistrant={hexEqual(row.registeredBy, signer)}
                         />
@@ -81,12 +83,14 @@ function AgreementRows({ subject, signer }: ListedAddress) {
 
 function ReclaimAgreementRow({
     row,
-    withdraw,
+    requestWithdrawal,
+    claim,
     onReclaimed,
     signerIsRegistrant,
 }: {
     row: PublishedAgreement;
-    withdraw: (key: `0x${string}`) => Promise<unknown>;
+    requestWithdrawal: (key: `0x${string}`) => Promise<unknown>;
+    claim: (key: `0x${string}`) => Promise<unknown>;
     onReclaimed: () => void;
     signerIsRegistrant: boolean;
 }) {
@@ -106,7 +110,8 @@ function ReclaimAgreementRow({
                     : <>block {row.blockNumber.toString()}</>
             }
             stakeWithdrawn={row.stakeWithdrawn}
-            withdraw={withdraw}
+            requestWithdrawal={requestWithdrawal}
+            claim={claim}
             onReclaimed={onReclaimed}
             signerIsRegistrant={signerIsRegistrant}
         />

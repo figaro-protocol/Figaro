@@ -35,7 +35,15 @@ vi.mock("@/lib/registries/useProcessRegistry", async (importOriginal) => ({
     usePublishedAssemblies: () => PUBLISHED.value,
     fetchHydratedAssembly: async () => ({ assembly: { name: "Point of sale", agreements: [] }, agreements: {} }),
 }));
-vi.mock("@/lib/registries/useWithdrawStake", () => ({ useWithdrawAssembly: () => ({ withdraw: vi.fn() }) }));
+vi.mock("@/lib/registries/useWithdrawStake", () => ({
+    useWithdrawAssembly: () => ({ requestWithdrawal: vi.fn(), withdraw: vi.fn() }),
+    useKeyWithdrawalStatus: () => ({
+        releaseAt: { status: "present", value: 0n },
+        withdrawable: { status: "present", value: false },
+        cooldown: { status: "present", value: 0n },
+        refetch: () => {},
+    }),
+}));
 vi.mock("@/lib/registries/withdrawGate", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/registries/withdrawGate")>();
     const gate = { status: "present", value: { canWithdraw: true, inFlightCount: 0, unverifiedCount: 0 } };

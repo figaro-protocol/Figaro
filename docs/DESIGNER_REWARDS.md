@@ -146,13 +146,21 @@ own currency, at the moment it counts:
   `(kind, key)` pairs, and `RpgfMinter` verifies each against the one
   registry its kind names — `ClauseRegistry` for the clause kind,
   `ProcessRegistry` for the assembly kind, `AgreementRegistry` for the
-  agreement kind; a withdrawn stake earns nothing further.
+  agreement kind. The entry's stake is also read when each use counts, so the
+  check runs at both ends.
 
-The stake is reclaimable, and use counts only while the stake is live. A designer
-who withdraws stops earning on the entry; the chain clears no binding, and
-every order already committed against it still resolves. Whether a frontend
-hides a withdrawn entry from new compositions is that frontend's choice
-(`docs/DESIGN_DECISIONS.md` § 7).
+The stake is reclaimable, in two calls: the request de-surfaces the entry at
+once, and the stake is paid back after the registry's withdrawal cooldown
+(`docs/CONTRACTS.md` § "The cooldown"). The request ends the entry's earning,
+and it forfeits every closed period of the entry not yet claimed: the claim
+refuses a key whose stake is withdrawn, the share stays in the period's total,
+and nobody mints it. Nothing restores it, because the key can never be
+registered again. So a designer claims its closed periods first and requests
+its stake back after; the cooldown runs after the request, so the order costs
+nothing. The chain clears no binding, and every order already committed
+against the entry still resolves. Whether a frontend hides a withdrawn entry
+from new compositions is that frontend's choice (`docs/DESIGN_DECISIONS.md`
+§ 7).
 
 What the stake does and does not do against Sybil attacks is stated at its
 honest strength in `docs/DATA_LAYER.md`; it is not restated here.
