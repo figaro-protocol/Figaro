@@ -8,20 +8,24 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useWatchContractEvent } from "wagmi";
-import type { CoreEvents } from "@figaro-protocol/sdk";
+import type { CoreEvents, ResolutionUniverse } from "@figaro-protocol/sdk";
 import { CORE_ABI } from "./contracts";
-import { ORDER_EMITTERS, parseCoreLogs } from "./indexer";
+import { ORDER_EMITTERS, parseCoreLogsByPath } from "./indexer";
 
 /**
  * Live order and process events from every order emitter, parsed, delivered
  * to `onEvents` as they land. One watcher over the emitters' addresses and
  * the Core's ABI: a batch-path order reaches a reader exactly as a direct
- * one does. `onEvents` may change between renders; the watcher holds the
- * latest through a ref, because wagmi keys its watcher effect on `onLogs` and
+ * one does. Each delivery is one path's events, named by `path`: the
+ * emitter's address says which path a log is on. `onEvents` may change
+ * between renders; the watcher holds the latest through a ref, because wagmi keys its watcher effect on `onLogs` and
  * a filter recreated every render drops the events that land between
  * recreations.
  */
-export function useWatchOrderEvents(onEvents: (events: CoreEvents) => void, enabled = true): void {
+export function useWatchOrderEvents(
+    onEvents: (events: CoreEvents, path: ResolutionUniverse) => void,
+    enabled = true,
+): void {
     const onEventsRef = useRef(onEvents);
     useEffect(() => {
         onEventsRef.current = onEvents;
@@ -33,7 +37,9 @@ export function useWatchOrderEvents(onEvents: (events: CoreEvents) => void, enab
         [emittersKey],
     );
     const onLogs = useCallback((logs: readonly unknown[]) => {
-        onEventsRef.current(parseCoreLogs({ committed: logs, resolved: logs, processResolved: logs }));
+        for (const { path, events } of parseCoreLogsByPath({ committed: logs, resolved: logs, processResolved: logs })) {
+            onEventsRef.current(events, path);
+        }
     }, []);
     useWatchContractEvent({
         address: address.length > 0 ? address : undefined,

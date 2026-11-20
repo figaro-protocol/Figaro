@@ -16,6 +16,7 @@
  * with zero code changes; a never-seen interaction degrades to nothing.
  */
 import type { ComponentType } from "react";
+import type { ResolutionUniverse } from "@figaro-protocol/sdk";
 import { QrChallengePanel } from "@/components/runtime/QrChallengePanel";
 import { AddressDetailPanel } from "@/components/runtime/AddressDetailPanel";
 import { ContentDeliveryPanel } from "@/components/runtime/ContentDeliveryPanel";
@@ -32,6 +33,11 @@ export interface InteractionSurfaceProps {
     clauseKey: string;
     buyer: `0x${string}`;
     seller: `0x${string}`;
+    /** The path the order was committed on (`Order.path`). A surface whose
+     *  send files an attestation through the attestation coordinator offers
+     *  no send for an order on the batch path, which the coordinator does
+     *  not know; requesting and receiving stay. */
+    path?: ResolutionUniverse;
 }
 
 // The tenants. An interaction standard gains a surface in this frontend by

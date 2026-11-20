@@ -43,7 +43,7 @@ import { Button } from "@/components/ui/Button";
 import { CeremonyPanelFrame, CeremonyRequestButton } from "@/components/runtime/CeremonyPanelFrame";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
 
-export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: InteractionSurfaceProps) {
+export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller, path }: InteractionSurfaceProps) {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const ceremonyId = contentCeremonyId(orderHash);
     const [sent, setSent] = useState<`0x${string}` | null>(null);
@@ -165,7 +165,10 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
             )}
 
             {/* Deliver MY artifact once the counterparty's key is known. */}
-            {peerPubKey && !sent && (
+            {/* The send files its anchor through the attestation
+                coordinator, which does not know an order on the batch path:
+                no send is offered for one. */}
+            {peerPubKey && !sent && path !== "batch" && (
                 <div className="space-y-2 border-t border-default pt-3">
                     <p className="text-xs text-ink-body">
                         Deliver the artifact ({Math.round(CONTENT_DELIVERY_MAX_BYTES / 1024)} KiB max —

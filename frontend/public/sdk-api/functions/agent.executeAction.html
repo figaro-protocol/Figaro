@@ -14,7 +14,7 @@
 <section class="tsd-panel">
 <ul class="tsd-signatures">
 <li class="">
-<div class="tsd-signature tsd-anchor-link" id="executeaction"><span class="tsd-kind-call-signature">executeAction</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">walletClient</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">publicClient</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">addresses</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.FigaroAddresses.html" class="tsd-signature-type tsd-kind-interface">FigaroAddresses</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">action</span><span class="tsd-signature-symbol">:</span> <a href="../types/agent.ProposedAction.html" class="tsd-signature-type tsd-kind-type-alias">ProposedAction</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">inputs</span><span class="tsd-signature-symbol">?:</span> <a href="../interfaces/agent.ActionExecutionInputs.html" class="tsd-signature-type tsd-kind-interface">ActionExecutionInputs</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/agent.TxResult.html" class="tsd-signature-type tsd-kind-interface">TxResult</a><span class="tsd-signature-symbol">&gt;</span><a href="#executeaction" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-signature tsd-anchor-link" id="executeaction"><span class="tsd-kind-call-signature">executeAction</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">walletClient</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">publicClient</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">addresses</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.FigaroAddresses.html" class="tsd-signature-type tsd-kind-interface">FigaroAddresses</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">action</span><span class="tsd-signature-symbol">:</span> <a href="../types/agent.ProposedAction.html" class="tsd-signature-type tsd-kind-type-alias">ProposedAction</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">inputs</span><span class="tsd-signature-symbol">?:</span> <a href="../interfaces/agent.ActionExecutionInputs.html" class="tsd-signature-type tsd-kind-interface">ActionExecutionInputs</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">config</span><span class="tsd-signature-symbol">?:</span> <a href="../interfaces/agent.ExecuteActionConfig.html" class="tsd-signature-type tsd-kind-interface">ExecuteActionConfig</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/agent.ActionResult.html" class="tsd-signature-type tsd-kind-type-alias">ActionResult</a><span class="tsd-signature-symbol">&gt;</span><a href="#executeaction" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Execute a ProposedAction — the single dispatch point for every action the
 proposer can surface. What each needs:</p>
@@ -27,10 +27,17 @@ An agent (buyer) resolves autonomously with no further input.</li>
 gathered off-SDK; without it this throws rather than fabricate one.
 (There is NO runtime compose verb — extending a live process ad hoc was
 the deleted commit-sub-order arm; multi-order processes originate from
-an assembly.)</li>
+an assembly.) A process always starts on the direct path here.</li>
 <li>attest-as-seller / attest-as-buyer — pass <code>inputs.attestation</code> (the
 merkle-bound payload built from the hydrated agreement).</li>
 </ul>
+<p>An action whose <code>path</code> is &quot;batch&quot; never goes to <code>FigaroCore</code> or the
+attestation coordinator, which do not know a batched process. With
+<code>config.relay</code>, the wallet signs the operation under the verifier's domain
+(<code>addresses.batchVerifier</code>) and the relay client submits it
+(<code>SequencerClient.submitResolve</code>, <code>submitAttestAsSeller</code>,
+<code>submitAttestAsBuyer</code>). Without one, nothing is sent, nothing is signed,
+and the result says so (<code>sent: &quot;nothing&quot;</code>).</p>
 <p>Throws a clear, typed error when a chosen action's inputs are absent.</p>
 </div>
 <div class="tsd-parameters">
@@ -40,10 +47,11 @@ merkle-bound payload built from the hydrated agreement).</li>
 <li><span><span class="tsd-kind-parameter">publicClient</span>: <span class="tsd-signature-symbol">{}</span></span></li>
 <li><span><span class="tsd-kind-parameter">addresses</span>: <a href="../interfaces/index.FigaroAddresses.html" class="tsd-signature-type tsd-kind-interface">FigaroAddresses</a></span></li>
 <li><span><span class="tsd-kind-parameter">action</span>: <a href="../types/agent.ProposedAction.html" class="tsd-signature-type tsd-kind-type-alias">ProposedAction</a></span></li>
-<li><span><span class="tsd-kind-parameter">inputs</span>: <a href="../interfaces/agent.ActionExecutionInputs.html" class="tsd-signature-type tsd-kind-interface">ActionExecutionInputs</a><span class="tsd-signature-symbol"> = {}</span></span></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/agent.TxResult.html" class="tsd-signature-type tsd-kind-interface">TxResult</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<li><span><span class="tsd-kind-parameter">inputs</span>: <a href="../interfaces/agent.ActionExecutionInputs.html" class="tsd-signature-type tsd-kind-interface">ActionExecutionInputs</a><span class="tsd-signature-symbol"> = {}</span></span></li>
+<li><span><span class="tsd-kind-parameter">config</span>: <a href="../interfaces/agent.ExecuteActionConfig.html" class="tsd-signature-type tsd-kind-interface">ExecuteActionConfig</a><span class="tsd-signature-symbol"> = {}</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/agent.ActionResult.html" class="tsd-signature-type tsd-kind-type-alias">ActionResult</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/autonomous.ts#L449">agent/autonomous.ts:449</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/autonomous.ts#L480">agent/autonomous.ts:480</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

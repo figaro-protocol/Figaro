@@ -55,7 +55,7 @@ writes via `WalletGate`.**
 | `/members/manage` | The registered dashboard + stake claim. |
 | `/members/{identity,agents,assemblies,buyer,catalog,endpoints,review}` | The member wizard: Identity, Sell through (`assemblies`: bind, and offer the data those trades produce), Buy through (`buyer`: subscribe, and offer the data those trades produce), Catalog, Agents, Endpoints, Review. The two assembly steps are one loop walked twice and both precede Catalog, which prices what they declare. |
 | `/members/edit/{identity,agents,assemblies,buyer,catalog,endpoints}` | Endpoints are the member's own infrastructure — device configuration via `lib/shared/userEndpoints.ts`, never pinned or published. |
-| `/orders`, `/orders/view?process=` | The actor-neutral order list of one address, the connected wallet's or the one `?wallet=0x…` names, buyer and seller both; with neither, its place says in one line that the list is one address's and none is named, with the connect control beside it, and no read starts; "Your turn" is where counter-sign/accept fires, and `resolveProcess` fires on the detail view: its confirm names how many usage writes the wallet signs next (`lib/semantic/planUsageRecords.ts` plans them, one per distinct key across the three kinds — clause, agreement, assembly — through one `UsageWrite` union that `lib/rewards/useUsageRecorder.ts` sends; each is simulated before it is sent), and a resolved order links the party's data (`/data/yours`). Beside the timeline, the detail view compares the parties' filings under every declared stage of an assembly-scoped clause, field by field, derived at read time from the attestation log and the content its fingerprints resolve to (`components/runtime/StageAttestationComparison`, `lib/core/stageAttestationComparison.ts`). |
+| `/orders`, `/orders/view?process=` | The actor-neutral order list of one address, the connected wallet's or the one `?wallet=0x…` names, buyer and seller both; with neither, its place says in one line that the list is one address's and none is named, with the connect control beside it, and no read starts; "Your turn" is where counter-sign/accept fires, and `resolveProcess` fires on the detail view: its confirm names how many usage writes the wallet signs next (`lib/semantic/planUsageRecords.ts` plans them, one per distinct key across the three kinds — clause, agreement, assembly — through one `UsageWrite` union that `lib/rewards/useUsageRecorder.ts` sends; each is simulated before it is sent), and a resolved order links the party's data (`/data/yours`). For a process the batch verifier emitted, read from the emitter of its order events (`useProcessOrders`, `Order.path`), the detail view derives no resolve and no attestation, and a party to the open process reads one line naming the SDK's relay client, `SequencerClient`, and `proveAndSettle` (`deriveProcessModelFromRuntime`, `OrderTimelineView`). Beside the timeline, the detail view compares the parties' filings under every declared stage of an assembly-scoped clause, field by field, derived at read time from the attestation log and the content its fingerprints resolve to (`components/runtime/StageAttestationComparison`, `lib/core/stageAttestationComparison.ts`). |
 
 The build-baked `NEXT_PUBLIC_*` values are defaults only, so a hosted deploy never
 seizes users onto the operator's provider key or pinning node. Endpoint configuration
@@ -109,6 +109,21 @@ Consequences that shaped the code, and where each server-only feature moved:
 - Designers: `/assemblies/designer/view?slug=<slug>` (assembly inspector).
 
 The `/assemblies/designer` tool is a composition surface (`TopologyCanvas` + `AgreementDrawer`) — it composes BOTH the DAG of orders AND each order's clauses; "just a DAG editor" under-states it. It is not a palette/canvas/inspector three-column tool, and is not to be rebuilt as one.
+
+## The batch path through this app
+
+The app reads both paths and acts on the direct path only (§ "Key Library Areas", `core/`). Each order carries the path whose contract emitted its `OrderCommitted`, derived from the emitter's address in the same read as the order (`lib/core/indexer.ts` `parseCoreLogsByPath`, `hooks/useProcessOrders.ts`); nothing stores it. A deployment with no batch verifier reads every order as direct. What a party can do on the direct path and cannot do on the batch path through this app:
+
+- The app starts no trade on the batch path: checkout, `/sign` and "Your turn" commit through `FigaroCore` alone, directly or through the swap coordinator (`lib/checkout/orderCommitmentFlow.ts`).
+- The app offers no resolve for a batched process: `deriveProcessModelFromRuntime` derives none, and `/orders/view` shows its one line in place of the actions.
+- The app offers no attestation on a batched order, whether a ladder step, a witness, a re-assertion or the provenance leaf, for the same reason.
+- The address-detail and content-delivery surfaces offer no send on a batched order, since the send files its anchor through the attestation coordinator; requesting and receiving stay (`components/runtime/AddressDetailPanel.tsx`, `ContentDeliveryPanel.tsx`).
+- A sub-order that follows an order of a batched process cannot be committed through this app: its commit goes to `FigaroCore`, which refuses a process it does not know (`UnknownProcess`).
+- The app counts no use of a batched process for designer rewards: the usage writes follow a direct resolve only, and no page sends a usage claim to a relay (`/rewards`).
+- No reader of the app shows the operations a relay holds in its queue for one process; the batch path is read from the chain once a batch lands.
+- A swap-funded bond is direct path only (`WitnessSwapAndCommitCoordinator`; `docs/SCALING_STRATEGY.md` § "The two paths share no state").
+
+What stays on the batch path: every read, the timeline and the evidence file, the payout split after a resolution, and the hand-off of private filings already attested.
 
 ## One site, several deployments
 

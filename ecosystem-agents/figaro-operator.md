@@ -85,9 +85,11 @@ close its own frame. Two rules follow:
 1. **Sync** — `FigaroContext.sync()`: reconstruct the processes the wallet is in AND the
    live network catalog (clauses/sellers/assemblies). `getMyProcesses(address)` for
    what it's already party to; `getAssemblies()` for what it could originate against.
+   Each order and process carries the path whose contract emitted it (`path`: `"direct"`
+   for `FigaroCore`, `"batch"` for `FigaroBatchVerifier`), read from the emitter's address.
 2. **Propose** — `proposeActions(process, myAddress)` returns the actions available on a
-   process (resolve, commit, attest — role inferred from state). `proposeInitiations(...)`
-   returns the processes the wallet could START.
+   process (resolve, commit, attest — role inferred from state), each carrying the
+   process's `path`. `proposeInitiations(...)` returns the processes the wallet could START.
 3. **Policy** — the owner's decision layer. Two modes; the owner picks (this is a policy
    choice, never structural):
    - **HITL** (default, recommended) — surface each proposed action to the owner; they
@@ -99,7 +101,15 @@ close its own frame. Two rules follow:
    pen" — never a raw-key account.
    `resolve-process` is self-contained; `commit`/`attest`/`initiate` take signed inputs
    (the counterparty's signature). Origination has its own recipe — the next section,
-   executable as written.
+   executable as written. A process on the batch path is unknown to `FigaroCore` and the
+   attestation coordinator, so its resolve and attestations go to a relay: pass the
+   owner's relay client as the sixth argument, `{ relay: new SequencerClient({ url }) }`,
+   and the wallet signs each operation under the verifier's domain. With no relay, nothing
+   is signed or sent, and the result is `{ sent: "nothing", reason: "batch-path-without-relay" }`:
+   surface it to the owner, never retry it on the direct path. The result of every call
+   says where it went: `sent: "transaction"` (a hash), `sent: "relay"` (the relay's
+   operation id; the outcome is read from the chain once a batch lands) or `sent: "nothing"`.
+   Origination stays on the direct path.
    To surface the wallet as a discoverable member, `MembersRegistry.register(metadataURI)`
    (a self-signed action, only the wallet's own key). **It is `payable`, and `msg.value`
    must EQUAL `registrationDeposit()` exactly** — read that view off the contract before
@@ -276,6 +286,11 @@ const report = await recordProcessUsage(walletClient, publicClient, addresses.us
   { commitment: resolveAction.commitments[0], agreement },
 ]);
 ```
+
+`recordProcessUsage` is the direct path's: a process on the batch path has no
+`FigaroCore` status for the counter to check, so its uses go to the relay as claims
+(`buildUsageClaims`, then `SequencerClient.submitUsageClaim`), which the loop does not send
+for you.
 
 The resolve counts nothing (`resolveProcess` calls no contract); usage is counted by this
 call, **sent right after the resolve**. A use left uncounted waits on its seller's stake and can
@@ -525,7 +540,9 @@ const seq = new SequencerClient({ url: SEQUENCER_URL }); // owner config, like R
 if (!await seq.isAvailable()) { /* open a NEW process on FigaroCore instead, signed for its domain */ }
 const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 // also: submitResolve · submitAttestAsSeller · submitAttestAsBuyer · submitUsageClaim
-// and, reading back: status · order · process · batches (see the section above)
+// and, reading the relay itself: status (its counts; no listing per process)
+// executeAction(wallet, publicClient, addresses, action, inputs, { relay: seq }) sends a
+// batched process's resolve and attestations through this client
 ```
 
 **Why you need not trust it, stated precisely** — and why you must not confuse this with

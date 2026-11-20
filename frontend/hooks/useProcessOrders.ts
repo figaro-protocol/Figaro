@@ -29,7 +29,7 @@ import { CONTRACTS } from "@/lib/core/contracts";
 import { Order, orderFromSdk, useOrderStore } from "@/lib/core/store";
 import { getCoreEvents, walletOrders } from "@/lib/core/indexer";
 import { useWatchOrderEvents } from "@/lib/core/useWatchOrderEvents";
-import { Topology, type CoreEvents, type Hex } from "@figaro-protocol/sdk";
+import { Topology, type CoreEvents, type Hex, type ResolutionUniverse } from "@figaro-protocol/sdk";
 import { PENDING, present, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
@@ -91,7 +91,9 @@ export function useProcessOrders(processId: string | null): NetworkRead<Order[]>
                 setOrders(history);
                 return;
             }
-            topology.applyEvents(history.value.events);
+            // Each path's events apart, so every order carries the path
+            // whose contract emitted it (`Order.path`), read at read time.
+            for (const { path, events } of history.value.byPath) topology.applyEvents(events, path);
             historyLoadedRef.current = true;
             projectOrders(processId);
         });
@@ -106,8 +108,8 @@ export function useProcessOrders(processId: string | null): NetworkRead<Order[]>
     // Live order events, from every emitter
     // ------------------------------------------------------------------
     const onEvents = useCallback(
-        (events: CoreEvents) => {
-            topologyRef.current?.applyEvents(events);
+        (events: CoreEvents, path: ResolutionUniverse) => {
+            topologyRef.current?.applyEvents(events, path);
             projectOrders(processId);
         },
         [projectOrders, processId],
