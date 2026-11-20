@@ -463,8 +463,10 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         // NOT from any local cache: the probe attestation's stage label, attributed
         // to the SELLER who signed it (the attester address from the event). This is
         // the audit's proof the attestation EXISTS, fed from chain events.
+        // The committed field shows the same label, since the buyer chose that
+        // value at checkout; the attestation is the clause's log row.
         await expect(
-            evidence.getByText(NOVEL_FIRST_STAGE_LABEL),
+            evidence.locator(`[data-testid^="audit-log-${NOVEL_KEY}-"]`).getByText(NOVEL_FIRST_STAGE_LABEL).first(),
             "the seller's runtime attestation surfaces in the audit, its stage label read from the spec",
         ).toBeVisible({ timeout: 30000 });
         await expect(
