@@ -152,6 +152,26 @@ describe("parseBlockBinding — clause block-binding (sectioned UI half)", () =>
         expect(badInput.errors.some((e) => e.path === "$.block.checkout.derives")).toBe(true);
     });
 
+    it("preserves checkout.timeWindow and checkout.endpoints under the spec's own field names, and reads their absence as none", () => {
+        const timeWindow = { start: "pickUpAt", end: "returnBy" };
+        const endpoints = { from: "pickupCell", to: "dropoffCell" };
+        const { block } = parse({ design: { article: "billing" }, checkout: { timeWindow, endpoints } });
+        expect(block?.checkout.timeWindow).toEqual(timeWindow);
+        expect(block?.checkout.endpoints).toEqual(endpoints);
+        const bare = parse({ design: { article: "billing" }, checkout: { timeWindow: null } }).block;
+        expect(bare?.checkout.timeWindow).toBeNull();
+        expect(bare?.checkout.endpoints).toBeNull();
+    });
+
+    it("rejects a timeWindow mark without its end, and an endpoints mark with an empty destination", () => {
+        const noEnd = parse({ design: { article: "billing" }, checkout: { timeWindow: { start: "pickUpAt" } } });
+        expect(noEnd.block).toBeNull();
+        expect(noEnd.errors.some((e) => e.path === "$.block.checkout.timeWindow")).toBe(true);
+        const emptyTo = parse({ design: { article: "billing" }, checkout: { endpoints: { from: "pickupCell", to: "" } } });
+        expect(emptyTo.block).toBeNull();
+        expect(emptyTo.errors.some((e) => e.path === "$.block.checkout.endpoints")).toBe(true);
+    });
+
     // The drawer's cross-clause nesting (e.g. a proximity policy under the hand-off
     // clause's `handoff` field) is read from design.nestsUnder — it MUST round-trip.
     it("preserves design.nestsUnder", () => {

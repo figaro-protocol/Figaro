@@ -438,7 +438,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `planSubOrderSellers` | root | Topologically order an assembly's sub-orders and resolve each one's bound seller. |
 | `parseAgreementRegistryLogs` | root | Decode `AgreementRegistry` logs into registrations and stake withdrawals, keyed by `agreementHash`. |
 | `planProcessOrders` | root | A hydrated assembly's agreements in commit order, each with its clause bag (keyed by clause key). |
-| `processEdges` | `/derive` | Each process's edges: the registered process design's, matched to its commits by position, for a process the caller links to it; FigaroCore's linear view for every other. The design, never what the parties signed. |
+| `processEdges` | `/derive` | Each process's orders in commit order, and each order's signed edges where the caller holds its agreement and it hashes to the order's `checkoutHash`; every other order's edges are unknown. No commit position stands in for an edge. |
 | `profileValuesFor` | root | The profile-filled clause values a given seller publishes, read from its catalog. |
 | `projectAgentServices` | root | Read the agent service endpoints out of a profile document, tolerating partial ones. |
 | `projectProcessGraph` | `/derive` | The process graph, labeled protocol-enforced — `reconstruct()`'s topology as a first-class object. |
@@ -1534,7 +1534,7 @@ also carry what stands behind it when the chain cannot check it: both signatures
 for a declaration; for an attestation, the buyer's decision to withhold resolution.
 
 ```ts
-import { fetchCoreEvents, fetchAttestationRecords, planProcessOrders } from "@figaro-protocol/sdk";
+import { fetchCoreEvents, fetchAttestationRecords } from "@figaro-protocol/sdk";
 import {
   projectProcessGraph, projectResolutionGraph, extractOverlays, projectValueFlow,
   readFundingLegs, marketShape, processEdges, followsOfEdges, walletRecord,
@@ -1575,17 +1575,13 @@ const valueFlow = projectValueFlow(resolution, swapLegs, pins);
 // Queries are thin folds over the graphs. Assembly attribution is
 // CALLER-SUPPLIED: a process you cannot key is reported in
 // `unattributedProcessCount`, never binned under a guess.
-// A process's edges: a process linked to a registered process design (its
-// buyer's provenance attestation, or a UsageRecorded of kind process naming
-// it) takes the design's positions matched to its commits by position — the
-// design, never what the parties signed (that is each agreement's topology
-// leaf, which no event carries); every other process keeps FigaroCore's
-// linear view. `hydratedFor` is your read of the registered process design.
-const edges = processEdges(process, (processId) => {
-  const processDesignHash = assemblyKeyFor(processId);
-  const hydrated = processDesignHash && hydratedFor(processDesignHash);
-  return hydrated ? { processDesignHash, planned: planProcessOrders(hydrated) } : undefined;
-});
+// A process's edges: each order's topology leaf, read from the agreement you
+// hold for it and checked against the order's checkoutHash. No event carries
+// an edge, and FigaroCore fixes no order among sibling orders, so a commit's
+// position names none. An order whose agreement you do not hold has unknown
+// edges, and marketShape counts its process as unshaped. `heldAgreement` is
+// your own store of agreement documents, by order hash.
+const edges = processEdges(process, (order) => heldAgreement(order.orderHash));
 const shape = marketShape(process, (processId) => assemblyKeyFor(processId), followsOfEdges(edges));
 const rec   = walletRecord(process, "0x…");        // empty arrays = no history
 ```
@@ -2360,17 +2356,18 @@ import {
   geohash endpoints; `booking-window` = the hours between the two instants of
   the order's committed window). A routed-distance
   composition registers a new tenant without touching checkout code.
-  `order-geodistance` finds its endpoints from the spec, never from a field name
-  or a clause id. An endpoint is a string field whose spec names a declared
-  sibling in `formatFromField`, where that sibling's committed value is
-  `geohash`. The distance is read only when exactly one composed clause holds
-  exactly two such fields. In every other case the quantity is unresolvable and
-  the item is not priced. `booking-window` finds its window from the spec the
-  same way. A window is a pair of string fields that declare
-  `format: "iso-datetime"`, and the field the spec declares first is the start.
-  The hours are read only when exactly one composed clause holds exactly two
-  such fields and the second instant is after the first. In every other case
-  the quantity is unresolvable and the item is not priced.
+  `order-geodistance` reads the two fields a clause's spec marks in
+  `block.checkout.endpoints` (`from`, `to`), never fields found by their shape,
+  a field name or a clause id. Each marked field names a declared sibling in
+  `formatFromField`, and that sibling's committed value must be `geohash`. The
+  distance is read only when exactly one composed clause marks its endpoints.
+  In every other case the quantity is unresolvable and the item is not priced.
+  `booking-window` reads the start and the end a clause's spec marks in
+  `block.checkout.timeWindow` (`start`, `end`). Both marked fields declare
+  `format: "iso-datetime"`. The hours are read only when exactly one composed
+  clause marks a window and its end is after its start. In every other case
+  the quantity is unresolvable and the item is not priced. A clause with no
+  mark yields no quantity, whatever its fields look like.
 
 Signatures and the exact fold rules live in the `dist/checkoutPlan.d.ts`
 docblocks — treat them as the contract; this list is the map, not the territory.

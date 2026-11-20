@@ -50,6 +50,8 @@
             "catalogueFills": [],
             "profileFills": [],
             "catalogueMeasures": {},
+            "timeWindow": null,
+            "endpoints": null,
             "heldValues": {
                 "klerosCourt": {
                     "reader": "kleros-liquid-policy-courts",

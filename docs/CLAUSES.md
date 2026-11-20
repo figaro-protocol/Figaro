@@ -551,7 +551,8 @@ registry's seed data; the published definition of the format is
   agreements and assemblies (`article`, `scope`, `nestsUnder`, `fills`,
   `composes`); `checkout`, the seller binding and the buyer filling and
   signing (`catalogueFills`, `profileFills`, `catalogueMeasures`,
-  `pricedLines`, `derives`, `heldValues`, `compositionFields`); `runtime`, the
+  `pricedLines`, `derives`, `timeWindow`, `endpoints`, `heldValues`,
+  `compositionFields`); `runtime`, the
   parties while the process runs, after commit (`interaction`). A later phase
   may read an earlier section; no phase reads a section named for a later
   one; an attribute read in two phases is declared in the section of its
@@ -566,11 +567,13 @@ registry's seed data; the published definition of the format is
   says so (`CheckoutView.tsx`).
   Reporting while the process runs is witness stages (`spec.stages`), never
   `compositionFields`. The clause key leaves `block` out, and no fingerprint reads
-  it. Eight of its attributes (`design.article`, `design.scope`, `design.fills`,
+  it. Ten of its attributes (`design.article`, `design.scope`, `design.fills`,
   `checkout.catalogueFills`, `checkout.profileFills`,
-  `checkout.catalogueMeasures`, `checkout.pricedLines`, `checkout.derives`;
+  `checkout.catalogueMeasures`, `checkout.pricedLines`, `checkout.derives`,
+  `checkout.timeWindow`, `checkout.endpoints`;
   `parseProjectionHints` in `sdk/src/projection.ts`)
-  are the reference tooling's rules for collecting the data a party signs.
+  are the reference tooling's rules for collecting and pricing the data a
+  party signs.
   Another frontend may collect it differently; both parties sign one
   `checkoutHash` over one agreement, which either recomputes from the agreement
   alone. Nothing on-chain or in the SDK's content layer reads `block`;
@@ -581,7 +584,8 @@ registry's seed data; the published definition of the format is
   list, no `catalogueMeasures` entry, no `derives` entry and no `pricedLines`
   mark, derived as the complement, never stored. **A field's name carries no
   meaning to any code**: a role a field plays (the order's priced lines, a
-  derived value, the denomination pin) is read from what the spec declares,
+  derived value, a time window, a route's endpoints, the denomination pin) is
+  read from what the spec declares, never from the shape of its fields,
   so a stranger's clause naming its fields otherwise plays the same role
   (`docs/OPEN_WORLD.md` § 1).
 - **`block.checkout.pricedLines` marks the order's priced lines.** It names the
@@ -623,6 +627,27 @@ registry's seed data; the published definition of the format is
   "divisor": { "field": "divisor" } } } }`. The checkout computes the billed
   weight from the order's catalog items, the same catalog fields
   `figaro-cargo` measures, and from the divisor the seller's profile fills.
+- **`block.checkout.timeWindow` and `block.checkout.endpoints` mark the fields
+  a rate quantity is read from.** `timeWindow` names the content field that
+  holds a window's start and the one that holds its end: `{ "start":
+  "windowStart", "end": "windowEnd" }` in `figaro-schedule`. `endpoints` names
+  the field that holds a route's origin and the one that holds its
+  destination: `{ "from": "origin", "to": "destination" }` in
+  `figaro-geolocation`. A rate-priced catalog item names its quantity source
+  (`rateQuantitySource`, an open registry, `registerRateQuantitySource` in
+  `sdk/src/checkoutPlan.ts`). The `booking-window` source bills the hours of
+  the marked window, and `order-geodistance` the distance between the marked
+  endpoints. Each source reads only the mark, never the format, the order or
+  the count of a clause's fields. A clause with two date-time fields and no
+  mark, such as an issue date and an expiry, is never billed as a window. A
+  mark the spec's own fields contradict marks nothing. It is contradicted by
+  a field not declared, by one field named twice, by a window field not of
+  format `iso-datetime`, and by an endpoint whose `formatFromField` sibling is
+  undeclared or not committed as `geohash`. A source prices only when exactly one composed clause carries a
+  mark it can read; otherwise the item stays unpriced
+  (`unresolvable-quantity`). The marks steer the reference tooling's pricing
+  only: the payment the parties sign is the commitment's, and another
+  frontend may price differently.
 - **`block.checkout.catalogueMeasures` reads a field from the catalog item
   itself.** It maps a content field to the catalog-item field it is read from
   and how the order's lines combine it: `{ "massGrams": { "from": "massGrams",
@@ -778,9 +803,22 @@ field shape:
   and what an order covers: the modality, the time window, the localities, the
   line items (`figaro-commerce`). Committed content, not a runtime lifecycle;
   a coordination clause never surfaces an attestation capability.
-- **`denomination`** — an assembly-scoped clause of this article has each
-  unfilled designer-filled `address-hex` field set to the deployment's token
-  at seeding (`fillDeployTimeCurrency`, `sdk/src/projection.ts`).
+- **`denomination`** — an assembly-scoped clause of this article whose
+  designer-filled fields include exactly one `address-hex` string field pins
+  the composition's token in that field (`specDenominationPinField`,
+  `sdk/src/projection.ts`). The seeding fills an unfilled pin with the
+  deployment's token (`fillDeployTimeCurrency`). The sign gate
+  (`validateCommitmentAgreement`) refuses a commitment whose token differs
+  from the pinned one. A party is then never asked to sign in a token the
+  designer did not choose. This check is the reference tooling's own, and the
+  `block` steers it. The `block` is outside the clause key, so whoever serves
+  it decides whether the check runs. A caller whose spec source passes no
+  hints, or serves the clause under another article, gets no pin and no
+  token check. The reference frontend reads a spec only when its bytes hash
+  to the registered address (`docs/DESIGN_DECISIONS.md` § 40), so it runs the
+  check the registrant's `block` declares. The chain is unaffected:
+  `FigaroCore` holds every order of a process to the token its opening order
+  signed (`TokenMismatch`, `src/core/kernel/FigaroCore.sol`).
 - **`dispute-resolution`** — the forum a process names: the audit view's
   recourse reader keeps the clauses of this article
   (`frontend/lib/semantic/processRecourse.ts`).

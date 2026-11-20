@@ -857,20 +857,25 @@ cuts the attestation stream at each entry's end (it reads) and one byte short
 `BatchOperations` log of its own batch id, two batches in one transaction
 included.
 
-**A process's designed edges, on both paths.** `sdk/tests/designedEdges.test.ts`
-realizes the reference process design `assemblies/tradelens.json` through
-`reconstructOrdersFromProcessDesign` and hands `processEdges` only the
-`OrderCommitted` events and the registered design: the edges it rebuilds by
-position equal each agreement's topology leaf, with one block per commit and
-with every commit in one block; an open process matches the design's first
-positions, and a process with no link, or with more commits than the design
-has positions, keeps the linear view.
-`frontend/tests/lib/graphCorpusDesignedEdges.test.tsx` reads the same through
-the corpus (`useGraphCorpus`) and `/data/explore`: the direct path's commits
-at `FigaroCore` linked by the buyer's provenance attestation, and the batch
-path's commits at `FigaroBatchVerifier` linked by a `UsageRecorded` of the
-process design; a use of a clause links nothing, and a failed `UsageRecorded`
-read links nothing while the corpus still lands. A batch whose use the counter
+**A process's edges come from its agreements, on both paths.**
+`sdk/tests/processEdges.test.ts` commits sibling orders out of the design's
+order (R; A follows R; B follows R; C follows A, committed R, A, C, B).
+`processEdges` states each order's signed edges only from a held agreement
+anchored to that order's `checkoutHash`, with one block per commit and with
+every commit in one block. A reader that holds no agreement gets the commit
+order and no edge. An agreement held for another order, an altered one, and
+one with no topology leaf each leave that order's edges unknown, and
+`marketShape` then counts the process as unshaped. The reference process
+design `assemblies/tradelens.json`, realized through
+`reconstructOrdersFromProcessDesign`, gives back each agreement's topology leaf.
+`frontend/tests/lib/graphCorpusDesignedEdges.test.tsx` reads the same out-of-order
+commits through the corpus (`useGraphCorpus`) and `/data/explore`: the page
+names no edge between orders, counts no depth or width, and shows the linked
+design's own edges between its entries. The direct path's commits at
+`FigaroCore` are linked by the buyer's provenance attestation, and the batch
+path's commits at `FigaroBatchVerifier` by a `UsageRecorded` of the process
+design. A use of a clause links nothing, and a failed `UsageRecorded` read
+links nothing while the corpus still lands. A batch whose use the counter
 skipped (`BatchAccrualSkipped`) emits no `UsageRecorded`, so its process is
 linked only by its provenance attestation.
 

@@ -23,7 +23,7 @@
  * parses/serializes the URL query so every view is a permalink.
  */
 
-import type { TruthBoundary, MarketShape, ChainShape, OverlayGraph, ProcessEdges, ProcessGraph, ValueFlowGraph, ValueFlowEdge, WalletRecord } from "@figaro-protocol/sdk/derive";
+import type { TruthBoundary, MarketShape, ChainShape, OverlayGraph, ProcessGraph, ValueFlowGraph, ValueFlowEdge, WalletRecord } from "@figaro-protocol/sdk/derive";
 import { TRUTH_BOUNDARY_GLOSS } from "@figaro-protocol/sdk/derive";
 import { OrderState, type Process, type ResolutionUniverse } from "@figaro-protocol/sdk";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
@@ -246,38 +246,24 @@ export interface ProcessRow {
     /** The block of the process's FIRST commit — CHAIN time, never a wall
      *  clock. Null when the graph holds the process with no orders. */
     firstBlock: number | null;
-    /** The design's edges when the process is linked to a registered
-     *  process design whose positions fit its commits (`processEdges`), else null:
-     *  the process keeps FigaroCore's linear view. */
+    /** The edges of the registered process design the process is linked to,
+     *  between the design's entries, else null. They name no order. */
     designedEdges: DesignedEdges | null;
     text: string;
 }
 
-/** A process's designed edges by commit position (1 is the root): each
- *  order and the positions it follows, read from the registered process design. */
+/** A registered process design's own edges: each entry, by the design's
+ *  label, and the entries it follows. They are the design's, never what a
+ *  process's parties signed, and no entry is matched to an order. */
 export interface DesignedEdges {
     processDesignHash: string;
-    edges: { position: number; follows: number[] }[];
+    entries: { id: string; follows: string[] }[];
 }
 
-/** The design's edges of one process by commit position, or null when the
- *  process keeps the linear view (no link, or a design its commits do not fit). */
-function designedEdgesOf(edges: ProcessEdges | undefined): DesignedEdges | null {
-    if (!edges || edges.source !== "design" || edges.processDesignHash === null) return null;
-    const positionOf = new Map(edges.orders.map((h, i) => [h.toLowerCase(), i + 1]));
-    return {
-        processDesignHash: edges.processDesignHash,
-        edges: edges.orders.map((h, i) => ({
-            position: i + 1,
-            follows: (edges.follows.get(h) ?? []).map((f) => positionOf.get(f.toLowerCase()) ?? 0).filter((n) => n > 0),
-        })),
-    };
-}
+/** processId (lowercased) → its linked design, as `GraphCorpus.designByProcess` holds it. */
+type DesignByProcess = ReadonlyMap<string, DesignedEdges>;
 
-/** processId (lowercased) → its edges, as `GraphCorpus.edgesByProcess` holds them. */
-type EdgesByProcess = ReadonlyMap<string, ProcessEdges>;
-
-function toProcessRow(process: Process, edgesByProcess?: EdgesByProcess): ProcessRow {
+function toProcessRow(process: Process, designByProcess?: DesignByProcess): ProcessRow {
     const orders = [...process.orders.values()];
     const blocks = orders.map((o) => o.blockNumber);
     return {
@@ -288,7 +274,7 @@ function toProcessRow(process: Process, edgesByProcess?: EdgesByProcess): Proces
         orderCount: orders.length,
         resolved: process.resolved,
         firstBlock: blocks.length > 0 ? Math.min(...blocks) : null,
-        designedEdges: designedEdgesOf(edgesByProcess?.get(process.processId.toLowerCase())),
+        designedEdges: designByProcess?.get(process.processId.toLowerCase()) ?? null,
         text: [process.processId, process.rootBuyer, process.token].join(" "),
     };
 }
@@ -296,9 +282,9 @@ function toProcessRow(process: Process, edgesByProcess?: EdgesByProcess): Proces
 /** Every process FigaroCore's own log carries, most recent first. The order
  *  is by FIRST-COMMIT BLOCK (chain time); ties break on the id so the list is
  *  stable across reads. */
-export function processRows(graph: ProcessGraph, edgesByProcess?: EdgesByProcess): ProcessRow[] {
+export function processRows(graph: ProcessGraph, designByProcess?: DesignByProcess): ProcessRow[] {
     return [...graph.processes.values()]
-        .map((process) => toProcessRow(process, edgesByProcess))
+        .map((process) => toProcessRow(process, designByProcess))
         .sort((a, b) => (b.firstBlock ?? -1) - (a.firstBlock ?? -1) || a.processId.localeCompare(b.processId));
 }
 
@@ -310,17 +296,17 @@ export function processRows(graph: ProcessGraph, edgesByProcess?: EdgesByProcess
  * otherwise be the one part of the data a reader cannot open.
  *
  * `attributionByProcess` maps a lowercased processId to its attribution key —
- * `overlaysForMarket`'s parameter, unchanged. `edgesByProcess` gives each row
- * its designed edges, where the process has them.
+ * `overlaysForMarket`'s parameter, unchanged. `designByProcess` gives each row
+ * the edges of the design it is linked to, where it has one.
  */
 export function processRowsForMarket(
     graph: ProcessGraph,
     attributionByProcess: ReadonlyMap<string, string>,
     marketKey: string | null,
-    edgesByProcess?: EdgesByProcess,
+    designByProcess?: DesignByProcess,
 ): ProcessRow[] {
     const key = marketKey === null ? null : marketKey.toLowerCase();
-    return processRows(graph, edgesByProcess).filter((row) => {
+    return processRows(graph, designByProcess).filter((row) => {
         const attributed = attributionByProcess.get(row.processId.toLowerCase());
         return key === null ? attributed === undefined : attributed === key;
     });

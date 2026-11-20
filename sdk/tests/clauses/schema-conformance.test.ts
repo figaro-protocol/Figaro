@@ -169,7 +169,7 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         for (const key of ["article", "scope", "nestsUnder", "fills", "composes"]) {
             expect(key in spec.block.design, `${file}: block.design.${key} must be expressed`).toBe(true);
         }
-        for (const key of ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "heldValues", "compositionFields"]) {
+        for (const key of ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "timeWindow", "endpoints", "heldValues", "compositionFields"]) {
             expect(key in spec.block.checkout, `${file}: block.checkout.${key} must be expressed`).toBe(true);
         }
         for (const key of ["interaction"]) {
@@ -182,7 +182,7 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
     // reads under that part, and no other. The lists are the parser's.
     it.each([
         ["blockDesign", ["article", "scope", "nestsUnder", "fills", "composes"]],
-        ["blockCheckout", ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "heldValues", "compositionFields"]],
+        ["blockCheckout", ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "timeWindow", "endpoints", "heldValues", "compositionFields"]],
         ["blockRuntime", ["interaction"]],
     ] as const)("the schema's %s declares the parser's attributes for that part", (def, keys) => {
         const props = (schema.$defs as Record<string, { properties: Record<string, unknown> }>)[def].properties;
@@ -201,6 +201,12 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         ["a derivation with no rule", { derives: { w: { inputs: {} } } }, false],
         ["a derivation input that is both a field and a measure", { derives: { w: { rule: "r", inputs: { a: { field: "f", from: "m", combine: "sum" } } } } }, false],
         ["a derivation input with an unknown combinator", { derives: { w: { rule: "r", inputs: { a: { from: "m", combine: "average" } } } } }, false],
+        ["a time-window mark naming its start and end", { timeWindow: { start: "fromAt", end: "toAt" } }, true],
+        ["a null time-window mark", { timeWindow: null }, true],
+        ["a time-window mark without its end", { timeWindow: { start: "fromAt" } }, false],
+        ["an endpoints mark naming its origin and destination", { endpoints: { from: "pickup", to: "dropoff" } }, true],
+        ["a null endpoints mark", { endpoints: null }, true],
+        ["an endpoints mark with an empty destination", { endpoints: { from: "pickup", to: "" } }, false],
         ["composition fields of the content-field shape", { compositionFields: [{ name: "claim", type: "string", required: true }] }, true],
         ["composition fields that are not an array", { compositionFields: {} }, false],
     ];

@@ -126,6 +126,28 @@ describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
         expect(view?.hints?.catalogueFills).toEqual(["x"]);
     });
 
+    it("the SpecSource adapter carries a stranger's time-window and endpoints marks under its own field names", async () => {
+        const key = serve({
+            clauseId: "test-rental-route",
+            version: 1,
+            title: "Test Rental Route",
+            description: "Marks for the rate quantity sources.",
+            fields: [
+                { name: "returnBy", type: "string", format: "iso-datetime", required: true },
+                { name: "pickUpAt", type: "string", format: "iso-datetime", required: true },
+            ],
+            block: {
+                design: { article: "scheduling", nestsUnder: null, fills: [], composes: null },
+                checkout: { timeWindow: { start: "pickUpAt", end: "returnBy" }, endpoints: { from: "pickUpAt", to: "returnBy" } },
+                runtime: { interaction: null },
+            },
+        });
+        await loadClauseSpec(key, "ipfs://fake-marks");
+        const view = specSource().get(key);
+        expect(view?.hints?.timeWindow).toEqual({ start: "pickUpAt", end: "returnBy" });
+        expect(view?.hints?.endpoints).toEqual({ from: "pickUpAt", to: "returnBy" });
+    });
+
     it("rejects when the bytes fail to parse as a spec", async () => {
         const key = serve({ not: "a spec" });
         await expect(loadClauseSpec(key, "ipfs://fake")).rejects.toThrow(/failed to parse/);

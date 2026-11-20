@@ -261,6 +261,24 @@
                     },
                     "description": "The content fields (by name, the map's keys) the checkout COMPUTES, each by a rule of the open derivation registry over its declared inputs. Never the buyer's. A rule the registry does not hold, or inputs it cannot derive from, leave the field as it was. Absent is read as {}."
                 },
+                "timeWindow": {
+                    "type": ["object", "null"],
+                    "required": ["start", "end"],
+                    "properties": {
+                        "start": { "type": "string", "minLength": 1, "description": "The content field that holds the window's start (a string field of format iso-datetime)." },
+                        "end": { "type": "string", "minLength": 1, "description": "The content field that holds the window's end (a string field of format iso-datetime)." }
+                    },
+                    "description": "The mark on the clause's TIME WINDOW: which content field is its start and which is its end. A quantity source that bills by the window (booking-window) reads the mark, never the format or the order of the fields. A mark the spec's own fields contradict (a field not declared, named twice, or not of format iso-datetime) marks nothing. Absent or null: the clause carries no window, and a source that needs one prices nothing."
+                },
+                "endpoints": {
+                    "type": ["object", "null"],
+                    "required": ["from", "to"],
+                    "properties": {
+                        "from": { "type": "string", "minLength": 1, "description": "The content field that holds the route's origin (a string field whose formatFromField names the field that declares its standard)." },
+                        "to": { "type": "string", "minLength": 1, "description": "The content field that holds the route's destination (a string field whose formatFromField names the field that declares its standard)." }
+                    },
+                    "description": "The mark on the clause's ROUTE: which content field is its origin and which is its destination. A quantity source that bills by distance (order-geodistance) reads the mark, never the format or the order of the fields. A mark the spec's own fields contradict (a field not declared, or named twice) marks nothing. Absent or null: the clause carries no route, and a source that needs one prices nothing."
+                },
                 "compositionFields": {
                     "type": "array",
                     "items": { "$ref": "#/$defs/field" },

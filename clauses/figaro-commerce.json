@@ -64,6 +64,8 @@
                 "unitPrice": "unitPrice"
             },
             "derives": {},
+            "timeWindow": null,
+            "endpoints": null,
             "heldValues": {},
             "compositionFields": []
         },

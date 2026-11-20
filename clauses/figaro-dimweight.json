@@ -63,6 +63,8 @@
                 }
             },
             "pricedLines": null,
+            "timeWindow": null,
+            "endpoints": null,
             "heldValues": {},
             "compositionFields": []
         },

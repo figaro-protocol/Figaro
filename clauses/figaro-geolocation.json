@@ -73,6 +73,11 @@
             "catalogueMeasures": {},
             "pricedLines": null,
             "derives": {},
+            "timeWindow": null,
+            "endpoints": {
+                "from": "origin",
+                "to": "destination"
+            },
             "heldValues": {},
             "compositionFields": []
         },

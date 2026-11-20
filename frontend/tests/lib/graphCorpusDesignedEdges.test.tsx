@@ -1,23 +1,27 @@
 /**
- * `/data/explore` shows a process's designed edges, on either path.
+ * `/data/explore` names no edge between orders, and shows a linked process
+ * design's own edges between its entries, on either path.
  *
- * A fan-out process design is loaded from the registry read: a root and two
- * entries that each follow it. A process of three commits is linked to it in
- * one of two ways, each on its own path:
+ * A process design is loaded from the registry read: r; a follows r; b follows
+ * r; c follows a. A process of four commits lands R, A, C, B: C's seller
+ * accepted before B's, which FigaroCore allows, since it fixes no order among
+ * sibling orders. Matching commits to the design by position would state
+ * "C follows R" and "B follows A", both false. The process is linked to the
+ * design in one of two ways, each on its own path:
  *
- *  - direct path: `FigaroCore` emits the three `OrderCommitted`, and the
+ *  - direct path: `FigaroCore` emits the four `OrderCommitted`, and the
  *    buyer's attestation of the provenance leaf at `AttestationCoordinator`
  *    names the process design;
- *  - batch path: `FigaroBatchVerifier` emits the three `OrderCommitted`, and
+ *  - batch path: `FigaroBatchVerifier` emits the four `OrderCommitted`, and
  *    `UsageCounter` emits a `UsageRecorded` of the process design naming the
  *    process (the counter emits it for a counted use on either path).
  *
  * The logs are the bytes a node returns, read through the real order reader,
  * the real corpus hook (`useGraphCorpus`) and the real page (`DataExplorer`).
- * Each case asserts the corpus's edges (the design's, matched to the commits
- * by position) and the page's line, which names them the design and never
- * what the parties signed. A process with neither link keeps the linear view
- * and carries no such line, and a failed `UsageRecorded` read links nothing.
+ * The page holds no agreement, so no order's edges are known: the market
+ * counts the process as unshaped, and the page's line names the design's
+ * entries and never an order. A process with neither link carries no such
+ * line, and a failed `UsageRecorded` read links nothing.
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -81,10 +85,10 @@ const AGREEMENT = word(0xa6e);
 const PROCESS = word(0xf00);
 const BUYER = "0x00000000000000000000000000000000000000b1" as const;
 const SELLER = "0x00000000000000000000000000000000000000a1" as const;
-const [ROOT, LEFT, RIGHT] = [word(0x01), word(0x02), word(0x03)];
+const [R, A, B, C] = [word(0x01), word(0x02), word(0x03), word(0x04)];
 
-/** The registry read answers one loaded fan-out process design: two entries follow the root. */
-function fanOutLoaded() {
+/** The registry read answers one loaded process design: r; a follows r; b follows r; c follows a. */
+function designLoaded() {
     CHOICES.current = {
         read: {
             status: "present" as const,
@@ -93,9 +97,10 @@ function fanOutLoaded() {
                 hydratedAssembly: {
                     assembly: {
                         agreements: [
-                            { id: "left", agreementHash: AGREEMENT, clauses: {}, follows: ["root"] },
-                            { id: "root", agreementHash: AGREEMENT, clauses: {}, follows: [] },
-                            { id: "right", agreementHash: AGREEMENT, clauses: {}, follows: ["root"] },
+                            { id: "a", agreementHash: AGREEMENT, clauses: {}, follows: ["r"] },
+                            { id: "r", agreementHash: AGREEMENT, clauses: {}, follows: [] },
+                            { id: "b", agreementHash: AGREEMENT, clauses: {}, follows: ["r"] },
+                            { id: "c", agreementHash: AGREEMENT, clauses: {}, follows: ["a"] },
                         ],
                     },
                     agreements: { [AGREEMENT]: { clauses: {} } },
@@ -106,16 +111,17 @@ function fanOutLoaded() {
     };
 }
 
-/** The three commits of the process at `address`, the running total rising 10, 30, 60. */
+/** The four commits of the process at `address`, landing R, A, C, B: the
+ *  running total rises 10, 30, 60, 100. */
 function commits(address: string, block: (i: number) => bigint): FixtureLog[] {
-    return [ROOT, LEFT, RIGHT].map((orderHash, i) => orderCommittedLog({
+    return [R, A, C, B].map((orderHash, i) => orderCommittedLog({
         address, blockNumber: block(i), orderHash, processId: PROCESS, buyer: BUYER, seller: SELLER,
-        payment: BigInt(10 * (i + 1)), runningTotal: [10n, 30n, 60n][i],
+        payment: BigInt(10 * (i + 1)), runningTotal: [10n, 30n, 60n, 100n][i],
     }));
 }
 
 const provenance = attestationLog({
-    address: COORDINATOR, blockNumber: 5n, orderHash: ROOT, processId: PROCESS, attester: BUYER,
+    address: COORDINATOR, blockNumber: 5n, orderHash: R, processId: PROCESS, attester: BUYER,
     clauseId: PROVENANCE_LEAF_KEY, contentRef: provenanceContentRef(AGREEMENT, DESIGN),
 });
 
@@ -132,11 +138,28 @@ async function readCorpus(): Promise<GraphCorpus> {
     return result.current.value;
 }
 
-const designedEdges = new Map([[ROOT, []], [LEFT, [ROOT]], [RIGHT, [ROOT]]]);
+const designEntries = [
+    { id: "a", follows: ["r"] },
+    { id: "r", follows: [] },
+    { id: "b", follows: ["r"] },
+    { id: "c", follows: ["a"] },
+];
 
-describe("/data/explore — a process's designed edges, direct path, linked by the provenance attestation", () => {
+/** The line names the design's entries, and never an order. */
+async function designLine(): Promise<string> {
+    params.current = new URLSearchParams("view=market");
+    render(<DataExplorer />);
+    const line = await screen.findByTestId(`process-designed-edges-${PROCESS.toLowerCase()}`);
+    const text = line.textContent ?? "";
+    expect(text).toContain("“a” follows “r”; “b” follows “r”; “c” follows “a”");
+    expect(text).toContain("no entry is matched to an order");
+    expect(text).not.toMatch(/order \d/);
+    return text;
+}
+
+describe("/data/explore — siblings committed out of the design's order, direct path, linked by the provenance attestation", () => {
     beforeEach(() => {
-        fanOutLoaded();
+        designLoaded();
         usageEventsMock.mockReset().mockResolvedValue([]);
         chainAnswers([
             { at: CORE, event: "OrderCommitted", rows: commits(CORE, (i) => BigInt(2 + i)) },
@@ -144,31 +167,26 @@ describe("/data/explore — a process's designed edges, direct path, linked by t
         ]);
     });
 
-    it("the corpus takes the process design's edges, matched to the commits by position", async () => {
+    it("the corpus carries the design's own edges and states no edge between orders", async () => {
         const corpus = await readCorpus();
-        const edges = corpus.edgesByProcess.get(PROCESS.toLowerCase())!;
-        expect(edges.source).toBe("design");
-        expect(edges.processDesignHash).toBe(DESIGN);
-        expect(new Map(edges.follows)).toEqual(designedEdges);
-        // The market's shape is the design's: two orders beside each other under the root.
-        expect(corpus.market.groups.get(DESIGN.toLowerCase())!.shapes).toEqual([{ orderCount: 3, depth: 1, maxWidth: 2, processCount: 1 }]);
+        expect(corpus.designByProcess.get(PROCESS.toLowerCase())).toEqual({ processDesignHash: DESIGN, entries: designEntries });
+        // No agreement is held, so no order's edges are known: the process takes no shape.
+        const group = corpus.market.groups.get(DESIGN.toLowerCase())!;
+        expect(group.shapes).toEqual([]);
+        expect(group.unshapedProcessCount).toBe(1);
     });
 
-    it("the page labels them as the design, never as what the parties signed", async () => {
-        params.current = new URLSearchParams("view=market");
-        render(<DataExplorer />);
-        const line = await screen.findByTestId(`process-designed-edges-${PROCESS.toLowerCase()}`);
-        expect(line.textContent).toMatch(/The design.s edges, not what the parties signed/);
-        expect(line.textContent).toContain("order 2 follows order 1; order 3 follows order 1");
-        expect(line.textContent).toContain("Fan-out");
-        expect(document.body.textContent).toContain("1× 3 orders, depth 1, width 2");
+    it("the page names the design's entries, never an order, and shows no depth or width", async () => {
+        const text = await designLine();
+        expect(text).toContain("Fan-out");
+        expect(document.body.textContent).not.toMatch(/depth \d/);
     });
 });
 
-describe("/data/explore — a process's designed edges, batch path, linked by UsageRecorded", () => {
+describe("/data/explore — siblings committed out of the design's order, batch path, linked by UsageRecorded", () => {
     beforeEach(() => {
-        fanOutLoaded();
-        // The verifier lands all three commits in one block; no provenance attestation is read.
+        designLoaded();
+        // The verifier lands all four commits in one block; no provenance attestation is read.
         chainAnswers([{ at: VERIFIER, event: "OrderCommitted", rows: commits(VERIFIER, () => 9n) }]);
         usageEventsMock.mockReset().mockImplementation(async (_c: unknown, _id: number, opts: { address: string; eventName: string }) =>
             opts.address === COUNTER && opts.eventName === "UsageRecorded"
@@ -176,50 +194,45 @@ describe("/data/explore — a process's designed edges, batch path, linked by Us
                 : []);
     });
 
-    it("the corpus takes the process design's edges from the counted use alone", async () => {
+    it("the corpus links the design from the counted use alone", async () => {
         const corpus = await readCorpus();
         expect(corpus.attributionByProcess.size).toBe(0);
-        const edges = corpus.edgesByProcess.get(PROCESS.toLowerCase())!;
-        expect(edges.source).toBe("design");
-        expect(new Map(edges.follows)).toEqual(designedEdges);
+        expect(corpus.designByProcess.get(PROCESS.toLowerCase())).toEqual({ processDesignHash: DESIGN, entries: designEntries });
     });
 
-    it("the page shows the design's line under the unattributed process", async () => {
-        params.current = new URLSearchParams("view=market");
-        render(<DataExplorer />);
-        const line = await screen.findByTestId(`process-designed-edges-${PROCESS.toLowerCase()}`);
-        expect(line.textContent).toContain("order 2 follows order 1; order 3 follows order 1");
+    it("the page shows the design's line under the unattributed process, naming no order", async () => {
+        await designLine();
     });
 
-    it("a use of a clause, not of a process design, links nothing: the linear view", async () => {
+    it("a use of a clause, not of a process design, links nothing", async () => {
         usageEventsMock.mockResolvedValue([{ args: { kind: USAGE_KIND_CLAUSE, clauseOrProcess: DESIGN, period: 0, processId: PROCESS } }]);
         const corpus = await readCorpus();
-        expect(corpus.edgesByProcess.get(PROCESS.toLowerCase())!.source).toBe("linear");
+        expect(corpus.designByProcess.has(PROCESS.toLowerCase())).toBe(false);
     });
 
     it("a failed UsageRecorded read links nothing, and the corpus still lands", async () => {
         vi.spyOn(console, "warn").mockImplementation(() => undefined);
         usageEventsMock.mockRejectedValue(new Error("fetch failed"));
         const corpus = await readCorpus();
-        const edges = corpus.edgesByProcess.get(PROCESS.toLowerCase())!;
-        expect(edges.source).toBe("linear");
-        expect(new Map(edges.follows)).toEqual(new Map([[ROOT, []], [LEFT, [ROOT]], [RIGHT, [LEFT]]]));
+        expect(corpus.designByProcess.has(PROCESS.toLowerCase())).toBe(false);
+        expect(corpus.process.processes.get(PROCESS)?.orders.size).toBe(4);
     });
 });
 
-describe("/data/explore — a process with no link keeps the linear view", () => {
+describe("/data/explore — a process with no link", () => {
     beforeEach(() => {
-        fanOutLoaded();
+        designLoaded();
         usageEventsMock.mockReset().mockResolvedValue([]);
         chainAnswers([{ at: CORE, event: "OrderCommitted", rows: commits(CORE, (i) => BigInt(2 + i)) }]);
     });
 
-    it("no design line on the page, and the shape is FigaroCore's chain", async () => {
+    it("carries no design line, and the page names no edge between its orders", async () => {
         const corpus = await readCorpus();
-        expect(corpus.edgesByProcess.get(PROCESS.toLowerCase())!.source).toBe("linear");
+        expect(corpus.designByProcess.size).toBe(0);
         params.current = new URLSearchParams("view=market");
         render(<DataExplorer />);
         await screen.findByTestId(`process-row-${PROCESS.toLowerCase()}`);
         expect(screen.queryByTestId(`process-designed-edges-${PROCESS.toLowerCase()}`)).toBeNull();
+        expect(document.body.textContent).not.toMatch(/order \d follows/);
     });
 });
