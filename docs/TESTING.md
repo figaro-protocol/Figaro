@@ -579,7 +579,11 @@ against the DEVNET's own verifier (the devnet pins that binary's guest,
 the buyer's balance and the verifier's `OrderCommitted` out of band, then
 opens `/audit/view` with no relay endpoint anywhere and asserts the order
 renders from chain events, its signatures "Proved in a batch", bound to the
-batch the chain names. Skips when no binary is built.
+batch the chain names. After the batched resolution the seller splits part of
+its payout to two recipients through the public multisender on its order
+page, and the spec reads both recipients' balances and the seller's from the
+token. Skips when no binary is built, unless `REQUIRE_BATCH_E2E=1`, which
+turns the skip into a failure; the full scope of `Devnet E2E CI` sets it.
 
 ## Frontend Vitest (`frontend/tests/`) — 2 tiers
 
@@ -1263,10 +1267,14 @@ Per workflow, what it runs and when:
   registered protocol clauses. Either scope then runs the `stranger` project's crawl
   (`crawl.stranger.spec.ts`) against a fresh export and the seeded chain, so
   every pull request that touches `frontend/` runs it; the budget is 50
-  minutes for the spine and 170 for the full scope. The `stranger` project's
+  minutes for the spine and 185 for the full scope. The `stranger` project's
   `accessibility.stranger.spec.ts` runs in `frontend-ci`, over that job's
-  export. `batch-events.devnet.spec.ts` skips in this job, which builds no
-  relay binary.
+  export. For the full scope a `relay` job builds the relay's release binary,
+  with the toolchain and the cargo cache of `prover-ci`'s `sp1` job, and hands
+  it on as an artifact; the deploy pins the guest it reports, and the suite
+  runs with `REQUIRE_BATCH_E2E=1`, so `batch-events.devnet.spec.ts` runs and
+  a skip of it fails. The spine scope builds no relay, and the spec is not in
+  its selection.
 - **`Dependency Audit CI`** — push/PR, NOT path-filtered: three npm-audit legs (root
   production deps at high+; frontend production deps at high+, through
   `scripts/audit-frontend.mjs`, which sets aside by id the advisories named in
