@@ -103,9 +103,9 @@ contract RpgfIntegrationTest is Test {
 
         core = new FigaroCore();
         token = new MockERC20("Test", "TST");
-        clauses = new ClauseRegistry(0);
-        assemblies = new ProcessRegistry(0);
-        agreements = new AgreementRegistry(0);
+        clauses = new ClauseRegistry(0, 0);
+        assemblies = new ProcessRegistry(0, 0);
+        agreements = new AgreementRegistry(0, 0);
         ASM = AgreementTestHelper.assemblyLeafFor(AGR, AgreementTestHelper.agreementLeafBytes(0, "{}", "[]"));
         members = new MembersRegistry(0, 0);
 

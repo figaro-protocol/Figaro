@@ -2,24 +2,35 @@
  * withdraw-deposits.mjs — bulk-reclaim registration deposits from the clause,
  * agreement and process registries, the withdraw half of populate-clauses.mjs (which
  * is the bulk-deposit half). Built for the Sepolia redeploy day: every id the
- * acting wallet registered on the OLD stack is withdrawn (no cooldown), the
- * stakes return, and the new stack is seeded fresh. Withdrawing de-surfaces;
- * the bindings stay permanent — this script moves only the stakes.
+ * acting wallet registered on the OLD stack is withdrawn, the stakes return,
+ * and the new stack is seeded fresh. Withdrawing de-surfaces; the bindings
+ * stay permanent — this script moves only the stakes.
+ *
+ * TWO REGISTRY SHAPES are on the chain, and the script reads which one each
+ * registry is (a `withdrawalCooldown()` read that answers, or not):
+ *   - a registry deployed with the withdrawal cooldown takes the stake back
+ *     in two calls, `requestWithdrawal(key)` then `withdraw(key)` once
+ *     `withdrawable(key)` is true. A run requests every live stake and claims
+ *     every one whose cooldown has passed; a stake still cooling is listed
+ *     with its `releaseAt`, and a later run claims it.
+ *   - a registry deployed before it takes the stake back in one call,
+ *     `withdrawDeposit(key)` (`ONE_CALL_WITHDRAW_ABI` below — that deployed
+ *     interface, not the SDK's).
  *
  * ONE actor per invocation — the same three modes as the populate scripts:
  *
- *   REGISTRAR_PRIVATE_KEY     — EOA signs each withdrawDeposit directly
- *   REGISTRAR_LEDGER_HD_PATH  — Ledger signs each on the device (one tap per id)
+ *   REGISTRAR_PRIVATE_KEY     — EOA signs each call directly
+ *   REGISTRAR_LEDGER_HD_PATH  — Ledger signs each on the device (one tap per call)
  *   REGISTRAR_VAULT           — the vault is the registeredBy of record; each
- *     withdrawDeposit routes through the multisig (VAULT_OWNER_KEYS approvals,
+ *     call routes through the multisig (VAULT_OWNER_KEYS approvals,
  *     + VAULT_LEDGER_HD_PATH for a device owner) and the ETH returns TO THE
  *     VAULT, which forwards per the day's plan — this script never moves it.
  *
  * Discovery is from the chain, never a list: ClauseRegistered /
  * AgreementRegistered / ProcessRegistered events are scanned (SCAN_FROM_BLOCK trims public-network
  * scans), narrowed to rows whose registeredBy is the actor, and each live
- * deposit is withdrawn. Already-withdrawn ids are skipped, so a re-run
- * converges — same idempotence discipline as the populate scripts. The old
+ * deposit is withdrawn. Paid-out ids are skipped and a cooling one waits, so a
+ * re-run converges — same idempotence discipline as the populate scripts. The old
  * stack's events carry the pre-rename arg names on-chain, but names are
  * labels, not topics: the current ABI decodes them as `registeredBy`.
  *
@@ -48,12 +59,42 @@
  *                                   without constructing a signer (no device)
  */
 
-import { createPublicClient, createWalletClient, encodeFunctionData, formatEther, http } from 'viem';
+import { createPublicClient, createWalletClient, encodeFunctionData, formatEther, http, parseAbi } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { CLAUSE_REGISTRY_ABI, PROCESS_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, isBytes32Hex } from '@figaro-protocol/sdk';
 import {
     VAULT_ABI, ledgerWalletClient, readEnvLocal, registrarAccount, resolveChain, vaultExecute,
 } from './populate-clauses.mjs';
+
+/** The one-call withdrawal of a key registry deployed before the withdrawal
+ *  cooldown: the interface that deployed bytecode answers, kept here so this
+ *  script can reclaim from such a stack on its redeploy day. */
+const ONE_CALL_WITHDRAW_ABI = parseAbi(['function withdrawDeposit(bytes32 key) external']);
+
+/** Whether a key registry takes its stakes back in two calls: it answers
+ *  `withdrawalCooldown()`. A registry deployed before the cooldown has no such
+ *  function, and the read reverts. */
+async function twoStepRegistry(publicClient, address, abi) {
+    try {
+        await publicClient.readContract({ address, abi, functionName: 'withdrawalCooldown' });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/** The step a key's stake is at, for the registry's shape: `request` (live),
+ *  `claim` (requested and claimable now), `cooling` (requested, not yet
+ *  claimable: carries `releaseAt`), `withdraw` (live, one-call registry) or
+ *  `done` (paid out). */
+async function stakeStep(publicClient, { registry, abi, key, withdrawn, twoStep }) {
+    if (!twoStep) return withdrawn ? { step: 'done' } : { step: 'withdraw' };
+    if (!withdrawn) return { step: 'request' };
+    const releaseAt = await publicClient.readContract({ address: registry, abi, functionName: 'releaseAt', args: [key] });
+    if (releaseAt === 0n) return { step: 'done' };
+    const due = await publicClient.readContract({ address: registry, abi, functionName: 'withdrawable', args: [key] });
+    return due ? { step: 'claim' } : { step: 'cooling', releaseAt };
+}
 
 const RPC_URL = process.env.RPC_URL;
 if (!RPC_URL) throw new Error('RPC_URL is required');
@@ -109,8 +150,17 @@ async function main() {
     const actor = (vault ?? walletClient.account.address).toLowerCase();
     console.log(`Withdrawing deposits registered by ${vault ? `vault ${vault}` : walletClient.account.address}${dryRun ? ' (DRY RUN)' : ''}`);
 
-    // ── Discover from the chain: every live deposit the actor holds. ──
+    // ── Discover from the chain: every stake the actor holds, at its step. ──
     const manifest = [];
+    async function plan(entry) {
+        const { step, releaseAt } = await stakeStep(publicClient, entry);
+        if (step === 'done') { console.log(`  · ${entry.label} — already paid out, skipped`); return; }
+        if (step === 'cooling') {
+            console.log(`  · ${entry.label} — requested; claimable from ${new Date(Number(releaseAt) * 1000).toISOString()}, run again then`);
+            return;
+        }
+        manifest.push({ ...entry, step });
+    }
 
     const clauseDeposit = await publicClient.readContract({
         address: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registrationDeposit',
@@ -129,6 +179,7 @@ async function main() {
         }, fromBlock))
             .filter((e) => String(e.args.registeredBy ?? '').toLowerCase() === actor)
             .map((e) => ({ key: e.args.clauseKey }));
+    const clauseTwoStep = await twoStepRegistry(publicClient, clauseRegistry, CLAUSE_REGISTRY_ABI);
     for (const r of clauseRows) {
         const key = r.key;
         const [registeredBy, withdrawn] = await publicClient.readContract({
@@ -137,11 +188,7 @@ async function main() {
         // Explicit ids are still gated by state: never withdraw what the actor
         // does not hold (the contract would revert; refusing here is cheaper).
         if (registeredBy.toLowerCase() !== actor) { console.log(`  · clause ${key} — not this actor's (registeredBy ${registeredBy}), skipped`); continue; }
-        if (withdrawn) { console.log(`  · clause ${key} — already withdrawn, skipped`); continue; }
-        manifest.push({
-            registry: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, key, stake: clauseDeposit,
-            label: `clause ${key}`,
-        });
+        await plan({ registry: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, key, withdrawn, twoStep: clauseTwoStep, stake: clauseDeposit, label: `clause ${key}` });
     }
 
     const assemblyDeposit = await publicClient.readContract({
@@ -154,16 +201,13 @@ async function main() {
         }, fromBlock))
             .filter((e) => String(e.args.registeredBy ?? '').toLowerCase() === actor)
             .map((e) => e.args.processDesignHash);
+    const assemblyTwoStep = await twoStepRegistry(publicClient, processRegistry, PROCESS_REGISTRY_ABI);
     for (const key of assemblyKeys) {
         const [registeredBy, , depositWithdrawn] = await publicClient.readContract({
             address: processRegistry, abi: PROCESS_REGISTRY_ABI, functionName: 'bindings', args: [key],
         });
         if (registeredBy.toLowerCase() !== actor) { console.log(`  · assembly ${key} — not this actor's (registeredBy ${registeredBy}), skipped`); continue; }
-        if (depositWithdrawn) { console.log(`  · assembly ${key} — already withdrawn, skipped`); continue; }
-        manifest.push({
-            registry: processRegistry, abi: PROCESS_REGISTRY_ABI, key, stake: assemblyDeposit,
-            label: `assembly ${key}`,
-        });
+        await plan({ registry: processRegistry, abi: PROCESS_REGISTRY_ABI, key, withdrawn: depositWithdrawn, twoStep: assemblyTwoStep, stake: assemblyDeposit, label: `assembly ${key}` });
     }
 
     if (agreementRegistry) {
@@ -180,42 +224,45 @@ async function main() {
             }, fromBlock))
                 .filter((e) => String(e.args.registeredBy ?? '').toLowerCase() === actor)
                 .map((e) => e.args.agreementHash);
+        const agreementTwoStep = await twoStepRegistry(publicClient, agreementRegistry, AGREEMENT_REGISTRY_ABI);
         for (const key of agreementHashes) {
             const [registeredBy, , depositWithdrawn] = await publicClient.readContract({
                 address: agreementRegistry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'bindings', args: [key],
             });
             if (registeredBy.toLowerCase() !== actor) { console.log(`  · agreement ${key} — not this actor's (registeredBy ${registeredBy}), skipped`); continue; }
-            if (depositWithdrawn) { console.log(`  · agreement ${key} — already withdrawn, skipped`); continue; }
-            manifest.push({
-                registry: agreementRegistry, abi: AGREEMENT_REGISTRY_ABI, key, stake: agreementDeposit,
-                label: `agreement ${key}`,
-            });
+            await plan({ registry: agreementRegistry, abi: AGREEMENT_REGISTRY_ABI, key, withdrawn: depositWithdrawn, twoStep: agreementTwoStep, stake: agreementDeposit, label: `agreement ${key}` });
         }
     }
 
     // ── The manifest is the written plan: print it whole before anything moves. ──
-    const total = manifest.reduce((sum, m) => sum + m.stake, 0n);
-    console.log(`\n${manifest.length} live deposit(s) to withdraw — ${formatEther(total)} ETH returns to ${vault ? 'the vault' : 'the actor'}:`);
-    for (const m of manifest) console.log(`  - ${m.label} (${formatEther(m.stake)} ETH)`);
+    // ETH moves on a claim and on a one-call withdrawal; a request moves none.
+    const paying = manifest.filter((m) => m.step !== 'request');
+    const total = paying.reduce((sum, m) => sum + m.stake, 0n);
+    const STEP_CALL = { request: 'requestWithdrawal', claim: 'withdraw', withdraw: 'withdrawDeposit' };
+    console.log(`\n${manifest.length} call(s) — ${formatEther(total)} ETH returns to ${vault ? 'the vault' : 'the actor'} now:`);
+    for (const m of manifest) console.log(`  - ${m.label}: ${STEP_CALL[m.step]} (${formatEther(m.stake)} ETH)`);
     if (dryRun) { console.log('\nDRY RUN — nothing sent.'); return; }
 
     for (const m of manifest) {
+        const functionName = STEP_CALL[m.step];
+        const abi = m.step === 'withdraw' ? ONE_CALL_WITHDRAW_ABI : m.abi;
         if (vault) {
             await vaultExecute({
                 publicClient, vault, ownerClients,
                 to: m.registry, value: 0n,
-                data: encodeFunctionData({ abi: m.abi, functionName: 'withdrawDeposit', args: [m.key] }),
+                data: encodeFunctionData({ abi, functionName, args: [m.key] }),
+                // The vault hashes the nonce with the call data, so a request
+                // and its later claim on one key are two distinct operations.
                 nonce: BigInt(m.key),
             });
         } else {
-            const hash = await walletClient.writeContract({
-                address: m.registry, abi: m.abi, functionName: 'withdrawDeposit', args: [m.key],
-            });
+            const hash = await walletClient.writeContract({ address: m.registry, abi, functionName, args: [m.key] });
             await publicClient.waitForTransactionReceipt({ hash });
         }
-        console.log(`  ✓ ${m.label} — withdrawn`);
+        console.log(`  ✓ ${m.label} — ${functionName}`);
     }
-    console.log(`\nDone — ${manifest.length} deposit(s) reclaimed (${formatEther(total)} ETH).`);
+    const requested = manifest.length - paying.length;
+    console.log(`\nDone — ${paying.length} stake(s) reclaimed (${formatEther(total)} ETH)${requested ? `; ${requested} requested, claimable after the cooldown (run again then)` : ''}.`);
 }
 
 main();

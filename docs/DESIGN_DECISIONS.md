@@ -227,8 +227,9 @@ receive the resolved process's complete, closed evidentiary data as input.
 key and any URI, placing the fixed registration stake
 (`registrationDeposit`, immutable at deploy). There is no approval and no identity check.
 First write wins per key (`AlreadyRegistered` revert) and
-the binding is permanent — `withdrawDeposit` returns the stake without
-clearing it; readers de-surface a withdrawn clause for new compositions.
+the binding is permanent — `requestWithdrawal` and, after the cooldown,
+`withdraw` return the stake without clearing it; readers de-surface a withdrawn
+clause for new compositions from the request (§ 41).
 The key is `keccak256` of the canonical bytes of the spec without its
 top-level `block` (`computeClauseKey(spec)`); `block` is presentation and
 stays outside the key, and the spec's `clauseId` and `version` are words
@@ -263,7 +264,7 @@ first-write-wins design KEPT, for two reasons. First, the shared flat keyspace
 IS the coordination commons — namespacing keys under the designer's address
 (the structural fix) would fragment it, and signature-based registration breaks the designer-is-staker assumption the reward's live-stake gate rests on. Second, reward
 follows real USAGE (network truth): a squatted key earns nothing unless the
-ecosystem actually composes it, which the squatter cannot force, and the stake still prices the attempt. The reactive-front-run window is already minimal —
+ecosystem actually composes it, which the squatter cannot force, and the stake still prices the attempt: a front-runner that withdraws the key it took holds its stake locked for the cooldown (§ 41). The reactive-front-run window is already minimal —
 registration pins the spec to the designer's OWN node and registers in one atomic UI
 action, so nothing is publicly observable before the register tx hits the mempool.
 The residual — a mempool front-run of that tx — is the accepted,
@@ -562,9 +563,10 @@ The ETH is not stuck, on any reading:
   member is never held on a surface they asked to leave, so discovery removal and
   erasure of the published declaration are unaffected.
 
-**Scope**: `MembersRegistry` only. `ClauseRegistry`, `AgreementRegistry` and `ProcessRegistry` deliberately
-have no cooldown and need none — their withdrawal is one-shot per key and the key's
-binding is permanent, so there is nothing to recycle.
+**Scope**: the recycling argument is `MembersRegistry`'s. `ClauseRegistry`,
+`AgreementRegistry` and `ProcessRegistry` carry the same cooldown for another
+reason, a front-run their one-call withdrawal left open (§ 41); the "not stuck"
+reading above holds for them word for word.
 
 ---
 
@@ -1749,6 +1751,69 @@ and no failure text.
 
 ---
 
+## 41. The key registries take the members registry's cooldown; a withdrawn key forfeits its unclaimed periods
+
+**Pattern**: `ClauseRegistry`, `AgreementRegistry` and `ProcessRegistry` return a
+stake in two calls, as `MembersRegistry` does. `requestWithdrawal(key)`, by the
+stored `registeredBy` only, sets the withdrawn flag at once and
+`releaseAt[key] = block.timestamp + withdrawalCooldown`, and emits
+`WithdrawalRequested`; `withdraw(key)` pays the stake out only from `releaseAt`
+(`CooldownActive` before it). `withdrawalCooldown` is an immutable constructor
+argument; nothing releases a stake early. `RpgfMinter._isAuthor` requires the
+key's stake to be live at the claim, so a designer that requests its stake back
+before claiming loses every closed period of that key not yet claimed.
+
+**Why it looks wrong**: § 14's argument does not reach the key registries: a key
+is withdrawn once and its binding is permanent, so no stake is recycled across
+identities. A timer on a stake whose key can never be registered again looks like
+a hold with no purpose. And a closed period the counter scored under a live stake,
+lost because the stake was withdrawn later, looks like earned rewards taken back.
+
+**Why it is correct**: the cooldown's purpose is a front-run. With a one-call
+withdrawal, a front-runner that sees a designer's `registerClause`,
+`registerAgreement` or `registerProcess` in the mempool registers the same key
+first and takes its stake back in the same transaction. The key is then withdrawn
+for good: no use of it is ever counted (§ 18), the designer's transaction reverts
+as a second registration, and the front-runner's cost is gas. One stake serves any
+number of keys, which is the recycling § 14 rules out, aimed at keys instead of
+identities. § 7 accepts the front-run that takes a key's reward because the stake
+prices the attempt, and a one-call withdrawal returns that stake in the attempt's
+own transaction. With the cooldown, every key a front-runner takes and withdraws
+holds one stake locked for the cooldown, the price § 7 relies on. The deploy
+scripts pass the members' value, 28 days, on Sepolia and mainnet, and zero on the
+devnet, as for members. The request flips the flag at once, so a key stops
+counting as live at the request, as with a one-call withdrawal: only the payment
+waits. The front-run itself stays possible, as § 7 accepts; a designer still
+escapes it by changing a clause's bytes or an agreement's composition, and a
+private mempool closes the window.
+
+The forfeit is the claim-time half of the live-stake check, and the check runs at
+both ends: at the count (§ 18) and at the claim. The paper at
+`/papers/substrate-broadening-rpgf` grounds it: it closes the path of
+registering, farming and withdrawing, because the stake that makes a registration
+costly cannot be recovered while the registration still earns. A check at the
+count alone would let a designer withdraw as soon as its last use counted and
+still claim, so the capital behind the paid replication lever (§ 18) would be held
+only through the farming, not through the period and its claim, which is what
+`script/DeployMainnet.s.sol` sizes the stake on. The forfeited share stays in the
+period's total and is never minted, so the pool under-pays and never over-pays.
+The order that keeps a period is claim first, then request the stake back; the
+cooldown runs after the request, so that order costs the designer nothing.
+
+**Tests**: `test/rewards/KeyWithdrawalRegressionTest.t.sol`: a front-runner that
+registers a key and requests it back in one transaction leaves its stake in each
+registry until the cooldown, and a claim of the stake before that reverts
+`CooldownActive`; a designer that requests its stake back after a period closed
+and before claiming cannot claim it, and the share is never minted; a designer
+that claims first and then requests keeps the period. Each registry's suite
+(`test/registries/*RegistryTest.t.sol`) holds the two steps, the cooldown and the
+payout; `RpgfMinterTest` holds the forfeit on each kind. The three Halmos contracts
+in `test/registries/HalmosClauseAgreementAndAssemblyRegistries.t.sol` prove
+solvency over request and claim interleavings and that a requested stake is
+claimable in full once the cooldown has elapsed and never before.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -1793,3 +1858,4 @@ and no failure text.
 | 38 | `RpgfMinter.claim` checks the period budget consistent counter data already bounds | reward-path | A check that cannot fire reads as dead code | A backstop like § 28: it states the budget in the minter, so a fault in the counter's tally is refused rather than minted from other designers' share |
 | 39 | `AttestBuyer` signs `processId` beside `orderHash`; `AttestSeller` does not | batch-path/evidence | The seller's message looks one field short | `orderHash = keccak256(processId ‖ structHash)` binds the process on every path, and both ids derive from the one target commitment; the buyer's extra field adds nothing to what is bound, and changing a type changes every signature and the verification key |
 | 40 | The reference frontend reads a clause spec only when its bytes hash to the CID in the registered URI | frontend/reader | The key already anchors everything a party signs, and the registry accepts any URI | The key leaves the `block` out, so without the CID the `block` read is the transport's choice; with it, the registrant's; a URI form the frontend cannot recompute is the unchecked transport, so it is refused |
+| 41 | The key registries take the members' withdrawal cooldown; a withdrawn key forfeits its unclaimed periods | registry/reward-path | A key withdrawn once recycles nothing, so a timer on its stake looks purposeless; a period scored under a live stake and lost at a later withdrawal looks like earned rewards taken back | A one-call withdrawal lets a front-runner take a pending key and its stake back in one transaction, at gas cost; the cooldown makes the stake price the attempt (§ 7). The live-stake check runs at the count and at the claim, so the stake stays held through the period and its claim (`/papers/substrate-broadening-rpgf`); a designer claims first, then requests |

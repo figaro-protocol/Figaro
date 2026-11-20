@@ -2593,10 +2593,12 @@ the registering call (`register` / `registerClause` / `registerAgreement` / `reg
 `payable`) — a stake no party can seize, and `msg.value`
 must equal it EXACTLY (there is no sweep). The amount is a deploy-time immutable;
 read it from the contract's `registrationDeposit()` view rather than hardcoding a
-figure. Clause, agreement and assembly stakes come back in one call —
-`withdrawDeposit(clauseKey | agreementHash | processDesignHash)`, which de-surfaces the entry while
-leaving the binding permanent, because orders already committed against them still
-resolve.
+figure. Clause, agreement and assembly stakes come back in two calls, as a member's
+does: `requestWithdrawal(clauseKey | agreementHash | processDesignHash)` de-surfaces the entry at
+once (`WithdrawalRequested`), and `withdraw(sameKey)` pays the stake out once the
+registry's `withdrawable(key)` view is true, after its `withdrawalCooldown()`. The binding
+stays permanent, because orders already committed against them still resolve. The
+cooldown prices an attempt to register a key ahead of its designer and withdraw it.
 
 **A member's stake comes back in TWO calls**, and the split is load-bearing:
 

@@ -152,7 +152,7 @@ export async function deployBatchStack(
     // ── Deploy ClauseRegistry + anchor the witness clause ───
 
     const CLAUSE_REGISTRY_DEPLOY_ABI = parseAbi([
-        "constructor(uint256 _registrationDeposit)",
+        "constructor(uint256 _registrationDeposit, uint256 _withdrawalCooldown)",
         "function registerClause(bytes32 clauseKey, string contentURI) external payable",
         "function registered(bytes32 clauseKey) view returns (bool)",
     ]);
@@ -160,7 +160,7 @@ export async function deployBatchStack(
     const regHash = await deployerWallet.deployContract({
         abi: CLAUSE_REGISTRY_DEPLOY_ABI,
         bytecode: registryBytecode,
-        args: [0n], // zero-deposit registry keeps the e2e's value legs about bonds only
+        args: [0n, 0n], // zero-deposit registry keeps the e2e's value legs about bonds only
     });
     const regReceipt = await publicClient.waitForTransactionReceipt({ hash: regHash });
     const clauseRegistryAddress = regReceipt.contractAddress!;
@@ -214,17 +214,17 @@ export async function deployBatchStack(
     // empty zero-deposit registry of each satisfies the constructor's
     // nonzero check.
     const processRegistryHash = await deployerWallet.deployContract({
-        abi: parseAbi(["constructor(uint256 _registrationDeposit)"]),
+        abi: parseAbi(["constructor(uint256 _registrationDeposit, uint256 _withdrawalCooldown)"]),
         bytecode: loadBytecode("ProcessRegistry.sol/ProcessRegistry.json"),
-        args: [0n],
+        args: [0n, 0n],
     });
     const processRegistryAddress = (
         await publicClient.waitForTransactionReceipt({ hash: processRegistryHash })
     ).contractAddress!;
     const agreementRegistryHash = await deployerWallet.deployContract({
-        abi: parseAbi(["constructor(uint256 _registrationDeposit)"]),
+        abi: parseAbi(["constructor(uint256 _registrationDeposit, uint256 _withdrawalCooldown)"]),
         bytecode: loadBytecode("AgreementRegistry.sol/AgreementRegistry.json"),
-        args: [0n],
+        args: [0n, 0n],
     });
     const agreementRegistryAddress = (
         await publicClient.waitForTransactionReceipt({ hash: agreementRegistryHash })

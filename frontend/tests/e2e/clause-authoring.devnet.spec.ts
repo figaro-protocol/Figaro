@@ -15,7 +15,7 @@
  * reclaim gate.
  *
  * Fresh clause id per run (the probe nonce doctrine): clause identity is
- * (name, version), first-write-wins and immutable, and `withdrawDeposit` is
+ * (name, version), first-write-wins and immutable, and `requestWithdrawal` is
  * once-only per permanent binding — an adopted clause is non-re-testable
  * after run 1, and withdrawing a SEEDED clause would de-surface a fixture
  * every other spec composes. The nonce keeps each run's binding fresh and
@@ -47,9 +47,11 @@
  *              author −(deposit + gasUsed×effectiveGasPrice) exactly
  *   commit   — buyer ↓ buyerBond, seller ↓ sellerBond, core escrow ↑ both
  *   resolve  — buyer net −payment, seller net +payment, escrow to baseline
- *   reclaim  — registry escrow −deposit exactly; author +(deposit − gas)
- *              exactly; DepositWithdrawn for this run's idHash from
- *              blockBefore+1 (pattern 17)
+ *   reclaim  — request: WithdrawalRequested for this run's idHash, no ETH
+ *              moves; claim (the devnet cooldown is 0): registry escrow
+ *              −deposit exactly; registrant +(deposit − gas) exactly;
+ *              DepositWithdrawn for this run's idHash from blockBefore+1
+ *              (pattern 17)
  *
  * Requires Anvil + ./scripts/devup.sh (deploy + populate) + Kubo + :3100.
  */
@@ -391,21 +393,42 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
             await expect(caveat, 'no unverifiable trades → no caveat').toBeHidden();
         }
 
-        // ── RECLAIM + VALUE LEG: click; DepositWithdrawn lands for this run's
-        //    idHash; the registry escrow drops by exactly the deposit and the
-        //    author's ETH rises by exactly deposit − gas. ──
-        const withdrawBlockBefore = await publicClient.getBlockNumber();
-        const [registryEthBeforeW, authorEthBeforeW] = await Promise.all([
-            publicClient.getBalance({ address: registry }),
-            publicClient.getBalance({ address: AUTHOR }),
-        ]);
+        // ── REQUEST: click; WithdrawalRequested lands for this run's idHash;
+        //    the row reads requested and offers no second request; no ETH moves. ──
+        const requestBlockBefore = await publicClient.getBlockNumber();
+        const registryEthBeforeW = await publicClient.getBalance({ address: registry });
 
         await reclaimBtnAfter.click();
         await expect(
-            reclaimBtnAfter,
-            'the affordance reflects the reclaim (stake reclaimed)',
-        ).toHaveText('Stake reclaimed', { timeout: 60000 });
-        await expect(reclaimBtnAfter).toBeDisabled();
+            rowAfter.getByTestId(`clause-reclaim-state-${idHash}`),
+            'the row reflects the request',
+        ).toHaveText('withdrawal requested', { timeout: 60000 });
+        await expect(rowAfter.getByTestId('clause-withdraw-button'), 'no second request').toHaveCount(0);
+
+        const requestedEvents = await publicClient.getContractEvents({
+            address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'WithdrawalRequested',
+            args: { clauseKey: idHash }, fromBlock: requestBlockBefore + 1n,
+        });
+        expect(requestedEvents, 'exactly one WithdrawalRequested for this binding').toHaveLength(1);
+        expect((requestedEvents[0].args.registeredBy as string).toLowerCase()).toBe(AUTHOR.toLowerCase());
+        expect(requestedEvents[0].args.amount, 'the event carries the exact deposit').toBe(deposit);
+        expect(await publicClient.getBalance({ address: registry }), 'the request moves no ETH').toBe(registryEthBeforeW);
+
+        // ── CLAIM + VALUE LEG: the devnet cooldown is 0, so the chain's
+        //    `withdrawable` is true at once; click; DepositWithdrawn lands for
+        //    this run's idHash; the registry escrow drops by exactly the deposit
+        //    and the registrant's ETH rises by exactly deposit − gas. ──
+        const claimBtn = rowAfter.getByTestId('clause-claim-button');
+        await expect(claimBtn, 'the chain says the stake is withdrawable').toBeEnabled({ timeout: 60000 });
+        const withdrawBlockBefore = await publicClient.getBlockNumber();
+        const authorEthBeforeW = await publicClient.getBalance({ address: AUTHOR });
+
+        await claimBtn.click();
+        await expect(
+            rowAfter.getByTestId(`clause-reclaim-state-${idHash}`),
+            'the row reflects the claim',
+        ).toHaveText('stake reclaimed', { timeout: 60000 });
+        await expect(rowAfter.getByTestId('clause-claim-button'), 'nothing left to claim').toHaveCount(0);
 
         // The event, from strictly after the pre-click head (pattern 17),
         // keyed by THIS run's clause key (the event's indexed key topic).
@@ -418,7 +441,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         expect(withdrawnEvents[0].args.amount, 'the event carries the exact deposit').toBe(deposit);
 
         const withdrawReceipt = await publicClient.getTransactionReceipt({ hash: withdrawnEvents[0].transactionHash });
-        expect(withdrawReceipt.status, 'the withdraw transaction succeeded').toBe('success');
+        expect(withdrawReceipt.status, 'the claim transaction succeeded').toBe('success');
         const withdrawGas = withdrawReceipt.gasUsed * withdrawReceipt.effectiveGasPrice;
         const [registryEthAfterW, authorEthAfterW] = await Promise.all([
             publicClient.getBalance({ address: registry }),
@@ -432,8 +455,8 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         });
 
         // ── DE-SURFACE REFLECTION: a fresh read of the page derives the
-        //    withdrawn state from the chain (the DepositWithdrawn fold), not
-        //    session state. ──
+        //    withdrawn state from the chain (the WithdrawalRequested fold, and
+        //    `releaseAt` read back as 0), not session state. ──
         await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForConnected(page);
         const reloadedRow = page.getByTestId(`clause-reclaim-row-${idHash}`);
@@ -442,8 +465,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
             reloadedRow.getByTestId(`clause-reclaim-state-${idHash}`),
             'the row state is chain-derived: stake reclaimed',
         ).toHaveText('stake reclaimed', { timeout: 30000 });
-        const reloadedBtn = reloadedRow.getByTestId('clause-withdraw-button');
-        await expect(reloadedBtn).toHaveText('Stake reclaimed', { timeout: 15000 });
-        await expect(reloadedBtn).toBeDisabled();
+        await expect(reloadedRow.getByTestId('clause-withdraw-button')).toHaveCount(0);
+        await expect(reloadedRow.getByTestId('clause-claim-button')).toHaveCount(0);
     });
 });

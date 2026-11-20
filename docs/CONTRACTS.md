@@ -222,11 +222,22 @@ anchoring under a stake.
   registeredBy)`.
 - State: `registered[clauseKey]`, never cleared — the anchor
   `FigaroBatchVerifier` checks every spec binding against — and
-  `depositOf[clauseKey] = {registeredBy, withdrawn}`.
-- `withdrawDeposit(clauseKey)` — the registering wallet only, once, no time lock;
-  refunds the stake and emits `DepositWithdrawn`. The binding stays; readers
-  remove the clause from view for new compositions, and orders already
-  committed against it still resolve.
+  `depositOf[clauseKey] = {registeredBy, withdrawn}`, `releaseAt[clauseKey]`
+  (zero when nothing is pending), and the immutables `registrationDeposit` and
+  `withdrawalCooldown`.
+- Withdrawal takes two calls, as a member's does (§ "The cooldown" below).
+  `requestWithdrawal(clauseKey)` — the registering wallet only
+  (`NotRegisteredBy`), once (`AlreadyWithdrawn`); sets `withdrawn` at once,
+  sets `releaseAt[clauseKey] = block.timestamp + withdrawalCooldown` and emits
+  `WithdrawalRequested(clauseKey, registeredBy, amount, releaseAt)`.
+  `withdraw(clauseKey)` — the registering wallet only; reverts
+  `NothingPending` when nothing is requested or it is already paid, and
+  `CooldownActive(releaseAt)` before `releaseAt`; then clears `releaseAt`,
+  emits `DepositWithdrawn(clauseKey, registeredBy, amount)` and pays the stake
+  back. `withdrawable(clauseKey)` is the chain's answer to "can it be claimed
+  now". The binding stays; readers remove the clause from view for new
+  compositions at the request, and orders already committed against it still
+  resolve.
 - Registration anchors a key and a locator only; the registry never sees the
   bytes and validates no content. `CLAUSES.md` owns the validation model.
 
@@ -257,17 +268,18 @@ designer composes an assembly from.
   empty URI (`EmptyContentURI`) and a second registration
   (`AgreementAlreadyRegistered(agreementHash)`); emits
   `AgreementRegistered(agreementHash, registeredBy, contentURI)`.
-- `withdrawDeposit(agreementHash)` — the registering wallet only
-  (`NotRegisteredBy`), once (`AlreadyWithdrawn`), no time lock; refunds the
-  stake (`TransferFailed` if the refund is refused) and emits
-  `DepositWithdrawn(agreementHash, registeredBy, amount)`. The binding is
-  permanent: the assemblies that compose the agreement and the orders that
-  instantiate it rely on its content staying stable, so a withdrawn agreement
-  stays hydratable; readers stop offering it for new compositions, and it
-  stops counting toward designer rewards.
+- `requestWithdrawal(agreementHash)` then `withdraw(agreementHash)`, the same
+  two calls, events, errors and `withdrawable` view as `ClauseRegistry`'s
+  (`TransferFailed` if the payment is refused, and the stake stays pending).
+  The binding is permanent: the assemblies that compose the agreement and the
+  orders that instantiate it rely on its content staying stable, so a
+  withdrawn agreement stays hydratable; from the request, readers stop
+  offering it for new compositions and its uses stop counting toward designer
+  rewards.
 - State: `bindings: agreementHash → AgreementBinding{registeredBy,
-  registeredAt, depositWithdrawn, contentURI}`. No admin, no transfer, no
-  removal, no edge to any other registry. The contract validates no content.
+  registeredAt, depositWithdrawn, contentURI}` and `releaseAt[agreementHash]`.
+  No admin, no transfer, no removal, no edge to any other registry. The
+  contract validates no content.
 - Deployment: every full deploy script (`LOCAL_DEV.md` § "Deployment scripts")
   deploys it beside `ProcessRegistry` and passes it to `UsageCounter` and
   `RpgfMinter`; the deployment record names it `agreementRegistry`, one of the
@@ -294,16 +306,26 @@ anchoring under a stake.
   human-readable slug is derived off-chain (`deriveProcessDesignSlug`).
 - `registerProcess(processDesignHash, contentURI)` — first-write-wins, requires
   exactly `registrationDeposit`, emits `ProcessRegistered`.
-- `withdrawDeposit(processDesignHash)` — the registering wallet only, once, no
-  time lock; refunds the stake and emits `DepositWithdrawn`. The binding is
-  permanent: buyers and sellers that reference the assembly rely on its content
-  staying stable.
+- `requestWithdrawal(processDesignHash)` then `withdraw(processDesignHash)`, the
+  same two calls, events, errors and `withdrawable` view as `ClauseRegistry`'s.
+  The binding is permanent: buyers and sellers that reference the assembly
+  rely on its content staying stable.
 - State: `bindings: processDesignHash → ProcessBinding{registeredBy,
-  registeredAt, depositWithdrawn, contentURI}`. No admin, no transfer, no
-  removal. The contract validates no content.
+  registeredAt, depositWithdrawn, contentURI}` and
+  `releaseAt[processDesignHash]`. No admin, no transfer, no removal. The
+  contract validates no content.
 
-The three hash-keyed registries carry no cooldown — their withdrawal is one-shot
-per key and the binding permanent, so there is nothing to recycle.
+**The cooldown.** The three hash-keyed registries carry `MembersRegistry`'s
+`withdrawalCooldown`, an immutable set in the constructor, with no admin and no
+early release. The request flips the withdrawn flag at once, so the key stops
+counting as live exactly when a one-call withdrawal would have; only the payment
+waits. The reason is a front-run: with a one-call withdrawal, a wallet could
+register a key someone had just broadcast and take its stake back in the same
+transaction, leaving the key withdrawn for good at the price of gas. With the
+cooldown each such key holds one stake locked for the cooldown
+(`DESIGN_DECISIONS.md` § 7 and the entry on the key registries' cooldown). The
+deploy scripts pass the members' value: 28 days on Sepolia and mainnet, zero on
+the devnet.
 
 ## `src/rewards/` — designer rewards: usage accounting, the florin, the minter
 
@@ -495,7 +517,10 @@ after the assemblies registry.
   withdrawn), and a kind above 2 reverts `UnknownKind`; the score is read
   from the counter's slot for the same kind. This registration stake and
   the claimant's member stake above are the designer side of the two-sided
-  live-stake gate; the seller side is `UsageCounter`'s.
+  live-stake gate; the seller side is `UsageCounter`'s. Because the key's
+  stake is read here as well as when each use counts, requesting it back
+  forfeits every closed period of the key not yet claimed: a designer claims
+  before it requests its stake back (`DESIGN_DECISIONS.md` § 41).
 - Payout is uniform pro rata with no cap. The budget array is validated
   against `UsageCounter.periodCount()` at deploy (`AmountsPeriodsMismatch`), so
   the two schedules cannot drift; the budget is enforced twice — `minted` per

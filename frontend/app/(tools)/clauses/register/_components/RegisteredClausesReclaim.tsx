@@ -2,13 +2,14 @@
 
 /**
  * RegisteredClausesReclaim — one address's registered clauses, each with a
- * stake-reclaim affordance when the connected wallet registered it.
+ * two-step stake reclaim (request, then claim after the cooldown) when the
+ * connected wallet registered it.
  *
  * The address is the connected wallet's or the one `?wallet=0x…` names
  * (`OneAddressList`); with neither, the list's place says so and reads
  * nothing. Derived from chain events only: `useRegisteredClausesByWallet`
  * filters `ClauseRegistered` to `registeredBy == subject` and folds
- * `DepositWithdrawn` in as `stakeWithdrawn` (the wallet-scoped read KEEPS
+ * `WithdrawalRequested` in as `stakeWithdrawn` (the wallet-scoped read KEEPS
  * withdrawn rows, flagged). The article is read from the warm clause-spec cache
  * (`block.design.article`) — never a stored field. Each row is the shared
  * `ReclaimStakeRow` (the registered agreements' row too), which owns its own
@@ -42,7 +43,7 @@ export function RegisteredClausesReclaim() {
 
 function ClauseReclaimRows({ subject, signer }: ListedAddress) {
     const { read, refetch } = useRegisteredClausesByWallet(subject);
-    const { withdraw } = useWithdrawClause();
+    const { requestWithdrawal, withdraw } = useWithdrawClause();
     // A registration confirmed by the form above is a write this scan ran
     // before: read the events again when the write signal changes.
     const writeVersion = useRegistryWriteVersion();
@@ -75,7 +76,8 @@ function ClauseReclaimRows({ subject, signer }: ListedAddress) {
                         <ReclaimClauseRow
                             key={`${clause.clauseKey}-${clause.blockNumber.toString()}`}
                             clause={clause}
-                            withdraw={withdraw}
+                            requestWithdrawal={requestWithdrawal}
+                            claim={withdraw}
                             onReclaimed={refetch}
                             signerIsRegistrant={hexEqual(clause.registeredBy, signer)}
                         />
@@ -88,12 +90,14 @@ function ClauseReclaimRows({ subject, signer }: ListedAddress) {
 
 function ReclaimClauseRow({
     clause,
-    withdraw,
+    requestWithdrawal,
+    claim,
     onReclaimed,
     signerIsRegistrant,
 }: {
     clause: RegisteredClauseEvent;
-    withdraw: (key: `0x${string}`) => Promise<unknown>;
+    requestWithdrawal: (key: `0x${string}`) => Promise<unknown>;
+    claim: (key: `0x${string}`) => Promise<unknown>;
     onReclaimed: () => void;
     signerIsRegistrant: boolean;
 }) {
@@ -109,7 +113,8 @@ function ReclaimClauseRow({
             title={spec?.clauseId ?? truncateHex(clause.clauseKey, { head: 10, tail: 6 })}
             meta={<>{article && <>article {article}</>}{article && spec && " · "}{spec && <>version {spec.version}</>}</>}
             stakeWithdrawn={clause.stakeWithdrawn}
-            withdraw={withdraw}
+            requestWithdrawal={requestWithdrawal}
+            claim={claim}
             onReclaimed={onReclaimed}
             signerIsRegistrant={signerIsRegistrant}
         />

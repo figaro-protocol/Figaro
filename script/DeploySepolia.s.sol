@@ -54,6 +54,9 @@ contract DeploySepolia is Script {
     uint64 constant PERIOD = 365 days;
     /// @dev Mainnet's cooldown, as the period is mainnet's.
     uint256 constant MEMBER_COOLDOWN = 28 days;
+    /// @dev The three key registries' withdrawal cooldown: mainnet's, the
+    ///      members' value (DESIGN_DECISIONS § 7, the price of an attempt).
+    uint256 constant KEY_COOLDOWN = 28 days;
 
     address internal _core;
     address internal _attestation;
@@ -142,18 +145,18 @@ contract DeploySepolia is Script {
 
         // Author-side stakes — the ratified mainnet values (0.05 ether, sized
         // from RPGF paper §7; deposits do not compress).
-        ClauseRegistry clauses = new ClauseRegistry(0.05 ether);
+        ClauseRegistry clauses = new ClauseRegistry(0.05 ether, KEY_COOLDOWN);
         _clauses = address(clauses);
         console.log("ClauseRegistry:         ", _clauses);
 
-        ProcessRegistry assemblies = new ProcessRegistry(0.05 ether);
+        ProcessRegistry assemblies = new ProcessRegistry(0.05 ether, KEY_COOLDOWN);
         _assemblies = address(assemblies);
         console.log("ProcessRegistry:       ", _assemblies);
 
         // AgreementRegistry — the registered agreements' anchor, parallel to
         // ClauseRegistry and ProcessRegistry. RpgfMinter reads it for the
         // agreement's designer of record. Same stake, same reasoning as above.
-        AgreementRegistry agreements = new AgreementRegistry(0.05 ether);
+        AgreementRegistry agreements = new AgreementRegistry(0.05 ether, KEY_COOLDOWN);
         _agreements = address(agreements);
         console.log("AgreementRegistry:      ", _agreements);
 

@@ -188,10 +188,24 @@ if (RELAYS.length > 0) {
     }
 }
 
+/** The event that marks a key's stake leaving the surface. A key registry
+ *  deployed with the withdrawal cooldown answers `withdrawalCooldown()` and
+ *  emits `WithdrawalRequested` at the request (its `DepositWithdrawn` is the
+ *  later payment); one deployed before it emits only `DepositWithdrawn`. */
+async function keyLeavingEvent(address, abi) {
+    try {
+        await client.readContract({ address, abi, functionName: "withdrawalCooldown" });
+        return "WithdrawalRequested";
+    } catch {
+        return "DepositWithdrawn";
+    }
+}
+const clauseAbi = abiOf("ClauseRegistry");
+const processAbi = abiOf("ProcessRegistry");
 const withdrawals = [
     ...(await eventsChunked({ address: record.membersRegistry, abi: abiOf("MembersRegistry"), eventName: "MemberWithdrawalRequested", fromBlock: windowFrom, toBlock: head })),
-    ...(await eventsChunked({ address: record.clauseRegistry, abi: abiOf("ClauseRegistry"), eventName: "DepositWithdrawn", fromBlock: windowFrom, toBlock: head })),
-    ...(await eventsChunked({ address: record.processRegistry, abi: abiOf("ProcessRegistry"), eventName: "DepositWithdrawn", fromBlock: windowFrom, toBlock: head })),
+    ...(await eventsChunked({ address: record.clauseRegistry, abi: clauseAbi, eventName: await keyLeavingEvent(record.clauseRegistry, clauseAbi), fromBlock: windowFrom, toBlock: head })),
+    ...(await eventsChunked({ address: record.processRegistry, abi: processAbi, eventName: await keyLeavingEvent(record.processRegistry, processAbi), fromBlock: windowFrom, toBlock: head })),
 ];
 if (withdrawals.length >= BURST) {
     alert("notice", `withdrawal-burst-${windowFrom}`,

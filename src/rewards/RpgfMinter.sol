@@ -332,11 +332,15 @@ contract RpgfMinter {
     ///      `UsageCounter`): you earn designer rewards only while your clause's,
     ///      agreement's or assembly's registration stake stays live, AND while you
     ///      hold a live member stake (`claim`'s `NotLiveMember`, read on the
-    ///      claimant before any key). A withdrawn stake de-surfaces and earns no further reward — the
-    ///      stake is aligned
-    ///      upside (more trade → more base-currency demand → ETH appreciates for
-    ///      every registry staker), not a cost, so keeping it live is the honest
-    ///      designer's default.
+    ///      claimant before any key). The check runs at both ends: the counter
+    ///      reads the key's stake when it counts a use, and this function reads
+    ///      it at the claim. So withdrawing a key's stake (the request, in its
+    ///      registry) ends its earning AND forfeits every closed period of the
+    ///      key not yet claimed: the share stays in the period's total and is
+    ///      never minted. A designer claims before it requests its stake back.
+    ///      The stake is aligned upside (more trade → more base-currency demand
+    ///      → ETH appreciates for every registry staker), not a cost, so keeping
+    ///      it live is the honest designer's default.
     function _isAuthor(uint8 kind, bytes32 clauseOrProcess, address account) internal view returns (bool) {
         if (kind == KIND_CLAUSE) {
             (address registeredBy, bool withdrawn) = clauses.depositOf(clauseOrProcess);

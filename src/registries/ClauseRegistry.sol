@@ -24,7 +24,9 @@ pragma solidity 0.8.26;
 ///         declaring intent to generate transactions. Surfacing derives
 ///         from the live stake: readers hide clauses whose deposit has
 ///         been withdrawn (withdraw = de-surface), so polluting the
-///         registry costs deposit × time-surfaced. There is no time lock.
+///         registry costs deposit × time-surfaced. Withdrawal takes two
+///         steps: `requestWithdrawal` de-surfaces at once, and `withdraw`
+///         pays the deposit out after `withdrawalCooldown`.
 ///         The clause BINDING is permanent — never cleared on withdraw —
 ///         because committed agreements reference it forever; only the
 ///         stake and the surfacing move.
@@ -34,7 +36,7 @@ pragma solidity 0.8.26;
 ///         flight. The usage count lives in the indexer — the same count
 ///         the designer rewards pay on — so the gate is advisory: the SDK derives
 ///         it and the frontend offers no reclaim while an open trade this wallet witnessed composes it, or while the gate cannot be read.
-///         `withdrawDeposit` checks none of it; the contract cannot hold the count: FigaroCore is frozen
+///         `requestWithdrawal` checks none of it; the contract cannot hold the count: FigaroCore is frozen
 ///         and carries no composition provenance, so there is no on-chain
 ///         hardening of this gate.
 ///
@@ -67,8 +69,21 @@ pragma solidity 0.8.26;
 contract ClauseRegistry {
     /// @notice Deposit amount in wei required at registration. Immutable at
     ///         deploy. Sybil-resistance stake, not a fee — no party can
-    ///         seize it; the registering wallet reclaims it via `withdrawDeposit`.
+    ///         seize it; the registering wallet reclaims it via `requestWithdrawal`
+    ///         then `withdraw`.
     uint256 public immutable registrationDeposit;
+
+    /// @notice Seconds between requesting a withdrawal and being able to
+    ///         claim the stake. Immutable at deploy. Zero means claimable in
+    ///         the same block (still a two-call sequence).
+    /// @dev The same parameter `MembersRegistry` carries, for a different
+    ///      attack. A one-step withdrawal let a front-runner register a
+    ///      pending key and take its stake back in the same transaction,
+    ///      leaving the key withdrawn for good and its intended designer
+    ///      locked out at the price of gas. With the cooldown, every key so
+    ///      taken holds one stake locked for the cooldown: the stake prices
+    ///      the attempt (`docs/DESIGN_DECISIONS.md` § 7).
+    uint256 public immutable withdrawalCooldown;
 
     /// @notice Dedup guard — true if this clause key has been registered.
     ///         Never cleared: the binding is permanent even after the
@@ -88,6 +103,11 @@ contract ClauseRegistry {
     /// @notice clause key → stake state.
     mapping(bytes32 => DepositState) public depositOf;
 
+    /// @notice clause key → timestamp from which the requested stake may be
+    ///         claimed. Zero means no pending withdrawal: never requested, or
+    ///         already paid out.
+    mapping(bytes32 => uint256) public releaseAt;
+
     // ── Events ──────────────────────────────────────────────────────
 
     /// @notice Emitted when a new clause is registered.
@@ -103,12 +123,24 @@ contract ClauseRegistry {
     /// @param registeredBy Address that registered the clause.
     event ClauseRegistered(bytes32 indexed clauseKey, string contentURI, address indexed registeredBy);
 
-    /// @notice Emitted when the registering wallet withdraws its deposit. The clause
-    ///         binding stays in place; only the stake moves — readers
-    ///         de-surface the clause for NEW compositions, while committed
-    ///         agreements keep resolving it.
+    /// @notice Emitted when the registering wallet requests its stake back.
+    ///         THE DE-SURFACING SIGNAL: the stake stops counting as live at
+    ///         this event, while the ETH stays locked until `releaseAt`.
+    ///         The binding stays in place.
     /// @param clauseKey    The clause key.
-    /// @param registeredBy Address that withdrew.
+    /// @param registeredBy Address that requested the withdrawal.
+    /// @param amount       Stake to be returned (always equals `registrationDeposit`).
+    /// @param releaseAt    Timestamp from which `withdraw` pays it out.
+    event WithdrawalRequested(
+        bytes32 indexed clauseKey, address indexed registeredBy, uint256 amount, uint256 releaseAt
+    );
+
+    /// @notice Emitted when the registering wallet is paid its deposit back,
+    ///         after the cooldown. The clause binding stays in place; readers
+    ///         de-surfaced the clause for NEW compositions at
+    ///         `WithdrawalRequested`, while committed agreements keep resolving it.
+    /// @param clauseKey    The clause key.
+    /// @param registeredBy Address paid.
     /// @param amount       Deposit returned (always equals `registrationDeposit`).
     event DepositWithdrawn(bytes32 indexed clauseKey, address indexed registeredBy, uint256 amount);
 
@@ -122,12 +154,26 @@ contract ClauseRegistry {
     error NotRegisteredBy(address caller, address registeredBy);
     error AlreadyWithdrawn();
     error TransferFailed();
+    error NothingPending();
+    error CooldownActive(uint256 releaseAt);
 
     // ── Constructor ─────────────────────────────────────────────────
 
     /// @param _registrationDeposit Required deposit per registration (wei).
-    constructor(uint256 _registrationDeposit) {
+    /// @param _withdrawalCooldown  Seconds a requested withdrawal stays locked.
+    constructor(uint256 _registrationDeposit, uint256 _withdrawalCooldown) {
         registrationDeposit = _registrationDeposit;
+        withdrawalCooldown = _withdrawalCooldown;
+    }
+
+    // ── Views ───────────────────────────────────────────────────────────
+
+    /// @notice Whether the requested stake on a key can be claimed now.
+    /// @dev The chain answers this, never a client clock — the same view
+    ///      `MembersRegistry.withdrawable` gives for a member.
+    function withdrawable(bytes32 key) external view returns (bool) {
+        uint256 unlockAt = releaseAt[key];
+        return unlockAt != 0 && block.timestamp >= unlockAt;
     }
 
     // ── Clause registration (permissionless) ────────────────────────
@@ -151,25 +197,46 @@ contract ClauseRegistry {
         emit ClauseRegistered(clauseKey, contentURI, msg.sender);
     }
 
-    // ── Deposit withdrawal (registeredBy-only) ──────────────────────
+    // ── Stake withdrawal (registeredBy-only, two steps) ─────────────────
 
-    /// @notice Reclaim the registration deposit. The clause binding is NOT
-    ///         cleared — only the stake moves; readers de-surface the
-    ///         clause for new compositions. Callable only by the recorded
-    ///         `registeredBy`, once. A designer moves its stake to a new spec
-    ///         by withdrawing from the old key and registering the new one.
+    /// @notice Start reclaiming the registration stake. Marks the stake
+    ///         withdrawn at once, so readers de-surface the clause and it stops
+    ///         counting as live from this call; the ETH becomes claimable
+    ///         through `withdraw` after `withdrawalCooldown`. The binding is NOT
+    ///         cleared. Callable only by the stored `registeredBy`, and only
+    ///         once per key. A designer moves its stake to a new spec by
+    ///         withdrawing from the old key and registering the new one.
     /// @dev The commits == resolves gate is advisory and off-chain (indexer
     ///      count; see the contract notice): this function does not check it,
     ///      since the chain carries no composition provenance to check.
-    /// @param clauseKey The clause key.
-    function withdrawDeposit(bytes32 clauseKey) external {
+    /// @param clauseKey The key whose stake to reclaim.
+    function requestWithdrawal(bytes32 clauseKey) external {
         DepositState storage state = depositOf[clauseKey];
         if (!registered[clauseKey]) revert NotRegistered(clauseKey);
         if (msg.sender != state.registeredBy) revert NotRegisteredBy(msg.sender, state.registeredBy);
         if (state.withdrawn) revert AlreadyWithdrawn();
 
-        // Checks-effects-interactions: flag THEN transfer.
         state.withdrawn = true;
+        uint256 unlockAt = block.timestamp + withdrawalCooldown;
+        releaseAt[clauseKey] = unlockAt;
+
+        emit WithdrawalRequested(clauseKey, msg.sender, registrationDeposit, unlockAt);
+    }
+
+    /// @notice Claim a requested stake whose cooldown has elapsed. Callable
+    ///         only by the stored `registeredBy`; pays `registrationDeposit`
+    ///         once. No one can release it early.
+    /// @param clauseKey The key whose stake to claim.
+    function withdraw(bytes32 clauseKey) external {
+        DepositState storage state = depositOf[clauseKey];
+        if (!registered[clauseKey]) revert NotRegistered(clauseKey);
+        if (msg.sender != state.registeredBy) revert NotRegisteredBy(msg.sender, state.registeredBy);
+        uint256 unlockAt = releaseAt[clauseKey];
+        if (unlockAt == 0) revert NothingPending();
+        if (block.timestamp < unlockAt) revert CooldownActive(unlockAt);
+
+        // Checks-effects-interactions: clear THEN transfer.
+        delete releaseAt[clauseKey];
         emit DepositWithdrawn(clauseKey, msg.sender, registrationDeposit);
 
         (bool ok,) = msg.sender.call{value: registrationDeposit}("");

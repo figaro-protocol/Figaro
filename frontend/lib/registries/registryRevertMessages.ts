@@ -1,6 +1,7 @@
 /**
  * The revert tables every K4 staked-intent registry shares: the register
- * reverts common to all of them, and the `withdrawDeposit` reverts. Pure
+ * reverts common to all of them, and the reverts of the two withdrawal calls
+ * (`requestWithdrawal` and `withdraw`). Pure
  * functions, with no wallet and no client: each registry's read module
  * (`useClauseRegistry.ts`, `useProcessRegistry.ts`, `useAgreementRegistry.ts`)
  * builds its own tables on them, and the withdraw hooks
@@ -30,8 +31,8 @@ export function sharedRegisterRevertMessage(
 }
 
 /**
- * The shared `withdrawDeposit` revert table — the on-chain guards only
- * (registeredBy-only, once-only, must-exist; the commits==resolves gate is
+ * The shared revert table of `requestWithdrawal` and `withdraw` — the on-chain
+ * guards only (registeredBy-only, once-only, must-exist, the cooldown; the commits==resolves gate is
  * off-chain/advisory via `useWithdrawGate`). The registries' tables
  * differed only by noun, so the noun is the parameter; the assembly keeps
  * "composition" for the must-exist case because the binding's identity IS
@@ -41,7 +42,11 @@ export function withdrawRevertMessage(noun: "clause" | "assembly" | "agreement")
     return (errorName: string | undefined): string | null => {
         switch (errorName) {
             case "AlreadyWithdrawn":
-                return `This ${noun}'s registration stake has already been reclaimed.`;
+                return `This ${noun}'s registration stake has already been requested back.`;
+            case "NothingPending":
+                return `No stake is waiting to be claimed for this ${noun}.`;
+            case "CooldownActive":
+                return "The cooldown has not passed yet; the stake can be claimed once it has.";
             case "NotRegisteredBy":
                 return `Only the wallet that registered this ${noun} can reclaim its registration stake.`;
             case "NotRegistered":
@@ -49,7 +54,7 @@ export function withdrawRevertMessage(noun: "clause" | "assembly" | "agreement")
                     ? "No registration binding exists for this composition."
                     : `No registration binding exists for this ${noun}.`;
             case "TransferFailed":
-                return "The stake refund transfer failed. No state changed — retry.";
+                return "The stake transfer failed. The stake is still waiting to be claimed — retry.";
             default:
                 return null;
         }

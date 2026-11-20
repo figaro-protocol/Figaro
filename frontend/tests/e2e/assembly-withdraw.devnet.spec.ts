@@ -2,21 +2,22 @@
  * assembly-withdraw.devnet.spec.ts — the commits==resolves withdraw gate,
  * end to end: an assembly's registering wallet must not reclaim the registration stake
  * while a trade composed from the assembly is in flight; once every composed
- * trade resolves, the reclaim goes through and the registry refunds exactly
- * the deposit.
+ * trade resolves, the request goes through and, once the chain's `withdrawable`
+ * view says so (the devnet cooldown is 0), the claim pays back exactly the
+ * deposit.
  *
  * ONE spec, registeredBy-driven (not a scenario/runtime pair): the subject is the
  * REGISTERED_BY's registration lifecycle — publish (staked intent) → verified
- * in-flight trade blocks → atomic resolve unblocks → reclaim + exact refund.
- * `ProcessRegistry.withdrawDeposit` is once-only per PERMANENT binding, so
+ * in-flight trade blocks → atomic resolve unblocks → request → claim + exact
+ * payment. `ProcessRegistry.requestWithdrawal` is once-only per PERMANENT binding, so
  * nothing survives for a runtime spec to consume (the assembly ends
  * de-surfaced), and the buyer/seller commit+resolve legs are supporting
  * participants already covered by orders-accept — splitting would duplicate
  * that coverage against an assembly that no longer surfaces.
  *
  * Fresh binding per run — the probeAssembly nonce, NOT adopt-the-anchored:
- * the once-only withdraw makes an adopted assembly non-re-testable (run 2
- * hits AlreadyWithdrawn with the button already "Stake reclaimed"), and
+ * the once-only request makes an adopted assembly non-re-testable (run 2
+ * hits AlreadyWithdrawn), and
  * withdrawing the SEED assembly would de-surface the fixture every other
  * spec consumes. That is exactly flake-pattern 16's sibling rule (a spec
  * that leaves its state AND registers content-addressed clauses or assemblies mints a
@@ -27,7 +28,7 @@
  * IPFS). Nothing about the network is hardcoded.
  *
  * The gate is OFF-CHAIN and advisory (the chain carries no composition
- * provenance — ProcessRegistry.withdrawDeposit's own NatSpec): VERIFIED
+ * provenance — ProcessRegistry.requestWithdrawal's own NatSpec): VERIFIED
  * in-flight trades disable the button with the count; agreements this
  * browser context never witnessed are party-private → surfaced as the
  * caveat strip, never blocking. The buyer's checkout runs in THIS context,
@@ -278,24 +279,39 @@ test.describe('ProcessRegistry withdraw — the commits==resolves gate (devnet)'
             await expect(caveat, 'no unverifiable trades → no caveat').toBeHidden();
         }
 
-        // ── RECLAIM + VALUE LEG: click; DepositWithdrawn lands; the registry
-        //    escrow drops by exactly the deposit and the registeredBy's ETH rises by
-        //    exactly deposit − gas (both read from the chain). ──
+        // ── REQUEST: click; WithdrawalRequested lands; the request control
+        //    leaves and the claim band takes its place; no ETH moves. ──
         const deposit = await publicClient.readContract({
             address: registry, abi: PROCESS_REGISTRY_ABI, functionName: 'registrationDeposit',
         }) as bigint;
-        const blockBefore = await publicClient.getBlockNumber();
-        const [registryEthBefore, authorEthBefore] = await Promise.all([
-            publicClient.getBalance({ address: registry }),
-            publicClient.getBalance({ address: REGISTERED_BY }),
-        ]);
+        const requestBlockBefore = await publicClient.getBlockNumber();
+        const registryEthBefore = await publicClient.getBalance({ address: registry });
 
         await reclaimBtn.click();
-        await expect(
-            reclaimBtn,
-            'the affordance reflects the reclaim (stakeWithdrawn)',
-        ).toHaveText('Stake reclaimed', { timeout: 60000 });
-        await expect(reclaimBtn).toBeDisabled();
+        await expect(page.getByTestId('view-withdraw-button'), 'no second request').toHaveCount(0, { timeout: 60000 });
+        await expect(page.getByTestId('withdraw-error')).toHaveCount(0);
+
+        const requestedEvents = await publicClient.getContractEvents({
+            address: registry, abi: PROCESS_REGISTRY_ABI, eventName: 'WithdrawalRequested',
+            args: { processDesignHash }, fromBlock: requestBlockBefore + 1n,
+        });
+        expect(requestedEvents, 'exactly one WithdrawalRequested for this binding').toHaveLength(1);
+        expect((requestedEvents[0].args.registeredBy as string).toLowerCase()).toBe(REGISTERED_BY.toLowerCase());
+        expect(requestedEvents[0].args.amount, 'the event carries the exact deposit').toBe(deposit);
+        expect(await publicClient.getBalance({ address: registry }), 'the request moves no ETH').toBe(registryEthBefore);
+
+        // ── CLAIM + VALUE LEG: the devnet cooldown is 0, so the chain's
+        //    `withdrawable` is true at once; click; DepositWithdrawn lands; the
+        //    registry escrow drops by exactly the deposit and the registeredBy's
+        //    ETH rises by exactly deposit − gas (both read from the chain). ──
+        const claimBtn = page.getByTestId('assembly-claim-button');
+        await expect(claimBtn, 'the chain says the stake is withdrawable').toBeEnabled({ timeout: 60000 });
+        const blockBefore = await publicClient.getBlockNumber();
+        const authorEthBefore = await publicClient.getBalance({ address: REGISTERED_BY });
+
+        await claimBtn.click();
+        await expect(page.getByTestId('assembly-claim-button'), 'nothing left to claim').toHaveCount(0, { timeout: 60000 });
+        await expect(page.getByTestId('assembly-claim-error')).toHaveCount(0);
 
         // The event, from strictly after the pre-click head (pattern 17),
         // keyed by THIS run's processDesignHash.
@@ -311,10 +327,10 @@ test.describe('ProcessRegistry withdraw — the commits==resolves gate (devnet)'
         const registryEthAfter = await publicClient.getBalance({ address: registry });
         expect(registryEthBefore - registryEthAfter, 'registry escrow decreased by exactly the deposit').toBe(deposit);
 
-        // RegisteredBy wallet: exact, gas-accounted — the withdraw is the registeredBy's
+        // RegisteredBy wallet: exact, gas-accounted — the claim is the registeredBy's
         // only transaction between the two reads.
         const receipt = await publicClient.getTransactionReceipt({ hash: withdrawnEvents[0].transactionHash });
-        expect(receipt.status, 'the withdraw transaction succeeded').toBe('success');
+        expect(receipt.status, 'the claim transaction succeeded').toBe('success');
         const gasCost = receipt.gasUsed * receipt.effectiveGasPrice;
         const authorEthAfter = await publicClient.getBalance({ address: REGISTERED_BY });
         expect(
@@ -327,15 +343,13 @@ test.describe('ProcessRegistry withdraw — the commits==resolves gate (devnet)'
         });
 
         // ── DE-SURFACE REFLECTION: a fresh read of the view page resolves the
-        //    binding's withdrawn state from the chain (not local state) — the
-        //    button renders "Stake reclaimed", disabled. The binding itself is
-        //    permanent; only the stake moved. ──
+        //    binding's withdrawn state and the paid-out `releaseAt` from the
+        //    chain (not local state) — nothing to request, nothing to claim. The
+        //    binding itself is permanent; only the stake moved. ──
         await page.reload({ waitUntil: 'domcontentloaded' });
         await page.getByTestId('assembly-view-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
-        const reloadedBtn = page.getByTestId('view-withdraw-button');
-        await reloadedBtn.waitFor({ state: 'visible', timeout: 30000 });
-        await expect(reloadedBtn, 'the withdrawn state is chain-derived, not session state').toHaveText('Stake reclaimed', { timeout: 30000 });
-        await expect(reloadedBtn).toBeDisabled();
+        await expect(page.getByTestId('view-withdraw-button'), 'the withdrawn state is chain-derived, not session state').toHaveCount(0, { timeout: 30000 });
+        await expect(page.getByTestId('assembly-claim-button')).toHaveCount(0);
     });
 });

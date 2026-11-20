@@ -145,7 +145,9 @@ export interface ClauseRegisteredEvent {
     transactionHash: Hex | null;
 }
 
-/** ClauseRegistry `DepositWithdrawn`, keyed by the same clause key. */
+/** ClauseRegistry `WithdrawalRequested` — the DE-SURFACING event, keyed by the clause key.
+ *  The request marks the stake withdrawn at once and for good; the ETH is
+ *  paid out after the cooldown (`DepositWithdrawn`, not folded here). */
 export interface ClauseWithdrawnEvent {
     clauseKey: Hex;
     registeredBy: Address;
@@ -189,7 +191,9 @@ export interface ProcessRegisteredEvent {
     transactionHash: Hex | null;
 }
 
-/** ProcessRegistry `DepositWithdrawn` — keyed by `processDesignHash` directly. */
+/** ProcessRegistry `WithdrawalRequested` — the DE-SURFACING event, keyed by the `processDesignHash`.
+ *  The request marks the stake withdrawn at once and for good; the ETH is
+ *  paid out after the cooldown (`DepositWithdrawn`, not folded here). */
 export interface ProcessWithdrawnEvent {
     processDesignHash: Hex;
     registeredBy: Address;
@@ -210,7 +214,9 @@ export interface AgreementRegisteredEvent {
     transactionHash: Hex | null;
 }
 
-/** AgreementRegistry `DepositWithdrawn` — keyed by `agreementHash` directly. */
+/** AgreementRegistry `WithdrawalRequested` — the DE-SURFACING event, keyed by the `agreementHash`.
+ *  The request marks the stake withdrawn at once and for good; the ETH is
+ *  paid out after the cooldown (`DepositWithdrawn`, not folded here). */
 export interface AgreementWithdrawnEvent {
     agreementHash: Hex;
     registeredBy: Address;
@@ -231,7 +237,7 @@ export interface RegisteredClause {
     clauseKey: Hex;
     contentURI: string;
     registeredBy: Address;
-    /** True once the registrant withdrew the stake (`DepositWithdrawn`). */
+    /** True once the registrant requested its stake back (`WithdrawalRequested`). */
     stakeWithdrawn: boolean;
 }
 
@@ -258,7 +264,7 @@ export interface AgreementBinding {
      *  carries no timestamp; `bindings(agreementHash).registeredAt` holds the
      *  chain time. */
     registeredAt: number;
-    /** True once the registrant withdrew the stake (`DepositWithdrawn`). */
+    /** True once the registrant requested its stake back (`WithdrawalRequested`). */
     stakeWithdrawn: boolean;
 }
 
