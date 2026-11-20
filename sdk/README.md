@@ -334,7 +334,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `attestAsSeller` | `/agent` | Submit a seller attestation for one clause of a committed order. |
 | `buildChainOffers` | `/agent` | Buyer-sign a whole chain's offers, in commit order, through the one assembly walk. |
 | `buildCommitment` | root | Build the `Commitment` struct and the EIP-712 typed data to sign. |
-| `buildCommitmentSafe` | root | `buildCommitment` for a sub-order, its `runningTotal` read from `FigaroCore`'s process state plus the order's payment, so the struct matches what `commit` checks. |
+| `buildCommitmentSafe` | root | `buildCommitment` for a sub-order, its `runningTotal` the process's landed running total plus the order's payment, so the struct matches what `commit` and the proof program check. The process is read on either path (`readProcessState`) when `addresses.batchVerifier` is set; pass the deployment's `deploymentBlock` as `fromBlock` in its fifth argument. |
 | `buildDomain` | root | The EIP-712 domain for a chain id + `FigaroCore` address. |
 | `buildOrderAgreement` | root | Build one order's agreement document and its merkle tree from its clause map. |
 | `withClauseBlinding` | root | One clause's committed values with the blinding value of its private set drawn (`blinding: true` in the spec), read by the clause key from a `SpecSource`; given the party's own data for the clause, it keeps only the value that data carries; a public clause, a process-log clause and an unloaded spec pass unchanged. |
@@ -393,6 +393,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `fetchDiscoveryEvents` | root | Registry events (clauses, assemblies, members); an unconfigured registry contributes nothing. |
 | `fetchEndpointLogAgreement` | root | The same agreement report, fetched from caller-supplied clients over one pinned `[fromBlock, toBlock]`. |
 | `fetchProcessesResolved` | root | For each process id, whether it has resolved and the block of its `ProcessResolved`: the Core's `processes(id)` getter decides the direct path, the verifier's `ProcessResolved` the batch path. |
+| `fetchRunningTotal` | root | A process's landed running total, whichever path made it (`readProcessState`); pass `batchVerifier` and `fromBlock` to read a batched process, which the Core's getter answers as zero. |
 | `fetchSkippedBatchUses` | root | Each batch whose call to the counter reverted whole (`BatchAccrualSkipped`), with the period, the usage claims and the uses read from the `BatchOperations` log of the same transaction, on every call route. `fromBlock` is required (the deployment's `deploymentBlock`); a failed read throws. Each claim can be sent again with `SequencerClient.submitUsageClaim`, without the agreement, and a later batch may prove it while a period is open. |
 | `fetchUsageRecords` | root | `UsageRecorded` events — the direct-path half of the rewards mirror. |
 | `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalog and process set. |
@@ -448,6 +449,8 @@ definition) and `RPGF_*` constant is a **root** export.
 | `proposeActions` | `/agent` | Every action a wallet may take on a process it is already in. |
 | `proposeInitiations` | `/agent` | Every process a wallet could START — one per live-staked assembly. |
 | `readChainTimestamp` | root | The chain's `block.timestamp`: the only clock a protocol deadline may be computed from. |
+| `readProcessResolveCapacity` | root | A process's landed active orders against the chain's resolve ceiling, whichever path made it (`readProcessState`); its fifth argument takes `batchVerifier` and `fromBlock`. |
+| `readProcessState` | root | One process's root buyer, token, running total and active order count, whichever path made it: the Core's `processes(id)` getter for a direct process; for one the Core does not know, the verifier's `OrderCommitted` and `OrderResolved` for its id, when `batchVerifier` is given (pass `fromBlock`, the deployment's `deploymentBlock`). The state is the landed one. |
 | `readFundingLegs` | `/derive` | The swap legs one commit transaction carries, read from its receipt's ERC-20 transfers: one per party that funded its bond through the coordinator. |
 | `readPricedLines` | root | The priced lines an agreement commits, read through each clause spec's `block.checkout.pricedLines` mark; `pricedLinesSum` sums quantity × unit price, which nothing holds equal to the payment. |
 | `readUtilityTokenPin` | root | The designer's pinned denomination, read from an assembly's composed clauses: the one designer-filled `address-hex` field of an assembly-scoped clause of the denomination article (`specDenominationPinField`). |
@@ -1305,6 +1308,16 @@ const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 // verifyResolveProcessSignature(processId, runningTotal, …) checks one; read
 // from the chain, the value is the sum of the payments the resolve entry lists.
 await seq.submitResolve(processId, runningTotal, commitments, buyerSig);
+// A batched process's landed state is read from the verifier's logs, since the
+// Core's getter answers zeros for it: pass the verifier and the deployment block.
+//   const read = { batchVerifier: addresses.batchVerifier, fromBlock: deploymentBlock };
+//   const total = await fetchRunningTotal(client, addresses.core, processId, read);
+//   const { activeOrderCount } = await readProcessResolveCapacity(client, addresses.core, processId, undefined, read);
+// The total is the LANDED one. An order a relay holds and has not landed is
+// not on the chain, and the relay's /status (seq.status()) counts its queue,
+// never one process's orders. A party whose own earlier order of the process is
+// still queued builds its next order on that order's runningTotal, which it
+// signed, or waits until the order's OrderCommitted lands.
 // The second form: bytes the buyer's own account code validates for the same
 // digest (ERC-1271) — what code the buyer's EOA carries through an EIP-7702
 // delegation installed while it held its key resolves with after the key is

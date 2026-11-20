@@ -8,12 +8,17 @@
  * trivially fits), and on read failure (resolved-empty = absence; no
  * fallback figure is invented). The ceiling is chain-adaptive — read from
  * the live block gas limit, never a hardcoded cap.
+ *
+ * The process is read whichever path made it: the Core's getter for a direct
+ * process, the batch verifier's logs from the deployment block for a batched
+ * one. The count is of landed orders.
  */
 
 import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { readProcessResolveCapacity, type ProcessResolveCapacity } from "@figaro-protocol/sdk";
-import { CONTRACTS } from "@/lib/core/contracts";
+import { CONTRACTS, getBatchVerifier } from "@/lib/core/contracts";
+import { deploymentBlock } from "@/lib/core/eventCache";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
@@ -33,7 +38,11 @@ export default function useProcessResolveCapacity(
     useEffect(() => {
         if (!publicClient || !processId || hexEqual(processId, ZERO_PROCESS_ID)) return;
         let canceled = false;
-        readProcessResolveCapacity(publicClient, CONTRACTS.core, processId)
+        // `undefined` keeps the SDK's default cap on one transaction.
+        readProcessResolveCapacity(publicClient, CONTRACTS.core, processId, undefined, {
+            batchVerifier: getBatchVerifier() ?? undefined,
+            fromBlock: deploymentBlock(),
+        })
             .then((c) => { if (!canceled) setCapacity(c); })
             .catch(() => { if (!canceled) setCapacity(null); });
         return () => { canceled = true; };

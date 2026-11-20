@@ -14,21 +14,30 @@
 <section class="tsd-panel">
 <ul class="tsd-signatures">
 <li class="">
-<div class="tsd-signature tsd-anchor-link" id="fetchrunningtotal"><span class="tsd-kind-call-signature">fetchRunningTotal</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">client</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">coreAddress</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">processId</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">&gt;</span><a href="#fetchrunningtotal" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-signature tsd-anchor-link" id="fetchrunningtotal"><span class="tsd-kind-call-signature">fetchRunningTotal</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">client</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">coreAddress</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">processId</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">options</span><span class="tsd-signature-symbol">?:</span> <a href="../interfaces/index.ProcessReadOptions.html" class="tsd-signature-type tsd-kind-interface">ProcessReadOptions</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">&gt;</span><a href="#fetchrunningtotal" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Read the current runningTotal for a process from the contract.
-This MUST be called before building a sub-order commitment to prevent
-RunningTotalMismatch reverts.</p>
+<div class="tsd-comment tsd-typography"><p>Read a process's current runningTotal from the chain, whichever path made
+it (<code>readProcessState</code>). Call it before building a sub-order commitment, so
+the commitment is not refused for a running total that does not match.</p>
+<p>A process made on the batch path is read from the verifier's logs, so pass
+<code>options.batchVerifier</code> and <code>options.fromBlock</code> (the deployment record's
+<code>batchVerifier</code> and <code>deploymentBlock</code>). Without them only the direct path
+is read, and a batched process reads as zero.</p>
+<p>The total is the LANDED one: an order a relay holds and has not landed is
+not on the chain. A party whose own earlier order of the process is still
+in a relay's queue builds its next order on that order's <code>runningTotal</code>,
+which it signed, or waits until the order lands.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li><span><span class="tsd-kind-parameter">client</span>: <span class="tsd-signature-symbol">{}</span></span></li>
 <li><span><span class="tsd-kind-parameter">coreAddress</span>: <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></span></li>
-<li><span><span class="tsd-kind-parameter">processId</span>: <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></span></li></ul></div>
+<li><span><span class="tsd-kind-parameter">processId</span>: <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">options</span>: <a href="../interfaces/index.ProcessReadOptions.html" class="tsd-signature-type tsd-kind-interface">ProcessReadOptions</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L354">commitments.ts:354</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L364">commitments.ts:364</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

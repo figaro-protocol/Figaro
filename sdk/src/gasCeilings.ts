@@ -31,7 +31,7 @@
  * moves, the other must move too.
  */
 
-import { CORE_ABI } from "./abis.js";
+import { readProcessState, type ProcessReadOptions, type ProcessStateReader } from "./events.js";
 
 /**
  * Minimal structural client shapes — deliberately NOT viem's `PublicClient`.
@@ -43,14 +43,9 @@ export interface BlockGasReader {
     getBlock(args: { blockTag: "latest" }): Promise<{ gasLimit: bigint }>;
 }
 
-export interface ResolveCapReader extends BlockGasReader {
-    readContract(args: {
-        address: `0x${string}`;
-        abi: readonly unknown[];
-        functionName: string;
-        args?: readonly unknown[];
-    }): Promise<unknown>;
-}
+/** A process read (`ProcessStateReader`, with the log reads when the read
+ *  falls to the batch path) and the block's gas limit. */
+export interface ResolveCapReader extends BlockGasReader, ProcessStateReader {}
 
 // ── Empirical per-order constants (mirror test/core/kernel/GasCeilingTest.t.sol) ─
 
@@ -198,7 +193,7 @@ export async function maxCommitsLandableInOneBlock(
 
 /** A live process's position against the chain's resolve ceiling. */
 export interface ProcessResolveCapacity {
-    /** Orders currently active in the process (FigaroCore `activeOrderCount`). */
+    /** Orders currently active in the process, on the path that made it (`readProcessState`). */
     activeOrderCount: number;
     /** The chain's per-process resolve ceiling right now. */
     cap: number;
@@ -211,23 +206,26 @@ export interface ProcessResolveCapacity {
  * ceiling in one call. The structural client shape (rather than a full
  * PublicClient) keeps this testable with a stub. A chain without the
  * transaction cap passes its own figure as `transactionGasCap`.
+ *
+ * The process is read whichever path made it (`readProcessState`): pass
+ * `options.batchVerifier` and `options.fromBlock` (the deployment record's
+ * `batchVerifier` and `deploymentBlock`) and a batched process's active
+ * orders are counted from the verifier's logs. Without them only the direct
+ * path is read, and a batched process reads as no active order. The count is
+ * of landed orders; one a relay holds and has not landed is not counted.
  */
 export async function readProcessResolveCapacity(
     client: ResolveCapReader,
     core: `0x${string}`,
     processId: `0x${string}`,
     transactionGasCap: bigint = TRANSACTION_GAS_CAP,
+    options?: ProcessReadOptions,
 ): Promise<ProcessResolveCapacity> {
     const [state, block] = await Promise.all([
-        client.readContract({
-            address: core,
-            abi: CORE_ABI,
-            functionName: "processes",
-            args: [processId],
-        }) as Promise<readonly [`0x${string}`, `0x${string}`, bigint, bigint]>,
+        readProcessState(client, core, processId, options),
         client.getBlock({ blockTag: "latest" }),
     ]);
-    const activeOrderCount = Number(state[3]);
+    const activeOrderCount = Number(state.activeOrderCount);
     const cap = maxOrdersResolvableForGasLimit(block.gasLimit, transactionGasCap);
     return {
         activeOrderCount,
@@ -259,9 +257,10 @@ export async function assertOrderFitsResolveCap(
     core: `0x${string}`,
     processId: `0x${string}`,
     transactionGasCap: bigint = TRANSACTION_GAS_CAP,
+    options?: ProcessReadOptions,
 ): Promise<void> {
     if (/^0x0+$/.test(processId)) return;
-    const { activeOrderCount, cap } = await readProcessResolveCapacity(client, core, processId, transactionGasCap);
+    const { activeOrderCount, cap } = await readProcessResolveCapacity(client, core, processId, transactionGasCap, options);
     if (activeOrderCount + 1 > cap) {
         throw new Error(
             `Process has ${activeOrderCount} active orders; ${cap} is the most the SDK plans to fit ` +
