@@ -403,18 +403,23 @@ designer composes one, adds only the lines the payment buys, and nothing holds
 their sum equal to the payment. The chain emits one part of the trade's economic skeleton
 itself: each order's buyer, seller, token, payment and running total, in the
 sequence the orders were committed (`OrderCommitted`), and each order's payouts
-at resolution (`OrderResolved`). The other part, the edges of who comes before
-whom, is read from the design: the edges sit in the agreement body, whose
-address no event carries (`frontend/lib/core/agreementFetch.ts`, header), so a
-reader takes them from the registered assembly or from an agreement body it
-holds. A reader outside the trade takes the registered process design's:
-`processEdges` (`sdk/src/derive/queries.ts`) matches the design's positions
-(`planProcessOrders`) to a process's commits by position, the commits ordered
-by running total (`commitOrder`, `sdk/src/derive/graphs.ts`), for a process
-its buyer's provenance attestation or a `UsageRecorded` of the process design
-links to it, and `/data/explore` labels them the design, never what the
-parties signed; a process with no link, or whose commits do not fit the
-design, keeps the linear view of the commits. The sign gate (`validateCommitmentAgreement`, `sdk/src/projection.ts`)
+at resolution (`OrderResolved`). The sequence says which commit came before
+which, and never that one order follows another. `FigaroCore` fixes no order
+among sibling orders, and the reference checkout lets sibling sellers accept
+in any order (`readFollowedOrders`, `frontend/lib/checkout/orderCommitmentFlow.ts`).
+The other part, the edges of who follows whom, sits in each order's agreement
+body, whose address no event carries (`frontend/lib/core/agreementFetch.ts`,
+header). A reader names an edge between two orders only from an agreement it
+holds whose leaves hash to that order's `checkoutHash`: `processEdges`
+(`sdk/src/derive/queries.ts`) anchors each held agreement with
+`anchorAgreement` (`sdk/src/anchored.ts`) and leaves every other order's edges
+unknown (`docs/DESIGN_DECISIONS.md` § 32). A commit's position in the
+sequence never stands in for an edge. A reader outside the trade holds no
+agreement, so `/data/explore` names no edge between orders. A process may be
+linked to a registered process design, by its buyer's provenance attestation
+or by a `UsageRecorded` of the design. The page then shows that design's own
+edges between its entries, labeled as the design's, and matches no entry to
+an order. The sign gate (`validateCommitmentAgreement`, `sdk/src/projection.ts`)
 holds two things about them at each party's signature, from the agreement and
 the design alone: an order names as many orders as its design entry follows
 (`designIssues`), and a commitment that opens a process (`processId` zero)

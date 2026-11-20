@@ -63,9 +63,9 @@ import { isAddressHex, isBytes32Hex, type Address, type Commitment, type Hex } f
 // ── The spec seam ───────────────────────────────────────────────────────────
 
 /** The slice of a clause spec's `block` the reference tooling collects the
- *  data by — the six phase-section attributes that steer which values it
- *  writes into the assembly and the checkout folds, lifted out of the
- *  sectioned block. Another frontend may collect the data differently; no
+ *  data by — the phase-section attributes that steer which values it
+ *  writes into the assembly and the checkout folds, and which fields its
+ *  quantity sources read, lifted out of the sectioned block. Another frontend may collect the data differently; no
  *  fingerprint function reads these. */
 export interface ProjectionHints {
     /** The spec's `block.design.article` (e.g. `"attestations"`, `"denomination"`). */
@@ -103,6 +103,32 @@ export interface ProjectionHints {
      *  name) it lists, the rule the checkout computes it by and that rule's
      *  inputs (`CheckoutDerivation`). */
     derives?: Readonly<Record<string, CheckoutDerivation>>;
+    /** The spec's `block.checkout.timeWindow` — which content field is the
+     *  start of the clause's time window and which is its end
+     *  (`TimeWindowMark`). */
+    timeWindow?: TimeWindowMark;
+    /** The spec's `block.checkout.endpoints` — which content field is the
+     *  route's origin and which is its destination (`EndpointsMark`). */
+    endpoints?: EndpointsMark;
+}
+
+/** The mark a spec puts on its TIME WINDOW (`block.checkout.timeWindow`):
+ *  the content field that holds the window's start and the one that holds
+ *  its end, by the spec's own field names. A quantity source that bills by
+ *  the window reads this mark, never the format or the order of the fields. */
+export interface TimeWindowMark {
+    start: string;
+    end: string;
+}
+
+/** The mark a spec puts on its ROUTE's two endpoints
+ *  (`block.checkout.endpoints`): the content field that holds the origin and
+ *  the one that holds the destination, by the spec's own field names. A
+ *  quantity source that bills by distance reads this mark, never the format
+ *  or the order of the fields. */
+export interface EndpointsMark {
+    from: string;
+    to: string;
 }
 
 /** The mark a spec puts on its PRICED LINES (`block.checkout.pricedLines`):
@@ -191,8 +217,34 @@ export function parseProjectionHints(rawSpec: unknown): ProjectionHints {
         if (priced) hints.pricedLines = priced;
         const derives = parseCheckoutDerivations(c.derives);
         if (derives) hints.derives = derives;
+        const timeWindow = parseTimeWindowMark(c.timeWindow);
+        if (timeWindow) hints.timeWindow = timeWindow;
+        const endpoints = parseEndpointsMark(c.endpoints);
+        if (endpoints) hints.endpoints = endpoints;
     }
     return hints;
+}
+
+/** A `block.checkout.timeWindow` mark, or undefined when it is absent or
+ *  malformed: `start` and `end` are non-empty strings. Whether the named
+ *  fields exist, with the format the window needs, is the quantity source's
+ *  check against the spec's own fields. */
+export function parseTimeWindowMark(raw: unknown): TimeWindowMark | undefined {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    const start = nonEmptyString((raw as Record<string, unknown>).start);
+    const end = nonEmptyString((raw as Record<string, unknown>).end);
+    return start && end ? { start, end } : undefined;
+}
+
+/** A `block.checkout.endpoints` mark, or undefined when it is absent or
+ *  malformed: `from` and `to` are non-empty strings. Whether the named
+ *  fields exist, with the format a distance needs, is the quantity source's
+ *  check against the spec's own fields. */
+export function parseEndpointsMark(raw: unknown): EndpointsMark | undefined {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    const from = nonEmptyString((raw as Record<string, unknown>).from);
+    const to = nonEmptyString((raw as Record<string, unknown>).to);
+    return from && to ? { from, to } : undefined;
 }
 
 /** A non-empty string, or undefined. */
@@ -446,13 +498,22 @@ export function specCheckoutDerivations(spec: ProjectionSpecView): Readonly<Reco
     );
 }
 
-/** The field of a clause that pins the COMPOSITION's denomination: the clause
- *  is assembly-scoped (`block.design.scope: "assembly"`) under the
- *  denomination article (`block.design.article: "denomination"`), and
- *  declares exactly one designer-filled (`block.design.fills`) `string` field
- *  of format `address-hex`; that field is the pin. Read by the spec's shape,
- *  never by a field name, so a stranger's denomination clause pins under any
- *  field name. Undefined for any other clause. */
+/** The field of a clause that pins the COMPOSITION's denomination, or
+ *  undefined. It reads three of the spec's hints (`spec.hints`, lifted from
+ *  the `block` by `parseProjectionHints`): the scope is `"assembly"`
+ *  (`block.design.scope`), the article is `"denomination"`
+ *  (`block.design.article`), and exactly one of the fields listed in
+ *  `block.design.fills` is a top-level `string` field of format
+ *  `address-hex`. That field is the pin. It reads no field name and no clause
+ *  id, so a stranger's clause filed under the denomination article pins
+ *  under any field name.
+ *
+ *  The `block` is presentation and outside the clause key, so whoever serves
+ *  the `block` decides whether a clause pins: a view with no hints, or one
+ *  filed under another article, pins nothing. The sign gate's token check
+ *  (`validateCommitmentAgreement`) and the reference seeding
+ *  (`fillDeployTimeCurrency`) are the reference tooling's own, steered by it;
+ *  the chain holds a process to the one token its commitments sign. */
 export function specDenominationPinField(spec: ProjectionSpecView): string | undefined {
     if (!specIsProcessScoped(spec) || spec.hints?.article !== "denomination") return undefined;
     const pins = spec.fields.filter((f) =>

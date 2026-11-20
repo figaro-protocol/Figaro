@@ -13,11 +13,10 @@
  *   edges (each agreement's `follows`) via `depthsOverParents`; without them
  *   FigaroCore's own linear view stands. A process holding an order whose
  *   edges the caller does not know takes no shape and is counted as such.
- * - Process edges: a process linked to a registered process design takes
- *   the design's edges, the design's positions matched to its commits by
- *   position (`processEdges`); every other process keeps the linear view.
- *   A reader outside the trade holds no agreement body, so these are the
- *   edges it can read, and they are the design, never what was signed.
+ * - Process edges: a process's orders in commit order, and the edges its
+ *   parties signed for each order whose agreement the caller holds and
+ *   anchors to the order's `checkoutHash` (`processEdges`). No event carries
+ *   an edge, and no design stands in for an unread agreement.
  * - Wallet-record: one wallet's public trading history — the processes it
  *   resolves as root buyer and the orders it holds either side of.
  *
@@ -29,7 +28,7 @@
 import type { Hex, Address, Process, Order } from "../types.js";
 import { OrderState } from "../types.js";
 import { depthsOverParents } from "../topology.js";
-import type { PlannedProcessOrder } from "../reconstructOrders.js";
+import { anchorAgreement } from "../anchored.js";
 import { commitOrder, type ProcessGraph } from "./graphs.js";
 
 // ── Market-shape ────────────────────────────────────────────────────────────
@@ -199,90 +198,54 @@ export function marketShape(
     return { boundary: "protocol-derived", groups, unattributedProcessCount };
 }
 
-// ── Process edges: the design, or FigaroCore's linear view ──────────────────
-
-/** One position of a registered process design, as `planProcessOrders` gives it:
- *  its entry's label and the labels of the entries it follows. */
-export type DesignPosition = Pick<PlannedProcessOrder, "nodeId" | "parentLocalIds">;
-
-/** The registered process design a process is linked to, and its positions in
- *  commit order (`planProcessOrders(hydrated)`). */
-export interface DesignLink {
-    processDesignHash: Hex;
-    planned: readonly DesignPosition[];
-}
+// ── Process edges: what the parties signed, as far as the caller read it ────
 
 /**
- * A process's edges and where they come from. `"design"`: the registered
- * process design's edges, matched to the process's commits by position, which is
- * the design the process was linked to and never what the parties signed (the
- * signed edges are each agreement's topology leaf, which no event carries).
- * `"linear"`: FigaroCore's own view, each order following the one committed
- * before it. Protocol-derived: the commits are protocol-enforced, the link is
- * a provenance attestation or a counted use, and the edges are the design's.
+ * A process's orders and the edges between them its parties signed.
+ *
+ * `orders` is FigaroCore's own fact: the order in which the commits landed,
+ * read from the running total each one carried (`commitOrder`). It says which
+ * commit came before which, and never that one order follows another:
+ * FigaroCore fixes no order among sibling orders.
+ *
+ * `follows` holds an order's edges only where the caller held its agreement,
+ * the agreement's leaves hash to the order's `checkoutHash`
+ * (`anchorAgreement`), and the agreement carries its topology leaf
+ * (`Agreement.follows`). Every other order is absent: its edges are unknown,
+ * never "follows nothing". Protocol-derived: the commits are
+ * protocol-enforced, and the edges are content the commitment binds.
  */
 export interface ProcessEdges {
     boundary: "protocol-derived";
-    source: "design" | "linear";
-    /** The registered process design the edges were read from; null for the linear view. */
-    processDesignHash: Hex | null;
-    /** The process's order hashes in commit order. */
+    /** The process's order hashes in the order they were committed. */
     orders: readonly Hex[];
-    /** Order hash → the order hashes it follows (`[]` on the root). */
+    /** Order hash → the order hashes its signed topology leaf names, for each
+     *  order whose agreement was held and anchored; absent for every other. */
     follows: ReadonlyMap<Hex, readonly Hex[]>;
 }
 
 /**
- * The design's edges over a process's commits, or undefined when the commits
- * do not fit the design. The commit at position `i` instantiates the design's
- * position `i`: the process design → orders walk commits the positions in this
- * order (`reconstructOrdersFromProcessDesign`). An open process matches the
- * design's first positions; a process with more commits than the design has
- * positions, or whose first position follows another, does not fit.
- */
-function designedFollows(orders: readonly Order[], planned: readonly DesignPosition[]): Map<Hex, Hex[]> | undefined {
-    if (orders.length === 0 || orders.length > planned.length) return undefined;
-    if (planned[0].parentLocalIds.length > 0) return undefined;
-    const positionOf = new Map(planned.map((p, i) => [p.nodeId, i]));
-    const follows = new Map<Hex, Hex[]>();
-    for (let i = 0; i < orders.length; i++) {
-        const parents: Hex[] = [];
-        for (const id of planned[i].parentLocalIds) {
-            const at = positionOf.get(id);
-            if (at === undefined || at >= i) return undefined;
-            parents.push(orders[at].orderHash);
-        }
-        follows.set(orders[i].orderHash, parents);
-    }
-    return follows;
-}
-
-/**
- * Every process's edges: the design's for a process `designOf` links to a
- * registered process design whose positions fit its commits, FigaroCore's linear
- * view for every other. `designOf` is the caller's link (the buyer's
- * provenance attestation, or a `UsageRecorded` of the process design naming the
- * process), with the process design's positions in commit order.
+ * Every process's orders in commit order, with the edges each order's
+ * parties signed where the caller holds the agreement. `agreementOf` returns
+ * the agreement document the caller holds for an order, or undefined. Each
+ * document is checked here against the order's own `checkoutHash`, so a
+ * document for another order, or one whose content was altered, yields no
+ * edge. No design and no commit position stands in for an unread agreement.
  */
 export function processEdges(
     graph: ProcessGraph,
-    designOf: (processId: Hex) => DesignLink | undefined,
+    agreementOf: (order: Order) => unknown,
 ): Map<Hex, ProcessEdges> {
     const out = new Map<Hex, ProcessEdges>();
     for (const process of graph.processes.values()) {
         const orders = commitOrder(process);
-        const hashes = orders.map((o) => o.orderHash);
-        const link = designOf(process.processId);
-        const designed = link ? designedFollows(orders, link.planned) : undefined;
-        out.set(process.processId, designed && link
-            ? { boundary: "protocol-derived", source: "design", processDesignHash: link.processDesignHash, orders: hashes, follows: designed }
-            : {
-                boundary: "protocol-derived",
-                source: "linear",
-                processDesignHash: null,
-                orders: hashes,
-                follows: new Map(hashes.map((h, i) => [h, i === 0 ? [] : [hashes[i - 1]]])),
-            });
+        const follows = new Map<Hex, readonly Hex[]>();
+        for (const order of orders) {
+            const held = agreementOf(order);
+            const agreement = held === undefined ? null : anchorAgreement(held, order.checkoutHash);
+            if (agreement?.follows !== undefined) follows.set(order.orderHash, [...agreement.follows]);
+        }
+        out.set(process.processId, { boundary: "protocol-derived", orders: orders.map((o) => o.orderHash), follows });
     }
     return out;
 }

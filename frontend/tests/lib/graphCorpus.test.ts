@@ -31,7 +31,7 @@ const assembly = (clauseKey: string): Assemblies[number] => ({
     processDesignHash: `0x${"ab".repeat(32)}`,
     agreementHashes: [],
     name: "pinned",
-    planned: null,
+    entries: [],
     clauseSets: [{ clauses: { [clauseKey]: { currency: TOKEN } } }],
 });
 

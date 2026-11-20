@@ -41,10 +41,14 @@
 import { parseFieldSpec, type SpecParseError, type FieldSpec } from "@figaro-protocol/sdk/clauses";
 import {
     parseCheckoutDerivations,
+    parseEndpointsMark,
     parsePricedLinesMark,
+    parseTimeWindowMark,
     type CatalogueMeasure,
     type CheckoutDerivation,
+    type EndpointsMark,
     type PricedLinesMark,
+    type TimeWindowMark,
 } from "@figaro-protocol/sdk";
 
 /** Drawer article a clause composes into on the designer canvas. A free-form
@@ -132,6 +136,16 @@ interface ClauseBlockCheckout {
      *  each by a rule of the open derivation registry over its declared
      *  inputs (`CheckoutDerivation`). Never the buyer's. */
     derives: Readonly<Record<string, CheckoutDerivation>>;
+    /** Which content field is the start of the clause's time window and
+     *  which is its end (`TimeWindowMark`). A quantity source that bills by
+     *  the window reads this mark, never the format or the order of the
+     *  fields. Null for a clause that carries no window. */
+    timeWindow: TimeWindowMark | null;
+    /** Which content field is the route's origin and which is its
+     *  destination (`EndpointsMark`). A quantity source that bills by
+     *  distance reads this mark, never the format or the order of the
+     *  fields. Null for a clause that carries no route. */
+    endpoints: EndpointsMark | null;
     /** The enum content fields (by name, the map's keys) whose values a
      *  checkout offers only when the chain in use holds what each value
      *  names (`HeldValuesHint`): read at checkout by the reader the hint
@@ -379,6 +393,8 @@ export function parseBlockBinding(
     let catalogueMeasures: Readonly<Record<string, CatalogueMeasure>> = {};
     let pricedLines: PricedLinesMark | null = null;
     let derives: Readonly<Record<string, CheckoutDerivation>> = {};
+    let timeWindow: TimeWindowMark | null = null;
+    let endpoints: EndpointsMark | null = null;
     let heldValues: Readonly<Record<string, HeldValuesHint>> = {};
     let compositionFields: readonly FieldSpec[] = [];
     if (raw.checkout !== undefined) {
@@ -395,7 +411,7 @@ export function parseBlockBinding(
         const parsedMeasures = parseCatalogueMeasures(raw.checkout.catalogueMeasures, `${path}.checkout.catalogueMeasures`, errors);
         if (parsedMeasures === null) return null;
         catalogueMeasures = parsedMeasures;
-        // The SDK's parsers are the one reading of these two attributes;
+        // The SDK's parsers are the one reading of these four attributes;
         // here a present value they cannot read is malformed.
         if (raw.checkout.pricedLines !== undefined && raw.checkout.pricedLines !== null) {
             pricedLines = parsePricedLinesMark(raw.checkout.pricedLines) ?? null;
@@ -412,6 +428,20 @@ export function parseBlockBinding(
                 return null;
             }
             derives = parsedDerives;
+        }
+        if (raw.checkout.timeWindow !== undefined && raw.checkout.timeWindow !== null) {
+            timeWindow = parseTimeWindowMark(raw.checkout.timeWindow) ?? null;
+            if (timeWindow === null) {
+                errors.push({ path: `${path}.checkout.timeWindow`, message: "timeWindow must name its start and end as non-empty strings" });
+                return null;
+            }
+        }
+        if (raw.checkout.endpoints !== undefined && raw.checkout.endpoints !== null) {
+            endpoints = parseEndpointsMark(raw.checkout.endpoints) ?? null;
+            if (endpoints === null) {
+                errors.push({ path: `${path}.checkout.endpoints`, message: "endpoints must name its from and to as non-empty strings" });
+                return null;
+            }
         }
         const parsedHeld = parseHeldValues(raw.checkout.heldValues, `${path}.checkout.heldValues`, errors);
         if (parsedHeld === null) return null;
@@ -455,7 +485,7 @@ export function parseBlockBinding(
 
     return {
         design: { article: rawDesign.article as ClauseArticle, scope, nestsUnder, fills: designFills, composes },
-        checkout: { catalogueFills, profileFills, catalogueMeasures, pricedLines, derives, heldValues, compositionFields },
+        checkout: { catalogueFills, profileFills, catalogueMeasures, pricedLines, derives, timeWindow, endpoints, heldValues, compositionFields },
         runtime: { interaction },
     };
 }

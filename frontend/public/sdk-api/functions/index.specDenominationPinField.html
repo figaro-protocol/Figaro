@@ -16,13 +16,21 @@
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="specdenominationpinfield"><span class="tsd-kind-call-signature">specDenominationPinField</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">spec</span><span class="tsd-signature-symbol">:</span> <a href="../types/index.ProjectionSpecView.html" class="tsd-signature-type tsd-kind-type-alias">ProjectionSpecView</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#specdenominationpinfield" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>The field of a clause that pins the COMPOSITION's denomination: the clause
-is assembly-scoped (<code>block.design.scope: &quot;assembly&quot;</code>) under the
-denomination article (<code>block.design.article: &quot;denomination&quot;</code>), and
-declares exactly one designer-filled (<code>block.design.fills</code>) <code>string</code> field
-of format <code>address-hex</code>; that field is the pin. Read by the spec's shape,
-never by a field name, so a stranger's denomination clause pins under any
-field name. Undefined for any other clause.</p>
+<div class="tsd-comment tsd-typography"><p>The field of a clause that pins the COMPOSITION's denomination, or
+undefined. It reads three of the spec's hints (<code>spec.hints</code>, lifted from
+the <code>block</code> by <code>parseProjectionHints</code>): the scope is <code>&quot;assembly&quot;</code>
+(<code>block.design.scope</code>), the article is <code>&quot;denomination&quot;</code>
+(<code>block.design.article</code>), and exactly one of the fields listed in
+<code>block.design.fills</code> is a top-level <code>string</code> field of format
+<code>address-hex</code>. That field is the pin. It reads no field name and no clause
+id, so a stranger's clause filed under the denomination article pins
+under any field name.</p>
+<p>The <code>block</code> is presentation and outside the clause key, so whoever serves
+the <code>block</code> decides whether a clause pins: a view with no hints, or one
+filed under another article, pins nothing. The sign gate's token check
+(<code>validateCommitmentAgreement</code>) and the reference seeding
+(<code>fillDeployTimeCurrency</code>) are the reference tooling's own, steered by it;
+the chain holds a process to the one token its commitments sign.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -30,7 +38,7 @@ field name. Undefined for any other clause.</p>
 <li><span><span class="tsd-kind-parameter">spec</span>: <a href="../types/index.ProjectionSpecView.html" class="tsd-signature-type tsd-kind-type-alias">ProjectionSpecView</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L456">projection.ts:456</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L517">projection.ts:517</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

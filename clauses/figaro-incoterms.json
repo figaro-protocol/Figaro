@@ -62,6 +62,8 @@
             "catalogueMeasures": {},
             "pricedLines": null,
             "derives": {},
+            "timeWindow": null,
+            "endpoints": null,
             "heldValues": {},
             "compositionFields": []
         },

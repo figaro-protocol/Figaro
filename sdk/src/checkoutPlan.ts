@@ -18,7 +18,7 @@
 import { parseUnits } from "viem";
 import { geohashCentroidDistanceKm } from "./derive/geo.js";
 import { GEOHASH_FORMAT } from "./clauses/index.js";
-import { ownValue } from "./clauses/spec.js";
+import { ownValue, type StringFieldSpec } from "./clauses/spec.js";
 import {
     specCatalogFills,
     specCatalogueMeasures,
@@ -729,17 +729,17 @@ export function resolveSubOrderPricing(args: {
 //  - "checkout-quantity": the buyer enters the units at checkout (hours,
 //    seats, GB — the unit is the seller's editorial `rateUnit` label).
 //  - "order-geodistance": derived from the order's OWN committed endpoints —
-//    great-circle distance in km between the two geohash cell centroids. An
-//    endpoint is a string field whose spec names a sibling in
-//    `formatFromField` and whose sibling's committed value is geohash
-//    (`geohashEndpointFields`), never a clause id or a field name. ANY order
-//    that composes exactly one clause with exactly two such fields has a
-//    derivable distance; no sector is named.
+//    great-circle distance in km between the two geohash cell centroids. The
+//    endpoints are the two fields the clause's spec marks in
+//    `block.checkout.endpoints` (`markedEndpoints`), never fields found by
+//    their shape, a clause id or a field name. ANY order that composes
+//    exactly one clause marking its endpoints has a derivable distance; no
+//    sector is named.
 //  - "booking-window": derived from the order's OWN committed time window —
-//    hours between two ISO date-times. A window is a pair of string fields
-//    whose spec declares `format: "iso-datetime"`, the first declared being
-//    the start (`isoDatetimeFields`), never a clause id or a field name. ANY
-//    order that composes exactly one clause with exactly two such fields (an
+//    hours between two ISO date-times. The window is the start and the end
+//    the clause's spec marks in `block.checkout.timeWindow`
+//    (`markedTimeWindow`), never fields found by their format or their
+//    order. ANY order that composes exactly one clause marking a window (an
 //    appointment, a timeslot, a rental period alike) has derivable hours; no
 //    sector is named. This is the time dual of geodistance: both derive a
 //    quantity from committed data alone.
@@ -775,45 +775,53 @@ function resolveCheckoutQuantity(ctx: RateQuantityContext): number | null {
     return typeof q === "number" && Number.isFinite(q) && q > 0 ? q : null;
 }
 
-/** The fields of one clause whose format the order's own content declares to
- *  be geohash: each string field whose spec names a declared sibling in
- *  `formatFromField`, where that sibling's committed value is geohash. Read
- *  from the spec and the committed values alone, in the spec's declaration
- *  order; no field name and no clause id is known here. The sibling's value
- *  is read as committed, never through a default `resolveInputFormat` would
- *  fall back to: the caller passes the values the agreement signs, with the
- *  spec's defaults already filled (`withSpecDefaults`), so a standard the
- *  buyer left at its declared default arrives here as that default, and a
- *  standard committed empty or absent declares no format. */
-function geohashEndpointFields(
+/** The two distinct fields a mark names, when the spec declares both as
+ *  string content fields; undefined when the spec's own fields contradict
+ *  the mark. */
+function markedStringPair(spec: ProjectionSpecView, a: string, b: string): [StringFieldSpec, StringFieldSpec] | undefined {
+    if (a === b) return undefined;
+    const fa = spec.fields.find((f) => f.name === a);
+    const fb = spec.fields.find((f) => f.name === b);
+    return fa?.type === "string" && fb?.type === "string" ? [fa, fb] : undefined;
+}
+
+/** The route's two endpoints, origin first, as the clause's spec marks them
+ *  (`block.checkout.endpoints`), or undefined. Each marked field names a
+ *  declared sibling in `formatFromField`, and that sibling's committed value
+ *  is geohash. The sibling's value is read as committed, never through a
+ *  default `resolveInputFormat` would fall back to: the caller passes the
+ *  values the agreement signs, with the spec's defaults already filled
+ *  (`withSpecDefaults`), so a standard the buyer left at its declared
+ *  default arrives here as that default, and a standard committed empty or
+ *  absent declares no format. A clause with no mark has no endpoints,
+ *  whatever its fields look like. */
+function markedEndpoints(
     spec: ProjectionSpecView,
     values: Record<string, unknown> | undefined,
-): string[] {
+): { from: string; to: string } | undefined {
+    const mark = spec.hints?.endpoints;
+    if (!mark) return undefined;
+    const pair = markedStringPair(spec, mark.from, mark.to);
+    if (!pair) return undefined;
     const declared = new Set(spec.fields.map((f) => f.name));
-    return spec.fields
-        .filter((f) => f.type === "string"
-            && typeof f.formatFromField === "string"
-            && declared.has(f.formatFromField)
-            && ownValue(values, f.formatFromField) === GEOHASH_FORMAT)
-        .map((f) => f.name);
+    const geohash = pair.every((f) => typeof f.formatFromField === "string"
+        && declared.has(f.formatFromField)
+        && ownValue(values, f.formatFromField) === GEOHASH_FORMAT);
+    return geohash ? { from: mark.from, to: mark.to } : undefined;
 }
 
 function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
-    // The endpoint pair is derived from each composed clause's loaded spec
-    // and the order's committed values (`geohashEndpointFields`). A clause
-    // with exactly two such fields carries the pair; a clause with fewer or
-    // more carries none, since its spec does not say which two are the
-    // endpoints. Exactly one clause of the order may carry a pair: with none,
-    // or with two or more, the spec does not say which distance the order
-    // means, and the quantity is unresolvable, never junk-priced. A
-    // standard other than geohash declares no geohash fields, so its codes
-    // are never read as geohash.
+    // Exactly one clause of the order may mark its endpoints: with none, or
+    // with two or more, no spec says which distance the order means, and the
+    // quantity is unresolvable, never junk-priced. A standard other than
+    // geohash marks no geohash endpoints, so its codes are never read as
+    // geohash.
     const pairs: { from: unknown; to: unknown }[] = [];
     for (const [clauseKey, values] of Object.entries(ctx.clauses)) {
         const spec = ctx.specs.get(clauseKey as Hex);
         if (!spec) continue;
-        const fields = geohashEndpointFields(spec, values);
-        if (fields.length === 2) pairs.push({ from: values[fields[0]!], to: values[fields[1]!] });
+        const marked = markedEndpoints(spec, values);
+        if (marked) pairs.push({ from: values[marked.from], to: values[marked.to] });
     }
     if (pairs.length !== 1) return null;
     const { from, to } = pairs[0]!;
@@ -832,32 +840,28 @@ function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
  *  content validator enforces (`validate.ts`). */
 const ISO_DATETIME_FORMAT = "iso-datetime";
 
-/** The fields of one clause that declare the date-time format statically
- *  (`format: "iso-datetime"`), in the spec's declaration order. The validator
- *  enforces that format on a static declaration only, so these are the fields
- *  whose signed values are date-times; no field name and no clause id is
- *  known here. */
-function isoDatetimeFields(spec: ProjectionSpecView): string[] {
-    return spec.fields
-        .filter((f) => f.type === "string" && f.format === ISO_DATETIME_FORMAT)
-        .map((f) => f.name);
+/** The window's start and end, as the clause's spec marks them
+ *  (`block.checkout.timeWindow`), or undefined. Both marked fields declare
+ *  the date-time format statically (`format: "iso-datetime"`), the one the
+ *  validator enforces, so their signed values are date-times. A clause with
+ *  no mark has no window, whatever its fields look like. */
+function markedTimeWindow(spec: ProjectionSpecView): { start: string; end: string } | undefined {
+    const mark = spec.hints?.timeWindow;
+    if (!mark) return undefined;
+    const pair = markedStringPair(spec, mark.start, mark.end);
+    return pair?.every((f) => f.format === ISO_DATETIME_FORMAT) ? { start: mark.start, end: mark.end } : undefined;
 }
 
 function resolveBookingWindowHours(ctx: RateQuantityContext): number | null {
-    // The window is derived from each composed clause's loaded spec
-    // (`isoDatetimeFields`). A clause with exactly two date-time fields
-    // carries a window, and the field it declares first is the start; a
-    // clause with fewer or more carries none, since its spec does not say
-    // which two bound the window. Exactly one clause of the order may carry a
-    // window: with none, or with two or more, the spec does not say which
-    // window the order means, and the quantity is unresolvable, never
-    // junk-priced.
+    // Exactly one clause of the order may mark a window: with none, or with
+    // two or more, no spec says which window the order means, and the
+    // quantity is unresolvable, never junk-priced.
     const windows: { start: unknown; end: unknown }[] = [];
     for (const [clauseKey, values] of Object.entries(ctx.clauses)) {
         const spec = ctx.specs.get(clauseKey as Hex);
         if (!spec) continue;
-        const fields = isoDatetimeFields(spec);
-        if (fields.length === 2) windows.push({ start: values[fields[0]!], end: values[fields[1]!] });
+        const marked = markedTimeWindow(spec);
+        if (marked) windows.push({ start: values[marked.start], end: values[marked.end] });
     }
     if (windows.length !== 1) return null;
     const { start, end } = windows[0]!;
@@ -873,6 +877,7 @@ function resolveBookingWindowHours(ctx: RateQuantityContext): number | null {
     }
     return (endMs - startMs) / 3_600_000; // ms → hours (fractional; billing rounds per started hour)
 }
+
 
 const REGISTRY = new Map<string, RateQuantityResolver>([
     ["checkout-quantity", resolveCheckoutQuantity],

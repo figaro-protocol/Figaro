@@ -24,8 +24,9 @@
  *   graph over resolution denominations + swap legs
  * - Funding legs: the swap legs one commit transaction carries, read from its
  *   receipt's ERC-20 transfers (the coordinator emits nothing of its own)
- * - Queries: market-shape, a process's edges (the design or the linear
- *   view) and wallet-record, thin folds over the graphs
+ * - Queries: market-shape, a process's edges (its commits in order, and the
+ *   edges its parties signed where the caller holds the agreement) and
+ *   wallet-record, thin folds over the graphs
  */
 
 // ── Attestation filtering ───────────────────────────────────────────────────
@@ -112,8 +113,6 @@ export { followsOfEdges, marketShape, processEdges, walletRecord } from "./queri
 export type {
     ChainShape,
     DenominationVolume,
-    DesignLink,
-    DesignPosition,
     ProcessEdges,
     MarketShapeGroup,
     MarketShape,

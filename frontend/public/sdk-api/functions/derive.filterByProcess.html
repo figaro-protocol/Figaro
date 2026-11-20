@@ -36,8 +36,9 @@ spec-decoded via the caller's SpecSource, fingerprint-only on absence</li>
 graph over resolution denominations + swap legs</li>
 <li>Funding legs: the swap legs one commit transaction carries, read from its
 receipt's ERC-20 transfers (the coordinator emits nothing of its own)</li>
-<li>Queries: market-shape, a process's edges (the design or the linear
-view) and wallet-record, thin folds over the graphs</li>
+<li>Queries: market-shape, a process's edges (its commits in order, and the
+edges its parties signed where the caller holds the agreement) and
+wallet-record, thin folds over the graphs</li>
 </ul>
 </div></section>
 <section class="tsd-panel">

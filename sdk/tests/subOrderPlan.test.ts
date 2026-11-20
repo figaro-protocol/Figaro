@@ -485,31 +485,34 @@ describe("the rate-quantity source registry", () => {
     });
 });
 
-// ── order-geodistance: the endpoints are derived from the spec ──────────────
+// ── The quantity sources read the marks a spec declares ─────────────────────
 //
-// A clause no repository file carries, written here: its endpoint names and
-// its standard's name share nothing with the reference location clause. The
-// resolver finds the endpoints by `formatFromField` and the committed value of
-// the sibling it names, never by a field name or a clause id.
+// Clauses no repository file carries, written here: their field names share
+// nothing with the reference clauses. A source reads the mark the spec
+// declares in `block.checkout` (`endpoints` for the route's two endpoints,
+// `timeWindow` for the window's start and end), never the shape of the
+// fields, a field name or a clause id. A clause with no mark yields no
+// quantity, so the item stays unpriced.
 
 type FieldDoc = Record<string, unknown>;
 const standardField = (name: string): FieldDoc =>
     ({ name, type: "string", required: true, minLength: 1, maxLength: 64, default: "geohash" });
 const pointField = (name: string, from: string): FieldDoc =>
     ({ name, type: "string", required: true, minLength: 1, maxLength: 32, formatFromField: from });
-const strangerView = (clauseId: string, fields: FieldDoc[]) =>
-    viewOf({ clauseId, version: 1, title: clauseId, description: "", fields, stages: {} });
+const strangerView = (clauseId: string, fields: FieldDoc[], checkout?: Record<string, unknown>) =>
+    viewOf({ clauseId, version: 1, title: clauseId, description: "", fields, stages: {}, ...(checkout && { block: { checkout } }) });
 
-const ROUTE = strangerView("acme-route", [
+const ROUTE_FIELDS = [
     standardField("cellSystem"),
     pointField("pickupCell", "cellSystem"),
     pointField("dropoffCell", "cellSystem"),
-]);
+];
+const ROUTE = strangerView("acme-route", ROUTE_FIELDS, { endpoints: { from: "pickupCell", to: "dropoffCell" } });
 const geodistance = (clauses: Record<string, Record<string, unknown>>, specs: ReturnType<typeof specSourceOf>) =>
     getRateQuantityResolver("order-geodistance")!({ clauses, specs });
 
-describe("order-geodistance — endpoints derived from the spec", () => {
-    it("prices a location clause whose fields carry other names", () => {
+describe("order-geodistance — the endpoints the spec marks", () => {
+    it("prices a stranger's clause that marks its endpoints under its own field names", () => {
         const specs = specSourceOf([ROUTE]);
         const km = geodistance({ [ROUTE.clauseKey]: { cellSystem: "geohash", pickupCell: SF, dropoffCell: LA } }, specs);
         expect(km).toBe(geohashCentroidDistanceKm(SF, LA));
@@ -528,9 +531,29 @@ describe("order-geodistance — endpoints derived from the spec", () => {
         expect(p.billedQuantity).toBe(Math.ceil(geohashCentroidDistanceKm(SF, LA)));
     });
 
-    it("gives the reference location clause from clauses/ the centroid distance between its two endpoints", () => {
+    it("gives the reference location clause from clauses/ the centroid distance between its marked endpoints", () => {
         const km = geodistance({ [GEO]: { geocodeStandard: "geohash", origin: SF, destination: LA } }, GEO_SPECS);
         expect(km).toBe(geohashCentroidDistanceKm(SF, LA));
+    });
+
+    it("reads no distance from a clause with two geohash endpoint fields and no mark", () => {
+        const unmarked = strangerView("acme-unmarked-route", ROUTE_FIELDS);
+        expect(geodistance(
+            { [unmarked.clauseKey]: { cellSystem: "geohash", pickupCell: SF, dropoffCell: LA } },
+            specSourceOf([unmarked]),
+        )).toBeNull();
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses({ [unmarked.clauseKey]: { cellSystem: "geohash", pickupCell: SF, dropoffCell: LA } }),
+            seller: SWIFT,
+            sellerCatalogs: rateCatalog({
+                id: "haul", name: "Haul", price: "0.01", available: true,
+                pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
+            }),
+            tokenDecimals: 18,
+            specs: specSourceOf([unmarked]),
+        });
+        expect(p.payment).toBe(0n);
+        expect(p.issue).toBe("unresolvable-quantity");
     });
 
     it("reads no distance when the committed standard is not geohash", () => {
@@ -538,25 +561,20 @@ describe("order-geodistance — endpoints derived from the spec", () => {
         expect(geodistance({ [ROUTE.clauseKey]: { cellSystem: "h3", pickupCell: SF, dropoffCell: LA } }, specs)).toBeNull();
     });
 
-    it("reads no distance from a clause with one geohash field", () => {
-        const one = strangerView("acme-pin", [standardField("cellSystem"), pointField("siteCell", "cellSystem")]);
-        expect(geodistance({ [one.clauseKey]: { cellSystem: "geohash", siteCell: SF } }, specSourceOf([one]))).toBeNull();
-    });
-
-    it("reads no distance from a clause with three geohash fields: its spec names no pair", () => {
+    it("prices a clause with three geohash fields by the two its mark names", () => {
         const three = strangerView("acme-leg", [
             standardField("cellSystem"),
             pointField("aCell", "cellSystem"),
             pointField("bCell", "cellSystem"),
             pointField("cCell", "cellSystem"),
-        ]);
+        ], { endpoints: { from: "aCell", to: "cCell" } });
         expect(geodistance(
-            { [three.clauseKey]: { cellSystem: "geohash", aCell: SF, bCell: LA, cCell: SF } },
+            { [three.clauseKey]: { cellSystem: "geohash", aCell: SF, bCell: SF, cCell: LA } },
             specSourceOf([three]),
-        )).toBeNull();
+        )).toBe(geohashCentroidDistanceKm(SF, LA));
     });
 
-    it("reads no distance when two clauses of the order each carry a pair, in either order", () => {
+    it("reads no distance when two clauses of the order each mark endpoints, in either order", () => {
         const specs = specSourceOf([ROUTE, viewOf(rawSpecOf("figaro-geolocation"))]);
         const route = { cellSystem: "geohash", pickupCell: SF, dropoffCell: SF };
         const geo = { geocodeStandard: "geohash", origin: SF, destination: LA };
@@ -564,31 +582,42 @@ describe("order-geodistance — endpoints derived from the spec", () => {
         expect(geodistance({ [GEO]: geo, [ROUTE.clauseKey]: route }, specs)).toBeNull();
     });
 
-    it("prices from the one clause with a pair when another clause carries a single geohash field", () => {
-        const one = strangerView("acme-pin", [standardField("cellSystem"), pointField("siteCell", "cellSystem")]);
-        const specs = specSourceOf([ROUTE, one]);
+    it("prices from the one marked clause when another clause carries unmarked geohash fields", () => {
+        const unmarked = strangerView("acme-unmarked-route", ROUTE_FIELDS);
+        const specs = specSourceOf([ROUTE, unmarked]);
         expect(geodistance({
-            [one.clauseKey]: { cellSystem: "geohash", siteCell: SF },
+            [unmarked.clauseKey]: { cellSystem: "geohash", pickupCell: SF, dropoffCell: SF },
             [ROUTE.clauseKey]: { cellSystem: "geohash", pickupCell: SF, dropoffCell: LA },
         }, specs)).toBe(geohashCentroidDistanceKm(SF, LA));
     });
 
-    it("reads no distance when formatFromField names a field the spec does not declare", () => {
+    it.each([
+        ["names a field the spec does not declare", { from: "pickupCell", to: "elsewhere" }],
+        ["names one field twice", { from: "pickupCell", to: "pickupCell" }],
+    ])("reads no distance from a mark that %s", (_label, endpoints) => {
+        const bad = strangerView("acme-bad-mark", ROUTE_FIELDS, { endpoints });
+        expect(geodistance(
+            { [bad.clauseKey]: { cellSystem: "geohash", pickupCell: SF, dropoffCell: LA, elsewhere: LA } },
+            specSourceOf([bad]),
+        )).toBeNull();
+    });
+
+    it("reads no distance when a marked field's formatFromField names a field the spec does not declare", () => {
         const dangling = strangerView("acme-dangling", [
             pointField("pickupCell", "cellSystem"),
             pointField("dropoffCell", "cellSystem"),
-        ]);
+        ], { endpoints: { from: "pickupCell", to: "dropoffCell" } });
         expect(geodistance(
             { [dangling.clauseKey]: { cellSystem: "geohash", pickupCell: SF, dropoffCell: LA } },
             specSourceOf([dangling]),
         )).toBeNull();
     });
 
-    it("reads no distance from two fields with a static geohash format: the order's content declares no standard", () => {
+    it("reads no distance from marked fields with a static geohash format: the order's content declares no standard", () => {
         const fixed = strangerView("acme-fixed", [
             { name: "aCell", type: "string", required: true, minLength: 1, maxLength: 32, format: "geohash" },
             { name: "bCell", type: "string", required: true, minLength: 1, maxLength: 32, format: "geohash" },
-        ]);
+        ], { endpoints: { from: "aCell", to: "bCell" } });
         expect(geodistance({ [fixed.clauseKey]: { aCell: SF, bCell: LA } }, specSourceOf([fixed]))).toBeNull();
     });
 
@@ -601,23 +630,18 @@ describe("order-geodistance — endpoints derived from the spec", () => {
     });
 });
 
-// ── booking-window: the window is derived from the spec ─────────────────────
-//
-// A clause no repository file carries, written here: its field names share
-// nothing with the reference schedule clause. The resolver finds the window
-// by the declared format `iso-datetime`, never by a field name or a clause id;
-// the field declared first is the start.
-
 const instantField = (name: string): FieldDoc =>
     ({ name, type: "string", required: true, format: "iso-datetime" });
-const RENTAL = strangerView("acme-rental", [instantField("pickUpAt"), instantField("returnBy")]);
+// The mark names the start and the end; declaration order says nothing.
+const RENTAL = strangerView("acme-rental", [instantField("returnBy"), instantField("pickUpAt")],
+    { timeWindow: { start: "pickUpAt", end: "returnBy" } });
 const bookingHours = (clauses: Record<string, Record<string, unknown>>, specs: ReturnType<typeof specSourceOf>) =>
     getRateQuantityResolver("booking-window")!({ clauses, specs });
 const NINE = "2026-07-22T09:00:00Z";
 const HALF_PAST_TWELVE = "2026-07-22T12:30:00Z";
 
-describe("booking-window — the window derived from the spec", () => {
-    it("prices hours on a schedule clause whose fields carry other names", () => {
+describe("booking-window — the window the spec marks", () => {
+    it("prices hours on a stranger's clause that marks its window under its own field names", () => {
         const specs = specSourceOf([RENTAL]);
         expect(bookingHours({ [RENTAL.clauseKey]: { pickUpAt: NINE, returnBy: HALF_PAST_TWELVE } }, specs)).toBe(3.5);
         const p = resolveSubOrderPricing({
@@ -634,30 +658,44 @@ describe("booking-window — the window derived from the spec", () => {
         expect(p.billedQuantity).toBe(4);
     });
 
-    it("gives the reference schedule clause from clauses/ the hours between its two instants", () => {
+    it("bills nothing for a clause with two unrelated date-time fields and no mark", () => {
+        const certificate = strangerView("acme-certificate", [instantField("issuedAt"), instantField("expiresAt")]);
+        const specs = specSourceOf([certificate]);
+        expect(bookingHours({ [certificate.clauseKey]: { issuedAt: NINE, expiresAt: HALF_PAST_TWELVE } }, specs)).toBeNull();
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses({ [certificate.clauseKey]: { issuedAt: NINE, expiresAt: HALF_PAST_TWELVE } }),
+            seller: SWIFT,
+            sellerCatalogs: rateCatalog({
+                id: "consulting", name: "Consulting", price: "0.5", available: true,
+                pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "booking-window",
+            }),
+            tokenDecimals: 18,
+            specs,
+        });
+        expect(p.payment).toBe(0n);
+        expect(p.issue).toBe("unresolvable-quantity");
+    });
+
+    it("gives the reference schedule clause from clauses/ the hours between its marked instants", () => {
         expect(bookingHours({ [SCHEDULE]: { windowStart: NINE, windowEnd: HALF_PAST_TWELVE } }, SCHEDULE_SPECS)).toBe(3.5);
     });
 
-    it("reads the field declared first as the start: a window whose second instant is not after the first prices nothing", () => {
+    it("a window whose marked end is not after its marked start prices nothing", () => {
         const specs = specSourceOf([RENTAL]);
         expect(bookingHours({ [RENTAL.clauseKey]: { pickUpAt: HALF_PAST_TWELVE, returnBy: NINE } }, specs)).toBeNull();
         expect(bookingHours({ [RENTAL.clauseKey]: { pickUpAt: NINE, returnBy: NINE } }, specs)).toBeNull();
     });
 
-    it("reads no window from a clause with one date-time field", () => {
-        const one = strangerView("acme-deadline", [instantField("dueAt")]);
-        expect(bookingHours({ [one.clauseKey]: { dueAt: NINE } }, specSourceOf([one]))).toBeNull();
-    });
-
-    it("reads no window from a clause with three date-time fields: its spec names no pair", () => {
-        const three = strangerView("acme-legs", [instantField("aAt"), instantField("bAt"), instantField("cAt")]);
+    it("prices a clause with three date-time fields by the two its mark names", () => {
+        const three = strangerView("acme-legs", [instantField("aAt"), instantField("bAt"), instantField("cAt")],
+            { timeWindow: { start: "aAt", end: "cAt" } });
         expect(bookingHours(
-            { [three.clauseKey]: { aAt: NINE, bAt: HALF_PAST_TWELVE, cAt: HALF_PAST_TWELVE } },
+            { [three.clauseKey]: { aAt: NINE, bAt: NINE, cAt: HALF_PAST_TWELVE } },
             specSourceOf([three]),
-        )).toBeNull();
+        )).toBe(3.5);
     });
 
-    it("reads no window when two clauses of the order each carry a pair, in either order", () => {
+    it("reads no window when two clauses of the order each mark a window, in either order", () => {
         const specs = specSourceOf([RENTAL, viewOf(rawSpecOf("figaro-schedule"))]);
         const rental = { pickUpAt: NINE, returnBy: HALF_PAST_TWELVE };
         const schedule = { windowStart: NINE, windowEnd: HALF_PAST_TWELVE };
@@ -665,19 +703,24 @@ describe("booking-window — the window derived from the spec", () => {
         expect(bookingHours({ [SCHEDULE]: schedule, [RENTAL.clauseKey]: rental }, specs)).toBeNull();
     });
 
-    it("prices from the one clause with a pair when another clause carries a single date-time field", () => {
-        const one = strangerView("acme-deadline", [instantField("dueAt")]);
+    it("prices from the one marked clause when another clause carries unmarked date-time fields", () => {
+        const certificate = strangerView("acme-certificate", [instantField("issuedAt"), instantField("expiresAt")]);
         expect(bookingHours({
-            [one.clauseKey]: { dueAt: NINE },
+            [certificate.clauseKey]: { issuedAt: NINE, expiresAt: NINE },
             [RENTAL.clauseKey]: { pickUpAt: NINE, returnBy: HALF_PAST_TWELVE },
-        }, specSourceOf([RENTAL, one]))).toBe(3.5);
+        }, specSourceOf([RENTAL, certificate]))).toBe(3.5);
     });
 
-    it("reads no window from two string fields that declare another format or none", () => {
-        const plain = strangerView("acme-plain", [
-            { name: "fromText", type: "string", required: true },
-            { name: "toText", type: "string", required: true, format: "date" },
-        ]);
-        expect(bookingHours({ [plain.clauseKey]: { fromText: NINE, toText: HALF_PAST_TWELVE } }, specSourceOf([plain]))).toBeNull();
+    it.each([
+        ["names a field the spec does not declare", [instantField("fromAt"), instantField("toAt")], { start: "fromAt", end: "untilAt" }],
+        ["names one field twice", [instantField("fromAt"), instantField("toAt")], { start: "fromAt", end: "fromAt" }],
+        ["names a field that declares another format", [instantField("fromAt"), { name: "toText", type: "string", required: true, format: "date" }], { start: "fromAt", end: "toText" }],
+        ["names a field that declares no format", [instantField("fromAt"), { name: "toText", type: "string", required: true }], { start: "fromAt", end: "toText" }],
+    ])("reads no window from a mark that %s", (_label, fields, timeWindow) => {
+        const bad = strangerView("acme-bad-window", fields as FieldDoc[], { timeWindow });
+        expect(bookingHours(
+            { [bad.clauseKey]: { fromAt: NINE, toAt: HALF_PAST_TWELVE, untilAt: HALF_PAST_TWELVE, toText: HALF_PAST_TWELVE } },
+            specSourceOf([bad]),
+        )).toBeNull();
     });
 });

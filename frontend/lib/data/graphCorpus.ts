@@ -34,13 +34,15 @@
  *   agreement hash and its assembly root). No such attestation, no
  *   attribution: the process is counted as unattributed and said to be.
  *
- *   a process's edges are the DESIGN's, never what the parties signed. The
- *   signed edges are each agreement's topology leaf, which no event carries.
- *   A process linked to a registered process design the page loaded, by its
- *   buyer's provenance attestation or by a `UsageRecorded` of the process
- *   design naming it (the counter emits it for a counted use on either path),
- *   takes that design's edges, matched to its commits by position
- *   (`processEdges`); every other process keeps FigaroCore's linear view.
+ *   no edge between two orders is read here. Which order follows which is
+ *   each agreement's topology leaf, which no event carries and this reader
+ *   does not hold, and FigaroCore fixes no order among sibling orders, so a
+ *   commit's position names no edge. Every order's edges are unknown, and the
+ *   market shape counts its process as unshaped. A process linked to a
+ *   registered process design the page loaded, by its buyer's provenance
+ *   attestation or by a `UsageRecorded` of the process design naming it (the
+ *   counter emits it for a counted use on either path), carries that design's
+ *   own edges between its entries, which name no order.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -48,7 +50,6 @@ import type { Hex, PublicClient } from "viem";
 import {
     provenanceContentRef,
     agreementClauses,
-    planProcessOrders,
     USAGE_COUNTER_ABI,
     USAGE_KIND_PROCESS,
     readUtilityTokenPin,
@@ -58,18 +59,13 @@ import {
 } from "@figaro-protocol/sdk";
 import {
     extractOverlays,
-    followsOfEdges,
     marketShape,
-    processEdges,
     projectProcessGraph,
     projectResolutionGraph,
     projectValueFlow,
     readFundingLegs,
-    type DesignLink,
-    type DesignPosition,
     type MarketShape,
     type OverlayGraph,
-    type ProcessEdges,
     type ProcessGraph,
     type RecoveredAttestation,
     type ResolutionGraph,
@@ -96,6 +92,7 @@ import { useAssemblyChoices } from "@/lib/registries/assemblyChoices";
 import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { ABSENT, PENDING, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib/shared/networkRead";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
+import type { DesignedEdges } from "@/lib/data/explorer";
 
 /**
  * How many attestation payloads one pass tries to recover, most recent first.
@@ -137,10 +134,10 @@ export interface GraphCorpus {
      *  overlay declared for it. A process absent from this map is the honest
      *  unattributed case, counted in `market.unattributedProcessCount`. */
     attributionByProcess: Map<string, string>;
-    /** processId (lowercased) → its edges: the design's for a process linked
-     *  to a loaded registered process design whose positions fit its commits, the
-     *  linear view for every other (`processEdges`). */
-    edgesByProcess: Map<string, ProcessEdges>;
+    /** processId (lowercased) → the edges of the loaded registered process
+     *  design the process is linked to, between the design's entries. They are
+     *  the design's, and name no order of the process. */
+    designByProcess: Map<string, DesignedEdges>;
 }
 
 /** A published assembly in the minimal shape this read needs: its registered
@@ -152,10 +149,9 @@ interface CorpusAssembly {
     /** The registered agreement each agreement binds, in assembly order. */
     agreementHashes: readonly `0x${string}`[];
     name: string;
-    /** The design's positions in commit order (`planProcessOrders`), or
-     *  null when its topology cannot be planned: its processes then keep the
-     *  linear view. */
-    planned: readonly DesignPosition[] | null;
+    /** The design's entries and the entries each follows, by the design's own
+     *  labels, as the registered process design declares them. */
+    entries: DesignedEdges["entries"];
     clauseSets: readonly {
         clauses: Record<string, Record<string, unknown>>;
     }[];
@@ -173,16 +169,6 @@ export function readAssemblyUtilityTokenPins(assemblies: readonly CorpusAssembly
         }
     }
     return pins;
-}
-
-/** A process design's positions in commit order, or null when its topology
- *  cannot be planned (a cycle, an agreement not hydrated). */
-function plannedPositions(hydrated: Parameters<typeof planProcessOrders>[0]): DesignPosition[] | null {
-    try {
-        return planProcessOrders(hydrated).map(({ nodeId, parentLocalIds }) => ({ nodeId, parentLocalIds }));
-    } catch {
-        return null;
-    }
 }
 
 /** How many commit receipts one pass reads at a time. */
@@ -315,24 +301,24 @@ async function readProcessDesignUseLinks(client: PublicClient, chainId: number):
 }
 
 /**
- * The registered process design a process is linked to, with its positions:
- * the buyer's provenance attestation first (`attributionFromOverlays`), else a
- * counted use of a process design naming the process. The link holds only
- * when the page loaded that design and could plan its positions; otherwise
- * the process has none and keeps the linear view.
+ * The registered process design a process is linked to, with the design's own
+ * edges between its entries: the buyer's provenance attestation first
+ * (`attributionFromOverlays`), else a counted use of a process design naming
+ * the process. The link holds only when the page loaded that design. The
+ * edges are the design's, and no entry is matched to an order.
  */
 function designLinkOf(
     processId: Hex,
     attributionByProcess: ReadonlyMap<string, string>,
     useLinks: ReadonlyMap<string, string>,
-    assemblies: readonly Pick<CorpusAssembly, "processDesignHash" | "planned">[],
-): DesignLink | undefined {
+    assemblies: readonly Pick<CorpusAssembly, "processDesignHash" | "entries">[],
+): DesignedEdges | undefined {
     const pid = processId.toLowerCase();
     const key = attributionByProcess.get(pid) ?? useLinks.get(pid);
     if (key === undefined) return undefined;
     const design = assemblies.find((a) => a.processDesignHash.toLowerCase() === key);
-    if (!design?.planned) return undefined;
-    return { processDesignHash: design.processDesignHash, planned: design.planned };
+    if (!design) return undefined;
+    return { processDesignHash: design.processDesignHash, entries: design.entries };
 }
 
 /** Best-effort `symbol()` + `decimals()` for each denomination the data
@@ -418,9 +404,14 @@ async function readGraphCorpus(deps?: {
     const valueFlow = projectValueFlow(resolution, fundingLegs, pins);
 
     const byProcess = attributionFromOverlays(overlays, deps?.assemblies ?? []);
-    const edges = processEdges(process, (processId) => designLinkOf(processId, byProcess, useLinks, deps?.assemblies ?? []));
-    const market = marketShape(process, (processId: Hex) => byProcess.get(processId.toLowerCase()), followsOfEdges(edges));
-    const edgesByProcess = new Map([...edges].map(([processId, e]) => [processId.toLowerCase(), e]));
+    // This reader holds no agreement, so every order's edges are unknown and
+    // no process takes a shape; the commit order is never read as an edge.
+    const market = marketShape(process, (processId: Hex) => byProcess.get(processId.toLowerCase()), () => undefined);
+    const designByProcess = new Map<string, DesignedEdges>();
+    for (const processId of process.processes.keys()) {
+        const design = designLinkOf(processId, byProcess, useLinks, deps?.assemblies ?? []);
+        if (design) designByProcess.set(processId.toLowerCase(), design);
+    }
 
     const tokenMeta = await readTokenMeta(client, valueFlow.nodes.map((n) => n.token));
 
@@ -441,7 +432,7 @@ async function readGraphCorpus(deps?: {
         venue: getSwapRouter(),
         assemblyNames,
         attributionByProcess: byProcess,
-        edgesByProcess,
+        designByProcess,
     };
 }
 
@@ -498,7 +489,7 @@ export function useGraphCorpus(): NetworkRead<GraphCorpus> {
                     processDesignHash: a.processDesignHash,
                     agreementHashes: hydrated.assembly.agreements.map((entry) => entry.agreementHash),
                     name: a.name,
-                    planned: plannedPositions(hydrated),
+                    entries: hydrated.assembly.agreements.map((entry) => ({ id: entry.id, follows: [...(entry.follows ?? [])] })),
                     clauseSets: [
                         // Assembly-scoped clauses compose ONCE for the whole
                         // design — a denomination pin lives here, not in an
