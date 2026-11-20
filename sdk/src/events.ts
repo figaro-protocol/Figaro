@@ -16,7 +16,7 @@
  */
 
 import { type AbiEvent, type PublicClient, type Log, decodeEventLog } from "viem";
-import { CORE_ABI, ATTESTATION_COORDINATOR_ABI } from "./abis.js";
+import { CORE_ABI, ATTESTATION_COORDINATOR_ABI, EV_ORDER_COMMITTED, EV_ORDER_RESOLVED } from "./abis.js";
 import type {
     Hex,
     Address,
@@ -462,4 +462,102 @@ export async function fetchProcessesResolved(
         const block = batchBlocks.get(key);
         return { processId, resolved: block !== undefined, resolvedBlock: block ?? null };
     });
+}
+
+// ── One process's state, on either path ────────────────────────────────────
+
+/** The client a process read needs: the Core's getter, and the log reads
+ *  `fetchLogsChunked` makes when the read falls to the batch path. Structural,
+ *  so any viem client and any test stub fits. */
+export interface ProcessStateReader {
+    readContract(args: {
+        address: `0x${string}`;
+        abi: readonly unknown[];
+        functionName: string;
+        args?: readonly unknown[];
+    }): Promise<unknown>;
+}
+
+/** Where a process read looks beyond the Core's getter. */
+export interface ProcessReadOptions {
+    /** The FigaroBatchVerifier. Omitted, only the direct path is read. */
+    batchVerifier?: Address;
+    /** The first block of the verifier's logs to read: the deployment record's
+     *  `deploymentBlock`. Default 0. */
+    fromBlock?: bigint;
+    toBlock?: bigint | "latest";
+    chunkSize?: bigint;
+}
+
+/** A process's state as the chain holds it, on the path that made it. */
+export interface ProcessChainState {
+    processId: Hex;
+    /** The path that made the process; null when neither contract knows it,
+     *  and every other field is then zero. */
+    path: "direct" | "batch" | null;
+    rootBuyer: Address;
+    token: Address;
+    /** The process's cumulative value: the sum of its landed orders' payments. */
+    runningTotal: bigint;
+    /** Its orders committed and not yet resolved. */
+    activeOrderCount: bigint;
+}
+
+/**
+ * One process's `rootBuyer`, `token`, `runningTotal` and `activeOrderCount`,
+ * whichever path made it.
+ *
+ * The Core's `processes(id)` getter is asked first. A process it knows
+ * (`rootBuyer` non-zero) is a direct one, and the getter is its answer. The
+ * two paths share no state, so for a batched process the getter answers zeros
+ * for good, and the verifier keeps no getter. When `options.batchVerifier` is
+ * given, such a process is read from the verifier's own `OrderCommitted` and
+ * `OrderResolved` logs for its id: the root buyer and the token are its orders'
+ * (every order carries both), the running total is the largest its orders
+ * carry (each order adds a non-zero payment, so that is the latest), and the
+ * active count is its committed orders less those resolved. The logs are read
+ * through `fetchLogsChunked` over `[fromBlock, toBlock]`.
+ *
+ * The state read is the landed one. An order a relay holds and has not landed
+ * is not on the chain, so it is in neither answer.
+ */
+export async function readProcessState(
+    client: ProcessStateReader,
+    core: Address,
+    processId: Hex,
+    options: ProcessReadOptions = {},
+): Promise<ProcessChainState> {
+    const [rootBuyer, token, runningTotal, activeOrderCount] = (await client.readContract({
+        address: core,
+        abi: CORE_ABI,
+        functionName: "processes",
+        args: [processId],
+    })) as readonly [Address, Address, bigint, bigint];
+    const onCore = { processId, rootBuyer, token, runningTotal, activeOrderCount };
+    if (BigInt(rootBuyer) !== 0n) return { ...onCore, path: "direct" };
+    if (!options.batchVerifier) return { ...onCore, path: null };
+
+    const logs = await fetchLogsChunked(client as unknown as PublicClient, {
+        address: options.batchVerifier,
+        fromBlock: options.fromBlock ?? 0n,
+        toBlock: options.toBlock ?? "latest",
+        chunkSize: options.chunkSize,
+        events: [EV_ORDER_COMMITTED, EV_ORDER_RESOLVED],
+    });
+    const key = processId.toLowerCase();
+    const committed = parseOrderCommittedLogs(logs).filter((e) => e.processId.toLowerCase() === key);
+    if (committed.length === 0) return { ...onCore, path: null };
+    const resolved = new Set(
+        parseOrderResolvedLogs(logs).filter((e) => e.processId.toLowerCase() === key).map((e) => e.orderHash.toLowerCase()),
+    );
+    const latest = committed.reduce((a, b) => (b.runningTotal > a.runningTotal ? b : a));
+    const active = committed.filter((e) => !resolved.has(e.orderHash.toLowerCase())).length;
+    return {
+        processId,
+        path: "batch",
+        rootBuyer: latest.buyer,
+        token: latest.token,
+        runningTotal: latest.runningTotal,
+        activeOrderCount: BigInt(active),
+    };
 }

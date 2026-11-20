@@ -26,7 +26,7 @@
 
 import type { PublicClient } from "viem";
 import { keccak256, encodeAbiParameters, encodePacked, hashTypedData, toBytes, verifyTypedData } from "viem";
-import { CORE_ABI } from "./abis.js";
+import { readProcessState, type ProcessReadOptions } from "./events.js";
 import type {
     Hex,
     Address,
@@ -347,23 +347,27 @@ export function computeDeadline(nowSeconds: bigint, ttlSeconds: number = DEFAULT
 // ── Running total fetcher ──────────────────────────────────────────────────
 
 /**
- * Read the current runningTotal for a process from the contract.
- * This MUST be called before building a sub-order commitment to prevent
- * RunningTotalMismatch reverts.
+ * Read a process's current runningTotal from the chain, whichever path made
+ * it (`readProcessState`). Call it before building a sub-order commitment, so
+ * the commitment is not refused for a running total that does not match.
+ *
+ * A process made on the batch path is read from the verifier's logs, so pass
+ * `options.batchVerifier` and `options.fromBlock` (the deployment record's
+ * `batchVerifier` and `deploymentBlock`). Without them only the direct path
+ * is read, and a batched process reads as zero.
+ *
+ * The total is the LANDED one: an order a relay holds and has not landed is
+ * not on the chain. A party whose own earlier order of the process is still
+ * in a relay's queue builds its next order on that order's `runningTotal`,
+ * which it signed, or waits until the order lands.
  */
 export async function fetchRunningTotal(
     client: PublicClient,
     coreAddress: Address,
     processId: Hex,
+    options?: ProcessReadOptions,
 ): Promise<bigint> {
-    const result = await client.readContract({
-        address: coreAddress,
-        abi: CORE_ABI,
-        functionName: "processes",
-        args: [processId],
-    });
-    // processes() returns (rootBuyer, token, runningTotal, activeOrderCount)
-    return (result as readonly [Address, Address, bigint, bigint])[2];
+    return (await readProcessState(client, coreAddress, processId, options)).runningTotal;
 }
 
 // ── Typed data builder ──────────────────────────────────────────────────────
@@ -425,17 +429,25 @@ export function buildCommitment(params: CommitmentParams, domain: EIP712Domain) 
  * FigaroCore will check — the process's running total PLUS this order's
  * payment — so the struct cannot revert `RunningTotalMismatch` against
  * the state it was built on.
+ *
+ * The process is read on either path: when `addresses.batchVerifier` is set,
+ * a process the Core does not know is read from the verifier's logs, from
+ * `read.fromBlock` (the deployment record's `deploymentBlock`). A further
+ * order of a batched process is then signed under the verifier's domain.
+ * The total read is the landed one (`fetchRunningTotal`).
  */
 export async function buildCommitmentSafe(
     client: PublicClient,
     addresses: FigaroAddresses,
     params: Omit<CommitmentParams, "runningTotal">,
     domain: EIP712Domain,
+    read: Omit<ProcessReadOptions, "batchVerifier"> = {},
 ) {
     const currentRunningTotal = await fetchRunningTotal(
         client,
         addresses.core,
         params.processId,
+        { ...read, batchVerifier: addresses.batchVerifier },
     );
 
     return buildCommitment(
