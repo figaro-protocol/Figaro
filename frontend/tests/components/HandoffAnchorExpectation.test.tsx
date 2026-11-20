@@ -29,6 +29,7 @@ vi.mock("@/lib/data/handoff/useCeremonyChannel", () => ({
     },
 }));
 vi.mock("@/lib/core/attestationIndexer", () => ({ getAttestationsByOrder: async () => chain.rows }));
+vi.mock("@/lib/core/useWitnessHolder", () => ({ useWitnessHolder: () => null }));
 
 import { ContentDeliveryPanel } from "@/components/runtime/ContentDeliveryPanel";
 import { AddressDetailPanel } from "@/components/runtime/AddressDetailPanel";
@@ -39,6 +40,7 @@ const BUYER = "0x1111111111111111111111111111111111111111" as const;
 const SELLER = "0x2222222222222222222222222222222222222222" as const;
 const THIRD = "0x3333333333333333333333333333333333333333";
 const CONTENT_HASH = `0x${"de".repeat(32)}` as const;
+const BLINDING = `0x${"5b".repeat(32)}` as const;
 const BLOB = "c2VhbGVkLWJsb2I=";
 
 let clauseKey: string;
@@ -53,9 +55,13 @@ const lastExpectation = (decrypted: unknown) => captured.options[captured.option
 describe("a hand-off ceremony waits for the sender's anchor at its clause and stage", () => {
     it("the content delivery expects the sender's attestation under its clause at the completion stage", () => {
         render(<ContentDeliveryPanel processId="0xab" orderHash={ORDER} clauseKey={clauseKey} buyer={BUYER} seller={SELLER} />);
-        const contentRef = completionEvidenceAnchor(getClauseSpec(clauseKey)!, { contentHash: CONTENT_HASH });
+        const delivered = { contentHash: CONTENT_HASH, blinding: BLINDING };
+        const contentRef = completionEvidenceAnchor(getClauseSpec(clauseKey)!, delivered);
         expect(contentRef).not.toBeNull();
-        expect(lastExpectation({ contentHash: CONTENT_HASH })).toEqual({ contentRef, clauseId: clauseKey, stage: COMPLETION_STAGE, attester: SELLER });
+        expect(lastExpectation(delivered)).toEqual({ contentRef, clauseId: clauseKey, stage: COMPLETION_STAGE, attester: SELLER });
+        // The clause's stage-1 set is private: without the value the sealed
+        // envelope carries, the panel expects no anchor and gives no verdict.
+        expect(lastExpectation({ contentHash: CONTENT_HASH })).toBeNull();
     });
 
     it("the address detail expects the sender's attestation under its clause at stage 0, where it files", () => {

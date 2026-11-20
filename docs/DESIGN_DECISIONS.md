@@ -1409,7 +1409,15 @@ public-stage ones agree; without Web Crypto the fill throws; the agent paths
 draw it); `sdk/tests/projection.test.ts` (the sign gate's three refusals;
 the public form keeps the `checkoutHash` and withholds the value with the
 clause); `frontend/tests/lib/checkoutBlinding.test.ts` (a rebuild of a
-checkout draft keeps its `checkoutHash`).
+checkout draft keeps its `checkoutHash`);
+`frontend/tests/lib/contentHandoffFingerprint.test.ts` (the hand-off
+clause's private stage 1: one artifact under two orders gives two
+fingerprints, a guessed artifact is not confirmed, the counterparty
+recomputes the fingerprint and keeps its copy, and the evidence file pinned
+in public carries neither the hash nor the value);
+`frontend/tests/lib/deviceEvidence.test.ts` (a device capture's public
+identifiers, under a value drawn per capture, the same scheme outside a
+clause).
 
 ---
 

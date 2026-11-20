@@ -15,11 +15,15 @@
  * owns the isolation rule), so an address ceremony on the same order never
  * crosses keys or blobs with a content delivery.
  *
- * Where the stage-1 set is private, its content carries a blinding value the
- * sender draws (`prepareCompletionEvidence`). The value travels inside the
- * sealed envelope, so the receiver encodes the same content and recomputes
- * the anchor (`completionEvidenceAnchor`). A public set carries none, and
- * its envelope holds no `blinding` key.
+ * Where the stage-1 set is private, as `figaro-content-handoff` declares it,
+ * its content carries a blinding value the sender draws
+ * (`prepareCompletionEvidence`). The chain and every public place then carry
+ * only the fingerprint of that content: one artifact delivered under two
+ * orders gives two fingerprints, and an outsider who guesses the artifact
+ * cannot confirm the guess. The value travels inside the sealed envelope,
+ * so the receiver encodes the same content (`completionEvidenceContent`)
+ * and recomputes the anchor (`completionEvidenceAnchor`). A public set
+ * carries none, and its envelope holds no `blinding` key.
  *
  * Channel-sized by design: the ceremony is an AFFORDANCE for artifacts that
  * fit a message (a design file, a credential, a dataset slice); larger
@@ -31,6 +35,7 @@ import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
 import { contentFieldsFor, encodeContentFromSpec, type ClauseSpec } from "@figaro-protocol/sdk/clauses";
 import { prepareAttestationContent } from "@figaro-protocol/sdk/agent";
 import { isBytes32Hex } from "@/lib/shared/evm";
+import { keepReceivedWitnessContent, type WitnessHolder } from "@/lib/core/witnessContent";
 import {
     openCeremonyBlob,
     requestCeremonyKey,
@@ -89,18 +94,51 @@ export function prepareCompletionEvidence(spec: ClauseSpec, contentHash: Hex): {
 }
 
 /**
- * The anchor the receiver expects for what it decrypted: the content
- * reference of the stage-1 content the sender encoded, rebuilt from the
+ * The stage-1 content the sender encoded, rebuilt by the receiver from the
  * rehash and, for a private set, the blinding value the envelope carried.
- * Null where a private set's value did not arrive: no verdict is given.
+ * Null where a private set's value did not arrive. The receiver keeps these
+ * bytes as its copy of the sender's private filing once the chain holds
+ * their reference (`keepReceivedWitnessContent`).
  */
-export function completionEvidenceAnchor(spec: ClauseSpec, delivered: Pick<DeliveredContent, "contentHash" | "blinding">): Hex | null {
+function completionEvidenceContent(spec: ClauseSpec, delivered: Pick<DeliveredContent, "contentHash" | "blinding">): Hex | null {
     const field = completionBlindingField(spec);
     if (field !== undefined && delivered.blinding === undefined) return null;
     const values: Record<string, unknown> = field === undefined
         ? { contentHash: delivered.contentHash }
         : { contentHash: delivered.contentHash, [field]: delivered.blinding };
-    return keccak256(encodeContentFromSpec(spec, values, { stage: COMPLETION_STAGE }));
+    return encodeContentFromSpec(spec, values, { stage: COMPLETION_STAGE });
+}
+
+/**
+ * The anchor the receiver expects for what it decrypted: the content
+ * reference of `completionEvidenceContent`. Null where a private set's
+ * value did not arrive: no verdict is given.
+ */
+export function completionEvidenceAnchor(spec: ClauseSpec, delivered: Pick<DeliveredContent, "contentHash" | "blinding">): Hex | null {
+    const content = completionEvidenceContent(spec, delivered);
+    return content === null ? null : keccak256(content);
+}
+
+/**
+ * The receiver keeps the stage-1 content it rebuilt as its copy of the
+ * sender's private filing, so its evidence file and audit page hold what it
+ * verified. The caller passes it only once an `Attestation` by the sender
+ * holds this order, clause, stage and reference (the ceremony's verdict
+ * "verified"), as for every received filing. A public set's content is
+ * published by its attester, so nothing is kept: `"public"`.
+ */
+export function keepVerifiedCompletionEvidence(
+    holder: WitnessHolder | null | undefined,
+    spec: ClauseSpec,
+    place: { orderHash: Hex | string; clauseId: Hex | string },
+    delivered: Pick<DeliveredContent, "contentHash" | "blinding">,
+): "public" | "kept" | "refused" {
+    if (completionBlindingField(spec) === undefined) return "public";
+    const content = completionEvidenceContent(spec, delivered);
+    if (content === null) return "refused";
+    return keepReceivedWitnessContent(holder, {
+        orderHash: place.orderHash, clauseId: place.clauseId, stage: COMPLETION_STAGE, contentRef: keccak256(content), content,
+    });
 }
 
 interface ContentEnvelope {

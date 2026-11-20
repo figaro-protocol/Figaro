@@ -2792,15 +2792,21 @@ corpus itself moves over whatever transport you already have — travels the
 changes it. Two joins that are specific:
 
 - **Completion evidence is the delivered bytes' hash.** The hand-off clause
-  declares a stage-1 witness carrying `contentHash` (`keccak256` of what you
-  actually sent) and an optional `contentUri` — **omit the locator for a
-  counterparty-private transfer**; it exists for the public-release and
-  repository-grant modes. File it with the same `attestAsSeller` recipe as any
-  other clause (see `/agent` above): the proof merkle-binds the clause to the
-  signed agreement, and only the fingerprint reaches calldata, so the payload
-  never becomes public.
-- **The buyer re-hashes what it received** and compares to the attested
-  `contentHash`. That is the whole delivery check, and it needs no third party.
+  declares a private stage-1 witness carrying `contentHash` (`keccak256` of
+  what you actually sent), an optional `contentUri` — **omit the locator for
+  a counterparty-private transfer**; it exists for the public-release and
+  repository-grant modes — and the set's blinding field. Prepare the content
+  with `prepareAttestationContent(spec, { contentHash }, { stage: 1 })`, which
+  draws a fresh blinding value, and keep the `content` it returns. File it
+  with the same `attestAsSeller` recipe as any other clause (see `/agent`
+  above): the proof merkle-binds the clause to the signed agreement, and only
+  `keccak256(content)` reaches calldata. One artifact delivered under two
+  orders gives two fingerprints, and no outsider confirms a guessed artifact.
+- **Send the blinding value to the buyer, sealed with the artifact.** The
+  buyer re-hashes what it received, encodes `{ contentHash, blinding }` at
+  stage 1 with `encodeContentFromSpec`, and compares its `keccak256` to the
+  attested `contentRef`. That is the whole delivery check, and it needs no
+  third party.
 
 **Verification** is the part that has no analog off-chain. When the license
 names `sourceProcesses`, every disclosed leaf is provable against a chain

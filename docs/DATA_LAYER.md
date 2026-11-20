@@ -46,10 +46,20 @@ counterparty needs travels sealed to the counterparty. A sealed field is
 privacy against outsiders, never a datum kept from a party to the order.
 
 Evidence follows the same pattern: the public artifact carries the coarsest
-mechanism-sufficient grain (the geohash cell, hashed device identifiers) plus
-the hash of the raw capture; full fidelity stays party-held for dispute-time
-revelation. Raw coordinates and stable device identifiers never land on a
-public artifact. Where the rule caps a public field's precision, the clause
+mechanism-sufficient grain (the geohash cell, blinded fingerprints of device
+identifiers) plus the hash of the raw capture; full fidelity stays party-held
+for dispute-time revelation. Raw coordinates and stable device identifiers
+never land on a public artifact. A public fingerprint links no two orders and
+confirms no guessed value: each capture draws its own 32-byte blinding value
+through the SDK's entropy source (`freshBlindingHex`), and keeps it in the raw
+capture. A tag's serial and a Bluetooth device id are published as
+`keccak256` over that value and the identifier
+(`blindedIdentifierFingerprint`), and the raw capture's hash covers the value
+too (`toPublicEvidence` in `frontend/lib/shared/deviceEvidence.ts`). The holder
+discloses the raw capture to a forum, which recomputes every fingerprint from
+it. The capture's kind and time, its geohash cell and accuracy, and the
+types of its NDEF records stay public, and two orders that share them can be
+linked by them. Where the rule caps a public field's precision, the clause
 engines hold the cap, never one frontend's taste and never the spec: the SDK's
 `validateContent` (`sdk/src/clauses/validate.ts`, with the caps in
 `sdk/src/clauses/grain.ts`) and the guest's engine (`prover/clause/src/grain.rs`)
@@ -252,13 +262,20 @@ Four limits, stated plainly:
    rejects it, since then the content was never referenced on the chain; a
    transaction that was sent and reverted, or whose outcome is unknown, keeps
    it, since the party may need it. A software agent keeps the `values` and `content` that
-   `prepareAttestationContent` returns. Where a content delivery's stage-1
-   set is private, the sender draws its blinding value before the send and
+   `prepareAttestationContent` returns. The `figaro-content-handoff` clause
+   declares its stage-1 set private (`clauses/figaro-content-handoff.json`),
+   so the artifact's hash is published only inside a blinded fingerprint:
+   one artifact delivered under two orders gives two fingerprints, and an
+   outsider who guesses the artifact cannot confirm the guess. The sender
+   draws the blinding value before the send and
    seals it in the encrypted delivery beside the artifact
    (`prepareCompletionEvidence` in `frontend/lib/data/handoff/contentDelivery.ts`),
    so the receiver rebuilds the content, recomputes the anchor and shows its
    verdict (`completionEvidenceAnchor`) once an `Attestation` by the sender
-   holds that order, clause, stage and reference; a public stage-1 set's delivery
+   holds that order, clause, stage and reference. The receiver then keeps the
+   rebuilt content as a copy received from the sender
+   (`keepVerifiedCompletionEvidence`), so its audit page and evidence file
+   read it. A delivery under a stranger's clause whose stage-1 set is public
    carries no blinding value.
 
    The counterparty receives the private filings of an order by its own

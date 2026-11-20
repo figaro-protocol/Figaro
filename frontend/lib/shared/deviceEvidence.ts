@@ -26,14 +26,27 @@
  *     retained in localStorage for dispute-time revelation, purgeable.
  *   - The PUBLIC artifact (`PublicDeviceEvidence`) is what gets pinned and
  *     becomes the evidence URI: the mechanism grain only (the geohash CELL,
- *     keccak-hashed identifiers) plus `rawCaptureHash` — keccak256 of the
- *     raw JSON — so a party can later reveal the raw capture verifiably.
+ *     blinded fingerprints of the identifiers) plus `rawCaptureHash` —
+ *     keccak256 of the raw JSON — so a party can later reveal the raw
+ *     capture verifiably.
+ * Each capture draws its own blinding value (`freshBlindingHex`, the SDK's
+ * one entropy source, as a private clause set draws one). It stays in the
+ * raw capture, so it enters `rawCaptureHash` and each identifier's
+ * fingerprint (`blindedIdentifierFingerprint`). One tag or device seen in
+ * two orders then gives two unrelated fingerprints: an outsider links no
+ * two orders by them, and cannot confirm a guessed serial or id by hashing
+ * candidates. The holder discloses the raw capture, blinding value
+ * included, to a forum, which recomputes every fingerprint from it.
+ * What stays public and linkable by design: the kind, the capture time,
+ * the neighborhood cell and its accuracy, and the NDEF record types.
  * Sufficiency of witnessing stays derived at read time against the
  * committed bands (the clause's own rule), never enforced here.
  */
 
-import { keccak256, toHex } from "viem";
+import { concat, keccak256, toHex, type Hex } from "viem";
+import { freshBlindingHex } from "@figaro-protocol/sdk";
 import { getDeviceLocation } from "@/lib/shared/deviceLocation";
+import { hexEqual, isBytes32Hex, ZERO_BYTES32 } from "@/lib/shared/evm";
 import { encodeGeohash } from "@figaro-protocol/sdk/derive";
 import { PUBLIC_GEOHASH_MAX_PRECISION } from "@figaro-protocol/sdk/clauses";
 import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
@@ -56,39 +69,63 @@ export interface DeviceEvidence {
     /** BLE sighting. */
     deviceName?: string;
     deviceId?: string;
+    /** 32 random bytes drawn for this capture alone; device-held with the
+     *  rest of the raw capture and disclosed with it. */
+    blinding: Hex;
 }
 
+/** What one device read returns, before its capture draws a blinding value. */
+type DeviceRead = Omit<DeviceEvidence, "blinding">;
+
 /** The PUBLIC artifact — pinned, so committed at mechanism grain only:
- *  the neighborhood cell, hashed identifiers, and the raw capture's hash. */
+ *  the neighborhood cell, blinded identifier fingerprints, and the raw
+ *  capture's hash. */
 export interface PublicDeviceEvidence {
     kind: DeviceEvidenceKind;
     capturedAt: string;
     /** Geolocation cross-check: the CELL (≤6 chars), never coordinates. */
     geohash?: string;
     accuracyM?: number;
-    /** NFC tap: keccak256 of the tag serial — counterparty-consistency
-     *  checkable by re-hashing, never linkable. */
+    /** NFC tap: the tag serial's blinded fingerprint
+     *  (`blindedIdentifierFingerprint`). Only a holder of the capture's
+     *  blinding value recomputes it; no two captures share it. */
     tagSerialHash?: string;
     /** NDEF record TYPES only (e.g. "text", "url") — contents stay raw-side. */
     recordTypes?: string[];
-    /** BLE sighting: keccak256 of the chooser's device id. */
+    /** BLE sighting: the chooser's device id's blinded fingerprint, held to
+     *  the same rule as `tagSerialHash`. */
     deviceIdHash?: string;
     /** keccak256 of the raw capture JSON, retained device-side — the
      *  dispute-time revelation binds to this. */
     rawCaptureHash: string;
 }
 
-/** Derive the pinnable public artifact from a raw capture. */
+/** The public fingerprint of one device identifier: keccak256 over the
+ *  capture's 32-byte blinding value followed by the identifier's UTF-8
+ *  bytes. The value has a fixed length, so the two parts never run into
+ *  each other.
+ *  @public Waits for the reader that checks a disclosed raw capture against
+ *  its pinned artifact; `toPublicEvidence` is its one caller in the app. */
+export function blindedIdentifierFingerprint(blinding: Hex, identifier: string): Hex {
+    return keccak256(concat([blinding, toHex(identifier)]));
+}
+
+/** Derive the pinnable public artifact from a raw capture. Refuses a
+ *  capture without a usable blinding value, since its identifiers would
+ *  then be published as fingerprints anyone could recompute. */
 export function toPublicEvidence(raw: DeviceEvidence): PublicDeviceEvidence {
+    if (!isBytes32Hex(raw.blinding) || hexEqual(raw.blinding, ZERO_BYTES32)) {
+        throw new Error("A device capture carries a fresh 32-byte blinding value before its public artifact is derived.");
+    }
     const rawCaptureHash = keccak256(toHex(JSON.stringify(raw)));
     return {
         kind: raw.kind,
         capturedAt: raw.capturedAt,
         ...(raw.geohash ? { geohash: raw.geohash } : {}),
         ...(raw.accuracyM !== undefined ? { accuracyM: raw.accuracyM } : {}),
-        ...(raw.tagSerialNumber ? { tagSerialHash: keccak256(toHex(raw.tagSerialNumber)) } : {}),
+        ...(raw.tagSerialNumber ? { tagSerialHash: blindedIdentifierFingerprint(raw.blinding, raw.tagSerialNumber) } : {}),
         ...(raw.tagRecords ? { recordTypes: raw.tagRecords.map((r) => r.recordType) } : {}),
-        ...(raw.deviceId ? { deviceIdHash: keccak256(toHex(raw.deviceId)) } : {}),
+        ...(raw.deviceId ? { deviceIdHash: blindedIdentifierFingerprint(raw.blinding, raw.deviceId) } : {}),
         rawCaptureHash,
     };
 }
@@ -148,7 +185,7 @@ export function availableCaptures(): DeviceEvidenceKind[] {
 
 /** Position + accuracy at the moment of witnessing. Throws on denial/failure
  *  — the caller surfaces it; there is no silent empty evidence. */
-async function captureGeolocationCrossCheck(): Promise<DeviceEvidence> {
+async function captureGeolocationCrossCheck(): Promise<DeviceRead> {
     const location = await getDeviceLocation();
     if (!location) throw new Error("Device location unavailable — allow location access to capture the cross-check.");
     return {
@@ -164,7 +201,7 @@ async function captureGeolocationCrossCheck(): Promise<DeviceEvidence> {
 /** One NFC tap: scan until the first reading (bounded), capture serial +
  *  decoded text NDEF records. Android Chrome only — callers gate on
  *  `availableCaptures()`. */
-async function captureNfcTap(timeoutMs = 20_000): Promise<DeviceEvidence> {
+async function captureNfcTap(timeoutMs = 20_000): Promise<DeviceRead> {
     type NdefRecordLike = { recordType: string; data?: DataView; encoding?: string };
     type NdefReadingEvent = { serialNumber?: string; message: { records: NdefRecordLike[] } };
     type NdefReaderLike = {
@@ -176,7 +213,7 @@ async function captureNfcTap(timeoutMs = 20_000): Promise<DeviceEvidence> {
     const reader = new Reader();
     const abort = new AbortController();
     try {
-        return await new Promise<DeviceEvidence>((resolve, reject) => {
+        return await new Promise<DeviceRead>((resolve, reject) => {
             const timer = setTimeout(() => reject(new Error("No NFC tag read within the capture window.")), timeoutMs);
             reader.addEventListener("reading", (e) => {
                 clearTimeout(timer);
@@ -206,7 +243,7 @@ async function captureNfcTap(timeoutMs = 20_000): Promise<DeviceEvidence> {
 /** One BLE sighting: the browser chooser IS the detection (a user gesture is
  *  required by the API) — the chosen device's advertised name/id is the
  *  artifact. Chromium only — callers gate on `availableCaptures()`. */
-async function captureBleSighting(): Promise<DeviceEvidence> {
+async function captureBleSighting(): Promise<DeviceRead> {
     type BleDeviceLike = { id?: string; name?: string };
     type BluetoothLike = { requestDevice(opts: { acceptAllDevices: boolean }): Promise<BleDeviceLike> };
     const bluetooth = (navigator as unknown as { bluetooth?: BluetoothLike }).bluetooth;
@@ -226,7 +263,14 @@ export const CAPTURE_LABELS: Record<DeviceEvidenceKind, string> = {
     "ble-sighting": "Sight BLE device",
 };
 
-export function captureEvidence(kind: DeviceEvidenceKind): Promise<DeviceEvidence> {
+/** One capture of the kind asked for, with its own blinding value drawn
+ *  once, here, after the device read succeeds. */
+export async function captureEvidence(kind: DeviceEvidenceKind): Promise<DeviceEvidence> {
+    const read = await readDevice(kind);
+    return { ...read, blinding: freshBlindingHex() };
+}
+
+function readDevice(kind: DeviceEvidenceKind): Promise<DeviceRead> {
     switch (kind) {
         case "geolocation-cross-check": return captureGeolocationCrossCheck();
         case "nfc-tap": return captureNfcTap();

@@ -169,20 +169,20 @@ function parsed(raw: unknown): ClauseSpec {
     return result.spec;
 }
 
-/** The content hand-off clause in `clauses/`, whose stage 1 is public. */
+/** The content hand-off clause in `clauses/`, whose stage 1 is private:
+ *  the content hash, the locator and the one blinding field. */
 function contentHandoffSpec(): ClauseSpec {
     return parsed(readContentHandoffJson());
 }
 
-/** The same clause with a private stage 1: the content hash private, and
- *  the one blinding field a private set declares. Anyone may register such
- *  a clause; nothing in the ceremony reads its name. */
-function privateStageSpec(): ClauseSpec {
+/** The same clause with a public stage 1: no field private, no blinding
+ *  field. Anyone may register such a clause; nothing in the ceremony reads
+ *  its name. */
+function publicStageSpec(): ClauseSpec {
     const raw = readContentHandoffJson();
-    raw.stages["1"] = [
-        { ...raw.stages["1"][0], disposition: "private" },
-        { name: "blinding", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true },
-    ];
+    raw.stages["1"] = raw.stages["1"]
+        .filter((f) => f.blinding !== true)
+        .map(({ disposition: _disposition, ...f }) => f);
     return parsed(raw);
 }
 
@@ -211,8 +211,8 @@ async function deliverWith(spec: ClauseSpec) {
 }
 
 describe("the completion evidence the receiver checks", () => {
-    it("a public stage 1 (figaro-content-handoff): no blinding value; the plaintext is the envelope without one; the receiver's anchor is the filed one", async () => {
-        const spec = contentHandoffSpec();
+    it("a public stage 1 (a stranger's clause): no blinding value; the plaintext is the envelope without one; the receiver's anchor is the filed one", async () => {
+        const spec = publicStageSpec();
         const { evidence, plain, delivered } = await deliverWith(spec);
         expect(evidence.blinding).toBeUndefined();
         expect(plain).toBe(JSON.stringify({ name: ARTIFACT.name, mediaType: ARTIFACT.mediaType, bytesHex: toHex(ARTIFACT.bytes) }));
@@ -220,8 +220,8 @@ describe("the completion evidence the receiver checks", () => {
         expect(completionEvidenceAnchor(spec, delivered)).toBe(keccak256(evidence.content));
     });
 
-    it("a private stage 1: the sender's blinding value travels inside the sealed envelope, and the receiver recomputes the filed anchor with it", async () => {
-        const spec = privateStageSpec();
+    it("a private stage 1 (figaro-content-handoff): the sender's blinding value travels inside the sealed envelope, and the receiver recomputes the filed anchor with it", async () => {
+        const spec = contentHandoffSpec();
         const { evidence, plain, delivered } = await deliverWith(spec);
         expect(evidence.blinding).toMatch(/^0x[0-9a-f]{64}$/);
         expect(JSON.parse(plain!).blinding).toBe(evidence.blinding);
