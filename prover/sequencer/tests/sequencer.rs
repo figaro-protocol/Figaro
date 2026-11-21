@@ -4365,6 +4365,95 @@ async fn an_isolated_set_is_drained_alone_ahead_of_the_queue() {
     assert_eq!(ids(mp.drain_up_to(100).await), vec![9], "then the queue");
 }
 
+/// A commitment whose deadline passes while its refused batch is isolated:
+/// the chain refuses a batch of four root commits naming nobody, at a clock
+/// every deadline still admits. By the time each half is drained alone, the
+/// chain's clock has passed one commit's deadline. Batch formation refuses
+/// that commit for good against the landed state (`DeadlineExpired`), so it
+/// is dead-lettered alone, and the three others land. This is the sequence
+/// the batch loop in `main.rs` runs: drain, `filter_applicable_ops` and
+/// `split_permanent_refusals` at the chain's clock, then land or isolate.
+#[tokio::test]
+async fn a_commit_whose_deadline_passes_during_the_isolation_is_dropped_alone_and_the_rest_land() {
+    let base = match &canonical_ops()[0] {
+        KernelOp::Commit { commitment, .. } => commitment.clone(),
+        other => panic!("canonical ops[0] is the commit, got {other:?}"),
+    };
+    // Four root commits, each opening a process of its own. Commit 3's
+    // deadline is 1200; the others' is 5000.
+    let root = |id: u64, deadline: u64| PendingOp {
+        id,
+        key: B256::with_last_byte(id as u8),
+        op: signed_commit(&Commitment {
+            salt: alloy_primitives::U256::from(500 + id),
+            commit_deadline: alloy_primitives::U256::from(deadline),
+            ..base.clone()
+        }),
+        deferred_since: None,
+        behind: Vec::new(),
+    };
+    let mp = mempool();
+    mp.give_back(vec![
+        root(1, 5000),
+        root(2, 5000),
+        root(3, 1200),
+        root(4, 5000),
+    ])
+    .await;
+
+    // At 1000 every commit applies; the chain refuses the batch naming
+    // nobody, and the relay isolates it rather than re-sending it.
+    let batch = mp.drain_up_to(100).await;
+    let (valid, poison) =
+        assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &empty_snapshot(), batch);
+    assert!(poison.is_empty(), "{poison:?}");
+    assert_eq!(valid.len(), 4);
+    assert!(
+        mp.isolate(valid).await.is_empty(),
+        "split, none dead-lettered"
+    );
+
+    // At 1500 each set is drained alone, formed against what has landed,
+    // and landed.
+    let mut landed = empty_snapshot();
+    let (mut landed_ids, mut dead) = (Vec::new(), Vec::new());
+    loop {
+        let set = mp.drain_up_to(100).await;
+        if set.is_empty() {
+            break;
+        }
+        let (valid, poison) = assembler::filter_applicable_ops(CHAIN_ID, CORE, 1500, &landed, set);
+        let (deferrable, refused, built_on) =
+            assembler::split_permanent_refusals(CHAIN_ID, CORE, 1500, &landed, poison);
+        assert!(
+            deferrable.is_empty() && built_on.is_empty(),
+            "{deferrable:?} {built_on:?}"
+        );
+        dead.extend(refused.into_iter().map(|(p, why)| (p.id, why)));
+        if valid.is_empty() {
+            continue;
+        }
+        landed_ids.extend(valid.iter().map(|p| p.id));
+        let batch = assembler::assemble_batch(
+            CHAIN_ID,
+            CORE,
+            1500,
+            valid.into_iter().map(|p| p.op).collect(),
+            landed.clone(),
+            UsageContext::default(),
+        );
+        let (_, _, _, post) = apply_batch_with_state(&batch).unwrap();
+        landed = post.to_snapshot();
+    }
+    landed_ids.sort_unstable();
+    assert_eq!(landed_ids, vec![1, 2, 4], "every other commit lands");
+    assert_eq!(dead.len(), 1, "{dead:?}");
+    assert_eq!(dead[0].0, 3);
+    assert!(dead[0].1.contains("DeadlineExpired"), "{}", dead[0].1);
+    assert_eq!(mp.len().await, 0, "nothing waits");
+    assert_eq!(landed.processes.len(), 3, "three processes opened");
+}
+
 // ── The capacity filter counts each process under its derived id ──────
 
 /// A sub-order of `root`'s process, under its derived id, with an id of `salt`.

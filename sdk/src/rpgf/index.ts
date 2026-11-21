@@ -371,9 +371,11 @@ const BATCH_OPERATIONS_EVENT = BATCH_VERIFIER_ABI.find(
  * Find every batch the verifier landed with no use counted, and the claims
  * and uses it carried. The verifier resolves a batch whose call to
  * `UsageCounter` reverts whole (a period boundary crossed in flight, the last
- * period closed (`AccrualClosed`), a provenance mismatch, an accrual starved
- * of gas) and emits `BatchAccrualSkipped(batchId, reason)`
- * (`docs/DESIGN_DECISIONS.md` § 19). In the same transaction it logs the
+ * period closed (`AccrualClosed`), a provenance mismatch) and emits
+ * `BatchAccrualSkipped(batchId, reason)` (`docs/DESIGN_DECISIONS.md` § 19).
+ * A call its submitter starved of gas is never among them: the verifier
+ * reverts that batch whole (`AccrualStarvedOfGas`), so it lands nothing and
+ * no log of it exists. In the same transaction it logs the
  * batch's operation stream in `BatchOperations(batchId, …)`, however the call
  * reached it, and the stream carries each usage claim whole
  * (`usageClaimsOfOperationStream`). So the answer is read from the

@@ -184,7 +184,7 @@ describe("a ladder event is encoded over the set its stage selects", () => {
             { name: "evidenceUri", type: "string", required: false },
         ],
         stages: { "1": [{ name: "grams", type: "integer", required: true }] },
-        block: { design: { article: "attestations" } },
+        block: { design: { article: "attestations" }, runtime: { ladder: "eventType" } },
     });
 
     beforeAll(async () => {

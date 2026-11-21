@@ -49,6 +49,7 @@
             "timeWindow": null,
             "endpoints": null,
             "registerLink": null,
+            "dataSources": null,
             "heldValues": {},
             "compositionFields": []
         },
@@ -57,6 +58,7 @@
             "modality": null,
             "jurisdiction": null,
             "documentPart": null,
+            "ladder": "eventType",
             "contentDigest": null
         }
     }

@@ -317,8 +317,9 @@ describe("witness-stage cards — several orders in one process", () => {
 });
 
 // A process-log ladder (a clause under the `attestations` article) is each
-// party's own log: the spec declares the ladder and no attester, so every
-// party to the order advances its own — never the seller alone.
+// party's own log: the spec marks its ladder (`block.runtime.ladder`) and
+// declares no attester, so every party to the order advances its own —
+// never the seller alone.
 describe("process-log ladders — every party advances its own log", () => {
     const LADDER_SPEC = {
         clauseId: "test-ladder-log",
@@ -330,7 +331,7 @@ describe("process-log ladders — every party advances its own log", () => {
         block: {
             design: { article: "attestations", scope: "agreement", nestsUnder: null, fills: [], composes: null },
             checkout: { catalogueFills: [], profileFills: [] },
-            runtime: { interaction: null },
+            runtime: { interaction: null, ladder: "event" },
         },
     };
     const pinned = pinSpec(LADDER_SPEC);
@@ -375,6 +376,43 @@ describe("process-log ladders — every party advances its own log", () => {
     });
 });
 
+// The ladder is the field the spec marks, never the first enum: a stranger's
+// process-log clause with an enum field and no mark offers no ladder step.
+describe("a process-log clause that marks no ladder offers no ladder step", () => {
+    const UNMARKED_SPEC = {
+        clauseId: "test-unmarked-log",
+        version: 1,
+        title: "Unmarked log",
+        description: "An attestations-article clause with an enum field and no ladder mark.",
+        fields: [{ name: "grade", type: "enum", values: ["low", "high"], required: true }],
+        stages: {},
+        block: {
+            design: { article: "attestations", scope: "agreement", nestsUnder: null, fills: [], composes: null },
+            checkout: { catalogueFills: [], profileFills: [] },
+            runtime: { interaction: null },
+        },
+    };
+    const pinned = pinSpec(UNMARKED_SPEC);
+    const agreements = new Map<string, Agreement>([
+        [CHECKOUT_HASH, { ...agreement, clauses: [{ clause: pinned.clauseKey, data: {} }] }],
+    ]);
+
+    beforeAll(async () => {
+        setClauseSpecFetcher(async () => pinned.bytes);
+        await loadClauseSpec(pinned.clauseKey, "mem://test-unmarked-log");
+    });
+
+    it("neither party is offered a step of the enum", () => {
+        for (const address of [SELLER, BUYER]) {
+            const cards = deriveProcessModelFromRuntime(summary, [order], agreements, address, undefined, [])
+                .orders.flatMap((o) => o.capabilities)
+                .filter((c) => c.action.executionType === "transaction" && c.action.kind === "submit-clause-attestation"
+                    && c.action.clauseKey === pinned.clauseKey);
+            expect(cards).toEqual([]);
+        }
+    });
+});
+
 // A private set's blinding field (`blinding: true`) is drawn by tooling when
 // the content is prepared, so no card offers it as an input: neither a
 // private witness stage's form nor a private ladder's companion fields.
@@ -394,7 +432,7 @@ describe("cards offer no input for a blinding field", () => {
         block: {
             design: { article: "attestations", scope: "agreement", nestsUnder: null, fills: [], composes: null },
             checkout: { catalogueFills: [], profileFills: [] },
-            runtime: { interaction: null },
+            runtime: { interaction: null, ladder: "event" },
         },
     };
     const WITNESS_SPEC = {
@@ -454,7 +492,7 @@ describe("a process-log ladder at an ordinal that declares a stage set", () => {
         block: {
             design: { article: "attestations", scope: "agreement", nestsUnder: null, fills: [], composes: null },
             checkout: { catalogueFills: [], profileFills: [] },
-            runtime: { interaction: null },
+            runtime: { interaction: null, ladder: "event" },
         },
     };
     const pinned = pinSpec(HYBRID_SPEC);

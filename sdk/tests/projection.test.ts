@@ -23,7 +23,6 @@ import {
     canonicalize,
     computeCheckoutHash,
     publicForm,
-    clauseByField,
     hashClauseData,
     parseProjectionHints,
     serializeProcessDesign,
@@ -345,17 +344,6 @@ describe("projection — golden-vector byte-exactness", () => {
             assemblyClauses: { [keyOf("figaro-geolocation")]: {} },
             specs: SPECS,
         })).toThrow(/does not declare design\.scope "assembly"/);
-    });
-
-    it("clauseByField reads by declared field, with data-key fallback while unloaded", () => {
-        const { agreement } = buildOrderAgreement(BUYER, SELLER, {
-            [keyOf("figaro-commerce")]: commerceData(),
-            [keyOf("figaro-merchant-process")]: {},
-        }, SPECS);
-        expect(clauseByField(agreement, "lineItems", SPECS)?.clause).toBe(keyOf("figaro-commerce"));
-        // The uncached path: an empty SpecSource falls back to data-key presence.
-        const empty: SpecSource = { get: () => undefined, list: () => [] };
-        expect(clauseByField(agreement, "lineItems", empty)?.clause).toBe(keyOf("figaro-commerce"));
     });
 });
 

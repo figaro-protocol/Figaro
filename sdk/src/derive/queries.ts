@@ -10,9 +10,10 @@
  *   structural assembly fingerprint the withdraw gate uses) — the query never
  *   guesses, and an unattributed process is counted as such, never binned
  *   under a fabricated key. Chain shapes come from caller-supplied parent
- *   edges (each agreement's `follows`) via `depthsOverParents`; without them
- *   FigaroCore's own linear view stands. A process holding an order whose
- *   edges the caller does not know takes no shape and is counted as such.
+ *   edges (each agreement's `follows`) via `depthsOverParents`. FigaroCore
+ *   records the commit order and no edge, so without them no process takes a
+ *   shape. A process holding an order whose edges the caller does not know
+ *   takes no shape either, and is counted as such.
  * - Process edges: a process's orders in commit order, and the edges its
  *   parties signed for each order whose agreement the caller holds and
  *   anchors to the order's `checkoutHash` (`processEdges`). No event carries
@@ -66,9 +67,9 @@ export interface MarketShapeGroup {
     processCommitBlocks: number[];
     /** Distinct chain shapes with per-shape process counts. */
     shapes: ChainShape[];
-    /** Processes that take no shape: parent edges were supplied, and at least
-     *  one of the process's orders has edges the caller does not know (its
-     *  agreement absent or unread, or carrying no topology leaf). */
+    /** Processes that take no shape: no parent edges were supplied, or at
+     *  least one of the process's orders has edges the caller does not know
+     *  (its agreement absent or unread, or carrying no topology leaf). */
     unshapedProcessCount: number;
 }
 
@@ -116,7 +117,8 @@ function chainShapeOf(
  * @param followsOf  caller-supplied parent edges from each
  *                         agreement's `follows`, `undefined` for an order whose
  *                         edges the caller does not know (its process then
- *                         takes no shape); omitted = FigaroCore's linear view
+ *                         takes no shape); omitted, no process takes a
+ *                         shape, since FigaroCore records no edge
  */
 export function marketShape(
     graph: ProcessGraph,
@@ -172,13 +174,9 @@ export function marketShape(
             if (order.state === OrderState.Resolved) volume.settled += order.payment;
         }
 
-        const shape = followsOf
-            ? chainShapeOf(orders, followsOf)
-            : {
-                orderCount: orders.length,
-                depth: Math.max(0, orders.length - 1),
-                maxWidth: orders.length > 0 ? 1 : 0,
-            };
+        // FigaroCore fixes the commit order and no edge between orders: with
+        // no edge read, the process takes no shape.
+        const shape = followsOf ? chainShapeOf(orders, followsOf) : undefined;
         if (shape === undefined) {
             group.unshapedProcessCount += 1;
             continue;

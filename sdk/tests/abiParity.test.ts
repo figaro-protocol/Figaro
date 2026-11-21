@@ -137,6 +137,12 @@ function stateChanging(abi: Abi): string[] {
         .sort();
 }
 
+/** The function names that read as an escape hatch: an owner or admin, a
+ *  pause, an upgrade, or a way to move a bond out of the mechanism. */
+function escapeHatchNames(names: readonly string[]): string[] {
+    return names.filter((n) => /owner|admin|pause|upgrade|sweep|withdraw|rescue|recover|implementation|proxy/i.test(n)).sort();
+}
+
 describe("the Core has no third action (CLAUDE.md § 'The Core's rules', rule 3: no admin, no pause, no upgrade)", () => {
     it("FigaroCore changes state only through commit and resolveProcess", () => {
         expect(stateChanging(compiled("FigaroCore"))).toEqual(["commit", "resolveProcess"]);
@@ -146,11 +152,26 @@ describe("the Core has no third action (CLAUDE.md § 'The Core's rules', rule 3:
         expect(stateChanging(compiled("AttestationCoordinator"))).toEqual(["attestAsBuyer", "attestAsSeller"]);
     });
 
-    it("neither names an owner, pause, upgrade, sweep or withdraw function", () => {
-        const names = [...compiled("FigaroCore"), ...compiled("AttestationCoordinator")]
+    it("FigaroBatchVerifier changes state only through settleBatch", () => {
+        expect(stateChanging(compiled("FigaroBatchVerifier"))).toEqual(["settleBatch"]);
+    });
+
+    it("none of the three names an owner, pause, upgrade, sweep or withdraw function", () => {
+        const names = [...compiled("FigaroCore"), ...compiled("AttestationCoordinator"), ...compiled("FigaroBatchVerifier")]
             .filter((i) => i.type === "function")
             .map((i) => (i as { name: string }).name);
-        expect(names.filter((n) => /owner|admin|pause|upgrade|sweep|withdraw|rescue|recover|implementation|proxy/i.test(n))).toEqual([]);
+        expect(escapeHatchNames(names)).toEqual([]);
+    });
+
+    it("the check reads what it claims to: an owner and an upgrade function on the verifier are caught", () => {
+        const withHatches = [
+            ...compiled("FigaroBatchVerifier"),
+            { type: "function", name: "transferOwnership", inputs: [{ name: "to", type: "address" }], outputs: [], stateMutability: "nonpayable" },
+            { type: "function", name: "upgradeToAndCall", inputs: [], outputs: [], stateMutability: "payable" },
+        ] as Abi;
+        expect(stateChanging(withHatches)).toEqual(["settleBatch", "transferOwnership", "upgradeToAndCall"]);
+        const names = withHatches.filter((i) => i.type === "function").map((i) => (i as { name: string }).name);
+        expect(escapeHatchNames(names)).toEqual(["transferOwnership", "upgradeToAndCall"]);
     });
 
     it("the check reads what it claims to: a third state-changing function is caught", () => {

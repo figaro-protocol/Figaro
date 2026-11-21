@@ -453,16 +453,18 @@ export function committedJurisdiction(clauses: readonly CommittedClause[]): { la
     return undefined;
 }
 
-/** The first enum-type field of a clause — the runtime "stage ladder" (the
- *  `eventType` enum on merchant/courier, or any runtime clause's ladder).
- *  Returns the field name + its ordered values, or null when the clause has no
- *  enum field. The generic runtime engine reads this to advance ANY
- *  runtime-attestable clause without naming it. */
+/** The clause's runtime ladder, as its spec marks it (`block.runtime.ladder`):
+ *  the marked enum field's name, its ordered values (the value at index k is
+ *  the event a party attests at stage k) and their labels. Null when the
+ *  spec is not loaded, carries no mark, or its own fields contradict the mark
+ *  (a field not declared, or not an enum field). An enum field with no mark
+ *  is content, never a ladder. */
 export function clauseLadderField(clauseKey: string): { name: string; values: readonly string[]; valueLabels?: Readonly<Record<string, string>> } | null {
-    for (const field of getClauseSpec(clauseKey)?.fields ?? []) {
-        if (field.type === "enum") return { name: field.name, values: field.values, valueLabels: field.valueLabels };
-    }
-    return null;
+    const spec = getClauseSpec(clauseKey);
+    const name = spec?.block?.runtime.ladder;
+    if (!spec || !name) return null;
+    const [field] = specMarkedFields(spec, [name]) ?? [];
+    return field?.type === "enum" ? { name: field.name, values: field.values, valueLabels: field.valueLabels } : null;
 }
 
 /**

@@ -82,6 +82,7 @@
             "timeWindow": null,
             "endpoints": null,
             "registerLink": null,
+            "dataSources": null,
             "heldValues": {},
             "compositionFields": []
         },
@@ -90,6 +91,7 @@
             "modality": null,
             "jurisdiction": null,
             "documentPart": "freight-class",
+            "ladder": null,
             "contentDigest": null
         }
     }

@@ -215,8 +215,10 @@ describe("marketShape", () => {
         const volume = group.volumeByDenomination.get(TOKEN.toLowerCase())!;
         expect(volume.committed).toBe(250n);
         expect(volume.settled).toBe(250n);
-        // FigaroCore view without parent edges: linear, 0-rooted (root order = depth 0).
-        expect(group.shapes).toEqual([{ orderCount: 2, depth: 1, maxWidth: 1, processCount: 1 }]);
+        // No parent edges read: FigaroCore records the commit order and no
+        // edge, so the process takes no shape.
+        expect(group.shapes).toEqual([]);
+        expect(group.unshapedProcessCount).toBe(1);
     });
 
     it("derives chain shapes from caller-supplied parent edges via topological order", () => {

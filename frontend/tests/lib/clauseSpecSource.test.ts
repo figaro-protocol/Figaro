@@ -206,11 +206,47 @@ describe("clauseSpecSource — valueLabels humanize runtime enum codes (audit wo
 
     it("labelEnumValue humanizes a raw code via valueLabels, and falls back to the raw token when unlabeled", async () => {
         await primeClauseSpecs(["figaro-modalities"]);
-        const ladder = clauseLadderField(keyOf("figaro-modalities"));
-        expect(labelEnumValue(ladder, "consume-onsite")).toBe("Consume on-site");
-        expect(labelEnumValue(ladder, "virtual")).toBe("Virtual");
+        const field = getClauseSpec(keyOf("figaro-modalities"))?.fields.find((f) => f.type === "enum");
+        expect(labelEnumValue(field, "consume-onsite")).toBe("Consume on-site");
+        expect(labelEnumValue(field, "virtual")).toBe("Virtual");
         // Fallback: an unlabeled value renders as its raw token (never blank).
-        expect(labelEnumValue(ladder, "unlabeled-code")).toBe("unlabeled-code");
+        expect(labelEnumValue(field, "unlabeled-code")).toBe("unlabeled-code");
+    });
+});
+
+describe("clauseLadderField — the runtime ladder is the field block.runtime.ladder marks, never the first enum", () => {
+    /** A stranger's process-log clause: an id and field names no reference
+     *  spec has, two enum fields, and the given runtime part. */
+    const stranger = (runtime: Record<string, unknown>) => ({
+        clauseId: "stranger-milestones", version: 1, title: "Milestones", description: "A clause of the test's own.",
+        fields: [
+            { name: "grade", type: "enum", values: ["a", "b"], required: true },
+            { name: "milestone", type: "enum", values: ["dug", "poured", "cured"], valueLabels: { dug: "Dug" }, required: true },
+        ],
+        stages: {},
+        block: { design: { article: "attestations" }, runtime },
+    });
+    const load = async (document: unknown) => {
+        const key = serve(document);
+        await loadClauseSpec(key, "mem://stranger");
+        return key;
+    };
+
+    it("a stranger's clause with enum fields and no mark gets no ladder", async () => {
+        expect(clauseLadderField(await load(stranger({})))).toBeNull();
+    });
+
+    it("a stranger's clause that marks its second enum gets that field as its ladder", async () => {
+        const ladder = clauseLadderField(await load(stranger({ ladder: "milestone" })));
+        expect(ladder?.name).toBe("milestone");
+        expect(ladder?.values).toEqual(["dug", "poured", "cured"]);
+        expect(labelEnumValue(ladder, "dug")).toBe("Dug");
+    });
+
+    it("a mark the spec's own fields contradict marks nothing", async () => {
+        expect(clauseLadderField(await load(stranger({ ladder: "absent" })))).toBeNull();
+        const textField = { ...stranger({ ladder: "note" }), fields: [{ name: "note", type: "string", required: true }] };
+        expect(clauseLadderField(await load(textField))).toBeNull();
     });
 });
 
@@ -226,8 +262,9 @@ describe("clauseIsProcessLog — classified by the attestations article, never b
         // process-log — fabricated seller capabilities and skipped off-chain
         // validation at both sign points.
         await primeClauseSpecs(["figaro-modalities"]);
-        expect(clauseLadderField(keyOf("figaro-modalities"))).not.toBeNull(); // it HAS an enum…
-        expect(clauseIsProcessLog(keyOf("figaro-modalities"))).toBe(false);   // …but declares coordination
+        // It has an enum field, marks no ladder, and declares coordination.
+        expect(clauseLadderField(keyOf("figaro-modalities"))).toBeNull();
+        expect(clauseIsProcessLog(keyOf("figaro-modalities"))).toBe(false);
     });
 
     it("the commerce clause is NOT a lifecycle (the earlier collision)", async () => {

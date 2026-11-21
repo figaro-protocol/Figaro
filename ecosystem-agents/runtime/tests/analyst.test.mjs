@@ -309,7 +309,7 @@ test("market-shape reads each held agreement's own topology leaf for the chain's
     };
     // B follows A in its topology leaf: a chain of depth 1.
     assert.deepEqual(shapeOf([], { follows: [ORDER_A] }).map((x) => [x.depth, x.maxWidth]), [[1, 1]]);
-    // Both are roots of their leaves: depth 0, two wide — not FigaroCore's linear view.
+    // Both are roots of their leaves: depth 0, two wide — the commit order is no edge.
     assert.deepEqual(shapeOf([], { follows: [] }).map((x) => [x.depth, x.maxWidth]), [[0, 2]]);
     // A clause carrying a follows field names no edge: B reads as a root.
     assert.deepEqual(shapeOf([], { follows: [], clauseData: { follows: [ORDER_A] } }).map((x) => [x.depth, x.maxWidth]), [[0, 2]]);
@@ -341,6 +341,13 @@ function holdings(corpus, sub) {
     if (sub.held) byHash.set("0x02", heldAgreement(orderB, sub.follows));
     return { byHash, rejected: sub.rejected ?? [], committedRoots: 2 };
 }
+
+test("market-shape: no held agreement carries a topology leaf — no process takes a shape, never the commit order read as a chain", () => {
+    const corpus = fixtureCorpus();
+    const [orderA, orderB] = corpus.core.orderCommitted;
+    const byHash = new Map([["0x01", heldAgreement(orderA, undefined)], ["0x02", heldAgreement(orderB, undefined)]]);
+    assert.deepEqual(twoOrderShape(corpus, { byHash, rejected: [], committedRoots: 2 }), { shapes: [], unshaped: 1 });
+});
 
 test("market-shape: a sub-order whose agreement is absent leaves the process unshaped — never a second root", () => {
     const corpus = fixtureCorpus();

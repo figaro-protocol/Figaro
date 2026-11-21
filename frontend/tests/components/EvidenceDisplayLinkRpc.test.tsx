@@ -12,7 +12,8 @@
  *
  * Proves: the warning shows for an outside RPC, an outside core and an
  * outside chain, and not for the site's own triple; the RPC origin is printed;
- * a chain mismatch shows no timeline. Does not prove: that the RPC the link
+ * a chain mismatch shows no timeline; each row names the chain and the
+ * contract whose log it is, on both paths. Does not prove: that the RPC the link
  * names answers truly, which nothing on the page can check.
  */
 import React from "react";
@@ -105,5 +106,38 @@ describe("/evidence-display names what its link chose", () => {
         await rendered();
         expect(screen.getByText("The link names chain 7, but its RPC answers for chain 5.")).toBeInTheDocument();
         expect(screen.queryByText("Figaro Process Timeline")).toBeNull();
+    });
+});
+
+describe("/evidence-display labels each row with what backs it", () => {
+    const COORDINATOR = "0x00000000000000000000000000000000000c0a01";
+    const VERIFIER = "0x00000000000000000000000000000000000ba701";
+    const row = (eventName: string, universe: "direct" | "batch", n: number) => ({
+        label: eventName, blockNumber: BigInt(n), timestamp: n, iso: "2000-01-01T00:00:00.000Z",
+        txHash: `0x${String(n).padStart(64, "0")}`, orderHash: `0x${"0a".repeat(32)}`,
+        eventName, universe, details: {},
+    });
+
+    it("names the chain and the contract whose log each row is, on both paths", async () => {
+        m.timeline = timeline({
+            coordinatorAddress: COORDINATOR,
+            batchVerifierAddress: VERIFIER,
+            events: [
+                row("OrderCommitted", "direct", 1),
+                row("Attestation", "direct", 2),
+                row("OrderResolved", "direct", 3),
+                row("Attestation", "batch", 4),
+            ],
+        } as Partial<ProcessTimeline>);
+        link({ arbitrableJsonRpcUrl: siteRpcUrl });
+        await rendered();
+        const labels = screen.getAllByTestId("evidence-event-backing");
+        expect(labels).toHaveLength(4);
+        for (const label of labels) expect(label).toHaveAttribute("data-backing", "chain");
+        expect(labels[0]).toHaveTextContent("Backed by the chain: the OrderCommitted log of FigaroCore");
+        expect(labels[1]).toHaveTextContent("Backed by the chain: the Attestation log of AttestationCoordinator");
+        expect(labels[2]).toHaveTextContent("Backed by the chain: the OrderResolved log of FigaroCore");
+        expect(labels[3]).toHaveTextContent("Backed by the chain: the Attestation log of FigaroBatchVerifier");
+        expect(screen.queryByText(/emitted by FigaroCore at/)).toBeNull();
     });
 });
