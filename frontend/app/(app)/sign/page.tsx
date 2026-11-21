@@ -26,9 +26,13 @@ import {
 import { hexEqual } from "@/lib/shared/evm";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { followedOrderIssues, validateCommitmentAgreement, type FollowedOrderRead, type HydratedProcessDesign } from "@figaro-protocol/sdk";
+import { followedOrderIssues, validateCommitmentAgreement, type FollowedOrderRead, type HydratedProcessDesign, type ResolutionUniverse } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
+import { RelayPanel, relayReceiptLine } from "@/components/runtime/RelayPanel";
+import { usePayloadPath } from "@/lib/checkout/pathChoice";
+import { useCheckedRelay } from "@/lib/registries/useCheckedRelay";
+import { namedPathContract } from "@/lib/core/signedCommitment";
 import { OneWalletBothSidesNote } from "@/components/runtime/OneWalletBothSidesNote";
 import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
 import { useSwapFunding, fundingBlocksTheAct } from "@/lib/composability/useSwapFunding";
@@ -48,7 +52,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 function SignPageContent() {
     const { address } = useAccount();
     const searchParams = useSearchParams();
-    const { acceptOrder, counterSignAndReturn, quoteAndReturn, commitOrder, step, error: commitError, reset } = useOrderCommitmentFlow();
+    const { acceptOrder, counterSignAndReturn, quoteAndReturn, commitOrder, step, error: commitError, relayReceipt, reset } = useOrderCommitmentFlow();
     const hydratedPayloadRef = useRef<string | null>(null);
     const receivedTransportOrderIdsRef = useRef<Set<string>>(new Set());
 
@@ -157,7 +161,7 @@ function SignPageContent() {
                     ...(sellerMargin.bps !== null ? { slippageBps: sellerMargin.bps } : {}),
                     ...(swapFunding.allowance !== undefined ? { approvedInput: swapFunding.allowance } : {}),
                 }
-                : undefined);
+                : undefined, { relay: signRelay });
         } catch {
             // Error state handled by the order commitment flow.
         }
@@ -214,6 +218,26 @@ function SignPageContent() {
     const needsMySignature = signatureOwed && !awaitsOwnSellerSignature;
     // Sub-orders only — the hook itself returns null for roots/zero ids.
     const processCapacity = useProcessResolveCapacity(commitment?.processId);
+
+    // The path the order was signed for, read from the signature already on
+    // it: this wallet signs for the same path, approves its bond to that
+    // path's contract, and on the batch path sends the order to a relay that
+    // passed the check against the chain.
+    const pathRead = usePayloadPath(parsed);
+    // A draft carries no signature, so nothing names its path: it is drafted
+    // and validated on the direct path. Any other payload's path is the read.
+    const orderPath: ResolutionUniverse | null = parsed && !parsed.buyerSig && !parsed.sellerSig
+        ? "direct"
+        : pathRead.status === "present" ? pathRead.value : null;
+    const relayParties = useMemo(
+        () => (commitment ? [commitment.buyer, commitment.seller] as `0x${string}`[] : []),
+        [commitment],
+    );
+    const signRelays = useCheckedRelay(relayParties, orderPath === "batch");
+    const signRelay = signRelays.read.status === "present" ? signRelays.read.value.relay : null;
+    // No act is offered while the path is read, or on the batch path while
+    // the relays are checked or none is in use.
+    const pathReady = orderPath === "direct" || (orderPath === "batch" && signRelay !== null);
 
     // Token and bond amount for approval flow
     const approvalCurrency = commitment?.token as `0x${string}` | undefined;
@@ -522,6 +546,29 @@ function SignPageContent() {
                         )}
                     </div>
 
+                    {/* The path the commitment is signed for, before any
+                        counter-signature: read from the domain its signature
+                        recovers under. A read in flight is a loading line. */}
+                    {orderPath !== null ? (
+                        <p className="text-xs text-ink-body" data-testid="sign-path">
+                            {orderPath === "batch"
+                                ? `Signed for the batch path: the batch verifier at ${namedPathContract("batch") ?? ""}. Your signature is made for the same contract, and your bond is approved to it.`
+                                : `Signed for the direct path: FigaroCore at ${namedPathContract("direct") ?? ""}. Your signature is made for the same contract, and your bond is approved to it.`}
+                        </p>
+                    ) : pathRead.status === "pending" ? (
+                        <p className="text-xs text-ink-muted" data-testid="sign-path-reading">Reading the path this commitment is signed for…</p>
+                    ) : null}
+                    {orderPath === "batch" && (
+                        <RelayPanel
+                            read={signRelays.read}
+                            setting={signRelays.setting}
+                            onSetting={signRelays.setSetting}
+                            onChoose={signRelays.choose}
+                            receipt={relayReceipt}
+                            testIdPrefix="sign"
+                        />
+                    )}
+
                     {/* Signature status */}
                     <div className="flex gap-2 text-xs">
                         <span className={`px-2 py-0.5 rounded ${hasBuyerSig ? "bg-success/20 text-success-fg" : "bg-warning/20 text-warning-fg"}`}>
@@ -548,7 +595,7 @@ function SignPageContent() {
                     {awaitsOwnSellerSignature && <OneWalletBothSidesNote testId="sign-one-wallet-both-sides" />}
 
                     {/* Payment authorization before counter-signing */}
-                    {needsMySignature && !approvalDone && approvalCurrency && (
+                    {needsMySignature && !approvalDone && approvalCurrency && orderPath && namedPathContract(orderPath) && (
                         <div className="space-y-2">
                             <h3 className="text-xs font-semibold text-ink-body">Payment Authorization</h3>
                             <p className="text-xs text-ink-muted">
@@ -564,6 +611,7 @@ function SignPageContent() {
                                 requiredAmount={myBondAmount}
                                 onApprovalComplete={() => setApprovalDone(true)}
                                 fundedAtCommit={sellerFundingToken !== null}
+                                spender={namedPathContract(orderPath)!}
                             />
                         </div>
                     )}
@@ -614,7 +662,7 @@ function SignPageContent() {
                     {/* Counter-sign button — a draft (no signatures) returns to
                         the buyer; a QUOTE REQUEST names a price first; a
                         buyer-signed order counter-signs & submits. */}
-                    {needsMySignature && approvalDone && (isQuoteRequest ? (
+                    {needsMySignature && approvalDone && pathReady && (isQuoteRequest ? (
                         <div className="space-y-2">
                             <p className="text-xs text-ink-body">
                                 The buyer asks for your price — at most{" "}
@@ -669,8 +717,8 @@ function SignPageContent() {
                     {/* Already signed — show broadcast button if both sigs present */}
                     {!needsMySignature && hasBuyerSig && hasSellerSig && (
                         <Button
-                            onClick={() => commitOrder(parsed)}
-                            disabled={step === "committing"}
+                            onClick={() => commitOrder(parsed, { relay: signRelay })}
+                            disabled={step === "committing" || !pathReady}
                             data-testid="btn-broadcast"
                             className="w-full"
                         >
@@ -718,7 +766,20 @@ function SignPageContent() {
             )}
 
             {/* Step 3: Success */}
-            {step === "done" && (
+            {step === "done" && relayReceipt && (
+                <Card className="p-6 text-center space-y-3">
+                    <p className="text-sm text-ink-body" data-testid="sign-relay-receipt">{relayReceiptLine(relayReceipt)}</p>
+                    <Button
+                        variant="link"
+                        size="sm"
+                        onClick={handleReset}
+                        className="px-0 text-xs text-ink-heading hover:text-ink-body underline"
+                    >
+                        Sign another commitment
+                    </Button>
+                </Card>
+            )}
+            {step === "done" && !relayReceipt && (
                 <Card className="p-6 text-center space-y-3">
                     <p className="text-success-fg font-semibold">Commitment submitted on-chain.</p>
                     <p className="text-xs text-ink-muted">

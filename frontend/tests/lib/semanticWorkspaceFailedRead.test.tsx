@@ -21,6 +21,8 @@ vi.mock("wagmi", () => ({
     useAccount: () => ({ address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" }),
     usePublicClient: () => ({ chain: { id: 31337 } }),
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false }),
+    useChainId: () => 31337,
+    useSignTypedData: () => ({ signTypedDataAsync: vi.fn() }),
 }));
 vi.mock("@/hooks/useWalletProcessIds", () => ({ useWalletProcessIds: () => [] }));
 const ORDERS = { status: "present", value: [ORDER] };

@@ -9,7 +9,6 @@ import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useTokenBalance from "@/hooks/useTokenBalance";
-import { CONTRACTS } from "@/lib/core/contracts";
 import { rememberSignedUnsent } from "@/lib/checkout/signedUnsentOrders";
 import type { CheckoutHandle } from "./types";
 
@@ -20,11 +19,13 @@ import type { CheckoutHandle } from "./types";
  * Replaces the pattern of importing 4-5 hooks + wagmi directly.
  *
  * @param token   The ERC-20 address used for payment
- * @param spender The contract that will pull the tokens (defaults to FigaroCore)
+ * @param spender The contract that will pull the tokens: the contract of
+ *                the order's path (`pathContract`), undefined until the path
+ *                is known. Never defaulted.
  */
 export function useCheckout(
     token: `0x${string}` | undefined,
-    spender: `0x${string}` = CONTRACTS.core,
+    spender: `0x${string}` | undefined,
 ): CheckoutHandle {
     const { address } = useCommerce();
     const chainId = useChainId();

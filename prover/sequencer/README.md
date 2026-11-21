@@ -172,6 +172,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `REQUEST_TIMEOUT_SECS` | `10` | A request not answered by then is `408` |
 | `MAX_IN_FLIGHT` | `256` | Requests served at once, across every route; the rest wait |
 | `SUBMITS_PER_MINUTE_PER_IP` | `60` | Submissions one client address (an IPv6 address by its /64) may make a minute before `429`; `0` disables |
+| `BROWSER_SUBMIT_ORIGINS` | empty | The page origins that may `POST /submit` and `/submit-usage` from a browser: a comma-separated list of exact origins (`https://app.example`, `http://localhost:3100`), lowercase, no path. Empty or unset, no page submits from a browser. A wildcard, an empty entry or a malformed origin refuses startup |
 | `RUST_LOG` | `figaro_sequencer=info,sequencer=info` | Log filter. Two targets: the library's modules log as `figaro_sequencer`, the binary's own lines (startup, every refusal to start, the batch loop) as `sequencer` — name both |
 | `STATE_PATH` | `sequencer-state-<chain id>-<verifier>.json` | The relay's state, the preimage of the verifier's root (see The state behind the root); empty = in-memory only |
 | `REBUILD_FROM_CHAIN` | unset | `1`: at startup this relay rebuilds the state behind the verifier's root from the chain alone, replaying every landed batch's operation stream from `REBUILD_FROM_BLOCK` (default `0`; the verifier's deployment block saves the scan), holding each root to its `BatchSettled`, and keeps the result as its state file before starting. Refuses, writing nothing, on the first batch whose two logs do not pair up in one transaction, whose stream does not decode or apply, or whose replay does not reach the root its `BatchSettled` names, and when the replay's last root is not the verifier's `stateRoot()`. |
@@ -241,20 +242,42 @@ The read routes below answer a page on any origin: `Access-Control-Allow-Origin:
 for `GET` and its `OPTIONS` preflight.
 They change nothing, and serve what the relay already serves to any client on
 `LISTEN_ADDR`. The cross-origin header is outermost, so a `408` reaches the
-page too. The submission routes carry no cross-origin header: a JSON
-submission from a page needs a preflight, which they never answer, and a
-`text/plain` POST — a CORS simple request, sent with no preflight — is
-answered `415` by the JSON extractor and admits nothing. So no page can have
-its visitors' browsers submit for it, each from an address of its own past
-`SUBMITS_PER_MINUTE_PER_IP`.
+page too. With `BROWSER_SUBMIT_ORIGINS` empty, its default, the submission
+routes carry no cross-origin header: a JSON submission from a page needs a
+preflight, which they never answer, and a `text/plain` POST — a CORS simple
+request, sent with no preflight — is answered `415` by the JSON extractor and
+admits nothing. So no page can have its visitors' browsers submit for it, each
+from an address of its own past `SUBMITS_PER_MINUTE_PER_IP`.
+
+An origin the operator lists in `BROWSER_SUBMIT_ORIGINS` is answered the
+preflight of `POST /submit` and `/submit-usage` and the
+`Access-Control-Allow-Origin` header for that origin alone, with
+`Vary: Origin`; any other origin gets neither. The door's checks of a signed
+operation and the per-address limit are unchanged. Listing an origin is the
+exposure the default avoids, accepted for that page: each of its visitors
+submits from an address of its own, each under its own
+`SUBMITS_PER_MINUTE_PER_IP`, so the page's audience, not one address, bounds
+what it can queue. `/status` serves the list (`browser_submit_origins`), so a
+page learns before any signature whether this relay takes its POST.
 
 - `GET /health` — liveness + bounded counts:
   `{ "status": "ok", "pending_ops", "pending_usage_claims", "batches_settled" }`.
-- `GET /status` — the above plus the sequencer's local `state_root` mirror
-  and the failure surface:
-  `{ "state_root", "pending_ops", "pending_usage_claims", "batches_settled",
-  "dead_lettered_ops", "last_settle_error",
+- `GET /status` — what the relay proves for, the above, the sequencer's local
+  `state_root` mirror and the failure surface:
+  `{ "wire_format_version", "chain_id", "batch_verifier", "program_vkey",
+  "browser_submit_origins", "state_root", "pending_ops", "pending_usage_claims", "batches_settled",
+  "dead_lettered_ops", "last_settle_error", "isolating_ops",
   "dropped_usage_claims", "last_dropped_claim_error" }`.
+  `chain_id` is the RPC's answer, `batch_verifier` is
+  `BATCH_VERIFIER_ADDRESS` (zero in the prove-only dry run), and
+  `program_vkey` is the fingerprint of the guest this binary embeds, derived
+  at startup whether or not a verifier is set. A wallet compares the three
+  with the chain before it sends anything. `wire_format_version` is the
+  version of this interface, published by the SDK as
+  `sdk/src/agent/relay-wire.schema.json`; a change to a route's shape moves
+  the relay, the published format and the relay's recorded answers together (the cargo
+  test `relay_wire_fixtures_are_the_relays_own_answers` holds the recorded
+  answers equal to the router's).
   `batches_settled` counts the batches this relay has landed since it started.
   `pending_ops` counts the deferred operations with the queued ones.
   `dead_lettered_ops` counts, for the whole relay, the ops dropped without

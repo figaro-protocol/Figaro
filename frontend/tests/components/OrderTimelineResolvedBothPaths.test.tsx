@@ -56,6 +56,7 @@ vi.mock("wagmi", () => ({
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false }),
     useWatchContractEvent: () => undefined,
     useReadContract: () => ({ data: undefined, isLoading: false }),
+    useSignTypedData: () => ({ signTypedDataAsync: vi.fn() }),
 }));
 vi.mock("@/lib/core/eventCache", () => ({
     cachedGetLogs: (...args: unknown[]) => cachedGetLogsMock(...args),

@@ -7,13 +7,16 @@ import { ERC20_ABI } from "@/lib/core/contracts";
 import { simulateWrite } from "@/lib/shared/contractWrite";
 import { activeChain } from "@/lib/shared/chains";
 
-function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x${string}` | undefined; owner?: `0x${string}` | undefined; spender: `0x${string}` }) {
+/** `spender` is the contract that will pull the tokens. Undefined while the
+ *  caller does not know it yet (an order whose path is still being read):
+ *  nothing is read, an approval is always needed, and `approve` sends nothing. */
+function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x${string}` | undefined; owner?: `0x${string}` | undefined; spender: `0x${string}` | undefined }) {
     const { data: allowance, isFetched: allowanceKnown, isRefetching: isAllowanceRefetching, refetch: refetchAllowance } = useReadContract({
         address: tokenAddress,
         abi: ERC20_ABI,
         functionName: "allowance",
-        args: [owner as `0x${string}`, spender],
-        query: { enabled: !!owner && !!tokenAddress },
+        args: [owner as `0x${string}`, spender as `0x${string}`],
+        query: { enabled: !!owner && !!tokenAddress && !!spender },
     });
 
     const { writeContract: writeApprove, data: approveHash, isPending: isApprovePending, isError: isApproveWriteError } = useWriteContract();
@@ -64,7 +67,7 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x
     // write refuses a mismatch in the page, before the wallet prompt; the
     // receipt is verified by the query above.
     const approve = useCallback(async (amount: bigint) => {
-        if (!tokenAddress) return;
+        if (!tokenAddress || !spender) return;
         setSimulateError(false);
         if (!client || !owner) {
             setSimulateError(true);

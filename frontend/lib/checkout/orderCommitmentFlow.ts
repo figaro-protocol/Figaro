@@ -39,7 +39,7 @@ import {
     computeCheckoutHash,
     followedOrderIssues,
     hashCommitmentStruct,
-    verifyCommitmentSignature,
+    type ResolutionUniverse,
     type Agreement,
     type Commitment,
     type Hex,
@@ -49,14 +49,14 @@ import {
 import { CONTRACTS } from "@/lib/core/contracts";
 import { CLAUSE_REGISTRY_ABI, REGISTRY_CONTRACTS } from "@/lib/registries/contracts";
 import { cachedGetContractEvents } from "@/lib/core/eventCache";
-import { getCoreEvents } from "@/lib/core/indexer";
+import { getCoreEvents, processPath } from "@/lib/core/indexer";
 import { fetchAgreement } from "@/lib/core/agreementFetch";
 import { assertAgreementSignable, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { specSource, getClauseSpec, loadClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { fetchHydratedAssemblyByHash } from "@/lib/registries/useProcessRegistry";
 import { useFigaroActions } from "@/lib/core/useFigaroActions";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
-import { hexEqual, isValidAddress, ZERO_ADDRESS } from "@/lib/shared/evm";
+import { hexEqual, isValidAddress, ZERO_ADDRESS, ZERO_PROCESS_ID } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
 import {
@@ -69,7 +69,10 @@ import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
 import { relayCommitmentPayload } from "@/lib/data/handoff/relayChannel";
 import { buildCounterDraft, validateDraft, type CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { commitSignedOrder } from "@/lib/core/orderCommitted";
-import { commitmentOrderHash } from "@/lib/core/signedCommitment";
+import { commitmentOrderHash, pathContract } from "@/lib/core/signedCommitment";
+import { signedPath } from "@/lib/core/relayTransport";
+import { payloadPath } from "@/lib/checkout/pathChoice";
+import { commitThroughRelay, type KnownRelay, type RelayReceipt } from "@/lib/core/useRelayActions";
 import { quoteFundingLeg, signFundingLeg, type FundingQuote, type QuoteFundingLegArgs } from "@/lib/composability/swapFunding";
 import { useSwapAndCommitActions } from "@/lib/composability/useSwapAndCommitActions";
 import { profileReaderForChain } from "@/lib/registries/profileFetcher";
@@ -319,11 +322,45 @@ export function useOrderCommitmentFlow() {
 
     const [step, setStep] = useState<OrderFlowStep>("idle");
     const [error, setError] = useState<string | null>(null);
+    // What a relay answered for the last commit sent on the batch path: the
+    // order is with the relay, not yet on the chain.
+    const [relayReceipt, setRelayReceipt] = useState<RelayReceipt | null>(null);
 
     const reset = useCallback(() => {
         setStep("idle");
         setError(null);
+        setRelayReceipt(null);
     }, []);
+
+    /**
+     * Refuse, before anything is signed, an order on a path it cannot be
+     * committed on: a sub-order whose process the chain holds on the other
+     * path (the two paths share no state, so the other path's contract
+     * refuses it); a swap-funded bond on the batch path (the swap
+     * coordinator commits through FigaroCore); and a batch-path order with
+     * no relay that passed the check against the chain.
+     */
+    const assertPathAccepted = useCallback(async (
+        commitment: Commitment,
+        path: ResolutionUniverse,
+        swapFunded: boolean,
+        relay: KnownRelay | null | undefined,
+    ): Promise<void> => {
+        if (!hexEqual(commitment.processId, ZERO_PROCESS_ID)) {
+            // A read that fails decides nothing here: the path's contract,
+            // or the relay's door, refuses a process it does not hold.
+            const held = await processPath(publicClient, chainId, commitment.processId).catch(() => null);
+            if (held && held !== path) {
+                throw new Error(`This order joins a process the chain holds on the ${held} path, and it was signed for the ${path} path. A process continues on the path it started on.`);
+            }
+        }
+        if (path === "batch" && swapFunded) {
+            throw new Error("A bond funded by a swap is committed through FigaroCore, so it is offered on the direct path alone.");
+        }
+        if (path === "batch" && !relay) {
+            throw new Error("This order is signed for the batch path, and no relay that passes the check against this deployment's batch verifier is known, so nothing was signed or sent. Name a relay, or ask for the order on the direct path.");
+        }
+    }, [publicClient, chainId]);
 
     /** Every act of the flow runs through here: the previous error clears; a
      *  throw records its message (`fallback` when it carries none), moves the
@@ -348,13 +385,18 @@ export function useOrderCommitmentFlow() {
     );
 
     // ── Sign a commitment (gated by the confirm preview) ──
+    // Under the path's domain: FigaroCore's on the direct path, the batch
+    // verifier's on the batch path (`pathContract`). The domain's
+    // verifying contract is what the wallet's prompt names.
     const signAs = useCallback(async (
         commitment: Commitment,
         agreement: Agreement,
         swap: SwapConfirmationDetails | null = null,
         carriedSwaps: readonly SwapConfirmationDetails[] = [],
+        path: ResolutionUniverse = "direct",
     ): Promise<Hex> => {
-        assertSigningDomain(CONTRACTS.core, chainId);
+        const verifyingContract = pathContract(path);
+        assertSigningDomain(verifyingContract, chainId);
         // The agreement's specs first: a key the cache had not warmed is read
         // through the registry; a key no registry holds stays unloaded and the
         // gate below refuses it. Then the design it names.
@@ -374,7 +416,7 @@ export function useOrderCommitmentFlow() {
         const approved = await requestSignConfirmation(commitment, agreement, swap, carriedSwaps);
         if (!approved) throw new Error("Signing canceled by user.");
         const sig = await signTypedDataAsync({
-            domain: buildDomain(chainId, CONTRACTS.core),
+            domain: buildDomain(chainId, verifyingContract),
             types: COMMITMENT_TYPES,
             primaryType: "Commitment",
             message: {
@@ -405,6 +447,13 @@ export function useOrderCommitmentFlow() {
     ): Promise<CommitmentPayload> => {
         if (!address) throw new Error("Connect a wallet first.");
         return runStep("Order failed", async () => {
+            // The path the buyer picked at checkout; the direct path where
+            // none was picked. A swap-funded bond is the direct path's alone
+            // (`WitnessSwapAndCommitCoordinator` commits through FigaroCore).
+            const path = preview.path ?? "direct";
+            if (path === "batch" && funding) {
+                throw new Error("A bond funded by a swap is committed through FigaroCore, so it is offered on the direct path alone.");
+            }
             setStep("signing");
             // The buyer's optional swap-funded bond leg is QUOTED before the
             // sign so its maxInput rides into the SAME confirm as the agreement
@@ -415,7 +464,7 @@ export function useOrderCommitmentFlow() {
             const fundingQuote = !funding ? null
                 : funding.legs ? quotedLeg(funding.legs, preview.commitment)
                 : await quoteBondFundingLeg(publicClient, chainId, funding, preview.commitment, "buyer");
-            const buyerSig = await signAs(preview.commitment, preview.agreement, swapDetails(fundingQuote, preview.commitment.buyer));
+            const buyerSig = await signAs(preview.commitment, preview.agreement, swapDetails(fundingQuote, preview.commitment.buyer), [], path);
             const buyerFunding: CommitmentPayload["buyerFunding"] = fundingQuote ? await signLeg(fundingQuote, preview.commitment, "buyer") : undefined;
             setStep("awaiting-seller");
             return {
@@ -523,30 +572,31 @@ export function useOrderCommitmentFlow() {
     const acceptOrder = useCallback(async (
         incoming: CommitmentPayload,
         funding?: SellerFundingRequest,
-        opts?: { beforeBroadcast?: () => Promise<void> },
-    ): Promise<Hex> => runStep("Accept failed", async () => {
+        opts?: { beforeBroadcast?: () => Promise<void>; relay?: KnownRelay | null },
+    ): Promise<Hex | RelayReceipt> => runStep("Accept failed", async () => {
         const role: PartyRole = hexEqual(address, incoming.commitment.buyer) ? "buyer" : "seller";
 
         // Verify the COUNTERPARTY's existing signature before we sign and
         // broadcast (acceptOrder): a relayed payload
         // carrying a forged/absent counterparty sig would revert on-chain
         // after we spent gas — refuse early with a clean error. FigaroCore
-        // re-verifies; this only moves the failure off-chain.
+        // re-verifies; this only moves the failure off-chain. The domain it
+        // verifies under is the path the counterparty signed for, and this
+        // signature follows it.
         assertSigningDomain(CONTRACTS.core, chainId);
         const counterSig = role === "seller" ? incoming.buyerSig : incoming.sellerSig;
         const counterparty = role === "seller" ? incoming.commitment.buyer : incoming.commitment.seller;
-        if (!counterSig || !(await verifyCommitmentSignature(
-            incoming.commitment, counterSig as Hex, counterparty as Hex,
-            { chainId, core: CONTRACTS.core },
-        ))) {
+        const path = counterSig ? await signedPath(incoming.commitment, counterSig as Hex, counterparty as Hex, chainId) : null;
+        if (!counterSig || !path) {
             throw new Error("The relayed order's counterparty signature is missing or invalid — refusing to counter-sign.");
         }
+        await assertPathAccepted(incoming.commitment, path, funding !== undefined || !!incoming.buyerFunding?.enabled, opts?.relay);
         // A seller accepts only an order under an assembly its own
-        // profile binds — read now, from the registry, never from the
-        // payload.
+        // profile binds, on a path its binding accepts — read now, from
+        // the registry, never from the payload.
         if (role === "seller") {
             const bound = await checkSellerBindsProcess(
-                incoming.agreement, incoming.commitment.seller as Hex, profileReaderForChain(publicClient, chainId),
+                incoming.agreement, incoming.commitment.seller as Hex, profileReaderForChain(publicClient, chainId), path,
             );
             if (!bound.ok) throw new Error(`Refusing this order — ${bound.reason}`);
             // The seller's own check of the orders this one follows: each is
@@ -577,6 +627,7 @@ export function useOrderCommitmentFlow() {
             incoming.commitment, incoming.agreement,
             swapDetails(sellerQuote, incoming.commitment.seller),
             carriedSwapDetails(incoming),
+            path,
         );
 
         const payload: CommitmentPayload = {
@@ -590,6 +641,14 @@ export function useOrderCommitmentFlow() {
         await opts?.beforeBroadcast?.();
 
         setStep("committing");
+        if (path === "batch") {
+            // The batch path: the relay takes the signed commitment, and the
+            // verifier pulls both bonds when its batch lands.
+            const receipt = await commitThroughRelay(opts?.relay ?? null, payload.commitment, payload.buyerSig as Hex, payload.sellerSig as Hex);
+            setRelayReceipt(receipt);
+            setStep("done");
+            return receipt;
+        }
         // Every broadcaster `broadcasterFor` returns verifies its own receipt
         // (`simulateWriteVerify`: simulate → send → verify), so the helper
         // waits for no second one: a second `waitForTransactionReceipt` on
@@ -605,7 +664,7 @@ export function useOrderCommitmentFlow() {
 
         setStep("done");
         return hash;
-    }), [address, broadcasterFor, publicClient, signAs, chainId, runStep, signLeg]);
+    }), [address, broadcasterFor, publicClient, signAs, chainId, runStep, signLeg, assertPathAccepted]);
 
     /**
      * CANDIDATE side (dispatch race): an inbound UNSIGNED draft → counter-sign
@@ -715,8 +774,8 @@ export function useOrderCommitmentFlow() {
      */
     const commitOrder = useCallback(async (
         payload: CommitmentPayload,
-        opts?: { beforeBroadcast?: () => Promise<void> },
-    ): Promise<Hex> => runStep("Commit failed", async () => {
+        opts?: { beforeBroadcast?: () => Promise<void>; relay?: KnownRelay | null },
+    ): Promise<Hex | RelayReceipt> => runStep("Commit failed", async () => {
         assertAgreementSignable(
             payload.agreement,
             payload.commitment.checkoutHash,
@@ -724,6 +783,12 @@ export function useOrderCommitmentFlow() {
             payload.commitment,
             await readSigningInputs(payload.agreement, publicClient, chainId),
         );
+        // The path both signatures were made for, read from the buyer's: the
+        // order goes to that path's contract, or to a relay for the batch
+        // path, and nowhere else.
+        const path = await payloadPath(payload, chainId);
+        if (!path) throw new Error("The order's buyer signature is missing or verifies under neither path's domain, so it was not sent.");
+        await assertPathAccepted(payload.commitment, path, !!payload.buyerFunding?.enabled, opts?.relay);
         // Every swap leg the broadcast carries is shown before it is sent.
         const approved = await requestCommitConfirmation(
             payload.commitment,
@@ -733,6 +798,13 @@ export function useOrderCommitmentFlow() {
         if (!approved) throw new Error("Commit canceled by user.");
         await opts?.beforeBroadcast?.();
         setStep("committing");
+        if (path === "batch") {
+            if (!payload.buyerSig || !payload.sellerSig) throw new Error("Both signatures are required before an order can be committed.");
+            const receipt = await commitThroughRelay(opts?.relay ?? null, payload.commitment, payload.buyerSig, payload.sellerSig);
+            setRelayReceipt(receipt);
+            setStep("done");
+            return receipt;
+        }
         // The broadcaster verifies the receipt itself (see `acceptOrder`).
         const hash = await commitSignedOrder({
             payload,
@@ -742,11 +814,12 @@ export function useOrderCommitmentFlow() {
         });
         setStep("done");
         return hash;
-    }), [broadcasterFor, publicClient, chainId, runStep]);
+    }), [broadcasterFor, publicClient, chainId, runStep, assertPathAccepted]);
 
     return {
         step,
         error,
+        relayReceipt,
         signCommitment,
         quoteBuyerFunding,
         signAndShare,

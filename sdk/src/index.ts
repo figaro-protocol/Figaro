@@ -398,6 +398,9 @@ export {
     tryParseMemberProfileDocument,
     projectAgentServices,
     checkSellerBindsProcess,
+    acceptedPaths,
+    profileRelayUrl,
+    RELAY_SERVICE_KEY,
 } from "./memberProfile.js";
 export type {
     MemberProfileMetadata,

@@ -45,11 +45,13 @@ import {
     type PlannedProcessOrder,
     type ReconstructNodeSpec,
     type ReconstructedOrder,
+    type ResolutionUniverse,
     type SpecSource,
 } from "@figaro-protocol/sdk";
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { chainDeadline, type OrderPreview } from "@/lib/checkout/orderPreview";
 import { CONTRACTS } from "@/lib/core/contracts";
+import { pathContract } from "@/lib/core/signedCommitment";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { parseToken } from "@/lib/shared/utils";
@@ -215,6 +217,11 @@ export interface AssemblyCheckoutParams {
      *  the winner's signature — then relays the sub-order carrying both
      *  signatures, so it arrives commit-ready. */
     subOrderRace?: Record<string, { structHash: `0x${string}`; sellerSig: `0x${string}` }>;
+    /** The path the buyer picked (`offeredPaths`); absent, the direct path.
+     *  Every order of the process is built and signed under its contract's
+     *  domain, so every order id and the process id are that path's. A
+     *  dispatch race drafts on the direct path alone. */
+    path?: ResolutionUniverse;
 }
 
 export async function executeAssemblyCheckout(
@@ -242,7 +249,11 @@ export async function executeAssemblyCheckout(
     if (!CONTRACTS.core) {
         throw new Error("Core contract address is not configured, so orders cannot be built.");
     }
-    const core = CONTRACTS.core as `0x${string}`;
+    const path = params.path ?? "direct";
+    if (path === "batch" && params.subOrderRace && Object.keys(params.subOrderRace).length > 0) {
+        throw new Error("A dispatch race drafts its orders on the direct path, so its winner cannot be committed on the batch path. Pick the direct path, or skip the race.");
+    }
+    const core = pathContract(path);
 
     // Resolve-ceiling refusal BEFORE any signature: a process grown past the
     // chain's atomic-resolve cap can never resolve, so the buyer must not bond
@@ -296,6 +307,7 @@ export async function executeAssemblyCheckout(
             checkoutHash: order.checkoutHash,
             commitment: order.commitment,
             ...(followed.length > 0 && { followed }),
+            ...(path === "batch" && { path }),
         };
     };
 

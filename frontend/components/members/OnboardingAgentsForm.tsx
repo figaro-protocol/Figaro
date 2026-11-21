@@ -11,6 +11,7 @@ import { HintedFieldList, type HintedFieldDef } from "@/components/ui/HintedFiel
 import { useMounted } from "@/hooks/useMounted";
 import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/registries/onboardingState";
 import type { MemberAgentServices } from "@/lib/registries/memberProfileMetadata";
+import { RELAY_SERVICE_KEY } from "@figaro-protocol/sdk";
 import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 
 /**
@@ -60,6 +61,12 @@ const HINTED_FIELDS: HintedFieldDef[] = [
         label: "ENS name",
         placeholder: "agent.figaro.eth",
         hint: "ENS name pointing at the wallet (optional, for human-readable lookup).",
+    },
+    {
+        key: RELAY_SERVICE_KEY,
+        label: "Relay",
+        placeholder: "https://relay.example.com",
+        hint: "A relay for the batch path. A wallet checks it against the chain's batch verifier before it sends anything.",
     },
 ];
 

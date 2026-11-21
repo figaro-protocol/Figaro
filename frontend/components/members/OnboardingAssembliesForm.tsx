@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
+import type { ResolutionUniverse } from "@figaro-protocol/sdk";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useMounted } from "@/hooks/useMounted";
 import { useRegisteredCatalogs } from "@/lib/registries/useRegisteredCatalogs";
@@ -55,12 +56,16 @@ function buildBinding(
     wallet: `0x${string}`,
     choice: Pick<AssemblyChoice, "processDesignHash">,
     coSellerBindings: CoSellerBinding[],
+    paths: ResolutionUniverse[] | undefined,
 ): ProcessBindingRecord {
     return {
         bindingId: `binding:${wallet.toLowerCase()}:${choice.processDesignHash.toLowerCase()}`,
         subjectAddress: wallet,
         processDesignHash: choice.processDesignHash,
         coSellerBindings: coSellerBindings.length > 0 ? coSellerBindings : undefined,
+        // The member's declaration, written as it stands; absent, the direct
+        // path alone (`acceptedPaths`).
+        ...(paths && paths.length > 0 ? { paths } : {}),
     };
 }
 
@@ -73,15 +78,24 @@ function buildBinding(
 // re-stamps every binding with the wallet that signs the registration.
 const DRAFT_SUBJECT = ZERO_ADDRESS;
 
-function buildBindings(
+/** A declaration with `path` added or taken out, in the order direct, batch.
+ *  An absent declaration reads as the direct path alone. */
+export function toggledPath(declared: readonly ResolutionUniverse[] | undefined, path: ResolutionUniverse): ResolutionUniverse[] {
+    const current = declared ?? ["direct"];
+    const toggled = current.includes(path) ? current.filter((p) => p !== path) : [...current, path];
+    return (["direct", "batch"] as const).filter((p) => toggled.includes(p));
+}
+
+export function buildBindings(
     wallet: `0x${string}`,
     selected: Set<string>,
     coSellersByAssembly: Map<string, CoSellerBinding[]>,
+    pathsByAssembly: Map<string, ResolutionUniverse[]>,
 ): ProcessBindingRecord[] {
     // Built from the selection itself — the key IS the assembly hash — so a
     // binding never depends on whether its assembly's document was read.
     return Array.from(selected).map((key) =>
-        buildBinding(wallet, { processDesignHash: key as `0x${string}` }, coSellersByAssembly.get(key) ?? []));
+        buildBinding(wallet, { processDesignHash: key as `0x${string}` }, coSellersByAssembly.get(key) ?? [], pathsByAssembly.get(key)));
 }
 
 /** The key the selection is held under: the assembly's full assembly hash. */
@@ -124,6 +138,10 @@ export function OnboardingAssembliesForm({
     const [coSellersByAssembly, setCoSellersByAssembly] = useState<
         Map<string, CoSellerBinding[]>
     >(new Map());
+    // The paths the member declares for each bound assembly, kept as read
+    // so an untouched declaration is written back unchanged; an assembly with
+    // no entry declares none (the direct path alone).
+    const [pathsByAssembly, setPathsByAssembly] = useState<Map<string, ResolutionUniverse[]>>(new Map());
     const { hydrated, markHydrated } = useSubjectHydration(subject);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -139,15 +157,16 @@ export function OnboardingAssembliesForm({
             }
         }
         setCoSellersByAssembly(cps);
+        setPathsByAssembly(new Map(existing.filter((b) => b.paths && b.paths.length > 0).map((b) => [assemblyKey(b), [...b.paths!]])));
         markHydrated();
     }
 
     useEffect(() => {
         if (!hydrated || !choicesLoaded) return;
         update({
-            assemblies: buildBindings(address ?? DRAFT_SUBJECT, selected, coSellersByAssembly),
+            assemblies: buildBindings(address ?? DRAFT_SUBJECT, selected, coSellersByAssembly, pathsByAssembly),
         });
-    }, [selected, coSellersByAssembly, hydrated, address, choicesLoaded, update]);
+    }, [selected, coSellersByAssembly, pathsByAssembly, hydrated, address, choicesLoaded, update]);
 
     function toggle(key: string) {
         setSelected((prev) => toggledSet(prev, key));
@@ -185,7 +204,7 @@ export function OnboardingAssembliesForm({
         }
         setSubmitError(null);
         finishStep(
-            onSave && (() => onSave(buildBindings(address ?? DRAFT_SUBJECT, selected, coSellersByAssembly))),
+            onSave && (() => onSave(buildBindings(address ?? DRAFT_SUBJECT, selected, coSellersByAssembly, pathsByAssembly))),
             () => router.push(onboardingNextHref("assemblies")),
         );
     }
@@ -242,6 +261,27 @@ export function OnboardingAssembliesForm({
                             {choice.state === "loaded" && choice.hydratedAssembly && (
                                 <PinnedTokenNote assembly={choice.hydratedAssembly.assembly} slug={choice.slug} />
                             )}
+                            {/* The paths the member accepts this assembly's
+                                orders on. The buyer picks among them. With
+                                none declared, the direct path alone. */}
+                            {isSelected && (["direct", "batch"] as const).map((path) => {
+                                const key = assemblyKey(choice);
+                                const declared = pathsByAssembly.get(key);
+                                const accepts = (declared ?? ["direct"]).includes(path);
+                                return (
+                                    <label key={path} className="mt-3 mr-4 inline-flex items-center gap-2 text-xs text-ink-body">
+                                        <input
+                                            type="checkbox"
+                                            checked={accepts}
+                                            onChange={() => setPathsByAssembly((prev) => new Map(prev).set(key, toggledPath(prev.get(key), path)))}
+                                            data-testid={`seller-assembly-path-${path}-${choice.slug}`}
+                                        />
+                                        {path === "direct"
+                                            ? "Accept orders on the direct path (FigaroCore)"
+                                            : "Accept orders on the batch path (signed for the batch verifier, sent through a relay)"}
+                                    </label>
+                                );
+                            })}
                             {isSelected && requiredClauses.length > 0 && (
                                 <div
                                     className="mt-4 pt-4 border-t border-default space-y-4"

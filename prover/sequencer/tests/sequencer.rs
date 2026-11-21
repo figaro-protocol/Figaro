@@ -704,6 +704,294 @@ fn test_app_state() -> AppState {
         batch_count: std::sync::Arc::new(tokio::sync::RwLock::new(0)),
         failures: figaro_sequencer::api::FailureLog::default(),
         funding: None,
+        identity: TEST_IDENTITY,
+    }
+}
+
+/// The identity a test relay serves: its chain, the verifier it was started
+/// with and the guest fingerprint it proves with.
+const TEST_IDENTITY: api::RelayIdentity = api::RelayIdentity {
+    chain_id: CHAIN_ID,
+    batch_verifier: CORE,
+    program_vkey: B256::repeat_byte(0x5a),
+    browser_submit_origins: Vec::new(),
+};
+
+// ── The page origins a relay's operator lets submit from a browser ─
+
+const PAGE: &str = "http://localhost:3100";
+
+fn preflight(uri: &str, origin: &str) -> Request<Body> {
+    Request::builder()
+        .method("OPTIONS")
+        .uri(uri)
+        .header("origin", origin)
+        .header("access-control-request-method", "POST")
+        .header("access-control-request-headers", "content-type")
+        .body(Body::empty())
+        .unwrap()
+}
+
+fn app_allowing(origins: &[&str]) -> axum::Router {
+    let mut state = test_app_state();
+    state.identity.browser_submit_origins = origins.iter().map(|o| o.to_string()).collect();
+    api::router(state, ApiConfig::default())
+}
+
+#[tokio::test]
+async fn with_no_origin_listed_a_submission_preflight_gets_no_cross_origin_answer() {
+    let app = app_allowing(&[]);
+    for uri in ["/submit", "/submit-usage"] {
+        let response = app.clone().oneshot(preflight(uri, PAGE)).await.unwrap();
+        assert!(
+            response
+                .headers()
+                .get("access-control-allow-origin")
+                .is_none(),
+            "{uri}: no origin is named, so no page is answered"
+        );
+        assert_ne!(
+            response.status(),
+            StatusCode::OK,
+            "{uri}: the preflight is not answered"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_listed_origin_gets_the_submission_preflight_and_its_own_origin_back() {
+    let app = app_allowing(&[PAGE]);
+    for uri in ["/submit", "/submit-usage"] {
+        let response = app.clone().oneshot(preflight(uri, PAGE)).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK, "{uri}");
+        assert_eq!(
+            response.headers()["access-control-allow-origin"],
+            PAGE,
+            "{uri}"
+        );
+        let methods = response.headers()["access-control-allow-methods"]
+            .to_str()
+            .unwrap()
+            .to_ascii_uppercase();
+        assert!(methods.contains("POST"), "{uri}: {methods}");
+        let vary = response
+            .headers()
+            .get_all("vary")
+            .iter()
+            .map(|v| v.to_str().unwrap().to_ascii_lowercase())
+            .collect::<Vec<_>>()
+            .join(",");
+        assert!(
+            vary.contains("origin"),
+            "{uri}: the answer varies by origin: {vary}"
+        );
+    }
+    // The submission itself carries the origin back, and the door's checks are unchanged.
+    let req = Request::builder()
+        .method("POST")
+        .uri("/submit")
+        .header("origin", PAGE)
+        .header("content-type", "application/json")
+        .body(Body::from(
+            serde_json::to_vec(&serde_json::json!({ "operation": canonical_ops()[0] })).unwrap(),
+        ))
+        .unwrap();
+    let response = app.oneshot(req).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.headers()["access-control-allow-origin"], PAGE);
+}
+
+#[tokio::test]
+async fn an_unlisted_origin_gets_no_cross_origin_answer() {
+    let app = app_allowing(&[PAGE]);
+    let response = app
+        .oneshot(preflight("/submit", "http://elsewhere.test"))
+        .await
+        .unwrap();
+    assert!(response
+        .headers()
+        .get("access-control-allow-origin")
+        .is_none());
+}
+
+#[tokio::test]
+async fn status_names_the_origins_that_may_submit_from_a_browser() {
+    let response = app_allowing(&[PAGE])
+        .oneshot(
+            Request::builder()
+                .uri("/status")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = axum::body::to_bytes(response.into_body(), 4096)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(json["browser_submit_origins"], serde_json::json!([PAGE]));
+}
+
+#[test]
+fn the_origin_setting_takes_exact_origins_and_refuses_a_wildcard_or_a_malformed_entry() {
+    assert_eq!(api::parse_browser_submit_origins(None), Ok(vec![]));
+    assert_eq!(api::parse_browser_submit_origins(Some("")), Ok(vec![]));
+    assert_eq!(api::parse_browser_submit_origins(Some("  ")), Ok(vec![]));
+    assert_eq!(
+        api::parse_browser_submit_origins(Some("http://localhost:3100, https://app.example")),
+        Ok(vec![
+            "http://localhost:3100".to_string(),
+            "https://app.example".to_string()
+        ])
+    );
+    for bad in [
+        "*",
+        "https://*.example",
+        "http://localhost:3100/",
+        "https://app.example/path",
+        "app.example",
+        "ftp://app.example",
+        "https://",
+        "http://localhost:3100,,https://app.example",
+        "https://App.example",
+    ] {
+        let refused = api::parse_browser_submit_origins(Some(bad));
+        assert!(refused.is_err(), "{bad} must be refused");
+        assert!(
+            refused.unwrap_err().contains("BROWSER_SUBMIT_ORIGINS"),
+            "{bad}: the refusal names the setting"
+        );
+    }
+}
+
+#[tokio::test]
+async fn status_reports_the_verifier_and_the_key_the_relay_was_started_with() {
+    let app = api::router(test_app_state(), ApiConfig::default());
+    let req = Request::builder()
+        .uri("/status")
+        .body(Body::empty())
+        .unwrap();
+    let response = app.oneshot(req).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), 4096)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(json["wire_format_version"], api::WIRE_FORMAT_VERSION);
+    assert_eq!(json["chain_id"], CHAIN_ID);
+    assert_eq!(json["batch_verifier"], format!("{CORE:#x}"));
+    assert_eq!(
+        json["program_vkey"],
+        format!("{:?}", B256::repeat_byte(0x5a))
+    );
+}
+
+// ── The published wire format, from the relay's own answers ──────
+//
+// The SDK publishes the relay's HTTP interface as a JSON Schema
+// (`sdk/src/agent/relay-wire.schema.json`), and its conformance test checks
+// these bodies against it and parses them with `SequencerClient`. They are
+// the router's own answers here, so a change to a route's shape fails this
+// test until the fixtures, and so the SDK's conformance test, move with it. Run with
+// `UPDATE_RELAY_WIRE_FIXTURES=1` to write them again.
+
+fn relay_wire_fixtures_dir() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../sdk/tests/fixtures/relay-wire")
+}
+
+async fn answer(app: &axum::Router, req: Request<Body>) -> (StatusCode, serde_json::Value) {
+    let response = app.clone().oneshot(req).await.unwrap();
+    let status = response.status();
+    let body = axum::body::to_bytes(response.into_body(), 1 << 20)
+        .await
+        .unwrap();
+    (status, serde_json::from_slice(&body).unwrap())
+}
+
+fn json_post(uri: &str, body: &serde_json::Value) -> Request<Body> {
+    Request::builder()
+        .method("POST")
+        .uri(uri)
+        .header("content-type", "application/json")
+        .body(Body::from(serde_json::to_vec(body).unwrap()))
+        .unwrap()
+}
+
+#[tokio::test]
+async fn relay_wire_fixtures_are_the_relays_own_answers() {
+    let app = api::router(test_app_state(), ApiConfig::default());
+    let ops = canonical_ops();
+    let mut produced: Vec<(String, serde_json::Value)> = Vec::new();
+
+    // Every operation kind the relay admits, as the relay itself writes it.
+    for (i, op) in ops.iter().enumerate() {
+        produced.push((
+            format!("submit-request-{i}.json"),
+            serde_json::json!({ "operation": op }),
+        ));
+    }
+    let (status, submitted) = answer(
+        &app,
+        json_post("/submit", &serde_json::json!({ "operation": ops[0] })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{submitted}");
+    produced.push(("submit-response.json".into(), submitted));
+
+    let (status, refused) = answer(
+        &app,
+        json_post("/submit", &serde_json::json!({ "operation": "none" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{refused}");
+    produced.push(("error-response.json".into(), refused));
+
+    let (status, status_body) = answer(
+        &app,
+        Request::builder()
+            .uri("/status")
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    produced.push(("status-response.json".into(), status_body));
+
+    let (status, health) = answer(
+        &app,
+        Request::builder()
+            .uri("/health")
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    produced.push(("health-response.json".into(), health));
+
+    let dir = relay_wire_fixtures_dir();
+    let update = std::env::var("UPDATE_RELAY_WIRE_FIXTURES").as_deref() == Ok("1");
+    if update {
+        std::fs::create_dir_all(&dir).unwrap();
+    }
+    for (name, value) in produced {
+        let path = dir.join(&name);
+        if update {
+            std::fs::write(
+                &path,
+                format!("{}\n", serde_json::to_string_pretty(&value).unwrap()),
+            )
+            .unwrap();
+            continue;
+        }
+        let kept: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| {
+                panic!(
+                    "{}: {e}; run with UPDATE_RELAY_WIRE_FIXTURES=1",
+                    path.display()
+                )
+            }))
+            .unwrap();
+        assert_eq!(kept, value, "{name} is not the relay's answer; run with UPDATE_RELAY_WIRE_FIXTURES=1 and check the published format");
     }
 }
 

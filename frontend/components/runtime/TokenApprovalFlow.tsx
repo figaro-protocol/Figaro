@@ -5,7 +5,6 @@
 import { useState, useEffect, useEffectEvent } from "react";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { useAccount } from "wagmi";
-import { CONTRACTS } from "@/lib/core/contracts";
 import { handleOrderSurfaceFailure } from "@/lib/shared/orderSurfaceActions";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
@@ -22,6 +21,10 @@ interface TokenApprovalProps {
      *  delivers the denomination in the transaction FigaroCore pulls it), so
      *  the balance is no gate: the allowance is what the pull needs. */
     fundedAtCommit?: boolean;
+    /** The contract that pulls the bond: FigaroCore on the direct path, the
+     *  batch verifier on the batch path (`pathContract`). Required: it is
+     *  never defaulted, so the caller renders this flow once the path is known. */
+    spender: `0x${string}`;
 }
 
 export function TokenApprovalFlow({
@@ -30,6 +33,7 @@ export function TokenApprovalFlow({
     onApprovalComplete,
     onCancel,
     fundedAtCommit = false,
+    spender,
 }: TokenApprovalProps) {
     const { address } = useAccount();
     const { decimals } = useTokenDecimals(tokenAddress);
@@ -45,7 +49,7 @@ export function TokenApprovalFlow({
     } = useTokenApproval({
         tokenAddress,
         owner: address as `0x${string}` | undefined,
-        spender: CONTRACTS.core,
+        spender,
     });
 
     const [errorMessage, setErrorMessage] = useState<string | null>(null);

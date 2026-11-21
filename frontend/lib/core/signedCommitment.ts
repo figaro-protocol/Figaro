@@ -15,6 +15,7 @@ import {
     computeOrderHash,
     restoreSignedProcessId as sdkRestoreSignedProcessId,
     type Commitment,
+    type ResolutionUniverse,
 } from "@figaro-protocol/sdk";
 import { CONTRACTS, getBatchVerifier } from "@/lib/core/contracts";
 
@@ -44,9 +45,34 @@ export function commitmentOrderHashes(c: Commitment, chainId: number): `0x${stri
     return hashes;
 }
 
+/** The contract a path's orders are signed under and its bonds approved to:
+ *  FigaroCore on the direct path, FigaroBatchVerifier on the batch path. Its
+ *  address is the `verifyingContract` of the path's EIP-712 domain. Throws
+ *  when the path's contract is not configured on this deployment. */
+export function pathContract(path: ResolutionUniverse): `0x${string}` {
+    if (path === "direct") return configuredCore();
+    const verifier = getBatchVerifier();
+    if (!verifier) {
+        throw new Error("This deployment names no batch verifier, so nothing can be signed for the batch path.");
+    }
+    return verifier;
+}
+
+/** The path's contract, or undefined where this deployment names none (a
+ *  page naming an unlisted deployment has no address): the form a render
+ *  reads, where `pathContract` would throw. */
+export function namedPathContract(path: ResolutionUniverse): `0x${string}` | undefined {
+    try {
+        return pathContract(path);
+    } catch {
+        return undefined;
+    }
+}
+
 /** Deployment-curried wrapper over the SDK's `restoreSignedProcessId` — the
  *  one home for the root-detection logic (a root reproduces its own processId
- *  as its as-root EIP-712 digest). */
-export function restoreSignedProcessId(c: Commitment, chainId: number): Commitment {
-    return sdkRestoreSignedProcessId(c, chainId, configuredCore());
+ *  as its as-root EIP-712 digest). A root's id is its digest under its own
+ *  path's domain, so a batched order is restored under the verifier's. */
+export function restoreSignedProcessId(c: Commitment, chainId: number, path: ResolutionUniverse = "direct"): Commitment {
+    return sdkRestoreSignedProcessId(c, chainId, pathContract(path));
 }

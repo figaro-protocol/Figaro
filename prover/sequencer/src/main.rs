@@ -186,6 +186,16 @@ async fn main() {
     let submits_per_minute_per_ip: u32 = env_or("SUBMITS_PER_MINUTE_PER_IP", "60")
         .parse()
         .expect("invalid SUBMITS_PER_MINUTE_PER_IP");
+    // The page origins allowed to submit from a browser; none by default.
+    let browser_submit_origins = match api::parse_browser_submit_origins(
+        std::env::var("BROWSER_SUBMIT_ORIGINS").ok().as_deref(),
+    ) {
+        Ok(origins) => origins,
+        Err(reason) => {
+            error!(%reason, "refusing to start");
+            std::process::exit(2);
+        }
+    };
     // The state behind the verifier's root, kept across restarts. The
     // default names the chain and the verifier, so two deployments never
     // share a file. `STATE_PATH=` (empty) keeps it in memory only: a restart
@@ -228,28 +238,32 @@ async fn main() {
     // both values printed. A verifier that cannot be read is not a
     // verdict (it may not be deployed yet); the state-root check below
     // warns the same way.
+    //
+    // The fingerprint is derived whether or not a verifier is configured: it
+    // is what this relay proves with, and `/status` serves it so a wallet can
+    // make the same comparison before it sends anything.
+    let embedded_vkey = match prover::embedded_vkey().await {
+        Ok(vkey) => vkey,
+        Err(e) => {
+            error!(%e, "refusing to start: the embedded guest fingerprint could not be derived");
+            std::process::exit(2);
+        }
+    };
     if verifier_addr != Address::ZERO {
-        match (
-            prover::embedded_vkey().await,
-            submitter::read_program_vkey(&rpc_url, verifier_addr).await,
-        ) {
-            (Ok(embedded), Ok(pinned)) if embedded == pinned => {
+        match submitter::read_program_vkey(&rpc_url, verifier_addr).await {
+            Ok(pinned) if embedded_vkey == pinned => {
                 info!(vkey = ?pinned, "Guest fingerprint matches the verifier's programVKey");
             }
-            (Ok(embedded), Ok(pinned)) => {
+            Ok(pinned) => {
                 error!(
-                    ?embedded,
+                    embedded = ?embedded_vkey,
                     ?pinned,
                     ?verifier_addr,
                     "refusing to start: this binary's guest fingerprint is not the one the verifier pins — rebuild from the recipe that produced the verifier's, or deploy a verifier for this guest"
                 );
                 std::process::exit(2);
             }
-            (Err(e), _) => {
-                error!(%e, "refusing to start: the embedded guest fingerprint could not be derived");
-                std::process::exit(2);
-            }
-            (Ok(_), Err(e)) => {
+            Err(e) => {
                 warn!(%e, "Could not read the verifier's programVKey (verifier may not be deployed yet)");
             }
         }
@@ -414,6 +428,12 @@ async fn main() {
         batch_count,
         failures,
         funding,
+        identity: api::RelayIdentity {
+            chain_id,
+            batch_verifier: verifier_addr,
+            program_vkey: embedded_vkey,
+            browser_submit_origins: browser_submit_origins.clone(),
+        },
     };
 
     let app = api::router(
@@ -430,7 +450,7 @@ async fn main() {
         .await
         .expect("failed to bind");
 
-    info!(%listen_addr, %request_timeout_secs, %max_in_flight, %submits_per_minute_per_ip, "HTTP server listening");
+    info!(%listen_addr, %request_timeout_secs, %max_in_flight, %submits_per_minute_per_ip, ?browser_submit_origins, "HTTP server listening");
     // Connect info carries the client address the per-IP limit keys on.
     axum::serve(
         listener,

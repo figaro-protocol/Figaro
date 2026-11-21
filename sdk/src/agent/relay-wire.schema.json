@@ -1,0 +1,270 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://figaro-protocol.org/schemas/relay-wire/1.json",
+    "title": "Figaro relay wire format, version 1",
+    "description": "The HTTP interface of a relay: the service that takes signed batch-path operations and usage claims, has them proved, and submits the batch to FigaroBatchVerifier. Four routes. POST /submit takes SubmitRequest and answers SubmitResponse. POST /submit-usage takes SubmitUsageRequest and answers SubmitUsageResponse. GET /status answers StatusResponse. GET /health answers HealthResponse. Any refusal answers ErrorResponse with a non-2xx code. Amounts are hex quantities or decimal strings when sent; a relay writes them as hex quantities. Field names are snake_case. A relay serves its wire_format_version on /status; this file is version 1.",
+    "x-wire-format-version": 1,
+    "x-routes": {
+        "POST /submit": { "request": "#/$defs/SubmitRequest", "response": "#/$defs/SubmitResponse" },
+        "POST /submit-usage": { "request": "#/$defs/SubmitUsageRequest", "response": "#/$defs/SubmitUsageResponse" },
+        "GET /status": { "response": "#/$defs/StatusResponse" },
+        "GET /health": { "response": "#/$defs/HealthResponse" }
+    },
+    "$defs": {
+        "Address": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" },
+        "Bytes32": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" },
+        "Bytes": { "type": "string", "pattern": "^0x([0-9a-fA-F]{2})*$" },
+        "Uint256": {
+            "description": "A 256-bit unsigned integer: a hex quantity or a decimal string.",
+            "type": "string",
+            "pattern": "^(0x[0-9a-fA-F]{1,64}|[0-9]{1,78})$"
+        },
+        "Count": { "type": "integer", "minimum": 0 },
+        "Proof": { "type": "array", "items": { "$ref": "#/$defs/Bytes32" } },
+        "Signature": {
+            "type": "object",
+            "required": ["v", "r", "s"],
+            "additionalProperties": false,
+            "properties": {
+                "v": { "type": "integer", "minimum": 0, "maximum": 255 },
+                "r": { "$ref": "#/$defs/Bytes32" },
+                "s": { "$ref": "#/$defs/Bytes32" }
+            }
+        },
+        "Commitment": {
+            "description": "The commitment struct exactly as signed: a root order's process_id is zero.",
+            "type": "object",
+            "required": ["process_id", "buyer", "seller", "token", "payment", "running_total", "checkout_hash", "salt", "commit_deadline"],
+            "additionalProperties": false,
+            "properties": {
+                "process_id": { "$ref": "#/$defs/Bytes32" },
+                "buyer": { "$ref": "#/$defs/Address" },
+                "seller": { "$ref": "#/$defs/Address" },
+                "token": { "$ref": "#/$defs/Address" },
+                "payment": { "$ref": "#/$defs/Uint256" },
+                "running_total": { "$ref": "#/$defs/Uint256" },
+                "checkout_hash": { "$ref": "#/$defs/Bytes32" },
+                "salt": { "$ref": "#/$defs/Uint256" },
+                "commit_deadline": { "$ref": "#/$defs/Uint256" }
+            }
+        },
+        "AttestationWitness": {
+            "description": "What a batched attestation carries: the coordinator's arguments (HashOnly), or the clause's content to be checked inside the proof (Plaintext).",
+            "oneOf": [
+                {
+                    "type": "object",
+                    "required": ["HashOnly"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "HashOnly": {
+                            "type": "object",
+                            "required": ["clause_data_hash", "inclusion_proof"],
+                            "additionalProperties": false,
+                            "properties": {
+                                "clause_data_hash": { "$ref": "#/$defs/Bytes32" },
+                                "inclusion_proof": { "$ref": "#/$defs/Proof" }
+                            }
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["Plaintext"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "Plaintext": {
+                            "type": "object",
+                            "required": ["spec_json", "content_json", "clause_data", "inclusion_proof", "content_kind"],
+                            "additionalProperties": false,
+                            "properties": {
+                                "spec_json": { "type": "string" },
+                                "content_json": { "type": "string" },
+                                "clause_data": { "type": "string" },
+                                "inclusion_proof": { "$ref": "#/$defs/Proof" },
+                                "content_kind": { "enum": ["RuntimeWitness", "ReAssert"] }
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "Operation": {
+            "description": "One signed operation, as an externally tagged enum: an object with exactly one key, the operation's kind.",
+            "oneOf": [
+                {
+                    "type": "object", "required": ["Commit"], "additionalProperties": false,
+                    "properties": { "Commit": {
+                        "type": "object", "required": ["commitment", "buyer_sig", "seller_sig"], "additionalProperties": false,
+                        "properties": {
+                            "commitment": { "$ref": "#/$defs/Commitment" },
+                            "buyer_sig": { "$ref": "#/$defs/Signature" },
+                            "seller_sig": { "$ref": "#/$defs/Signature" }
+                        }
+                    } }
+                },
+                {
+                    "type": "object", "required": ["Resolve"], "additionalProperties": false,
+                    "properties": { "Resolve": {
+                        "type": "object", "required": ["process_id", "running_total", "commitments", "buyer_sig"], "additionalProperties": false,
+                        "properties": {
+                            "process_id": { "$ref": "#/$defs/Bytes32" },
+                            "running_total": { "$ref": "#/$defs/Uint256" },
+                            "commitments": { "type": "array", "items": { "$ref": "#/$defs/Commitment" } },
+                            "buyer_sig": { "$ref": "#/$defs/Signature" }
+                        }
+                    } }
+                },
+                {
+                    "type": "object", "required": ["ResolveByWalletCode"], "additionalProperties": false,
+                    "properties": { "ResolveByWalletCode": {
+                        "type": "object", "required": ["process_id", "running_total", "commitments", "authorization"], "additionalProperties": false,
+                        "properties": {
+                            "process_id": { "$ref": "#/$defs/Bytes32" },
+                            "running_total": { "$ref": "#/$defs/Uint256" },
+                            "commitments": { "type": "array", "items": { "$ref": "#/$defs/Commitment" } },
+                            "authorization": { "$ref": "#/$defs/Bytes" }
+                        }
+                    } }
+                },
+                {
+                    "type": "object", "required": ["AttestAsSeller"], "additionalProperties": false,
+                    "properties": { "AttestAsSeller": {
+                        "type": "object", "required": ["target", "clause_id", "stage", "content_ref", "seller_sig", "proof"], "additionalProperties": false,
+                        "properties": {
+                            "target": { "$ref": "#/$defs/Commitment" },
+                            "clause_id": { "$ref": "#/$defs/Bytes32" },
+                            "stage": { "type": "integer", "minimum": 0, "maximum": 255 },
+                            "content_ref": { "$ref": "#/$defs/Bytes32" },
+                            "seller_sig": { "$ref": "#/$defs/Signature" },
+                            "proof": { "$ref": "#/$defs/AttestationWitness" }
+                        }
+                    } }
+                },
+                {
+                    "type": "object", "required": ["AttestAsBuyer"], "additionalProperties": false,
+                    "properties": { "AttestAsBuyer": {
+                        "type": "object", "required": ["target", "clause_id", "stage", "content_ref", "buyer_sig", "proof"], "additionalProperties": false,
+                        "properties": {
+                            "target": { "$ref": "#/$defs/Commitment" },
+                            "clause_id": { "$ref": "#/$defs/Bytes32" },
+                            "stage": { "type": "integer", "minimum": 0, "maximum": 255 },
+                            "content_ref": { "$ref": "#/$defs/Bytes32" },
+                            "buyer_sig": { "$ref": "#/$defs/Signature" },
+                            "proof": { "$ref": "#/$defs/AttestationWitness" }
+                        }
+                    } }
+                },
+                {
+                    "type": "object", "required": ["AttestByWalletCode"], "additionalProperties": false,
+                    "properties": { "AttestByWalletCode": {
+                        "type": "object", "required": ["role", "target", "clause_id", "stage", "content_ref", "authorization", "proof"], "additionalProperties": false,
+                        "properties": {
+                            "role": { "enum": ["Seller", "Buyer"] },
+                            "target": { "$ref": "#/$defs/Commitment" },
+                            "clause_id": { "$ref": "#/$defs/Bytes32" },
+                            "stage": { "type": "integer", "minimum": 0, "maximum": 255 },
+                            "content_ref": { "$ref": "#/$defs/Bytes32" },
+                            "authorization": { "$ref": "#/$defs/Bytes" },
+                            "proof": { "$ref": "#/$defs/AttestationWitness" }
+                        }
+                    } }
+                }
+            ]
+        },
+        "UsageClaim": {
+            "type": "object",
+            "required": ["order", "clause_or_process", "kind", "inclusion_proof"],
+            "additionalProperties": false,
+            "properties": {
+                "order": { "$ref": "#/$defs/Commitment" },
+                "clause_or_process": { "$ref": "#/$defs/Bytes32" },
+                "kind": {
+                    "oneOf": [
+                        {
+                            "type": "object", "required": ["Clause"], "additionalProperties": false,
+                            "properties": { "Clause": {
+                                "type": "object", "required": ["clause_data_hash"], "additionalProperties": false,
+                                "properties": { "clause_data_hash": { "$ref": "#/$defs/Bytes32" } }
+                            } }
+                        },
+                        {
+                            "type": "object", "required": ["Agreement"], "additionalProperties": false,
+                            "properties": { "Agreement": {
+                                "type": "object", "required": ["process_design_hash"], "additionalProperties": false,
+                                "properties": { "process_design_hash": { "$ref": "#/$defs/Bytes32" } }
+                            } }
+                        },
+                        {
+                            "type": "object", "required": ["Process"], "additionalProperties": false,
+                            "properties": { "Process": {
+                                "type": "object", "required": ["agreement_hash", "agreement_content_hash", "membership_proof"], "additionalProperties": false,
+                                "properties": {
+                                    "agreement_hash": { "$ref": "#/$defs/Bytes32" },
+                                    "agreement_content_hash": { "$ref": "#/$defs/Bytes32" },
+                                    "membership_proof": { "$ref": "#/$defs/Proof" }
+                                }
+                            } }
+                        }
+                    ]
+                },
+                "inclusion_proof": { "$ref": "#/$defs/Proof" }
+            }
+        },
+        "SubmitRequest": {
+            "type": "object", "required": ["operation"], "additionalProperties": false,
+            "properties": { "operation": { "$ref": "#/$defs/Operation" } }
+        },
+        "SubmitResponse": {
+            "description": "A queue receipt: the operation is with the relay and not yet on the chain.",
+            "type": "object", "required": ["id"],
+            "properties": { "id": { "$ref": "#/$defs/Count" } }
+        },
+        "SubmitUsageRequest": {
+            "type": "object", "required": ["claim"], "additionalProperties": false,
+            "properties": { "claim": { "$ref": "#/$defs/UsageClaim" } }
+        },
+        "SubmitUsageResponse": {
+            "type": "object", "required": ["pending"],
+            "properties": { "pending": { "$ref": "#/$defs/Count" } }
+        },
+        "StatusResponse": {
+            "description": "The relay's state and what it proves for. A wallet compares chain_id, batch_verifier and program_vkey with the verifier it reads on the chain before it sends anything, and a page reads browser_submit_origins to learn whether it may submit from a browser.",
+            "type": "object",
+            "required": ["wire_format_version", "chain_id", "batch_verifier", "program_vkey", "browser_submit_origins", "state_root", "pending_ops", "pending_usage_claims", "batches_settled"],
+            "properties": {
+                "wire_format_version": { "const": 1 },
+                "chain_id": { "type": "integer", "minimum": 1 },
+                "batch_verifier": { "$ref": "#/$defs/Address" },
+                "program_vkey": { "$ref": "#/$defs/Bytes32" },
+                "browser_submit_origins": {
+                    "description": "The page origins the relay's operator lets POST /submit and /submit-usage from a browser; empty, none. A page whose origin is not listed cannot submit to this relay from a browser.",
+                    "type": "array",
+                    "items": { "type": "string", "pattern": "^https?://[a-z0-9.:\\[\\]-]+$" }
+                },
+                "state_root": { "$ref": "#/$defs/Bytes32" },
+                "pending_ops": { "$ref": "#/$defs/Count" },
+                "pending_usage_claims": { "$ref": "#/$defs/Count" },
+                "batches_settled": { "$ref": "#/$defs/Count" },
+                "dead_lettered_ops": { "$ref": "#/$defs/Count" },
+                "last_settle_error": { "type": ["string", "null"] },
+                "isolating_ops": { "$ref": "#/$defs/Count" },
+                "dropped_usage_claims": { "$ref": "#/$defs/Count" },
+                "last_dropped_claim_error": { "type": ["string", "null"] }
+            }
+        },
+        "HealthResponse": {
+            "type": "object",
+            "required": ["status", "pending_ops", "pending_usage_claims", "batches_settled"],
+            "properties": {
+                "status": { "const": "ok" },
+                "pending_ops": { "$ref": "#/$defs/Count" },
+                "pending_usage_claims": { "$ref": "#/$defs/Count" },
+                "batches_settled": { "$ref": "#/$defs/Count" }
+            }
+        },
+        "ErrorResponse": {
+            "type": "object", "required": ["error"],
+            "properties": { "error": { "type": "string" } }
+        }
+    }
+}

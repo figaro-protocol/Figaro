@@ -1,0 +1,26 @@
+{
+  "operation": {
+    "Resolve": {
+      "buyer_sig": {
+        "r": "0x09b5d989ac4faed28a0df0c4c1378d19ce2f8cf4012146ffe4230c1a55a55d5e",
+        "s": "0x1e5ba6c7879a2b75dc85aea0bebcfb772619e50d26345ba8ab0297e2d1ccf63d",
+        "v": 27
+      },
+      "commitments": [
+        {
+          "buyer": "0x0376aac07ad725e01357b1725b5cec61ae10473c",
+          "checkout_hash": "0xe5801a45b9e0e0dd86b4b0570d83bb4c86db3136ae44c268a7dbaacc5ffcf032",
+          "commit_deadline": "0x7d0",
+          "payment": "0x56bc75e2d63100000",
+          "process_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "running_total": "0x56bc75e2d63100000",
+          "salt": "0x2a",
+          "seller": "0xad29d7a8ad3639f97798c768202f27c1de81dc55",
+          "token": "0x5615deb798bb3e4dfa0139dfa1b3d433cc23b72f"
+        }
+      ],
+      "process_id": "0x1004f3658ed1bda02aaeb886a53f1e63ba31b7b4af42c12ead46369ea6884f0e",
+      "running_total": "0x56bc75e2d63100000"
+    }
+  }
+}

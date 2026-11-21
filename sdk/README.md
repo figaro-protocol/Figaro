@@ -1431,20 +1431,36 @@ wrong:
   wall-clock drift between a signer's machine and the chain expires offers
   that both parties signed in good faith.
 
-#### The sequencer wire: five endpoints
+#### The relay wire: four routes, a published format
 
 What `SequencerClient` speaks, so you can read a relay's answer (or a curl of
-it) without guessing. Five routes: two submit, three read the relay itself.
-Amounts on this wire are **hex quantities** (`"0x7d0"`, never `"2000"`) and
-fields are `snake_case`; the conversion helpers above are the only thing that
-should build them.
+it) without guessing, or check a relay of your own. Four routes: two submit,
+two read the relay itself. The format is published as a JSON Schema,
+`src/agent/relay-wire.schema.json` (shipped in the package under `src/`), at
+version `RELAY_WIRE_FORMAT_VERSION` (1). A relay serves its version on
+`/status`, and `status()` refuses another (`parseSequencerStatus`). Fields are
+`snake_case`. An amount is a hex quantity or a decimal string when sent; a
+relay writes it as a hex quantity (`"0x7d0"`). The conversion helpers above
+are the only thing that should build them. The SDK's test
+`tests/relayWireConformance.test.ts` validates the relay's own answers and
+every request the client sends against the JSON Schema; validate a stranger's
+relay's answers against its `$defs` the same way.
 
 | Route | Request | `200` body | Client method |
 |---|---|---|---|
 | `POST /submit` | `{ "operation": { "Commit" \| "Resolve" \| "ResolveByWalletCode" \| "AttestAsSeller" \| "AttestAsBuyer" \| "AttestByWalletCode": {…} } }` — a serde externally-tagged enum | `{ "id": n }` — a queue receipt, **not** resolution | `submitCommit` · `submitResolve` · `submitResolveByWalletCode` · `submitAttestAsSeller` · `submitAttestAsBuyer` · `submitAttestByWalletCode` |
 | `POST /submit-usage` | `{ "claim": <UsageClaim> }` | `{ "pending": n }` | `submitUsageClaim` |
 | `GET /health` | — | `{ status, pending_ops, pending_usage_claims, batches_settled }` | none — `isAvailable()` probes `/status` instead |
-| `GET /status` | — | the `/health` fields plus `state_root`, `dead_lettered_ops`, `last_settle_error`, `dropped_usage_claims`, `last_dropped_claim_error` (usage claims dropped without landing, counted apart from the operations), | `status()` |
+| `GET /status` | — | what the relay proves for — `wire_format_version`, `chain_id`, `batch_verifier`, `program_vkey` — the page origins it lets submit from a browser (`browser_submit_origins`, empty by default), then the `/health` counts plus `state_root`, `dead_lettered_ops`, `last_settle_error`, `isolating_ops`, `dropped_usage_claims`, `last_dropped_claim_error` (usage claims dropped without landing, counted apart from the operations) | `status()` |
+
+Check a relay against the chain before you send it anything: its `chain_id`
+must be your chain's, its `batch_verifier` the `FigaroBatchVerifier` you
+trade with, and its `program_vkey` the value that verifier holds as
+`programVKey` (`BATCH_VERIFIER_ABI`). A relay for another verifier lands its
+batches nowhere you read; one proving another guest makes proofs the verifier
+refuses. A page that submits from a browser also needs its own origin in
+`browser_submit_origins`, which the relay's operator sets
+(`BROWSER_SUBMIT_ORIGINS`); without it the browser refuses the POST.
 
 `/submit` is idempotent on **on-chain identity** (order hash / process id /
 attestation identity): a retry, even a re-signed one, returns the original `id`
@@ -2498,7 +2514,7 @@ registration at all.
     document.
   - `processBindings` is an array of `ProcessBindingRecord` — one entry per
     assembly the wallet sells through, each
-    `{ bindingId, subjectAddress, processDesignHash, coSellerBindings? }`.
+    `{ bindingId, subjectAddress, processDesignHash, coSellerBindings?, paths? }`.
     `processDesignHash` is the bound assembly's full `ProcessRegistry` key — the
     same identity a `buyerAssemblies` entry and an agreement's provenance leaf
     carry; a slug shown anywhere is derived from it (`deriveProcessDesignSlug`),
@@ -2518,7 +2534,17 @@ registration at all.
     sub-order from the named item and refuses the order when the catalog no
     longer offers it (deleted, re-added under a new id, or marked unavailable);
     a wallet with no entry prices from its first available item. The seller's ROLE in the assembly is
-    event-derived, never declared here.
+    event-derived, never declared here. `paths` lists the paths the seller
+    accepts an order of the assembly on, `"direct"` (`FigaroCore`) and
+    `"batch"` (`FigaroBatchVerifier`, through a relay); absent, the direct
+    path alone (`acceptedPaths(profile, processDesignHash)`). The parser keeps
+    each known path once and leaves out a path it does not know. Given the
+    order's path, `checkSellerBindsProcess` refuses an order on a path the
+    binding does not accept.
+  - `services` is an open set of endpoints keyed by transport. The key
+    `relay` (`RELAY_SERVICE_KEY`) names a relay for the batch path, read with
+    `profileRelayUrl`: a URL, never a verdict. Check it against the chain
+    (§ "The relay wire") before you send it anything.
   - `buyerAssemblies` is an array of `BuyerProcessSubscription` — the buyer's
     assembly SUBSCRIPTIONS, `{ processDesignHash }` each: which registered
     assemblies this member buys through and monetizes data from.

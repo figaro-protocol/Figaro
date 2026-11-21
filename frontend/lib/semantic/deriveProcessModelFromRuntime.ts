@@ -89,10 +89,10 @@ function roleCapabilities(
 ): CapabilityModel[] {
     const order = _order;
     if (order.state !== OrderState.Active || !order.token) return [];
-    // Every capability here is a write to the attestation coordinator, which
-    // does not know an order committed on the batch path: none is derived
-    // for one. This frontend reads such an order and sends nothing to a relay.
-    if (order.path === "batch") return [];
+    // Every capability here is an attestation, the same act on either path:
+    // the coordinator takes it on the direct path, a relay on the batch path
+    // (`useAttestationCoordinatorActions`). Whether a page can send it is the
+    // page's, read from the relays it knows.
 
     const normalized = _address?.toLowerCase();
     const isBuyer = hexEqual(order.buyer, normalized);
@@ -356,9 +356,8 @@ function deriveProcessCapabilities(
     address?: string,
 ): CapabilityModel[] {
     if (!address) return [];
-    // The resolve is a write to FigaroCore, which does not know a process
-    // committed on the batch path: none is derived for one.
-    if (orders.some((order) => order.path === "batch")) return [];
+    // The resolve is the buyer's on either path: a call to FigaroCore on the
+    // direct path, a signed resolve sent to a relay on the batch path.
 
     const normalized = address?.toLowerCase();
     const capabilities: CapabilityModel[] = [];

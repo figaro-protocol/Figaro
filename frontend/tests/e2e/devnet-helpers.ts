@@ -275,10 +275,14 @@ export interface SeedMemberProfile {
         /** The bound assembly's full `ProcessRegistry` assembly hash. */
         processDesignHash: `0x${string}`;
         coSellerBindings: Array<{ clauseKey: string; addresses: string[] }>;
+        /** The paths the seller accepts this assembly's orders on
+         *  (`acceptedPaths`); absent, the direct path alone. */
+        paths?: Array<'direct' | 'batch'>;
     }>;
     /** Agent service endpoints (`MemberAgentServices`) — a declared `rest`
-     *  makes the wallet an AGENT candidate: race/quote drafts POST there. */
-    services?: { mcp?: string; a2a?: string; rest?: string; did?: string; ens?: string };
+     *  makes the wallet an AGENT candidate: race/quote drafts POST there. A
+     *  declared `relay` is a relay for the batch path (`profileRelayUrl`). */
+    services?: { mcp?: string; a2a?: string; rest?: string; did?: string; ens?: string; relay?: string };
     /** The buyer's assembly SUBSCRIPTIONS — the assemblies this member buys
      *  through and monetizes records from (independent of the bindings). */
     buyerAssemblies?: Array<{ processDesignHash: `0x${string}` }>;
