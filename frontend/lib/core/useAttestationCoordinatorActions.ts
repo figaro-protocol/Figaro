@@ -5,7 +5,7 @@ import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteCont
 import type { Abi, Hex } from "viem";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { ATTESTATION_COORDINATOR_ABI } from "@figaro-protocol/sdk";
-import { getAttestationCoordinator } from "@/lib/core/contracts";
+import { getAttestationCoordinator, getBatchVerifier } from "@/lib/core/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { fetchAgreement } from "@/lib/core/agreementFetch";
 import { getAllOrderCommitted, getStringArg } from "@/lib/core/indexer";
@@ -23,6 +23,8 @@ import {
 import { forgetKeptWitnessContent, keepPrivateWitnessContent, publishWitnessContent, readKeptWitnessContent, type WitnessHolder } from "@/lib/core/witnessContent";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
+import type { BatchedAttestation, RelayReceipt } from "@/lib/core/useRelayActions";
+import type { ResolutionUniverse } from "@figaro-protocol/sdk";
 
 type AttestationInput = {
     /** The order being attested — its `checkoutHash` anchors the inclusion
@@ -45,7 +47,15 @@ type AttestationInput = {
     failureMessage?: string;
 };
 
-export function useAttestationCoordinatorActions() {
+/** How an attestation on an order the batch verifier committed is sent: the
+ *  batch path's signed form, to a relay (`useRelayActions` `attest`). Absent,
+ *  an attestation on a batched order is refused before anything is kept,
+ *  published or signed. */
+interface AttestationTransports {
+    attestOnBatchPath?: (role: PartyRole, at: BatchedAttestation) => Promise<RelayReceipt>;
+}
+
+export function useAttestationCoordinatorActions({ attestOnBatchPath }: AttestationTransports = {}) {
     const { address } = useAccount();
     const publicClient = usePublicClient();
     const coordinator = getAttestationCoordinator();
@@ -63,7 +73,9 @@ export function useAttestationCoordinatorActions() {
         return { account: address, coordinator };
     }, [coordinator, address]);
 
-    const loadCommitment = useCallback(async (orderHash: Hex) => {
+    /** The order's signed commitment and the path whose contract committed
+     *  it, read from its `OrderCommitted` (either emitter). */
+    const loadTarget = useCallback(async (orderHash: Hex): Promise<{ target: Commitment; path: ResolutionUniverse }> => {
         if (!publicClient) {
             const message = "Attestation coordinator unavailable for this wallet or network.";
             setError(message);
@@ -98,10 +110,14 @@ export function useAttestationCoordinatorActions() {
             salt: BigInt((args.salt as bigint | string | number) ?? 0),
             commitDeadline: BigInt((args.commitDeadline as bigint | string | number) ?? 0),
         };
-        // The coordinator recomputes orderHash from hashStruct(commitment), so it
-        // needs the SIGNED commitment — restore the root's processId 0.
-        return restoreSignedProcessId(c, chainId);
+        // The coordinator, and on the batch path the proof, recompute the
+        // orderHash from hashStruct(commitment), so they need the SIGNED
+        // commitment: the root's processId 0, restored under its path's domain.
+        const path: ResolutionUniverse = hexEqual((log as { address?: string }).address, getBatchVerifier() ?? undefined) ? "batch" : "direct";
+        return { target: restoreSignedProcessId(c, chainId, path), path };
     }, [publicClient]);
+
+    const loadCommitment = useCallback(async (orderHash: Hex) => (await loadTarget(orderHash)).target, [loadTarget]);
 
     /**
      * Build the `clauseDataHash` + inclusion `proof` arguments for an attestation
@@ -147,15 +163,24 @@ export function useAttestationCoordinatorActions() {
 
     /** File one attestation as either party of the order — the coordinator
      *  entry point (`attestAsSeller` / `attestAsBuyer`) is the only
-     *  role-dependent part; both take the attested order's commitment. */
+     *  role-dependent part; both take the attested order's commitment. An
+     *  order the batch verifier committed is attested on the batch path: the
+     *  same commitment, clause hash, proof and content reference, signed
+     *  under the verifier's domain and sent to a relay (`attestOnBatchPath`);
+     *  its answer is the relay's receipt, not a transaction hash. */
     const submitAttestation = useCallback(async (role: PartyRole, {
         orderHash,
         clauseId,
         stage,
         content,
         failureMessage = "Transaction failed",
-    }: AttestationInput) => {
-        const { account, coordinator: attestationCoordinator } = ensureCoordinatorAccess();
+    }: AttestationInput): Promise<Hex | RelayReceipt> => {
+        if (!address) {
+            const message = "Attestation coordinator unavailable for this wallet or network.";
+            setError(message);
+            throw new Error(message);
+        }
+        const account = address;
         setError("");
         // The place of a copy this filing kept, until a transaction hash
         // exists. A failure while it is set means the content was never
@@ -167,7 +192,13 @@ export function useAttestationCoordinatorActions() {
         // is read from (`loadCommitment` refuses where there is none).
         let holder: WitnessHolder | null = null;
         try {
-            const target = await loadCommitment(orderHash);
+            const { target, path } = await loadTarget(orderHash);
+            // Each path's sender is known before anything is kept or sent.
+            const sendBatched = path === "batch" ? attestOnBatchPath : undefined;
+            if (path === "batch" && !sendBatched) {
+                throw new Error("This order is on the batch path, and no relay that passes the check is known, so nothing was signed or sent.");
+            }
+            const attestationCoordinator = path === "direct" ? ensureCoordinatorAccess().coordinator : null;
             holder = publicClient?.chain ? { address: account, chainId: publicClient.chain.id } : null;
             const { clauseDataHash, proof } = await buildReceipt(target.checkoutHash as Hex, clauseId);
             // Re-assert (content omitted) ⇒ contentRef IS the committed clause's
@@ -206,7 +237,15 @@ export function useAttestationCoordinatorActions() {
             // clause, already in the agreement pin.
             if (content) await publishWitnessContent({ clauseId, stage, content });
 
-            // `loadCommitment` resolved, so the public client is present.
+            if (sendBatched) {
+                const receipt = await sendBatched(role, { target, clauseId, stage, contentRef, clauseDataHash, proof: [...proof] });
+                // The relay holds the signed operation, which can land: the
+                // copy stays, as it does once a transaction hash exists.
+                keptUnsent = null;
+                return receipt;
+            }
+
+            // `loadTarget` resolved, so the public client is present.
             return await simulateWriteVerify({
                 client: publicClient!,
                 writeContractAsync: async (config) => {
@@ -214,7 +253,7 @@ export function useAttestationCoordinatorActions() {
                     keptUnsent = null;
                     return txHash;
                 },
-                address: attestationCoordinator,
+                address: attestationCoordinator!,
                 abi: ATTESTATION_COORDINATOR_ABI as Abi,
                 functionName: role === "seller" ? "attestAsSeller" : "attestAsBuyer",
                 args: [target, clauseId, stage, clauseDataHash, proof, contentRef],
@@ -227,7 +266,7 @@ export function useAttestationCoordinatorActions() {
             setError(message);
             throw new Error(message);
         }
-    }, [ensureCoordinatorAccess, loadCommitment, buildReceipt, writeContractAsync, publicClient]);
+    }, [address, ensureCoordinatorAccess, loadTarget, attestOnBatchPath, buildReceipt, writeContractAsync, publicClient]);
 
     return {
         submitAttestation,

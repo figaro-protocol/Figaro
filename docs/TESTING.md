@@ -585,6 +585,18 @@ page, and the spec reads both recipients' balances and the seller's from the
 token. Skips when no binary is built, unless `REQUIRE_BATCH_E2E=1`, which
 turns the skip into a failure; the full scope of `Devnet E2E CI` sets it.
 
+`frontend/tests/e2e/relay-transport.devnet.spec.ts` is the same path with every
+act in the app's UI. It starts the relay the same way (`frontend/tests/e2e/relayProcess.ts`
+`startRelay`, which `batch-events` shares), publishes a single-order assembly,
+and registers a seller whose binding declares both paths and whose profile
+names the relay among its services. The buyer picks the batch path at
+checkout, the seller accepts on `/orders`, attests on `/orders/view`, and the
+buyer resolves there. Each act goes to the relay the page found in the
+profile and checked against the chain. The spec reads the bonds' allowances
+to the verifier, the verifier's `OrderCommitted`, `Attestation`,
+`OrderResolved` and `ProcessResolved`, the silence of `FigaroCore` and the
+coordinator, and both parties' token balances, out of band. Same gate.
+
 ## Frontend Vitest (`frontend/tests/`) — 2 tiers
 
 `npx vitest run`. UI logic that needs neither a chain nor a real browser.
@@ -1272,8 +1284,8 @@ Per workflow, what it runs and when:
   export. For the full scope a `relay` job builds the relay's release binary,
   with the toolchain and the cargo cache of `prover-ci`'s `sp1` job, and hands
   it on as an artifact; the deploy pins the guest it reports, and the suite
-  runs with `REQUIRE_BATCH_E2E=1`, so `batch-events.devnet.spec.ts` runs and
-  a skip of it fails. The spine scope builds no relay, and the spec is not in
+  runs with `REQUIRE_BATCH_E2E=1`, so `batch-events.devnet.spec.ts` and
+  `relay-transport.devnet.spec.ts` run and a skip of either fails. The spine scope builds no relay, and the spec is not in
   its selection.
 - **`Dependency Audit CI`** — push/PR, NOT path-filtered: three npm-audit legs (root
   production deps at high+; frontend production deps at high+, through

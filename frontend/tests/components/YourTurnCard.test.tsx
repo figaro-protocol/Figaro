@@ -13,7 +13,7 @@
  * confirm; clicking Submit approves nothing.
  */
 import React from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { calculateBonds } from "@figaro-protocol/sdk";
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
@@ -25,12 +25,27 @@ const approval = vi.hoisted(() => ({
     covered: false,
     approve: (() => {}) as (amount: bigint) => void,
 }));
-const wallet = vi.hoisted(() => ({ address: "0x00000000000000000000000000000000000000a1" }));
+const wallet = vi.hoisted(() => ({
+    address: "0x00000000000000000000000000000000000000a1",
+    path: { status: "present", value: "direct" } as { status: "pending" } | { status: "present"; value: "direct" },
+}));
 
 vi.mock("wagmi", async (importOriginal) => {
     const actual = await importOriginal<typeof import("wagmi")>();
-    return { ...actual, useAccount: () => ({ address: wallet.address }) };
+    // The order's path is read from its signature on the page's chain; a
+    // relay is read only for an order signed for the batch path.
+    return { ...actual, useAccount: () => ({ address: wallet.address }), useChainId: () => 31337, usePublicClient: () => undefined };
 });
+// The path the payload's signature names is read by `usePayloadPath`
+// (pinned in relayTransport.test.ts); here the order is a direct-path one.
+vi.mock("@/lib/checkout/pathChoice", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/checkout/pathChoice")>()),
+    usePayloadPath: () => wallet.path,
+}));
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
+    CONTRACTS: { core: "0x1111111111111111111111111111111111111111", batchVerifier: "" },
+}));
 vi.mock("@/hooks/useTokenDecimals", () => ({
     default: () => ({ decimals: 6, ready: true, loading: false }),
 }));
@@ -71,6 +86,19 @@ function renderCard(onAccept = vi.fn(), payload: CommitmentPayload = PAYLOAD) {
     render(<YourTurnCard act="accept" payload={payload} onAct={onAccept} onDismiss={() => {}} isActing={false} listings={[]} />);
     return onAccept;
 }
+
+describe("YourTurnCard — no act while the order's path is read", () => {
+    afterEach(() => { wallet.path = { status: "present", value: "direct" }; });
+
+    it("the accept is held until the path is known, and then opens", () => {
+        wallet.address = SELLER;
+        wallet.path = { status: "pending" };
+        const onAccept = renderCard();
+        expect((screen.getByTestId("btn-accept-order") as HTMLButtonElement).disabled).toBe(true);
+        fireEvent.click(screen.getByTestId("btn-accept-order"));
+        expect(onAccept).not.toHaveBeenCalled();
+    });
+});
 
 describe("YourTurnCard accept — the seller's bond is approved after the terms confirm", () => {
     beforeEach(() => {

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    acceptedPaths,
     checkSellerBindsProcess,
     parseMemberProfileDocument,
+    profileRelayUrl,
     projectAgentServices,
     tryParseMemberProfileDocument,
     type MemberProfileMetadata,
@@ -313,6 +315,49 @@ describe("member profile metadata parser", () => {
         });
     });
 
+    describe("a binding declares the paths its seller accepts orders on", () => {
+        const HASH = `0x${"ab".repeat(32)}` as const;
+        const OTHER = `0x${"cd".repeat(32)}` as const;
+        const SUBJECT = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+        const withPaths = (paths: unknown) => ({
+            name: "Bob",
+            processBindings: [{ bindingId: "b-1", subjectAddress: SUBJECT, processDesignHash: HASH, paths }],
+        });
+
+        it("parses both paths and round-trips them", () => {
+            const first = parseMemberProfileDocument(withPaths(["direct", "batch"]));
+            expect(first.processBindings?.[0]?.paths).toEqual(["direct", "batch"]);
+            expect(parseMemberProfileDocument(first)).toEqual(first);
+            expect(acceptedPaths(first, HASH)).toEqual(["direct", "batch"]);
+        });
+
+        it("a binding that declares none accepts the direct path alone", () => {
+            const first = parseMemberProfileDocument({
+                name: "Bob",
+                processBindings: [{ bindingId: "b-1", subjectAddress: SUBJECT, processDesignHash: HASH }],
+            });
+            expect(first.processBindings?.[0]?.paths).toBeUndefined();
+            expect(acceptedPaths(first, HASH)).toEqual(["direct"]);
+            expect(acceptedPaths(parseMemberProfileDocument(withPaths([])), HASH)).toEqual(["direct"]);
+        });
+
+        it("an assembly the profile does not bind is accepted on no path", () => {
+            expect(acceptedPaths(parseMemberProfileDocument(withPaths(["batch"])), OTHER)).toEqual([]);
+        });
+
+        it("keeps a path this reader does not know out of the set, and refuses a malformed list", () => {
+            expect(parseMemberProfileDocument(withPaths(["batch", "another", "batch"])).processBindings?.[0]?.paths).toEqual(["batch"]);
+            expect(() => parseMemberProfileDocument(withPaths("batch"))).toThrow(/processBindings\[0\]\.paths must be an array/);
+            expect(() => parseMemberProfileDocument(withPaths([7]))).toThrow(/processBindings\[0\]\.paths\[0\] must be a string/);
+        });
+
+        it("a profile names a relay among its services", () => {
+            const profile = parseMemberProfileDocument({ name: "Bob", services: { relay: "https://relay.example/", rest: "https://x" } });
+            expect(profileRelayUrl(profile)).toBe("https://relay.example/");
+            expect(profileRelayUrl(parseMemberProfileDocument({ name: "Bob" }))).toBeNull();
+        });
+    });
+
     describe("a co-seller binding may name one item in each co-seller's own catalog", () => {
         const HASH = `0x${"ab".repeat(32)}`;
         const SUBJECT = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
@@ -382,6 +427,18 @@ describe("checkSellerBindsProcess — the seller's own bound assemblies, read at
         expect(check).toEqual({ ok: true });
         // The seller's OWN profile is the one read.
         expect(reads).toEqual([SELLER]);
+    });
+
+    it("refuses a batch-path order under a binding that declares only the direct path, and accepts it where the binding declares the batch path", async () => {
+        const directOnly = await checkSellerBindsProcess(agreementUnder(BOUND), SELLER, async () => profileBinding(BOUND), "batch");
+        expect(directOnly.ok).toBe(false);
+        expect(directOnly.reason).toMatch(/does not accept the batch path/);
+        const both: MemberProfileMetadata = {
+            name: "Seller",
+            processBindings: [{ bindingId: "b", subjectAddress: SELLER, processDesignHash: BOUND, paths: ["direct", "batch"] }],
+        };
+        expect(await checkSellerBindsProcess(agreementUnder(BOUND), SELLER, async () => both, "batch")).toEqual({ ok: true });
+        expect(await checkSellerBindsProcess(agreementUnder(BOUND), SELLER, async () => both, "direct")).toEqual({ ok: true });
     });
 
     it("matches the binding case-insensitively", async () => {

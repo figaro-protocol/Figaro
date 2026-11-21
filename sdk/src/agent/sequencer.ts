@@ -210,7 +210,28 @@ export interface SubmitResult {
     id: number;
 }
 
+/**
+ * The version of the relay's HTTP interface this client speaks, published as
+ * `relay-wire.schema.json` beside this file. A relay serves its own on
+ * `/status` (`wire_format_version`); `status()` refuses any other.
+ */
+export const RELAY_WIRE_FORMAT_VERSION = 1;
+
 export interface SequencerStatus {
+    /** The version of the relay's HTTP interface ({@link RELAY_WIRE_FORMAT_VERSION}). */
+    wire_format_version: number;
+    /** The chain the relay reads, as its RPC answers. */
+    chain_id: number;
+    /** The `FigaroBatchVerifier` the relay lands its batches at. A wallet compares it
+     *  with the verifier it reads from the deployment before sending. */
+    batch_verifier: Address;
+    /** The fingerprint of the guest the relay proves with. A proof verifies
+     *  only when the verifier holds the same value as its `programVKey`. */
+    program_vkey: Hex;
+    /** The page origins the relay's operator lets submit from a browser
+     *  (`BROWSER_SUBMIT_ORIGINS`); empty, none. A page whose origin is not
+     *  listed cannot POST to this relay from a browser. */
+    browser_submit_origins: string[];
     state_root: string;
     pending_ops: number;
     /** Usage claims waiting to ride the next batch. */
@@ -234,6 +255,38 @@ export interface SequencerStatus {
      *  relay is isolating, not stalled for another reason. Absent on a relay
      *  predating the isolation. */
     isolating_ops?: number;
+}
+
+/**
+ * A `/status` body read as {@link SequencerStatus}, or a SequencerError.
+ * Refused: a body that is not an object; a `wire_format_version` other than
+ * {@link RELAY_WIRE_FORMAT_VERSION}; a `chain_id` that is not a positive
+ * integer; a `batch_verifier` that is not a 20-byte hex address; a
+ * `program_vkey` that is not 32 bytes of hex; a `browser_submit_origins`
+ * that is not a list of strings; a `state_root` that is not a
+ * string; a queue count that is not a non-negative integer.
+ */
+export function parseSequencerStatus(body: unknown, statusCode = 200): SequencerStatus {
+    const refuse = (what: string): never => {
+        throw new SequencerError(`the relay's /status answer ${what}`, statusCode);
+    };
+    if (body === null || typeof body !== "object" || Array.isArray(body)) refuse("is not an object");
+    const s = body as Record<string, unknown>;
+    if (s.wire_format_version !== RELAY_WIRE_FORMAT_VERSION) {
+        refuse(`names wire format version ${String(s.wire_format_version)}, and this client speaks ${RELAY_WIRE_FORMAT_VERSION}`);
+    }
+    if (typeof s.chain_id !== "number" || !Number.isSafeInteger(s.chain_id) || s.chain_id <= 0) refuse("names no chain id");
+    if (typeof s.batch_verifier !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(s.batch_verifier)) refuse("names no batch verifier address");
+    if (typeof s.program_vkey !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(s.program_vkey)) refuse("names no 32-byte program key");
+    if (!Array.isArray(s.browser_submit_origins) || !s.browser_submit_origins.every((o) => typeof o === "string")) {
+        refuse("names no list of browser origins");
+    }
+    if (typeof s.state_root !== "string") refuse("names no state root");
+    for (const count of ["pending_ops", "pending_usage_claims", "batches_settled"] as const) {
+        const n = s[count];
+        if (typeof n !== "number" || !Number.isSafeInteger(n) || n < 0) refuse(`carries no ${count} count`);
+    }
+    return s as unknown as SequencerStatus;
 }
 
 export function toSequencerCommitment(c: Commitment): SequencerCommitment {
@@ -527,7 +580,6 @@ export class SequencerClient {
         });
     }
 
-    /** Query sequencer status: state root, pending ops, batches resolved. */
     /**
      * Submit an RPGF usage claim for an order the BATCH path has resolved.
      *
@@ -548,6 +600,12 @@ export class SequencerClient {
         return { pending: (await readSequencerJson<{ pending: number }>(res)).pending };
     }
 
+    /**
+     * The relay's state and what it proves for: the chain, the batch verifier
+     * and the guest fingerprint. Refuses an answer that lacks any of the
+     * three or speaks another wire format version
+     * ({@link parseSequencerStatus}).
+     */
     async status(): Promise<SequencerStatus> {
         const res = await this._fetch(`${this.url}/status`, {
             method: "GET",
@@ -560,7 +618,7 @@ export class SequencerClient {
                 res.status,
             );
         }
-        return readSequencerJson<SequencerStatus>(res);
+        return parseSequencerStatus(await readSequencerJson<unknown>(res), res.status);
     }
 
     /** Check if the sequencer is reachable (returns true/false, never throws). */

@@ -71,6 +71,7 @@ describe("TokenApprovalFlow", () => {
         render(
             <TokenApprovalFlow
                 tokenAddress={"0x2222222222222222222222222222222222222222"}
+                spender={"0x1111111111111111111111111111111111111111"}
                 requiredAmount={100n}
                 onApprovalComplete={mocks.onApprovalComplete}
             />,
@@ -93,6 +94,7 @@ describe("TokenApprovalFlow", () => {
         render(
             <TokenApprovalFlow
                 tokenAddress={"0x2222222222222222222222222222222222222222"}
+                spender={"0x1111111111111111111111111111111111111111"}
                 requiredAmount={100n}
                 onApprovalComplete={mocks.onApprovalComplete}
                 onCancel={mocks.onCancel}
@@ -117,6 +119,7 @@ describe("TokenApprovalFlow", () => {
         render(
             <TokenApprovalFlow
                 tokenAddress={"0x2222222222222222222222222222222222222222"}
+                spender={"0x1111111111111111111111111111111111111111"}
                 requiredAmount={100n}
                 onApprovalComplete={mocks.onApprovalComplete}
             />,
@@ -139,6 +142,7 @@ describe("TokenApprovalFlow", () => {
         render(
             <TokenApprovalFlow
                 tokenAddress={"0x2222222222222222222222222222222222222222"}
+                spender={"0x1111111111111111111111111111111111111111"}
                 requiredAmount={100n}
                 onApprovalComplete={mocks.onApprovalComplete}
                 fundedAtCommit
@@ -157,6 +161,7 @@ describe("TokenApprovalFlow", () => {
         render(
             <TokenApprovalFlow
                 tokenAddress={"0x2222222222222222222222222222222222222222"}
+                spender={"0x1111111111111111111111111111111111111111"}
                 requiredAmount={100n}
                 onApprovalComplete={mocks.onApprovalComplete}
                 fundedAtCommit
@@ -181,6 +186,7 @@ describe("TokenApprovalFlow", () => {
         render(
             <TokenApprovalFlow
                 tokenAddress={"0x2222222222222222222222222222222222222222"}
+                spender={"0x1111111111111111111111111111111111111111"}
                 requiredAmount={100n}
                 onApprovalComplete={mocks.onApprovalComplete}
             />,
@@ -202,6 +208,7 @@ describe("TokenApprovalFlow", () => {
         render(
             <TokenApprovalFlow
                 tokenAddress={"0x2222222222222222222222222222222222222222"}
+                spender={"0x1111111111111111111111111111111111111111"}
                 requiredAmount={100n}
                 onApprovalComplete={mocks.onApprovalComplete}
             />,

@@ -20,9 +20,11 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tower::limit::GlobalConcurrencyLimitLayer;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::timeout::TimeoutLayer;
 use tracing::{info, warn};
+
+use alloy_primitives::{Address, B256};
 
 use crate::mempool::{Mempool, SubmitError};
 use crate::state::StateMirror;
@@ -41,6 +43,80 @@ pub struct AppState {
     /// Where a commit's bonds are checked at the door (`None`: no verifier
     /// configured, nothing is read — the prove-only dry run).
     pub funding: Option<FundingGate>,
+    /// What this relay proves for, served on `/status`.
+    pub identity: RelayIdentity,
+}
+
+/// The version of the relay's HTTP interface, served on `/status`. The SDK
+/// publishes the format (`sdk/src/agent/relay-wire.schema.json`); a change to
+/// a route's shape moves both in one change.
+pub const WIRE_FORMAT_VERSION: u32 = 1;
+
+/// What a relay proves for: the chain it reads, the `FigaroBatchVerifier` it
+/// lands its batches at, and the fingerprint of the guest it proves with. A wallet
+/// compares the three with the verifier it reads on the chain before it
+/// sends anything, so a relay for another verifier or another guest is never
+/// sent an operation it cannot land. The verifier is the zero address in the
+/// prove-only dry run. Beside them, the page origins the operator lets submit
+/// from a browser (`BROWSER_SUBMIT_ORIGINS`), so a page learns before any
+/// signature whether this relay takes its POST.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RelayIdentity {
+    pub chain_id: u64,
+    pub batch_verifier: Address,
+    pub program_vkey: B256,
+    pub browser_submit_origins: Vec<String>,
+}
+
+/// The page origins the operator lets submit from a browser, read from
+/// `BROWSER_SUBMIT_ORIGINS`: a comma-separated list of exact origins, each
+/// `http://` or `https://`, a lowercase host and an optional port, with no
+/// path. Unset or blank is the empty list, and no page submits from a
+/// browser. A wildcard, an empty entry, a path, another scheme or an
+/// uppercase letter is refused, and the relay does not start.
+pub fn parse_browser_submit_origins(value: Option<&str>) -> Result<Vec<String>, String> {
+    let Some(value) = value else {
+        return Ok(vec![]);
+    };
+    if value.trim().is_empty() {
+        return Ok(vec![]);
+    }
+    value
+        .split(',')
+        .map(|entry| {
+            let origin = entry.trim();
+            let refuse = |why: &str| {
+                Err(format!(
+                    "BROWSER_SUBMIT_ORIGINS entry {origin:?} {why}; list exact origins such as https://app.example or http://localhost:3100, separated by commas"
+                ))
+            };
+            if origin.is_empty() {
+                return refuse("is empty");
+            }
+            if origin.contains('*') {
+                return refuse("is a wildcard, and no wildcard is accepted");
+            }
+            let Some(host) = origin
+                .strip_prefix("https://")
+                .or_else(|| origin.strip_prefix("http://"))
+            else {
+                return refuse("is not an http or https origin");
+            };
+            if host.is_empty() {
+                return refuse("names no host");
+            }
+            if host.contains(['/', '?', '#', '@']) || host.chars().any(char::is_whitespace) {
+                return refuse("is not an origin: it carries a path, a query, a user or a space");
+            }
+            if host.chars().any(|c| c.is_ascii_uppercase()) {
+                return refuse("has an uppercase letter, and a browser sends its origin in lowercase");
+            }
+            if axum::http::HeaderValue::from_str(origin).is_err() {
+                return refuse("is not a header value");
+            }
+            Ok(origin.to_string())
+        })
+        .collect()
 }
 
 /// Cumulative failure facts, surfaced on `/status` so a polling driver SEES a
@@ -316,6 +392,17 @@ pub struct ErrorResponse {
 
 #[derive(Serialize)]
 pub struct StatusResponse {
+    /// The version of this interface ([`WIRE_FORMAT_VERSION`]).
+    pub wire_format_version: u32,
+    /// The chain this relay reads, as its RPC answers.
+    pub chain_id: u64,
+    /// The `FigaroBatchVerifier` this relay lands its batches at, lowercase hex.
+    pub batch_verifier: String,
+    /// The fingerprint of the guest this relay proves with: a proof verifies
+    /// only where the verifier holds the same value as its `programVKey`.
+    pub program_vkey: String,
+    /// The page origins this relay lets submit from a browser; empty, none.
+    pub browser_submit_origins: Vec<String>,
     pub state_root: String,
     pub pending_ops: usize,
     pub pending_usage_claims: usize,
@@ -368,6 +455,31 @@ pub fn router(state: AppState, config: ApiConfig) -> Router {
         // Outermost last: the in-flight cap admits, the timeout bounds.
         .layer(TimeoutLayer::new(config.request_timeout))
         .layer(in_flight.clone());
+    // The origins the operator listed (`BROWSER_SUBMIT_ORIGINS`) are answered
+    // the preflight and the cross-origin header, each for itself alone, and
+    // the answer varies by origin. Each listed page's visitors then submit
+    // from addresses of their own, each under the per-address limit: the
+    // operator accepts that exposure by listing the page. With none listed,
+    // the routes carry no cross-origin header, as described above.
+    let submissions = if state.identity.browser_submit_origins.is_empty() {
+        submissions
+    } else {
+        let origins = state
+            .identity
+            .browser_submit_origins
+            .iter()
+            .map(|o| {
+                o.parse()
+                    .expect("an origin parse_browser_submit_origins admitted is a header value")
+            })
+            .collect::<Vec<axum::http::HeaderValue>>();
+        submissions.layer(
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::list(origins))
+                .allow_methods([Method::POST, Method::OPTIONS])
+                .allow_headers([axum::http::header::CONTENT_TYPE]),
+        )
+    };
     // The read routes answer a page on any origin: GET and its preflight.
     // The read routes change nothing, and serve what the relay already serves to any client
     // on `LISTEN_ADDR`. The cross-origin header is outermost, so an answer
@@ -588,6 +700,11 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
     let (dropped_usage_claims, last_dropped_claim_error) = state.failures.claims_snapshot().await;
 
     Json(StatusResponse {
+        wire_format_version: WIRE_FORMAT_VERSION,
+        chain_id: state.identity.chain_id,
+        batch_verifier: format!("{:#x}", state.identity.batch_verifier),
+        program_vkey: format!("{:?}", state.identity.program_vkey),
+        browser_submit_origins: state.identity.browser_submit_origins.clone(),
         state_root: format!("{root:?}"),
         pending_ops: pending,
         pending_usage_claims: pending_usage,
@@ -622,6 +739,11 @@ mod failure_tests {
     #[test]
     fn status_response_carries_failure_fields() {
         let clean = serde_json::to_value(StatusResponse {
+            wire_format_version: WIRE_FORMAT_VERSION,
+            chain_id: 31337,
+            batch_verifier: format!("{:#x}", Address::ZERO),
+            program_vkey: format!("{:?}", B256::ZERO),
+            browser_submit_origins: vec![],
             state_root: "0x00".into(),
             pending_ops: 0,
             pending_usage_claims: 0,

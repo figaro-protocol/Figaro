@@ -1,0 +1,31 @@
+{
+  "operation": {
+    "AttestAsBuyer": {
+      "buyer_sig": {
+        "r": "0xa9c063b296933e7153b9345c77b1810883d7b78b0e78f271427c7faee34c6b7a",
+        "s": "0x4608895fc1ee29787433bb599b5cd8bf46ec3fb1ad3d0dc053b35394452ad21b",
+        "v": 27
+      },
+      "clause_id": "0x037534789810d0f2a242575421dd8d44e4fc401d6b1b622b318af636354f53e3",
+      "content_ref": "0xe85d2ce8c15fa9c68d775ae45e40e1f0d851a20a43350cf101e514e34000b7d1",
+      "proof": {
+        "HashOnly": {
+          "clause_data_hash": "0xe85d2ce8c15fa9c68d775ae45e40e1f0d851a20a43350cf101e514e34000b7d1",
+          "inclusion_proof": []
+        }
+      },
+      "stage": 0,
+      "target": {
+        "buyer": "0x0376aac07ad725e01357b1725b5cec61ae10473c",
+        "checkout_hash": "0xe5801a45b9e0e0dd86b4b0570d83bb4c86db3136ae44c268a7dbaacc5ffcf032",
+        "commit_deadline": "0x7d0",
+        "payment": "0x56bc75e2d63100000",
+        "process_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "running_total": "0x56bc75e2d63100000",
+        "salt": "0x2a",
+        "seller": "0xad29d7a8ad3639f97798c768202f27c1de81dc55",
+        "token": "0x5615deb798bb3e4dfa0139dfa1b3d433cc23b72f"
+      }
+    }
+  }
+}

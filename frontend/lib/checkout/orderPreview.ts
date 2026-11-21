@@ -18,6 +18,7 @@ import {
     type Agreement,
     type Commitment,
     type Hex,
+    type ResolutionUniverse,
 } from "@figaro-protocol/sdk";
 import { publicClient } from "@/lib/shared/publicClient";
 
@@ -34,6 +35,10 @@ export interface OrderPreview {
      *  relayed beside it so its seller can check its edges
      *  (`CommitmentPayload.followed`). Absent for an order that follows none. */
     followed?: Agreement[];
+    /** The path the buyer picked at checkout (`offeredPaths`): its contract's
+     *  EIP-712 domain is the one the order is signed under. Absent, the
+     *  direct path. */
+    path?: ResolutionUniverse;
 }
 
 /**

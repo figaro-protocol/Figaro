@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState } from "react";
-import type { HydratedProcessDesign } from "@figaro-protocol/sdk";
+import { acceptedPaths, type HydratedProcessDesign, type ResolutionUniverse } from "@figaro-protocol/sdk";
 import { useMemberProfile } from "@/lib/registries/useMembersRegistry";
 import { fetchMemberProfile } from "@/lib/registries/profileFetcher";
 import type { CoSellerBinding } from "@/lib/registries/memberProfileMetadata";
@@ -40,6 +40,9 @@ export interface BoundAssembly {
      *  ProcessBindingRecord — checkout reads it to fill a delegated
      *  order's seller. */
     coSellerBindings: CoSellerBinding[];
+    /** The paths the member accepts an order of this assembly on, from its
+     *  binding (`acceptedPaths`). Absent, the direct path alone. */
+    paths?: ResolutionUniverse[];
 }
 
 /**
@@ -111,6 +114,7 @@ export function useMemberBoundAssemblies(
                     name: slug,
                     hydratedAssembly: m,
                     coSellerBindings: binding?.coSellerBindings ?? [],
+                    paths: acceptedPaths(profile, processDesignHash),
                 });
             });
             return assemblies;

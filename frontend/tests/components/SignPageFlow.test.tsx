@@ -31,7 +31,7 @@ const FUNDING_TOKEN = `0x${"1a".repeat(20)}` as Hex;
 
 type Step = "idle" | "signing" | "sharing" | "awaiting-seller" | "awaiting-buyer" | "committing" | "done" | "error";
 const m = vi.hoisted(() => ({
-    client: { chain: { id: 31337 } },
+    client: { chain: { id: 31337 }, readContract: async () => `0x${"5a".repeat(32)}` },
     address: undefined as string | undefined,
     search: "",
     flow: undefined as unknown as { step: Step; error: string | null; acceptOrder: (...a: unknown[]) => Promise<unknown>; reset: () => void },
@@ -41,6 +41,23 @@ const m = vi.hoisted(() => ({
     marginText: null as string | null,
     // The ClauseRegistry registrations the review reads a spec's address from.
     registryRows: [] as Array<{ args: { clauseKey: string; contentURI: string } }>,
+    // The path the payload's signature names, as the page reads it
+    // (`usePayloadPath`): the read itself is pinned in relayTransport.test.ts.
+    path: { status: "present", value: "direct" } as { status: "pending" } | { status: "absent" } | { status: "present"; value: "direct" | "batch" },
+}));
+vi.mock("@/lib/checkout/pathChoice", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/checkout/pathChoice")>()),
+    usePayloadPath: () => m.path,
+}));
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
+    CONTRACTS: { core: "0x1111111111111111111111111111111111111111", batchVerifier: "0x2222222222222222222222222222222222222222" },
+    getBatchVerifier: () => "0x2222222222222222222222222222222222222222",
+}));
+// No relay is named: the batch path's acts wait on one.
+vi.mock("@/lib/registries/profileFetcher", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/registries/profileFetcher")>()),
+    profileReaderForChain: () => async () => null,
 }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(m.search) }));
 // One client for every render, as wagmi's hook keeps it.
@@ -133,6 +150,7 @@ beforeEach(() => {
     m.swap = { fundingToken: null, authorization: "none" };
     m.marginText = null;
     m.registryRows = [];
+    m.path = { status: "present", value: "direct" };
 });
 
 describe("/sign — the coordination-channel inbox", () => {
@@ -307,6 +325,40 @@ describe("/sign — the review reads the clause specs the sign action reads", ()
     });
 });
 
+describe("/sign — the path of the commitment, before the counter-signature", () => {
+    async function open() {
+        m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(payload()))}`;
+        render(<SignPage />);
+        await flush();
+    }
+
+    it("a commitment signed for the direct path names FigaroCore and its address, and offers the approval", async () => {
+        await open();
+        expect(screen.getByTestId("sign-path").textContent).toBe("Signed for the direct path: FigaroCore at 0x1111111111111111111111111111111111111111. Your signature is made for the same contract, and your bond is approved to it.");
+        expect(screen.getByRole("button", { name: "approve the bond" })).toBeTruthy();
+        expect(screen.queryByTestId("sign-relay-panel")).toBeNull();
+    });
+
+    it("a commitment signed for the batch path names the verifier and its address, and shows the relay setting", async () => {
+        m.path = { status: "present", value: "batch" };
+        await open();
+        expect(screen.getByTestId("sign-path").textContent).toContain("Signed for the batch path: the batch verifier at 0x2222222222222222222222222222222222222222.");
+        // The relays are read with the profile reader; none named: the line and the setting.
+        await screen.findByTestId("sign-relay-setting-input");
+        fireEvent.click(screen.getByRole("button", { name: "approve the bond" }));
+        // No relay in use: no counter-signature is offered.
+        expect(screen.queryByTestId("btn-counter-sign")).toBeNull();
+    });
+
+    it("while the path is read: a loading line, and no approval and no act", async () => {
+        m.path = { status: "pending" };
+        await open();
+        expect(screen.getByTestId("sign-path-reading")).toBeTruthy();
+        expect(screen.queryByRole("button", { name: "approve the bond" })).toBeNull();
+        expect(screen.queryByTestId("btn-counter-sign")).toBeNull();
+    });
+});
+
 describe("/sign — the seller's counter-signature and the flow's step", () => {
     async function reviewing(step: Step = "idle", error: string | null = null) {
         m.flow = { ...m.flow, step, error };
@@ -367,7 +419,7 @@ describe("/sign — the seller's counter-signature and the flow's step", () => {
     it("counter-signs the parsed order with no funding leg", async () => {
         await reviewing();
         await act(async () => { fireEvent.click(screen.getByTestId("btn-counter-sign")); });
-        expect(m.flow.acceptOrder).toHaveBeenCalledWith(expect.objectContaining({ commitment: expect.objectContaining({ seller: SELLER }) }), undefined);
+        expect(m.flow.acceptOrder).toHaveBeenCalledWith(expect.objectContaining({ commitment: expect.objectContaining({ seller: SELLER }) }), undefined, { relay: null });
     });
 
     it("counter-signs with the chosen funding token's leg once it is authorized", async () => {
@@ -375,7 +427,7 @@ describe("/sign — the seller's counter-signature and the flow's step", () => {
         await reviewing();
         await act(async () => { fireEvent.click(screen.getByTestId("btn-counter-sign")); });
         // Untouched, the margin is the venue's own, and the leg is quoted with it.
-        expect(m.flow.acceptOrder).toHaveBeenCalledWith(expect.anything(), { inputToken: FUNDING_TOKEN, slippageBps: 100 });
+        expect(m.flow.acceptOrder).toHaveBeenCalledWith(expect.anything(), { inputToken: FUNDING_TOKEN, slippageBps: 100 }, { relay: null });
     });
 
     it("counter-signs with the slippage margin the seller set in the chooser", async () => {
@@ -383,7 +435,7 @@ describe("/sign — the seller's counter-signature and the flow's step", () => {
         m.marginText = "2.5";
         await reviewing();
         await act(async () => { fireEvent.click(screen.getByTestId("btn-counter-sign")); });
-        expect(m.flow.acceptOrder).toHaveBeenCalledWith(expect.anything(), { inputToken: FUNDING_TOKEN, slippageBps: 250 });
+        expect(m.flow.acceptOrder).toHaveBeenCalledWith(expect.anything(), { inputToken: FUNDING_TOKEN, slippageBps: 250 }, { relay: null });
     });
 
     it("holds the counter-signature while the slippage margin is refused", async () => {

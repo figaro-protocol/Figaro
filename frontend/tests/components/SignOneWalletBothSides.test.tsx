@@ -34,6 +34,16 @@ vi.mock("wagmi", () => ({
     useChainId: () => 31337,
     usePublicClient: () => m.client,
 }));
+// The path the payload's signature names is read by `usePayloadPath`
+// (pinned in relayTransport.test.ts); here the order is a direct-path one.
+vi.mock("@/lib/checkout/pathChoice", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/checkout/pathChoice")>()),
+    usePayloadPath: () => ({ status: "present", value: "direct" }),
+}));
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
+    CONTRACTS: { core: "0x1111111111111111111111111111111111111111", batchVerifier: "" },
+}));
 vi.mock("next/navigation", () => ({
     useSearchParams: () => new URLSearchParams(m.search),
     useRouter: () => ({ push: () => undefined, replace: () => undefined }),

@@ -39,6 +39,7 @@ import {
 import { isBytes32Hex } from "./types.js";
 import { isGeohash } from "./derive/geo.js";
 import type { Address } from "./types.js";
+import type { ResolutionUniverse } from "./events.js";
 import type { Agreement } from "./agreement.js";
 import { deriveProcessDesignSlug } from "./assembly.js";
 
@@ -130,6 +131,14 @@ export interface ProcessBindingRecord {
     /** `ProcessRegistry` processDesignHash of the bound assembly. */
     processDesignHash: `0x${string}`;
     coSellerBindings?: CoSellerBinding[];
+    /**
+     * The paths the seller accepts an order of this assembly on: `direct`
+     * (`FigaroCore`) and `batch` (`FigaroBatchVerifier`, through a relay).
+     * Absent, the seller accepts the direct path alone. The buyer picks among
+     * them at checkout; the path decides the EIP-712 domain both parties sign
+     * under and the contract the bonds are approved to (`acceptedPaths`).
+     */
+    paths?: ResolutionUniverse[];
 }
 
 /**
@@ -294,12 +303,31 @@ function parseCoSellerItemIds(
 
 function parseProcessBindingDocument(value: unknown, sourceLabel = "institution binding"): ProcessBindingRecord {
     const record = asRecord(value, sourceLabel);
+    const paths = parseBindingPaths(record.paths, `${sourceLabel}.paths`);
     return {
         bindingId: asString(record.bindingId, `${sourceLabel}.bindingId`),
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
         processDesignHash: asProcessDesignHash(record.processDesignHash, `${sourceLabel}.processDesignHash`),
         coSellerBindings: parseCoSellerBindingArray(record.coSellerBindings, `${sourceLabel}.coSellerBindings`),
+        ...(paths ? { paths } : {}),
     };
+}
+
+const KNOWN_PATHS: readonly ResolutionUniverse[] = ["direct", "batch"];
+
+/** A binding's declared paths: an array of strings, each path once, in the
+ *  order written. A path this reader does not know is left out, so a profile
+ *  written for a later reader still parses; an empty list is no declaration. */
+function parseBindingPaths(value: unknown, path: string): ResolutionUniverse[] | undefined {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value)) throw new Error(`${path} must be an array.`);
+    const out: ResolutionUniverse[] = [];
+    value.forEach((entry, index) => {
+        if (typeof entry !== "string") throw new Error(`${path}[${index}] must be a string.`);
+        const known = KNOWN_PATHS.find((p) => p === entry);
+        if (known && !out.includes(known)) out.push(known);
+    });
+    return out.length > 0 ? out : undefined;
 }
 
 /** A processDesignHash is a 32-byte keccak digest, not a 20-byte address —
@@ -511,6 +539,35 @@ export function projectAgentServices(value: unknown): AgentServiceInfo {
     };
 }
 
+// ── The paths a binding accepts, and the relay a profile names ───────────────
+
+/**
+ * The paths the profile's seller accepts an order of `processDesignHash` on:
+ * the binding's declared `paths`, the direct path alone where it declares
+ * none, and no path where the profile does not bind the assembly.
+ */
+export function acceptedPaths(
+    profile: Pick<MemberProfileMetadata, "processBindings">,
+    processDesignHash: `0x${string}`,
+): ResolutionUniverse[] {
+    const binding = (profile.processBindings ?? [])
+        .find((b) => b.processDesignHash.toLowerCase() === processDesignHash.toLowerCase());
+    if (!binding) return [];
+    return binding.paths ?? ["direct"];
+}
+
+/** The key of a relay among a profile's `services`: its value is the base URL
+ *  of a relay's HTTP interface (`relay-wire.schema.json`). One kind of entry
+ *  in the open set; nothing else reads the key. */
+export const RELAY_SERVICE_KEY = "relay";
+
+/** The relay a profile names among its services, or null. A URL, never a
+ *  verdict: a wallet checks the relay against the chain before it sends. */
+export function profileRelayUrl(profile: Pick<MemberProfileMetadata, "services">): string | null {
+    const url = profile.services?.[RELAY_SERVICE_KEY];
+    return typeof url === "string" && url.trim() !== "" ? url.trim() : null;
+}
+
 // ── The seller's bound assemblies, checked at acceptance ─────────────────────
 
 /** Reads a member's OWN profile document at the edge: MembersRegistry →
@@ -534,13 +591,15 @@ export interface ProcessBindingCheck {
  * The bound set is read through `readProfile` at acceptance time, from the
  * seller's own profile; it is never a value the caller passes in. Refuses an
  * agreement with no provenance leaf, a missing reader, a profile that cannot
- * be read, and an assembly the profile does not bind. A refusal names the
- * assembly by its derived slug and its full hash.
+ * be read, and an assembly the profile does not bind. Given `path`, also
+ * refuses an order on a path the binding does not accept (`acceptedPaths`).
+ * A refusal names the assembly by its derived slug and its full hash.
  */
 export async function checkSellerBindsProcess(
     agreement: Agreement,
     seller: Address,
     readProfile?: MemberProfileReader,
+    path?: ResolutionUniverse,
 ): Promise<ProcessBindingCheck> {
     const processDesignHash = agreement.provenance?.processDesignHash;
     if (!processDesignHash) {
@@ -563,6 +622,9 @@ export async function checkSellerBindsProcess(
         .some((b) => b.processDesignHash.toLowerCase() === processDesignHash.toLowerCase());
     if (!bound) {
         return { ok: false, reason: `the seller ${seller} has not bound ${named} in its member profile` };
+    }
+    if (path !== undefined && !acceptedPaths(profile, processDesignHash).includes(path)) {
+        return { ok: false, reason: `the seller ${seller}'s binding of ${named} does not accept the ${path} path` };
     }
     return { ok: true };
 }

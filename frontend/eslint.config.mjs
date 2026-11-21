@@ -22,24 +22,21 @@ const SIGN_RULE = {
         "A typed-data signature is a commitment: it is requested only in lib/checkout/orderCommitmentFlow.ts, behind the sign gate (assertAgreementSignable) and the confirm modal.",
 };
 
-const eslintConfig = [
-    ...nextCoreWebVitals,
-    {
-        ignores: [".next/**", ".next-e2e/**", "out/**", "node_modules/**", "next-env.d.ts"],
-    },
-    {
-        rules: {
-            "no-restricted-syntax": ["error", JSON_RULE, INNER_HTML_RULE, SIGN_RULE],
-            "no-restricted-imports": [
-                "error",
-                {
-                    paths: [
+// The imports no file may take, in two lists. A typed-data signature is
+// requested in two files: lib/checkout/orderCommitmentFlow.ts signs a
+// commitment, on either path, and lib/core/useRelayActions.ts signs the batch
+// path's resolve and attestation, the two acts that are a transaction on the
+// direct path and a signed operation sent to a relay on the batch path.
+const SIGN_HOOK_IMPORT = [
                         {
                             name: "wagmi",
                             importNames: ["useSignTypedData"],
                             message:
-                                "Typed-data signing lives in lib/checkout/orderCommitmentFlow.ts alone, behind the sign gate and the confirm modal.",
+                                "A commitment is signed in lib/checkout/orderCommitmentFlow.ts alone, behind the sign gate and the confirm modal. The batch path's resolve and attestation, which a relay carries, are signed in lib/core/useRelayActions.ts alone.",
                         },
+];
+
+const OTHER_RESTRICTED_IMPORTS = [
                         {
                             name: "wagmi/actions",
                             importNames: ["signTypedData"],
@@ -55,9 +52,17 @@ const eslintConfig = [
                             message:
                                 "FigaroCore is written from lib/checkout/orderCommitmentFlow.ts (commit, behind the sign gate) and hooks/useSemanticProcessWorkspace.ts (the buyer's resolve) alone.",
                         },
-                    ],
-                },
-            ],
+];
+
+const eslintConfig = [
+    ...nextCoreWebVitals,
+    {
+        ignores: [".next/**", ".next-e2e/**", "out/**", "node_modules/**", "next-env.d.ts"],
+    },
+    {
+        rules: {
+            "no-restricted-syntax": ["error", JSON_RULE, INNER_HTML_RULE, SIGN_RULE],
+            "no-restricted-imports": ["error", { paths: [...SIGN_HOOK_IMPORT, ...OTHER_RESTRICTED_IMPORTS] }],
         },
     },
     {
@@ -77,6 +82,12 @@ const eslintConfig = [
         rules: {
             "no-restricted-syntax": ["error", JSON_RULE, INNER_HTML_RULE],
             "no-restricted-imports": "off",
+        },
+    },
+    {
+        files: ["lib/core/useRelayActions.ts"],
+        rules: {
+            "no-restricted-imports": ["error", { paths: OTHER_RESTRICTED_IMPORTS }],
         },
     },
     {

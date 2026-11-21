@@ -22,10 +22,10 @@
  *   resolve  → the buyer signs the resolution, the relay lands it; the verifier
  *              emits `OrderResolved` and `ProcessResolved`, FigaroCore none
  *   read     → each surface, with no relay endpoint anywhere:
- *              /orders/view lists the batched attestation, tagged batch, offers
- *              the buyer of the open process no resolve and no attestation (the
- *              Core does not know the process, read out of band) and names the
- *              relay client in their place, and
+ *              /orders/view lists the batched attestation, tagged batch, and,
+ *              with no relay named, offers the buyer of the open process no
+ *              resolve and no attestation (the Core does not know the process,
+ *              read out of band) and states that it sends nothing, and
  *              the sealed handoff key the buyer's tab held for the order is
  *              purged when the batched resolution lands (useHandoffCleanup);
  *              once the resolution lands, /orders/view reads the order as
@@ -46,14 +46,12 @@
  * every devnet spec does; needs nothing it seeds.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import { createWalletClient, hashTypedData, http, keccak256, maxUint256, parseAbi, parseEther, stringToHex, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { LOCAL_ANVIL, RPC_URL, keyOf, localPublicClient, pinJSONToIPFS, primeRegisteredClauseSpecs, readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
+import { REQUIRE_RELAY, SEQUENCER_BIN, startRelay } from './relayProcess';
 import {
     BATCH_VERIFIER_ABI,
     CORE_ABI,
@@ -70,12 +68,7 @@ import { SequencerClient } from '@figaro-protocol/sdk/agent';
 import { specSource } from '@/lib/shared/clauseSpecSource';
 import { ZERO_ADDRESS } from '@/lib/shared/evm';
 
-const SEQUENCER_BIN = path.resolve(__dirname, '../../../prover/target/release/sequencer');
 const RELAY_PORT = 3011;
-const RELAY_URL = `http://127.0.0.1:${RELAY_PORT}`;
-// Set where the binary is built for this run (the full devnet suite in CI): a
-// missing binary is then a failure, never a skip that passes.
-const REQUIRE = process.env.REQUIRE_BATCH_E2E === '1';
 const MINT_ABI = parseAbi(['function mint(address to, uint256 amount) external']);
 
 // anvil[0] is the fixture buyer; anvil[14] serves as a counterparty across the
@@ -104,35 +97,11 @@ const ATTEST_SELLER_TYPES = {
     ],
 } as const;
 
-async function waitForRelay(exit: { code: number | null; lines: string[] }, timeoutMs: number): Promise<void> {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-        if (exit.code !== null) {
-            await new Promise((r) => setTimeout(r, 300));
-            throw new Error(`the relay exited with code ${exit.code} before serving /status:\n${exit.lines.slice(-12).join('\n')}`);
-        }
-        try {
-            const res = await fetch(`${RELAY_URL}/status`, { signal: AbortSignal.timeout(1000) });
-            if (res.ok) return;
-        } catch { /* not up yet */ }
-        await new Promise((r) => setTimeout(r, 300));
-    }
-    throw new Error(`the relay at ${RELAY_URL} did not serve /status within ${timeoutMs}ms`);
-}
-
-async function stopRelay(child: ChildProcess): Promise<void> {
-    if (child.exitCode !== null) return;
-    const gone = new Promise<void>((resolve) => child.once('exit', () => resolve()));
-    child.kill('SIGTERM');
-    await Promise.race([gone, new Promise<void>((r) => setTimeout(r, 5000))]);
-    if (child.exitCode === null) child.kill('SIGKILL');
-}
-
 test.describe('BATCH EVENTS — a batch-resolved order renders from chain events alone (devnet)', () => {
     test.setTimeout(900_000);
 
     test('one order through a relay rebuilt from the chain, attested and resolved in batches: the chain names each, and every surface shows it tagged batch', async ({ page }) => {
-        if (REQUIRE && !fs.existsSync(SEQUENCER_BIN)) {
+        if (REQUIRE_RELAY && !fs.existsSync(SEQUENCER_BIN)) {
             throw new Error(`REQUIRE_BATCH_E2E=1 but no sequencer binary is at ${SEQUENCER_BIN}`);
         }
         test.skip(!fs.existsSync(SEQUENCER_BIN), `no sequencer binary at ${SEQUENCER_BIN} (cargo build --release -p figaro-sequencer)`);
@@ -147,40 +116,11 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
         const balanceOf = (who: Hex) => publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
         const chainRoot = () => publicClient.readContract({ address: verifier, abi: BATCH_VERIFIER_ABI, functionName: 'stateRoot' }) as Promise<Hex>;
 
-        // ── The relay: started with nothing, rebuilt from the chain. ──
-        const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'figaro-batch-events-'));
-        const exit = { code: null as number | null, lines: [] as string[] };
-        const relay = spawn(SEQUENCER_BIN, [], {
-            env: {
-                ...process.env,
-                RPC_URL,
-                BATCH_VERIFIER_ADDRESS: verifier,
-                USAGE_COUNTER_ADDRESS: config.usageCounter as string,
-                CLAUSE_REGISTRY_ADDRESS: config.clauseRegistry as string,
-                PROCESS_REGISTRY_ADDRESS: config.processRegistry as string,
-                AGREEMENT_REGISTRY_ADDRESS: config.agreementRegistry as string,
-                MEMBERS_REGISTRY_ADDRESS: config.membersRegistry as string,
-                // The batch path's EIP-712 verifyingContract is the verifier.
-                FIGARO_CORE_ADDRESS: verifier,
-                SEQUENCER_PRIVATE_KEY: RELAY_SIGNER_KEY,
-                STATE_PATH: path.join(scratch, 'state.json'),
-                REBUILD_FROM_CHAIN: '1',
-                LISTEN_ADDR: `127.0.0.1:${RELAY_PORT}`,
-                BATCH_INTERVAL_SECS: '2',
-                MAX_BATCH_OPS: '50',
-                RUST_LOG: 'figaro_sequencer=info,sequencer=info',
-            },
-            stdio: ['ignore', 'pipe', 'pipe'],
-        });
-        const collect = (chunk: Buffer) => { exit.lines.push(...chunk.toString().split('\n').filter(Boolean)); };
-        relay.stdout?.on('data', collect);
-        relay.stderr?.on('data', collect);
-        relay.on('exit', (code) => { exit.code = code ?? -1; });
+        // ── The relay: started with nothing, rebuilt from the chain (`startRelay`). ──
+        const relay = await startRelay({ port: RELAY_PORT, signerKey: RELAY_SIGNER_KEY, scratchPrefix: 'figaro-batch-events-' });
 
         try {
-            // The first start derives the guest fingerprint (minutes); cached after.
-            await waitForRelay(exit, 10 * 60_000);
-            const client = new SequencerClient({ url: RELAY_URL });
+            const client = new SequencerClient({ url: relay.url });
             const settledBefore = (await client.status()).batches_settled;
             const rootBefore = await chainRoot();
 
@@ -290,18 +230,20 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
                 .toHaveAttribute('data-universe', 'batch', { timeout: 60000 });
             expect(await ecdhHeld(), 'the buyer\'s tab holds the sealed-handoff key while the order is open').toBe(true);
 
-            // ── The order page offers the buyer of the open batched process no act that goes to
-            //    FigaroCore or the coordinator, and names what does act on it (OrderTimelineView;
-            //    the unit-level twin is tests/components/OrderTimelineBatchPathActs.test.tsx). ──
+            // ── With no relay named anywhere (no wallet setting, no profile entry), the order page
+            //    offers the buyer of the open batched process no act, and states that it sends
+            //    nothing (OrderTimelineView, RelayPanel; the unit-level twin is
+            //    tests/components/OrderTimelineBatchPathActs.test.tsx; the acts through a relay are
+            //    relay-transport.devnet.spec.ts). ──
             const [coreRootBuyer] = await publicClient.readContract({
                 address: config.figaroCore as Hex, abi: CORE_ABI, functionName: 'processes', args: [processId],
             });
             expect(coreRootBuyer, 'FigaroCore does not know the batched process, so a resolve sent there would revert')
                 .toBe(ZERO_ADDRESS);
-            await expect(page.getByTestId('order-batch-path-note'), 'the order page names the relay client in place of the actions')
-                .toContainText('This order is on the batch path', { timeout: 60000 });
+            await expect(page.getByTestId('order-relay-none'), 'the order page states that no relay matching the verifier is known')
+                .toContainText('so this page sends nothing on the batch path', { timeout: 60000 });
             await expect(page.getByTestId('capability-resolve-process'), 'no resolve is offered for the batched process').toHaveCount(0);
-            await expect(page.locator('[data-testid^="capability-"]'), 'no attestation card and no capability rail on the batched process').toHaveCount(0);
+            await expect(page.getByTestId('capability-rail'), 'no attestation card and no capability rail on the batched process').toHaveCount(0);
 
             // ── The buyer's resolution, through the relay. ──
             const resolveSig = await BUYER.signTypedData({
@@ -403,8 +345,7 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
             expect(await allowanceToMultisender(), 'the seller authorized the multisender for exactly the split total')
                 .toBe(allowance0 === maxUint256 ? maxUint256 : allowance0 >= splitTotal ? allowance0 - splitTotal : 0n);
         } finally {
-            await stopRelay(relay);
-            fs.rmSync(scratch, { recursive: true, force: true });
+            await relay.stop();
         }
     });
 });

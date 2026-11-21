@@ -18,6 +18,8 @@ import { fetchAssemblyByHash } from "@/lib/registries/useProcessRegistry";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { useAttestationCoordinatorActions } from "@/lib/core/useAttestationCoordinatorActions";
+import { useRelayActions, type RelayReceipt } from "@/lib/core/useRelayActions";
+import { useCheckedRelay } from "@/lib/registries/useCheckedRelay";
 import { useRegisterMember, useUpdateProfile, useWithdrawDeposit, useWithdrawalCooldown } from "@/lib/registries/useMembersRegistry";
 import { cooldownPhrase } from "@/lib/registries/cooldownPhrase";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
@@ -107,7 +109,27 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const { version: clauseSpecsVersion } = useClauseSpecs();
     const { resolveProcess, hash, isPending } = useFigaroActions();
     const usageRecorder = useUsageRecorder();
-    const attestationActions = useAttestationCoordinatorActions();
+    // A process is on one path; on the batch path its acts go to a relay the
+    // wallet knows (its own setting, or a party's profile) that passes the
+    // check against the chain. Read only for a batched process.
+    const onBatchPath = processOrders.some((order) => order.path === "batch");
+    const partiesKey = onBatchPath
+        ? Array.from(new Set(processOrders.flatMap((order) => [order.buyer, order.seller]).filter(Boolean).map((a) => a.toLowerCase()))).sort().join(",")
+        : "";
+    const parties = useMemo(() => (partiesKey ? partiesKey.split(",") : []) as `0x${string}`[], [partiesKey]);
+    const relays = useCheckedRelay(parties, onBatchPath);
+    const knownRelay = relays.read.status === "present" ? relays.read.value.relay : null;
+    const relayActions = useRelayActions(knownRelay);
+    // What the last act sent to a relay answered: with the relay, not yet on
+    // the chain, until its batch lands and the readers show it.
+    const [relayReceipt, setRelayReceipt] = useState<RelayReceipt | null>(null);
+    const keepReceipt = (receipt: RelayReceipt) => {
+        setRelayReceipt(receipt);
+        return receipt;
+    };
+    const attestationActions = useAttestationCoordinatorActions({
+        attestOnBatchPath: async (role, at) => keepReceipt(await relayActions.attest(role, at)),
+    });
     const registerMember = useRegisterMember();
     const updateMemberProfile = useUpdateProfile();
     const withdrawMemberDeposit = useWithdrawDeposit();
@@ -248,6 +270,8 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         processOrders,
         processAgreements,
         resolveProcess,
+        resolveOnBatchPath: async (id, commitments) => keepReceipt(await relayActions.resolveProcess(id, commitments)),
+        submitUsageClaims: relayActions.submitUsageClaims,
         fetchUsageClaimContext: usageRecorder.fetchClaimContext,
         readAssembly: fetchAssemblyByHash,
         simulateUsage: usageRecorder.simulateUsage,
@@ -259,6 +283,9 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         confirmResolve: (plannedUsageWrites) => window.confirm([
             "This resolves the whole process: every seller is paid and every bond is refunded at once, and it cannot be undone.",
             ...resolvePayoutLines(processOrders, figure),
+            ...(onBatchPath && knownRelay
+                ? [`Your wallet signs the resolve for the batch verifier ${CONTRACTS.batchVerifier}, and the relay ${knownRelay.url} has it proved. It lands when its batch does.`]
+                : []),
             ...(plannedUsageWrites > 0
                 ? [`Your wallet then signs up to ${plannedUsageWrites} more ${plannedUsageWrites === 1 ? "transaction" : "transactions"} that count which clauses and which assembly this trade used, so their designers are rewarded.`]
                 : []),
@@ -313,6 +340,10 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
 
     return {
         effectiveProcessId,
+        /** The relays this process's acts can go to, checked against the
+         *  chain; read only for a process on the batch path. */
+        relays,
+        relayReceipt,
         processModel,
         processModelRead,
         processAgreements,

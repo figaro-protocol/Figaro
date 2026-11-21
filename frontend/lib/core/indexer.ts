@@ -50,6 +50,12 @@ const EMITTER_PATHS = (): ReadonlyArray<readonly [ResolutionUniverse, string]> =
     ["batch", CONTRACTS.batchVerifier],
 ];
 
+/** The path whose contract emitted a log at `address`, or null when neither
+ *  order emitter of this deployment did. */
+function emitterPath(address: string | undefined): ResolutionUniverse | null {
+    return EMITTER_PATHS().find(([, emitter]) => !!emitter && hexEqual(address, emitter))?.[0] ?? null;
+}
+
 /** Each path's share of a mixed set of order-emitter logs, parsed: the logs a
  *  path's own contract emitted, read by their address at read time. A path
  *  whose contract is not configured, or emitted none of the logs, is absent. */
@@ -193,6 +199,20 @@ export async function getCoreEvents(
         committedLogs: committed,
         byPath: parseCoreLogsByPath({ committed, resolved, processResolved }),
     };
+}
+
+/** The path the chain holds `processId` on: the path whose contract emitted
+ *  an `OrderCommitted` under it. Null when no emitter holds it (a new
+ *  process, or one the page cannot read: a failed read throws). */
+export async function processPath(
+    client: PublicClient | undefined,
+    chainId: number,
+    processId: string,
+): Promise<ResolutionUniverse | null> {
+    if (!client) return null;
+    const committed = await getAllOrderCommitted(client, chainId);
+    const log = committed.find((l) => hexEqual(getStringArg(l, "processId") ?? "", processId));
+    return log ? emitterPath((log as { address?: string }).address) : null;
 }
 
 /** Every order `wallet` is a party to (buyer or seller), once each — an order

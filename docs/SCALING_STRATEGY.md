@@ -124,12 +124,11 @@ contract emitted it, from the emitter's address at read time
 `Order.path`, `Process.path`). What a party can do on the direct path and
 cannot do on the batch path, as the code stands:
 
-- Through the app (`docs/FRONTEND.md` § "The batch path through this app"):
-  - The app starts no trade on the batch path; every commit it sends goes to `FigaroCore`.
-  - The app offers no resolve and no attestation for a batched process; its order page names the SDK's relay client in their place.
-  - The app offers no send of an address detail or a content delivery on a batched order, because the send files its anchor through the coordinator.
-  - The app cannot commit a sub-order that follows an order of a batched process, because the commit goes to `FigaroCore`, which reverts with `UnknownProcess`.
-  - The app sends no usage claim to a relay, so a batched process's uses reach the counter only through a claim sent by other means.
+- Through the app (`docs/FRONTEND.md` § "The batch path through this app"), the app places, attests and resolves on the batch path through a relay whose reported chain, verifier and program key match the chain and whose operator lets the page's origin submit. What it does not do:
+  - It sends nothing on the batch path while no such relay is in use; the order page states so.
+  - It offers no send of an address detail or a content delivery on a batched order, because the send files its anchor through the coordinator.
+  - It drafts a dispatch race and a quote request on the direct path alone, because a draft carries no signature that names a path.
+  - It pays a bond through a swap on the direct path alone, because the swap coordinator commits through `FigaroCore`.
   - No reader of the app shows the operations a relay holds in its queue for one process.
 - Through the SDK:
   - The agents start trades on the direct path only: `originateProcess`, the seller loop and `executeAction`'s `initiate-process` commit through `FigaroCore`.

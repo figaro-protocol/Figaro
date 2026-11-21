@@ -16,13 +16,16 @@
 import { type Hex } from "viem";
 import {
     PROVENANCE_LEAF_KEY,
+    buildUsageClaims,
     provenanceLeafBytes,
+    usageClaimKindCode,
+    usageKeyId,
     type Agreement,
     type ProcessDesign,
     type Commitment,
     type UsageClaimContext,
 } from "@figaro-protocol/sdk";
-import { prepareAttestationContent } from "@figaro-protocol/sdk/agent";
+import { prepareAttestationContent, type SequencerUsageClaim } from "@figaro-protocol/sdk/agent";
 import { OrderState, type Order } from "@/lib/core/store";
 import { restoreSignedProcessId } from "@/lib/core/signedCommitment";
 import { attestationContentFields, getClauseSpec } from "@/lib/shared/clauseSpecSource";
@@ -52,6 +55,13 @@ export interface CapabilityExecutorDeps {
     processAgreements: Map<string, Agreement>;
     /** FigaroCore resolve — buyer dominance's single signature. */
     resolveProcess: (processId: string, commitments: ReturnType<typeof restoreSignedProcessId>[]) => Promise<Hex | undefined | void>;
+    /** The batch path's resolve: the buyer's `ResolveProcess` signed under
+     *  the verifier's domain and sent to a relay (`useRelayActions`). Absent,
+     *  a batched process's resolve is refused. */
+    resolveOnBatchPath?: (processId: Hex, commitments: Commitment[]) => Promise<unknown>;
+    /** Send a batched process's usage claims to that relay. Absent, none is
+     *  sent, and the log says so. */
+    submitUsageClaims?: (claims: readonly SequencerUsageClaim[]) => Promise<{ admitted: number; refused: string[] }>;
     /** Usage recording (permissionless; UsageCounter re-verifies every fact).
      *  Planned before the resolve from the counter's own facts, sent after it
      *  — count usage when it happens. Each write is simulated first and sent
@@ -63,7 +73,9 @@ export interface CapabilityExecutorDeps {
     readAssembly: (processDesignHash: Hex) => Promise<ProcessDesign | null>;
     simulateUsage: (write: UsageWrite) => Promise<void>;
     recordUsage: (write: UsageWrite) => Promise<Hex | undefined>;
-    submitAttestation: (role: "buyer" | "seller", args: AttestationSubmitArgs) => Promise<Hex | undefined>;
+    /** A transaction hash on the direct path, a relay's receipt on the batch
+     *  path (`useAttestationCoordinatorActions`). */
+    submitAttestation: (role: "buyer" | "seller", args: AttestationSubmitArgs) => Promise<unknown>;
     registerMember: (metadataURI: string) => Promise<Hex | undefined | void>;
     updateMemberProfile: (metadataURI: string) => Promise<Hex | undefined | void>;
     withdrawMemberDeposit: () => Promise<Hex | undefined | void>;
@@ -71,6 +83,12 @@ export interface CapabilityExecutorDeps {
      *  receives how many usage writes the wallet signs after the resolve. */
     confirmResolve: (plannedUsageWrites: number) => boolean;
     confirmWithdraw: () => boolean;
+}
+
+/** A submission's transaction hash, or undefined where it has none: an act
+ *  sent to a relay answers with the relay's receipt, which its caller keeps. */
+function transactionHashOf(sent: unknown): Hex | undefined {
+    return typeof sent === "string" ? (sent as Hex) : undefined;
 }
 
 export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
@@ -90,6 +108,9 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         // signed in; with no connected chain, nothing is restored.
         const chainId = deps.publicClient?.chain?.id;
         if (chainId === undefined) throw new Error("No connected chain: connect a wallet to the order's chain to resolve.");
+        // A process is on one path (the two share no state): its orders are
+        // restored under that path's domain, and its resolve goes there.
+        const onBatchPath = activeOrders.some((order) => order.path === "batch");
         const commitments = activeOrders.map((order) => restoreSignedProcessId({
             processId: order.processId as Hex,
             buyer: order.buyer as Hex,
@@ -100,7 +121,22 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             checkoutHash: order.checkoutHash as Hex,
             salt: order.salt,
             commitDeadline: order.commitDeadline,
-        }, chainId));
+        }, chainId, onBatchPath ? "batch" : "direct"));
+
+        if (onBatchPath) {
+            // The batch path: the buyer signs the resolve under the verifier's
+            // domain and the relay has it proved. Its uses are counted by
+            // usage claims sent to the same relay right after, which the
+            // proof applies against the batch's post-state, so a claim rides
+            // the batch that resolves its order. No wallet write follows.
+            if (!deps.resolveOnBatchPath) throw new Error("This process is on the batch path, and no relay is known to send its resolve to.");
+            if (!deps.confirmResolve(0)) return undefined;
+            // The relay's receipt is the caller's to keep; the act has no
+            // transaction hash.
+            await deps.resolveOnBatchPath(targetProcessId as Hex, commitments);
+            if (!deps.isE2EMock) await claimBatchUsage(activeOrders, commitments);
+            return undefined;
+        }
 
         // ── USAGE RECORDING, PLANNED BEFORE THE BUYER IS ASKED: the buyer's
         // app holds every agreement and proof at the moment of resolve, so it
@@ -146,6 +182,43 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         return resolveTx;
     };
 
+    /** The usage claims of a resolved batched process, sent to the relay
+     *  that took its resolve: one per key and family across the process
+     *  (`buildUsageClaims`, the SDK's own legs). Best-effort, as on the
+     *  direct path: a refusal is logged, never thrown, since the resolve is
+     *  already with the relay. */
+    const claimBatchUsage = async (
+        activeOrders: readonly Order[],
+        commitments: readonly Commitment[],
+    ): Promise<void> => {
+        const entries = await usageEntries(activeOrders, commitments);
+        const sent = new Set<string>();
+        const claims: SequencerUsageClaim[] = [];
+        for (const { orderHash, commitment, agreement, context, assembly } of entries) {
+            let built: SequencerUsageClaim[];
+            try {
+                built = buildUsageClaims(commitment, agreement, context, assembly);
+            } catch (error) {
+                console.error(`[usage-claims] order ${orderHash}: ${error instanceof Error ? error.message : String(error)}`);
+                continue;
+            }
+            for (const claim of built) {
+                const key = usageKeyId(usageClaimKindCode(claim), claim.clause_or_process);
+                if (sent.has(key)) continue;
+                sent.add(key);
+                claims.push(claim);
+            }
+        }
+        if (claims.length === 0) return;
+        if (!deps.submitUsageClaims) {
+            console.error(`[usage-claims] no relay is known to send ${claims.length} usage claims to`);
+            return;
+        }
+        const { admitted, refused } = await deps.submitUsageClaims(claims);
+        for (const reason of refused) console.error(`[usage-claims] refused by the relay: ${reason}`);
+        console.error(`[usage-claims] the relay admitted ${admitted}/${claims.length} usage claims`);
+    };
+
     /** Read the counter's fact once, then plan every hydrated agreement. A
      *  missing agreement or an unreadable counter stays loud (silent success
      *  is the enemy): the orders it costs go uncounted. */
@@ -153,6 +226,19 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         activeOrders: readonly Order[],
         commitments: readonly Commitment[],
     ): Promise<PlannedUsageWrite[]> => {
+        const entries = await usageEntries(activeOrders, commitments);
+        const { writes, problems } = planUsageRecords(entries);
+        for (const problem of problems) console.error(`[usage-recording] ${problem}`);
+        return writes;
+    };
+
+    /** Each active order with its agreement, the counter's reserved leaves
+     *  and the assembly its provenance names: the input of both the direct
+     *  path's usage writes and the batch path's usage claims. */
+    const usageEntries = async (
+        activeOrders: readonly Order[],
+        commitments: readonly Commitment[],
+    ): Promise<UsagePlanEntry[]> => {
         let context: UsageClaimContext;
         try {
             context = await deps.fetchUsageClaimContext();
@@ -178,9 +264,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             }
             entries.push({ orderHash, commitment: commitments[i], agreement, context, assembly });
         }
-        const { writes, problems } = planUsageRecords(entries);
-        for (const problem of problems) console.error(`[usage-recording] ${problem}`);
-        return writes;
+        return entries;
     };
 
     // ONE generic attestation path — the clause spec drives the on-chain
@@ -239,7 +323,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         // proximity clause's) is filed by a party through its OWN standalone
         // capability — the engine declares no pairing and reads no
         // presentation metadata at runtime.
-        return deps.submitAttestation(action.party, args);
+        return transactionHashOf(await deps.submitAttestation(action.party, args));
     };
 
     // The agreement FORMAT's provenance leaf, attested by the buyer while the
@@ -248,13 +332,13 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
     // hash, so the content reference equals it and the bytes publish at it.
     // No spec: the bytes are the format's, reproducible from the hash.
     const attestProvenanceLeaf = async (action: AttestProvenanceLeafCapabilityAction) =>
-        deps.submitAttestation("buyer", {
+        transactionHashOf(await deps.submitAttestation("buyer", {
             orderHash: action.orderHash as Hex,
             clauseId: PROVENANCE_LEAF_KEY,
             stage: 0,
             content: provenanceLeafBytes(action.agreementHash, action.processDesignHash),
             failureMessage: "provenance attestation failed",
-        });
+        }));
 
     /** The callback bag `executeTransactionCapabilityAction` dispatches on. */
     const executorCallbacks = {

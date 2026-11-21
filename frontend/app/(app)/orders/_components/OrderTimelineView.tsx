@@ -34,6 +34,7 @@ import { useAccount } from "wagmi";
 import { ResolutionProceedsPanel } from "@/components/runtime/ResolutionProceedsPanel";
 import { PayoutRoutingPanel } from "@/components/runtime/PayoutRoutingPanel";
 import { CapabilityRail } from "@/components/runtime/CapabilityRail";
+import { RelayPanel } from "@/components/runtime/RelayPanel";
 import { OrderInteractionSurfaces } from "@/components/runtime/OrderInteractionSurfaces";
 import { PrivateFilingsPanel } from "@/components/runtime/PrivateFilingsPanel";
 import { privateFilingsInPlay } from "@/lib/data/handoff/privateFilings";
@@ -60,12 +61,6 @@ function toneClasses(tone: Tone): string {
         default: return "border-default bg-subtle text-ink-body";
     }
 }
-
-/** What a party to an open process on the batch path reads in place of its
- *  actions. The names are the SDK's own exports. */
-const BATCH_PATH_NOTE =
-    "This order is on the batch path; this page reads it and sends no operation to a relay. " +
-    "To act on it, use the SDK's relay client, SequencerClient, or a relay of your own started with proveAndSettle.";
 
 interface Props {
     processId: string;
@@ -141,6 +136,10 @@ export function OrderTimelineView({ processId }: Props) {
                 : "Read-only view of a committed process.";
 
     const myOrder = isSeller && sellerOrder ? sellerOrder : rootOrder;
+    // A batched process's acts are offered only through a relay that passed
+    // the check against the chain.
+    const batchRelayKnown = processModel.onBatchPath
+        && workspace.relays.read.status === "present" && workspace.relays.read.value.relay !== null;
 
     return (
         <div data-testid="order-timeline-view" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
@@ -255,20 +254,27 @@ export function OrderTimelineView({ processId }: Props) {
                 <KeptPrivateContentPanel holder={holder} refreshKey={filingsKeptRound} onChanged={onFilingsKept} />
             )}
 
-            {/* A process on the batch path: FigaroCore and the attestation
-                coordinator do not know it, so the model derives no act for it
-                and this page sends nothing to a relay. One line names what
-                does act on it. Derived from the emitter of the order events,
-                in the same read as the orders. */}
+            {/* A process on the batch path: its acts are signed under the
+                batch verifier's domain and sent to a relay the wallet knows
+                and the chain checks. The relay, the checks that failed, the
+                wallet's own setting and the last relay's answer. Derived from
+                the emitter of the order events, in the same read as the
+                orders. */}
             {role !== "spectator" && !isResolved && processModel.onBatchPath && (
-                <p className="text-sm text-ink-body" data-testid="order-batch-path-note">
-                    {BATCH_PATH_NOTE}
-                </p>
+                <RelayPanel
+                    read={workspace.relays.read}
+                    setting={workspace.relays.setting}
+                    onSetting={workspace.relays.setSetting}
+                    onChoose={workspace.relays.choose}
+                    receipt={workspace.relayReceipt}
+                />
             )}
 
             {/* What you can do — every action the builder derived from the
-                agreement's clauses + attestation state. One execution path. */}
-            {role !== "spectator" && !processModel.onBatchPath && (
+                agreement's clauses + attestation state. One execution path
+                per order's path: FigaroCore and the coordinator, or a relay
+                that passed the check. */}
+            {role !== "spectator" && (!processModel.onBatchPath || batchRelayKnown) && (
                 <CapabilityRail
                     capabilities={workspace.runtimeCapabilities}
                     executableCapabilityIds={workspace.executableCapabilityIds}

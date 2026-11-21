@@ -1,0 +1,16 @@
+{
+  "batch_verifier": "0x2e234dae75c793f67a35089c9d99245e1c58470b",
+  "batches_settled": 0,
+  "browser_submit_origins": [],
+  "chain_id": 31337,
+  "dead_lettered_ops": 0,
+  "dropped_usage_claims": 0,
+  "isolating_ops": 0,
+  "last_dropped_claim_error": null,
+  "last_settle_error": null,
+  "pending_ops": 1,
+  "pending_usage_claims": 0,
+  "program_vkey": "0x5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+  "state_root": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "wire_format_version": 1
+}

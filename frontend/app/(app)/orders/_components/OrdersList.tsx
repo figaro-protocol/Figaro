@@ -30,7 +30,7 @@ import { useAccount, useChainId, useWalletClient } from "wagmi";
 import { useViewedWallet } from "@/lib/shared/viewedWallet";
 import { calculateBonds } from "@figaro-protocol/sdk";
 import { tokenFigure } from "@/lib/shared/utils";
-import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
+import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { Button } from "@/components/ui/Button";
@@ -61,6 +61,11 @@ import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useMounted } from "@/hooks/useMounted";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useTokenApproval from "@/hooks/useTokenApproval";
+import { usePayloadPath } from "@/lib/checkout/pathChoice";
+import { useCheckedRelay } from "@/lib/registries/useCheckedRelay";
+import { namedPathContract } from "@/lib/core/signedCommitment";
+import type { KnownRelay } from "@/lib/core/useRelayActions";
+import { RelayPanel } from "@/components/runtime/RelayPanel";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
 import { ABSENT, PENDING, present, type NetworkRead } from "@/lib/shared/networkRead";
 
@@ -103,8 +108,9 @@ export function YourTurnCard({ act, payload, onAct, onDismiss, isActing, listing
     act: keyof typeof TURN_WORDS;
     payload: CommitmentPayload;
     /** Opens the act's flow, handing it the bond-approval step it runs after
-     *  the flow's confirm and before the broadcast. */
-    onAct: (beforeBroadcast: () => Promise<void>) => void;
+     *  the flow's confirm and before the broadcast, and the relay a batch-path
+     *  order is sent to (null on the direct path, or with none checked). */
+    onAct: (beforeBroadcast: () => Promise<void>, relay: KnownRelay | null) => void;
     onDismiss: () => void;
     isActing: boolean;
     listings: ReadonlyArray<Listing>;
@@ -118,15 +124,25 @@ export function YourTurnCard({ act, payload, onAct, onDismiss, isActing, listing
     const role = hexEqual(address, commitment.buyer) ? "buyer" : "seller";
     const bonds = calculateBonds(commitment.runningTotal, commitment.payment);
     const myBond = role === "buyer" ? bonds.buyerBond : bonds.sellerBond;
-    const core = CONTRACTS.core as `0x${string}` | undefined;
+    // The path the order was signed for, read from its signature: the bond
+    // is approved to that path's contract, unknown until the read lands, and
+    // a batch-path order goes to the relay in use (`useCheckedRelay`).
+    const pathRead = usePayloadPath(payload);
+    const orderPath = pathRead.status === "present" ? pathRead.value : null;
+    const onBatchPath = orderPath === "batch";
+    const relayParties = useMemo(() => [commitment.buyer, commitment.seller] as `0x${string}`[], [commitment.buyer, commitment.seller]);
+    const relays = useCheckedRelay(relayParties, onBatchPath);
+    const relay = relays.read.status === "present" ? relays.read.value.relay : null;
+    // No act while the path is read, or on the batch path with no relay in use.
+    const pathReady = orderPath === "direct" || (onBatchPath && relay !== null);
     const { needsApproval, approve, isApprovePending, isApproveConfirming, isApproveSuccess, isApproveError } = useTokenApproval({
         tokenAddress: commitment.token as `0x${string}`,
         owner: address,
-        spender: (core ?? ZERO_ADDRESS) as `0x${string}`,
+        spender: orderPath ? namedPathContract(orderPath) : undefined,
     });
     const { ensureApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError });
     const isApproving = isApprovePending || isApproveConfirming;
-    const handleAct = () => onAct(() => ensureApproval(myBond));
+    const handleAct = () => onAct(() => ensureApproval(myBond), relay);
     // One wallet on both sides of a buyer-signed order: this frontend cannot
     // add the seller's signature (`awaitsOwnSellerSignature`), so the card
     // says so in place of the act, before any wallet prompt.
@@ -154,9 +170,18 @@ export function YourTurnCard({ act, payload, onAct, onDismiss, isActing, listing
                 </p>
             </div>
             {ownSellerSignature && <OneWalletBothSidesNote testId="orders-one-wallet-both-sides" />}
+            {onBatchPath && (
+                <RelayPanel
+                    read={relays.read}
+                    setting={relays.setting}
+                    onSetting={relays.setSetting}
+                    onChoose={relays.choose}
+                    testIdPrefix="orders"
+                />
+            )}
             <div className="flex gap-2">
                 {!ownSellerSignature && (
-                    <Button type="button" onClick={handleAct} disabled={isActing || isApproving} className="flex-1" data-testid={words.actTestId}>
+                    <Button type="button" onClick={handleAct} disabled={isActing || isApproving || !pathReady} className="flex-1" data-testid={words.actTestId}>
                         {isApproving ? "Approving bond…" : isActing ? words.acting : words.act}
                     </Button>
                 )}
@@ -358,7 +383,7 @@ export function OrdersList() {
     const [acceptingIndex, setAcceptingIndex] = useState<number | null>(null);
     const [acceptError, setAcceptError] = useState<string | null>(null);
 
-    const handleAccept = useCallback(async (index: number, beforeBroadcast: () => Promise<void>) => {
+    const handleAccept = useCallback(async (index: number, beforeBroadcast: () => Promise<void>, relay: KnownRelay | null) => {
         const payload = incoming[index];
         if (!payload) return;
         // Off-chain validation (checkout-hash recompute) is enforced inside the flow's sign
@@ -367,7 +392,7 @@ export function OrdersList() {
         setAcceptingIndex(index);
         setAcceptError(null);
         try {
-            await acceptOrder(payload, undefined, { beforeBroadcast });
+            await acceptOrder(payload, undefined, { beforeBroadcast, relay });
             dismissIncoming(index);
             reset();
         } catch (cause: unknown) {
@@ -384,14 +409,14 @@ export function OrdersList() {
     const [submittingIndex, setSubmittingIndex] = useState<number | null>(null);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
-    const handleSubmitReady = useCallback(async (index: number, beforeBroadcast: () => Promise<void>) => {
+    const handleSubmitReady = useCallback(async (index: number, beforeBroadcast: () => Promise<void>, relay: KnownRelay | null) => {
         const payload = readyToSubmit[index];
         if (!payload) return;
         // The seller-bond approval runs after the commit confirm (beforeBroadcast).
         setSubmittingIndex(index);
         setSubmitError(null);
         try {
-            await commitOrder(payload, { beforeBroadcast });
+            await commitOrder(payload, { beforeBroadcast, relay });
             dismissReady(index);
             reset();
         } catch (cause: unknown) {
@@ -485,7 +510,7 @@ export function OrdersList() {
                                         key={index}
                                         act="accept"
                                         payload={payload}
-                                        onAct={(beforeBroadcast) => void handleAccept(index, beforeBroadcast)}
+                                        onAct={(beforeBroadcast, relay) => void handleAccept(index, beforeBroadcast, relay)}
                                         onDismiss={() => dismissIncoming(index)}
                                         isActing={acceptingIndex === index || flowStep === "signing" || flowStep === "committing"}
                                         listings={listings}
@@ -507,7 +532,7 @@ export function OrdersList() {
                                         key={`ready-${index}`}
                                         act="submit"
                                         payload={payload}
-                                        onAct={(beforeBroadcast) => void handleSubmitReady(index, beforeBroadcast)}
+                                        onAct={(beforeBroadcast, relay) => void handleSubmitReady(index, beforeBroadcast, relay)}
                                         onDismiss={() => dismissReady(index)}
                                         isActing={submittingIndex === index}
                                         listings={listings}

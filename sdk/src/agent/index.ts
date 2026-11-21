@@ -186,6 +186,8 @@ export {
     MAX_SEQUENCER_RESPONSE_BYTES,
     ATTEST_SELLER_TYPES,
     ATTEST_BUYER_TYPES,
+    RELAY_WIRE_FORMAT_VERSION,
+    parseSequencerStatus,
 } from "./sequencer.js";
 export type {
     SequencerClientConfig,

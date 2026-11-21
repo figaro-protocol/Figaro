@@ -12,6 +12,7 @@ import {
     toSequencerCommitment,
     toSequencerSig,
     MAX_SEQUENCER_RESPONSE_BYTES,
+    RELAY_WIRE_FORMAT_VERSION,
 } from "../src/agent/sequencer.js";
 import { keccak256, stringToHex } from "viem";
 import type { Commitment } from "../src/types.js";
@@ -404,30 +405,29 @@ describe("SequencerClient", () => {
         ).rejects.toThrow("bad signature");
     });
 
-    it("status returns sequencer state", async () => {
-        const client = new SequencerClient({
-            url: "http://localhost:3001/",
-            fetch: mockFetch(
-                new Map([
-                    [
-                        "GET /status",
-                        {
-                            status: 200,
-                            body: {
-                                state_root: "0xabc",
-                                pending_ops: 3,
-                                batches_settled: 5,
-                                dead_lettered_ops: 1,
-                                dropped_usage_claims: 2,
-                                last_dropped_claim_error: "dropped at batch formation: UsageOrderNotResolved",
-                            },
-                        },
-                    ],
-                ]),
-            ),
-        });
+    const IDENTITY = {
+        wire_format_version: RELAY_WIRE_FORMAT_VERSION,
+        chain_id: 31337,
+        batch_verifier: "0x00000000000000000000000000000000000000b7",
+        program_vkey: `0x${"5a".repeat(32)}`,
+        browser_submit_origins: ["http://localhost:3100"],
+    };
+    const statusClient = (body: unknown) => new SequencerClient({
+        url: "http://localhost:3001/",
+        fetch: mockFetch(new Map([["GET /status", { status: 200, body }]])),
+    });
 
-        const status = await client.status();
+    it("status returns the relay's state and what it proves for", async () => {
+        const status = await statusClient({
+            ...IDENTITY,
+            state_root: "0xabc",
+            pending_ops: 3,
+            pending_usage_claims: 0,
+            batches_settled: 5,
+            dead_lettered_ops: 1,
+            dropped_usage_claims: 2,
+            last_dropped_claim_error: "dropped at batch formation: UsageOrderNotResolved",
+        }).status();
         expect(status.state_root).toBe("0xabc");
         expect(status.pending_ops).toBe(3);
         expect(status.batches_settled).toBe(5);
@@ -435,6 +435,27 @@ describe("SequencerClient", () => {
         expect(status.dead_lettered_ops).toBe(1);
         expect(status.dropped_usage_claims).toBe(2);
         expect(status.last_dropped_claim_error).toContain("UsageOrderNotResolved");
+        // What the relay proves for, compared with the chain before anything is sent.
+        expect(status.wire_format_version).toBe(RELAY_WIRE_FORMAT_VERSION);
+        expect(status.chain_id).toBe(31337);
+        expect(status.batch_verifier).toBe(IDENTITY.batch_verifier);
+        expect(status.program_vkey).toBe(IDENTITY.program_vkey);
+        expect(status.browser_submit_origins).toEqual(["http://localhost:3100"]);
+    });
+
+    it.each([
+        ["no wire format version", { ...IDENTITY, wire_format_version: undefined }],
+        ["another wire format version", { ...IDENTITY, wire_format_version: RELAY_WIRE_FORMAT_VERSION + 1 }],
+        ["no chain id", { ...IDENTITY, chain_id: undefined }],
+        ["no batch verifier", { ...IDENTITY, batch_verifier: undefined }],
+        ["a batch verifier that is not an address", { ...IDENTITY, batch_verifier: "0xabc" }],
+        ["no program key", { ...IDENTITY, program_vkey: undefined }],
+        ["a program key that is not 32 bytes", { ...IDENTITY, program_vkey: "0x5a" }],
+        ["no list of browser origins", { ...IDENTITY, browser_submit_origins: undefined }],
+        ["a browser origin that is not a string", { ...IDENTITY, browser_submit_origins: [7] }],
+    ])("status refuses an answer with %s", async (_name, identity) => {
+        const body = { ...identity, state_root: "0xabc", pending_ops: 0, pending_usage_claims: 0, batches_settled: 0 };
+        await expect(statusClient(body).status()).rejects.toThrow(SequencerError);
     });
 
     it("isAvailable returns true when sequencer responds", async () => {

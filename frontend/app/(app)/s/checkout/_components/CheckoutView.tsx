@@ -33,7 +33,13 @@ import { CheckoutSigningNote } from "@/components/runtime/CheckoutSigningNote";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogs } from "@/lib/registries/useRegisteredCatalogs";
-import { processDesignHashOf, planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses } from "@figaro-protocol/sdk";
+import { processDesignHashOf, planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses, acceptedPaths, type ResolutionUniverse } from "@figaro-protocol/sdk";
+import { CONTRACTS, getBatchVerifier } from "@/lib/core/contracts";
+import { namedPathContract } from "@/lib/core/signedCommitment";
+import { useCheckedRelay } from "@/lib/registries/useCheckedRelay";
+import { batchShared, offeredPaths } from "@/lib/checkout/pathChoice";
+import { RelayPanel } from "@/components/runtime/RelayPanel";
+import { ABSENT, PENDING, mapRead, present, type NetworkRead } from "@/lib/shared/networkRead";
 import { checkoutMeasureRefusals, executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import {
     deriveAgreementGroups,
@@ -162,6 +168,57 @@ export function CheckoutView({ sellerAddress }: Props) {
         ? boundAssemblies[0]
         : boundAssemblies.find((a) => a.slug === selectedSlug);
 
+    // The buyer's checkout-time co-seller choice for a sub-order the
+    // adopting seller's catalog leaves unbound (the buyer assigns it).
+    const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
+
+    // The path the order runs on, the buyer's pick among the paths every
+    // named seller accepts in its binding: the lead seller, each designated
+    // co-seller and the co-seller the buyer picked (`offeredPaths`). Each is
+    // a read: the lead's from its bound assembly, each co-seller's from its
+    // discovered profile. The batch path is offered only while a relay is in
+    // use whose report matches the chain, read from the buyer's own setting
+    // and the named sellers' profiles. The direct path needs no relay and is
+    // the pick until the buyer changes it.
+    const [pathPick, setPathPick] = useState<ResolutionUniverse>("direct");
+    const namedCoSellers = useMemo(
+        () => [
+            ...(pickedAssembly?.coSellerBindings ?? []).flatMap((cb) => cb.addresses),
+            ...(sellerSelection ? [sellerSelection.seller] : []),
+        ] as `0x${string}`[],
+        [pickedAssembly, sellerSelection],
+    );
+    const sellersPaths = useMemo((): NetworkRead<ResolutionUniverse[]>[] => {
+        if (!pickedAssembly) return [];
+        const lead = present<ResolutionUniverse[]>(pickedAssembly.paths ?? ["direct"]);
+        if (namedCoSellers.length === 0) return [lead];
+        if (catalogsRead.status !== "present") return [lead, catalogsRead.status === "absent" ? ABSENT : PENDING];
+        const processDesignHash = processDesignHashOf(pickedAssembly.hydratedAssembly.assembly);
+        return [
+            lead,
+            ...namedCoSellers.map((a): NetworkRead<ResolutionUniverse[]> => {
+                const member = sellerCatalogs.find((m) => hexEqual(m.address, a));
+                // A co-seller whose binding is not read yet is pending: never
+                // an empty list, never a path.
+                return member ? present(acceptedPaths(member, processDesignHash)) : PENDING;
+            }),
+        ];
+    }, [pickedAssembly, namedCoSellers, catalogsRead.status, sellerCatalogs]);
+    const verifierNamed = !!getBatchVerifier();
+    const relayParties = useMemo(
+        () => [sellerAddressTyped, ...namedCoSellers].filter((a): a is `0x${string}` => !!a),
+        [sellerAddressTyped, namedCoSellers],
+    );
+    const batchPossible = verifierNamed && batchShared(sellersPaths);
+    const checkoutRelays = useCheckedRelay(relayParties, batchPossible);
+    const pathsOffered = offeredPaths(sellersPaths, {
+        verifier: verifierNamed,
+        relayInUse: mapRead(checkoutRelays.read, (r) => r.relay !== null),
+    });
+    const orderPath: ResolutionUniverse | null = pathsOffered.status !== "present"
+        ? null
+        : pathsOffered.value.includes(pathPick) ? pathPick : pathsOffered.value[0] ?? null;
+
     // The process denomination. Resolution order: the assembly's UTILITY-TOKEN
     // PIN (the designer's design.fills tailoring on the root agreement — the
     // one token the whole assembly runs in, part of its identity), else the
@@ -254,7 +311,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         signAndShare,
         quoteBuyerFunding,
         order: { step: commitStep, error: commitError, payload },
-    } = useCheckout(currency);
+    } = useCheckout(currency, orderPath ? namedPathContract(orderPath) : undefined);
     // Nothing is priced, parsed or shown as a magnitude until the chain has answered decimals().
     const decimalsReady = tokenDecimals !== undefined;
     // The buyer's GENERAL-clause field fills, nodeId → clause key → values.
@@ -297,9 +354,6 @@ export function CheckoutView({ sellerAddress }: Props) {
     const isApproving = isApprovePending || isApproveConfirming;
     const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError });
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
-    // The buyer's checkout-time co-seller choice for a sub-order the
-    // adopting seller's catalog leaves unbound (the buyer assigns it).
-    const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
     // The dispatch race — the OTHER way to fill the same unbound sub-order:
     // candidates countersign unsigned drafts, cheapest valid reply wins, the
     // winner's countersignature rides the commit walk. `race.result` holds
@@ -747,7 +801,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     };
     const buildWalkParams = (): AssemblyCheckoutParams | null => {
         const inputs = walkInputs();
-        return buyer && inputs ? { ...inputs, buyer } : null;
+        return buyer && inputs && orderPath ? { ...inputs, buyer, path: orderPath } : null;
     };
     // Every refusal the checkout walk would make, read before the click: a
     // breakdown row that cannot be priced (its own sentence) and a required
@@ -903,6 +957,14 @@ export function CheckoutView({ sellerAddress }: Props) {
             return;
         }
         if (marginHeld) return;
+        if (!orderPath) {
+            setCheckoutError("The sellers of this assembly share no path this page can serve, so no order can be placed.");
+            return;
+        }
+        if (orderPath === "batch" && fundingToken) {
+            setCheckoutError("A bond funded by a swap is committed through FigaroCore, so it is offered on the direct path alone. Pick the direct path, or fund the bond in the process token.");
+            return;
+        }
         setCheckoutError(null);
         try {
             runWithApproval(lockedTotal, () => void executeCheckout());
@@ -1369,6 +1431,52 @@ export function CheckoutView({ sellerAddress }: Props) {
                             the first wallet prompt, which the button opens. */}
                         {buyerSellsAnOrder && <OneWalletBothSidesNote testId="checkout-one-wallet-both-sides" />}
 
+                        {/* The path: the paths every named seller accepts,
+                            the batch path only with a relay in use. A read in
+                            flight is a loading line; a failed read leaves the
+                            place empty; present and empty is the refusal. */}
+                        {pickedAssembly && pathsOffered.status !== "absent" && (
+                            <div className="space-y-1 text-xs text-ink-body" data-testid="checkout-path-choice">
+                                {pathsOffered.status === "pending" && (
+                                    <p className="text-ink-muted" data-testid="checkout-path-reading">Reading the paths the sellers accept…</p>
+                                )}
+                                {pathsOffered.status === "present" && pathsOffered.value.length === 0 && (
+                                    <p data-testid="checkout-path-none">The sellers of this assembly share no path this page can serve, so no order can be placed.</p>
+                                )}
+                                {pathsOffered.status === "present" && pathsOffered.value.length > 1 && pathsOffered.value.map((p) => (
+                                    <label key={p} className="mr-4 inline-flex items-center gap-1">
+                                        <input
+                                            type="radio"
+                                            name="checkout-path"
+                                            checked={orderPath === p}
+                                            onChange={() => setPathPick(p)}
+                                            data-testid={`checkout-path-option-${p}`}
+                                        />
+                                        {p === "direct" ? "Direct path (FigaroCore)" : "Batch path (through a relay)"}
+                                    </label>
+                                ))}
+                                {orderPath === "direct" && (
+                                    <p data-testid="checkout-path-direct">This order is signed for FigaroCore at {CONTRACTS.core}, and your bond is approved to it.</p>
+                                )}
+                                {orderPath === "batch" && (
+                                    <p data-testid="checkout-path-batch">
+                                        This order is signed for the batch verifier at {CONTRACTS.batchVerifier}, and your bond is approved to it. The seller sends the signed order to a relay; the verifier pulls both bonds when a batch carries the order.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                        {/* The relay setting, wherever a relay is needed: here,
+                            when every named seller accepts the batch path. */}
+                        {pickedAssembly && batchPossible && (
+                            <RelayPanel
+                                read={checkoutRelays.read}
+                                setting={checkoutRelays.setting}
+                                onSetting={checkoutRelays.setSetting}
+                                onChoose={checkoutRelays.choose}
+                                testIdPrefix="checkout"
+                            />
+                        )}
+
                         <CheckoutSigningNote />
 
                         {chainId !== DEVNET_CHAIN_ID && deploymentFp && (
@@ -1404,6 +1512,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 || checkoutRefusals.length > 0
                                 || fundingBlocksTheAct(buyerFunding)
                                 || marginHeld
+                                || !orderPath
                             }
                             data-testid="btn-place-order"
                             className="w-full"

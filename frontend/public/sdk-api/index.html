@@ -1526,12 +1526,19 @@ precisely so nobody reaches for the host clock. Read it from the chain
 wall-clock drift between a signer's machine and the chain expires offers
 that both parties signed in good faith.</li>
 </ul>
-<h4 id="the-sequencer-wire-five-endpoints" class="tsd-anchor-link">The sequencer wire: five endpoints<a href="#the-sequencer-wire-five-endpoints" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4>
+<h4 id="the-relay-wire-four-routes-a-published-format" class="tsd-anchor-link">The relay wire: four routes, a published format<a href="#the-relay-wire-four-routes-a-published-format" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4>
 <p>What <code>SequencerClient</code> speaks, so you can read a relay's answer (or a curl of
-it) without guessing. Five routes: two submit, three read the relay itself.
-Amounts on this wire are <strong>hex quantities</strong> (<code>&quot;0x7d0&quot;</code>, never <code>&quot;2000&quot;</code>) and
-fields are <code>snake_case</code>; the conversion helpers above are the only thing that
-should build them.</p>
+it) without guessing, or check a relay of your own. Four routes: two submit,
+two read the relay itself. The format is published as a JSON Schema,
+<code>src/agent/relay-wire.schema.json</code> (shipped in the package under <code>src/</code>), at
+version <code>RELAY_WIRE_FORMAT_VERSION</code> (1). A relay serves its version on
+<code>/status</code>, and <code>status()</code> refuses another (<code>parseSequencerStatus</code>). Fields are
+<code>snake_case</code>. An amount is a hex quantity or a decimal string when sent; a
+relay writes it as a hex quantity (<code>&quot;0x7d0&quot;</code>). The conversion helpers above
+are the only thing that should build them. The SDK's test
+<code>tests/relayWireConformance.test.ts</code> validates the relay's own answers and
+every request the client sends against the JSON Schema; validate a stranger's
+relay's answers against its <code>$defs</code> the same way.</p>
 <table>
 <thead>
 <tr>
@@ -1563,11 +1570,19 @@ should build them.</p>
 <tr>
 <td><code>GET /status</code></td>
 <td>—</td>
-<td>the <code>/health</code> fields plus <code>state_root</code>, <code>dead_lettered_ops</code>, <code>last_settle_error</code>, <code>dropped_usage_claims</code>, <code>last_dropped_claim_error</code> (usage claims dropped without landing, counted apart from the operations),</td>
+<td>what the relay proves for — <code>wire_format_version</code>, <code>chain_id</code>, <code>batch_verifier</code>, <code>program_vkey</code> — the page origins it lets submit from a browser (<code>browser_submit_origins</code>, empty by default), then the <code>/health</code> counts plus <code>state_root</code>, <code>dead_lettered_ops</code>, <code>last_settle_error</code>, <code>isolating_ops</code>, <code>dropped_usage_claims</code>, <code>last_dropped_claim_error</code> (usage claims dropped without landing, counted apart from the operations)</td>
 <td><code>status()</code></td>
 </tr>
 </tbody>
 </table>
+<p>Check a relay against the chain before you send it anything: its <code>chain_id</code>
+must be your chain's, its <code>batch_verifier</code> the <code>FigaroBatchVerifier</code> you
+trade with, and its <code>program_vkey</code> the value that verifier holds as
+<code>programVKey</code> (<code>BATCH_VERIFIER_ABI</code>). A relay for another verifier lands its
+batches nowhere you read; one proving another guest makes proofs the verifier
+refuses. A page that submits from a browser also needs its own origin in
+<code>browser_submit_origins</code>, which the relay's operator sets
+(<code>BROWSER_SUBMIT_ORIGINS</code>); without it the browser refuses the POST.</p>
 <p><code>/submit</code> is idempotent on <strong>on-chain identity</strong> (order hash / process id /
 attestation identity): a retry, even a re-signed one, returns the original <code>id</code>
 and enqueues nothing. <code>/submit-usage</code> is idempotent on claim <strong>bytes</strong> only —
@@ -2155,7 +2170,7 @@ non-clearable once set; a patch that drops it silently orphans the
 document.</li>
 <li><code>processBindings</code> is an array of <code>ProcessBindingRecord</code> — one entry per
 assembly the wallet sells through, each
-<code>{ bindingId, subjectAddress, processDesignHash, coSellerBindings? }</code>.
+<code>{ bindingId, subjectAddress, processDesignHash, coSellerBindings?, paths? }</code>.
 <code>processDesignHash</code> is the bound assembly's full <code>ProcessRegistry</code> key — the
 same identity a <code>buyerAssemblies</code> entry and an agreement's provenance leaf
 carry; a slug shown anywhere is derived from it (<code>deriveProcessDesignSlug</code>),
@@ -2175,7 +2190,17 @@ against the keyed wallet's catalog alone. Checkout prices that co-seller's
 sub-order from the named item and refuses the order when the catalog no
 longer offers it (deleted, re-added under a new id, or marked unavailable);
 a wallet with no entry prices from its first available item. The seller's ROLE in the assembly is
-event-derived, never declared here.</li>
+event-derived, never declared here. <code>paths</code> lists the paths the seller
+accepts an order of the assembly on, <code>&quot;direct&quot;</code> (<code>FigaroCore</code>) and
+<code>&quot;batch&quot;</code> (<code>FigaroBatchVerifier</code>, through a relay); absent, the direct
+path alone (<code>acceptedPaths(profile, processDesignHash)</code>). The parser keeps
+each known path once and leaves out a path it does not know. Given the
+order's path, <code>checkSellerBindsProcess</code> refuses an order on a path the
+binding does not accept.</li>
+<li><code>services</code> is an open set of endpoints keyed by transport. The key
+<code>relay</code> (<code>RELAY_SERVICE_KEY</code>) names a relay for the batch path, read with
+<code>profileRelayUrl</code>: a URL, never a verdict. Check it against the chain
+(§ &quot;The relay wire&quot;) before you send it anything.</li>
 <li><code>buyerAssemblies</code> is an array of <code>BuyerProcessSubscription</code> — the buyer's
 assembly SUBSCRIPTIONS, <code>{ processDesignHash }</code> each: which registered
 assemblies this member buys through and monetizes data from.
@@ -2516,7 +2541,7 @@ socket via <code>HttpChannel</code>, not the in-process channel), and
 <li>
 <ul>
 <li><a href="#the-offer-envelope"><span>The offer envelope</span></a></li>
-<li><a href="#the-sequencer-wire-five-endpoints"><span>The sequencer wire: five endpoints</span></a></li></ul></li>
+<li><a href="#the-relay-wire-four-routes-a-published-format"><span>The relay wire: four routes, a published format</span></a></li></ul></li>
 <li><a href="#-clause-agnostic-derivations"><span> — <wbr/>Clause-<wbr/>Agnostic <wbr/>Derivations</span></a></li>
 <li>
 <ul>
