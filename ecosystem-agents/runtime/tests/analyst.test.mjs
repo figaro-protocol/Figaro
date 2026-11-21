@@ -939,3 +939,47 @@ test("no coordinator in the deployment record: no receipt is read", async () => 
     assert.deepEqual(out, { legs: [], unreadReceipts: 0 });
     assert.equal(calls.length, 0);
 });
+
+// ── Witness content is read several at a time ────────────────────────────────
+
+test("one pass waits for the slowest absent content of a group, never for their sum, and keeps the attestations' order", async () => {
+    const { recoverWitnessContents, RECOVER_CONCURRENCY } = await import("../analyst.mjs");
+    const WAIT_MS = 150;
+    const ref = (i) => `0x${i.toString(16).padStart(64, "0")}`;
+    // Sixteen attestations: the pinned ones answer at once, the private ones
+    // (never pinned) hold a gateway until it times out, as an unpinned
+    // address does.
+    const attestations = Array.from({ length: 2 * RECOVER_CONCURRENCY }, (_, i) => ({ contentRef: ref(i + 1) }));
+    const pinned = (i) => i % 4 === 0;
+    let open = 0;
+    let widest = 0;
+    const fetchContent = async (contentRef) => {
+        const i = Number(BigInt(contentRef)) - 1;
+        open += 1;
+        widest = Math.max(widest, open);
+        try {
+            if (pinned(i)) return { cid: `cid-${i}`, content: `content-${i}` };
+            await new Promise((r) => setTimeout(r, WAIT_MS));
+            if (i % 4 === 1) throw new Error("gateway timed out");
+            return null;
+        } finally {
+            open -= 1;
+        }
+    };
+    const started = Date.now();
+    const { recovered, framedSubstance, substanceRecovered } = await recoverWitnessContents(attestations, { gateways: ["http://gateway.invalid"], fetchContent });
+    const elapsed = Date.now() - started;
+
+    assert.deepEqual(recovered.map((r) => r.event.contentRef), attestations.map((a) => a.contentRef), "the order is the attestations'");
+    recovered.forEach((r, i) => assert.equal(r.content, pinned(i) ? `content-${i}` : null, `content ${i}`));
+    assert.equal(substanceRecovered, attestations.length / 4);
+    assert.equal(framedSubstance.size, attestations.length / 4);
+    assert.ok(widest > 1 && widest <= RECOVER_CONCURRENCY, `at most ${RECOVER_CONCURRENCY} reads are open at once (saw ${widest})`);
+    // Twelve absent contents read one after another would take 12 waits; two
+    // groups take two.
+    assert.ok(elapsed < 6 * WAIT_MS, `two groups took ${elapsed} ms`);
+
+    const skipped = await recoverWitnessContents(attestations, { recoverSubstance: false, fetchContent: () => { throw new Error("no read without a gateway"); } });
+    assert.equal(skipped.substanceRecovered, 0);
+    assert.ok(skipped.recovered.every((r) => r.content === null));
+});
