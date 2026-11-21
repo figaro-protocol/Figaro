@@ -1,0 +1,21 @@
+[package]
+name = "figaro-kani"
+version = "0.0.0"
+publish = false
+edition = "2021"
+license = "MIT"
+description = "Kani proof harnesses for the bonding arithmetic of the proof program's mirror of the Core (prover/lib)."
+
+# Its own workspace and its own lock: the proof program's workspace
+# (prover/Cargo.toml, prover/Cargo.lock) and its toolchain pin stay as they
+# are, so the verification key does not move. prover/lib is reached by path,
+# read only, and carries no Kani attribute.
+[workspace]
+members = ["."]
+
+[dependencies]
+figaro-kernel = { path = "../../prover/lib" }
+alloy-primitives = "1"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(kani)"] }
