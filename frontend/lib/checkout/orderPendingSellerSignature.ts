@@ -31,7 +31,8 @@ import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
 } from "@figaro-protocol/sdk/agent";
-import { verifyCommitmentSignature, type CoreEvents } from "@figaro-protocol/sdk";
+import type { CoreEvents } from "@figaro-protocol/sdk";
+import { signedPath } from "@/lib/core/relayTransport";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { getCoreEvents } from "@/lib/core/indexer";
 import { useWatchOrderEvents } from "@/lib/core/useWatchOrderEvents";
@@ -268,13 +269,12 @@ async function witness(payload: CommitmentPayload, services: RuntimeServices): P
     // both legitimate legs pinning (an outbound order carries this
     // wallet's OWN signature; an inbound one carries the
     // counterparty's) while dropping unsigned/forged payloads.
-    const core = CONTRACTS.core;
+    // A commitment is signed under one path's domain, FigaroCore's or the
+    // batch verifier's, so a signature counts when it recovers under either.
     const cid = liveChainId;
     const recovers = async (sig: string | undefined, party: string) =>
-        !!sig && !!core && !!cid
-        && await verifyCommitmentSignature(
-            payload.commitment, sig as Hex, party as Hex, { chainId: cid, core },
-        ).catch(() => false);
+        !!sig && !!cid
+        && (await signedPath(payload.commitment, sig as Hex, party as Hex, cid).catch(() => null)) !== null;
     const signedByAParty =
         (await recovers(payload.buyerSig, payload.commitment.buyer))
         || (await recovers(payload.sellerSig, payload.commitment.seller));

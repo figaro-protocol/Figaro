@@ -50,6 +50,7 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
     return {
         ...actual,
         CONTRACTS: { ...actual.CONTRACTS, core: "0x00000000000000000000000000000000000000c0" },
+        getBatchVerifier: () => "0x00000000000000000000000000000000000000b0",
     };
 });
 
@@ -210,6 +211,27 @@ describe("pin gate also requires a REAL counterparty signature", () => {
 
         await act(async () => {
             for (const cb of callbacks) await cb(inboundBody, "order-real");
+        });
+
+        await waitFor(() => expect(publishAgreement).toHaveBeenCalledTimes(1));
+    });
+
+    it("pins an order signed for the batch path: the signature recovers under the verifier's domain alone", async () => {
+        verifyCommitmentSignatureMock.mockImplementation(
+            async (_commitment: unknown, _sig: unknown, _signer: unknown, ctx: { core: string }) =>
+                ctx.core === "0x00000000000000000000000000000000000000b0",
+        );
+        const services = makeServices();
+        renderHook(() => usePendingSellerSignature(awaitsMyCounterSign), { wrapper: wrapper(services) });
+
+        const inboundBody = JSON.stringify({
+            commitment: { buyer: BUYER, seller: SELLER },
+            agreement: { clauses: [] },
+            buyerSig: "0xsignedfortheverifier",
+        });
+
+        await act(async () => {
+            for (const cb of callbacks) await cb(inboundBody, "order-batch-path");
         });
 
         await waitFor(() => expect(publishAgreement).toHaveBeenCalledTimes(1));
