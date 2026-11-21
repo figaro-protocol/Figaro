@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * CredentialVerifyButton — the reader's verification affordance for a DECLARED
- * credential leaf. Renders for any clause data declaring BOTH
- * `credentialRegisterUri` (the public register of the institution that issued
- * the credential, a URI template with an `{id}` placeholder, declared by the
- * seller) and `credentialId` (the declared identifier) —
- * discovered by declared field, never by clause id, so a never-seen clause
- * declaring the same fields participates.
+ * CredentialVerifyButton — the reader's verification affordance for a clause
+ * whose spec marks a link to an outside register (`block.checkout.registerLink`):
+ * the field that holds the register's URI template, with an `{id}`
+ * placeholder, and the field that holds the identifier. Read through the mark,
+ * never through the names of the fields or a clause id, so a never-seen clause
+ * that declares the mark participates under its own field names
+ * (`clauseRegisterLink`).
  *
  * A LINK, not a gate: it opens the authority's own entry (the register is the
  * source of truth; the reader interprets it). Nothing is fetched, parsed, or
@@ -15,11 +15,15 @@
  * mirroring the forum deep-link rule (`block.design.composes.forumUrl`).
  */
 
-export function CredentialVerifyButton({ data }: { data: Record<string, unknown> }) {
-    const assembly = data.credentialRegisterUri;
-    const id = data.credentialId;
-    if (typeof assembly !== "string" || typeof id !== "string" || !assembly || !id) return null;
-    const href = assembly.replace("{id}", encodeURIComponent(id));
+import { clauseRegisterLink } from "@/lib/shared/clauseSpecSource";
+
+export function CredentialVerifyButton({ clauseKey, data }: { clauseKey: string; data: Record<string, unknown> | undefined }) {
+    const mark = clauseRegisterLink(clauseKey);
+    if (!mark || !data) return null;
+    const registerUri = data[mark.uri];
+    const id = data[mark.id];
+    if (typeof registerUri !== "string" || typeof id !== "string" || !registerUri || !id) return null;
+    const href = registerUri.replace("{id}", encodeURIComponent(id));
     if (!href.startsWith("https://")) return null;
     return (
         <a

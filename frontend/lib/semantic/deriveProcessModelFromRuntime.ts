@@ -1,10 +1,10 @@
 import { Order, OrderState } from "@/lib/core/store";
 import type { Agreement } from "@figaro-protocol/sdk";
-import { calculateResolution, clauseByField, hashClauseData, isProcessRoot, provenanceContentRef } from "@figaro-protocol/sdk";
+import { calculateResolution, hashClauseData, isProcessRoot, provenanceContentRef } from "@figaro-protocol/sdk";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { ProcessSummary } from "@/lib/core/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/core/attestationIndexer";
-import { attestationContentFields, clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue, specSource } from "@/lib/shared/clauseSpecSource";
+import { attestationContentFields, clauseIsProcessLog, clauseLadderField, clauseWitnessStages, committedModality, getClauseSpec, labelEnumValue } from "@/lib/shared/clauseSpecSource";
 import { PROVENANCE_LEAF_KEY } from "@figaro-protocol/sdk";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -525,11 +525,9 @@ export function deriveProcessModelFromRuntime(
     const rootOrder = processOrders.find(isProcessRoot);
     const rootOrderId = rootOrder ? rootOrder.orderHash.toString() : null;
     const rootAgreement = rootOrder?.checkoutHash ? agreements.get(rootOrder.checkoutHash) : undefined;
-    // The modality clause is found by its declared field, never by name.
-    // Single-select: one scalar value per order.
-    const rootModality = rootAgreement
-        ? ((clauseByField(rootAgreement, "modality", specSource())?.data as { modality?: string } | undefined)?.modality ?? null)
-        : null;
+    // The modality is the field a committed clause's spec marks
+    // (`block.runtime.modality`), never a field found by its name.
+    const rootModality = rootAgreement ? (committedModality(rootAgreement.clauses) ?? null) : null;
     return {
         processId: summary.processId,
         rootOrderId,

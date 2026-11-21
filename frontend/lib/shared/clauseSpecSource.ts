@@ -20,8 +20,8 @@
  */
 
 import { contentFieldsFor, declaredStageFields, parseClauseSpec, stageOfKey, type ClauseSpec, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
-import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
-import { PROVENANCE_LEAF_KEY, anchorClauseSpec, deriveAnchored, type Anchored, type Hex, type ProjectionHints, type ProjectionSpecView, type SpecSource } from "@figaro-protocol/sdk";
+import { parseBlockBinding, type ClauseBlockBinding, type JurisdictionMark, type RegisterLinkMark } from "@/lib/shared/clauseBlockBinding";
+import { PROVENANCE_LEAF_KEY, anchorClauseSpec, deriveAnchored, specEndpoints, specMarkedFields, type Anchored, type EndpointsMark, type Hex, type ProjectionHints, type ProjectionSpecView, type SpecSource } from "@figaro-protocol/sdk";
 import { DEFAULT_IPFS_SERVICE, fetchCappedBinary } from "@/lib/shared/ipfsService";
 import { checkContentAddress } from "@/lib/shared/contentAddress";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -352,12 +352,105 @@ export function clauseIsProcessLog(clauseKey: string): boolean {
     return getClauseSpec(clauseKey)?.block?.design.article === "attestations";
 }
 
-/** Whether a clause's spec declares a top-level field named `fieldName`.
- *  Field names — not clause ids — are the binding vocabulary generic surfaces
- *  look things up by: ANY registered clause carrying the field participates,
- *  including clauses this codebase has never seen. False while uncached. */
-export function clauseDeclaresField(clauseKey: string, fieldName: string): boolean {
-    return getClauseSpec(clauseKey)?.fields.some((f) => f.name === fieldName) === true;
+// ── The marks a spec declares, held to its own fields ─────────────────────────
+// A field's name carries no meaning to any code (docs/CLAUSES.md §
+// "Clause-spec format"). A role a field plays is read from a mark the spec
+// declares in its `block`, by the spec's own field names. Each reader below
+// holds its mark to the spec's own fields: a mark that names a field the spec
+// does not declare, one field twice, or a field of the wrong type marks
+// nothing. A clause with no mark plays no role, whatever its fields are
+// called. Undefined while the spec is uncached.
+
+/** A field that names something in words: a `string` or an `enum` field. */
+const namesInWords = (f: FieldSpec): boolean => f.type === "string" || f.type === "enum";
+
+/** The content field that holds the order's modality, as the clause's spec
+ *  marks it (`block.runtime.modality`). */
+export function clauseModalityField(clauseKey: string): string | undefined {
+    const spec = getClauseSpec(clauseKey);
+    const field = spec?.block?.runtime.modality;
+    if (!spec || !field) return undefined;
+    return specMarkedFields(spec, [field])?.every(namesInWords) ? field : undefined;
+}
+
+/** The fields that name the governing law, the forum and the language, as
+ *  the clause's spec marks them (`block.runtime.jurisdiction`). */
+export function clauseJurisdiction(clauseKey: string): JurisdictionMark | undefined {
+    const spec = getClauseSpec(clauseKey);
+    const mark = spec?.block?.runtime.jurisdiction;
+    if (!spec || !mark) return undefined;
+    const names = [mark.law, mark.forum, mark.language].filter((n): n is string => n !== undefined);
+    return specMarkedFields(spec, names)?.every(namesInWords) ? mark : undefined;
+}
+
+/** The section of a trade document the clause fills, as its spec declares
+ *  it (`block.runtime.documentPart`). It names no field. */
+export function clauseDocumentPart(clauseKey: string): string | undefined {
+    return getClauseSpec(clauseKey)?.block?.runtime.documentPart ?? undefined;
+}
+
+/** The route's origin and destination fields, as the clause's spec marks
+ *  them (`block.checkout.endpoints`), read through the SDK's one reading of
+ *  the mark (`specEndpoints`). */
+export function clauseEndpoints(clauseKey: string): EndpointsMark | undefined {
+    const view = specSource().get(clauseKey as Hex);
+    return view ? specEndpoints(view) : undefined;
+}
+
+/** The fields that hold an outside register's URI template and the
+ *  identifier it is looked up by, as the clause's spec marks them
+ *  (`block.checkout.registerLink`). The URI template is a `string` field of
+ *  format `uri-template`, the identifier a `string` field. */
+export function clauseRegisterLink(clauseKey: string): RegisterLinkMark | undefined {
+    const spec = getClauseSpec(clauseKey);
+    const mark = spec?.block?.checkout.registerLink;
+    if (!spec || !mark) return undefined;
+    const fields = specMarkedFields(spec, [mark.uri, mark.id]);
+    if (!fields) return undefined;
+    const [uri, id] = fields;
+    return uri.type === "string" && uri.format === "uri-template" && id.type === "string" ? mark : undefined;
+}
+
+/** A committed clause of an agreement: its key and, unless withheld, its data. */
+interface CommittedClause {
+    clause: string;
+    data?: unknown;
+}
+
+/** A committed value as text: a non-empty string, else undefined. */
+function committedText(data: unknown, field: string | undefined): string | undefined {
+    if (field === undefined || typeof data !== "object" || data === null) return undefined;
+    const value = (data as Record<string, unknown>)[field];
+    return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+/** The order's committed modality: the value of the field the first clause
+ *  that marks a modality holds. The raw value flows through, so a modality
+ *  no one has seen is shown as committed. Undefined when no committed clause
+ *  marks one, or its content is withheld. */
+export function committedModality(clauses: readonly CommittedClause[]): string | undefined {
+    for (const entry of clauses) {
+        const field = clauseModalityField(entry.clause);
+        if (field !== undefined) return committedText(entry.data, field);
+    }
+    return undefined;
+}
+
+/** The order's committed jurisdiction: the law, and the forum and the
+ *  language when committed, from the first clause that marks a
+ *  jurisdiction. Undefined when no committed clause marks one, its content
+ *  is withheld, or it commits no law. */
+export function committedJurisdiction(clauses: readonly CommittedClause[]): { law: string; forum?: string; language?: string } | undefined {
+    for (const entry of clauses) {
+        const mark = clauseJurisdiction(entry.clause);
+        if (mark === undefined) continue;
+        const law = committedText(entry.data, mark.law);
+        if (law === undefined) return undefined;
+        const forum = committedText(entry.data, mark.forum);
+        const language = committedText(entry.data, mark.language);
+        return { law, ...(forum !== undefined && { forum }), ...(language !== undefined && { language }) };
+    }
+    return undefined;
 }
 
 /** The first enum-type field of a clause — the runtime "stage ladder" (the

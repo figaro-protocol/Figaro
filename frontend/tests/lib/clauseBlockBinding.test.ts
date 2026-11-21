@@ -216,14 +216,45 @@ describe("parseBlockBinding — clause block-binding (sectioned UI half)", () =>
         expect(errors.some((e) => e.path === "$.block.checkout.compositionFields")).toBe(true);
     });
 
-    it("reads no field list under runtime: the runtime part carries the interaction only", () => {
+    it("reads no field list under runtime: the runtime part carries the interaction and its marks only", () => {
         const { block, errors } = parse({
             design: { article: "dispute-resolution" },
             runtime: { interaction: null, fields: [{ name: "openingClaim", type: "string", required: true }] },
         });
         expect(errors).toEqual([]);
-        expect(block?.runtime).toEqual({ interaction: null });
+        expect(block?.runtime).toEqual({ interaction: null, modality: null, jurisdiction: null, documentPart: null, contentDigest: null });
         expect(block?.checkout.compositionFields).toEqual([]);
+    });
+
+    it("preserves checkout.registerLink and the runtime marks under the spec's own field names, and reads their absence as none", () => {
+        const registerLink = { uri: "lookupUrl", id: "badgeNo" };
+        const jurisdiction = { law: "governedBy", forum: "seat" };
+        const contentDigest = { stage: 3, field: "fileDigest" };
+        const { block, errors } = parse({
+            design: { article: "terms" },
+            checkout: { registerLink },
+            runtime: { modality: "servedAs", jurisdiction, documentPart: "cargo", contentDigest },
+        });
+        expect(errors).toEqual([]);
+        expect(block?.checkout.registerLink).toEqual(registerLink);
+        expect(block?.runtime).toEqual({ interaction: null, modality: "servedAs", jurisdiction, documentPart: "cargo", contentDigest });
+        const bare = parse({ design: { article: "terms" }, runtime: { modality: null } }).block;
+        expect(bare?.checkout.registerLink).toBeNull();
+        expect(bare?.runtime).toEqual({ interaction: null, modality: null, jurisdiction: null, documentPart: null, contentDigest: null });
+    });
+
+    it.each([
+        ["checkout.registerLink", { checkout: { registerLink: { uri: "lookupUrl" } } }],
+        ["runtime.modality", { runtime: { modality: "" } }],
+        ["runtime.jurisdiction", { runtime: { jurisdiction: { forum: "seat" } } }],
+        ["runtime.jurisdiction", { runtime: { jurisdiction: { law: "governedBy", language: "" } } }],
+        ["runtime.documentPart", { runtime: { documentPart: 7 } }],
+        ["runtime.contentDigest", { runtime: { contentDigest: { stage: 256, field: "fileDigest" } } }],
+        ["runtime.contentDigest", { runtime: { contentDigest: { stage: 1 } } }],
+    ])("rejects a malformed %s mark", (at, parts) => {
+        const { block, errors } = parse({ design: { article: "terms" }, ...parts });
+        expect(block).toBeNull();
+        expect(errors.some((e) => e.path === `$.block.${at}`)).toBe(true);
     });
 
     // composes.forumUrl is rendered as a link — only https: is accepted. A

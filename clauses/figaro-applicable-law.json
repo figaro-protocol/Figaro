@@ -52,11 +52,20 @@
             "derives": {},
             "timeWindow": null,
             "endpoints": null,
+            "registerLink": null,
             "heldValues": {},
             "compositionFields": []
         },
         "runtime": {
-            "interaction": null
+            "interaction": null,
+            "modality": null,
+            "jurisdiction": {
+                "law": "applicableLaw",
+                "forum": "forum",
+                "language": "language"
+            },
+            "documentPart": null,
+            "contentDigest": null
         }
     }
 }

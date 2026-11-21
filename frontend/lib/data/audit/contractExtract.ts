@@ -15,8 +15,8 @@ import {
     type AgreementClause,
     computeClauseLeaf,
 } from "@figaro-protocol/sdk";
-import { clauseByField, isProcessRoot } from "@figaro-protocol/sdk";
-import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
+import { isProcessRoot } from "@figaro-protocol/sdk";
+import { committedJurisdiction, committedModality, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { topologyFollows } from "@/lib/semantic/processTopology";
@@ -58,9 +58,11 @@ export interface ContractDocument extends ExtractedDocument {
     deadline: bigint;
     /** Each clause in the agreement, in canonical (sorted-by-clause) order. */
     clauses: ContractClause[];
-    /** Optional jurisdiction summary if a jurisdiction clause is present. */
+    /** The jurisdiction, where a committed clause's spec marks one
+     *  (`block.runtime.jurisdiction`): the governing law, and the forum and
+     *  the language when committed. */
     jurisdiction?: {
-        applicableLaw: string;
+        law: string;
         forum?: string;
         language?: string;
     };
@@ -77,10 +79,10 @@ export interface ContractDocument extends ExtractedDocument {
         composed: boolean;
         follows: string[];
     };
-    /** Canonical method — the modality clause's raw value (consume-onsite |
-     *  pickup | delivery | virtual | any registry-defined modality). The
-     *  courier-edge fill mechanism is DERIVED (binding state), never
-     *  encoded here. */
+    /** The order's modality, the raw value of the field a committed clause's
+     *  spec marks (`block.runtime.modality`), whatever value the clause
+     *  declares. The courier-edge fill mechanism is DERIVED (binding
+     *  state), never encoded here. */
     method?: string;
     /** Block number when OrderCommitted was mined, if known. */
     committedAtBlock?: number;
@@ -98,20 +100,6 @@ function contractClauseFrom(clauseEntry: AgreementClause): ContractClause {
     };
 }
 
-function extractJurisdictionSummary(agreement: Agreement) {
-    const applicableLaw = clauseByField(agreement, "applicableLaw", specSource());
-    if (!applicableLaw) return undefined;
-    // `data` is undefined on a content-WITHHELD clause (a private-disposition
-    // clause on the public pin) — guard like the sibling extractors below, so a
-    // redacted jurisdiction clause reads as absence, not a crash.
-    const data = applicableLaw.data as { applicableLaw?: string; forum?: string; language?: string } | undefined;
-    if (!data?.applicableLaw || typeof data.applicableLaw !== "string") return undefined;
-    return {
-        applicableLaw: data.applicableLaw,
-        forum: typeof data.forum === "string" && data.forum.length > 0 ? data.forum : undefined,
-        language: typeof data.language === "string" && data.language.length > 0 ? data.language : undefined,
-    };
-}
 
 function extractTopology(order: Order, agreement: Agreement): ContractDocument["topology"] {
     const follows = topologyFollows(agreement);
@@ -120,19 +108,6 @@ function extractTopology(order: Order, agreement: Agreement): ContractDocument["
         composed: follows !== null,
         follows: follows ?? [],
     };
-}
-
-function extractMethodSummary(agreement: Agreement) {
-    // The modality clause is found by its declared FIELD, never by clause
-    // name. Single-select scalar; the raw value flows through verbatim — an
-    // unseen modality the registry defines must NOT fall into an undefined hole
-    // (open-world). There is no coordination field: the courier-edge fill
-    // mechanism is derived (binding state),
-    // not stored, so it never appears in the canonical method.
-    const modalityData = clauseByField(agreement, "modality", specSource())?.data as
-        | { modality?: unknown }
-        | undefined;
-    return typeof modalityData?.modality === "string" ? modalityData.modality : undefined;
 }
 
 export function extractContract(
@@ -156,9 +131,11 @@ export function extractContract(
         salt: order.salt,
         deadline: order.commitDeadline,
         clauses: agreement.clauses.map(contractClauseFrom),
-        jurisdiction: extractJurisdictionSummary(agreement),
+        // Each read through the mark a clause's spec declares, never through
+        // a field's name (`committedJurisdiction`, `committedModality`).
+        jurisdiction: committedJurisdiction(agreement.clauses),
         topology: extractTopology(order, agreement),
-        method: extractMethodSummary(agreement),
+        method: committedModality(agreement.clauses),
         committedAtBlock: order.blockNumber,
     };
 }

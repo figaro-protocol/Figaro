@@ -5,10 +5,13 @@
  * renderer draws them. A new genre (packing list, certificate of origin, …) is a
  * new entry in the `DOCUMENT_LAYOUTS` array below — zero engine or renderer code.
  *
- * Every reference resolves by DECLARED FIELD, never by clause id, so a layout
- * projects identically over an assembly this codebase has never seen. That is what
+ * Every reference resolves through a mark a clause's spec declares in its `block`,
+ * never by clause id and never by a field's name, so a layout projects identically
+ * over an assembly this codebase has never seen. A section names the words a spec
+ * uses in `block.runtime.documentPart` (cargo, freight-class, delivery-terms,
+ * carriage); a route is the one `block.checkout.endpoints` marks. That is what
  * makes this open-world: the layouts are hardcoded here, but they carry no
- * clause-specific knowledge — they read whatever fields the committed leaves declare.
+ * clause-specific knowledge — a stranger's clause that declares a section fills it.
  *
  * DECISION (maintainer): these layouts are a hardcoded array in this
  * file. They are NOT moved to an on-chain registry — no on-chain document registry
@@ -45,7 +48,7 @@ const COMMERCIAL_INVOICE: DocumentLayout = {
         total: { label: "Net total (BT-106)", ref: { sumPayments: true } },
     },
     leafSections: [
-        { label: "Delivery terms (Incoterms 2020)", byField: "incotermsRule" },
+        { label: "Delivery terms", part: "delivery-terms" },
     ],
     note: "Derived from the committed data — not separately written. The interpretive VAT class is jurisdiction/graph-supplied and absent from this core projection (applicable, with a stablecoin denomination, to the EU e-invoice profile).",
 };
@@ -56,8 +59,8 @@ const COMMERCIAL_INVOICE: DocumentLayout = {
  *
  *  A carriage leg is what its composed clauses make it: an order that follows
  *  another (the goods come from somewhere in the process), over a route (a leaf
- *  declaring `origin` and `destination`), with a physical hand-over of the
- *  goods (a leaf declaring `handoff`). A process log alone (an inspection, a
+ *  whose spec marks its endpoints), with a physical hand-over of the goods (a
+ *  leaf whose spec declares the carriage section). A process log alone (an inspection, a
  *  customs filing), a route without a hand-over (a forwarder) or a hand-over
  *  of content is not one. The parties come from the topology: the carrier is
  *  this order's seller, the shipper the seller of the order it follows (who
@@ -69,9 +72,8 @@ const BILL_OF_LADING: DocumentLayout = {
     appliesWhen: {
         all: [
             { followsAnOrder: true },
-            { hasLeafField: "origin" },
-            { hasLeafField: "destination" },
-            { hasLeafField: "handoff" },
+            { hasRoute: true },
+            { hasPart: "carriage" },
         ],
     },
     header: [
@@ -79,14 +81,14 @@ const BILL_OF_LADING: DocumentLayout = {
         { label: "Carrier", ref: { party: "seller" } },
         { label: "Shipper / consignor", ref: { followedSellers: true } },
         { label: "Consignee", ref: { party: "buyer" } },
-        { label: "Origin (geohash)", ref: { leafField: { byField: "origin", field: "origin" } } },
-        { label: "Destination (geohash)", ref: { leafField: { byField: "origin", field: "destination" } } },
+        { label: "Origin", ref: { routeEnd: "from" } },
+        { label: "Destination", ref: { routeEnd: "to" } },
     ],
     leafSections: [
-        { label: "Cargo", byField: "massGrams" },
-        { label: "Freight class", byField: "nmfcClass" },
-        { label: "Incoterms 2020", byField: "incotermsRule" },
-        { label: "Mode of carriage", byField: "handoff" },
+        { label: "Cargo", part: "cargo" },
+        { label: "Freight class", part: "freight-class" },
+        { label: "Delivery terms", part: "delivery-terms" },
+        { label: "Mode of carriage", part: "carriage" },
     ],
     note: "NON-NEGOTIABLE — not a document of title. The consignee is fixed at signing; FigaroCore forbids substituting a bonded order's parties mid-flight. The precise addressee is party-private (ECDH channel); only the public geohash is committed.",
 };

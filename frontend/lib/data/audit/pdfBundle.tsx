@@ -370,7 +370,7 @@ function ContractPage({ contract, decimals }: { contract: AuditBundle["contract"
                         {contract.method && <MetaRow k="method" v={contract.method} mono />}
                         {contract.jurisdiction && (
                             <>
-                                <MetaRow k="applicable law" v={contract.jurisdiction.applicableLaw} />
+                                <MetaRow k="applicable law" v={contract.jurisdiction.law} />
                                 {contract.jurisdiction.forum && (
                                     <MetaRow k="forum" v={contract.jurisdiction.forum} />
                                 )}

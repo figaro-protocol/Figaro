@@ -40,11 +40,16 @@
             "derives": {},
             "timeWindow": null,
             "endpoints": null,
+            "registerLink": null,
             "heldValues": {},
             "compositionFields": []
         },
         "runtime": {
-            "interaction": null
+            "interaction": null,
+            "modality": "modality",
+            "jurisdiction": null,
+            "documentPart": null,
+            "contentDigest": null
         }
     }
 }

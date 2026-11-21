@@ -470,6 +470,8 @@ definition) and `RPGF_*` constant is a **root** export.
 | `resolveSubOrderPricing` | root | Price a sub-order live from its own contributor's catalog. |
 | `restoreSignedProcessId` | root | Turn an event-derived ROOT commitment back into the struct that was signed (`processId = 0`). |
 | `clauseByField` | root | Find the agreement clause whose spec DECLARES a field — never look one up by clause name. |
+| `specMarkedFields` | root | The fields a `block` mark names, by the spec's own names, when the spec declares each once; undefined when the spec's own fields contradict the mark. |
+| `specEndpoints` | root | A clause's route mark (`block.checkout.endpoints`) when its origin and destination are two declared string fields; undefined otherwise. |
 | `hashClauseData` | root | A clause's canonical-JSON fingerprint; a content-withheld clause carries it directly. |
 | `selectRaceWinner` | `/agent` | Cheapest verified countersigner wins; ties break by arrival order. |
 | `SequencerClient` | `/agent` | HTTP client for a sequencer relay — submission (the batch path's entry point) and the relay's own status. |

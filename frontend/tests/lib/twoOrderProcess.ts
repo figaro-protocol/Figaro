@@ -4,9 +4,10 @@
  * `OrderCommitted` event carries it on both paths; the sub-order's cumulative
  * value is the root's payment plus its own. The sub-order's hash sorts
  * before the root's, so a reader that takes "the first order with no edges"
- * names the sub-order. Each agreement carries a modality clause whose spec is
- * served from memory, so a reader that shows the root's modality shows the
- * root's value.
+ * names the sub-order. Each agreement carries a stranger's modality clause,
+ * served from memory, whose spec marks its field under a name of its own
+ * (`block.runtime.modality`), so a reader that shows the root's modality
+ * shows the root's value.
  */
 import type { Agreement } from "@figaro-protocol/sdk";
 import { pinSpec } from "./primeClauseSpecs";
@@ -29,8 +30,9 @@ const MODALITY_SPEC = {
     version: 1,
     title: "Modality",
     description: "One single-select modality value.",
-    fields: [{ name: "modality", type: "string", required: true }],
+    fields: [{ name: "servedAs", type: "string", required: true }],
     stages: {},
+    block: { design: { article: "coordination" }, runtime: { modality: "servedAs" } },
 };
 const pinned = pinSpec(MODALITY_SPEC);
 
@@ -75,7 +77,7 @@ const agreementOf = (seller: `0x${string}`, modality: string, follows?: Agreemen
     version: "a1",
     buyer: BUYER,
     seller,
-    clauses: [{ clause: pinned.clauseKey, data: { modality } }],
+    clauses: [{ clause: pinned.clauseKey, data: { servedAs: modality } }],
     ...(follows === undefined ? {} : { follows }),
 });
 
