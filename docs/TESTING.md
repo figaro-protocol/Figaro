@@ -191,6 +191,40 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the `FigaroCore`
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
+## Medusa — the 2 Echidna harnesses, the same 15 properties
+
+Medusa (coverage-guided, beside Echidna) runs `EchidnaFuzzer` and `EchidnaFlorinToken` with the
+same `echidna_` properties, actors and sequence length as `echidna.yaml`; `medusa.json` is its
+config. Pass 1 runs 900s, Pass 2 300s; the coverage reports land in `medusa/corpus/coverage/`.
+Run with `scripts/test-medusa.sh`. Success: no property listed as failed.
+
+## cargo-fuzz (`fuzz/prover/`) — 2 targets
+
+A crate outside `prover/`, with its own workspace and lock, that reaches `prover/lib` and
+`prover/clause` by path, so the proof program's bytes and its key do not move.
+
+| Target | What it holds |
+|---|---|
+| `operation_stream` | `decode_operation_stream` over any bytes: no panic, and every stream it accepts re-encodes through `encode_stream_parts` to the same bytes |
+| `clause_spec` | `kernel::validate_attestation_content` (gates S, C and I) over any spec JSON, content JSON and clause data, the clause id set to `keccak256` of the spec so the bytes reach the parser, the validator and the encoder: no panic |
+
+Run with `cargo +nightly fuzz run <target> --fuzz-dir fuzz/prover -- -max_total_time=600`.
+Seeds: `python3 -I fuzz/prover/seed.py` writes the canonical specs in `clauses/` and the streams in
+`test/fixtures/operation-stream-vectors.json` into `fuzz/prover/corpus/`. A crash is saved under
+`fuzz/prover/artifacts/`. Success: the run ends on `Done N runs`, with no crash file.
+
+## Kani (`formal/kani/`) — 4 proof harnesses
+
+A crate outside `prover/`, its own workspace and lock, depending on `prover/lib` by path.
+It proves the payout arithmetic of the guest's mirror of the Core over every 256-bit input:
+`payouts_are_exact_or_overflow` and `one_order_conserves_its_bonds` (`kernel::resolution_payouts`),
+`a_process_conserves_its_bonds` (two orders, payouts summed against the bonds), and
+`resolved_running_total_is_the_exact_sum` (`operation_stream::resolved_running_total`). The bond
+computation in `apply_commit` and the netting in `TokenTracker` are private to `kernel.rs`, so no
+harness outside the crate reaches them; the harnesses state the two bond formulas and prove the
+payouts against them. Run with `cd formal/kani && cargo kani`. Success: every harness
+`VERIFICATION:- SUCCESSFUL`.
+
 ## TLA+ (`formal/`) — 75 invariants across 5 models in 9 configurations, each configuration's type invariant counted (FigaroCore 9 + FlorinToken 9 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 8 + its deferral 10 + its resolve authorization 3 + its attestation authorization 2, `RTypeOK` and `OnlyPartyAttests`, `formal/RelayStateAttest.cfg` + its isolation 3, `ITypeOK`, `HonestNeverDroppedForAnother` and `IsolationBounded`, `formal/RelayStateIsolate.cfg`)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
