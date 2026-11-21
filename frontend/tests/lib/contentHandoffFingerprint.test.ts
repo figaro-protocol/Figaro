@@ -15,15 +15,15 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { keccak256, toHex, type Hex } from "viem";
 import { decodeContentFromSpec, encodeContentFromSpec, type ClauseSpec } from "@figaro-protocol/sdk/clauses";
 import {
-    COMPLETION_STAGE,
     completionEvidenceAnchor,
+    contentDigestOf,
     contentHashOfBytes,
     keepVerifiedCompletionEvidence,
     prepareCompletionEvidence,
 } from "@/lib/data/handoff/contentDelivery";
 import { heldWitnessReader, publishWitnessContent } from "@/lib/core/witnessContent";
 import { extractProcessLogs, WITHHELD_FROM_PUBLIC_FILE } from "@/lib/data/audit/processLogsExtract";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, type ClauseSpecWithBlock } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/core/store";
 import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 
@@ -34,13 +34,23 @@ const SELLER = "0x2222222222222222222222222222222222222222";
 const BUYER = { address: "0x1111111111111111111111111111111111111111", chainId: 31337 };
 
 let clauseKey: Hex;
-let spec: ClauseSpec;
+let spec: ClauseSpecWithBlock;
+/** The stage the spec marks for its delivery evidence (`block.runtime.contentDigest`). */
+let COMPLETION_STAGE: number;
 
 beforeAll(async () => {
     await primeClauseSpecs(["figaro-content-handoff"]);
     clauseKey = keyOf("figaro-content-handoff");
     spec = getClauseSpec(clauseKey)!;
+    COMPLETION_STAGE = contentDigestOf(spec)!.stage;
 });
+
+/** The sender's evidence for one delivery; the reference clause marks where it goes. */
+function prepared(contentHash: Hex) {
+    const evidence = prepareCompletionEvidence(spec, contentHash);
+    if (!evidence) throw new Error("the spec marks no delivery evidence");
+    return evidence;
+}
 
 /** The Attestation event the sender's stage-1 filing emits on one order. */
 function attestation(orderHash: Hex, content: Hex) {
@@ -59,8 +69,8 @@ describe("the hand-off's stage-1 fingerprint is bound to its own order", () => {
 
     it("one artifact delivered under two orders gives two different public fingerprints", () => {
         const hash = contentHashOfBytes(ARTIFACT);
-        const one = prepareCompletionEvidence(spec, hash);
-        const two = prepareCompletionEvidence(spec, hash);
+        const one = prepared(hash);
+        const two = prepared(hash);
         expect(one.blinding).toMatch(/^0x[0-9a-f]{64}$/);
         expect(one.blinding).not.toBe(two.blinding);
         expect(keccak256(one.content)).not.toBe(keccak256(two.content));
@@ -70,7 +80,7 @@ describe("the hand-off's stage-1 fingerprint is bound to its own order", () => {
     });
 
     it("an outsider who guesses the artifact cannot confirm it against the fingerprint", () => {
-        const filed = keccak256(prepareCompletionEvidence(spec, contentHashOfBytes(ARTIFACT)).content);
+        const filed = keccak256(prepared(contentHashOfBytes(ARTIFACT)).content);
         const guessedHash = contentHashOfBytes(ARTIFACT);
         expect(filed).not.toBe(guessedHash);
         expect(filed).not.toBe(keccak256(guessedHash));
@@ -82,7 +92,7 @@ describe("the hand-off's stage-1 fingerprint is bound to its own order", () => {
     });
 
     it("the counterparty recomputes the fingerprint from the artifact and the value it is sent, and a tampered artifact misses it", () => {
-        const evidence = prepareCompletionEvidence(spec, contentHashOfBytes(ARTIFACT));
+        const evidence = prepared(contentHashOfBytes(ARTIFACT));
         const filed = keccak256(evidence.content);
         expect(completionEvidenceAnchor(spec, { contentHash: contentHashOfBytes(ARTIFACT), blinding: evidence.blinding })).toBe(filed);
         const tampered = new Uint8Array(ARTIFACT);
@@ -95,7 +105,7 @@ describe("the hand-off's stage-1 fingerprint is bound to its own order", () => {
     it("the content is never pinned, and the evidence file pinned in public carries neither the artifact's hash nor the value", async () => {
         window.localStorage.clear();
         const hash = contentHashOfBytes(ARTIFACT);
-        const evidence = prepareCompletionEvidence(spec, hash);
+        const evidence = prepared(hash);
         const pinKeccakRawBlock = vi.fn();
         await publishWitnessContent({ clauseId: clauseKey, stage: COMPLETION_STAGE, content: evidence.content, ipfs: { pinKeccakRawBlock } });
         expect(pinKeccakRawBlock).not.toHaveBeenCalled();
@@ -119,7 +129,7 @@ describe("the hand-off's stage-1 fingerprint is bound to its own order", () => {
     it("a copy is kept only for the place the content hashes to: another order's attestation reads none", () => {
         window.localStorage.clear();
         const hash = contentHashOfBytes(ARTIFACT);
-        const evidence = prepareCompletionEvidence(spec, hash);
+        const evidence = prepared(hash);
         keepVerifiedCompletionEvidence(BUYER, spec, { orderHash: ORDER_ONE, clauseId: clauseKey }, { contentHash: hash, blinding: evidence.blinding });
         const other = { orderHash: ORDER_TWO } as unknown as Order;
         const otherFile = JSON.stringify(extractProcessLogs(other, [attestation(ORDER_TWO, evidence.content)], heldWitnessReader(BUYER)));

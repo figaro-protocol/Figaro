@@ -1064,6 +1064,16 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td>Find the agreement clause whose spec DECLARES a field — never look one up by clause name.</td>
 </tr>
 <tr>
+<td><code>specMarkedFields</code></td>
+<td>root</td>
+<td>The fields a <code>block</code> mark names, by the spec's own names, when the spec declares each once; undefined when the spec's own fields contradict the mark.</td>
+</tr>
+<tr>
+<td><code>specEndpoints</code></td>
+<td>root</td>
+<td>A clause's route mark (<code>block.checkout.endpoints</code>) when its origin and destination are two declared string fields; undefined otherwise.</td>
+</tr>
+<tr>
 <td><code>hashClauseData</code></td>
 <td>root</td>
 <td>A clause's canonical-JSON fingerprint; a content-withheld clause carries it directly.</td>

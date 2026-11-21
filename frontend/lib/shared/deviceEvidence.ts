@@ -53,9 +53,8 @@ import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 export type DeviceEvidenceKind = "geolocation-cross-check" | "nfc-tap" | "ble-sighting";
 
-/** The RAW capture — the device's full-fidelity truth. Device-held only;
- *  never pinned, never committed. */
-export interface DeviceEvidence {
+/** What one device read returns, before its capture draws a blinding value. */
+interface DeviceRead {
     kind: DeviceEvidenceKind;
     capturedAt: string;
     /** Geolocation cross-check. */
@@ -69,13 +68,16 @@ export interface DeviceEvidence {
     /** BLE sighting. */
     deviceName?: string;
     deviceId?: string;
+}
+
+/** The RAW capture — the device's full-fidelity truth: one device read and
+ *  the blinding value drawn for it. Device-held only; never pinned, never
+ *  committed. */
+export interface DeviceEvidence extends DeviceRead {
     /** 32 random bytes drawn for this capture alone; device-held with the
      *  rest of the raw capture and disclosed with it. */
     blinding: Hex;
 }
-
-/** What one device read returns, before its capture draws a blinding value. */
-type DeviceRead = Omit<DeviceEvidence, "blinding">;
 
 /** The PUBLIC artifact — pinned, so committed at mechanism grain only:
  *  the neighborhood cell, blinded identifier fingerprints, and the raw

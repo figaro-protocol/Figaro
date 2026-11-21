@@ -78,13 +78,18 @@
                 "from": "origin",
                 "to": "destination"
             },
+            "registerLink": null,
             "heldValues": {},
             "compositionFields": []
         },
         "runtime": {
             "interaction": {
                 "interface": "ecdh-address"
-            }
+            },
+            "modality": null,
+            "jurisdiction": null,
+            "documentPart": null,
+            "contentDigest": null
         }
     }
 }

@@ -17,8 +17,9 @@
  * A read through a helper counts as a read of the part behind it: the spec
  * cache's readers of the checkout part (`lib/shared/clauseSpecSource.ts`),
  * the held-values readers (`lib/composability/heldValues.ts`) and the SDK's
- * priced-lines readers. No helper reads the runtime part, so a runtime read
- * is always a direct one.
+ * priced-lines readers. The runtime part's helpers are the spec cache's
+ * readers of the runtime marks and the content-digest reader
+ * (`lib/data/handoff/contentDelivery.ts`).
  */
 import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
@@ -58,8 +59,17 @@ const PART_HELPERS: Readonly<Record<Phase, readonly string[]>> = {
         "readHeldValues",
         "readPricedLines",
         "pricedLinesSum",
+        "clauseEndpoints",
+        "clauseRegisterLink",
     ],
-    runtime: [],
+    runtime: [
+        "clauseModalityField",
+        "clauseJurisdiction",
+        "clauseDocumentPart",
+        "committedModality",
+        "committedJurisdiction",
+        "contentDigestOf",
+    ],
 };
 
 function partRead(part: Phase): RegExp {
@@ -125,6 +135,8 @@ describe("each phase reads the parts of block named for it or for an earlier pha
         expect(laterPhaseReads("checkout", "const i = spec.block.runtime.interaction;")).toHaveLength(1);
         expect(laterPhaseReads("checkout", "if (block?.design.composes && block.runtime.fields.length > 0) {")).toHaveLength(1);
         expect(laterPhaseReads("checkout", "const i = getClauseSpec(k)?.block?.runtime.interaction;")).toHaveLength(1);
+        expect(laterPhaseReads("checkout", "const m = committedModality(agreement.clauses);")).toHaveLength(1);
+        expect(laterPhaseReads("checkout", "const r = clauseRegisterLink(key);")).toHaveLength(0);
         expect(laterPhaseReads("checkout", "const c = spec.block.checkout.compositionFields;")).toHaveLength(0);
         expect(laterPhaseReads("checkout", "const c = clauseCatalogFills(key);")).toHaveLength(0);
         expect(laterPhaseReads("checkout", "const a = spec.block.design.article;")).toHaveLength(0);

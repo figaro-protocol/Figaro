@@ -7,14 +7,15 @@
  *
  * Proves: `ContentDeliveryPanel` and `AddressDetailPanel` hand the ceremony
  * an expectation bound to the sender, their clause and the stage their own
- * send files at (the completion stage, and stage 0 for the address detail),
+ * send files at (the stage the spec marks for the content digest, and stage 0
+ * for the address detail),
  * and `attestationAnchorMatches` refuses a row carrying the same reference
  * from another wallet.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import type { PublicClient } from "viem";
-import { COMPLETION_STAGE, completionEvidenceAnchor } from "@/lib/data/handoff/contentDelivery";
+import { completionEvidenceAnchor, contentDigestOf } from "@/lib/data/handoff/contentDelivery";
 import { addressDetailAnchorRef } from "@/lib/data/handoff/addressDetail";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { keyOf, primeClauseSpecs } from "../lib/primeClauseSpecs";
@@ -58,7 +59,7 @@ describe("a hand-off ceremony waits for the sender's anchor at its clause and st
         const delivered = { contentHash: CONTENT_HASH, blinding: BLINDING };
         const contentRef = completionEvidenceAnchor(getClauseSpec(clauseKey)!, delivered);
         expect(contentRef).not.toBeNull();
-        expect(lastExpectation(delivered)).toEqual({ contentRef, clauseId: clauseKey, stage: COMPLETION_STAGE, attester: SELLER });
+        expect(lastExpectation(delivered)).toEqual({ contentRef, clauseId: clauseKey, stage: contentDigestOf(getClauseSpec(clauseKey)!)!.stage, attester: SELLER });
         // The clause's stage-1 set is private: without the value the sealed
         // envelope carries, the panel expects no anchor and gives no verdict.
         expect(lastExpectation({ contentHash: CONTENT_HASH })).toBeNull();

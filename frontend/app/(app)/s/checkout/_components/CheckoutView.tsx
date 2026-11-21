@@ -1214,7 +1214,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                 <li key={clauseKey} data-testid={`agreement-clause-${clauseKey}`}>
                                                     {spec?.title ?? clauseKey}
                                                     {values && <span className="text-ink-primary"> — {values}</span>}
-                                                    <CredentialVerifyButton data={data} />
+                                                    <CredentialVerifyButton clauseKey={clauseKey} data={data} />
                                                     {fillable && (
                                                         <div className="mt-1 mb-2 ml-3 space-y-2">
                                                             {/* The row's buyer field complement — the

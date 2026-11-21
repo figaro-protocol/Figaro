@@ -52,6 +52,7 @@
             "catalogueMeasures": {},
             "timeWindow": null,
             "endpoints": null,
+            "registerLink": null,
             "heldValues": {
                 "klerosCourt": {
                     "reader": "kleros-liquid-policy-courts",
@@ -78,7 +79,11 @@
             "compositionFields": []
         },
         "runtime": {
-            "interaction": null
+            "interaction": null,
+            "modality": null,
+            "jurisdiction": null,
+            "documentPart": null,
+            "contentDigest": null
         }
     }
 }

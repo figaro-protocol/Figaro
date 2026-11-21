@@ -169,10 +169,10 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         for (const key of ["article", "scope", "nestsUnder", "fills", "composes"]) {
             expect(key in spec.block.design, `${file}: block.design.${key} must be expressed`).toBe(true);
         }
-        for (const key of ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "timeWindow", "endpoints", "heldValues", "compositionFields"]) {
+        for (const key of ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "timeWindow", "endpoints", "registerLink", "heldValues", "compositionFields"]) {
             expect(key in spec.block.checkout, `${file}: block.checkout.${key} must be expressed`).toBe(true);
         }
-        for (const key of ["interaction"]) {
+        for (const key of ["interaction", "modality", "jurisdiction", "documentPart", "contentDigest"]) {
             expect(key in spec.block.runtime, `${file}: block.runtime.${key} must be expressed`).toBe(true);
         }
     });
@@ -182,8 +182,8 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
     // reads under that part, and no other. The lists are the parser's.
     it.each([
         ["blockDesign", ["article", "scope", "nestsUnder", "fills", "composes"]],
-        ["blockCheckout", ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "timeWindow", "endpoints", "heldValues", "compositionFields"]],
-        ["blockRuntime", ["interaction"]],
+        ["blockCheckout", ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "timeWindow", "endpoints", "registerLink", "heldValues", "compositionFields"]],
+        ["blockRuntime", ["interaction", "modality", "jurisdiction", "documentPart", "contentDigest"]],
     ] as const)("the schema's %s declares the parser's attributes for that part", (def, keys) => {
         const props = (schema.$defs as Record<string, { properties: Record<string, unknown> }>)[def].properties;
         expect(Object.keys(props).sort()).toEqual([...keys].sort());
@@ -207,10 +207,34 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         ["an endpoints mark naming its origin and destination", { endpoints: { from: "pickup", to: "dropoff" } }, true],
         ["a null endpoints mark", { endpoints: null }, true],
         ["an endpoints mark with an empty destination", { endpoints: { from: "pickup", to: "" } }, false],
+        ["a register-link mark naming its URI and its id", { registerLink: { uri: "lookupUrl", id: "badgeNo" } }, true],
+        ["a null register-link mark", { registerLink: null }, true],
+        ["a register-link mark without its id", { registerLink: { uri: "lookupUrl" } }, false],
         ["composition fields of the content-field shape", { compositionFields: [{ name: "claim", type: "string", required: true }] }, true],
         ["composition fields that are not an array", { compositionFields: {} }, false],
     ];
     it.each(checkoutCases)("block.checkout with %s: accepted %s at the schema", (_name, checkout, accepted) => {
         expect(validateAgainstSchema(withCheckout(checkout)), JSON.stringify(validateAgainstSchema.errors)).toBe(accepted);
+    });
+
+    const withRuntime = (runtime: unknown) => ({
+        clauseId: "x", version: 1, title: "T", description: "D", fields: [],
+        block: { design: { article: "terms" }, runtime },
+    });
+    const runtimeCases: ReadonlyArray<readonly [string, unknown, boolean]> = [
+        ["a modality mark naming a field", { modality: "howServed" }, true],
+        ["a null modality mark", { modality: null }, true],
+        ["an empty modality mark", { modality: "" }, false],
+        ["a jurisdiction mark naming the law alone", { jurisdiction: { law: "governedBy" } }, true],
+        ["a jurisdiction mark naming the law, the forum and the language", { jurisdiction: { law: "governedBy", forum: "seat", language: "tongue" } }, true],
+        ["a jurisdiction mark without its law", { jurisdiction: { forum: "seat" } }, false],
+        ["a document section", { documentPart: "cargo" }, true],
+        ["a null document section", { documentPart: null }, true],
+        ["a content-digest mark naming its stage and field", { contentDigest: { stage: 2, field: "digest" } }, true],
+        ["a content-digest mark whose stage is no stage", { contentDigest: { stage: 256, field: "digest" } }, false],
+        ["a content-digest mark without its field", { contentDigest: { stage: 1 } }, false],
+    ];
+    it.each(runtimeCases)("block.runtime with %s: accepted %s at the schema", (_name, runtime, accepted) => {
+        expect(validateAgainstSchema(withRuntime(runtime)), JSON.stringify(validateAgainstSchema.errors)).toBe(accepted);
     });
 });

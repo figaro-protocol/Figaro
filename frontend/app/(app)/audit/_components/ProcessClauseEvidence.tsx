@@ -405,8 +405,9 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                                                 </dl>
                                             )}
                                             {/* The reader's verification affordance — renders only for a
-                                                leaf declaring a register assembly + declared id. */}
+                                                leaf whose spec marks a link to an outside register. */}
                                             <CredentialVerifyButton
+                                                clauseKey={clause.clauseKey}
                                                 data={Object.fromEntries(clause.fields.map((f) => [f.name, f.values[0]]))}
                                             />
                                         </div>

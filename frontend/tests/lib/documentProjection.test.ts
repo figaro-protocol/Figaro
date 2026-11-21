@@ -3,8 +3,8 @@ import { projectDocuments, type DocumentLayout } from "@/lib/data/audit/document
 import { DOCUMENT_LAYOUTS } from "@/lib/data/audit/documentLayouts";
 import { OrderState, type Order } from "@/lib/core/store";
 import type { Agreement } from "@figaro-protocol/sdk";
-import { _resetClauseSpecCache_TESTING_ONLY } from "@/lib/shared/clauseSpecSource";
-import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
+import { _resetClauseSpecCache_TESTING_ONLY, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
+import { keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 
 afterEach(() => {
     _resetClauseSpecCache_TESTING_ONLY();
@@ -85,7 +85,8 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
         expect(bols).toHaveLength(1);
         const bol = bols[0];
         expect(bol.header.find((h) => h.label === "Carrier")!.value).toBe("0xCOURIER");
-        expect(bol.header.find((h) => h.label === "Destination (geohash)")!.value).toBe("9q8yyk8yu");
+        expect(bol.header.find((h) => h.label === "Origin")!.value).toBe("9q8yy");
+        expect(bol.header.find((h) => h.label === "Destination")!.value).toBe("9q8yyk8yu");
         const cargoClause = bol.leafSections!.find((s) => s.label === "Cargo")!;
         expect(cargoClause.entries).toEqual(expect.arrayContaining([
             { key: "massGrams", value: "500" },
@@ -157,7 +158,7 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
         await primeClauseSpecs(["figaro-commerce"]);
         const packingList: DocumentLayout = {
             genre: "packing-list", title: "Packing list", scope: "order",
-            appliesWhen: { hasLeafField: "lineItems" },
+            appliesWhen: { hasPricedLines: true },
             header: [{ label: "For order", ref: { orderHash: true } }],
             lines: { fields: [{ label: "Item", ref: { lineItemNames: true } }] },
         };
@@ -169,6 +170,127 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
         expect(docs).toHaveLength(1);
         expect(docs[0].title).toBe("Packing list");
         expect(docs[0].lines!.rows).toEqual([["Widget ×2"]]);
+    });
+});
+
+// ── A document reads the marks a spec declares, never a field's name ──────────
+
+/** Serve one spec of the test's own to the spec cache, as the registry read does. */
+async function serveSpec(spec: Record<string, unknown>): Promise<string> {
+    const pinned = pinSpec(spec);
+    setClauseSpecFetcher(async () => pinned.bytes);
+    await loadClauseSpec(pinned.clauseKey, `mem://${String(spec.clauseId)}`);
+    return pinned.clauseKey;
+}
+
+const strangerSpec = (clauseId: string, fields: { name: string; type: string; values?: string[] }[], block: Record<string, unknown>) => ({
+    clauseId, version: 1, title: clauseId, description: "A clause no reference spec matches.",
+    fields: fields.map((f) => ({ required: true, ...f })),
+    stages: {},
+    block: { design: { article: "logistics" }, ...block },
+});
+
+const byKey = (clauses: { clause: string; data: Record<string, unknown> }[], follows?: string[]): Agreement =>
+    ({ clauses, ...(follows === undefined ? {} : { follows }) } as unknown as Agreement);
+
+const bolOf = (agreementUnderTest: Agreement) => doc(projectDocuments(
+    DOCUMENT_LAYOUTS,
+    [mkOrder({ orderHash: "0xC", seller: "0xCARRIER", checkoutHash: "0xh" })],
+    new Map([["0xh", agreementUnderTest]]),
+), "bill-of-lading");
+
+describe("document layouts read the marks a clause's spec declares", () => {
+    it("a stranger's route, carriage and cargo clauses, under their own field names, make a bill of lading", async () => {
+        const route = await serveSpec(strangerSpec("stranger-lane",
+            [{ name: "pickupCell", type: "string" }, { name: "dropoffCell", type: "string" }],
+            { checkout: { endpoints: { from: "pickupCell", to: "dropoffCell" } } }));
+        const carriage = await serveSpec(strangerSpec("stranger-tender",
+            [{ name: "tenderedHow", type: "string" }],
+            { runtime: { documentPart: "carriage" } }));
+        const cargo = await serveSpec(strangerSpec("stranger-load",
+            [{ name: "loadKg", type: "integer" }],
+            { runtime: { documentPart: "cargo" } }));
+        const bols = bolOf(byKey([
+            { clause: route, data: { pickupCell: "u4pru", dropoffCell: "u4prv" } },
+            { clause: carriage, data: { tenderedHow: "dock" } },
+            { clause: cargo, data: { loadKg: 12 } },
+        ], ["0xPARENT"]));
+        expect(bols).toHaveLength(1);
+        const value = (label: string) => bols[0].header.find((h) => h.label === label)!.value;
+        expect(value("Origin")).toBe("u4pru");
+        expect(value("Destination")).toBe("u4prv");
+        expect(bols[0].leafSections).toEqual([
+            { label: "Cargo", entries: [{ key: "loadKg", value: "12" }] },
+            { label: "Mode of carriage", entries: [{ key: "tenderedHow", value: "dock" }] },
+        ]);
+    });
+
+    it("a stranger's delivery-terms clause fills the invoice's delivery terms", async () => {
+        await primeClauseSpecs(["figaro-commerce"]);
+        const terms = await serveSpec(strangerSpec("stranger-terms",
+            [{ name: "termCode", type: "string" }],
+            { runtime: { documentPart: "delivery-terms" } }));
+        const agreementUnderTest = agreement([commerce([{ name: "Part", quantity: 1 }])]);
+        agreementUnderTest.clauses.push({ clause: terms, data: { termCode: "DAP" } } as Agreement["clauses"][number]);
+        const invoice = doc(projectDocuments(
+            DOCUMENT_LAYOUTS,
+            [mkOrder({ orderHash: "0xA", seller: "0xS", payment: 5n, checkoutHash: "0xh" })],
+            new Map([["0xh", agreementUnderTest]]),
+        ), "commercial-invoice")[0];
+        expect(invoice.leafSections).toEqual([{ label: "Delivery terms", entries: [{ key: "termCode", value: "DAP" }] }]);
+    });
+
+    it("the reference clauses, with their marks, fill the bill of lading's sections", async () => {
+        await primeClauseSpecs([...ALL, "figaro-incoterms"]);
+        const bols = doc(projectDocuments(
+            DOCUMENT_LAYOUTS,
+            [mkOrder({ orderHash: "0xC", seller: "0xCOURIER", checkoutHash: "0xh" })],
+            new Map([["0xh", agreement([
+                { clause: "figaro-geolocation", data: { origin: "9q8yy", destination: "9q8yyk8yu" } },
+                { clause: "figaro-cargo", data: { massGrams: 500 } },
+                { clause: "figaro-freight-class", data: { nmfcClass: "100" } },
+                { clause: "figaro-incoterms", data: { incotermsRule: "FOB" } },
+                { clause: "figaro-handoff", data: { handoff: "face-to-face" } },
+            ], ["0xPARENT"])]]),
+        ), "bill-of-lading");
+        expect(bols).toHaveLength(1);
+        expect(bols[0].leafSections!.map((s) => s.label)).toEqual(["Cargo", "Freight class", "Delivery terms", "Mode of carriage"]);
+    });
+
+    it("clauses with fields of the reference's names and no marks make no bill of lading and fill no section", async () => {
+        const route = await serveSpec(strangerSpec("unmarked-route",
+            [{ name: "origin", type: "string" }, { name: "destination", type: "string" }], {}));
+        const handoff = await serveSpec(strangerSpec("unmarked-handoff", [{ name: "handoff", type: "string" }], {}));
+        const cargo = await serveSpec(strangerSpec("unmarked-cargo", [{ name: "massGrams", type: "integer" }], {}));
+        const terms = await serveSpec(strangerSpec("unmarked-terms", [{ name: "incotermsRule", type: "string" }], {}));
+        const clauses = [
+            { clause: route, data: { origin: "a", destination: "b" } },
+            { clause: handoff, data: { handoff: "face-to-face" } },
+            { clause: cargo, data: { massGrams: 1 } },
+            { clause: terms, data: { incotermsRule: "FOB" } },
+        ];
+        expect(bolOf(byKey(clauses, ["0xPARENT"]))).toHaveLength(0);
+        const always: DocumentLayout = {
+            genre: "probe", title: "Probe", scope: "order", appliesWhen: { always: true },
+            header: [{ label: "Origin", ref: { routeEnd: "from" } }],
+            leafSections: [{ label: "Cargo", part: "cargo" }, { label: "Delivery terms", part: "delivery-terms" }],
+        };
+        const [probe] = projectDocuments([always], [mkOrder({ orderHash: "0xC", seller: "0xS", checkoutHash: "0xh" })], new Map([["0xh", byKey(clauses)]]));
+        expect(probe.header).toEqual([{ label: "Origin", value: "" }]);
+        expect(probe.leafSections).toEqual([]);
+    });
+
+    it("a route mark the spec's own fields contradict marks nothing", async () => {
+        const route = await serveSpec(strangerSpec("contradicted-lane",
+            [{ name: "pickupCell", type: "string" }],
+            { checkout: { endpoints: { from: "pickupCell", to: "dropoffCell" } } }));
+        const carriage = await serveSpec(strangerSpec("stranger-tender-2",
+            [{ name: "tenderedHow", type: "string" }],
+            { runtime: { documentPart: "carriage" } }));
+        expect(bolOf(byKey([
+            { clause: route, data: { pickupCell: "u4pru", dropoffCell: "u4prv" } },
+            { clause: carriage, data: { tenderedHow: "dock" } },
+        ], ["0xPARENT"]))).toHaveLength(0);
     });
 });
 

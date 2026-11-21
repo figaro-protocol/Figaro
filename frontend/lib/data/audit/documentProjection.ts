@@ -7,8 +7,10 @@
  * hand-rolled genre (a `projectInvoice` + a bespoke PDF page) but a COMPOSITION —
  * a declared layout that says which committed leaves/kernel facts to present
  * and how. A new genre is a new `DocumentLayout` (data), zero engine or renderer
- * code. Every reference resolves by DECLARED FIELD, never by clause id, so a
- * layout projects identically over an assembly this codebase has never seen.
+ * code. Every reference resolves through a mark a clause's spec declares in its
+ * `block` (a document section, a route, priced lines), never by clause id and
+ * never by a field's name, so a layout projects identically over an assembly
+ * this codebase has never seen.
  *
  * The layouts are a hardcoded array in `documentLayouts.ts`. Per maintainer
  * decision they stay there — NO on-chain document registry at this
@@ -20,7 +22,7 @@ import { calculateResolution, readPricedLines } from "@figaro-protocol/sdk";
 import type { Agreement } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/core/store";
 import { OrderState } from "@/lib/core/store";
-import { clauseDeclaresField, specSource } from "@/lib/shared/clauseSpecSource";
+import { clauseDocumentPart, clauseEndpoints, specSource } from "@/lib/shared/clauseSpecSource";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { topologyFollows } from "@/lib/semantic/processTopology";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
@@ -28,8 +30,8 @@ import type { PartyRole } from "@/lib/core/walletProcessQueries";
 // ── Layout DSL (declared data) ───────────────────────────────────────────────
 
 /** A value drawn from the committed data — resolved by the engine, never
- *  naming a clause (leaves are found by their DECLARED FIELD) — the layout
- *  DSL vocabulary a document layout is written against. */
+ *  naming a clause or a field (leaves are found by the marks their specs
+ *  declare) — the layout DSL vocabulary a document layout is written against. */
 export type ValueRef =
     | { const: string }
     | { orderHash: true }
@@ -38,14 +40,15 @@ export type ValueRef =
     | { payment: true }                                   // smallest-unit amount (exact + verifiable)
     | { currency: true }                                  // the commitment's token, from its OrderCommitted event
     | { resolvedDate: true }                              // ISO date of resolution, or "—"
-    | { leafField: { byField: string; field: string } }  // leaf declaring `byField` → its `field`
+    | { routeEnd: "from" | "to" }                         // the route's origin or destination a spec marks (`block.checkout.endpoints`)
     | { lineItemNames: true }                             // the priced lines a spec marks → names joined
     | { sumPayments: true };                              // Σ payment over the unit's orders
 
 /** When a document applies — a declarative predicate over the committed data. */
 export type Predicate =
     | { always: true }
-    | { hasLeafField: string }          // some committed leaf declares this field
+    | { hasPart: string }            // some committed leaf's spec declares this document section (`block.runtime.documentPart`)
+    | { hasRoute: true }                // some committed leaf's spec marks a route (`block.checkout.endpoints`)
     | { hasPricedLines: true }          // some committed leaf's spec marks priced lines (`block.checkout.pricedLines`)
     | { followsAnOrder: true }          // the committed topology names a parent order
     | { all: readonly Predicate[] };    // every one of these holds
@@ -67,8 +70,9 @@ export interface DocumentLayout {
     /** Optional repeating lines — one row per order in the unit — with an optional total. */
     lines?: { fields: readonly DocumentRow[]; total?: DocumentRow };
     /** Optional whole-leaf sections, each rendered generically (every field of the leaf
-     *  declaring `byField`). This is how a BoL surfaces cargo / freight-class / mode. */
-    leafSections?: readonly { label: string; byField: string }[];
+     *  whose spec declares `part` as its `block.runtime.documentPart`). This is
+     *  how a BoL surfaces cargo / freight-class / mode. */
+    leafSections?: readonly { label: string; part: string }[];
     /** Optional footer note (constant). */
     note?: string;
 }
@@ -88,10 +92,23 @@ export interface RenderedDocument {
 
 // ── Resolution ─────────────────────────────────────────────────────────────────
 
-/** A committed clause's data, found by a declared field — never by clause id. */
-function leafByField(agreement: Agreement | undefined, fieldName: string): Record<string, unknown> | undefined {
-    const clauseEntry = agreement?.clauses.find((s) => clauseDeclaresField(s.clause, fieldName));
+/** A committed clause's data, found by the document section its spec
+ *  declares — never by clause id, never by a field's name. */
+function leafByPart(agreement: Agreement | undefined, part: string): Record<string, unknown> | undefined {
+    const clauseEntry = agreement?.clauses.find((s) => clauseDocumentPart(s.clause) === part);
     return clauseEntry?.data as Record<string, unknown> | undefined;
+}
+
+/** The committed value of one end of the route the first clause that marks a
+ *  route holds (`block.checkout.endpoints`), or "". */
+function routeEnd(agreement: Agreement | undefined, end: "from" | "to"): string {
+    for (const s of agreement?.clauses ?? []) {
+        const mark = clauseEndpoints(s.clause);
+        if (!mark) continue;
+        const v = (s.data as Record<string, unknown> | undefined)?.[mark[end]];
+        return v === undefined || v === null ? "" : String(v);
+    }
+    return "";
 }
 
 /** A "unit" a document is scoped to: its primary order/agreement (for header +
@@ -129,10 +146,7 @@ function resolve(ref: ValueRef, order: Order, unit: Unit): string {
             ? new Date(order.resolvedAt * 1000).toISOString().slice(0, 10)
             : "—";
     }
-    if ("leafField" in ref) {
-        const v = leafByField(agreementOf(order, unit.agreements), ref.leafField.byField)?.[ref.leafField.field];
-        return v === undefined || v === null ? "" : String(v);
-    }
+    if ("routeEnd" in ref) return routeEnd(agreementOf(order, unit.agreements), ref.routeEnd);
     if ("lineItemNames" in ref) {
         // Read through each spec's priced-lines mark, never a field name.
         const agreement = agreementOf(order, unit.agreements);
@@ -149,7 +163,8 @@ function resolve(ref: ValueRef, order: Order, unit: Unit): string {
 function appliesTo(pred: Predicate, agreement: Agreement | undefined): boolean {
     if (!agreement) return false;
     if ("always" in pred) return true;
-    if ("hasLeafField" in pred) return agreement.clauses.some((s) => clauseDeclaresField(s.clause, pred.hasLeafField));
+    if ("hasPart" in pred) return agreement.clauses.some((s) => clauseDocumentPart(s.clause) === pred.hasPart);
+    if ("hasRoute" in pred) return agreement.clauses.some((s) => clauseEndpoints(s.clause) !== undefined);
     if ("hasPricedLines" in pred) return readPricedLines(agreement.clauses, specSource()).length > 0;
     if ("followsAnOrder" in pred) return (topologyFollows(agreement) ?? []).length > 0;
     return pred.all.every((p) => appliesTo(p, agreement));
@@ -168,7 +183,7 @@ function render(layout: DocumentLayout, unit: Unit): RenderedDocument {
     }
     if (layout.leafSections) {
         doc.leafSections = layout.leafSections
-            .map((s) => ({ label: s.label, data: leafByField(unit.agreement, s.byField) }))
+            .map((s) => ({ label: s.label, data: leafByPart(unit.agreement, s.part) }))
             .filter((s): s is { label: string; data: Record<string, unknown> } => s.data !== undefined)
             .map((s) => ({ label: s.label, entries: Object.entries(s.data).map(([key, v]) => ({ key, value: String(v) })) }));
     }
