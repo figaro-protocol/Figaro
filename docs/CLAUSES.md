@@ -455,7 +455,8 @@ and sufficiency is derived at read time against the committed terms. The
 evidence window closes at resolution (`DESIGN_DECISIONS.md` §6).
 
 Process-log ladders are the other runtime-evidence shape: their stage is the
-enum ordinal, and no `stages` key is needed. A ladder signs the empty anchor
+ordinal of the event in the enum field `block.runtime.ladder` marks, and no
+`stages` key is needed. A ladder signs the empty anchor
 (`emptyAnchor`), and its first event is attested at stage 0 over its
 top-level fields, as any later one is; the reference frontend groups such
 clauses under the `attestations` article, which is presentation. One rule says which set an attestation's content is encoded over: at
@@ -586,9 +587,9 @@ registry's seed data; the published definition of the format is
   `composes`); `checkout`, the seller binding and the buyer filling and
   signing (`catalogueFills`, `profileFills`, `catalogueMeasures`,
   `pricedLines`, `derives`, `timeWindow`, `endpoints`, `registerLink`,
-  `heldValues`, `compositionFields`); `runtime`, the
+  `dataSources`, `heldValues`, `compositionFields`); `runtime`, the
   parties while the process runs, after commit (`interaction`, `modality`,
-  `jurisdiction`, `documentPart`, `contentDigest`). A later phase
+  `jurisdiction`, `documentPart`, `ladder`, `contentDigest`). A later phase
   may read an earlier section; no phase reads a section named for a later
   one; an attribute read in two phases is declared in the section of its
   first reader. The order is held by
@@ -602,10 +603,10 @@ registry's seed data; the published definition of the format is
   says so (`CheckoutView.tsx`).
   Reporting while the process runs is witness stages (`spec.stages`), never
   `compositionFields`. The clause key leaves `block` out, and no fingerprint reads
-  it. Ten of its attributes (`design.article`, `design.scope`, `design.fills`,
+  it. Eleven of its attributes (`design.article`, `design.scope`, `design.fills`,
   `checkout.catalogueFills`, `checkout.profileFills`,
   `checkout.catalogueMeasures`, `checkout.pricedLines`, `checkout.derives`,
-  `checkout.timeWindow`, `checkout.endpoints`;
+  `checkout.timeWindow`, `checkout.endpoints`, `checkout.dataSources`;
   `parseProjectionHints` in `sdk/src/projection.ts`)
   are the reference tooling's rules for collecting and pricing the data a
   party signs.
@@ -620,7 +621,8 @@ registry's seed data; the published definition of the format is
   mark, derived as the complement, never stored. **A field's name carries no
   meaning to any code**: a role a field plays (the order's priced lines, a
   derived value, a time window, a route's endpoints, a link to an outside
-  register, the modality, the jurisdiction, the delivery evidence, the
+  register, the processes whose data a clause grants, the modality, the
+  jurisdiction, the runtime ladder, the delivery evidence, the
   denomination pin) is read from what the spec declares, never from the
   name or the shape of its fields, so a stranger's clause naming its fields
   otherwise plays the same role (`docs/OPEN_WORLD.md` § 1).
@@ -696,6 +698,15 @@ registry's seed data; the published definition of the format is
   (`frontend/components/runtime/CredentialVerifyButton.tsx`,
   `clauseRegisterLink`). The register stays the source of truth: nothing is
   fetched or stored.
+- **`block.checkout.dataSources` marks the processes whose data a clause
+  grants access to.** It names the content field that holds them, an array
+  whose items are `string` fields of format `bytes32-hex`, each a
+  `processId`: `"sourceProcesses"` in `figaro-data-license`. The buyer of a
+  data sale reads each named process's resolution before it signs, and a
+  reader proves each disclosed leaf against those processes' `checkoutHash`
+  (`specDataSources`, `readDataSources` in `sdk/src/projection.ts`; the
+  data-sale recipe in `sdk/README.md`). A field named `sourceProcesses` with
+  no mark names no data source.
 - **`block.runtime` marks what the parties and a forum read after commit.**
   Each mark names fields by the spec's own names, and each reader holds it to
   the spec's own fields (`frontend/lib/shared/clauseSpecSource.ts`):
@@ -715,6 +726,13 @@ registry's seed data; the published definition of the format is
     another, carries a marked route and a clause of the `carriage` section.
     `figaro-cargo`, `figaro-freight-class`, `figaro-incoterms` and
     `figaro-handoff` declare one each.
+  - `ladder` names the `enum` field whose ordered values are the clause's
+    runtime ladder: the value at index k is the event a party attests at
+    stage k. `"eventType"` in `figaro-merchant-process` and
+    `figaro-courier-process`. The capability rail offers and labels each
+    party's next event through it (`clauseLadderField`,
+    `frontend/lib/semantic/deriveProcessModelFromRuntime.ts`). An enum field
+    with no mark is content, never a ladder.
   - `contentDigest` names the stage and the field where a party attests the
     keccak256 of the content it delivered over the per-order channel: `{
     "stage": 1, "field": "contentHash" }` in `figaro-content-handoff`. The

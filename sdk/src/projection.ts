@@ -110,6 +110,10 @@ export interface ProjectionHints {
     /** The spec's `block.checkout.endpoints` — which content field is the
      *  route's origin and which is its destination (`EndpointsMark`). */
     endpoints?: EndpointsMark;
+    /** The spec's `block.checkout.dataSources` — the content field that
+     *  names the processes whose data the clause grants access to
+     *  (`specDataSources`). */
+    dataSources?: string;
 }
 
 /** The mark a spec puts on its TIME WINDOW (`block.checkout.timeWindow`):
@@ -221,6 +225,8 @@ export function parseProjectionHints(rawSpec: unknown): ProjectionHints {
         if (timeWindow) hints.timeWindow = timeWindow;
         const endpoints = parseEndpointsMark(c.endpoints);
         if (endpoints) hints.endpoints = endpoints;
+        const dataSources = nonEmptyString(c.dataSources);
+        if (dataSources) hints.dataSources = dataSources;
     }
     return hints;
 }
@@ -334,29 +340,11 @@ function parseFillList(raw: unknown): readonly string[] | undefined {
     return undefined;
 }
 
-/** Whether a spec declares a top-level field named `fieldName`. Field names —
- *  not clause ids — are the binding vocabulary generic surfaces look things
- *  up by: ANY registered clause carrying the field participates. */
-export function specDeclaresField(spec: ProjectionSpecView, fieldName: string): boolean {
-    return spec.fields.some((f) => f.name === fieldName);
-}
-
-/** Whether a spec declares `fieldName` as PLAIN CONTENT — declared, and NOT a
- *  designer fill (`block.design.fills`). The disambiguating half of
- *  `specDeclaresField` for a field name two clauses legitimately share: an
- *  field may be plain content on one clause (written at checkout, one term
- *  of one order) and a DESIGNER FILL on another (authored into the assembly,
- *  a term of the composition, as a denomination pin's `currency` is). Same
- *  field name, two different terms — so surfaces that mean one of them route
- *  on the declaration, never on a clause id. */
-export function specDeclaresContentField(spec: ProjectionSpecView, fieldName: string): boolean {
-    return specDeclaresField(spec, fieldName) && !specDesignFills(spec).includes(fieldName);
-}
-
-/** Whether a spec declares `fieldName` as a DESIGNER FILL — the pin half of
- *  the pair above (`block.design.fills` carries the field). ANY clause
- *  declaring a `currency` design fill is a denomination pin, including one
- *  this code has never seen. */
+/** Whether the spec lists `fieldName` in `block.design.fills`: the designer
+ *  authors its value into the assembly. The list says who fills the field
+ *  and nothing of what it means; a reader that needs a role reads the mark
+ *  for that role (the denomination pin reads the article and the scope
+ *  beside the list, `specDenominationPinField`). */
 export function specDeclaresDesignFill(spec: ProjectionSpecView, fieldName: string): boolean {
     return specDesignFills(spec).includes(fieldName);
 }
@@ -509,6 +497,40 @@ export function specEndpoints(spec: ProjectionSpecView): EndpointsMark | undefin
     if (!mark) return undefined;
     const fields = specMarkedFields(spec, [mark.from, mark.to]);
     return fields?.every((f) => f.type === "string") ? mark : undefined;
+}
+
+/** The DATA-SOURCES mark of a clause (`block.checkout.dataSources`): the
+ *  content field that names the processes whose data the clause grants
+ *  access to, when the spec declares it as an array of `bytes32-hex`
+ *  strings (process ids). Undefined for a clause with no mark, or one its
+ *  fields contradict. A buyer reads each named process's resolution before
+ *  it signs, and a reader proves each disclosed leaf against those
+ *  processes' `checkoutHash` (`readDataSources`). */
+export function specDataSources(spec: ProjectionSpecView): string | undefined {
+    const mark = spec.hints?.dataSources;
+    if (!mark) return undefined;
+    const [field] = specMarkedFields(spec, [mark]) ?? [];
+    return field?.type === "array" && field.items.type === "string" && field.items.format === "bytes32-hex"
+        ? mark
+        : undefined;
+}
+
+/** The process ids each clause names through its data-sources mark
+ *  (`specDataSources`), one entry per clause that carries the mark. A clause
+ *  whose spec is not loaded, carries no mark, or whose marked value is not
+ *  an array contributes nothing; a value that is not a `bytes32` hex string
+ *  is skipped, never read as an id. */
+export function readDataSources(
+    clauseEntries: readonly { clause: Hex; data?: Record<string, unknown> }[],
+    specs: SpecSource,
+): { clause: Hex; sources: Hex[] }[] {
+    return clauseEntries.flatMap(({ clause, data }) => {
+        const spec = specs.get(clause);
+        const field = spec ? specDataSources(spec) : undefined;
+        const raw = field ? data?.[field] : undefined;
+        if (!Array.isArray(raw)) return [];
+        return [{ clause, sources: raw.filter((v): v is Hex => typeof v === "string" && isBytes32Hex(v)) }];
+    });
 }
 
 /** The DERIVED fields of a clause (`block.checkout.derives`): each declared
@@ -1340,34 +1362,6 @@ export function assertAgreementSignable(
                 .join("; ")}`,
         );
     }
-}
-
-// ── Reading clauses BY FIELD NAME, never by clause id ─────────────────────
-
-/** Every clause whose registered spec declares a top-level field named
- *  `fieldName`. Falls back to data-key presence only when the spec isn't
- *  loaded (a clause registered but not yet hydrated) — still keyed on the
- *  field, never on the clause id. */
-export function clausesByField(
-    agreement: Agreement,
-    fieldName: string,
-    specs: SpecSource,
-): AgreementClause[] {
-    return agreement.clauses.filter((s) => {
-        const spec = specs.get(s.clause);
-        return spec
-            ? specDeclaresField(spec, fieldName)
-            : Object.prototype.hasOwnProperty.call(s.data ?? {}, fieldName);
-    });
-}
-
-/** The first clause declaring `fieldName`, or undefined. */
-export function clauseByField(
-    agreement: Agreement,
-    fieldName: string,
-    specs: SpecSource,
-): AgreementClause | undefined {
-    return clausesByField(agreement, fieldName, specs)[0];
 }
 
 // ── Assembly building (design-time projection) ─────────────────────────────

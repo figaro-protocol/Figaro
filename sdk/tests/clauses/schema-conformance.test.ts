@@ -169,10 +169,10 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         for (const key of ["article", "scope", "nestsUnder", "fills", "composes"]) {
             expect(key in spec.block.design, `${file}: block.design.${key} must be expressed`).toBe(true);
         }
-        for (const key of ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "timeWindow", "endpoints", "registerLink", "heldValues", "compositionFields"]) {
+        for (const key of ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "timeWindow", "endpoints", "registerLink", "dataSources", "heldValues", "compositionFields"]) {
             expect(key in spec.block.checkout, `${file}: block.checkout.${key} must be expressed`).toBe(true);
         }
-        for (const key of ["interaction", "modality", "jurisdiction", "documentPart", "contentDigest"]) {
+        for (const key of ["interaction", "modality", "jurisdiction", "documentPart", "ladder", "contentDigest"]) {
             expect(key in spec.block.runtime, `${file}: block.runtime.${key} must be expressed`).toBe(true);
         }
     });
@@ -182,8 +182,8 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
     // reads under that part, and no other. The lists are the parser's.
     it.each([
         ["blockDesign", ["article", "scope", "nestsUnder", "fills", "composes"]],
-        ["blockCheckout", ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "timeWindow", "endpoints", "registerLink", "heldValues", "compositionFields"]],
-        ["blockRuntime", ["interaction", "modality", "jurisdiction", "documentPart", "contentDigest"]],
+        ["blockCheckout", ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "timeWindow", "endpoints", "registerLink", "dataSources", "heldValues", "compositionFields"]],
+        ["blockRuntime", ["interaction", "modality", "jurisdiction", "documentPart", "ladder", "contentDigest"]],
     ] as const)("the schema's %s declares the parser's attributes for that part", (def, keys) => {
         const props = (schema.$defs as Record<string, { properties: Record<string, unknown> }>)[def].properties;
         expect(Object.keys(props).sort()).toEqual([...keys].sort());
@@ -210,6 +210,9 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         ["a register-link mark naming its URI and its id", { registerLink: { uri: "lookupUrl", id: "badgeNo" } }, true],
         ["a null register-link mark", { registerLink: null }, true],
         ["a register-link mark without its id", { registerLink: { uri: "lookupUrl" } }, false],
+        ["a data-sources mark naming a field", { dataSources: "upstreamRuns" }, true],
+        ["a null data-sources mark", { dataSources: null }, true],
+        ["an empty data-sources mark", { dataSources: "" }, false],
         ["composition fields of the content-field shape", { compositionFields: [{ name: "claim", type: "string", required: true }] }, true],
         ["composition fields that are not an array", { compositionFields: {} }, false],
     ];
@@ -225,6 +228,9 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         ["a modality mark naming a field", { modality: "howServed" }, true],
         ["a null modality mark", { modality: null }, true],
         ["an empty modality mark", { modality: "" }, false],
+        ["a ladder mark naming a field", { ladder: "milestone" }, true],
+        ["a null ladder mark", { ladder: null }, true],
+        ["an empty ladder mark", { ladder: "" }, false],
         ["a jurisdiction mark naming the law alone", { jurisdiction: { law: "governedBy" } }, true],
         ["a jurisdiction mark naming the law, the forum and the language", { jurisdiction: { law: "governedBy", forum: "seat", language: "tongue" } }, true],
         ["a jurisdiction mark without its law", { jurisdiction: { forum: "seat" } }, false],

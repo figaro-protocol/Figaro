@@ -75,6 +75,7 @@
             "timeWindow": null,
             "endpoints": null,
             "registerLink": null,
+            "dataSources": null,
             "heldValues": {},
             "compositionFields": []
         },
@@ -85,6 +86,7 @@
             "modality": null,
             "jurisdiction": null,
             "documentPart": null,
+            "ladder": null,
             "contentDigest": {
                 "stage": 1,
                 "field": "contentHash"

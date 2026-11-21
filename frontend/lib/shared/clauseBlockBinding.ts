@@ -152,6 +152,13 @@ interface ClauseBlockCheckout {
      *  entry through this mark, never through the names of the fields.
      *  Null for a clause that offers no such link. */
     registerLink: RegisterLinkMark | null;
+    /** The content field that names the processes whose data the clause
+     *  grants access to: an array of `bytes32-hex` process ids. The buyer
+     *  reads each one's resolution before it signs, and a reader proves a
+     *  disclosed leaf against those processes through this mark
+     *  (`specDataSources` in the SDK). Null for a clause that names no
+     *  data sources. */
+    dataSources: string | null;
     /** The enum content fields (by name, the map's keys) whose values a
      *  checkout offers only when the chain in use holds what each value
      *  names (`HeldValuesHint`): read at checkout by the reader the hint
@@ -208,6 +215,12 @@ interface ClauseBlockRuntime {
      *  document layout uses (`frontend/lib/data/audit/documentLayouts.ts`).
      *  It names no field. Null for a clause that fills no section. */
     documentPart: string | null;
+    /** The enum content field whose ordered values are the clause's runtime
+     *  ladder: the value at index k is the event a party attests at stage k.
+     *  The capability rail offers and labels the next event through this
+     *  mark, never through the shape of the fields. Null for a clause that
+     *  carries no ladder. */
+    ladder: string | null;
     /** The stage and the field where a party attests the keccak256 of the
      *  content it delivered over a private channel (`ContentDigestMark`).
      *  Null for a clause that carries no delivery evidence. */
@@ -444,6 +457,7 @@ export function parseBlockBinding(
     let timeWindow: TimeWindowMark | null = null;
     let endpoints: EndpointsMark | null = null;
     let registerLink: RegisterLinkMark | null = null;
+    let dataSources: string | null = null;
     let heldValues: Readonly<Record<string, HeldValuesHint>> = {};
     let compositionFields: readonly FieldSpec[] = [];
     if (raw.checkout !== undefined) {
@@ -500,6 +514,13 @@ export function parseBlockBinding(
             }
             registerLink = { uri: parsed.uri!, id: parsed.id! };
         }
+        if (raw.checkout.dataSources !== undefined && raw.checkout.dataSources !== null) {
+            if (typeof raw.checkout.dataSources !== "string" || raw.checkout.dataSources.length === 0) {
+                errors.push({ path: `${path}.checkout.dataSources`, message: "dataSources must be a non-empty string or null when present" });
+                return null;
+            }
+            dataSources = raw.checkout.dataSources;
+        }
         const parsedHeld = parseHeldValues(raw.checkout.heldValues, `${path}.checkout.heldValues`, errors);
         if (parsedHeld === null) return null;
         heldValues = parsedHeld;
@@ -525,6 +546,7 @@ export function parseBlockBinding(
     let modality: string | null = null;
     let jurisdiction: JurisdictionMark | null = null;
     let documentPart: string | null = null;
+    let ladder: string | null = null;
     let contentDigest: ContentDigestMark | null = null;
     if (raw.runtime !== undefined) {
         if (!isObject(raw.runtime)) {
@@ -542,7 +564,7 @@ export function parseBlockBinding(
             }
             interaction = { interface: raw.runtime.interaction.interface };
         }
-        // Each names a field (modality) or a section (documentPart) as a
+        // Each names a field (modality, ladder) or a section (documentPart) as a
         // non-empty string; absent or null is none.
         const nameOrNull = (value: unknown, at: string): string | null | undefined => {
             if (value === undefined || value === null) return null;
@@ -556,6 +578,9 @@ export function parseBlockBinding(
         const parsedPart = nameOrNull(raw.runtime.documentPart, "documentPart");
         if (parsedPart === undefined) return null;
         documentPart = parsedPart;
+        const parsedLadder = nameOrNull(raw.runtime.ladder, "ladder");
+        if (parsedLadder === undefined) return null;
+        ladder = parsedLadder;
         if (raw.runtime.jurisdiction !== undefined && raw.runtime.jurisdiction !== null) {
             const parsed = parseFieldNameMark(raw.runtime.jurisdiction, ["law"], ["forum", "language"]);
             if (parsed === null) {
@@ -582,8 +607,8 @@ export function parseBlockBinding(
 
     return {
         design: { article: rawDesign.article as ClauseArticle, scope, nestsUnder, fills: designFills, composes },
-        checkout: { catalogueFills, profileFills, catalogueMeasures, pricedLines, derives, timeWindow, endpoints, registerLink, heldValues, compositionFields },
-        runtime: { interaction, modality, jurisdiction, documentPart, contentDigest },
+        checkout: { catalogueFills, profileFills, catalogueMeasures, pricedLines, derives, timeWindow, endpoints, registerLink, dataSources, heldValues, compositionFields },
+        runtime: { interaction, modality, jurisdiction, documentPart, ladder, contentDigest },
     };
 }
 

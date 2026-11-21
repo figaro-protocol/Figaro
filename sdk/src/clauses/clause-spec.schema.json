@@ -288,6 +288,11 @@
                     },
                     "description": "The mark on a LINK TO AN OUTSIDE REGISTER: which content field holds the register's URI template and which holds the identifier. A reader offers a link to the register's own entry from the mark, never from the names of the fields. A mark the spec's own fields contradict (a field not declared, named twice, not a string field, or a URI field not of format uri-template) marks nothing. Absent or null: the clause offers no such link."
                 },
+                "dataSources": {
+                    "type": ["string", "null"],
+                    "minLength": 1,
+                    "description": "The content field that names the PROCESSES WHOSE DATA the clause grants access to (an array field whose items are string fields of format bytes32-hex, each a processId). The buyer reads each named process's resolution before it signs, and a reader proves each disclosed leaf against the named processes' checkoutHash, through the mark, never through the name of the field. A mark the spec's own fields contradict (a field not declared, or not such an array) marks nothing. Absent or null: the clause names no data sources."
+                },
                 "compositionFields": {
                     "type": "array",
                     "items": { "$ref": "#/$defs/field" },
@@ -327,6 +332,11 @@
                     "type": ["string", "null"],
                     "minLength": 1,
                     "description": "The section of a trade document this clause fills, in the words a document layout uses (for example cargo, freight-class, delivery-terms or carriage). A layout shows the clause's committed fields under that section, and may emit a document only where a clause declares a section. It names no field. Absent or null: the clause fills no section."
+                },
+                "ladder": {
+                    "type": ["string", "null"],
+                    "minLength": 1,
+                    "description": "The content field whose ordered values are the clause's runtime LADDER (an enum field): the value at index k is the event a party attests at stage k, and each party advances its own ladder from its own attestations. A reader offers and labels the next event through the mark, never through the shape or the name of the field. A mark the spec's own fields contradict (a field not declared, or not an enum field) marks nothing. Absent or null: the clause carries no ladder."
                 },
                 "contentDigest": {
                     "type": ["object", "null"],

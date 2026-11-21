@@ -19,9 +19,11 @@
 <div class="tsd-comment tsd-typography"><p>Find every batch the verifier landed with no use counted, and the claims
 and uses it carried. The verifier resolves a batch whose call to
 <code>UsageCounter</code> reverts whole (a period boundary crossed in flight, the last
-period closed (<code>AccrualClosed</code>), a provenance mismatch, an accrual starved
-of gas) and emits <code>BatchAccrualSkipped(batchId, reason)</code>
-(<code>docs/DESIGN_DECISIONS.md</code> § 19). In the same transaction it logs the
+period closed (<code>AccrualClosed</code>), a provenance mismatch) and emits
+<code>BatchAccrualSkipped(batchId, reason)</code> (<code>docs/DESIGN_DECISIONS.md</code> § 19).
+A call its submitter starved of gas is never among them: the verifier
+reverts that batch whole (<code>AccrualStarvedOfGas</code>), so it lands nothing and
+no log of it exists. In the same transaction it logs the
 batch's operation stream in <code>BatchOperations(batchId, …)</code>, however the call
 reached it, and the stream carries each usage claim whole
 (<code>usageClaimsOfOperationStream</code>). So the answer is read from the
@@ -57,7 +59,7 @@ stream layout this SDK does not read, never a batch that carried nothing.</p>
 <li><span><span class="tsd-kind-parameter">params</span>: <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">chunkSize</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">fromBlock</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">toBlock</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;latest&quot;</span> <span class="tsd-signature-symbol">}</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.SkippedBatch.html" class="tsd-signature-type tsd-kind-interface">SkippedBatch</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L406">rpgf/index.ts:406</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L408">rpgf/index.ts:408</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

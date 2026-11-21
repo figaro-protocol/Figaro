@@ -316,8 +316,9 @@ What is emitted, and what each thing is evidence of:
 
 **Where, when, how much, and under what standard are clause TERMS, not signal types.** A
 location, a window, a temperature range or a credential is a filled field of whatever
-clause the designer composed, so an agent finds it by declared FIELD
-(`specDeclaresField`) against the spec it fetched, never by clause id — and finds nothing
+clause the designer composed, so an agent finds it by the mark the clause's spec declares
+for that role (`block.checkout.timeWindow`, `block.checkout.endpoints`; `specMarkedFields`)
+against the spec it fetched, never by clause id or by a field's name — and finds nothing
 where no such clause was composed. Absence is absence: a wallet that emitted no signal is
 unknown, not idle, and nothing stands in for it.
 
@@ -480,7 +481,7 @@ which the operator must be told rather than left to assume.
 3. **No data moats**: Competitors and collaborators see the same signals.
    Advantage comes from better *interpretation*, not better *access*.
 4. **Spec-routed agents port; example-shaped ones don't**: an agent that routes by the
-   fields a clause DECLARES — read from the spec it fetched (`specDeclaresField`) — works
+   marks a clause's spec DECLARES — read from the spec it fetched (`specMarkedFields`) — works
    over every assembly composing that clause, whoever designed it and whatever is being
    traded. One that branches on a clause id, an assembly, or a worked example works until
    the next registration. Local commerce is one example among unbounded kinds, never the

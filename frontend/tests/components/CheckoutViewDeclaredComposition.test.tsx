@@ -6,7 +6,8 @@
  * one line that this frontend does not perform the interface. The clause is a
  * stranger's, built here: an id, an interface and field names the repository
  * has never seen. It holds alike in the root order, a bound sub-order and an
- * unbound sub-order.
+ * unbound sub-order. A clause that declares a composition with no
+ * composition field gets no line, in each of the three.
  */
 import React from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -120,18 +121,34 @@ const STRANGER = pinSpec({
     },
 });
 
+// A stranger's clause that declares a composition and no composition field:
+// a forum linked after the commit, performed elsewhere.
+const NO_FIELDS = pinSpec({
+    clauseId: "zq-forum-link-3",
+    version: 1,
+    title: "Forum link",
+    description: "A clause from outside the repository that names a forum and asks for nothing at checkout.",
+    fields: [],
+    block: {
+        design: { article: "zq-article", scope: "agreement", nestsUnder: null, fills: [], composes: { interface: "zq-forum", forumUrl: "https://forum.zq.example" } },
+        checkout: { catalogueFills: [], profileFills: [], compositionFields: [] },
+        runtime: { interaction: null },
+    },
+});
+
 const LINE = 'Bridge escrow declares the zq-bridge-escrow interface, which this frontend does not perform; the order is placed without it.';
 
 beforeAll(async () => {
-    setClauseSpecFetcher(async () => STRANGER.bytes);
+    setClauseSpecFetcher(async (uri) => (uri === "mem://no-fields" ? NO_FIELDS.bytes : STRANGER.bytes));
     await loadClauseSpec(STRANGER.clauseKey as Hex, "mem://stranger");
+    await loadClauseSpec(NO_FIELDS.clauseKey as Hex, "mem://no-fields");
 });
 
-async function renderWith(node: "agreement-0" | "agreement-1" | "agreement-2") {
+async function renderWith(node: "agreement-0" | "agreement-1" | "agreement-2", clauseKey: string = STRANGER.clauseKey) {
     m.agreements = node === "agreement-0"
         ? [{ id: "agreement-0" }]
         : [{ id: "agreement-0" }, { id: "agreement-1" }, { id: "agreement-2" }];
-    m.clausesByNode = { [node]: { [STRANGER.clauseKey]: {} } };
+    m.clausesByNode = { [node]: { [clauseKey]: {} } };
     const view = render(<CheckoutView sellerAddress={SELLER} />);
     await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
     return view;
@@ -149,6 +166,17 @@ describe("CheckoutView — a clause that declares a composition with composition
         expect(lines[0]!.textContent).toBe(LINE);
         expect(container.querySelector('[data-testid^="composition-"]')).toBeNull();
         expect(container.textContent).not.toMatch(/Bridge target/);
+    });
+
+    it.each([
+        ["the root order", "agreement-0"],
+        ["a bound sub-order", "agreement-1"],
+        ["an unbound sub-order", "agreement-2"],
+    ] as const)("in %s: a composition with no fields shows no line", async (_where, node) => {
+        const { container } = await renderWith(node, NO_FIELDS.clauseKey);
+        expect(screen.queryByTestId("checkout-composition-not-performed")).toBeNull();
+        expect(container.textContent).not.toMatch(/Forum link declares/);
+        expect(screen.getByTestId("btn-place-order")).toBeInTheDocument();
     });
 
     it("in the root order: the order can be placed with the required composition field never filled", async () => {

@@ -16,10 +16,11 @@
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="specdeclaresdesignfill"><span class="tsd-kind-call-signature">specDeclaresDesignFill</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">spec</span><span class="tsd-signature-symbol">:</span> <a href="../types/index.ProjectionSpecView.html" class="tsd-signature-type tsd-kind-type-alias">ProjectionSpecView</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">fieldName</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#specdeclaresdesignfill" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Whether a spec declares <code>fieldName</code> as a DESIGNER FILL — the pin half of
-the pair above (<code>block.design.fills</code> carries the field). ANY clause
-declaring a <code>currency</code> design fill is a denomination pin, including one
-this code has never seen.</p>
+<div class="tsd-comment tsd-typography"><p>Whether the spec lists <code>fieldName</code> in <code>block.design.fills</code>: the designer
+authors its value into the assembly. The list says who fills the field
+and nothing of what it means; a reader that needs a role reads the mark
+for that role (the denomination pin reads the article and the scope
+beside the list, <code>specDenominationPinField</code>).</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -28,7 +29,7 @@ this code has never seen.</p>
 <li><span><span class="tsd-kind-parameter">fieldName</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L360">projection.ts:360</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L348">projection.ts:348</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

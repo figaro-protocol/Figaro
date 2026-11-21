@@ -57,10 +57,10 @@ export function makeProbeSpec(clauseId: string, title: string, version: number =
                 description: 'Probe lifecycle stage.',
             },
         ],
-        // Deliberately MINIMAL block (design.article only, no other clause):
-        // a third-party spec omitting attributes must still surface —
+        // Deliberately MINIMAL block (design.article and the ladder mark
+        // only): a third-party spec omitting attributes must still surface —
         // absence degrades to empty values (resolved-empty = absence).
-        block: { design: { article: 'attestations' } },
+        block: { design: { article: 'attestations' }, runtime: { ladder: 'probeStage' } },
     };
 }
 

@@ -469,9 +469,10 @@ definition) and `RPGF_*` constant is a **root** export.
 | `resolveAuthoredClauseKeys` | root | SEED-TIME authoring only: rewrite the clause NAMES in a assembly or member document you wrote by name to the keys of the specs you loaded (`name@version` disambiguates); never a read path. |
 | `resolveSubOrderPricing` | root | Price a sub-order live from its own contributor's catalog. |
 | `restoreSignedProcessId` | root | Turn an event-derived ROOT commitment back into the struct that was signed (`processId = 0`). |
-| `clauseByField` | root | Find the agreement clause whose spec DECLARES a field — never look one up by clause name. |
 | `specMarkedFields` | root | The fields a `block` mark names, by the spec's own names, when the spec declares each once; undefined when the spec's own fields contradict the mark. |
 | `specEndpoints` | root | A clause's route mark (`block.checkout.endpoints`) when its origin and destination are two declared string fields; undefined otherwise. |
+| `specDataSources` | root | A clause's data-sources mark (`block.checkout.dataSources`) when it names a declared array of `bytes32-hex` strings; undefined otherwise. |
+| `readDataSources` | root | The process ids each clause of an agreement names through its data-sources mark: the processes whose data the clause grants access to. |
 | `hashClauseData` | root | A clause's canonical-JSON fingerprint; a content-withheld clause carries it directly. |
 | `selectRaceWinner` | `/agent` | Cheapest verified countersigner wins; ties break by arrival order. |
 | `SequencerClient` | `/agent` | HTTP client for a sequencer relay — submission (the batch path's entry point) and the relay's own status. |
@@ -2670,9 +2671,10 @@ so provenance never rests on the seller's word.
 
 Four moments below. The clause ids named are **worked examples of an open set**,
 never a fixed corpus: a designer can compose different clauses for the same
-trade, so route by the field a clause DECLARES (`sourceProcesses`,
-`contentHandoff`, `licenseScope`) with `clauseByField`, never by matching a
-name.
+trade, so read a clause's role from the mark its spec declares, never from a
+clause id or a field's name. The processes whose data a clause grants access
+to are the field its spec marks in `block.checkout.dataSources`
+(`figaro-data-license` marks `sourceProcesses`), read with `readDataSources`.
 
 ### 1. SELL — the data product is a catalog item
 
@@ -2735,9 +2737,8 @@ assertAgreementSignable(agreement, checkoutHash, specs, commitment, hydrated, "d
 // The buyer signs only over sources that have RESOLVED: the leaf authenticates
 // only against a resolved source, since a source still open can take
 // attestations after the sale commits, and commit reads no process but its own.
-// Read the ids off the agreement by declared field, then ask the chain.
-const sourceIds = (clauseByField(agreement, "sourceProcesses", specs)?.data
-  ?.sourceProcesses ?? []) as `0x${string}`[];
+// Read the ids off the agreement through the data-sources mark, then ask the chain.
+const sourceIds = readDataSources(agreement.clauses, specs).flatMap((r) => r.sources);
 const open = (await fetchProcessesResolved(
   client, addresses, sourceIds, BigInt(record.deploymentBlock)))
   .filter((s) => !s.resolved);
@@ -2818,12 +2819,14 @@ fact:
 import {
   fetchCoreEvents, fetchProcessesResolved, computeCheckoutHash,
   buildSignedClauseInclusionProof, verifyInclusionProof,
-  withholdClauseContent, clauseByField,
+  withholdClauseContent, readDataSources,
 } from "@figaro-protocol/sdk";
 
-// (a) Read the provenance anchors off the license by DECLARED FIELD.
-const license = clauseByField(saleAgreement, "sourceProcesses", specs);
-const sourceIds = license!.data!.sourceProcesses as `0x${string}`[];
+// (a) Read the provenance anchors off the license through its data-sources
+//     mark (block.checkout.dataSources), whatever the field is called.
+const [license] = readDataSources(saleAgreement.clauses, specs);
+if (!license) throw new Error("no clause of the sale names its data sources");
+const sourceIds = license.sources;
 
 // (b) The ROOT comes from the chain, never from the licensor. OrderCommitted
 //     carries the checkoutHash the two parties actually signed.

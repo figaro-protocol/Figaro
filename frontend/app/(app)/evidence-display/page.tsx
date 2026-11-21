@@ -91,11 +91,23 @@ function isAllowedRpcUrl(url: string): boolean {
     }
 }
 
+/** What backs a row: the contract whose log the chain holds for it. Every
+ *  row of this page is such a log, never a pinned file or a party's held
+ *  copy. The batch path's rows are the batch verifier's logs; on the direct
+ *  path an attestation is the coordinator's log, and a commit or a
+ *  resolution is the Core's. */
+function backingOf(event: TimelineEvent, timeline: ProcessTimeline): { contract: string; address: string | null } {
+    if (event.universe === "batch") return { contract: "FigaroBatchVerifier", address: timeline.batchVerifierAddress };
+    if (event.eventName === "Attestation") return { contract: "AttestationCoordinator", address: timeline.coordinatorAddress };
+    return { contract: "FigaroCore", address: timeline.coreAddress };
+}
+
 // ---------------------------------------------------------------------------
 // Timeline Event Card
 // ---------------------------------------------------------------------------
 
-function TimelineEventCard({ event, index }: { event: TimelineEvent; index: number }) {
+function TimelineEventCard({ event, index, timeline }: { event: TimelineEvent; index: number; timeline: ProcessTimeline }) {
+    const backing = backingOf(event, timeline);
     const dotColor = EVENT_COLORS[event.eventName] ?? "bg-gray-400";
     const detailEntries = Object.entries(event.details).filter(([, v]) => v !== "");
 
@@ -143,6 +155,10 @@ function TimelineEventCard({ event, index }: { event: TimelineEvent; index: numb
                 {/* Tx hash link */}
                 <div className="mt-2 text-xs text-ink-muted font-mono truncate" title={event.txHash}>
                     tx: {event.txHash}
+                </div>
+                <div className="mt-1 text-xs text-ink-muted" data-testid="evidence-event-backing" data-backing="chain">
+                    Backed by the chain: the {event.eventName} log of {backing.contract}
+                    {backing.address ? <span className="font-mono" title={backing.address}> {truncateHex(backing.address)}</span> : null}
                 </div>
             </div>
         </div>
@@ -352,7 +368,7 @@ function EvidenceDisplayContent() {
                         </p>
                     ) : (
                         timeline.events.map((ev, i) => (
-                            <TimelineEventCard key={`${ev.txHash}-${ev.orderHash}-${i}`} event={ev} index={i} />
+                            <TimelineEventCard key={`${ev.txHash}-${ev.orderHash}-${i}`} event={ev} index={i} timeline={timeline} />
                         ))
                     )}
                 </div>
@@ -360,9 +376,9 @@ function EvidenceDisplayContent() {
                 {/* Footer */}
                 <footer className="mt-8 pt-4 border-t border-default text-center">
                     <p className="text-xs text-ink-muted">
-                        All data sourced from on-chain events emitted by FigaroCore at{" "}
-                        <span className="font-mono">{truncateHex(timeline.coreAddress)}</span>
-                        {" "}on chain {timeline.chainId}. Events are immutable and block-timestamped.
+                        Every row is a log the chain holds on chain {timeline.chainId}, emitted by the contract the
+                        row names. No row rests on a pinned file or on a copy a party holds. Logs are immutable and
+                        block-timestamped.
                     </p>
                 </footer>
             </article>

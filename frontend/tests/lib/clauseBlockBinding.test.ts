@@ -222,25 +222,27 @@ describe("parseBlockBinding — clause block-binding (sectioned UI half)", () =>
             runtime: { interaction: null, fields: [{ name: "openingClaim", type: "string", required: true }] },
         });
         expect(errors).toEqual([]);
-        expect(block?.runtime).toEqual({ interaction: null, modality: null, jurisdiction: null, documentPart: null, contentDigest: null });
+        expect(block?.runtime).toEqual({ interaction: null, modality: null, jurisdiction: null, documentPart: null, ladder: null, contentDigest: null });
         expect(block?.checkout.compositionFields).toEqual([]);
     });
 
-    it("preserves checkout.registerLink and the runtime marks under the spec's own field names, and reads their absence as none", () => {
+    it("preserves checkout.registerLink, checkout.dataSources and the runtime marks under the spec's own field names, and reads their absence as none", () => {
         const registerLink = { uri: "lookupUrl", id: "badgeNo" };
         const jurisdiction = { law: "governedBy", forum: "seat" };
         const contentDigest = { stage: 3, field: "fileDigest" };
         const { block, errors } = parse({
             design: { article: "terms" },
-            checkout: { registerLink },
-            runtime: { modality: "servedAs", jurisdiction, documentPart: "cargo", contentDigest },
+            checkout: { registerLink, dataSources: "upstreamRuns" },
+            runtime: { modality: "servedAs", jurisdiction, documentPart: "cargo", ladder: "milestone", contentDigest },
         });
         expect(errors).toEqual([]);
         expect(block?.checkout.registerLink).toEqual(registerLink);
-        expect(block?.runtime).toEqual({ interaction: null, modality: "servedAs", jurisdiction, documentPart: "cargo", contentDigest });
+        expect(block?.checkout.dataSources).toBe("upstreamRuns");
+        expect(block?.runtime).toEqual({ interaction: null, modality: "servedAs", jurisdiction, documentPart: "cargo", ladder: "milestone", contentDigest });
         const bare = parse({ design: { article: "terms" }, runtime: { modality: null } }).block;
         expect(bare?.checkout.registerLink).toBeNull();
-        expect(bare?.runtime).toEqual({ interaction: null, modality: null, jurisdiction: null, documentPart: null, contentDigest: null });
+        expect(bare?.checkout.dataSources).toBeNull();
+        expect(bare?.runtime).toEqual({ interaction: null, modality: null, jurisdiction: null, documentPart: null, ladder: null, contentDigest: null });
     });
 
     it.each([
@@ -248,7 +250,9 @@ describe("parseBlockBinding — clause block-binding (sectioned UI half)", () =>
         ["runtime.modality", { runtime: { modality: "" } }],
         ["runtime.jurisdiction", { runtime: { jurisdiction: { forum: "seat" } } }],
         ["runtime.jurisdiction", { runtime: { jurisdiction: { law: "governedBy", language: "" } } }],
+        ["checkout.dataSources", { checkout: { dataSources: "" } }],
         ["runtime.documentPart", { runtime: { documentPart: 7 } }],
+        ["runtime.ladder", { runtime: { ladder: ["milestone"] } }],
         ["runtime.contentDigest", { runtime: { contentDigest: { stage: 256, field: "fileDigest" } } }],
         ["runtime.contentDigest", { runtime: { contentDigest: { stage: 1 } } }],
     ])("rejects a malformed %s mark", (at, parts) => {
