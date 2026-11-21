@@ -63,14 +63,16 @@ import type { Page } from '@playwright/test';
 
 /** The kept private witness entry in this browser whose place ends at the
  *  content reference, read out of band from localStorage; null when none. */
-function keptEntryAt(page: Page, contentRef: string): Promise<string | null> {
-    return page.evaluate((suffix) => {
+function keptEntryAt(page: Page, holder: string, contentRef: string): Promise<string | null> {
+    return page.evaluate(({ owner, suffix }) => {
         for (let i = 0; i < window.localStorage.length; i++) {
             const key = window.localStorage.key(i)!;
-            if (key.startsWith('figaro-kept-witness-content:') && key.endsWith(suffix)) return window.localStorage.getItem(key);
+            if (key.startsWith('figaro-kept-witness-content:') && key.toLowerCase().includes(owner) && key.endsWith(suffix)) {
+                return window.localStorage.getItem(key);
+            }
         }
         return null;
-    }, contentRef);
+    }, { owner: holder.toLowerCase(), suffix: contentRef });
 }
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -361,7 +363,7 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
             timeout: 60000, message: "the seller's stage-1 completion evidence lands on-chain",
         }).toBe(1);
         const contentRef = ((await sellerFilings())[0].args.contentRef as string).toLowerCase();
-        const sellerKept = await keptEntryAt(page, contentRef);
+        const sellerKept = await keptEntryAt(page, SELLER, contentRef);
         expect(sellerKept, "the seller's browser keeps the private stage-1 content it attested").toBeTruthy();
         const keptContent = (JSON.parse(sellerKept!) as { content: Hex }).content;
         expect(keccak256(keptContent).toLowerCase(), 'the kept bytes hash to the on-chain contentRef').toBe(contentRef);
@@ -393,10 +395,10 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         ).toBeVisible({ timeout: 60000 });
         // Out of band: the buyer's browser keeps the content it verified as a
         // copy received from the seller, at the place the chain names.
-        await expect.poll(() => keptEntryAt(page, contentRef), {
+        await expect.poll(() => keptEntryAt(page, BUYER, contentRef), {
             timeout: 30000, message: "the buyer keeps the seller's stage-1 content it verified",
         }).toBeTruthy();
-        const buyerKept = await keptEntryAt(page, contentRef);
+        const buyerKept = await keptEntryAt(page, BUYER, contentRef);
         const buyerEntry = JSON.parse(buyerKept!) as { content: Hex; received?: boolean };
         expect(buyerEntry.content.toLowerCase(), 'the buyer holds the bytes the seller attested').toBe(keptContent.toLowerCase());
         expect(buyerEntry.received, 'the copy is marked received from the seller').toBe(true);

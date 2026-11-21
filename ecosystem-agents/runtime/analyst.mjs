@@ -266,6 +266,45 @@ export async function corroborateEndpoints({
     }
 }
 
+/** How many witness contents one pass reads from the gateways at a time. */
+export const RECOVER_CONCURRENCY = 8;
+
+/**
+ * The content of each attestation, read by its content reference, in the
+ * attestations' order. A party keeps private content and never pins it, and
+ * an unpinned address times a gateway out rather than answering, so the
+ * reads run `RECOVER_CONCURRENCY` at a time: one pass waits for the slowest
+ * read of each group, never for the sum of every absent content. A read
+ * that fails or finds nothing is absence for this pass, never a fabricated
+ * payload and never a failed sync. Every recovered payload is framed at the
+ * moment it arrives: it is attacker-authorable data, and whatever hands it
+ * to a model must hand it framed.
+ */
+export async function recoverWitnessContents(attestations, {
+    gateways, recoverSubstance = true, fetchContent = fetchWitnessContent, concurrency = RECOVER_CONCURRENCY,
+} = {}) {
+    const recovered = attestations.map((event) => ({ event, content: null }));
+    const framedSubstance = new Map();
+    let substanceRecovered = 0;
+    if (!recoverSubstance) return { recovered, framedSubstance, substanceRecovered };
+    for (let start = 0; start < recovered.length; start += concurrency) {
+        await Promise.all(recovered.slice(start, start + concurrency).map(async (entry) => {
+            try {
+                const hit = await fetchContent(entry.event.contentRef, { gateways });
+                if (!hit) return;
+                entry.content = hit.content;
+                substanceRecovered += 1;
+                framedSubstance.set(entry.event.contentRef.toLowerCase(), frame({
+                    source: "attestation-content", refKind: "cid", ref: hit.cid, content: hit.content,
+                }));
+            } catch {
+                // A gateway outage is absence for this pass.
+            }
+        }));
+    }
+    return { recovered, framedSubstance, substanceRecovered };
+}
+
 /**
  * One full pass: fetch, recover, project. Returns the corpus every query folds
  * over. `recoverSubstance: false` skips step 2 entirely — the resolution
@@ -318,28 +357,9 @@ export async function syncCorpus({
     // 2. RECOVER — substance at the edge. Every recovered payload is FRAMED at
     //    the moment it arrives: it is attacker-authorable data, and whatever
     //    hands it to a model must hand it framed.
-    const recovered = [];
-    const framedSubstance = new Map();
-    let substanceRecovered = 0;
-    for (const event of attestations) {
-        let content = null;
-        if (recoverSubstance) {
-            try {
-                const hit = await fetchWitnessContent(event.contentRef, { gateways });
-                if (hit) {
-                    content = hit.content;
-                    substanceRecovered += 1;
-                    framedSubstance.set(event.contentRef.toLowerCase(), frame({
-                        source: "attestation-content", refKind: "cid", ref: hit.cid, content: hit.content,
-                    }));
-                }
-            } catch {
-                // A gateway outage is absence for THIS pass, never a fabricated
-                // payload and never a failed sync.
-            }
-        }
-        recovered.push({ event, content });
-    }
+    const { recovered, framedSubstance, substanceRecovered } = await recoverWitnessContents(
+        attestations, { gateways, recoverSubstance },
+    );
 
     const held = loadHeldAgreements(agreementsDir, core);
 
