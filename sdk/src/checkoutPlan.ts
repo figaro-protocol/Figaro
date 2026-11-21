@@ -18,12 +18,14 @@
 import { parseUnits } from "viem";
 import { geohashCentroidDistanceKm } from "./derive/geo.js";
 import { GEOHASH_FORMAT } from "./clauses/index.js";
-import { ownValue, type StringFieldSpec } from "./clauses/spec.js";
+import { ownValue } from "./clauses/spec.js";
 import {
     specCatalogFills,
     specCatalogueMeasures,
     specCheckoutDerivations,
     specDenominationPinField,
+    specEndpoints,
+    specMarkedFields,
     specPricedLines,
     specProfileFills,
     withSpecDefaults,
@@ -775,16 +777,6 @@ function resolveCheckoutQuantity(ctx: RateQuantityContext): number | null {
     return typeof q === "number" && Number.isFinite(q) && q > 0 ? q : null;
 }
 
-/** The two distinct fields a mark names, when the spec declares both as
- *  string content fields; undefined when the spec's own fields contradict
- *  the mark. */
-function markedStringPair(spec: ProjectionSpecView, a: string, b: string): [StringFieldSpec, StringFieldSpec] | undefined {
-    if (a === b) return undefined;
-    const fa = spec.fields.find((f) => f.name === a);
-    const fb = spec.fields.find((f) => f.name === b);
-    return fa?.type === "string" && fb?.type === "string" ? [fa, fb] : undefined;
-}
-
 /** The route's two endpoints, origin first, as the clause's spec marks them
  *  (`block.checkout.endpoints`), or undefined. Each marked field names a
  *  declared sibling in `formatFromField`, and that sibling's committed value
@@ -799,12 +791,12 @@ function markedEndpoints(
     spec: ProjectionSpecView,
     values: Record<string, unknown> | undefined,
 ): { from: string; to: string } | undefined {
-    const mark = spec.hints?.endpoints;
-    if (!mark) return undefined;
-    const pair = markedStringPair(spec, mark.from, mark.to);
-    if (!pair) return undefined;
+    const mark = specEndpoints(spec);
+    const pair = mark && specMarkedFields(spec, [mark.from, mark.to]);
+    if (!mark || !pair) return undefined;
     const declared = new Set(spec.fields.map((f) => f.name));
-    const geohash = pair.every((f) => typeof f.formatFromField === "string"
+    const geohash = pair.every((f) => f.type === "string"
+        && typeof f.formatFromField === "string"
         && declared.has(f.formatFromField)
         && ownValue(values, f.formatFromField) === GEOHASH_FORMAT);
     return geohash ? { from: mark.from, to: mark.to } : undefined;
@@ -848,8 +840,8 @@ const ISO_DATETIME_FORMAT = "iso-datetime";
 function markedTimeWindow(spec: ProjectionSpecView): { start: string; end: string } | undefined {
     const mark = spec.hints?.timeWindow;
     if (!mark) return undefined;
-    const pair = markedStringPair(spec, mark.start, mark.end);
-    return pair?.every((f) => f.format === ISO_DATETIME_FORMAT) ? { start: mark.start, end: mark.end } : undefined;
+    const pair = specMarkedFields(spec, [mark.start, mark.end]);
+    return pair?.every((f) => f.type === "string" && f.format === ISO_DATETIME_FORMAT) ? { start: mark.start, end: mark.end } : undefined;
 }
 
 function resolveBookingWindowHours(ctx: RateQuantityContext): number | null {

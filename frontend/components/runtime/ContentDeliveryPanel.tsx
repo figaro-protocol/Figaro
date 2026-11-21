@@ -5,13 +5,13 @@
  * standard: the counterparty-private content ceremony on an order whose
  * clause commits a digital hand-off (the declaring clause's
  * `encrypted-transfer` mode; its other modes — repository-grant,
- * public-release — need no ceremony and run through the stage-1 witness
+ * public-release — need no ceremony and run through the witness
  * form alone).
  *
  * SYMMETRIC over one order edge, like the address ceremony: either party
  * may REQUEST (ephemeral pubkey over the coordination channel) and either
  * may ANSWER (the artifact, ECDH-encrypted to the counterparty). The
- * answering party files the spec's stage-1 attestation with the artifact's
+ * answering party files the attestation its spec marks (`block.runtime.contentDigest`) with the artifact's
  * keccak256 — the completion evidence, merkle-bound to the agreement — and
  * the receiver verifies by REHASHING what it decrypted against that
  * on-chain anchor. The chain never learns the bytes. Where the stage-1 set
@@ -21,7 +21,7 @@
  *
  * The channel subscription, authentication contract, and anchor polling
  * live in `useCeremonyChannel`; this panel owns the artifact codec (the
- * stage-1 evidence shape) and the JSX.
+ * evidence shape the spec marks) and the JSX.
  *
  * Mounted by the interactionSurfaces registry — this component knows no
  * clause; `clauseKey` identifies the declaring clause for the attestation
@@ -29,10 +29,10 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-    COMPLETION_STAGE,
     CONTENT_DELIVERY_MAX_BYTES,
     completionEvidenceAnchor,
     contentCeremonyId,
+    contentDigestOf,
     contentHashOfBytes,
     decryptContentDelivery,
     keepVerifiedCompletionEvidence,
@@ -53,7 +53,7 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller, path
     const ceremonyId = contentCeremonyId(orderHash);
     const [sent, setSent] = useState<`0x${string}` | null>(null);
 
-    // Rebuild the stage-1 evidence from what was decrypted (the rehash,
+    // Rebuild the marked evidence from what was decrypted (the rehash,
     // and a private set's blinding value from the sealed envelope); the
     // event binds contentRef = keccak(content), filed by the sender under
     // this clause at the completion stage. Null where the spec is not
@@ -61,8 +61,9 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller, path
     const expectedAnchor = useCallback(
         (delivered: DeliveredContent, _blobB64: string, sender: string) => {
             const spec = getClauseSpec(clauseKey);
+            const digest = spec ? contentDigestOf(spec) : undefined;
             const contentRef = spec ? completionEvidenceAnchor(spec, delivered) : null;
-            return contentRef ? { contentRef, clauseId: clauseKey, stage: COMPLETION_STAGE, attester: sender } : null;
+            return contentRef && digest ? { contentRef, clauseId: clauseKey, stage: digest.stage, attester: sender } : null;
         },
         [clauseKey],
     );
@@ -91,7 +92,7 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller, path
     const handleSend = useCallback(async (file: File) => {
         const contentHash = await deliver("Delivering the content failed.", async (ctx) => {
             const bytes = new Uint8Array(await file.arrayBuffer());
-            // The spec's stage-1 completion evidence, prepared before the
+            // The completion evidence the spec marks, prepared before the
             // send so a private set's blinding value travels sealed in the
             // envelope; the coordinator merkle-binds the content, and the
             // submitter keeps a private set's content before sending, as
@@ -99,6 +100,7 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller, path
             const spec = getClauseSpec(clauseKey);
             if (!spec) throw new Error(`Clause spec not loaded: ${clauseKey}`);
             const evidence = prepareCompletionEvidence(spec, contentHashOfBytes(bytes));
+            if (!evidence) throw new Error("The clause's spec marks no field for the delivered content's hash.");
             const { contentHash } = await sendContentDelivery(ctx.channel, {
                 myAddress: ctx.address, recipientAddress: ctx.counterparty, orderId: orderHash,
                 recipientPubKeyHex: ctx.peerPubKey,
@@ -109,7 +111,7 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller, path
             return {
                 attestation: {
                     clauseId: clauseKey,
-                    stage: COMPLETION_STAGE,
+                    stage: evidence.stage,
                     content: evidence.content,
                     anchorFailureMessage: "Anchoring the completion evidence failed",
                 },

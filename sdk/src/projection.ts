@@ -484,6 +484,33 @@ export function specPricedLines(spec: ProjectionSpecView): PricedLinesMark | und
     return mark;
 }
 
+/** The top-level fields a mark names, in the mark's order, when the spec
+ *  declares each of them and no name appears twice; undefined when the
+ *  spec's own fields contradict the mark. Each mark's reader then checks the
+ *  types its role needs. It reads no field name of its own. */
+export function specMarkedFields(spec: { readonly fields: readonly FieldSpec[] }, names: readonly string[]): FieldSpec[] | undefined {
+    if (new Set(names).size !== names.length) return undefined;
+    const found: FieldSpec[] = [];
+    for (const name of names) {
+        const field = spec.fields.find((f) => f.name === name);
+        if (!field) return undefined;
+        found.push(field);
+    }
+    return found;
+}
+
+/** The ROUTE mark of a clause (`block.checkout.endpoints`), when the spec's
+ *  own fields bear it out: the origin and the destination are two distinct
+ *  declared `string` fields. Undefined for a clause with no mark, or one
+ *  its fields contradict. A reader that needs a standard for the values
+ *  (the distance source's geohash) checks it over the committed values. */
+export function specEndpoints(spec: ProjectionSpecView): EndpointsMark | undefined {
+    const mark = spec.hints?.endpoints;
+    if (!mark) return undefined;
+    const fields = specMarkedFields(spec, [mark.from, mark.to]);
+    return fields?.every((f) => f.type === "string") ? mark : undefined;
+}
+
 /** The DERIVED fields of a clause (`block.checkout.derives`): each declared
  *  content field the checkout computes, with its rule and inputs. A key the
  *  spec does not declare as a field is left out, and so is an entry whose

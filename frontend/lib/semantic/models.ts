@@ -220,10 +220,10 @@ export interface ProcessModel {
     /** The chain's root (`isProcessRoot`); null when the read holds no root. */
     rootOrderId: string | null;
     currency?: `0x${string}`;
-    /** The root order's committed modality code (the modality clause's
-     *  single-select `modality` value), surfaced by the builder so the order
-     *  page can show it without reading a clause itself. Null when
-     *  uncommitted. */
+    /** The root order's committed modality: the value of the field a
+     *  committed clause's spec marks (`block.runtime.modality`), surfaced by
+     *  the builder so the order page can show it without reading a clause
+     *  itself. Null when no committed clause marks one. */
     rootModality?: string | null;
     orders: OrderNodeModel[];
     capabilities: CapabilityModel[];

@@ -585,9 +585,10 @@ registry's seed data; the published definition of the format is
   agreements and assemblies (`article`, `scope`, `nestsUnder`, `fills`,
   `composes`); `checkout`, the seller binding and the buyer filling and
   signing (`catalogueFills`, `profileFills`, `catalogueMeasures`,
-  `pricedLines`, `derives`, `timeWindow`, `endpoints`, `heldValues`,
-  `compositionFields`); `runtime`, the
-  parties while the process runs, after commit (`interaction`). A later phase
+  `pricedLines`, `derives`, `timeWindow`, `endpoints`, `registerLink`,
+  `heldValues`, `compositionFields`); `runtime`, the
+  parties while the process runs, after commit (`interaction`, `modality`,
+  `jurisdiction`, `documentPart`, `contentDigest`). A later phase
   may read an earlier section; no phase reads a section named for a later
   one; an attribute read in two phases is declared in the section of its
   first reader. The order is held by
@@ -618,10 +619,13 @@ registry's seed data; the published definition of the format is
   list, no `catalogueMeasures` entry, no `derives` entry and no `pricedLines`
   mark, derived as the complement, never stored. **A field's name carries no
   meaning to any code**: a role a field plays (the order's priced lines, a
-  derived value, a time window, a route's endpoints, the denomination pin) is
-  read from what the spec declares, never from the shape of its fields,
-  so a stranger's clause naming its fields otherwise plays the same role
-  (`docs/OPEN_WORLD.md` § 1).
+  derived value, a time window, a route's endpoints, a link to an outside
+  register, the modality, the jurisdiction, the delivery evidence, the
+  denomination pin) is read from what the spec declares, never from the
+  name or the shape of its fields, so a stranger's clause naming its fields
+  otherwise plays the same role (`docs/OPEN_WORLD.md` § 1).
+  `frontend/tests/lib/noFieldNameReads.test.ts` fails where a frontend or SDK
+  module names a field a reference spec declares.
 - **`block.checkout.pricedLines` marks the order's priced lines.** It names the
   top-level array field that holds the lines and the field of each line item
   that plays each role: `{ "field": "lineItems", "item": "itemId", "name":
@@ -681,7 +685,45 @@ registry's seed data; the published definition of the format is
   mark it can read; otherwise the item stays unpriced
   (`unresolvable-quantity`). The marks steer the reference tooling's pricing
   only: the payment the parties sign is the commitment's, and another
-  frontend may price differently.
+  frontend may price differently. The audit's bill of lading shows the
+  route's two ends through the same `endpoints` mark (`specEndpoints`).
+- **`block.checkout.registerLink` marks a link to an outside register.** It
+  names the content field that holds the register's address, a `string` field
+  of format `uri-template` with an `{id}` placeholder, and the `string` field
+  that holds the identifier: `{ "uri": "credentialRegisterUri", "id":
+  "credentialId" }` in `figaro-credential`. The checkout and the audit offer a
+  Verify link to the register's own entry through it
+  (`frontend/components/runtime/CredentialVerifyButton.tsx`,
+  `clauseRegisterLink`). The register stays the source of truth: nothing is
+  fetched or stored.
+- **`block.runtime` marks what the parties and a forum read after commit.**
+  Each mark names fields by the spec's own names, and each reader holds it to
+  the spec's own fields (`frontend/lib/shared/clauseSpecSource.ts`):
+  - `modality` names the field that holds how the order is fulfilled, a
+    `string` or `enum` field: `"modality"` in `figaro-modalities`. The order
+    page and the audit's contract document show its committed value
+    (`committedModality`).
+  - `jurisdiction` names the field of the governing law, and, when the clause
+    carries them, the fields of the forum and of the language, each a `string`
+    or `enum` field: `{ "law": "applicableLaw", "forum": "forum", "language":
+    "language" }` in `figaro-applicable-law`. The audit's contract document
+    summarizes it (`committedJurisdiction`).
+  - `documentPart` names the section of a trade document the clause fills,
+    in the words of the document layouts (`cargo`, `freight-class`,
+    `delivery-terms`, `carriage`; `frontend/lib/data/audit/documentLayouts.ts`).
+    It names no field. The bill of lading applies to an order that follows
+    another, carries a marked route and a clause of the `carriage` section.
+    `figaro-cargo`, `figaro-freight-class`, `figaro-incoterms` and
+    `figaro-handoff` declare one each.
+  - `contentDigest` names the stage and the field where a party attests the
+    keccak256 of the content it delivered over the per-order channel: `{
+    "stage": 1, "field": "contentHash" }` in `figaro-content-handoff`. The
+    `ecdh-content` ceremony writes and checks the digest there
+    (`contentDigestOf`, `frontend/lib/data/handoff/contentDelivery.ts`).
+
+  A mark the spec's own fields contradict marks nothing: a field not
+  declared, one field named twice, or a field of the wrong type. A clause
+  with no mark plays no role, whatever its fields are called.
 - **`block.checkout.catalogueMeasures` reads a field from the catalog item
   itself.** It maps a content field to the catalog-item field it is read from
   and how the order's lines combine it: `{ "massGrams": { "from": "massGrams",

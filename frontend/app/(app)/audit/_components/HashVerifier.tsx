@@ -228,7 +228,7 @@ function ClauseMode() {
                     value={json}
                     onChange={(e) => setJson(e.target.value)}
                     rows={8}
-                    placeholder='{"clause":"0x<clause key>","data":{"lineItems":[...]}}'
+                    placeholder='{"clause":"0x<clause key>","data":{"<field>":"<value>"}}'
                     data-testid="verify-clause-input"
                     className="mt-1 font-mono text-xs"
                 />

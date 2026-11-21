@@ -277,7 +277,16 @@
                         "from": { "type": "string", "minLength": 1, "description": "The content field that holds the route's origin (a string field whose formatFromField names the field that declares its standard)." },
                         "to": { "type": "string", "minLength": 1, "description": "The content field that holds the route's destination (a string field whose formatFromField names the field that declares its standard)." }
                     },
-                    "description": "The mark on the clause's ROUTE: which content field is its origin and which is its destination. A quantity source that bills by distance (order-geodistance) reads the mark, never the format or the order of the fields. A mark the spec's own fields contradict (a field not declared, or named twice) marks nothing. Absent or null: the clause carries no route, and a source that needs one prices nothing."
+                    "description": "The mark on the clause's ROUTE: which content field is its origin and which is its destination. A quantity source that bills by distance (order-geodistance) reads the mark, never the format or the order of the fields. A later phase may read it too: a trade document shows the route's two ends through it. A mark the spec's own fields contradict (a field not declared, named twice, or not a string field) marks nothing. Absent or null: the clause carries no route, and a source that needs one prices nothing."
+                },
+                "registerLink": {
+                    "type": ["object", "null"],
+                    "required": ["uri", "id"],
+                    "properties": {
+                        "uri": { "type": "string", "minLength": 1, "description": "The content field that holds the outside register's URI template (a string field of format uri-template, with an {id} placeholder)." },
+                        "id": { "type": "string", "minLength": 1, "description": "The content field that holds the identifier the register is looked up by (a string field)." }
+                    },
+                    "description": "The mark on a LINK TO AN OUTSIDE REGISTER: which content field holds the register's URI template and which holds the identifier. A reader offers a link to the register's own entry from the mark, never from the names of the fields. A mark the spec's own fields contradict (a field not declared, named twice, not a string field, or a URI field not of format uri-template) marks nothing. Absent or null: the clause offers no such link."
                 },
                 "compositionFields": {
                     "type": "array",
@@ -298,6 +307,35 @@
                     "properties": {
                         "interface": { "type": "string", "minLength": 1 }
                     }
+                },
+                "modality": {
+                    "type": ["string", "null"],
+                    "minLength": 1,
+                    "description": "The content field that holds the order's MODALITY: how the order is fulfilled (on site, picked up, delivered, virtual, or any value the clause declares). A reader shows the committed value through the mark, never through the name of the field. A mark the spec's own fields contradict (a field not declared, or not a string or enum field) marks nothing. Absent or null: the clause carries no modality."
+                },
+                "jurisdiction": {
+                    "type": ["object", "null"],
+                    "required": ["law"],
+                    "properties": {
+                        "law": { "type": "string", "minLength": 1, "description": "The content field that names the law that governs the agreement (a string or enum field)." },
+                        "forum": { "type": "string", "minLength": 1, "description": "The content field that names the forum that hears a dispute (a string or enum field). Optional." },
+                        "language": { "type": "string", "minLength": 1, "description": "The content field that names the language of the proceedings (a string or enum field). Optional." }
+                    },
+                    "description": "The mark on the clause's JURISDICTION: which content field names the governing law, and, when the clause carries them, which names the forum and the language. A reader summarizes the jurisdiction through the mark, never through the names of the fields. A mark the spec's own fields contradict (a field not declared, named twice, or not a string or enum field) marks nothing. Absent or null: the clause carries no jurisdiction."
+                },
+                "documentPart": {
+                    "type": ["string", "null"],
+                    "minLength": 1,
+                    "description": "The section of a trade document this clause fills, in the words a document layout uses (for example cargo, freight-class, delivery-terms or carriage). A layout shows the clause's committed fields under that section, and may emit a document only where a clause declares a section. It names no field. Absent or null: the clause fills no section."
+                },
+                "contentDigest": {
+                    "type": ["object", "null"],
+                    "required": ["stage", "field"],
+                    "properties": {
+                        "stage": { "type": "integer", "minimum": 0, "maximum": 255, "description": "The stage at which a party attests the digest of the content it delivered." },
+                        "field": { "type": "string", "minLength": 1, "description": "The field of that stage's set that holds the keccak256 of the delivered bytes (a string field)." }
+                    },
+                    "description": "The mark on the clause's DELIVERY EVIDENCE: the stage and the field where a party attests the keccak256 of the content it delivered over a private channel. The receiver rehashes what it received and checks the attestation through the mark, never through the name of the field. A mark the spec contradicts (a field that the stage's set, its `stages` entry or else the content fields, does not declare as a string field) marks nothing. Absent or null: the clause carries no delivery evidence."
                 }
             }
         }

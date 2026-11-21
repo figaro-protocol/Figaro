@@ -74,12 +74,20 @@
             "derives": {},
             "timeWindow": null,
             "endpoints": null,
+            "registerLink": null,
             "heldValues": {},
             "compositionFields": []
         },
         "runtime": {
             "interaction": {
                 "interface": "ecdh-content"
+            },
+            "modality": null,
+            "jurisdiction": null,
+            "documentPart": null,
+            "contentDigest": {
+                "stage": 1,
+                "field": "contentHash"
             }
         }
     }

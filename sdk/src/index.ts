@@ -275,6 +275,8 @@ export {
     specIsProcessScoped,
     specDesignFills,
     specPricedLines,
+    specMarkedFields,
+    specEndpoints,
     specCheckoutDerivations,
     specDenominationPinField,
     parsePricedLinesMark,

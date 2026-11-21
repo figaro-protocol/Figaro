@@ -17,11 +17,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { keccak256, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
-import { parseClauseSpec, type ClauseSpec } from "@figaro-protocol/sdk/clauses";
+import { computeClauseKey } from "@figaro-protocol/sdk";
+import { decodeContentFromSpec, parseClauseSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
+import { parseBlockBinding } from "@/lib/shared/clauseBlockBinding";
+import type { ClauseSpecWithBlock } from "@/lib/shared/clauseSpecSource";
 import {
     CONTENT_DELIVERY_MAX_BYTES,
     completionEvidenceAnchor,
     contentCeremonyId,
+    contentDigestOf,
     contentHashOfBytes,
     decryptContentDelivery,
     prepareCompletionEvidence,
@@ -159,26 +163,51 @@ describe("the content-delivery ceremony", () => {
 
 // ── The stage-1 completion evidence, public and private ──────────────────
 
-function readContentHandoffJson(): { stages: Record<string, Array<Record<string, unknown>>> } {
+type RawSpec = {
+    clauseId: string;
+    fields: Array<Record<string, unknown>>;
+    stages: Record<string, Array<Record<string, unknown>>>;
+    block: Record<string, Record<string, unknown>>;
+};
+
+function readContentHandoffJson(): RawSpec {
     return JSON.parse(readFileSync(path.resolve(process.cwd(), "../clauses/figaro-content-handoff.json"), "utf8"));
 }
 
-function parsed(raw: unknown): ClauseSpec {
+/** A spec as the spec cache holds it: the content half and its parsed `block`. */
+function parsed(raw: unknown): ClauseSpecWithBlock {
     const result = parseClauseSpec(raw);
     if (!result.ok) throw new Error(JSON.stringify(result.errors));
-    return result.spec;
+    const errors: SpecParseError[] = [];
+    const block = parseBlockBinding((raw as { block: unknown }).block, "$.block", errors);
+    if (block === null) throw new Error(JSON.stringify(errors));
+    return { ...result.spec, clauseKey: computeClauseKey(raw), block };
 }
 
 /** The content hand-off clause in `clauses/`, whose stage 1 is private:
  *  the content hash, the locator and the one blinding field. */
-function contentHandoffSpec(): ClauseSpec {
+function contentHandoffSpec(): ClauseSpecWithBlock {
     return parsed(readContentHandoffJson());
+}
+
+/** A stranger's delivery clause: its own id, its digest at stage 3 under a
+ *  field name no reference spec declares, and the mark that says so. */
+function strangerSpec(mark: unknown): ClauseSpecWithBlock {
+    return parsed({
+        clauseId: "stranger-file-drop",
+        version: 1,
+        title: "File drop",
+        description: "A digest of the delivered file, under the clause's own names.",
+        fields: [{ name: "dropMode", type: "string", required: true }],
+        stages: { "3": [{ name: "fileDigest", type: "string", required: true, pattern: "^0x[0-9a-fA-F]{64}$" }] },
+        block: { design: { article: "logistics" }, runtime: { interaction: { interface: "ecdh-content" }, contentDigest: mark } },
+    });
 }
 
 /** The same clause with a public stage 1: no field private, no blinding
  *  field. Anyone may register such a clause; nothing in the ceremony reads
  *  its name. */
-function publicStageSpec(): ClauseSpec {
+function publicStageSpec(): ClauseSpecWithBlock {
     const raw = readContentHandoffJson();
     raw.stages["1"] = raw.stages["1"]
         .filter((f) => f.blinding !== true)
@@ -188,12 +217,13 @@ function publicStageSpec(): ClauseSpec {
 
 /** One delivery end to end: the sender prepares the evidence, seals the
  *  envelope, and the receiver decrypts it. Returns the raw plaintext too. */
-async function deliverWith(spec: ClauseSpec) {
+async function deliverWith(spec: ClauseSpecWithBlock) {
     const { channel, sent } = recordingChannel();
     const buyerPub = await requestContentDelivery(channel, {
         myAddress: BUYER, recipientAddress: SELLER, orderId: ORDER, signAuth: buyerSign,
     });
     const evidence = prepareCompletionEvidence(spec, contentHashOfBytes(ARTIFACT.bytes));
+    if (!evidence) throw new Error("the spec marks no delivery evidence");
     const { blobB64 } = await sendContentDelivery(channel, {
         myAddress: SELLER, recipientAddress: BUYER, orderId: ORDER,
         recipientPubKeyHex: buyerPub, artifact: ARTIFACT, signAuth: sellerSign,
@@ -246,5 +276,42 @@ describe("the completion evidence the receiver checks", () => {
         });
         const sellerPub = sent.find((m) => m.kind === "pubkey" && m.value !== buyerPub)!.value;
         expect(await decryptContentDelivery({ myAddress: BUYER, orderId: ORDER, senderPubKeyHex: sellerPub, blobB64 })).toBeNull();
+    });
+});
+
+// ── Where the digest goes: the spec's mark, never a field's name ─────────────
+
+describe("the completion evidence goes where the spec marks it (block.runtime.contentDigest)", () => {
+    const DIGEST = contentHashOfBytes(ARTIFACT.bytes);
+
+    it("a stranger's clause that marks its own stage and field gets the digest there, and the receiver's anchor is the filed one", async () => {
+        const spec = strangerSpec({ stage: 3, field: "fileDigest" });
+        expect(contentDigestOf(spec)).toEqual({ stage: 3, field: "fileDigest" });
+        const { evidence, delivered } = await deliverWith(spec);
+        expect(evidence.stage).toBe(3);
+        expect(decodeContentFromSpec(spec, evidence.content, { stage: 3 })).toEqual({ fileDigest: DIGEST });
+        expect(completionEvidenceAnchor(spec, delivered)).toBe(keccak256(evidence.content));
+    });
+
+    it("the reference clause, with its mark, files the digest at stage 1", () => {
+        const spec = contentHandoffSpec();
+        expect(contentDigestOf(spec)).toEqual({ stage: 1, field: "contentHash" });
+        expect(prepareCompletionEvidence(spec, DIGEST)?.stage).toBe(1);
+    });
+
+    it("a clause with a stage-1 field of the reference's name and no mark carries no delivery evidence", () => {
+        const raw = readContentHandoffJson();
+        raw.block.runtime = { ...raw.block.runtime, contentDigest: null };
+        const spec = parsed(raw);
+        expect(contentDigestOf(spec)).toBeUndefined();
+        expect(prepareCompletionEvidence(spec, DIGEST)).toBeNull();
+        expect(completionEvidenceAnchor(spec, { contentHash: DIGEST })).toBeNull();
+    });
+
+    it("a mark the spec's own stages contradict marks nothing", () => {
+        // The field is not in the marked stage's set.
+        expect(contentDigestOf(strangerSpec({ stage: 3, field: "otherDigest" }))).toBeUndefined();
+        // Stage 2 declares no set, so the content fields stand, and they hold no such field.
+        expect(contentDigestOf(strangerSpec({ stage: 2, field: "fileDigest" }))).toBeUndefined();
     });
 });

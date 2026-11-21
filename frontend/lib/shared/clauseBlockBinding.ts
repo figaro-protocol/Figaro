@@ -146,6 +146,12 @@ interface ClauseBlockCheckout {
      *  distance reads this mark, never the format or the order of the
      *  fields. Null for a clause that carries no route. */
     endpoints: EndpointsMark | null;
+    /** Which content field holds an outside register's URI template
+     *  and which holds the identifier it is looked up by
+     *  (`RegisterLinkMark`). A reader offers a link to the register's own
+     *  entry through this mark, never through the names of the fields.
+     *  Null for a clause that offers no such link. */
+    registerLink: RegisterLinkMark | null;
     /** The enum content fields (by name, the map's keys) whose values a
      *  checkout offers only when the chain in use holds what each value
      *  names (`HeldValuesHint`): read at checkout by the reader the hint
@@ -189,6 +195,48 @@ interface ClauseBlockRuntime {
      *  affordance is progressive enhancement, the protocol never depends on
      *  it. Null for clauses whose tasks need no dedicated interaction. */
     interaction: { interface: string } | null;
+    /** The content field that holds the order's modality: how the order is
+     *  fulfilled. A reader shows the committed value through this mark,
+     *  never through the name of the field. Null for a clause that carries
+     *  no modality. */
+    modality: string | null;
+    /** Which content field names the governing law, and which name the
+     *  forum and the language when the clause carries them
+     *  (`JurisdictionMark`). Null for a clause that carries no jurisdiction. */
+    jurisdiction: JurisdictionMark | null;
+    /** The section of a trade document this clause fills, in the words a
+     *  document layout uses (`frontend/lib/data/audit/documentLayouts.ts`).
+     *  It names no field. Null for a clause that fills no section. */
+    documentPart: string | null;
+    /** The stage and the field where a party attests the keccak256 of the
+     *  content it delivered over a private channel (`ContentDigestMark`).
+     *  Null for a clause that carries no delivery evidence. */
+    contentDigest: ContentDigestMark | null;
+}
+
+/** The mark on a link to an outside register (`block.checkout.registerLink`):
+ *  the content field that holds the register's URI template, with an
+ *  `{id}` placeholder, and the one that holds the identifier. */
+export interface RegisterLinkMark {
+    uri: string;
+    id: string;
+}
+
+/** The mark on a clause's jurisdiction (`block.runtime.jurisdiction`): the
+ *  content field that names the governing law, and, when present, the ones
+ *  that name the forum and the language of the proceedings. */
+export interface JurisdictionMark {
+    law: string;
+    forum?: string;
+    language?: string;
+}
+
+/** The mark on a clause's delivery evidence (`block.runtime.contentDigest`):
+ *  the stage a party attests at, and the field of that stage's set that
+ *  holds the keccak256 of the delivered bytes. */
+export interface ContentDigestMark {
+    stage: number;
+    field: string;
 }
 
 /**
@@ -395,6 +443,7 @@ export function parseBlockBinding(
     let derives: Readonly<Record<string, CheckoutDerivation>> = {};
     let timeWindow: TimeWindowMark | null = null;
     let endpoints: EndpointsMark | null = null;
+    let registerLink: RegisterLinkMark | null = null;
     let heldValues: Readonly<Record<string, HeldValuesHint>> = {};
     let compositionFields: readonly FieldSpec[] = [];
     if (raw.checkout !== undefined) {
@@ -443,6 +492,14 @@ export function parseBlockBinding(
                 return null;
             }
         }
+        if (raw.checkout.registerLink !== undefined && raw.checkout.registerLink !== null) {
+            const parsed = parseFieldNameMark(raw.checkout.registerLink, ["uri", "id"], []);
+            if (parsed === null) {
+                errors.push({ path: `${path}.checkout.registerLink`, message: "registerLink must name its uri and id as non-empty strings" });
+                return null;
+            }
+            registerLink = { uri: parsed.uri!, id: parsed.id! };
+        }
         const parsedHeld = parseHeldValues(raw.checkout.heldValues, `${path}.checkout.heldValues`, errors);
         if (parsedHeld === null) return null;
         heldValues = parsedHeld;
@@ -465,6 +522,10 @@ export function parseBlockBinding(
 
     // ── runtime ─────────────────────────────────────────────────────────
     let interaction: ClauseBlockRuntime["interaction"] = null;
+    let modality: string | null = null;
+    let jurisdiction: JurisdictionMark | null = null;
+    let documentPart: string | null = null;
+    let contentDigest: ContentDigestMark | null = null;
     if (raw.runtime !== undefined) {
         if (!isObject(raw.runtime)) {
             errors.push({ path: `${path}.runtime`, message: "runtime section must be an object when present" });
@@ -481,11 +542,68 @@ export function parseBlockBinding(
             }
             interaction = { interface: raw.runtime.interaction.interface };
         }
+        // Each names a field (modality) or a section (documentPart) as a
+        // non-empty string; absent or null is none.
+        const nameOrNull = (value: unknown, at: string): string | null | undefined => {
+            if (value === undefined || value === null) return null;
+            if (typeof value === "string" && value.length > 0) return value;
+            errors.push({ path: `${path}.runtime.${at}`, message: `${at} must be a non-empty string or null when present` });
+            return undefined;
+        };
+        const parsedModality = nameOrNull(raw.runtime.modality, "modality");
+        if (parsedModality === undefined) return null;
+        modality = parsedModality;
+        const parsedPart = nameOrNull(raw.runtime.documentPart, "documentPart");
+        if (parsedPart === undefined) return null;
+        documentPart = parsedPart;
+        if (raw.runtime.jurisdiction !== undefined && raw.runtime.jurisdiction !== null) {
+            const parsed = parseFieldNameMark(raw.runtime.jurisdiction, ["law"], ["forum", "language"]);
+            if (parsed === null) {
+                errors.push({ path: `${path}.runtime.jurisdiction`, message: "jurisdiction must name its law (and its forum and language, when present) as non-empty strings" });
+                return null;
+            }
+            jurisdiction = {
+                law: parsed.law!,
+                ...(parsed.forum !== undefined && { forum: parsed.forum }),
+                ...(parsed.language !== undefined && { language: parsed.language }),
+            };
+        }
+        if (raw.runtime.contentDigest !== undefined && raw.runtime.contentDigest !== null) {
+            const digest = raw.runtime.contentDigest;
+            const field = isObject(digest) ? parseFieldNameMark({ field: digest.field }, ["field"], []) : null;
+            const stage = isObject(digest) ? digest.stage : undefined;
+            if (field === null || typeof stage !== "number" || !Number.isInteger(stage) || stage < 0 || stage > 255) {
+                errors.push({ path: `${path}.runtime.contentDigest`, message: "contentDigest must name its stage (an integer 0..255) and its field (a non-empty string)" });
+                return null;
+            }
+            contentDigest = { stage, field: field.field! };
+        }
     }
 
     return {
         design: { article: rawDesign.article as ClauseArticle, scope, nestsUnder, fills: designFills, composes },
-        checkout: { catalogueFills, profileFills, catalogueMeasures, pricedLines, derives, timeWindow, endpoints, heldValues, compositionFields },
-        runtime: { interaction },
+        checkout: { catalogueFills, profileFills, catalogueMeasures, pricedLines, derives, timeWindow, endpoints, registerLink, heldValues, compositionFields },
+        runtime: { interaction, modality, jurisdiction, documentPart, contentDigest },
     };
+}
+
+/** A mark that names content fields by role: each required role names a
+ *  field as a non-empty string, and each optional role does when present.
+ *  Null when the value is not such an object. Whether the named fields exist
+ *  with the types a role needs is the mark's reader's check against the
+ *  spec's own fields (`frontend/lib/shared/clauseSpecSource.ts`). */
+function parseFieldNameMark(
+    raw: unknown,
+    required: readonly string[],
+    optional: readonly string[],
+): Record<string, string | undefined> | null {
+    if (!isObject(raw)) return null;
+    const out: Record<string, string | undefined> = {};
+    for (const role of [...required, ...optional]) {
+        const value = raw[role];
+        if (value === undefined && optional.includes(role)) continue;
+        if (typeof value !== "string" || value.length === 0) return null;
+        out[role] = value;
+    }
+    return out;
 }

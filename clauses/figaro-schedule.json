@@ -41,11 +41,16 @@
                 "end": "windowEnd"
             },
             "endpoints": null,
+            "registerLink": null,
             "heldValues": {},
             "compositionFields": []
         },
         "runtime": {
-            "interaction": null
+            "interaction": null,
+            "modality": null,
+            "jurisdiction": null,
+            "documentPart": null,
+            "contentDigest": null
         }
     }
 }
