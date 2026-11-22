@@ -480,7 +480,7 @@ const CENSUS: Census = {
     "hooks/useTokenApproval.ts": { tokens: { useWriteContract: 1, simulateWrite: 1 }, sites: ["useTokenApproval"], pinnedBy: "tests/lib/useTokenApproval.test.tsx" },
     "lib/checkout/orderCommitmentFlow.ts": { tokens: { useSignTypedData: 1, signTypedDataAsync: 2 }, sites: ["signCommitment", "signAndShare", "acceptOrder"], pinnedBy: "tests/lib/orderCommitmentFlowSign.test.tsx" },
     "lib/composability/swapFunding.ts": { tokens: { signTypedData: 1 }, sites: ["signFundingLeg"], pinnedBy: "tests/lib/swapFundingQuoteSign.test.ts" },
-    "lib/core/useRelayActions.ts": { tokens: { useSignTypedData: 1, signTypedDataAsync: 3 }, sites: ["useRelayActions"], pinnedBy: "tests/components/OrderTimelineBatchPathActs.test.tsx" },
+    "lib/core/useRelayActions.ts": { tokens: { useSignTypedData: 1, signTypedDataAsync: 2 }, sites: ["useRelayActions"], pinnedBy: "tests/components/OrderTimelineBatchPathActs.test.tsx" },
     "lib/core/useAttestationCoordinatorActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useAttestationCoordinatorActions.submitAttestation", "createCapabilityExecutors.attestProvenanceLeaf"], pinnedBy: THIS_FILE },
     "lib/composability/usePayoutRoutingActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 2 }, sites: ["usePayoutRoutingActions"], pinnedBy: THIS_FILE },
     "lib/rewards/useRpgfRewards.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRpgfRewards.claim"], pinnedBy: THIS_FILE },

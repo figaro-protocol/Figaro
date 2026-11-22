@@ -17,6 +17,7 @@ import {
     usageKeyId,
     usageClaimKindCode,
     buildUsageClaims,
+    buildProcessUsageClaims,
     fetchUsageRecords,
     fetchSkippedBatchUses,
 } from "../src/rpgf/index.js";
@@ -614,6 +615,26 @@ describe("buildUsageClaims", () => {
         expect(buildUsageClaims(order, agreementWith([modalities], PROVENANCE), {
             ...CONTEXT, provenanceLeaf: PROVENANCE_LEAF_KEY.toUpperCase().replace("0X", "0x") as Hex,
         }, ASSEMBLY).some((c) => "Process" in c.kind)).toBe(true);
+    });
+
+    // The counter counts a (kind, key) once per process: across a process's
+    // orders each pair is claimed once, by the first order carrying it, and an
+    // order whose claims do not build is refused alone.
+    it("buildProcessUsageClaims claims each (kind, key) once across the orders, and refuses an order that does not build alone", () => {
+        const second = { ...order, seller: "0x0000000000000000000000000000000000005E12" as Address };
+        const orders = [
+            { name: "first", commitment: order, agreement: agreementWith([modalities, commerce], PROVENANCE), context: CONTEXT, assembly: ASSEMBLY },
+            { name: "broken", commitment: second, agreement: agreementWith([modalities], PROVENANCE), context: CONTEXT },
+            { name: "second", commitment: second, agreement: agreementWith([modalities, commerce], PROVENANCE), context: CONTEXT, assembly: ASSEMBLY },
+        ];
+        const refused: string[] = [];
+        const claims = buildProcessUsageClaims(orders, (o, reason) => refused.push(`${o.name}: ${reason}`));
+        expect(refused).toHaveLength(1);
+        expect(refused[0]).toMatch(/^broken: .*assembly is needed/);
+        expect(claims.map(({ order: o }) => o.name)).toEqual(["first", "first", "first", "first"]);
+        expect(claims.map(({ claim }) => usageKeyId(usageClaimKindCode(claim), claim.clause_or_process)))
+            .toEqual(buildUsageClaims(order, orders[0]!.agreement, CONTEXT, ASSEMBLY)
+                .map((c) => usageKeyId(usageClaimKindCode(c), c.clause_or_process)));
     });
 
     it("produces inclusion proofs that verify against the signed checkout hash", () => {

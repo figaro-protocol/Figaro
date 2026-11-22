@@ -6,9 +6,7 @@ import { useState, useEffect, useEffectEvent } from "react";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import { useAccount } from "wagmi";
 import { handleOrderSurfaceFailure } from "@/lib/shared/orderSurfaceActions";
-import useTokenApproval from "@/hooks/useTokenApproval";
-import useTokenDecimals from "@/hooks/useTokenDecimals";
-import useTokenBalance from "@/hooks/useTokenBalance";
+import useBondToken from "@/hooks/useBondToken";
 import { tokenFigure } from "@/lib/shared/utils";
 import { Button } from "@/components/ui/Button";
 
@@ -36,21 +34,16 @@ export function TokenApprovalFlow({
     spender,
 }: TokenApprovalProps) {
     const { address } = useAccount();
-    const { decimals } = useTokenDecimals(tokenAddress);
-    const { read: balanceRead } = useTokenBalance(tokenAddress, address);
-    const tokenBalance = balanceRead.status === "present" ? balanceRead.value : undefined;
     const {
+        decimals,
+        balance: tokenBalance,
         allowance,
         needsApproval,
         approve,
         isApprovePending,
         isApproveConfirming,
         isApproveError,
-    } = useTokenApproval({
-        tokenAddress,
-        owner: address as `0x${string}` | undefined,
-        spender,
-    });
+    } = useBondToken(tokenAddress, address, spender);
 
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [completionSent, setCompletionSent] = useState(false);

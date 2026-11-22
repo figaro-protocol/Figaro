@@ -69,10 +69,10 @@ export interface DocumentLayout {
     header: readonly DocumentRow[];
     /** Optional repeating lines — one row per order in the unit — with an optional total. */
     lines?: { fields: readonly DocumentRow[]; total?: DocumentRow };
-    /** Optional whole-leaf sections, each rendered generically (every field of the leaf
+    /** Optional whole-leaf parts, each rendered generically (every field of the leaf
      *  whose spec declares `part` as its `block.runtime.documentPart`). This is
      *  how a BoL surfaces cargo / freight-class / mode. */
-    leafSections?: readonly { label: string; part: string }[];
+    leafParts?: readonly { label: string; part: string }[];
     /** Optional footer note (constant). */
     note?: string;
 }
@@ -84,7 +84,7 @@ export interface RenderedDocument {
     title: string;
     header: { label: string; value: string }[];
     lines?: { columns: string[]; rows: string[][]; total?: { label: string; value: string } };
-    leafSections?: { label: string; entries: { key: string; value: string }[] }[];
+    leafParts?: { label: string; entries: { key: string; value: string }[] }[];
     /** Optional legend: what each label the document emits means. */
     legend?: { key: string; description: string }[];
     note?: string;
@@ -112,7 +112,7 @@ function routeEnd(agreement: Agreement | undefined, end: "from" | "to"): string 
 }
 
 /** A "unit" a document is scoped to: its primary order/agreement (for header +
- *  leaf sections) and the full order list (for lines + totals). */
+ *  leaf parts) and the full order list (for lines + totals). */
 interface Unit {
     primary: Order;
     agreement: Agreement | undefined;
@@ -181,8 +181,8 @@ function render(layout: DocumentLayout, unit: Unit): RenderedDocument {
             : undefined;
         doc.lines = { columns, rows, ...(total && { total }) };
     }
-    if (layout.leafSections) {
-        doc.leafSections = layout.leafSections
+    if (layout.leafParts) {
+        doc.leafParts = layout.leafParts
             .map((s) => ({ label: s.label, data: leafByPart(unit.agreement, s.part) }))
             .filter((s): s is { label: string; data: Record<string, unknown> } => s.data !== undefined)
             .map((s) => ({ label: s.label, entries: Object.entries(s.data).map(([key, v]) => ({ key, value: String(v) })) }));
@@ -314,16 +314,16 @@ export function projectFinancialStatements(
             cashFlow.push(["resolve-seller-payout", o.orderHash, o.seller, s.sellerPayout.toString()]);
         }
     }
-    const leafSections: { label: string; entries: { key: string; value: string }[] }[] = [];
+    const leafParts: { label: string; entries: { key: string; value: string }[] }[] = [];
     for (const [c, a] of byCurrency) {
-        leafSections.push({ label: `Balance sheet · ${c}`, entries: [
+        leafParts.push({ label: `Balance sheet · ${c}`, entries: [
             statementRow("Buyer bonds (Σ2P)", a.buyerBonds),
             statementRow("Seller bonds (Σ2G)", a.sellerBonds),
             statementRow("Refund owed to buyer (ΣP)", a.refundOwedToBuyer),
             statementRow("Refund owed to seller (Σ2G)", a.refundOwedToSeller),
             statementRow("Retained earnings (ΣP)", a.retainedEarnings),
         ] });
-        leafSections.push({ label: `Income statement · ${c}`, entries: [
+        leafParts.push({ label: `Income statement · ${c}`, entries: [
             statementRow("Sales (ΣP)", a.sales),
             statementRow("Cost (ΣP resolved)", a.cost),
             statementRow("Net income", a.sales - a.cost),
@@ -331,7 +331,7 @@ export function projectFinancialStatements(
     }
     // The legend explains exactly the labels this document emits, in the map's order.
     const emitted = new Set<string>([
-        ...leafSections.flatMap((s) => s.entries.map((e) => e.key)),
+        ...leafParts.flatMap((s) => s.entries.map((e) => e.key)),
         ...cashFlow.map((row) => row[0]),
     ]);
     const legend = (Object.keys(FINANCIAL_STATEMENT_LEGEND) as FinancialStatementLabel[])
@@ -345,7 +345,7 @@ export function projectFinancialStatements(
             { label: scope === "seller" ? "Seller" : "Process", value: scopeId },
         ],
         ...(cashFlow.length > 0 && { lines: { columns: ["kind", "order", "party", "amount"], rows: cashFlow } }),
-        leafSections,
+        leafParts,
         ...(legend.length > 0 && { legend }),
         note: "Cash-basis projection of on-chain commit + resolve. Assets (bonds) = liabilities (refunds) + retained earnings at every block, by construction. Amounts in the currency's smallest unit.",
     };

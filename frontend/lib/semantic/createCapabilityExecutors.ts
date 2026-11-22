@@ -16,10 +16,8 @@
 import { type Hex } from "viem";
 import {
     PROVENANCE_LEAF_KEY,
-    buildUsageClaims,
+    buildProcessUsageClaims,
     provenanceLeafBytes,
-    usageClaimKindCode,
-    usageKeyId,
     type Agreement,
     type ProcessDesign,
     type Commitment,
@@ -184,7 +182,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
 
     /** The usage claims of a resolved batched process, sent to the relay
      *  that took its resolve: one per key and family across the process
-     *  (`buildUsageClaims`, the SDK's own legs). Best-effort, as on the
+     *  (`buildProcessUsageClaims`, the SDK's own legs). Best-effort, as on the
      *  direct path: a refusal is logged, never thrown, since the resolve is
      *  already with the relay. */
     const claimBatchUsage = async (
@@ -192,23 +190,8 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         commitments: readonly Commitment[],
     ): Promise<void> => {
         const entries = await usageEntries(activeOrders, commitments);
-        const sent = new Set<string>();
-        const claims: SequencerUsageClaim[] = [];
-        for (const { orderHash, commitment, agreement, context, assembly } of entries) {
-            let built: SequencerUsageClaim[];
-            try {
-                built = buildUsageClaims(commitment, agreement, context, assembly);
-            } catch (error) {
-                console.error(`[usage-claims] order ${orderHash}: ${error instanceof Error ? error.message : String(error)}`);
-                continue;
-            }
-            for (const claim of built) {
-                const key = usageKeyId(usageClaimKindCode(claim), claim.clause_or_process);
-                if (sent.has(key)) continue;
-                sent.add(key);
-                claims.push(claim);
-            }
-        }
+        const claims = buildProcessUsageClaims(entries, ({ orderHash }, reason) =>
+            console.error(`[usage-claims] order ${orderHash}: ${reason}`)).map(({ claim }) => claim);
         if (claims.length === 0) return;
         if (!deps.submitUsageClaims) {
             console.error(`[usage-claims] no relay is known to send ${claims.length} usage claims to`);

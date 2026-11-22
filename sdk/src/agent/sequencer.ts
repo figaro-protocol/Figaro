@@ -25,7 +25,8 @@
  */
 
 import { keccak256, stringToHex } from "viem";
-import type { Hex, Address, Commitment } from "../types.js";
+import type { Hex, Address, Commitment, EIP712Domain } from "../types.js";
+import { buildDomain, computeCommitmentProcessId, computeOrderHash } from "../commitments.js";
 import { readCappedBytes } from "../cappedRead.js";
 import { strippingReviver } from "../safeJson.js";
 
@@ -203,6 +204,57 @@ export const ATTEST_BUYER_TYPES = {
         { name: "contentRef", type: "bytes32" },
     ],
 } as const;
+
+/** One attestation a party files on the batch path: the attested order as
+ *  signed (a root's processId 0) and the coordinator's arguments, the same
+ *  on both paths. `clauseDataHash` and `contentRef` are fingerprints, never
+ *  the preimages. */
+export interface BatchAttestation {
+    target: Commitment;
+    clauseId: Hex;
+    stage: number;
+    contentRef: Hex;
+    clauseDataHash: Hex;
+    proof: readonly Hex[];
+}
+
+/** The attesting party's role in the attested order. */
+export type BatchAttestationRole = "seller" | "buyer";
+
+/** The EIP-712 typed data of one batch-path attestation, typed loosely so
+ *  one value serves either role's signer: `types` and `primaryType` are
+ *  {@link ATTEST_SELLER_TYPES} and `AttestSeller`, or
+ *  {@link ATTEST_BUYER_TYPES} and `AttestBuyer`. */
+export interface BatchAttestationTypedData {
+    domain: EIP712Domain;
+    types: Record<string, readonly { name: string; type: string }[]>;
+    primaryType: string;
+    message: Record<string, unknown>;
+}
+
+/**
+ * The typed data the attesting party signs for `at` on the batch path:
+ * `AttestSeller` or `AttestBuyer` under the verifier's domain
+ * (`buildDomain(chainId, verifier)`), over the order's id there
+ * (`computeOrderHash` with the verifier's address) and, for the buyer, the
+ * order's process id there. The caller signs it with its own wallet and
+ * hands the signature to {@link SequencerClient.submitSignedAttestation}.
+ */
+export function batchAttestationTypedData(
+    role: BatchAttestationRole,
+    at: BatchAttestation,
+    chainId: number,
+    verifier: Address,
+): BatchAttestationTypedData {
+    const domain = buildDomain(chainId, verifier);
+    const orderHash = computeOrderHash(at.target, chainId, verifier);
+    const signed = { orderHash, clauseId: at.clauseId, stage: at.stage, contentRef: at.contentRef };
+    if (role === "seller") {
+        return { domain, types: ATTEST_SELLER_TYPES, primaryType: "AttestSeller", message: signed };
+    }
+    const processId = computeCommitmentProcessId(at.target, chainId, verifier);
+    return { domain, types: ATTEST_BUYER_TYPES, primaryType: "AttestBuyer", message: { processId, ...signed } };
+}
 
 // ── Response types ──────────────────────────────────────────────────────────
 
@@ -537,6 +589,22 @@ export class SequencerClient {
             buyer_sig: toSequencerSig(args.buyerSig),
             proof: attestationWitness(args),
         });
+    }
+
+    /** Submit `at` as `role`, in the hash-only form, with the party's
+     *  signature over {@link batchAttestationTypedData} for the same role. */
+    async submitSignedAttestation(role: BatchAttestationRole, at: BatchAttestation, signature: Hex): Promise<SubmitResult> {
+        const witness = {
+            target: at.target,
+            clauseId: at.clauseId,
+            stage: at.stage,
+            contentRef: at.contentRef,
+            clauseDataHash: at.clauseDataHash,
+            inclusionProof: [...at.proof],
+        };
+        return role === "seller"
+            ? this.submitAttestAsSeller({ ...witness, sellerSig: signature })
+            : this.submitAttestAsBuyer({ ...witness, buyerSig: signature });
     }
 
     /**

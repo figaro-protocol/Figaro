@@ -23,7 +23,8 @@ import {
 import { forgetKeptWitnessContent, keepPrivateWitnessContent, publishWitnessContent, readKeptWitnessContent, type WitnessHolder } from "@/lib/core/witnessContent";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
-import type { BatchedAttestation, RelayReceipt } from "@/lib/core/useRelayActions";
+import type { RelayReceipt } from "@/lib/core/useRelayActions";
+import type { BatchAttestation } from "@figaro-protocol/sdk/agent";
 import type { ResolutionUniverse } from "@figaro-protocol/sdk";
 
 type AttestationInput = {
@@ -52,7 +53,7 @@ type AttestationInput = {
  *  an attestation on a batched order is refused before anything is kept,
  *  published or signed. */
 interface AttestationTransports {
-    attestOnBatchPath?: (role: PartyRole, at: BatchedAttestation) => Promise<RelayReceipt>;
+    attestOnBatchPath?: (role: PartyRole, at: BatchAttestation) => Promise<RelayReceipt>;
 }
 
 export function useAttestationCoordinatorActions({ attestOnBatchPath }: AttestationTransports = {}) {

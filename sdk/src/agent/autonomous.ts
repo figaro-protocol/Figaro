@@ -20,14 +20,14 @@ import { validateContent, encodeContentFromSpec, contentFieldsFor, fieldSetRuleE
 import { isZeroBlindingValue, withFreshBlinding } from "../projection.js";
 import { assertOrderFitsResolveCap } from "../gasCeilings.js";
 import {
-    restoreSignedProcessId, buildDomain, RESOLVE_PROCESS_TYPES, computeOrderHash, computeCommitmentProcessId,
+    restoreSignedProcessId, buildDomain, RESOLVE_PROCESS_TYPES,
 } from "../commitments.js";
 import type { Agreement } from "../agreement.js";
 import type { ProcessDesign } from "../assembly.js";
-import { buildUsageClaims, fetchUsageClaimContext, usageClaimKindCode, usageKeyId } from "../rpgf/index.js";
+import { buildProcessUsageClaims, fetchUsageClaimContext } from "../rpgf/index.js";
 import { isBytes32Hex, type Hex, type Address, type FigaroAddresses, type Commitment } from "../types.js";
 import type { ProposedAction, ResolveProcessAction, AttestAction } from "./proposer.js";
-import { ATTEST_SELLER_TYPES, ATTEST_BUYER_TYPES, type SequencerClient } from "./sequencer.js";
+import { batchAttestationTypedData, type SequencerClient } from "./sequencer.js";
 
 // ── Transaction result ──────────────────────────────────────────────────────
 
@@ -182,63 +182,50 @@ export async function recordProcessUsage(
         if (receipt.status !== "success") throw new Error(`${functionName} reverted on-chain (tx ${hash})`);
     };
     // Once ever per (key, process): `processCounted` in the counter. Every
-    // entry here belongs to the one process just resolved.
-    const sent = new Set<string>();
-    for (const { commitment: given, agreement, assembly } of entries) {
-        // The counter re-hashes the SIGNED struct to find the order — a root
-        // signed processId 0, so a derived-id commitment (the proposer's
-        // event-reconstructed shape) must be restored exactly as the resolve
-        // path restores it, or every leg reverts UnknownOrder.
-        const commitment = restoreSignedProcessId(given, chainId, core);
-        // An agreement whose leaves do not build (a malformed provenance) has
-        // no provable leg at all; say so and go on to the next order.
-        let claims: ReturnType<typeof buildUsageClaims>;
-        try {
-            claims = buildUsageClaims(commitment, agreement, context, assembly);
-        } catch (error) {
-            report.failures.push(`agreement: ${error instanceof Error ? error.message : String(error)}`);
+    // entry here belongs to the one process just resolved, so each
+    // (kind, key) is sent once (`buildProcessUsageClaims`). The counter
+    // re-hashes the SIGNED struct to find the order — a root signed
+    // processId 0, so a derived-id commitment (the proposer's
+    // event-reconstructed shape) must be restored exactly as the resolve
+    // path restores it, or every leg reverts UnknownOrder. An agreement
+    // whose leaves do not build (a malformed provenance) has no provable leg
+    // at all; it is reported and the next order goes on.
+    const orders = entries.map(({ commitment, agreement, assembly }) => ({
+        commitment: restoreSignedProcessId(commitment, chainId, core), agreement, context, assembly,
+    }));
+    const claims = buildProcessUsageClaims(orders, (_order, reason) => report.failures.push(`agreement: ${reason}`));
+    for (const { order: { commitment }, claim } of claims) {
+        if ("Process" in claim.kind) {
+            const { agreement_hash, agreement_content_hash, membership_proof } = claim.kind.Process;
+            if (report.assemblyRecorded) continue;
+            try {
+                await send("recordProcessDesignUsage", [
+                    commitment, claim.clause_or_process, agreement_hash, agreement_content_hash,
+                    claim.inclusion_proof, membership_proof,
+                ]);
+                report.assemblyRecorded = true;
+            } catch (error) {
+                report.failures.push(`assembly ${claim.clause_or_process}: ${error instanceof Error ? error.message : String(error)}`);
+            }
             continue;
         }
-        for (const claim of claims) {
-            // Counted once per (kind, key, process): the families never share a entry.
-            const key = usageKeyId(usageClaimKindCode(claim), claim.clause_or_process);
-            if ("Process" in claim.kind) {
-                const { agreement_hash, agreement_content_hash, membership_proof } = claim.kind.Process;
-                if (report.assemblyRecorded || sent.has(key)) continue;
-                sent.add(key);
-                try {
-                    await send("recordProcessDesignUsage", [
-                        commitment, claim.clause_or_process, agreement_hash, agreement_content_hash,
-                        claim.inclusion_proof, membership_proof,
-                    ]);
-                    report.assemblyRecorded = true;
-                } catch (error) {
-                    report.failures.push(`assembly ${claim.clause_or_process}: ${error instanceof Error ? error.message : String(error)}`);
-                }
-                continue;
-            }
-            if ("Agreement" in claim.kind) {
-                if (sent.has(key)) continue;
-                sent.add(key);
-                try {
-                    await send("recordAgreementUsage", [
-                        commitment, claim.clause_or_process, claim.kind.Agreement.process_design_hash, claim.inclusion_proof,
-                    ]);
-                    report.agreementRecorded = true;
-                } catch (error) {
-                    report.failures.push(`agreement ${claim.clause_or_process}: ${error instanceof Error ? error.message : String(error)}`);
-                }
-                continue;
-            }
-            if (sent.has(key)) continue;
-            sent.add(key);
-            report.attempted++;
+        if ("Agreement" in claim.kind) {
             try {
-                await send("recordClauseUsage", [commitment, claim.clause_or_process, claim.kind.Clause.clause_data_hash, claim.inclusion_proof]);
-                report.recorded++;
+                await send("recordAgreementUsage", [
+                    commitment, claim.clause_or_process, claim.kind.Agreement.process_design_hash, claim.inclusion_proof,
+                ]);
+                report.agreementRecorded = true;
             } catch (error) {
-                report.failures.push(`clause ${claim.clause_or_process}: ${error instanceof Error ? error.message : String(error)}`);
+                report.failures.push(`agreement ${claim.clause_or_process}: ${error instanceof Error ? error.message : String(error)}`);
             }
+            continue;
+        }
+        report.attempted++;
+        try {
+            await send("recordClauseUsage", [commitment, claim.clause_or_process, claim.kind.Clause.clause_data_hash, claim.inclusion_proof]);
+            report.recorded++;
+        } catch (error) {
+            report.failures.push(`clause ${claim.clause_or_process}: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
     return report;
@@ -611,34 +598,11 @@ async function executeOnBatchPath(
     }
 
     const at = attestationToFile(action, inputs);
-    const orderHash = computeOrderHash(at.target, chainId, verifier);
-    const witness = {
-        target: at.target,
-        clauseId: at.clauseId,
-        stage: at.stage,
-        contentRef: at.contentRef,
-        clauseDataHash: at.clauseDataHash,
-        inclusionProof: [...at.proof],
-    };
-    if (action.type === "attest-as-seller") {
-        const sellerSig = await walletClient.signTypedData({
-            account,
-            domain,
-            types: ATTEST_SELLER_TYPES,
-            primaryType: "AttestSeller",
-            message: { orderHash, clauseId: at.clauseId, stage: at.stage, contentRef: at.contentRef },
-        });
-        const { id } = await relay.submitAttestAsSeller({ ...witness, sellerSig });
-        return { sent: "relay", operationId: id };
-    }
-    const processId = computeCommitmentProcessId(at.target, chainId, verifier);
-    const buyerSig = await walletClient.signTypedData({
+    const role = action.type === "attest-as-seller" ? "seller" : "buyer";
+    const signature = await walletClient.signTypedData({
         account,
-        domain,
-        types: ATTEST_BUYER_TYPES,
-        primaryType: "AttestBuyer",
-        message: { processId, orderHash, clauseId: at.clauseId, stage: at.stage, contentRef: at.contentRef },
+        ...batchAttestationTypedData(role, at, chainId, verifier),
     });
-    const { id } = await relay.submitAttestAsBuyer({ ...witness, buyerSig });
+    const { id } = await relay.submitSignedAttestation(role, at, signature);
     return { sent: "relay", operationId: id };
 }

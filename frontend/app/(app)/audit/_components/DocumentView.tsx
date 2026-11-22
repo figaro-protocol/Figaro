@@ -5,7 +5,7 @@
  *
  * The on-screen twin of `pdfBundle.tsx`'s `DocumentPage`: it knows no genre.
  * It draws whatever the generic document engine produced — header rows, an
- * optional line table with a total, generic whole-leaf sections, an optional
+ * optional line table with a total, generic whole-leaf parts, an optional
  * legend of what each label means, a note.
  * Invoice, bill of lading, financial statements: all the same
  * `RenderedDocument` shape, all this one component. A new genre is a new
@@ -40,7 +40,7 @@ export function DocumentView({ document, backing }: { document: RenderedDocument
                 </dl>
             </header>
 
-            {document.leafSections?.map((s) => (
+            {document.leafParts?.map((s) => (
                 <div key={s.label} className="bg-paper border border-default rounded-lg p-5 space-y-1">
                     <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-body mb-3">
                         {s.label}

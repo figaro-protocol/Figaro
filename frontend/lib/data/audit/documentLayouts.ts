@@ -47,7 +47,7 @@ const COMMERCIAL_INVOICE: DocumentLayout = {
         ],
         total: { label: "Net total (BT-106)", ref: { sumPayments: true } },
     },
-    leafSections: [
+    leafParts: [
         { label: "Delivery terms", part: "delivery-terms" },
     ],
     note: "Derived from the committed data — not separately written. The interpretive VAT class is jurisdiction/graph-supplied and absent from this core projection (applicable, with a stablecoin denomination, to the EU e-invoice profile).",
@@ -84,7 +84,7 @@ const BILL_OF_LADING: DocumentLayout = {
         { label: "Origin", ref: { routeEnd: "from" } },
         { label: "Destination", ref: { routeEnd: "to" } },
     ],
-    leafSections: [
+    leafParts: [
         { label: "Cargo", part: "cargo" },
         { label: "Freight class", part: "freight-class" },
         { label: "Delivery terms", part: "delivery-terms" },

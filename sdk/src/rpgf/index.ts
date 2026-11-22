@@ -623,6 +623,45 @@ export function buildUsageClaims(
     return claims;
 }
 
+/** One order of a resolved process, as {@link buildUsageClaims} reads it. */
+export interface UsageClaimOrder {
+    commitment: Commitment;
+    agreement: Agreement;
+    context: UsageClaimContext;
+    assembly?: ProcessDesign;
+}
+
+/**
+ * The usage claims of a resolved process's orders ({@link buildUsageClaims}
+ * on each, in order), each `(kind, key)` once: the counter counts a key once
+ * per process, so a key two orders carry is claimed by the first order that
+ * carries it. An order whose claims do not build contributes none, and
+ * `refuse` is told why; the other orders go on.
+ */
+export function buildProcessUsageClaims<O extends UsageClaimOrder>(
+    orders: readonly O[],
+    refuse: (order: O, reason: string) => void,
+): { order: O; claim: SequencerUsageClaim }[] {
+    const seen = new Set<string>();
+    const out: { order: O; claim: SequencerUsageClaim }[] = [];
+    for (const order of orders) {
+        let claims: SequencerUsageClaim[];
+        try {
+            claims = buildUsageClaims(order.commitment, order.agreement, order.context, order.assembly);
+        } catch (error) {
+            refuse(order, error instanceof Error ? error.message : String(error));
+            continue;
+        }
+        for (const claim of claims) {
+            const key = usageKeyId(usageClaimKindCode(claim), claim.clause_or_process);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push({ order, claim });
+        }
+    }
+    return out;
+}
+
 /** The family a wire claim credits — `USAGE_KIND_CLAUSE`,
  *  `USAGE_KIND_PROCESS` or `USAGE_KIND_AGREEMENT` — mirroring the guest's
  *  `UsageClaimKind::code()`. */

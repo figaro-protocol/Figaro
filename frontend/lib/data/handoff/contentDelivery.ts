@@ -38,13 +38,16 @@ import { prepareAttestationContent } from "@figaro-protocol/sdk/agent";
 import { isBytes32Hex } from "@/lib/shared/evm";
 import { keepReceivedWitnessContent, type WitnessHolder } from "@/lib/core/witnessContent";
 import type { ClauseSpecWithBlock } from "@/lib/shared/clauseSpecSource";
-import type { ContentDigestMark } from "@/lib/shared/clauseBlockBinding";
 import {
     openCeremonyBlob,
     requestCeremonyKey,
     sendCeremonyBlob,
     type SignChannelAuth,
 } from "./ceremony";
+
+/** The `block.runtime.contentDigest` mark, as the spec loader parses it
+ *  (`ContentDigestMark`, `frontend/lib/shared/clauseBlockBinding.ts`). */
+type ContentDigestMark = NonNullable<NonNullable<ClauseSpecWithBlock["block"]>["runtime"]["contentDigest"]>;
 
 /** Where the declaring clause attests the digest of the delivered content,
  *  as its spec marks it (`block.runtime.contentDigest`): the stage, and the

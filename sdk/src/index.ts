@@ -443,6 +443,7 @@ export {
     fetchUsageRecords,
     fetchSkippedBatchUses,
     buildUsageClaims,
+    buildProcessUsageClaims,
     fetchUsageClaimContext,
     usageScore,
     icbrt,
@@ -468,6 +469,7 @@ export type {
     UsagePeriodAccrual,
     ClauseOrProcessAccrual,
     UsageClaimContext,
+    UsageClaimOrder,
     UsageKind,
     UsageKey,
 } from "./rpgf/index.js";
