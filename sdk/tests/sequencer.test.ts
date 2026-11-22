@@ -13,8 +13,11 @@ import {
     toSequencerSig,
     MAX_SEQUENCER_RESPONSE_BYTES,
     RELAY_WIRE_FORMAT_VERSION,
+    batchAttestationTypedData,
 } from "../src/agent/sequencer.js";
-import { keccak256, stringToHex } from "viem";
+import { keccak256, recoverTypedDataAddress, stringToHex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { buildDomain, computeCommitmentProcessId, computeOrderHash } from "../src/commitments.js";
 import type { Commitment } from "../src/types.js";
 import type { SequencerOp, SequencerContentProof } from "../src/agent/sequencer.js";
 
@@ -82,6 +85,7 @@ describe("registering never enters a batch: the operations the SDK sends the rel
         submitResolveByWalletCode: (c) => c.submitResolveByWalletCode(ZERO_HASH, 100n, [testCommitment], "0x01"),
         submitAttestAsSeller: (c) => c.submitAttestAsSeller({ target: testCommitment, clauseId: ZERO_HASH, stage: 1, contentRef: ZERO_HASH, sellerSig: DUMMY_SIG, ...witness }),
         submitAttestAsBuyer: (c) => c.submitAttestAsBuyer({ target: testCommitment, clauseId: ZERO_HASH, stage: 1, contentRef: ZERO_HASH, buyerSig: DUMMY_SIG, ...witness }),
+        submitSignedAttestation: (c) => c.submitSignedAttestation("buyer", { target: testCommitment, clauseId: ZERO_HASH, stage: 1, contentRef: ZERO_HASH, clauseDataHash: ZERO_HASH, proof: [] }, DUMMY_SIG),
         submitAttestByWalletCode: (c) => c.submitAttestByWalletCode({ role: "Seller", target: testCommitment, clauseId: ZERO_HASH, stage: 1, contentRef: ZERO_HASH, authorization: "0x01", ...witness }),
         submitUsageClaim: (c) => c.submitUsageClaim({
             order: toSequencerCommitment(testCommitment),
@@ -387,6 +391,48 @@ describe("SequencerClient", () => {
         const body = captured as { operation: { AttestAsSeller: Record<string, unknown> } };
         expect(body.operation.AttestAsSeller).toHaveProperty("target");
         expect(body.operation.AttestAsSeller).not.toHaveProperty("role");
+    });
+
+    it("batchAttestationTypedData signs each role under the verifier's domain, and submitSignedAttestation posts that role's operation", async () => {
+        const party = privateKeyToAccount(`0x${"11".repeat(32)}`);
+        const verifier = "0x00000000000000000000000000000000000000b7" as const;
+        const chainId = 31337;
+        const at = {
+            target: testCommitment,
+            clauseId: keccak256(stringToHex("a clause")),
+            stage: 2,
+            contentRef: keccak256(stringToHex("some content")),
+            clauseDataHash: keccak256(stringToHex(testProof.clause_data)),
+            proof: [keccak256(stringToHex("a sibling leaf"))] as const,
+        };
+        const posted: Record<string, Record<string, unknown>>[] = [];
+        const client = new SequencerClient({
+            url: "http://localhost:3001",
+            fetch: (async (_input: RequestInfo | URL, init?: RequestInit) => {
+                posted.push(JSON.parse(init?.body as string).operation);
+                return new Response(JSON.stringify({ id: posted.length }), { status: 200 });
+            }) as typeof globalThis.fetch,
+        });
+        const orderHash = computeOrderHash(at.target, chainId, verifier);
+        for (const role of ["seller", "buyer"] as const) {
+            const typed = batchAttestationTypedData(role, at, chainId, verifier);
+            expect(typed.domain).toEqual(buildDomain(chainId, verifier));
+            expect(typed.message).toMatchObject({ orderHash, clauseId: at.clauseId, stage: at.stage, contentRef: at.contentRef });
+            if (role === "buyer") {
+                expect(typed.message).toMatchObject({ processId: computeCommitmentProcessId(at.target, chainId, verifier) });
+            }
+            const signature = await party.signTypedData(typed);
+            expect(await recoverTypedDataAddress({ ...typed, signature })).toBe(party.address);
+            const { id } = await client.submitSignedAttestation(role, at, signature);
+            expect(id).toBe(posted.length);
+        }
+        const [sellerOp, buyerOp] = posted;
+        expect(Object.keys(sellerOp!)).toEqual(["AttestAsSeller"]);
+        expect(Object.keys(buyerOp!)).toEqual(["AttestAsBuyer"]);
+        for (const op of [sellerOp!.AttestAsSeller!, buyerOp!.AttestAsBuyer!]) {
+            expect(op).toMatchObject({ clause_id: at.clauseId, stage: at.stage, content_ref: at.contentRef });
+            expect(op.proof).toEqual({ HashOnly: { clause_data_hash: at.clauseDataHash, inclusion_proof: [...at.proof] } });
+        }
     });
 
     it("submit throws SequencerError on 400", async () => {

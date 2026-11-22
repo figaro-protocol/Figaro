@@ -773,7 +773,7 @@ export interface AuditBundlePdfData {
 /**
  * ONE generic renderer for EVERY recognizable document. It knows no genre — it
  * draws whatever the generic engine produced from a declared assembly (header
- * rows, an optional line table with a total, generic whole-leaf sections, a
+ * rows, an optional line table with a total, generic whole-leaf parts, a
  * note). A new document genre (invoice, BoL, packing list, …) is a new assembly
  * in `documentLayouts.ts`; this renderer never changes.
  */
@@ -807,7 +807,7 @@ function DocumentPage({ document }: { document: RenderedDocument }) {
                     )}
                 </>
             )}
-            {document.leafSections?.map((s) => (
+            {document.leafParts?.map((s) => (
                 <View key={s.label}>
                     <Text style={styles.h2}>{s.label}</Text>
                     <View style={styles.section}>

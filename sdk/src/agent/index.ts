@@ -188,6 +188,7 @@ export {
     ATTEST_BUYER_TYPES,
     RELAY_WIRE_FORMAT_VERSION,
     parseSequencerStatus,
+    batchAttestationTypedData,
 } from "./sequencer.js";
 export type {
     SequencerClientConfig,
@@ -201,4 +202,7 @@ export type {
     SequencerAttestationWitness,
     SequencerStatus,
     SubmitResult,
+    BatchAttestation,
+    BatchAttestationRole,
+    BatchAttestationTypedData,
 } from "./sequencer.js";

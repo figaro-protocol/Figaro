@@ -5,7 +5,7 @@
  * Pure: the chain facts arrive as the `UsageClaimContext`
  * (`fetchUsageClaimContext` — the counter's provenance and assembly-terms
  * leaf keys), and the per-order claims come from the SDK's
- * `buildUsageClaims`, the same builder the headless `recordProcessUsage` and
+ * `buildUsageClaims` (through `buildProcessUsageClaims`), the same builder the headless `recordProcessUsage` and
  * the batch path use: one claim per clause, and — when the agreement
  * names its provenance (`Agreement.provenance`: the registered agreement it
  * instantiated and its assembly's assembly root) — the agreement claim and
@@ -28,9 +28,7 @@
  * checked per write by simulation at send time (`useUsageRecorder`).
  */
 import {
-    buildUsageClaims,
-    usageClaimKindCode,
-    usageKeyId,
+    buildProcessUsageClaims,
     type Agreement,
     type ProcessDesign,
     type Commitment,
@@ -63,58 +61,49 @@ interface UsagePlan {
 export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan {
     const writes: PlannedUsageWrite[] = [];
     const problems: string[] = [];
-    const planned = new Set<string>();
-    for (const { orderHash, commitment, agreement, context, assembly } of entries) {
+    const wellFormed = entries.filter(({ orderHash, agreement }) => {
         const provenance = agreement.provenance as unknown;
         if (provenance !== undefined && (
             provenance === null || typeof provenance !== "object"
             || !isBytes32Hex((provenance as { agreementHash?: unknown }).agreementHash)
             || !isBytes32Hex((provenance as { processDesignHash?: unknown }).processDesignHash))) {
             problems.push(`order ${orderHash}: provenance present but malformed: ${JSON.stringify(provenance)}`);
-            continue;
+            return false;
         }
-        let claims: ReturnType<typeof buildUsageClaims>;
-        try {
-            claims = buildUsageClaims(commitment, agreement, context, assembly);
-        } catch (error) {
-            problems.push(`order ${orderHash}: ${error instanceof Error ? error.message : String(error)}`);
-            continue;
-        }
-        for (const claim of claims) {
-            const id = usageKeyId(usageClaimKindCode(claim), claim.clause_or_process);
-            if (planned.has(id)) continue;
-            planned.add(id);
-            const kind = claim.kind;
-            if ("Clause" in kind) {
-                writes.push({
-                    kind: "clause",
-                    orderHash,
-                    order: commitment,
-                    key: claim.clause_or_process,
-                    clauseDataHash: kind.Clause.clause_data_hash,
-                    proof: claim.inclusion_proof,
-                });
-            } else if ("Agreement" in kind) {
-                writes.push({
-                    kind: "agreement",
-                    orderHash,
-                    order: commitment,
-                    key: claim.clause_or_process,
-                    processDesignHash: kind.Agreement.process_design_hash,
-                    proof: claim.inclusion_proof,
-                });
-            } else {
-                writes.push({
-                    kind: "assembly",
-                    orderHash,
-                    order: commitment,
-                    key: claim.clause_or_process,
-                    agreementHash: kind.Process.agreement_hash,
-                    agreementContentHash: kind.Process.agreement_content_hash,
-                    proof: claim.inclusion_proof,
-                    membershipProof: kind.Process.membership_proof,
-                });
-            }
+        return true;
+    });
+    const claims = buildProcessUsageClaims(wellFormed, ({ orderHash }, reason) => problems.push(`order ${orderHash}: ${reason}`));
+    for (const { order: { orderHash, commitment }, claim } of claims) {
+        const kind = claim.kind;
+        if ("Clause" in kind) {
+            writes.push({
+                kind: "clause",
+                orderHash,
+                order: commitment,
+                key: claim.clause_or_process,
+                clauseDataHash: kind.Clause.clause_data_hash,
+                proof: claim.inclusion_proof,
+            });
+        } else if ("Agreement" in kind) {
+            writes.push({
+                kind: "agreement",
+                orderHash,
+                order: commitment,
+                key: claim.clause_or_process,
+                processDesignHash: kind.Agreement.process_design_hash,
+                proof: claim.inclusion_proof,
+            });
+        } else {
+            writes.push({
+                kind: "assembly",
+                orderHash,
+                order: commitment,
+                key: claim.clause_or_process,
+                agreementHash: kind.Process.agreement_hash,
+                agreementContentHash: kind.Process.agreement_content_hash,
+                proof: claim.inclusion_proof,
+                membershipProof: kind.Process.membership_proof,
+            });
         }
     }
     return { writes, problems };

@@ -66,7 +66,7 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
         expect(currencyOf(new Map([["0xh", disagreeing]]))).toBe("0xToKeN");
     });
 
-    it("bill-of-lading: one per CARRIAGE LEG, with generic cargo/freight leaf sections", async () => {
+    it("bill-of-lading: one per CARRIAGE LEG, with generic cargo/freight leaf parts", async () => {
         await primeClauseSpecs(ALL);
         const carriage = agreement([
             { clause: "figaro-courier-process", data: {} },
@@ -87,12 +87,12 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
         expect(bol.header.find((h) => h.label === "Carrier")!.value).toBe("0xCOURIER");
         expect(bol.header.find((h) => h.label === "Origin")!.value).toBe("9q8yy");
         expect(bol.header.find((h) => h.label === "Destination")!.value).toBe("9q8yyk8yu");
-        const cargoClause = bol.leafSections!.find((s) => s.label === "Cargo")!;
+        const cargoClause = bol.leafParts!.find((s) => s.label === "Cargo")!;
         expect(cargoClause.entries).toEqual(expect.arrayContaining([
             { key: "massGrams", value: "500" },
             { key: "volumeMl", value: "1000" },
         ]));
-        expect(bol.leafSections!.map((s) => s.label)).toContain("Freight class");
+        expect(bol.leafParts!.map((s) => s.label)).toContain("Freight class");
         // The carriage order also has a commerce leaf → the courier's invoice emits too.
         expect(doc(docs, "commercial-invoice")).toHaveLength(1);
     });
@@ -219,7 +219,7 @@ describe("document layouts read the marks a clause's spec declares", () => {
         const value = (label: string) => bols[0].header.find((h) => h.label === label)!.value;
         expect(value("Origin")).toBe("u4pru");
         expect(value("Destination")).toBe("u4prv");
-        expect(bols[0].leafSections).toEqual([
+        expect(bols[0].leafParts).toEqual([
             { label: "Cargo", entries: [{ key: "loadKg", value: "12" }] },
             { label: "Mode of carriage", entries: [{ key: "tenderedHow", value: "dock" }] },
         ]);
@@ -237,7 +237,7 @@ describe("document layouts read the marks a clause's spec declares", () => {
             [mkOrder({ orderHash: "0xA", seller: "0xS", payment: 5n, checkoutHash: "0xh" })],
             new Map([["0xh", agreementUnderTest]]),
         ), "commercial-invoice")[0];
-        expect(invoice.leafSections).toEqual([{ label: "Delivery terms", entries: [{ key: "termCode", value: "DAP" }] }]);
+        expect(invoice.leafParts).toEqual([{ label: "Delivery terms", entries: [{ key: "termCode", value: "DAP" }] }]);
     });
 
     it("the reference clauses, with their marks, fill the bill of lading's sections", async () => {
@@ -254,7 +254,7 @@ describe("document layouts read the marks a clause's spec declares", () => {
             ], ["0xPARENT"])]]),
         ), "bill-of-lading");
         expect(bols).toHaveLength(1);
-        expect(bols[0].leafSections!.map((s) => s.label)).toEqual(["Cargo", "Freight class", "Delivery terms", "Mode of carriage"]);
+        expect(bols[0].leafParts!.map((s) => s.label)).toEqual(["Cargo", "Freight class", "Delivery terms", "Mode of carriage"]);
     });
 
     it("clauses with fields of the reference's names and no marks make no bill of lading and fill no section", async () => {
@@ -273,11 +273,11 @@ describe("document layouts read the marks a clause's spec declares", () => {
         const always: DocumentLayout = {
             genre: "probe", title: "Probe", scope: "order", appliesWhen: { always: true },
             header: [{ label: "Origin", ref: { routeEnd: "from" } }],
-            leafSections: [{ label: "Cargo", part: "cargo" }, { label: "Delivery terms", part: "delivery-terms" }],
+            leafParts: [{ label: "Cargo", part: "cargo" }, { label: "Delivery terms", part: "delivery-terms" }],
         };
         const [probe] = projectDocuments([always], [mkOrder({ orderHash: "0xC", seller: "0xS", checkoutHash: "0xh" })], new Map([["0xh", byKey(clauses)]]));
         expect(probe.header).toEqual([{ label: "Origin", value: "" }]);
-        expect(probe.leafSections).toEqual([]);
+        expect(probe.leafParts).toEqual([]);
     });
 
     it("a route mark the spec's own fields contradict marks nothing", async () => {
@@ -312,7 +312,7 @@ describe("projectFinancialStatements — the 3 statements AS a document (no dupl
             "process", "0xPROC",
         );
         const c = "0xtoken";
-        const bs = doc.leafSections!.find((s) => s.label === `Balance sheet · ${c}`)!;
+        const bs = doc.leafParts!.find((s) => s.label === `Balance sheet · ${c}`)!;
         const val = (k: string) => BigInt(bs.entries.find((e) => e.key.startsWith(k))!.value);
         // assets (bonds) = liabilities (refunds) + retained earnings
         expect(val("Buyer bonds") + val("Seller bonds"))
@@ -350,7 +350,7 @@ describe("financial statements legend — derived from the projection's own labe
     it("every emitted row key and cash-flow kind has a legend entry, on every statement", () => {
         for (const d of docs) {
             const emitted = [
-                ...d.leafSections!.flatMap((s) => s.entries.map((e) => e.key)),
+                ...d.leafParts!.flatMap((s) => s.entries.map((e) => e.key)),
                 ...d.lines!.rows.map((r) => r[0]),
             ];
             const legendKeys = d.legend!.map((l) => l.key);

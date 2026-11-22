@@ -8,23 +8,17 @@
  * (`buildDomain(chainId, FigaroBatchVerifier)`), never FigaroCore's: the
  * wallet's prompt names the verifier as its verifying contract. The typed
  * data and the wire are the SDK's (`RESOLVE_PROCESS_TYPES`,
- * `ATTEST_SELLER_TYPES`, `ATTEST_BUYER_TYPES`, `SequencerClient`); nothing
+ * `batchAttestationTypedData`, `SequencerClient`); nothing
  * here writes to the chain. A relay's answer is an operation id: the act is
  * with the relay and not yet on the chain, and the order's readers show it
  * once its batch lands.
  */
 import { useCallback } from "react";
 import { useChainId, useSignTypedData } from "wagmi";
+import { RESOLVE_PROCESS_TYPES, buildDomain, type Commitment } from "@figaro-protocol/sdk";
 import {
-    RESOLVE_PROCESS_TYPES,
-    buildDomain,
-    computeCommitmentProcessId,
-    computeOrderHash,
-    type Commitment,
-} from "@figaro-protocol/sdk";
-import {
-    ATTEST_BUYER_TYPES,
-    ATTEST_SELLER_TYPES,
+    batchAttestationTypedData,
+    type BatchAttestation,
     type SequencerClient,
     type SequencerUsageClaim,
 } from "@figaro-protocol/sdk/agent";
@@ -45,18 +39,6 @@ export interface RelayReceipt {
     relayUrl: string;
     /** A commit's `commitDeadline`: a batch can carry it until then. */
     commitDeadline?: bigint;
-}
-
-/** The attestation a batched order carries: the coordinator's arguments, the
- *  same on both paths (`useAttestationCoordinatorActions.buildReceipt`). */
-export interface BatchedAttestation {
-    /** The attested order's commitment as signed (a root's processId 0). */
-    target: Commitment;
-    clauseId: `0x${string}`;
-    stage: number;
-    contentRef: `0x${string}`;
-    clauseDataHash: `0x${string}`;
-    proof: `0x${string}`[];
 }
 
 /** The refusal when no relay that passes the check is known. */
@@ -92,39 +74,13 @@ export function useRelayActions(relay: KnownRelay | null) {
     }, [known, chainId, signTypedDataAsync]);
 
     /** One attestation as `role`: `AttestSeller` or `AttestBuyer` signed under
-     *  the verifier's domain over the order's id there, sent in the hash-only
-     *  form (fingerprints only, as the coordinator takes them). */
-    const attest = useCallback(async (role: PartyRole, at: BatchedAttestation): Promise<RelayReceipt> => {
+     *  the verifier's domain over the order's id there
+     *  (`batchAttestationTypedData`), sent in the hash-only form (fingerprints
+     *  only, as the coordinator takes them). */
+    const attest = useCallback(async (role: PartyRole, at: BatchAttestation): Promise<RelayReceipt> => {
         const { url, client } = known();
-        const verifier = pathContract("batch");
-        const domain = buildDomain(chainId, verifier);
-        const orderHash = computeOrderHash(at.target, chainId, verifier);
-        const witness = {
-            target: at.target,
-            clauseId: at.clauseId,
-            stage: at.stage,
-            contentRef: at.contentRef,
-            clauseDataHash: at.clauseDataHash,
-            inclusionProof: at.proof,
-        };
-        if (role === "seller") {
-            const sellerSig = await signTypedDataAsync({
-                domain,
-                types: ATTEST_SELLER_TYPES,
-                primaryType: "AttestSeller",
-                message: { orderHash, clauseId: at.clauseId, stage: at.stage, contentRef: at.contentRef },
-            });
-            const { id } = await client.submitAttestAsSeller({ ...witness, sellerSig });
-            return { act: "attest", operationId: id, relayUrl: url };
-        }
-        const processId = computeCommitmentProcessId(at.target, chainId, verifier);
-        const buyerSig = await signTypedDataAsync({
-            domain,
-            types: ATTEST_BUYER_TYPES,
-            primaryType: "AttestBuyer",
-            message: { processId, orderHash, clauseId: at.clauseId, stage: at.stage, contentRef: at.contentRef },
-        });
-        const { id } = await client.submitAttestAsBuyer({ ...witness, buyerSig });
+        const signature = await signTypedDataAsync(batchAttestationTypedData(role, at, chainId, pathContract("batch")));
+        const { id } = await client.submitSignedAttestation(role, at, signature);
         return { act: "attest", operationId: id, relayUrl: url };
     }, [known, chainId, signTypedDataAsync]);
 

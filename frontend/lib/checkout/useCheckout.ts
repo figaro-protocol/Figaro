@@ -6,9 +6,7 @@ import { useCommerce } from "./CommerceProvider";
 import { useOrderCommitmentFlow, type BuyerFundingRequest } from "@/lib/checkout/orderCommitmentFlow";
 import type { OrderPreview } from "@/lib/checkout/orderPreview";
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
-import useTokenApproval from "@/hooks/useTokenApproval";
-import useTokenDecimals from "@/hooks/useTokenDecimals";
-import useTokenBalance from "@/hooks/useTokenBalance";
+import useBondToken from "@/hooks/useBondToken";
 import { rememberSignedUnsent } from "@/lib/checkout/signedUnsentOrders";
 import type { CheckoutHandle } from "./types";
 
@@ -30,27 +28,19 @@ export function useCheckout(
     const { address } = useCommerce();
     const chainId = useChainId();
 
-    // ── Token metadata ──────────────────────────────────────────
-    // The token's decimals(), undefined until the chain answers; nothing is priced before it lands.
-    const { decimals } = useTokenDecimals(token);
-
-    // ── Balance ─────────────────────────────────────────────────
-    const { read: balanceRead } = useTokenBalance(token, address);
-    const balance = balanceRead.status === "present" ? balanceRead.value : undefined;
-
-    // ── ERC-20 authorization ────────────────────────────────────
+    // ── Token metadata, balance and ERC-20 authorization ────────
+    // The token's decimals() and the balance are undefined until the chain
+    // answers; nothing is priced before they land.
     const {
+        decimals,
+        balance,
         needsApproval,
         approve,
         isApprovePending,
         isApproveConfirming,
         isApproveSuccess,
         isApproveError,
-    } = useTokenApproval({
-        tokenAddress: token,
-        owner: address,
-        spender,
-    });
+    } = useBondToken(token, address, spender);
 
     // ── Order signing (the order* path) ─────────────────────────
     // The root order's signed payload is held here so the share panel can

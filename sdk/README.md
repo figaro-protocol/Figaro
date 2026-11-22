@@ -332,6 +332,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `assertApprovalCoversBond` | root | Throws when an approval is short of the full per-order bond `FigaroCore` will pull. |
 | `attestAsBuyer` | `/agent` | Submit a root-buyer attestation for one leaf of a committed order — a clause, or the provenance leaf. |
 | `attestAsSeller` | `/agent` | Submit a seller attestation for one clause of a committed order. |
+| `batchAttestationTypedData` | `/agent` | The typed data of a batch-path attestation, `AttestSeller` or `AttestBuyer`, under the batch verifier's domain; the wallet signs it and `SequencerClient.submitSignedAttestation` sends it. |
 | `buildChainOffers` | `/agent` | Buyer-sign a whole chain's offers, in commit order, through the one assembly walk. |
 | `buildCommitment` | root | Build the `Commitment` struct and the EIP-712 typed data to sign. |
 | `buildCommitmentSafe` | root | `buildCommitment` for a sub-order, its `runningTotal` the process's landed running total plus the order's payment, so the struct matches what `commit` and the proof program check. The process is read on either path (`readProcessState`) when `addresses.batchVerifier` is set; pass the deployment's `deploymentBlock` as `fromBlock` in its fifth argument. |
@@ -346,6 +347,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `composeOrderAgreement` | root | ONE agreement's registered agreement from the clauses a designer selected — the scope check, the value-free rule, at least one clause — and its `agreementHash`; `buildProcessDesign` composes every new agreement through it, and a designer registers one on its own through it. |
 | `buildProvenanceInclusionProof` | root | Merkle proof that the agreement's provenance leaf sits under a signed `checkoutHash`. |
 | `buildAgreementInclusionProof` | root | An agreement's membership proof under `processDesignHash`, with its `agreementContentHash` — what the assembly reward claim carries. |
+| `buildProcessUsageClaims` | root | The usage claims of every order of a resolved process, each kind and key once; an order whose claims do not build is reported and skipped. |
 | `buildSignedClauseInclusionProof` | root | Merkle proof that one clause sits under a signed `checkoutHash`. |
 | `buildSwapWitnessTypedData` | root | Permit2 witness typed data for the swap-and-commit funding leg. |
 | `buildUsageClaims` | root | Turn a resolved order plus its agreement (and the assembly its provenance names) into the clause, agreement and assembly usage claims. |
@@ -1346,6 +1348,12 @@ await seq.submitResolveByWalletCode(processId, runningTotal, commitments, wallet
 // Network when the relay proves there (SP1_PROVER=network). Its clause_data must
 // hash to clauseDataHash.
 await seq.submitAttestAsSeller({ target, clauseId, stage, contentRef, sellerSig, clauseDataHash, inclusionProof });
+// The same, for either role, from one value: batchAttestationTypedData gives the
+// AttestSeller or AttestBuyer typed data under the verifier's domain, your wallet
+// signs it, and submitSignedAttestation sends the hash-only form.
+const at = { target, clauseId, stage, contentRef, clauseDataHash, proof: inclusionProof };
+const signature = await walletClient.signTypedData({ account, ...batchAttestationTypedData("buyer", at, chainId, verifier) });
+await seq.submitSignedAttestation("buyer", at, signature);
 // An attestation's second form, for either party: bytes the party's own account
 // code validates (ERC-1271) for the AttestSeller / AttestBuyer digest under the
 // verifier's domain, as the seller attests after its key is lost through code
