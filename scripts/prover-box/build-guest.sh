@@ -30,6 +30,23 @@ node "$REPO_ROOT/scripts/check-release-revision.mjs" "${1:-${RELEASE_COMMIT:-}}"
 # read the CI workflows make — so the box, CI and the library agree.
 SP1_TAG=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' "$REPO_ROOT/prover/Cargo.lock")
 [ "$SP1_TAG" != "v" ] || { echo "could not read the sp1-sdk version from Cargo.lock"; exit 1; }
+
+# The build image is named by its digest, never by its tag alone: a tag can be
+# moved to another image, and the image compiles the guest, so another image
+# is another key from the same sources. The digest is the one the registry
+# gives for the tag below; a new SP1 release has no digest here, and the build
+# refuses until its digest is read from the registry and written in. The
+# pinned image is pulled by digest and the tag is pointed at it on this
+# machine, so `cargo prove build --docker --tag` runs that image.
+SP1_IMAGE="ghcr.io/succinctlabs/sp1"
+case "$SP1_TAG" in
+  v6.8.1) SP1_IMAGE_DIGEST="sha256:e672d7160039916f40a6a4c2ea4cb0c8cd3dab120fdb24d08560d386ad8f59c2" ;;
+  *) echo "no pinned digest for the SP1 build image $SP1_TAG: read it from the registry and add it here"; exit 1 ;;
+esac
+docker pull "$SP1_IMAGE@$SP1_IMAGE_DIGEST"
+docker tag "$SP1_IMAGE@$SP1_IMAGE_DIGEST" "$SP1_IMAGE:$SP1_TAG"
+echo "SP1 build image: $SP1_IMAGE:$SP1_TAG = $SP1_IMAGE_DIGEST"
+
 cd "$REPO_ROOT/prover/program"
 cargo prove build --docker --tag "$SP1_TAG"
 
