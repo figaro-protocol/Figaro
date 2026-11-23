@@ -501,7 +501,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `unwrapWithSharedSecret` | `/handoff` | Decrypt what `wrapWithSharedSecret` produced. |
 | `usageClaimsOfOperationStream` | root | Every usage claim a batch's operation stream (the `operations` of `BatchOperations`) carries, whole and in order, in the wire form `SequencerClient.submitUsageClaim` sends. Walks every other entry by its own length and throws on a malformed stream, as the guest's `decode_operation_stream` refuses it. |
 | `validateCommitmentAgreement` | root | The non-throwing form of `assertAgreementSignable` — returns the findings instead. |
-| `validateContent` | `/clauses` | Validate clause content against its spec; on a closed clause, unknown fields are rejected; a geohash, its resolved format static or named by a sibling, is refused past its disposition's grain cap. |
+| `validateContent` | `/clauses` | Validate clause content against its spec; on a closed clause, unknown fields are rejected; a location code under `geohash`, `h3`, `s2` or `olc`, its resolved format static or named by a sibling, is refused past its disposition's grain cap. |
 | `validateDraft` | `/agent` | The check a candidate runs before countersigning a race draft: structure, the bound assembly (`readProfile`), and with `specs` the merkle-leaf gate (`counterSignDraft` and `quoteDraft` run it themselves and refuse without `specs`). |
 | `verifyCommitmentSignature` | root | Does this signature over this commitment recover to this signer? Refuse early, off chain. |
 | `verifyResolveProcessSignature` | root | Does this buyer's resolve signature over this process id and cumulative value recover to the buyer? From the chain, the value is the sum of the listed commitments' payments. The first of the resolve's two forms; the second is checked by the verifier against the buyer's code. |
@@ -1700,9 +1700,13 @@ const bytes = encodeContentFromSpec(parsed.spec, { handoff: ["face-to-face"] });
 ```
 
 Format is a closed subset of JSON Schema. Field types: `string` (with
-format `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
-`integer`, `bigint` (decimal-string for JSON safety), `boolean`, `enum`,
-`array`, `object`. Per-stage overrides via `spec.stages[stage]`: each key is
+format `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`, whose
+shape is checked, or `geohash` / `h3` / `s2` / `olc`, whose grain is capped
+by the field's disposition; any other format is a plain string), `integer`
+(within ±(2^53 − 1)), `bigint` (decimal-string for JSON safety), `boolean`,
+`enum`, `array`, `object`. Fields nest at most 16 levels below a top-level
+field, and no string in a value or in a spec outside its `block` holds a
+lone UTF-16 surrogate. Per-stage overrides via `spec.stages[stage]`: each key is
 the decimal of the stage, from `"0"` to `"255"`, with no sign, no leading zero
 and no whitespace, and a spec with any other key does not parse.
 `stageOfKey(key)` reads a key, `stageKey(stage)` writes one, and

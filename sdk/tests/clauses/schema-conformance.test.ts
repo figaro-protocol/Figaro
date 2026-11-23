@@ -98,6 +98,33 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         expect(parseClauseSpec(enumOf(257)).ok).toBe(false);
     });
 
+    // Every integer a spec declares is within ±(2^53 − 1), and a length or a
+    // count is not negative; the schema and the parser hold the same bounds.
+    const safe = Number.MAX_SAFE_INTEGER;
+    const integerField = (attrs: Record<string, unknown>) => withFields([{ name: "n", type: "integer", required: true, ...attrs }]);
+    const stringField = (attrs: Record<string, unknown>) => withFields([{ name: "s", type: "string", required: true, ...attrs }]);
+    const arrayField = (attrs: Record<string, unknown>) => withFields([{ name: "a", type: "array", required: true, items: { type: "string" }, ...attrs }]);
+    const integerCases: ReadonlyArray<readonly [string, unknown, boolean]> = [
+        ["a version of 2^53 − 1", { ...withFields([open]), version: safe }, true],
+        ["a version of 2^53", { ...withFields([open]), version: safe + 1 }, false],
+        ["an integer field bounded at ±(2^53 − 1)", integerField({ min: -safe, max: safe }), true],
+        ["an integer field whose min is −2^53", integerField({ min: -safe - 1 }), false],
+        ["an integer field whose max is 2^53", integerField({ max: safe + 1 }), false],
+        ["an integer field whose max is a string", integerField({ max: "10" }), false],
+        ["an integer field whose default is 2^53 − 1", integerField({ default: safe }), true],
+        ["an integer field whose default is 2^53", integerField({ default: safe + 1 }), false],
+        ["an integer field whose default is a string", integerField({ default: "5" }), false],
+        ["a string field whose maxLength is 2^53 − 1", stringField({ maxLength: safe }), true],
+        ["a string field whose maxLength is 2^53", stringField({ maxLength: safe + 1 }), false],
+        ["a string field whose minLength is negative", stringField({ minLength: -1 }), false],
+        ["an array field whose maxItems is 2^53", arrayField({ maxItems: safe + 1 }), false],
+        ["an array field whose minItems is negative", arrayField({ minItems: -1 }), false],
+    ];
+    it.each(integerCases)("%s: accepted %s in BOTH schema and parser", (_name, spec, accepted) => {
+        expect(validateAgainstSchema(spec), JSON.stringify(validateAgainstSchema.errors)).toBe(accepted);
+        expect(parseClauseSpec(spec).ok).toBe(accepted);
+    });
+
     // The empty anchor (`emptyAnchor`): present only as true, and never
     // beside a top-level field's default. The schema and the parser accept
     // and refuse the same specs.

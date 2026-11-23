@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://figaro.org/schemas/clause-spec.json",
     "title": "Figaro Clause Spec (Layer A)",
-    "description": "The canonical shape of a Figaro clause specification — the off-chain JSON a clause author writes, pins to IPFS, and registers in ClauseRegistry. A clause is one term or condition of an agreement, published once, that anyone can compose. The spec has two halves either side of the UI/protocol crease: the TOP LEVEL is the protocol half (identity, registration, and the content fields that become clauses of signed agreements) — its reference parser is `parseClauseSpec` (sdk/src/clauses/spec.ts); `block` is the UI half (instructions to frontends, organized into phase sections by reader: design / checkout / runtime) — its reference parser is the frontend's `parseBlockBinding` (frontend/lib/shared/clauseBlockBinding.ts). Nothing in `block` is ever read on-chain. A conformance test (sdk/tests/clauses/schema-conformance.test.ts) keeps schema and parsers in lockstep. Validate your clause against this before registering it — a clause that does not conform is not surfaced by conforming frontends (resolved-empty = absence, never an error). THE STANDARD: express every attribute explicitly — zero, empty, or null, never absent (the repo's own clause corpus complies, enforced by test); consumers treat an absent attribute as its empty value, so a sparser spec still surfaces. The schema is OPEN (additionalProperties allowed at every level but one): unknown fields are tolerated and ignored, so the format can grow by versioning without rejecting older clauses. The one closed level is `stages`, whose every key is a stage key.",
+    "description": "The canonical shape of a Figaro clause specification — the off-chain JSON a clause author writes, pins to IPFS, and registers in ClauseRegistry. A clause is one term or condition of an agreement, published once, that anyone can compose. The spec has two halves either side of the UI/protocol crease: the TOP LEVEL is the protocol half (identity, registration, and the content fields that become clauses of signed agreements) — its reference parser is `parseClauseSpec` (sdk/src/clauses/spec.ts); `block` is the UI half (instructions to frontends, organized into phase sections by reader: design / checkout / runtime) — its reference parser is the frontend's `parseBlockBinding` (frontend/lib/shared/clauseBlockBinding.ts). Nothing in `block` is ever read on-chain. A conformance test (sdk/tests/clauses/schema-conformance.test.ts) keeps schema and parsers in lockstep. Validate your clause against this before registering it — a clause that does not conform is not surfaced by conforming frontends (resolved-empty = absence, never an error). THE STANDARD: express every attribute explicitly — zero, empty, or null, never absent (the repo's own clause corpus complies, enforced by test); consumers treat an absent attribute as its empty value, so a sparser spec still surfaces. The schema is OPEN (additionalProperties allowed at every level but one): unknown fields are tolerated and ignored, so the format can grow by versioning without rejecting older clauses. The one closed level is `stages`, whose every key is a stage key. No string and no object key in the spec outside its top-level `block` holds a lone UTF-16 surrogate (a high half with no low half after it, or a low half alone): those are the bytes the clause key hashes, and a spec that holds one does not parse. JSON Schema cannot state this rule over the open attributes, so a validator of this schema accepts such a spec and the parsers refuse it.",
     "type": "object",
     "required": ["clauseId", "version", "title", "description", "fields"],
     "additionalProperties": true,
@@ -12,7 +12,7 @@
             "minLength": 1,
             "description": "Human-readable clause name, a presentation field inside the document. The on-chain identity is the clause key, keccak256 of the canonical bytes of the spec without its top-level block; the name reaches it only as bytes like every other field, so two specs with one name are two clauses."
         },
-        "version": { "type": "integer", "minimum": 0, "description": "Clause version — an integer lineage counter a reader sees, never semver and never part of the identity: a changed spec is a new key." },
+        "version": { "type": "integer", "minimum": 0, "maximum": 9007199254740991, "description": "Clause version — an integer lineage counter a reader sees, never semver and never part of the identity: a changed spec is a new key. At most 2^53 − 1, the safe-integer bound every integer the spec declares keeps." },
         "title": { "type": "string", "minLength": 1 },
         "description": { "type": "string" },
         "fields": {
@@ -39,7 +39,7 @@
             "additionalProperties": true,
             "properties": {
                 "name": { "type": "string", "minLength": 1 },
-                "type": { "enum": ["string", "integer", "bigint", "boolean", "enum", "array", "object"] },
+                "type": { "enum": ["string", "integer", "bigint", "boolean", "enum", "array", "object"], "description": "The type of the field's value. A `string` value holds no lone UTF-16 surrogate; a value that holds one does not validate. An `integer` value is a JSON number whose value is a whole number within ±(2^53 − 1), however the text writes it (5, 5.0 and 5e0 are one integer); a value outside that range does not validate, and a larger value belongs in a `bigint` field. A `bigint` value is a decimal string within the uint256 range." },
                 "required": { "type": "boolean" },
                 "description": { "type": "string" },
                 "label": { "type": "string", "description": "Cosmetic display label (Layer-A only; nothing on-chain reads it)." },
@@ -49,25 +49,35 @@
                     "type": ["string", "number", "boolean", "array"],
                     "description": "Build/UI default (composition metadata; the ABI encoder ignores it). Shape must match the field type."
                 },
-                "format": { "type": "string", "minLength": 1, "description": "string only. An OPEN axis: any non-empty string is a valid declaration. Validators enforce the formats they know (bytes32-hex, address-hex, bytes-hex, iso-datetime) and treat the rest as plain strings; frontends may map known formats to richer inputs (e.g. geohash)." },
-                "formatFromField": { "type": "string", "minLength": 1, "description": "string only. VALUE-DRIVEN input format: name a SIBLING field whose committed VALUE is the format key, instead of the static `format`. Lets a field's richer input follow an open, per-composition standard axis (figaro-geolocation's origin/destination declare formatFromField:\"geocodeStandard\" — the geohash picker + grain cap render when the committed standard is geohash, degrading to plain text otherwise). Resolved as values[formatFromField] ?? sibling default ?? format." },
-                "minLength": { "type": "integer", "description": "string only." },
-                "maxLength": { "type": "integer", "description": "string only." },
+                "format": { "type": "string", "minLength": 1, "description": "string only. An OPEN axis: any non-empty string is a valid declaration. A validator checks the shape of a value under four formats (bytes32-hex, address-hex, bytes-hex, iso-datetime). It caps the grain of a location code under four more (geohash, h3, s2, olc), by the field's format as `formatFromField` resolves it and by the field's disposition; an array item takes the array field's disposition. The grain is a geohash's length in characters, an H3 cell index's resolution, an S2 cell token's level and an Open Location Code's length. A public value carries at most geohash 6 characters, H3 resolution 8, S2 level 13 or Open Location Code length 6; a private value at most 12, 15, 30 or 15. A value finer than its cap does not validate. Under h3, s2 or olc a value that is no code of the standard does not validate either, since its grain cannot be read; a geohash value's characters are not checked, only its length. A validator treats every other format as a plain string. A location under any other standard is bounded only by the field's own `maxLength`, so a public field that declares one has no grain cap. Frontends may map known formats to richer inputs." },
+                "formatFromField": { "type": "string", "minLength": 1, "description": "string only. VALUE-DRIVEN input format: name a SIBLING field whose committed VALUE is the format key, instead of the static `format`. Lets a field's richer input follow an open, per-composition standard axis (figaro-geolocation's origin/destination declare formatFromField:\"geocodeStandard\" — the geohash picker + grain cap render when the committed standard is geohash, degrading to plain text otherwise). Resolved as values[formatFromField] ?? sibling default ?? format. The grain cap of `format` applies to the resolved format." },
+                "minLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991, "description": "string only." },
+                "maxLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991, "description": "string only." },
                 "pattern": { "type": "string", "maxLength": 256, "description": "string only. A regex written in the portable core: printable ASCII; literals, '.', classes, groups '(...)' and '(?:...)', \\d \\D \\w \\W \\s \\S, escaped punctuation, ^ $ \\b \\B, alternation, and the quantifiers * + ? {n} {n,} {n,m} with counts up to 64, each optionally lazy. Its expanded size is at most 4096: each atom, each assertion and each '|' counts one; a group counts one more than what it holds; * + ? count one more than what they follow; and a counted quantifier counts what it follows plus one, times m for {n,m}, n for {n} and n + 1 for {n,}. A value whose length in UTF-16 units times the expanded size is past 4194304 is refused without the pattern run, and a content whose values' sum of that work is past 16777216 is refused. No lookaround, backreference, named group, inline flag, possessive quantifier, Unicode class, nested class or letter escape. A patterned field's value is printable ASCII." },
-                "min": { "type": ["number", "string"], "description": "integer (number) or bigint (decimal string)." },
-                "max": { "type": ["number", "string"], "description": "integer (number) or bigint (decimal string)." },
+                "min": { "type": ["number", "string"], "description": "integer (number) or bigint (decimal string). An integer field's bound is a whole number within ±(2^53 − 1)." },
+                "max": { "type": ["number", "string"], "description": "integer (number) or bigint (decimal string). An integer field's bound is a whole number within ±(2^53 − 1)." },
                 "values": { "type": "array", "items": { "type": "string" }, "maxItems": 256, "description": "enum only — the ordered value codes, at most 256 (a value encodes as its uint8 position)." },
                 "sentinel": { "type": "string", "description": "enum only — an ABI position-as-index placeholder, never a valid input." },
                 "valueLabels": { "type": "object", "additionalProperties": { "type": "string" }, "description": "enum only — cosmetic per-value labels." },
-                "items": { "allOf": [{ "$ref": "#/$defs/itemField" }, { "not": { "required": ["blinding"] } }], "description": "array only — the element field spec (its name/required are injected, so omit them). A blinding field is never an array element." },
-                "minItems": { "type": "integer", "description": "array only." },
-                "maxItems": { "type": "integer", "description": "array only." },
-                "fields": { "type": "array", "items": { "$ref": "#/$defs/nestedField" }, "description": "object only — the nested (named) field specs. A blinding field is never nested." }
+                "items": { "allOf": [{ "$ref": "#/$defs/itemField" }, { "not": { "required": ["blinding"] } }], "description": "array only — the element field spec (its name/required are injected, so omit them). A blinding field is never an array element. The element is one level deeper than its array field; a field more than 16 levels below a top-level field does not parse." },
+                "minItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991, "description": "array only." },
+                "maxItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991, "description": "array only." },
+                "fields": { "type": "array", "items": { "$ref": "#/$defs/nestedField" }, "description": "object only — the nested (named) field specs. A blinding field is never nested. Each nested field is one level deeper than its object field; a field more than 16 levels below a top-level field does not parse. JSON Schema cannot state the depth, so a validator of this schema accepts a deeper spec and the parsers refuse it." }
             },
             "allOf": [
                 { "if": { "properties": { "type": { "const": "enum" } } }, "then": { "required": ["values"] } },
                 { "if": { "properties": { "type": { "const": "array" } } }, "then": { "required": ["items"] } },
                 { "if": { "properties": { "type": { "const": "object" } } }, "then": { "required": ["fields"] } },
+                {
+                    "if": { "properties": { "type": { "const": "integer" } } },
+                    "then": {
+                        "properties": {
+                            "min": { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+                            "max": { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+                            "default": { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 }
+                        }
+                    }
+                },
                 {
                     "if": { "required": ["blinding"] },
                     "then": {
