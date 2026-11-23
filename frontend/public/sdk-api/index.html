@@ -1221,7 +1221,7 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <tr>
 <td><code>validateContent</code></td>
 <td><code>/clauses</code></td>
-<td>Validate clause content against its spec; on a closed clause, unknown fields are rejected; a geohash, its resolved format static or named by a sibling, is refused past its disposition's grain cap.</td>
+<td>Validate clause content against its spec; on a closed clause, unknown fields are rejected; a location code under <code>geohash</code>, <code>h3</code>, <code>s2</code> or <code>olc</code>, its resolved format static or named by a sibling, is refused past its disposition's grain cap.</td>
 </tr>
 <tr>
 <td><code>validateDraft</code></td>
@@ -1703,9 +1703,13 @@ at <code>/spec</code>; the clause-authoring path is at <code>/clauses</code>.</p
 </code><button type="button">Copy</button></pre>
 
 <p>Format is a closed subset of JSON Schema. Field types: <code>string</code> (with
-format <code>bytes32-hex</code> / <code>address-hex</code> / <code>bytes-hex</code> / <code>iso-datetime</code>),
-<code>integer</code>, <code>bigint</code> (decimal-string for JSON safety), <code>boolean</code>, <code>enum</code>,
-<code>array</code>, <code>object</code>. Per-stage overrides via <code>spec.stages[stage]</code>: each key is
+format <code>bytes32-hex</code> / <code>address-hex</code> / <code>bytes-hex</code> / <code>iso-datetime</code>, whose
+shape is checked, or <code>geohash</code> / <code>h3</code> / <code>s2</code> / <code>olc</code>, whose grain is capped
+by the field's disposition; any other format is a plain string), <code>integer</code>
+(within ±(2^53 − 1)), <code>bigint</code> (decimal-string for JSON safety), <code>boolean</code>,
+<code>enum</code>, <code>array</code>, <code>object</code>. Fields nest at most 16 levels below a top-level
+field, and no string in a value or in a spec outside its <code>block</code> holds a
+lone UTF-16 surrogate. Per-stage overrides via <code>spec.stages[stage]</code>: each key is
 the decimal of the stage, from <code>&quot;0&quot;</code> to <code>&quot;255&quot;</code>, with no sign, no leading zero
 and no whitespace, and a spec with any other key does not parse.
 <code>stageOfKey(key)</code> reads a key, <code>stageKey(stage)</code> writes one, and
