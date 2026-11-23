@@ -6,9 +6,10 @@ set -e
 # deployments/11155111.json (see deployments/README.md).
 #
 # Sepolia is the MAINNET REHEARSAL (testnet = mainnet rehearsal): same
-# guardrail structure as scripts/deploy-mainnet.sh and the same env contract,
-# DAO_WALLET included: the treasury is a Safe that stands on Sepolia before
-# this runs, and the script deploys no mock (DeploySepolia.s.sol's header).
+# guardrail structure as scripts/deploy-mainnet.sh and the same env contract.
+# The treasury is a Safe this wrapper derives and creates by CREATE2 from the
+# expectations file, then hands the script as DAO_WALLET; the script deploys
+# no mock (DeploySepolia.s.sol's header).
 #
 #   - refuses to run, in every mode, unless RELEASE_COMMIT names the full sha
 #     of the release revision and this checkout builds it: a clean tree that
@@ -39,7 +40,7 @@ set -e
 #   SEPOLIA_DEPLOY_CONFIRM=yes \
 #   RPC_URL=https://... \
 #   PRIVATE_KEY=0x... \
-#   FOUNDER_WALLET=0x... SUPPORTERS_WALLET=0x... DAO_WALLET=0x... \
+#   FOUNDER_WALLET=0x... SUPPORTERS_WALLET=0x... \
 #   RPGF_GENESIS=... \
 #   SP1_VERIFIER_GATEWAY=0x... SP1_PROGRAM_VKEY=0x... \
 #   ETHERSCAN_API_KEY=... \
@@ -118,7 +119,8 @@ export PERMIT2="${PERMIT2:-0x000000000022D473030F116dDEE9F6B43aC78BA3}"
 #   PRIVATE_KEY            — run(): vm.envUint("PRIVATE_KEY")
 #   FOUNDER_WALLET          — _validateEnv(): must be nonzero
 #   SUPPORTERS_WALLET       — _validateEnv(): must be nonzero
-#   DAO_WALLET              — _validateEnv(): must be nonzero; the treasury's Safe
+#   DAO_WALLET              — _validateEnv(): must be nonzero; set by this wrapper
+#                             to the treasury's Safe, never by hand
 #   RPGF_GENESIS            — _validateEnv(): RPGF_GENESIS + 365 days > now
 #   SP1_VERIFIER_GATEWAY    — the gateway the routed verifier is looked up on (Guard 4);
 #                             the script binds that route as SP1_VERIFIER, exported here
@@ -131,7 +133,7 @@ if [ "${PAIR_ONLY:-}" = "1" ]; then
   # RPGF_GENESIS is derived from the live counter below, never required.
   REQUIRED=(PRIVATE_KEY SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL)
 else
-  REQUIRED=(PRIVATE_KEY FOUNDER_WALLET SUPPORTERS_WALLET DAO_WALLET RPGF_GENESIS \
+  REQUIRED=(PRIVATE_KEY FOUNDER_WALLET SUPPORTERS_WALLET RPGF_GENESIS \
             SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL SWAP_ROUTER SWAP_QUOTER)
 fi
 if [ "${SKIP_VERIFY:-}" != "1" ]; then
@@ -281,6 +283,25 @@ if [ "${PAIR_ONLY:-}" = "1" ]; then
   echo "   the site rebuilt from the updated record."
   exit 0
 fi
+
+# ── The treasury's Safe ──────────────────────────────────────────────────────
+# DAO_WALLET is not an input. The treasury is the Safe the expectations file
+# states (treasurySafe: its owners, its threshold, a salt), at the address
+# Safe's own factory gives for them by CREATE2. scripts/safe-treasury.mjs
+# derives that address, creates the Safe when none stands there (the deploy's
+# key pays; the owners sign nothing), and checks its owners and threshold. A
+# DAO_WALLET set by hand must be that address.
+SAFE_ADDR=$(node "$SCRIPT_DIR/safe-treasury.mjs" ensure "$REPO_ROOT/deployments/${ACTUAL_CHAIN_ID}.expected.json" --rpc-url "$RPC_URL") || {
+  echo "❌ Refusing to deploy — the treasury's Safe is not as deployments/${ACTUAL_CHAIN_ID}.expected.json states it"
+  exit 1
+}
+[[ "$SAFE_ADDR" =~ ^0x[0-9a-fA-F]{40}$ ]] || { echo "❌ Refusing to deploy — the Safe step printed no address: $SAFE_ADDR"; exit 1; }
+if [ -n "${DAO_WALLET:-}" ] && [ "$(printf '%s' "$DAO_WALLET" | tr 'A-F' 'a-f')" != "$(printf '%s' "$SAFE_ADDR" | tr 'A-F' 'a-f')" ]; then
+  echo "❌ Refusing to deploy — DAO_WALLET=$DAO_WALLET is not the treasury's Safe $SAFE_ADDR;"
+  echo "   unset it, or state the Safe you mean under treasurySafe in the expectations file."
+  exit 1
+fi
+export DAO_WALLET="$SAFE_ADDR"
 
 echo ""
 echo "🚀 Deploying Figaro Protocol stack to SEPOLIA (chain id $ACTUAL_CHAIN_ID)..."

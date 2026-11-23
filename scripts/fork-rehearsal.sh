@@ -17,7 +17,7 @@
 # the registration plan), and the current record deployments/<chainId>.json
 # when there is one (the swap router and quoter). Any of them is overridden by
 # its environment variable, the wrapper's own names: FOUNDER_WALLET,
-# SUPPORTERS_WALLET, DAO_WALLET, SP1_VERIFIER_GATEWAY,
+# SUPPORTERS_WALLET, SP1_VERIFIER_GATEWAY,
 # SP1_PROGRAM_VKEY, SWAP_ROUTER, SWAP_QUOTER, RPGF_GENESIS (default: the fork's
 # time), PUBLIC_RPC_URL.
 #
@@ -39,7 +39,9 @@
 # is set) has the fork sign for every wallet the plan names, at its real
 # address, so the plan, the keys and the checks are rehearsed exactly and only
 # the device taps are not. PRIVATE_KEY unset deploys from a throwaway key the
-# fork funds; the vault's key owner is then that key.
+# fork funds. The vault is the treasury's Safe, whose owners are the wallets
+# the expectations file states, and the seeding's vault steps do not speak a
+# Safe yet: scripts/seed/seed.sh refuses them, and the rehearsal stops there.
 #
 #   RELEASE_COMMIT  required; the full sha of the release revision
 #   FORK_URL        required; never printed
@@ -118,8 +120,7 @@ export SWAP_QUOTER="${SWAP_QUOTER:-$(cur .swapQuoter)}"
 export PUBLIC_RPC_URL="${PUBLIC_RPC_URL:-$(cur .rpcUrl)}"
 export RPGF_GENESIS="${RPGF_GENESIS:-$(cast block latest --field timestamp --rpc-url "$FORK")}"
 export FORGE_GAS_MULTIPLIER="${FORGE_GAS_MULTIPLIER:-200}"
-export DAO_WALLET="${DAO_WALLET:-$(exp '.wallets.dao')}"
-for v in FOUNDER_WALLET SUPPORTERS_WALLET DAO_WALLET SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY SWAP_ROUTER; do
+for v in FOUNDER_WALLET SUPPORTERS_WALLET SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY SWAP_ROUTER; do
   [ -n "${!v}" ] || { echo "❌ $v: neither the environment nor the chain's files name it"; exit 1; }
 done
 SKIP_VERIFY=1 RECORD_DIR="$REHEARSAL_DIR/records" RPC_URL="$FORK" bash "$WRAPPER" > "$REHEARSAL_DIR/deploy.log" 2>&1 \

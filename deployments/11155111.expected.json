@@ -4,10 +4,19 @@
     "wallets": {
         "founder": "0xB4592b12F02a46a8FD8529CE992f067403BDe3e9",
         "supporters": "0xE75DA40Ee55ecECBc1161A4dD6798086b968C87C",
-        "dao": null,
-        "daoVault": null,
+        "dao": {
+            "record": "daoTreasury"
+        },
+        "daoVault": {
+            "record": "daoTreasury"
+        },
         "daoOperator": "0xCfb4F5cb3D6A9861d657541Dde1bf0DE7E6Cfed9",
         "deployer": "0xaB6002468376875CcD4323857E972FB2aFdA647c"
+    },
+    "treasurySafe": {
+        "owners": ["founder", "supporters", "deployer"],
+        "threshold": 2,
+        "saltNonce": "53398024396778278514654654104326085161219145538666249498023220408953596548217"
     },
     "batchVerifier": {
         "programVKey": "0x00569b319e52c0a8c173cd333a88177ea189879df483b9003b8b31f1429447d9",

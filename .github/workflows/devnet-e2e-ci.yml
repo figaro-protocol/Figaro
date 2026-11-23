@@ -453,7 +453,7 @@ jobs:
               run: |
                   node --test scripts/test-verify-etherscan.mjs scripts/test-check-deployment-registrars.mjs \
                       scripts/test-check-deployment-members.mjs scripts/test-propose-gas-constants.mjs \
-                      scripts/test-check-release-revision.mjs
+                      scripts/test-check-release-revision.mjs scripts/test-safe-treasury.mjs
                   bash scripts/prover-box/test-checkout-release.sh
 
             - name: Upload Playwright report

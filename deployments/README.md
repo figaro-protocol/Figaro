@@ -122,8 +122,21 @@ differing, with no change in what it executes. Against Sepolia this holds for
 `AgreementRegistry`, `ProcessRegistry` and `UsageCounter`, and for every clause key, which is
 derived as above, until the redeploy.
 
-- `1.expected.json` — mainnet. The deposits, the cooldown and the wallets are
-  `null` today.
+The treasury is stated, never handed over. `treasurySafe` gives the Safe's
+owners (each a wallet the file names, or an address), its threshold and a
+salt. Safe's own factory creates a Safe by CREATE2, so those three give its
+address before it exists, the same on every chain that carries Safe's
+published contracts. `scripts/safe-treasury.mjs` derives the address, the
+deploy wrapper creates the Safe there when none stands and passes it to the
+script as `DAO_WALLET`, and the check holds the record's `daoTreasury` to the
+derived address and the Safe's owners and threshold to the stated ones. The
+file states the Safe as it is created, and the check is of a deploy: a Safe
+changes its own owners and threshold, at the same address, by a transaction
+its present owners sign, and the check then differs from the file by design.
+The devnet's file has no `treasurySafe`: its treasury is the mock vault.
+
+- `1.expected.json` — mainnet. The deposits, the cooldown, the wallets and
+  `treasurySafe` are `null` today.
 - `31337.expected.json` — the devnet, where `scripts/deploy-local.sh` runs the
   check after every deploy: the rehearsal. Its `programVKey` is written
   `{ "guest": "<constant>" }`: the key the sequencer this tree built carries

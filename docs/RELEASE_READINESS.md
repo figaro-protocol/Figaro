@@ -265,7 +265,10 @@ Sepolia is live and rehearsed. Remaining:
 ### Task 9: Florin treasury tail
 
 Before the stack goes public: stand up the real DAO treasury on each chain it is
-deployed to — a canonical Safe at `DAO_WALLET` with real keys — and rehearse the
+deployed to — a canonical Safe at `DAO_WALLET` with real keys, whose address
+follows by CREATE2 from the owners, the threshold and the salt the chain's
+expectations file states (`scripts/safe-treasury.mjs`; the deploy wrapper
+creates it) — and rehearse the
 threshold-ECDSA signing ceremony on Sepolia. It protects keys, so it waits for no later
 network. Devnet uses a `MockTreasuryMultisig` placeholder; the treasury's address is
 config, never code.

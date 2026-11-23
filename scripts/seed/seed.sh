@@ -151,6 +151,12 @@ case "$STEP" in
     unset REGISTRAR_LEDGER_HD_PATH REGISTRAR_IMPERSONATE REGISTRAR_PRIVATE_KEY SEED_ASSEMBLIES ASSEMBLY_TOKEN_ADDRESS
     vault_owners
     export REGISTRAR_VAULT="$VAULT" SEED_CLAUSES="$CLAUSES"
+    # A Safe names its version; the devnet mock vault has no such function.
+    if cast call "$VAULT" 'VERSION()(string)' --rpc-url "$RPC_URL" > /dev/null 2>&1; then
+      echo "❌ the vault $VAULT is a Safe, and this step speaks the devnet mock vault's interface only"
+      echo "   (frontend/scripts/populate-clauses.mjs VAULT_ABI): $CLAUSES cannot be registered through it yet"
+      exit 1
+    fi
     echo "   the vault $VAULT registers $CLAUSES"
     populate populate-clauses.mjs ;;
 
