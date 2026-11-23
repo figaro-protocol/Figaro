@@ -620,6 +620,31 @@ withdraw anything — `RpgfMinter` still rewards only designers of record with a
 the vkey is immutable, and a program change means a NEW verifier deployment,
 reviewed as such.
 
+**What a later verifier earns: nothing in florins.** The rewards contracts
+know one verifier, and each link is fixed at deploy. The counter names its one
+batch writer (`UsageCounter.batchVerifier`, immutable) and refuses every other
+caller (`NotBatchVerifier`). A verifier refuses a counter bound to another
+verifier (`UsageCounterNotBoundToThis`, in `FigaroBatchVerifier`'s
+constructor), so a new verifier needs a new counter. `RpgfMinter` reads one
+counter (`RpgfMinter.counter`, immutable). `FlorinToken` registers a minter
+only by its deployer and only before `renounceDeployerMint`, which the deploy
+scripts call, so no second `RpgfMinter` can ever mint.
+
+It follows that a change to the proof program, which changes the key and so
+the verifier, ends the batch path's florins on that deployment. The trades of
+the new verifier run, bond and resolve as before. Their uses can be counted
+only by a counter of their own, which no minter reads. The direct path and the
+first verifier keep counting into the first counter. The same holds for a
+verifier a stranger deploys with a program of its own.
+
+This is accepted, because the other choice is an authority. Letting a later
+verifier feed the reward needs a party that may name it after deploy: a
+deployer that can still register a minter, or a counter whose writer can be
+repointed. Either is a key that can redirect every designer's share, which § 3
+refuses. So the proof program is treated as final at the deploy that fixes the
+florin, and a later program is a new rewards deployment under a new token, or
+a batch path with no reward.
+
 **Related**: the two paths are DISJOINT — a batch-resolved
 process never acquires `FigaroCore` status, and a `FigaroCore`-resolved one is never in a
 batch, and a batch-path process id is derived under the verifier's EIP-712
