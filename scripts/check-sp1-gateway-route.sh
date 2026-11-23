@@ -78,6 +78,25 @@ if [ -n "$CANONICAL" ] && [ "$(lower "$CANONICAL")" != "$(lower "$SP1_VERIFIER_G
   echo "⚠️  routed, but SP1_VERIFIER_GATEWAY is not the address Succinct's record names $KEY on chain $CHAIN_ID:"
   printf '%s' "$RECORD" | grep -i "$(lower "${SP1_VERIFIER_GATEWAY:2}")" | sed 's/^/   the env address is named: /' || echo "   the env address is not in the record at all"
 fi
+# The routed verifier is bound for good, so it must be a contract nobody can
+# switch off. Its own code is read: with no storage read or write it holds
+# neither an admin's address, nor a pause, nor a freeze; with no delegatecall, callcode, create or
+# self-destruct it cannot run or become other code. A disassembly reads data
+# as code too, so a match may be a false one; the check then refuses, which is
+# the safe side.
+ROUTE_CODE=$(cast code "$ROUTE_ADDR" --rpc-url "$RPC_URL")
+if [ -z "$ROUTE_CODE" ] || [ "$ROUTE_CODE" = "0x" ]; then
+  echo "❌ the routed verifier $ROUTE_ADDR has no code on chain $CHAIN_ID."
+  exit 1
+fi
+ROUTE_ASM=$(cast disassemble "$ROUTE_CODE")
+for OP in SSTORE SLOAD DELEGATECALL CALLCODE SELFDESTRUCT CREATE CREATE2; do
+  if printf '%s\n' "$ROUTE_ASM" | grep -q -E "[: ]$OP( |\$)"; then
+    echo "❌ the routed verifier $ROUTE_ADDR holds the opcode $OP: it could keep an owner or a pause, or change what it runs."
+    exit 1
+  fi
+done
+echo "   routed verifier    = no storage, no delegatecall, no create, no self-destruct ($(( (${#ROUTE_CODE} - 2) / 2 )) bytes, code hash $(cast keccak "$ROUTE_CODE"))"
 echo "✅ gateway routes $FORM $CONTRACTS_TAG → $ROUTE_ADDR"
 # The routed verifier is what FigaroBatchVerifier binds (never the gateway, whose
 # owner can freeze a route): the wrappers read it from the last line.
