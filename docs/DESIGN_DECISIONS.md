@@ -1131,7 +1131,11 @@ emit the same event fields).
 `pv.prevStateRoot == stateRoot`. A batch that moves no state — usage claims
 only, or attestations only — has `prevStateRoot == newStateRoot`, so after it
 lands its proof still names the current root, and anyone may land it again
-while its committed clock is within `MAX_BATCH_STALENESS` of the block's.
+at any later time, until a batch that moves the root lands. The verifier
+bounds the committed clock only to be no later than the block's, never its
+age: a bound on its age would also stop a buyer whose own proof of a resolve
+was slow, on a path with no other way out, and each commit's deadline is held
+against the landing block whatever the clock (`DeadlineExpired`).
 
 **Why it looks wrong**: A proof that can be submitted twice is the canonical
 replay shape, and the verifier logs `BatchOperations` and `BatchSettled` again
@@ -1143,11 +1147,18 @@ it carries meets the counter's once-ever `processCounted` set, which holds for
 both routes, and is skipped: the tally and the period total do not move.
 Re-emitted attestations are copies of the first landing's — the same order
 hash, attester, clause, stage and `contentRef` — so a reader that keys evidence
-by those fields reads nothing new; one that counts raw events sees a repeat. A nonce in the public values would add
+by those fields reads nothing new; one that counts raw events sees a repeat,
+at a later block: the block of a repeat is never the time an attestation was
+made, which is the block of its first landing. A use the counter skipped at
+the first landing, for a seller whose stake had lapsed, is counted at a later
+one in the same period if the stake is live again; anyone could prove that use
+afresh, so the repeat gives nothing a new proof would not. A nonce in the public values would add
 state to the verifier to refuse a call that changes nothing. A batch that moves
 the root cannot land twice: its prev root is no longer current.
 
-**Tests**: `test_settleBatch_aStateNeutralBatchLandsTwiceAndCountsOnce` and
+**Tests**: `test_settleBatch_aStateNeutralBatchLandsTwiceAndCountsOnce`,
+`test_settleBatch_aStateNeutralBatchLandsAgainDaysLaterAndCountsOnce`,
+`test_settleBatch_aStateNeutralBatchLandsAgainAfterItsPeriodAndCountsNothing` and
 `test_settleBatch_aSkippedUseIsCountedWhenPresentedAgain`
 (`test/core/verifier/FigaroBatchVerifierTest.t.sol`);
 `test_settleBatch_revertsOnStaleRoot` (a batch that moved the root).

@@ -27,19 +27,6 @@
   },
   {
     "type": "function",
-    "name": "MAX_BATCH_STALENESS",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint64",
-        "internalType": "uint64"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "PUBLIC_VALUES_LENGTH",
     "inputs": [],
     "outputs": [
