@@ -18,8 +18,9 @@
 # when there is one (the swap router and quoter). Any of them is overridden by
 # its environment variable, the wrapper's own names: FOUNDER_WALLET,
 # SUPPORTERS_WALLET, SP1_VERIFIER_GATEWAY,
-# SP1_PROGRAM_VKEY, SWAP_ROUTER, SWAP_QUOTER, RPGF_GENESIS (default: the fork's
-# time), PUBLIC_RPC_URL.
+# SP1_PROGRAM_VKEY (default: the key this checkout's relay prints), SWAP_ROUTER,
+# SWAP_QUOTER, PUBLIC_RPC_URL. The wrapper sets the treasury's Safe and the
+# rewards schedule's start itself.
 #
 # The steps, each stopping the rehearsal when it fails:
 #   1. start the fork (FORK_PORT, default 8546) and give the deployer gas;
@@ -113,12 +114,28 @@ step "2. the deploy ($(basename "$WRAPPER"), SKIP_VERIFY=1)"
 export FOUNDER_WALLET="${FOUNDER_WALLET:-$(exp '.wallets.founder')}"
 export SUPPORTERS_WALLET="${SUPPORTERS_WALLET:-$(exp '.wallets.supporters')}"
 export SP1_VERIFIER_GATEWAY="${SP1_VERIFIER_GATEWAY:-$(exp '.batchVerifier.gateway')}"
-export SP1_PROGRAM_VKEY="${SP1_PROGRAM_VKEY:-$(exp '.batchVerifier.programVKey')}"
+# The key is this checkout's relay's, never the expectations file's own: the
+# verifier the rehearsal deploys must be one a relay built here can prove on.
+# When the file states another key, the rehearsal runs against a copy that
+# states the relay's, and says so; a real deploy refuses until the file does.
+export RELAY_BIN="${RELAY_BIN:-$REPO_ROOT/prover/target/release/sequencer}"
+[ -x "$RELAY_BIN" ] || { echo "❌ no release relay at $RELAY_BIN: build it by the release recipe (scripts/prover-box/build-guest.sh, then build-sequencer.sh)"; exit 1; }
+RELAY_KEY=$("$RELAY_BIN" --vkey | sed -n 's/^SP1_PROGRAM_VKEY=//p' | tail -1)
+[[ "$RELAY_KEY" =~ ^0x[0-9a-fA-F]{64}$ ]] || { echo "❌ $RELAY_BIN --vkey printed no key"; exit 1; }
+export SP1_PROGRAM_VKEY="${SP1_PROGRAM_VKEY:-$RELAY_KEY}"
+STATED_KEY=$(exp '.batchVerifier.programVKey')
+if [ "$(printf '%s' "$STATED_KEY" | tr 'A-F' 'a-f')" != "$(printf '%s' "$RELAY_KEY" | tr 'A-F' 'a-f')" ]; then
+  jq --arg k "$RELAY_KEY" '.batchVerifier.programVKey = $k' "$EXPECTED" > "$REHEARSAL_DIR/expected.json"
+  echo "   ⚠ $EXPECTED states the key ${STATED_KEY:-(none)}, and this checkout's relay holds $RELAY_KEY."
+  echo "     The rehearsal runs against a copy that states the relay's key: $REHEARSAL_DIR/expected.json"
+  echo "     A real deploy refuses until deployments/$CHAIN_ID.expected.json states the built key."
+  EXPECTED="$REHEARSAL_DIR/expected.json"
+fi
+export EXPECTED_FILE="$EXPECTED"
 export SP1_PROOF_MODE="${SP1_PROOF_MODE:-groth16}"
 export SWAP_ROUTER="${SWAP_ROUTER:-$(cur .swapRouter)}"
 export SWAP_QUOTER="${SWAP_QUOTER:-$(cur .swapQuoter)}"
 export PUBLIC_RPC_URL="${PUBLIC_RPC_URL:-$(cur .rpcUrl)}"
-export RPGF_GENESIS="${RPGF_GENESIS:-$(cast block latest --field timestamp --rpc-url "$FORK")}"
 export FORGE_GAS_MULTIPLIER="${FORGE_GAS_MULTIPLIER:-200}"
 for v in FOUNDER_WALLET SUPPORTERS_WALLET SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY SWAP_ROUTER; do
   [ -n "${!v}" ] || { echo "❌ $v: neither the environment nor the chain's files name it"; exit 1; }

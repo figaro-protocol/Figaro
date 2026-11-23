@@ -411,7 +411,10 @@ the code, the guest key and the gateway. The list below is the procedure around 
   And `SP1_PROGRAM_VKEY` recomputed from the CURRENT guest at deploy time, on
   the prover box's reproducible build (`scripts/prover-box/build-guest.sh`, or
   `sequencer --vkey` from a binary built there) — any guest rebuild supersedes
-  the pinned vkey; never reuse an old value. The wrapper reads the pinned value
+  the pinned vkey; never reuse an old value. Each deploy wrapper refuses unless
+  `SP1_PROGRAM_VKEY`, the key the checkout's release relay prints and the key
+  `deployments/<chainId>.expected.json` states are one value, so the built key
+  is written into the expectations file before the deploy. The wrapper reads the pinned value
   back into the deployment record as `programVKey`, and the sequencer refuses
   to start against a verifier whose `programVKey()` is not its own guest's.
 - The genesis state root is computed, not deploy-time-verified against the Rust

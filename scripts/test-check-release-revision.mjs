@@ -68,7 +68,7 @@ test("a later commit outside the compared paths holds", () => {
     assert.notEqual(r.head, release);
 });
 
-for (const p of ["src/a.txt", "prover/a.txt", "certora/a.txt", "formal/a.txt", "test/a.txt", "script/a.txt", "foundry.toml"]) {
+for (const p of ["src/a.txt", "prover/a.txt", "certora/a.txt", "formal/a.txt", "test/a.txt", "script/a.txt", "foundry.toml", "scripts/prover-box/a.txt"]) {
     test(`a later commit to ${p} fails, naming the file`, () => {
         const { repo, release } = fixture();
         commit(repo, p, "later\n");

@@ -37,6 +37,9 @@ holds its behavior.
 `build-guest.sh` prints `SP1_PROGRAM_VKEY=…` — this MUST equal the deployed
 `FigaroBatchVerifier.programVKey()` (recorded as `programVKey` in
 `deployments/<chainId>.json`) or every proof reverts `ProofInvalid()`. The
+deploy wrappers refuse a key that is not the one the checkout's release
+relay prints and the chain's expectations file states, so the built key is
+written into `deployments/<chainId>.expected.json` before a deploy. The
 sequencer checks it at startup and refuses to run on a mismatch, so the
 check happens before proving, never after a 7-minute wrap; `sequencer
 --vkey` prints a built binary's. The SP1 release the guest is built in is

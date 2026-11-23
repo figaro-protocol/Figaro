@@ -32,8 +32,10 @@ import { fileURLToPath } from "node:url";
  *  `prover`, `certora`, `formal`, `test` and `script` are the release's code,
  *  its guest and its proofs; `lib`, `foundry.toml` and `remappings.txt` are
  *  what the compiler reads beside them, so a dependency or a compiler setting
- *  moved after the release changes the bytecode too. */
-export const COMPARED = ["src", "prover", "certora", "formal", "test", "script", "lib", "foundry.toml", "remappings.txt"];
+ *  moved after the release changes the bytecode too. `scripts/prover-box` is
+ *  the recipe the guest and its key are built by: a recipe edited after the
+ *  release builds another key from the same sources. */
+export const COMPARED = ["src", "prover", "certora", "formal", "test", "script", "lib", "foundry.toml", "remappings.txt", "scripts/prover-box"];
 
 function git(cwd, args) {
     const run = spawnSync("git", ["-C", cwd, ...args], { encoding: "utf8" });
