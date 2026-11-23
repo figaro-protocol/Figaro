@@ -43,7 +43,9 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-/** The record key → the contract created for it. `optional` keys are verified when the record names them. */
+/** The record key → the contract created for it. The record's `daoTreasury` is
+ *  not among them: the treasury is a Safe that stood before the deployment, on
+ *  every public chain, and is not this deployment's code. */
 export const VERIFIED_CONTRACTS = [
     { key: "figaroCore", name: "FigaroCore" },
     { key: "attestationCoordinator", name: "AttestationCoordinator" },
@@ -56,9 +58,6 @@ export const VERIFIED_CONTRACTS = [
     { key: "rpgfMinter", name: "RpgfMinter" },
     { key: "batchVerifier", name: "FigaroBatchVerifier" },
     { key: "witnessSwapAndCommitCoordinator", name: "WitnessSwapAndCommitCoordinator" },
-    // A test network's DAO vault is deployed by the script (a mainnet record
-    // names no vault: the DAO's Safe is not this deployment's code).
-    { key: "daoTreasury", name: "MockTreasuryMultisig", optional: true },
 ];
 
 export const etherscanUrl = (chainId) => `https://api.etherscan.io/v2/api?chainid=${chainId}`;
@@ -98,10 +97,10 @@ function artifactsNamed(artifactsDir, name) {
  */
 export function planVerification({ record, creations, artifactsDir }) {
     const plan = [];
-    for (const { key, name, optional } of VERIFIED_CONTRACTS) {
+    for (const { key, name } of VERIFIED_CONTRACTS) {
         const address = record[key];
         if (!address) {
-            if (!optional) plan.push({ key, name, error: `the record names no ${key}` });
+            plan.push({ key, name, error: `the record names no ${key}` });
             continue;
         }
         const creation = creations.get(lower(address));

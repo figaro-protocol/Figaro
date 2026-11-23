@@ -36,8 +36,11 @@
 #   founder                 FOUNDER_LEDGER_HD_PATH (Ledger Live path m/44'/60'/N'/0/0)
 #   daoOperator             DAO_OPERATOR_KEY
 #   deployer                PRIVATE_KEY (the deploy's key)
-#   the vault's owners      VAULT_OWNER_KEYS (the deployer's key on a test network's mock vault),
-#                           with the founder's Ledger as the second approval
+#   the vault's owners      VAULT_OWNER_KEYS, with the founder's Ledger as the second approval.
+#                           These steps speak the devnet mock vault's interface
+#                           (frontend/scripts/populate-clauses.mjs VAULT_ABI); a Safe, the
+#                           vault on every public chain, is signed through its own interface,
+#                           which these steps do not speak yet
 #   IMPERSONATE=1           fork rehearsal only: every wallet the plan names signs as its own
 #                           address, impersonated on the Anvil node (refused elsewhere)
 # Each signer's address is read and compared with the plan's before anything is sent.

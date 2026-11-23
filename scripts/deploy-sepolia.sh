@@ -6,10 +6,9 @@ set -e
 # deployments/11155111.json (see deployments/README.md).
 #
 # Sepolia is the MAINNET REHEARSAL (testnet = mainnet rehearsal): same
-# guardrail structure as scripts/deploy-mainnet.sh, same env contract minus
-# DAO_WALLET (the script deploys MockTreasuryMultisig itself — the mock-as-code
-# testnet divergence; see DeploySepolia.s.sol's header for all three
-# divergences and their rulings).
+# guardrail structure as scripts/deploy-mainnet.sh and the same env contract,
+# DAO_WALLET included: the treasury is a Safe that stands on Sepolia before
+# this runs, and the script deploys no mock (DeploySepolia.s.sol's header).
 #
 #   - refuses to run, in every mode, unless RELEASE_COMMIT names the full sha
 #     of the release revision and this checkout builds it: a clean tree that
@@ -40,7 +39,7 @@ set -e
 #   SEPOLIA_DEPLOY_CONFIRM=yes \
 #   RPC_URL=https://... \
 #   PRIVATE_KEY=0x... \
-#   FOUNDER_WALLET=0x... SUPPORTERS_WALLET=0x... \
+#   FOUNDER_WALLET=0x... SUPPORTERS_WALLET=0x... DAO_WALLET=0x... \
 #   RPGF_GENESIS=... \
 #   SP1_VERIFIER_GATEWAY=0x... SP1_PROGRAM_VKEY=0x... \
 #   ETHERSCAN_API_KEY=... \
@@ -117,8 +116,9 @@ export PERMIT2="${PERMIT2:-0x000000000022D473030F116dDEE9F6B43aC78BA3}"
 # ── Guard 2: every required env var present ─────────────────────────────────
 # Required by script/DeploySepolia.s.sol itself:
 #   PRIVATE_KEY            — run(): vm.envUint("PRIVATE_KEY")
-#   FOUNDER_WALLET          — _validateEnv(): nonzero, distinct
-#   SUPPORTERS_WALLET       — _validateEnv(): nonzero, distinct
+#   FOUNDER_WALLET          — _validateEnv(): must be nonzero
+#   SUPPORTERS_WALLET       — _validateEnv(): must be nonzero
+#   DAO_WALLET              — _validateEnv(): must be nonzero; the treasury's Safe
 #   RPGF_GENESIS            — _validateEnv(): RPGF_GENESIS + 365 days > now
 #   SP1_VERIFIER_GATEWAY    — the gateway the routed verifier is looked up on (Guard 4);
 #                             the script binds that route as SP1_VERIFIER, exported here
@@ -131,7 +131,7 @@ if [ "${PAIR_ONLY:-}" = "1" ]; then
   # RPGF_GENESIS is derived from the live counter below, never required.
   REQUIRED=(PRIVATE_KEY SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL)
 else
-  REQUIRED=(PRIVATE_KEY FOUNDER_WALLET SUPPORTERS_WALLET RPGF_GENESIS \
+  REQUIRED=(PRIVATE_KEY FOUNDER_WALLET SUPPORTERS_WALLET DAO_WALLET RPGF_GENESIS \
             SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL SWAP_ROUTER SWAP_QUOTER)
 fi
 if [ "${SKIP_VERIFY:-}" != "1" ]; then
@@ -287,7 +287,7 @@ echo "🚀 Deploying Figaro Protocol stack to SEPOLIA (chain id $ACTUAL_CHAIN_ID
 echo "   deployer (from PRIVATE_KEY) = $(cast wallet address --private-key "$PRIVATE_KEY")"
 echo "   founder wallet              = $FOUNDER_WALLET"
 echo "   supporters wallet           = $SUPPORTERS_WALLET"
-echo "   dao wallet                  = (MockTreasuryMultisig, deployed by the script)"
+echo "   dao wallet                  = $DAO_WALLET"
 echo "   rpgf genesis (unix)         = $RPGF_GENESIS"
 if [ "${SKIP_VERIFY:-}" = "1" ]; then
   echo "   verification                = SKIPPED (fork rehearsal)"
@@ -356,8 +356,8 @@ fi
 echo "   programVKey pinned = $PROGRAM_VKEY_ONCHAIN"
 
 # ── Write deployments/<chainId>.json ─────────────────────────────────────────
-# Same shape as deployments/1.json plus the one testnet-only entry: the mock
-# DAO vault (mainnet uses a canonical Safe, never recorded here — config).
+# Same shape as deployments/1.json plus one entry, daoTreasury: the address
+# DAO_WALLET named, the treasury's Safe, which the checks read back.
 # A FORK REHEARSAL (SKIP_VERIFY=1) must never clobber the real record — an
 # Anvil fork keeps Sepolia's chain id, so without this branch a rehearsal
 # writes fork addresses over the deployed truth.
@@ -429,7 +429,7 @@ echo "   UsageCounter            = $USAGE_COUNTER_ADDR"
 echo "   RpgfMinter              = $RPGF_MINTER_ADDR"
 echo "   FigaroBatchVerifier     = $BATCH_VERIFIER_ADDR"
 echo "   WitnessSwapAndCommitCoordinator = $SWAP_COORD_ADDR (router $SWAP_ROUTER, permit2 $PERMIT2)"
-echo "   MockTreasuryMultisig    = $DAO_TREASURY_ADDR"
+echo "   DAO treasury (DAO_WALLET) = $DAO_TREASURY_ADDR"
 echo "   Record: $DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json"
 echo ""
 echo "⚠️  Clauses are NOT registered by this script (Solidity cannot pin to"

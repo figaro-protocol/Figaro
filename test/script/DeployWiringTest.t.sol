@@ -121,7 +121,7 @@ contract MainnetDeployHarness is DeployMainnet {
 }
 
 /// @dev The same for the full Sepolia script: the florin, its minter and the
-///      mock DAO vault the script deploys in place of DAO_WALLET.
+///      treasury address the script read from DAO_WALLET.
 contract SepoliaDeployHarness is DeploySepolia {
     function florin() external view returns (address) {
         return _florin;
@@ -338,6 +338,7 @@ contract DeployWiringTest is Test {
     function test_sepoliaDeploy_renouncesTheDeployerMint() public {
         address founder = makeAddr("founder");
         address supporters = makeAddr("supporters");
+        address dao = makeAddr("dao");
         address permit2 = address(new MockWitnessPermit2());
         address router = address(new SwapRouterShape());
         address gateway = address(new MockSP1Verifier());
@@ -345,6 +346,7 @@ contract DeployWiringTest is Test {
         vm.setEnv("PRIVATE_KEY", vm.toString(DEPLOYER_KEY));
         vm.setEnv("FOUNDER_WALLET", vm.toString(founder));
         vm.setEnv("SUPPORTERS_WALLET", vm.toString(supporters));
+        vm.setEnv("DAO_WALLET", vm.toString(dao));
         vm.setEnv("RPGF_GENESIS", vm.toString(block.timestamp));
         vm.setEnv("PERMIT2", vm.toString(permit2));
         vm.setEnv("SWAP_ROUTER", vm.toString(router));
@@ -361,7 +363,9 @@ contract DeployWiringTest is Test {
         assertEq(f.totalSupply(), 400_000_000 ether, "the genesis 400M minted, the 600M reserved");
         assertEq(f.balanceOf(founder), 70_000_000 ether, "founder 7%");
         assertEq(f.balanceOf(supporters), 30_000_000 ether, "supporters 3%");
-        assertEq(f.balanceOf(d.daoTreasury()), 300_000_000 ether, "DAO 30%, to the mock vault");
+        assertEq(d.daoTreasury(), dao, "the treasury is the address DAO_WALLET names");
+        assertEq(dao.code.length, 0, "the script deploys nothing at the treasury's address");
+        assertEq(f.balanceOf(dao), 300_000_000 ether, "DAO 30%, to DAO_WALLET");
 
         vm.startPrank(deployer);
         vm.expectRevert(FlorinToken.DeployerMintRenounced.selector);
