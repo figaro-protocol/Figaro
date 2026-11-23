@@ -1,0 +1,154 @@
+name: Kani (dispatch)
+
+# Runs the Kani proof harnesses of formal/kani/ at the commit given as input:
+# `cargo kani` in formal/kani, the command docs/TESTING.md § Kani gives. The
+# crate is its own workspace and lock and reaches prover/lib by path. Started
+# by hand only.
+#
+# The harnesses are the four in formal/kani/src/lib.rs. Each fixes its own
+# bound with #[kani::unwind(34)], and a_process_conserves_its_bonds fixes its
+# process at two orders (`for _ in 0..2`). So no input changes the unwind or
+# the order count: a three-order run needs a harness that does not exist, and
+# writing it is a change to formal/. The header of a_process_conserves_its_bonds
+# says why it stops at two: a third symbolic 256-bit payment drove CBMC past
+# the 8 GB of the machine it first ran on.
+#
+# Does a standard runner carry it? The two-order harness needs most of 8 GB,
+# and a standard runner has 16 GB, so the four harnesses as written are
+# expected to fit. `runner` names a larger runner label for a heavier harness
+# once one exists; `harness` runs one harness alone.
+
+on:
+    workflow_dispatch:
+        inputs:
+            commit:
+                description: "Full 40-character commit sha to check out (a branch name is refused)"
+                required: true
+                type: string
+            harness:
+                description: "One harness by name, or all"
+                type: choice
+                options:
+                    - all
+                    - payouts_are_exact_or_overflow
+                    - one_order_conserves_its_bonds
+                    - a_process_conserves_its_bonds
+                    - resolved_running_total_is_the_exact_sum
+                default: all
+            runner:
+                description: "Runner label (ubuntu-24.04, or a larger runner the repository has)"
+                required: false
+                type: string
+                default: ubuntu-24.04
+
+permissions:
+    contents: read
+
+concurrency:
+    group: kani-${{ inputs.commit }}-${{ inputs.harness }}
+    cancel-in-progress: false
+
+env:
+    KANI_VERSION: 0.68.0
+
+jobs:
+    preflight:
+        name: Validate inputs
+        runs-on: ubuntu-24.04
+        timeout-minutes: 5
+        outputs:
+            sha: ${{ steps.v.outputs.sha }}
+            runner: ${{ steps.v.outputs.runner }}
+        steps:
+            - name: Validate inputs
+              id: v
+              env:
+                  COMMIT: ${{ inputs.commit }}
+                  RUNNER: ${{ inputs.runner }}
+              run: |
+                  set -euo pipefail
+                  [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::commit must be a full 40-character lowercase sha"; exit 1; }
+                  [[ "$RUNNER" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$ ]] || { echo "::error::runner must be a single runner label"; exit 1; }
+                  echo "sha=$COMMIT" >> "$GITHUB_OUTPUT"
+                  echo "runner=$RUNNER" >> "$GITHUB_OUTPUT"
+
+    kani:
+        name: cargo kani (${{ inputs.harness }})
+        needs: preflight
+        runs-on: ${{ needs.preflight.outputs.runner }}
+        timeout-minutes: 300
+        env:
+            COMMIT: ${{ needs.preflight.outputs.sha }}
+            HARNESS: ${{ inputs.harness }}
+        steps:
+            - name: Checkout the commit
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  ref: ${{ needs.preflight.outputs.sha }}
+                  persist-credentials: false
+
+            - name: Check that HEAD is the commit
+              run: |
+                  head=$(git rev-parse HEAD)
+                  [ "$head" = "$COMMIT" ] || { echo "::error::HEAD is $head, not $COMMIT"; exit 1; }
+
+            # Kani brings its own nightly toolchain and CBMC (`cargo kani
+            # setup`); the stable toolchain on the runner builds the installer.
+            - name: Install Kani
+              run: |
+                  cargo install --locked kani-verifier --version "$KANI_VERSION"
+                  cargo kani setup
+                  cargo kani --version
+
+            - name: cargo kani
+              id: run
+              working-directory: formal/kani
+              run: |
+                  set -uo pipefail
+                  log="$RUNNER_TEMP/kani.log"
+                  args=()
+                  if [ "$HARNESS" != "all" ]; then
+                      case "$HARNESS" in
+                          payouts_are_exact_or_overflow|one_order_conserves_its_bonds|a_process_conserves_its_bonds|resolved_running_total_is_the_exact_sum) ;;
+                          *) echo "::error::unknown harness"; exit 1 ;;
+                      esac
+                      # A substring filter: no harness name contains another.
+                      args=(--harness "$HARNESS")
+                  fi
+                  /usr/bin/time -v cargo kani "${args[@]}" > "$log" 2>&1
+                  code=$?
+                  tail -60 "$log"
+                  echo "code=$code" >> "$GITHUB_OUTPUT"
+                  exit 0
+
+            - name: Job summary
+              if: always()
+              env:
+                  CODE: ${{ steps.run.outputs.code }}
+              run: |
+                  log="$RUNNER_TEMP/kani.log"
+                  {
+                      echo "## Kani, formal/kani"
+                      echo ""
+                      echo "- Commit: \`$COMMIT\`"
+                      echo "- Kani $KANI_VERSION, harness: $HARNESS, exit ${CODE:-none}"
+                      echo ""
+                      echo '```'
+                      grep -E "Checking harness|VERIFICATION:|Verification Time|Complete -|Maximum resident set size" "$log" 2>/dev/null
+                      echo '```'
+                  } >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Upload the log
+              if: always()
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: kani-${{ needs.preflight.outputs.sha }}-${{ inputs.harness }}-${{ github.run_id }}
+                  path: ${{ runner.temp }}/kani.log
+                  retention-days: 90
+                  if-no-files-found: warn
+
+            - name: Fail unless every harness verified
+              env:
+                  CODE: ${{ steps.run.outputs.code }}
+              run: |
+                  [ "$CODE" = "0" ] || { echo "::error::cargo kani exited $CODE"; exit 1; }

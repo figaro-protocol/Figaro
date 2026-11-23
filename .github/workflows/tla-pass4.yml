@@ -1,0 +1,278 @@
+name: TLA+ Pass 4 (dispatch)
+
+# Runs pass 4 of scripts/test-tla.sh, the composed resolution model
+# (formal/ResolutionUniverses.tla under formal/ResolutionUniverses.cfg), at
+# the commit given as input, under TLC with checkpoints. It is started by
+# hand only: the pass is too long for a push or a schedule.
+#
+# Does one job carry it? Not on a standard runner, and the workflow is
+# designed for that. On a 16-thread developer machine the present model ran
+# for over four hours, past 480 million generated and 110 million distinct
+# states, without finishing. A standard GitHub-hosted Linux runner has 4 cores
+# and 16 GB, and a hosted job stops at 6 hours. At about a quarter of that
+# machine's throughput, one job of 5.5 hours generates about
+# 480M x (5.5 / 4) / 4 = about 165 million states: three chained jobs only
+# reach the point where that run stopped, and the full space is larger by an
+# unknown amount. So:
+#
+#   - TLC writes a checkpoint every `checkpoint_minutes` (-checkpoint) into
+#     its metadata directory, and the run stops itself after `run_minutes`,
+#     before the job's timeout.
+#   - When the time runs out, the metadata directory is uploaded as the
+#     artifact tla-pass4-checkpoint-<commit>. A follow-up dispatch at the
+#     same commit with `resume_run_id` set to that run's id downloads it and
+#     restarts TLC with -recover. The artifact's name carries the commit, so a
+#     checkpoint never resumes under another commit's model.
+#   - `runner` names a larger runner label (one the repository has, such as
+#     an organization's 16- or 64-core runner); the model runs as it is,
+#     with -workers auto and an explicit heap (`heap_gb`).
+#
+# The TLC jar is not in git (scripts/test-tla.sh expects formal/tla2tools.jar
+# or TLA2TOOLS). The job fetches the v1.7.4 release and checks its sha256
+# before use. The model is never reduced here.
+#
+# The disk is a limit too: TLC keeps its fingerprint set and its queue of
+# unexplored states on disk, and a standard runner has a few tens of GB free.
+#
+# `actions: read` is the one permission past `contents: read`: the resume
+# step downloads an artifact of an earlier run of this workflow.
+
+on:
+    workflow_dispatch:
+        inputs:
+            commit:
+                description: "Full 40-character commit sha to check out (a branch name is refused)"
+                required: true
+                type: string
+            resume_run_id:
+                description: "Run id of an earlier run at the same commit whose checkpoint to resume (empty = fresh start)"
+                required: false
+                type: string
+                default: ""
+            runner:
+                description: "Runner label (ubuntu-24.04, or a larger runner the repository has)"
+                required: false
+                type: string
+                default: ubuntu-24.04
+            heap_gb:
+                description: "Java heap in GB (leave room for the OS and TLC's off-heap use)"
+                required: false
+                type: string
+                default: "11"
+            run_minutes:
+                description: "Minutes TLC runs before it stops and the checkpoint is uploaded (at most 330 on a hosted runner)"
+                required: false
+                type: string
+                default: "320"
+            checkpoint_minutes:
+                description: "Minutes between TLC checkpoints"
+                required: false
+                type: string
+                default: "20"
+
+permissions:
+    contents: read
+
+concurrency:
+    group: tla-pass4-${{ inputs.commit }}
+    cancel-in-progress: false
+
+env:
+    TLC_VERSION: v1.7.4
+    TLC_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+
+jobs:
+    preflight:
+        name: Validate inputs
+        runs-on: ubuntu-24.04
+        timeout-minutes: 5
+        outputs:
+            sha: ${{ steps.v.outputs.sha }}
+            resume_run_id: ${{ steps.v.outputs.resume_run_id }}
+            runner: ${{ steps.v.outputs.runner }}
+            heap_gb: ${{ steps.v.outputs.heap_gb }}
+            run_minutes: ${{ steps.v.outputs.run_minutes }}
+            checkpoint_minutes: ${{ steps.v.outputs.checkpoint_minutes }}
+        steps:
+            - name: Validate inputs
+              id: v
+              env:
+                  COMMIT: ${{ inputs.commit }}
+                  RESUME_RUN_ID: ${{ inputs.resume_run_id }}
+                  RUNNER: ${{ inputs.runner }}
+                  HEAP_GB: ${{ inputs.heap_gb }}
+                  RUN_MINUTES: ${{ inputs.run_minutes }}
+                  CHECKPOINT_MINUTES: ${{ inputs.checkpoint_minutes }}
+              run: |
+                  set -euo pipefail
+                  [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::commit must be a full 40-character lowercase sha"; exit 1; }
+                  [[ -z "$RESUME_RUN_ID" || "$RESUME_RUN_ID" =~ ^[0-9]{1,20}$ ]] || { echo "::error::resume_run_id must be a run id (digits) or empty"; exit 1; }
+                  [[ "$RUNNER" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$ ]] || { echo "::error::runner must be a single runner label"; exit 1; }
+                  [[ "$HEAP_GB" =~ ^[0-9]{1,4}$ ]] && (( HEAP_GB >= 2 )) || { echo "::error::heap_gb must be a whole number of at least 2"; exit 1; }
+                  [[ "$RUN_MINUTES" =~ ^[0-9]{1,5}$ ]] && (( RUN_MINUTES >= 10 && RUN_MINUTES <= 330 )) || { echo "::error::run_minutes must be between 10 and 330"; exit 1; }
+                  [[ "$CHECKPOINT_MINUTES" =~ ^[0-9]{1,4}$ ]] && (( CHECKPOINT_MINUTES >= 1 && CHECKPOINT_MINUTES < RUN_MINUTES )) || { echo "::error::checkpoint_minutes must be at least 1 and below run_minutes"; exit 1; }
+                  {
+                      echo "sha=$COMMIT"
+                      echo "resume_run_id=$RESUME_RUN_ID"
+                      echo "runner=$RUNNER"
+                      echo "heap_gb=$HEAP_GB"
+                      echo "run_minutes=$RUN_MINUTES"
+                      echo "checkpoint_minutes=$CHECKPOINT_MINUTES"
+                  } >> "$GITHUB_OUTPUT"
+
+    tlc:
+        name: TLC, ResolutionUniverses
+        needs: preflight
+        runs-on: ${{ needs.preflight.outputs.runner }}
+        # A hosted job stops at 360 minutes; run_minutes is capped at 330 so
+        # the checkpoint upload fits in what is left.
+        timeout-minutes: 355
+        permissions:
+            contents: read
+            actions: read # the resume step downloads an earlier run's checkpoint artifact
+        env:
+            COMMIT: ${{ needs.preflight.outputs.sha }}
+            RESUME_RUN_ID: ${{ needs.preflight.outputs.resume_run_id }}
+            HEAP_GB: ${{ needs.preflight.outputs.heap_gb }}
+            RUN_MINUTES: ${{ needs.preflight.outputs.run_minutes }}
+            CHECKPOINT_MINUTES: ${{ needs.preflight.outputs.checkpoint_minutes }}
+        steps:
+            - name: Checkout the commit
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  ref: ${{ needs.preflight.outputs.sha }}
+                  persist-credentials: false
+
+            - name: Check that HEAD is the commit
+              run: |
+                  head=$(git rev-parse HEAD)
+                  [ "$head" = "$COMMIT" ] || { echo "::error::HEAD is $head, not $COMMIT"; exit 1; }
+
+            # The runner image carries a JDK; TLC needs Java 11 or later.
+            - name: Java version
+              run: java -version
+
+            - name: Fetch the TLC jar and check its sha256
+              run: |
+                  set -euo pipefail
+                  jar="$RUNNER_TEMP/tla2tools.jar"
+                  curl -sSfL -o "$jar" "https://github.com/tlaplus/tlaplus/releases/download/${TLC_VERSION}/tla2tools.jar"
+                  echo "${TLC_SHA256}  $jar" | sha256sum -c -
+                  echo "TLA2TOOLS=$jar" >> "$GITHUB_ENV"
+
+            - name: Download the checkpoint to resume
+              if: needs.preflight.outputs.resume_run_id != ''
+              uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+              with:
+                  name: tla-pass4-checkpoint-${{ needs.preflight.outputs.sha }}
+                  run-id: ${{ needs.preflight.outputs.resume_run_id }}
+                  github-token: ${{ github.token }}
+                  path: ${{ runner.temp }}/checkpoint-in
+
+            - name: Unpack the checkpoint
+              if: needs.preflight.outputs.resume_run_id != ''
+              run: |
+                  set -euo pipefail
+                  mkdir -p "$RUNNER_TEMP/tlc-meta"
+                  tar --zstd -xf "$RUNNER_TEMP/checkpoint-in/tlc-meta.tar.zst" -C "$RUNNER_TEMP/tlc-meta"
+                  du -sh "$RUNNER_TEMP/tlc-meta"
+
+            # The same TLC call as pass 4 of scripts/test-tla.sh, run from
+            # formal/ so EXTENDS resolves against sibling modules, with
+            # -checkpoint and -metadir in place of -cleanup so the state can be
+            # resumed. `timeout` stops TLC after run_minutes; exit 124 means
+            # the time ran out, not that a check failed.
+            - name: Run TLC
+              id: tlc
+              working-directory: formal
+              run: |
+                  set -uo pipefail
+                  meta="$RUNNER_TEMP/tlc-meta"
+                  log="$RUNNER_TEMP/tlc.log"
+                  # -metadir puts the run's files in a dated subdirectory of
+                  # $meta; -recover takes that subdirectory and goes on
+                  # writing checkpoints into it.
+                  if [ -n "$RESUME_RUN_ID" ]; then
+                      ckpt=$(find "$meta" -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)
+                      [ -n "$ckpt" ] || { echo "::error::no checkpoint directory in the artifact"; exit 1; }
+                      start=(-recover "$ckpt")
+                  else
+                      mkdir -p "$meta"
+                      start=(-metadir "$meta")
+                  fi
+                  df -h "$RUNNER_TEMP"
+                  timeout --signal=TERM "${RUN_MINUTES}m" \
+                      java "-Xmx${HEAP_GB}g" -XX:+UseParallelGC -cp "$TLA2TOOLS" tlc2.TLC \
+                      -config ResolutionUniverses.cfg \
+                      -workers auto \
+                      -checkpoint "$CHECKPOINT_MINUTES" \
+                      "${start[@]}" \
+                      ResolutionUniverses.tla > "$log" 2>&1
+                  code=$?
+                  tail -60 "$log"
+                  echo "code=$code" >> "$GITHUB_OUTPUT"
+                  case "$code" in
+                      0) echo "outcome=finished" >> "$GITHUB_OUTPUT" ;;
+                      124) echo "outcome=out-of-time" >> "$GITHUB_OUTPUT" ;;
+                      *) echo "outcome=failed" >> "$GITHUB_OUTPUT" ;;
+                  esac
+                  exit 0
+
+            - name: Job summary
+              if: always()
+              env:
+                  OUTCOME: ${{ steps.tlc.outputs.outcome }}
+                  CODE: ${{ steps.tlc.outputs.code }}
+              run: |
+                  log="$RUNNER_TEMP/tlc.log"
+                  if [ -n "$RESUME_RUN_ID" ]; then from="the checkpoint of run $RESUME_RUN_ID"; else from="a fresh start"; fi
+                  {
+                      echo "## TLA+ pass 4, ResolutionUniverses"
+                      echo ""
+                      echo "- Commit: \`$COMMIT\`"
+                      echo "- Started from: $from"
+                      echo "- Outcome: ${OUTCOME:-not reached} (TLC exit ${CODE:-none})"
+                      echo "- TLC ${TLC_VERSION}, heap ${HEAP_GB} GB, $(nproc) cores"
+                      echo ""
+                      echo '```'
+                      grep -E "Progress\(|states generated|distinct states|depth of the complete|Error:|is violated|Model checking completed|Finished in" "$log" 2>/dev/null | tail -25
+                      echo '```'
+                  } >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Pack the checkpoint
+              if: steps.tlc.outputs.outcome == 'out-of-time'
+              run: |
+                  set -euo pipefail
+                  mkdir -p "$RUNNER_TEMP/checkpoint-out"
+                  tar --zstd -cf "$RUNNER_TEMP/checkpoint-out/tlc-meta.tar.zst" -C "$RUNNER_TEMP/tlc-meta" .
+                  du -sh "$RUNNER_TEMP/checkpoint-out/tlc-meta.tar.zst"
+                  echo "Resume with a dispatch at the same commit and resume_run_id=${GITHUB_RUN_ID}." >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Upload the checkpoint
+              if: steps.tlc.outputs.outcome == 'out-of-time'
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: tla-pass4-checkpoint-${{ needs.preflight.outputs.sha }}
+                  path: ${{ runner.temp }}/checkpoint-out/tlc-meta.tar.zst
+                  compression-level: 0
+                  retention-days: 30
+                  if-no-files-found: error
+
+            - name: Upload the TLC log
+              if: always()
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: tla-pass4-log-${{ needs.preflight.outputs.sha }}-${{ github.run_id }}
+                  path: ${{ runner.temp }}/tlc.log
+                  retention-days: 90
+                  if-no-files-found: warn
+
+            - name: Fail unless TLC finished or ran out of time
+              env:
+                  OUTCOME: ${{ steps.tlc.outputs.outcome }}
+              run: |
+                  case "$OUTCOME" in
+                      finished) echo "TLC finished: every invariant holds over the explored space" ;;
+                      out-of-time) echo "TLC ran out of time; the checkpoint is uploaded"; exit 1 ;;
+                      *) echo "::error::TLC failed (see the log artifact)"; exit 1 ;;
+                  esac

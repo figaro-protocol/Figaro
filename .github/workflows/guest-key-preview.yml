@@ -1,0 +1,166 @@
+name: Guest Key Preview (dispatch)
+
+# Builds the proof program at the commit given as input by the prover box's
+# own recipe, scripts/prover-box/build-guest.sh, and prints its verification
+# key in the job summary: a second machine's reproduction of the key a box
+# derives. Started by hand only. It publishes nothing and deploys nothing; the
+# key goes to the summary and to an artifact.
+#
+# The recipe: build-guest.sh runs scripts/check-release-revision.mjs on the
+# commit (a clean tree at that full sha), builds the guest in the pinned SP1
+# docker image (`cargo prove build --docker --tag <the lock's sp1-sdk
+# version>`), puts that ELF where include_elf! resolves, and prints
+# SP1_PROGRAM_VKEY from figaro-prove-test with SP1_SKIP_PROGRAM_BUILD set.
+# The job then builds the relay the way scripts/prover-box/build-sequencer.sh
+# does, over the same ELF, and reads `sequencer --vkey`. The two keys must be
+# equal. No cache is restored: the reproduction starts from nothing.
+#
+# A standard runner (4 cores, 16 GB, Docker) is expected to carry it: the
+# guest build runs in docker, and the sequencer's release build already runs
+# on one in prover-ci.yml's sp1 job.
+
+on:
+    workflow_dispatch:
+        inputs:
+            commit:
+                description: "Full 40-character commit sha to check out (a branch name is refused)"
+                required: true
+                type: string
+
+permissions:
+    contents: read
+
+concurrency:
+    group: guest-key-preview-${{ inputs.commit }}
+    cancel-in-progress: false
+
+jobs:
+    preflight:
+        name: Validate inputs
+        runs-on: ubuntu-24.04
+        timeout-minutes: 5
+        outputs:
+            sha: ${{ steps.v.outputs.sha }}
+        steps:
+            - name: Validate inputs
+              id: v
+              env:
+                  COMMIT: ${{ inputs.commit }}
+              run: |
+                  set -euo pipefail
+                  [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::commit must be a full 40-character lowercase sha"; exit 1; }
+                  echo "sha=$COMMIT" >> "$GITHUB_OUTPUT"
+
+    key:
+        name: Build the guest, print its key
+        needs: preflight
+        runs-on: ubuntu-24.04
+        timeout-minutes: 150
+        env:
+            COMMIT: ${{ needs.preflight.outputs.sha }}
+        steps:
+            - name: Checkout the commit
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  ref: ${{ needs.preflight.outputs.sha }}
+                  persist-credentials: false
+
+            - name: Check that HEAD is the commit
+              run: |
+                  head=$(git rev-parse HEAD)
+                  [ "$head" = "$COMMIT" ] || { echo "::error::HEAD is $head, not $COMMIT"; exit 1; }
+
+            # The same reads prover-ci.yml's sp1 job makes.
+            - name: Read pinned Rust toolchain
+              run: |
+                  RUST_TOOLCHAIN=$(awk -F'"' '/^channel/{print $2}' prover/rust-toolchain.toml)
+                  if [ -z "$RUST_TOOLCHAIN" ]; then
+                      echo "could not read channel from prover/rust-toolchain.toml"
+                      exit 1
+                  fi
+                  echo "RUST_TOOLCHAIN=$RUST_TOOLCHAIN" >> "$GITHUB_ENV"
+
+            - name: Install Rust
+              run: |
+                  rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+                  rustup default "$RUST_TOOLCHAIN"
+                  rustc --version
+
+            - name: Read pinned SP1 version
+              run: |
+                  SP1_VERSION=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' prover/Cargo.lock)
+                  if [ "$SP1_VERSION" = "v" ]; then
+                      echo "could not read the sp1-sdk version from prover/Cargo.lock"
+                      exit 1
+                  fi
+                  echo "SP1_VERSION=$SP1_VERSION" >> "$GITHUB_ENV"
+
+            # The installer at the locked release's tag, as prover-ci.yml
+            # fetches it. The token is the run's own, for GitHub's API rate
+            # limit; it is not a stored secret.
+            - name: Install SP1
+              env:
+                  GITHUB_TOKEN: ${{ github.token }}
+              run: |
+                  mkdir -p "$HOME/.sp1/bin"
+                  curl -sSfL "https://raw.githubusercontent.com/succinctlabs/sp1/${SP1_VERSION}/sp1up/sp1up" \
+                      -o "$HOME/.sp1/bin/sp1up"
+                  chmod +x "$HOME/.sp1/bin/sp1up"
+                  "$HOME/.sp1/bin/sp1up" --version "$SP1_VERSION"
+                  echo "$HOME/.sp1/bin" >> "$GITHUB_PATH"
+
+            - name: Install protoc
+              run: |
+                  sudo apt-get update -qq && sudo apt-get install -y -qq protobuf-compiler
+                  protoc --version
+
+            - name: Build the guest by the box's recipe
+              run: |
+                  set -o pipefail
+                  bash scripts/prover-box/build-guest.sh "$COMMIT" 2>&1 | tee "$RUNNER_TEMP/build-guest.log"
+
+            # build-sequencer.sh's build line, over the ELF build-guest.sh put
+            # in place; its drift tests are left to prover-ci.yml.
+            - name: Build the sequencer over the same ELF
+              working-directory: ./prover
+              run: SP1_SKIP_PROGRAM_BUILD=true cargo build --release --locked -p figaro-sequencer --bin sequencer
+
+            - name: Read both keys and compare
+              run: |
+                  set -euo pipefail
+                  out="$RUNNER_TEMP/key"
+                  mkdir -p "$out"
+                  guest_key=$(sed -n 's/^SP1_PROGRAM_VKEY=//p' "$RUNNER_TEMP/build-guest.log" | tail -n 1)
+                  relay_key=$(prover/target/release/sequencer --vkey | sed -n 's/^SP1_PROGRAM_VKEY=//p' | tail -n 1)
+                  elf_sha=$(sha256sum prover/target/elf-compilation/docker/riscv64im-succinct-zkvm-elf/release/figaro-prover | cut -d' ' -f1)
+                  {
+                      echo "commit=$COMMIT"
+                      echo "sp1=$SP1_VERSION"
+                      echo "elf_sha256=$elf_sha"
+                      echo "figaro_prove_test_vkey=$guest_key"
+                      echo "sequencer_vkey=$relay_key"
+                  } | tee "$out/guest-key.txt"
+                  {
+                      echo "## Guest key preview"
+                      echo ""
+                      echo "| | |"
+                      echo "|---|---|"
+                      echo "| Commit | \`$COMMIT\` |"
+                      echo "| SP1 | \`$SP1_VERSION\` (docker build) |"
+                      echo "| Guest ELF sha256 | \`$elf_sha\` |"
+                      echo "| Key, figaro-prove-test | \`$guest_key\` |"
+                      echo "| Key, \`sequencer --vkey\` | \`$relay_key\` |"
+                  } >> "$GITHUB_STEP_SUMMARY"
+                  [[ "$guest_key" =~ ^0x[0-9a-f]{64}$ ]] || { echo "::error::no key in the build-guest.sh output"; exit 1; }
+                  [ "${guest_key,,}" = "${relay_key,,}" ] || { echo "::error::the two keys differ"; exit 1; }
+
+            - name: Upload the key
+              if: always()
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: guest-key-${{ needs.preflight.outputs.sha }}
+                  path: |
+                      ${{ runner.temp }}/key/guest-key.txt
+                      ${{ runner.temp }}/build-guest.log
+                  retention-days: 90
+                  if-no-files-found: warn
