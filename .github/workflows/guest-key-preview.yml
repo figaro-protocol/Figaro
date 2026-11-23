@@ -117,6 +117,13 @@ jobs:
                   sudo apt-get update -qq && sudo apt-get install -y -qq protobuf-compiler
                   protoc --version
 
+            # The docker build runs as root and creates what it writes. On the
+            # box every step is root's; here the later steps are the runner
+            # user's, so the build tree is made first, by that user, and the
+            # docker build only adds its own folder inside it.
+            - name: Make the build tree before docker writes into it
+              run: mkdir -p prover/target/elf-compilation/riscv64im-succinct-zkvm-elf/release
+
             - name: Build the guest by the box's recipe
               run: |
                   set -o pipefail
