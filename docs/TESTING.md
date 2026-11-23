@@ -1433,6 +1433,19 @@ test*` names a change adds under `test/` against `src/` as it stood before, and
 fails when every one passes there; a `Red-on-parent:` trailer in the commit
 message runs it from `.husky/commit-msg`.
 
+Four long runs also have a GitHub Actions workflow, each started by hand
+(`workflow_dispatch`) at a full commit sha given as input, which it checks out
+and names in its job summary and artifacts. `tla-pass4.yml` runs TLA+ pass 4
+(`ResolutionUniverses`) with TLC checkpoints, uploads the checkpoint when the
+run's time is out, and resumes it from an earlier run's id. `mutation-dispatch.yml`
+runs `cargo mutants --in-place` over `figaro-kernel` and `figaro-clause`, split
+across a matrix with `--shard k/n`, one `mutants.out` per shard; `mewt` has no
+workflow, since its `mewt.toml` is not in the repository. `kani-dispatch.yml`
+runs `cargo kani` in `formal/kani`. `guest-key-preview.yml` builds the proof
+program by `scripts/prover-box/build-guest.sh`, reads the key again from
+`sequencer --vkey`, and prints both. Each workflow's header states whether a
+standard runner carries the run.
+
 ## Opportunistic — Mythril
 
 Mythril runs out-of-loop via `scripts/mythril-docker.sh` (Docker image `mythril/myth`, 300s execution timeout, solc 0.8.26). Not wired into pre-commit or CI; invoked by hand on specific contracts when a deep symbolic-execution pass is wanted alongside Halmos / Certora / Echidna. See `docs/LOCAL_DEV.md` § "Docker-hosted services" for the Docker convention.
