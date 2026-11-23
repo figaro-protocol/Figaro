@@ -46,6 +46,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { withUrlHosts } from "./url-host.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -314,7 +315,8 @@ async function main() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     main().catch((e) => {
-        console.error(e.message);
+        // An RPC error quotes the endpoint, whose path or query can carry a key.
+        console.error(withUrlHosts(e.message));
         process.exit(1);
     });
 }

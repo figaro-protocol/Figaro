@@ -40,9 +40,18 @@
 # is set) has the fork sign for every wallet the plan names, at its real
 # address, so the plan, the keys and the checks are rehearsed exactly and only
 # the device taps are not. PRIVATE_KEY unset deploys from a throwaway key the
-# fork funds. The vault is the treasury's Safe, whose owners are the wallets
-# the expectations file states, and the seeding's vault steps do not speak a
-# Safe yet: scripts/seed/seed.sh refuses them, and the rehearsal stops there.
+# fork funds: it sends the deploy and pays its gas on the fork, and it is not
+# the expectations file's deployer wallet, so it is not an owner of the vault.
+# The vault is the treasury's Safe, which the wrapper creates with the owners
+# and threshold the expectations file states (scripts/safe-treasury.mjs).
+# VAULT_OWNER_KEYS defaults to PRIVATE_KEY. Under IMPERSONATE=1 the seeding's
+# vault steps read the Safe's owners and threshold from the Safe itself, leave
+# out a key that is not an owner with a line that says so, and impersonate as
+# many owners as the threshold still needs, the founder first; the first
+# signer left sends execTransaction, the others approveHash. With the real
+# deploy key, which is an owner, that key executes and the founder approves,
+# the shape of the broadcast. Under IMPERSONATE=1 every wallet the
+# expectations file names gets gas on the fork before the seeding.
 #
 #   RELEASE_COMMIT  required; the full sha of the release revision
 #   FORK_URL        required; never printed
@@ -165,6 +174,7 @@ stop_here check
 step "4. the seeding (scripts/seed/seed.sh)"
 if [ -z "${FOUNDER_LEDGER_HD_PATH:-}" ]; then export IMPERSONATE="${IMPERSONATE:-1}"; fi
 export NEXT_PUBLIC_IPFS_API_URL="${NEXT_PUBLIC_IPFS_API_URL:-http://127.0.0.1:5001}"
+# A key that is not an owner of the vault is left out on the fork (seed.sh vault_owners).
 export VAULT_OWNER_KEYS="${VAULT_OWNER_KEYS:-$PRIVATE_KEY}"
 SEED() { RPC_URL="$FORK" DEPLOYMENT_RECORD="$RECORD" EXPECTED="$EXPECTED" bash "$REPO_ROOT/scripts/seed/seed.sh" "$@"; }
 # Each wallet that pays a stake on the fork gets gas and stakes there; the

@@ -30,6 +30,7 @@
  *   REGISTRAR_IMPERSONATE     — fork rehearsal only: an address impersonated
  *                               on an Anvil node (populate-clauses.mjs), OR
  *   REGISTRAR_VAULT + VAULT_OWNER_KEYS [+ VAULT_LEDGER_HD_PATH | VAULT_IMPERSONATE_OWNER]
+ *                             [+ VAULT_IMPERSONATE_THRESHOLD=1 on a fork: populate-clauses.mjs]
  *                             — the vault registers ITSELF as the member, staking
  *                               from its own balance; the seeding never runs it
  *                               for a profile in members/ (the treasury wallet
@@ -72,8 +73,8 @@ async function main() {
     }
     let ownerClients;
     if (vault) {
-        if (!(process.env.VAULT_OWNER_KEYS ?? '').trim()) throw new Error('REGISTRAR_VAULT is set but VAULT_OWNER_KEYS is missing');
-        ownerClients = await vaultOwnerClients({ chain, rpcUrl: RPC_URL });
+        if (!(process.env.VAULT_OWNER_KEYS ?? '').trim() && process.env.VAULT_IMPERSONATE_THRESHOLD !== '1') throw new Error('REGISTRAR_VAULT is set but VAULT_OWNER_KEYS is missing');
+        ownerClients = await vaultOwnerClients({ chain, rpcUrl: RPC_URL, publicClient, vault });
     }
     // In vault mode the executing owner sends every transaction the run sends.
     const walletClient = vault ? ownerClients[0] : await registrarWalletClient({ chain, rpcUrl: RPC_URL });

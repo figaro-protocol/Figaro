@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { planVaultApprovals, safeApprovalSignatures, vaultInterface } from "@/scripts/populate-clauses.mjs";
+import { ownersToImpersonate, planVaultApprovals, safeApprovalSignatures, vaultInterface } from "@/scripts/populate-clauses.mjs";
 
 // The vault path of populate-clauses.mjs speaks a Safe or the devnet's mock
 // multisig. These cases hold its pure parts: the signatures a Safe's
 // execTransaction takes for owners that approved on chain, which interface a
-// vault speaks given its answers, and which owners carry a transaction to
-// the threshold.
+// vault speaks given its answers, which owners carry a transaction to the
+// threshold, and which owners a fork run impersonates to reach it.
 
 const LOW = "0x1111111111111111111111111111111111111111";
 const MID = "0x7777777777777777777777777777777777777777";
@@ -81,5 +81,36 @@ describe("planVaultApprovals", () => {
     it("refuses when the approvals available are fewer than the threshold", () => {
         expect(() => planVaultApprovals({ threshold: 2n, executor: LOW, executorCounts: true, standing: [], signers: [LOW] }))
             .toThrow(/needs 2 approvals and 1 are available/);
+    });
+});
+
+describe("ownersToImpersonate", () => {
+    const owners = [LOW, MID, HIGH];
+    const STRANGER = "0x0000000000000000000000000000000000000042";
+
+    it("impersonates nobody when the signers that are owners reach the threshold", () => {
+        expect(ownersToImpersonate({ owners, threshold: 2n, signers: [LOW, MID] })).toEqual([]);
+    });
+
+    it("counts no signer that is not an owner, and takes the preferred owner first", () => {
+        expect(ownersToImpersonate({ owners, threshold: 2n, signers: [STRANGER], preferred: [HIGH] }))
+            .toEqual([HIGH, LOW]);
+    });
+
+    it("tops up a key that is an owner with the preferred owner alone", () => {
+        expect(ownersToImpersonate({ owners, threshold: 2n, signers: [LOW], preferred: [MID] })).toEqual([MID]);
+    });
+
+    it("never takes an owner twice, in any case, nor one that already signs", () => {
+        expect(ownersToImpersonate({ owners, threshold: 3n, signers: [HIGH.toLowerCase()], preferred: [HIGH, MID.toLowerCase()] }))
+            .toEqual([MID, LOW]);
+    });
+
+    it("ignores a preferred address that is not an owner", () => {
+        expect(ownersToImpersonate({ owners, threshold: 1n, signers: [], preferred: [STRANGER] })).toEqual([LOW]);
+    });
+
+    it("refuses a threshold above the owners the vault has", () => {
+        expect(() => ownersToImpersonate({ owners: [LOW], threshold: 2n, signers: [] })).toThrow(/needs 2 owners and has 1/);
     });
 });

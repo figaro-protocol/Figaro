@@ -42,9 +42,14 @@
 #                           one from the contract (vaultInterface). On a Safe the Ledger (or
 #                           the impersonated founder) sends approveHash and the first key in
 #                           VAULT_OWNER_KEYS sends execTransaction; fewer approvals than the
-#                           Safe's threshold are refused before anything is sent
+#                           Safe's threshold are refused before anything is sent, and so is
+#                           a key that is not an owner
 #   IMPERSONATE=1           fork rehearsal only: every wallet the plan names signs as its own
-#                           address, impersonated on the Anvil node (refused elsewhere)
+#                           address, impersonated on the Anvil node (refused elsewhere). For
+#                           the vault, a key in VAULT_OWNER_KEYS (optional here) that is not
+#                           an owner is left out with a line that says so, and as many of the
+#                           owners the vault itself names as its threshold still needs are
+#                           impersonated, the founder first; the first signer left executes
 # Each signer's address is read and compared with the plan's before anything is sent.
 set -euo pipefail
 
@@ -101,14 +106,21 @@ signer_for() {
   echo "   $name = $want"
 }
 
-# The founder's second approval on the vault: its Ledger, or impersonated on a fork.
+# The vault's signers. Off a fork: the keys in VAULT_OWNER_KEYS (the first
+# executes) and the founder's Ledger as the second approval. On a fork
+# (IMPERSONATE=1): the keys that are owners, then as many of the owners the
+# vault itself names as its threshold still needs, the founder first, each
+# impersonated (VAULT_IMPERSONATE_THRESHOLD, frontend/scripts/populate-clauses.mjs).
 vault_owners() {
+  unset VAULT_LEDGER_HD_PATH VAULT_IMPERSONATE_OWNER VAULT_IMPERSONATE_THRESHOLD
+  if [ "${IMPERSONATE:-}" = "1" ]; then
+    export VAULT_OWNER_KEYS="${VAULT_OWNER_KEYS:-}"
+    export VAULT_IMPERSONATE_OWNER="$(plan --get wallet founder)" VAULT_IMPERSONATE_THRESHOLD=1
+    return
+  fi
   : "${VAULT_OWNER_KEYS:?the vault needs its key owners: set VAULT_OWNER_KEYS}"
   export VAULT_OWNER_KEYS
-  unset VAULT_LEDGER_HD_PATH VAULT_IMPERSONATE_OWNER
-  if [ "${IMPERSONATE:-}" = "1" ]; then export VAULT_IMPERSONATE_OWNER="$(plan --get wallet founder)"
-  elif [ -n "${FOUNDER_LEDGER_HD_PATH:-}" ]; then export VAULT_LEDGER_HD_PATH="$FOUNDER_LEDGER_HD_PATH"
-  fi
+  if [ -n "${FOUNDER_LEDGER_HD_PATH:-}" ]; then export VAULT_LEDGER_HD_PATH="$FOUNDER_LEDGER_HD_PATH"; fi
 }
 
 populate() { # <script> — the registries from the record, run from frontend/
@@ -176,7 +188,7 @@ case "$STEP" in
     FILE="${1:?member <file in members/, no .json>}"
     [ -f "$REPO_ROOT/members/$FILE.json" ] || { echo "❌ no members/$FILE.json"; exit 1; }
     WALLET=$(plan --get member-wallet "$FILE")
-    unset REGISTRAR_VAULT VAULT_OWNER_KEYS VAULT_LEDGER_HD_PATH VAULT_IMPERSONATE_OWNER
+    unset REGISTRAR_VAULT VAULT_OWNER_KEYS VAULT_LEDGER_HD_PATH VAULT_IMPERSONATE_OWNER VAULT_IMPERSONATE_THRESHOLD
     signer_for "$WALLET"
     export MEMBER_PROFILE="$REPO_ROOT/members/$FILE.json"
     populate populate-members.mjs ;;
@@ -189,5 +201,5 @@ case "$STEP" in
     (cd "$REPO_ROOT/frontend" && node scripts/dao-operator-delegation.mjs grant) ;;
 
   *)
-    sed -n '2,47p' "$0"; exit 2 ;;
+    sed -n '2,53p' "$0"; exit 2 ;;
 esac

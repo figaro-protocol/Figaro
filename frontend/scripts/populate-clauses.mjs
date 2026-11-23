@@ -78,6 +78,15 @@
  *                        vault owner (a wrong N signs nothing).
  *   VAULT_IMPERSONATE_OWNER — fork rehearsal only: an owner impersonated on an
  *                        Anvil node, in place of VAULT_LEDGER_HD_PATH.
+ *   VAULT_IMPERSONATE_THRESHOLD=1 — fork rehearsal only, refused on a node
+ *                        that is not Anvil: the owners and the threshold are
+ *                        read from the vault itself (a Safe's getOwners and
+ *                        getThreshold), a key in VAULT_OWNER_KEYS that is not
+ *                        an owner is left out with a line that says so, and
+ *                        as many owners as the threshold still needs are
+ *                        impersonated, VAULT_IMPERSONATE_OWNER first
+ *                        (`ownersToImpersonate`). Unset, a key that is not an
+ *                        owner is refused.
  * The vault confers no special role: any wallet — the founder's address, a
  * stranger's — is registrar of its own artifacts through the same registries.
  *
@@ -365,11 +374,18 @@ const LEDGER_RETRIES = 60;
  *  the plan runs under the real wallets' addresses. Refused on a node that does
  *  not answer Anvil's own methods — a public chain is never asked to sign. */
 async function impersonatedWalletClient({ address, chain, rpcUrl }) {
-    const probe = createPublicClient({ transport: http(rpcUrl) });
-    const isAnvil = await probe.request({ method: 'anvil_nodeInfo' }).then(() => true, () => false);
-    if (!isAnvil) throw new Error(`impersonating ${address} needs an Anvil node; ${new URL(rpcUrl).host} is not one — a public chain is signed for by its device`);
+    const probe = await anvilNode({ rpcUrl, why: `impersonating ${address}` });
     await probe.request({ method: 'anvil_impersonateAccount', params: [address] });
     return createWalletClient({ account: address, chain, transport: http(rpcUrl) });
+}
+
+/** A client of the node at `rpcUrl`, refused unless the node answers Anvil's
+ *  own `anvil_nodeInfo`; `why` names what needs a fork. */
+async function anvilNode({ rpcUrl, why }) {
+    const probe = createPublicClient({ transport: http(rpcUrl) });
+    const isAnvil = await probe.request({ method: 'anvil_nodeInfo' }).then(() => true, () => false);
+    if (!isAnvil) throw new Error(`${why} needs an Anvil node; ${new URL(rpcUrl).host} is not one — a public chain is signed for by its device`);
+    return probe;
 }
 
 /** The one registrar of an invocation that is not a vault: the Ledger account
@@ -386,15 +402,78 @@ export async function registrarWalletClient({ chain, rpcUrl }) {
 
 /** The vault's owner clients: each key in VAULT_OWNER_KEYS (the first executes),
  *  then the Ledger owner (VAULT_LEDGER_HD_PATH) or an owner impersonated on a
- *  fork (VAULT_IMPERSONATE_OWNER), which only approve. */
-export async function vaultOwnerClients({ chain, rpcUrl }) {
+ *  fork (VAULT_IMPERSONATE_OWNER), which only approve. With
+ *  VAULT_IMPERSONATE_THRESHOLD=1, on an Anvil node only, the owners and the
+ *  threshold are read from the vault: a key that is not an owner is left out
+ *  with a line that says so, and the owners the threshold still needs are
+ *  impersonated (`ownersToImpersonate`); the first client left executes. */
+export async function vaultOwnerClients({ chain, rpcUrl, publicClient, vault, log = console.log }) {
     const keys = (process.env.VAULT_OWNER_KEYS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-    const clients = keys.map((k) => createWalletClient({ account: privateKeyToAccount(k), chain, transport: http(rpcUrl) }));
+    let clients = keys.map((k) => createWalletClient({ account: privateKeyToAccount(k), chain, transport: http(rpcUrl) }));
     if (process.env.VAULT_LEDGER_HD_PATH) clients.push(ledgerWalletClient({ hdPath: process.env.VAULT_LEDGER_HD_PATH, rpcUrl }));
-    if (process.env.VAULT_IMPERSONATE_OWNER) clients.push(await impersonatedWalletClient({ address: process.env.VAULT_IMPERSONATE_OWNER, chain, rpcUrl }));
+    const preferred = process.env.VAULT_IMPERSONATE_OWNER;
+    if (process.env.VAULT_IMPERSONATE_THRESHOLD !== '1') {
+        if (preferred) clients.push(await impersonatedWalletClient({ address: preferred, chain, rpcUrl }));
+        return clients;
+    }
+    await anvilNode({ rpcUrl, why: 'VAULT_IMPERSONATE_THRESHOLD' });
+    const { owners, threshold } = await vaultOwnersAndThreshold({ publicClient, vault });
+    const isOwner = (a) => owners.some((o) => o.toLowerCase() === a.toLowerCase());
+    clients = clients.filter((c) => {
+        if (isOwner(c.account.address)) return true;
+        log(`  · ${c.account.address} is not an owner of the vault ${vault}: left out on this fork`);
+        return false;
+    });
+    const add = ownersToImpersonate({
+        owners, threshold, signers: clients.map((c) => c.account.address), preferred: preferred ? [preferred] : [],
+    });
+    for (const address of add) {
+        clients.push(await impersonatedWalletClient({ address, chain, rpcUrl }));
+        log(`  · ${address}, an owner of the vault, impersonated on this fork`);
+    }
     return clients;
 }
 const LEDGER_RETRY_MS = 10_000;
+
+/** The vault's owners and threshold, read from the contract in the interface
+ *  it speaks (`vaultInterface`): a Safe's `getOwners()` and `getThreshold()`,
+ *  the mock's `owners(i)` up to `ownerCount()` and `threshold()`. */
+export async function vaultOwnersAndThreshold({ publicClient, vault, kind }) {
+    kind ??= await vaultInterface({ publicClient, vault });
+    if (kind === 'safe') {
+        const read = (functionName) => publicClient.readContract({ address: vault, abi: SAFE_ABI, functionName });
+        return { owners: await read('getOwners'), threshold: await read('getThreshold') };
+    }
+    const read = (functionName, args = []) => publicClient.readContract({ address: vault, abi: VAULT_ABI, functionName, args });
+    const ownerCount = await read('ownerCount');
+    const owners = [];
+    for (let i = 0n; i < ownerCount; i++) owners.push(await read('owners', [i]));
+    return { owners, threshold: await read('threshold') };
+}
+
+/** Which of the vault's `owners` a fork run impersonates so that its signers
+ *  reach `threshold`: none when the `signers` that are owners already reach
+ *  it, otherwise the owners in `preferred` first, then the rest in the vault's
+ *  own order, each once and none already a signer. Throws when the vault has
+ *  too few owners. Addresses compare without case; each returned address is
+ *  spelled as the vault returns it.
+ *  @param {{ owners: string[], threshold: bigint | number, signers: string[], preferred?: string[] }} args
+ */
+export function ownersToImpersonate({ owners, threshold, signers, preferred = [] }) {
+    const same = (a, b) => a.toLowerCase() === b.toLowerCase();
+    const isOwner = (a) => owners.some((o) => same(o, a));
+    const signing = signers.filter(isOwner).filter((a, i, all) => all.findIndex((b) => same(a, b)) === i);
+    const need = Number(threshold) - signing.length;
+    const chosen = [];
+    for (const a of [...preferred.filter(isOwner), ...owners]) {
+        if (chosen.length >= need) break;
+        if (!signing.some((s) => same(s, a)) && !chosen.some((c) => same(c, a))) chosen.push(owners.find((o) => same(o, a)));
+    }
+    if (chosen.length < need) {
+        throw new Error(`the vault needs ${Number(threshold)} owners and has ${owners.length}`);
+    }
+    return chosen;
+}
 
 /** One call as the vault's transaction, in the interface the vault speaks
  *  (`vaultInterface`): its hash, whether it already ran, the threshold, the
@@ -414,8 +493,7 @@ export async function vaultTransaction({ publicClient, vault, to, value, data, n
         const txHash = await read('getTransactionHash', [...call, await read('nonce')]);
         return {
             kind, abi: SAFE_ABI, txHash, executed: false,
-            threshold: await read('getThreshold'),
-            owners: await read('getOwners'),
+            ...await vaultOwnersAndThreshold({ publicClient, vault, kind }),
             // The Safe counts the sender of execTransaction as an owner that approved.
             executorCounts: true,
             approved: async (owner) => (await read('approvedHashes', [owner, txHash])) !== 0n,
@@ -426,14 +504,10 @@ export async function vaultTransaction({ publicClient, vault, to, value, data, n
     }
     const read = (functionName, args = []) => publicClient.readContract({ address: vault, abi: VAULT_ABI, functionName, args });
     const txHash = await read('transactionHash', [to, value, data, nonce]);
-    const ownerCount = await read('ownerCount');
-    const owners = [];
-    for (let i = 0n; i < ownerCount; i++) owners.push(await read('owners', [i]));
     return {
         kind, abi: VAULT_ABI, txHash,
         executed: await read('executed', [txHash]),
-        threshold: await read('threshold'),
-        owners,
+        ...await vaultOwnersAndThreshold({ publicClient, vault, kind }),
         executorCounts: false,
         approved: (owner) => read('approvedBy', [txHash, owner]),
         execute: (client) => client.writeContract({
@@ -949,12 +1023,14 @@ async function main() {
     }
     let ownerClients;
     if (vault) {
-        if (!(process.env.VAULT_OWNER_KEYS ?? '').trim()) {
+        if (!(process.env.VAULT_OWNER_KEYS ?? '').trim() && process.env.VAULT_IMPERSONATE_THRESHOLD !== '1') {
             throw new Error('REGISTRAR_VAULT is set but VAULT_OWNER_KEYS is missing — the multisig needs threshold-many owner keys to approve');
         }
         // Key owners first: ownerClients[0] executes (and pays that gas); the
         // Ledger (or impersonated) owner, when configured, only ever approves.
-        ownerClients = await vaultOwnerClients({ chain, rpcUrl: RPC_URL });
+        // On a fork with VAULT_IMPERSONATE_THRESHOLD=1 and no key an owner, an
+        // impersonated owner executes.
+        ownerClients = await vaultOwnerClients({ chain, rpcUrl: RPC_URL, publicClient, vault });
     }
     // In vault mode the executing owner sends every transaction the run sends.
     const walletClient = vault ? ownerClients[0] : await registrarWalletClient({ chain, rpcUrl: RPC_URL });
