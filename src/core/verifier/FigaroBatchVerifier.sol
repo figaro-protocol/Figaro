@@ -144,17 +144,17 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     /// @notice The RPGF counter this verifier is the proof-gated writer for.
     IUsageCounter public immutable usageCounter;
 
-    /// @notice The widest gap allowed between the clock the guest checked
-    ///         deadlines against (committed in the public values) and this
-    ///         block's timestamp. It bounds a prover-chosen time to reality —
-    ///         a batch is proven then submitted, so a few minutes of lag is
-    ///         normal — while keeping the guest's deadline gate meaningful: a
-    ///         caller cannot pick an arbitrary past time to bond an
-    ///         already-expired signed commitment. The deadline itself is
-    ///         checked again here against this block, as `FigaroCore.commit`
-    ///         checks it (`DeadlineExpired`, in `_walkOperations`), so the lag
-    ///         this bound admits never bonds a commitment past its deadline.
-    uint64 public constant MAX_BATCH_STALENESS = 1 hours;
+    // No constant bounds the age of the time the guest checked deadlines
+    // against (public value 8). `settleBatch` refuses a time later than this
+    // block and nothing else about it: only a commit reads that time, and
+    // each commit's deadline is checked again here against this block, as
+    // `FigaroCore.commit` checks it (`DeadlineExpired`, in `_walkOperations`).
+    // So an old time bonds no commitment past its deadline, and a proof that
+    // took long to make still lands. A resolve reads no time; a bound on the
+    // time's age would stop a buyer whose own proof was slow from closing
+    // its process, on a path with no other way out. An old proof can land
+    // a second time while the root has not moved: no token moves, and no
+    // use counts that a fresh proof could not (`docs/DESIGN_DECISIONS.md` § 27).
 
     /// @notice The length of the public values, in bytes: ten 32-byte words.
     ///         A stream of any other length is another program's, or a
@@ -442,13 +442,13 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         if (pv.verifyingContract != address(this)) {
             revert VerifyingContractMismatch(address(this), pv.verifyingContract);
         }
-        // Bind the guest's deadline clock to reality: the committed timestamp
-        // must not be in the future and must be recent. Without this, the
-        // prover-chosen `block_timestamp` the guest checks every deadline
-        // against is unconstrained, and a caller of this permissionless
-        // function could pick `0` to bond a signed commitment whose deadline
-        // has long expired — one the direct path rejects.
-        if (pv.blockTimestamp > block.timestamp || block.timestamp - pv.blockTimestamp > MAX_BATCH_STALENESS) {
+        // The committed time is never later than this block: the guest
+        // checked every commit's deadline against it, and a time ahead of
+        // the chain would publish a clock no block had reached. Its age is
+        // not bounded. A commit proven at an old time, `0` included, is held
+        // to its deadline below, against this block (`DeadlineExpired`), so
+        // an expired commitment is refused as the direct path refuses it.
+        if (pv.blockTimestamp > block.timestamp) {
             revert BatchTimestampOutOfRange(pv.blockTimestamp, uint64(block.timestamp));
         }
 
@@ -803,8 +803,8 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
                 } else if (uint256(_wordAt(s, p + COMMITMENT_DEADLINE_OFFSET)) < block.timestamp) {
                     // `FigaroCore.commit`'s first gate, against this block:
                     // the guest checked the deadline against the proven
-                    // clock, which may trail this block by up to
-                    // `MAX_BATCH_STALENESS`; a commitment whose deadline has
+                    // clock, which may trail this block by any length of
+                    // time; a commitment whose deadline has
                     // passed here is refused, as the Core refuses it, before
                     // any token moves.
                     revert DeadlineExpired();

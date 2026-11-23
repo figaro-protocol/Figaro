@@ -242,29 +242,6 @@ contract FigaroBatchVerifierTest is Test {
             )
         );
         verifier.settleBatch(hex"", pvFuture, positions, events, _emptyUsage(), hex"");
-
-        // A stale clock older than MAX_BATCH_STALENESS: this is the attack — a
-        // caller of the permissionless settleBatch picking an arbitrary past
-        // time to bond a signed commitment whose deadline has long expired.
-        uint64 stale = uint64(block.timestamp) - verifier.MAX_BATCH_STALENESS() - 1;
-        bytes memory pvStale = abi.encode(
-            GENESIS,
-            newRoot,
-            uint64(block.chainid),
-            address(verifier),
-            _hashPositions(positions),
-            _hashAttestations(events.attestations),
-            _hashBindings(events.specBindings),
-            _hashUsageEmpty(),
-            stale,
-            keccak256(hex"")
-        );
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                FigaroBatchVerifier.BatchTimestampOutOfRange.selector, stale, uint64(block.timestamp)
-            )
-        );
-        verifier.settleBatch(hex"", pvStale, positions, events, _emptyUsage(), hex"");
     }
 
     // ── The open-world anchor gate ──────────────────────────────────
@@ -617,6 +594,19 @@ contract FigaroBatchVerifierTest is Test {
         bytes32 newRoot,
         bytes memory operations
     ) internal view returns (bytes memory) {
+        return _pvProvenAt(positions, events, newRoot, operations, uint64(block.timestamp));
+    }
+
+    /// The same public values with the supplied time `clock` in the ninth
+    /// word: the time the proof program checked each commit's deadline
+    /// against.
+    function _pvProvenAt(
+        FigaroBatchVerifier.NetPosition[] memory positions,
+        FigaroBatchVerifier.BatchEventData memory events,
+        bytes32 newRoot,
+        bytes memory operations,
+        uint64 clock
+    ) internal view returns (bytes memory) {
         return abi.encode(
             GENESIS,
             newRoot,
@@ -626,7 +616,7 @@ contract FigaroBatchVerifierTest is Test {
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
             _hashUsageEmpty(),
-            uint64(block.timestamp),
+            clock,
             keccak256(operations)
         );
     }
@@ -707,13 +697,38 @@ contract FigaroBatchVerifierTest is Test {
     }
 
     function _settleWalletResolve(bytes memory authorization) internal {
+        _settleWalletResolveProvenAt(authorization, uint64(block.timestamp));
+    }
+
+    function _settleWalletResolveProvenAt(bytes memory authorization, uint64 clock) internal {
         FigaroBatchVerifier.NetPosition[] memory positions = _walletPositions();
         FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
             new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
         );
         bytes memory operations = _walletEntry(authorization);
-        bytes memory pv = _pvWithOperations(positions, events, keccak256("wallet-root"), operations);
+        bytes memory pv = _pvProvenAt(positions, events, keccak256("wallet-root"), operations, clock);
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), operations);
+    }
+
+    /// A batch of one resolve lands however long ago it was proven: a resolve
+    /// reads no time, so a buyer whose proof took hours, or days, still
+    /// closes its process. Two hours and the zero time, each from the same
+    /// starting state.
+    function test_settleBatch_aResolveLandsHoweverOldItsSuppliedTime() public {
+        bytes memory authorization = bytes("guardian-approval");
+        vm.etch(buyer, type(MockERC1271Wallet).runtimeCode);
+        MockERC1271Wallet(buyer).approve(_walletDigest(), authorization);
+        uint256 sellerBefore = token.balanceOf(seller);
+        uint256 start = vm.snapshotState();
+
+        _settleWalletResolveProvenAt(authorization, uint64(block.timestamp - 2 hours));
+        assertEq(verifier.stateRoot(), keccak256("wallet-root"), "proven two hours ago, the resolve lands");
+        assertEq(token.balanceOf(seller) - sellerBefore, 3 * WALLET_PAYMENT, "the seller is paid 2G + P");
+
+        vm.revertToState(start);
+        _settleWalletResolveProvenAt(authorization, 0);
+        assertEq(verifier.stateRoot(), keccak256("wallet-root"), "proven at the zero time, the resolve lands");
+        assertEq(token.balanceOf(seller) - sellerBefore, 3 * WALLET_PAYMENT, "the seller is paid 2G + P");
     }
 
     function test_settleBatch_walletCodeResolve_paysOutWhenTheBuyersCodeValidates() public {
@@ -1202,27 +1217,16 @@ contract FigaroBatchVerifierTest is Test {
         );
     }
 
-    /// Land a batch whose stream is one commit of `c`, proven at a clock one
-    /// minute behind the landing block: inside `MAX_BATCH_STALENESS`, so the
-    /// clock check passes and only the deadline decides.
-    function _landCommitProvenAMinuteAgo(CommitmentTypes.Commitment memory c) internal {
+    /// Land a batch whose stream is one commit of `c`, proven at the supplied
+    /// time `clock`: the verifier holds that time only to be no later than
+    /// this block, so the deadline alone decides.
+    function _landCommitProvenAt(CommitmentTypes.Commitment memory c, uint64 clock) internal {
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
         FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
             new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
         );
         bytes memory operations = _commitEntry(c);
-        bytes memory pv = abi.encode(
-            GENESIS,
-            keccak256("deadline-root"),
-            uint64(block.chainid),
-            address(verifier),
-            _hashPositions(positions),
-            _hashAttestations(events.attestations),
-            _hashBindings(events.specBindings),
-            _hashUsageEmpty(),
-            uint64(block.timestamp - 60),
-            keccak256(operations)
-        );
+        bytes memory pv = _pvProvenAt(positions, events, keccak256("deadline-root"), operations, clock);
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), operations);
     }
 
@@ -1235,7 +1239,7 @@ contract FigaroBatchVerifierTest is Test {
         c.processId = bytes32(0);
         c.commitDeadline = block.timestamp - 1;
         vm.expectRevert(abi.encodeWithSignature("DeadlineExpired()"));
-        _landCommitProvenAMinuteAgo(c);
+        _landCommitProvenAt(c, uint64(block.timestamp - 60));
         assertEq(verifier.stateRoot(), GENESIS, "the root does not move");
         assertEq(verifier.batchCount(), 0, "no batch lands");
     }
@@ -1246,8 +1250,32 @@ contract FigaroBatchVerifierTest is Test {
         CommitmentTypes.Commitment memory c = _walletOrder();
         c.processId = bytes32(0);
         c.commitDeadline = block.timestamp;
-        _landCommitProvenAMinuteAgo(c);
+        _landCommitProvenAt(c, uint64(block.timestamp - 60));
         assertEq(verifier.stateRoot(), keccak256("deadline-root"), "the live commitment lands");
+    }
+
+    /// However old the supplied time, the deadline is held against this
+    /// block: a commitment one second past its deadline is refused by the
+    /// Core's own error, never by the time's age, and one at its deadline
+    /// lands. Two hours and the zero time, the oldest a prover can supply.
+    function test_settleBatch_theDeadlineHoldsHoweverOldTheSuppliedTime() public {
+        uint64[2] memory clocks = [uint64(block.timestamp - 2 hours), uint64(0)];
+        for (uint256 i; i < clocks.length; ++i) {
+            CommitmentTypes.Commitment memory late = _walletOrder();
+            late.processId = bytes32(0);
+            late.commitDeadline = block.timestamp - 1;
+            vm.expectRevert(abi.encodeWithSignature("DeadlineExpired()"));
+            _landCommitProvenAt(late, clocks[i]);
+            assertEq(verifier.batchCount(), 0, "no batch lands");
+
+            uint256 start = vm.snapshotState();
+            CommitmentTypes.Commitment memory live = _walletOrder();
+            live.processId = bytes32(0);
+            live.commitDeadline = block.timestamp;
+            _landCommitProvenAt(live, clocks[i]);
+            assertEq(verifier.stateRoot(), keccak256("deadline-root"), "the live commitment lands");
+            vm.revertToState(start);
+        }
     }
 
     // ── Sequential batches: root chains, counter increments, and the
@@ -1948,8 +1976,8 @@ contract FigaroBatchVerifierTest is Test {
 
     /// A state-neutral batch's proof lands again: the root check is the only
     /// guard against a second landing, and a batch whose prev and new roots
-    /// are equal passes it as often as anyone submits it within
-    /// MAX_BATCH_STALENESS. The landing is inert for the reward: the counter's
+    /// are equal passes it as often as anyone submits it, until the root
+    /// moves. The landing is inert for the reward: the counter's
     /// once-ever `processCounted` skips every use it carries the second time,
     /// so the tally and the period total stay where the first landing left
     /// them. The verifier re-emits its stream and `BatchSettled` under a new
@@ -1979,6 +2007,65 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(counter.totalScoreIn(0), total, "the period total does not move");
         assertEq(verifier.stateRoot(), GENESIS, "the root stays where it was");
         assertEq(verifier.batchCount(), 2, "the batch is logged again under a new id");
+    }
+
+    /// The second landing may come days after the first: the verifier bounds
+    /// no age of the supplied time, so only a moved root ends the repeats.
+    /// Two days apart, inside one period, the repeat is as inert as one in
+    /// the same block.
+    function test_settleBatch_aStateNeutralBatchLandsAgainDaysLaterAndCountsOnce() public {
+        vm.warp(PERIOD_END - 3 days);
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 2);
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events
+        ) = _stateNeutralBatch(usage);
+
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
+        uint256 total = counter.totalScoreIn(0);
+        assertEq(c, 2);
+
+        vm.warp(block.timestamp + 2 days);
+        vm.expectEmit(true, true, true, true, address(verifier));
+        emit FigaroBatchVerifier.BatchSettled(2, GENESIS, GENESIS, 0);
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
+
+        (uint64 c2, uint64 d2, uint256 score2) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
+        assertEq(c2, c, "two days later, the second landing counts nothing");
+        assertEq(d2, d);
+        assertEq(score2, score);
+        assertEq(counter.totalScoreIn(0), total, "the period total does not move");
+        assertEq(verifier.stateRoot(), GENESIS, "the root stays where it was");
+    }
+
+    /// A repeat that comes after its period has ended still lands, and the
+    /// counter refuses its uses whole: the verifier logs the skip and counts
+    /// nothing, so an old proof cannot carry a use into a period it was not
+    /// proven for.
+    function test_settleBatch_aStateNeutralBatchLandsAgainAfterItsPeriodAndCountsNothing() public {
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 2);
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events
+        ) = _stateNeutralBatch(usage);
+
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
+        (uint64 c,, uint256 score) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
+        uint256 total = counter.totalScoreIn(0);
+
+        vm.warp(PERIOD_END + 1 days);
+        vm.expectEmit(true, false, false, false, address(verifier));
+        emit FigaroBatchVerifier.BatchAccrualSkipped(2, hex"");
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
+
+        (uint64 c2,, uint256 score2) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
+        assertEq(c2, c, "after the period, the repeat counts nothing");
+        assertEq(score2, score);
+        assertEq(counter.totalScoreIn(0), total, "the closed period's total does not move");
+        assertEq(verifier.batchCount(), 2, "the repeat lands");
     }
 
     /// A use the counter skipped inside `settleBatch` — its seller had left the

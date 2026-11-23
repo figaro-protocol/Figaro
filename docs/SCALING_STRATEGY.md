@@ -366,9 +366,9 @@ ceiling several-fold and negates the batch path's gas advantage entirely.
    `commitDeadline` against the clock the batch commits in its public values, never
    against the landing block. Whoever builds and proves the batch chooses that
    clock; `settleBatch` accepts it when it is no later than the landing
-   block's `block.timestamp` and at most `MAX_BATCH_STALENESS`, one hour,
-   behind it (`src/core/verifier/FigaroBatchVerifier.sol:157`,
-   `src/core/verifier/FigaroBatchVerifier.sol:451`). `settleBatch` then reads
+   block's `block.timestamp`, however old it is
+   (`src/core/verifier/FigaroBatchVerifier.sol:451`), so a proof that took
+   long to make still lands. `settleBatch` then reads
    each commit's deadline in the operation stream's `0x01` entry and refuses
    the batch (`DeadlineExpired`, `src/core/verifier/FigaroBatchVerifier.sol:810`) when it is before the landing block's
    `block.timestamp`, as `FigaroCore.commit` refuses the commitment
@@ -695,7 +695,7 @@ uses to `UsageCounter.applyBatchAccrual`; advances the state root.
   fabricated prior state, and rejects a second landing of a batch that moved
   the root. A batch that moves no state — usage claims or attestations only —
   names the current root as both prev and new, so anyone may land its proof
-  again within `MAX_BATCH_STALENESS`: the counter's once-ever
+  again until the root moves: the counter's once-ever
   `processCounted` skips every use the second time, no token moves, and the
   verifier re-emits the stream, the attestations and `BatchSettled` under a new
   batch id (`DESIGN_DECISIONS.md` § 27).

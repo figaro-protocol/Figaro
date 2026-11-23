@@ -44,7 +44,7 @@ export const FIGARO_ERROR_MESSAGES: Readonly<Record<string, string>> = {
     OperationsHashMismatch: "The operations in this batch are not the ones the proof covers.",
     MalformedOperationStream: "The operation list of this batch is malformed.",
     VerifierNotPinned: "The proof verifier does not name its own circuit, so it is refused.",
-    BatchTimestampOutOfRange: "The time the batch was proved at is in the future or too old.",
+    BatchTimestampOutOfRange: "The time the batch was proved at is in the future.",
     AccrualStarvedOfGas: "The batch was sent with too little gas to count its uses, so it was refused.",
     PublicValuesLengthMismatch: "The proof's public values have the wrong length.",
     ClauseNotRegistered: "A clause in this batch is not registered in the clause registry.",
