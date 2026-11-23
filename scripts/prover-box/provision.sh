@@ -56,7 +56,9 @@ curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt-get install -y nodejs
 
 # The SP1 build image of the same release — the docker guest build and the
-# gnark wrap use it.
+# gnark wrap use it. This pull is by tag, to have the layers on the box;
+# build-guest.sh pulls the image by its pinned digest and points the tag at
+# that image before it builds, so the guest is compiled by the pinned image.
 docker pull "ghcr.io/succinctlabs/sp1:$SP1_TAG"
 
 # Swap: the Groth16 gnark wrap peaks ~18 GB inside docker. On a 30 GB host the
