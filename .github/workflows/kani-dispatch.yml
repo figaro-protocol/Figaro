@@ -22,7 +22,7 @@ on:
     workflow_dispatch:
         inputs:
             commit:
-                description: "Full 40-character commit sha to check out (a branch name is refused)"
+                description: "Full 40-character sha the run must be at: start the workflow from the branch or tag whose head it is"
                 required: true
                 type: string
             harness:
@@ -84,9 +84,12 @@ jobs:
             - name: Checkout the commit
               uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
               with:
-                  ref: ${{ needs.preflight.outputs.sha }}
                   persist-credentials: false
 
+            # The checkout is the ref the workflow was started from, never a
+            # commit an input names: a job that built an input's commit would
+            # run code no branch of this repository holds. The input states
+            # which commit the result is for, and the job refuses another.
             - name: Check that HEAD is the commit
               run: |
                   head=$(git rev-parse HEAD)
