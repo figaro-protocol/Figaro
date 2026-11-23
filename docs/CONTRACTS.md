@@ -183,14 +183,14 @@ The two paths share no state: a batch-resolved process never acquires `FigaroCor
 status (`core.orderStatus` stays 0 for it), so every reader folds both
 streams. The uses are the one thing that crosses: the guest proves each
 claim — the order RESOLVED in the batch path's state, the key committed in its
-agreement — and gives one use per (kind, key, process) with the order's
-seller; an eighth public value (`usageAccrualHash`) commits the period, the
+agreement — and gives one use per (kind, key, process, seller), each naming
+the order's seller; an eighth public value (`usageAccrualHash`) commits the period, the
 provenance leaf key and the uses (the count prefixed; each use packed
 `key(32) ‖ kind(1) ‖ processId(32) ‖ seller(20)`, a span of `41 + 85n` bytes
 for n uses), and `settleBatch` re-derives that hash from calldata before
 handing the uses over. The counter counts them into the same tally a direct
 call feeds; what the proof cannot see — the open period, each seller's live
-stake, each key's live registration, a process already counted — is checked
+stake, each key's live registration, a seller of a process already counted — is checked
 there. A batch that credits no usage passes an empty array; that call is a
 no-op, which lets trade keep resolving after the reward's last period closes.
 
@@ -378,13 +378,13 @@ Three permissionless functions and one proof-gated writer:
   (`DESIGN_DECISIONS.md` §15). Each use is `BatchUse{bytes32
   clauseOrProcess, uint8 kind, bytes32 processId, address seller}` — a
   resolved batch-path process that used the key, and the seller of the order
-  the guest proved it through, one per (kind, key, process) in the batch. The
+  the guest proved it through, one per (kind, key, process, seller) in the batch. The
   open period (`PeriodMismatch`) and the proved leaf key against
   `provenanceLeaf` (`ProvenanceLeafMismatch`) are checked for the call; then
   each use meets the gates a direct call meets — a reserved key, a key without
   a live registration in its own kind's registry (kind 2 in
   `AgreementRegistry`), an unknown kind, a seller without a live stake, a
-  process already counted under the key — and is skipped, never reverted, when
+  seller of the process already counted under the key — and is skipped, never reverted, when
   it fails one, so the batch's resolution stands and the skipped use may be
   presented again. A use that passes is counted through `_count`, the one
   counting path the direct calls take. An empty call returns before
@@ -392,8 +392,8 @@ Three permissionless functions and one proof-gated writer:
   path.
 
 Per clause, agreement or assembly per period it keeps ONE tally,
-route-blind (`accrualOf`): `c` (distinct resolved processes),
-`d` (distinct live-staked sellers of record), and `score = icbrt(c·d²·1e18)`
+route-blind (`accrualOf`): `c` (uses, a use being one seller of one resolved
+process), `d` (distinct live-staked sellers, so `d <= c`), and `score = icbrt(c·d²·1e18)`
 when `d ≥ minSellers`, else zero. Uniform: no tag, category, or weight. The
 formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
 - **Seller-side stake gate:** a use counts only if the order's
@@ -426,14 +426,19 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   contract knows nothing about budgets or who pays.
 - **One tally, route-blind:** a use is a use whichever way its process
   reached the chain. Both routes count through `_count` into `accrualOf`, the
-  same `processCounted` set and the same per-period `sellerSeen` set, so `c`
-  counts each process once and `d` each seller once across both routes;
+  same `sellerCounted` set and the same per-period `sellerSeen` set, so `c`
+  counts each seller of each process once and `d` each seller once across both routes;
   `scoreOf(kind, clauseOrProcess, period)` is `accrualOf.score`, and
   `RpgfMinter` reads it. Both routes emit `UsageRecorded` (one use, with its
   process and seller), so an indexer folds one stream.
-- **Idempotence is global:** a process counts once ever per (kind, key), in
-  whichever period it is first counted and whichever route brought it; each
-  period counts only usage new to it.
+- **Idempotence is global:** a seller of a process counts once ever per
+  (kind, key) (`sellerCounted(kind, key, processId, seller)`; a direct call
+  that repeats it reverts `AlreadyCounted`, a batch skips it), in whichever
+  period it is first counted and whichever route brought it. A process of
+  three sellers that carry the key is three uses, and a second order of the
+  same seller in the same process adds nothing. A seller of a process first
+  presented in a later period is a use in that period; each period counts
+  only usage new to it.
 - `icbrt` binary-searches the floor cube root with its ceiling at
   `floor(cbrt(2^256−1))`, so the cube cannot overflow.
 - Decentralized and permissionless: no admin, no pause. The measured gas anchor for

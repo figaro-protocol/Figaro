@@ -181,8 +181,8 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
     };
 
     /** The usage claims of a resolved batched process, sent to the relay
-     *  that took its resolve: one per key and family across the process
-     *  (`buildProcessUsageClaims`, the SDK's own legs). Best-effort, as on the
+     *  that took its resolve: one per key and family for each seller of the
+     *  process (`buildProcessUsageClaims`, the SDK's own legs). Best-effort, as on the
      *  direct path: a refusal is logged, never thrown, since the resolve is
      *  already with the relay. */
     const claimBatchUsage = async (

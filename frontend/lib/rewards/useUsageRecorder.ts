@@ -15,8 +15,9 @@
  * happens.
  *
  * A write can meet the counter's reverts — `AlreadyCounted` (the key was
- * counted for this process already) and `SellerNotStaked` (the live-stake
- * gate) among them. The plan repeats no key; each planned write is then
+ * counted for this order's seller in this process already) and
+ * `SellerNotStaked` (the live-stake gate) among them. The plan repeats no
+ * (key, seller); each planned write is then
  * SIMULATED here first and sent only if the simulation passes, so no revert
  * is ever sent — the wallet signs only writes the counter accepts. Anyone can
  * redo a missed one.

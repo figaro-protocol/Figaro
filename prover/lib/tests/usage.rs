@@ -4,11 +4,11 @@
 /// which a batch-resolved process never acquires. These tests cover what the
 /// guest must prove so batched trade is counted anyway: that the order really
 /// resolved, that the clause, agreement or assembly really was in the signed
-/// agreement, and that the batch gives each (kind, key, process) once, with
-/// the process id and the seller of the order it was proved through.
+/// agreement, and that the batch gives each (kind, key, process, seller)
+/// once: each seller of a process is one use.
 ///
 /// Counting once ever, across batches and across the direct path, is the
-/// counter's own `processCounted`: the guest keeps no usage state, and a
+/// counter's own `sellerCounted`: the guest keeps no usage state, and a
 /// claim moves no state root.
 use alloy_primitives::{address, b256, keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
@@ -168,40 +168,58 @@ fn settled_order_under(
     checkout_hash: B256,
     salt: u64,
 ) -> (Commitment, Vec<KernelOp>) {
+    let (mut orders, ops) = settled_process_under(buyer_key, &[seller_key], checkout_hash, salt);
+    (orders.remove(0), ops)
+}
+
+/// One process of one buyer: an order per seller in `seller_keys`, in that
+/// order, each of payment 100 under `checkout_hash`, then one resolve of the
+/// whole. The first order is the root, salted `salt`; the others name its
+/// process id.
+fn settled_process_under(
+    buyer_key: &SigningKey,
+    seller_keys: &[&SigningKey],
+    checkout_hash: B256,
+    salt: u64,
+) -> (Vec<Commitment>, Vec<KernelOp>) {
     let domain = domain_separator(CHAIN_ID, CORE);
-    let order = Commitment {
-        process_id: B256::ZERO,
-        buyer: address_of(buyer_key),
-        seller: address_of(seller_key),
-        token: TOKEN,
-        payment: U256::from(100u64),
-        running_total: U256::from(100u64),
-        checkout_hash,
-        salt: U256::from(salt),
-        commit_deadline: U256::from(2000u64),
-    };
-
-    let struct_hash = commitment_struct_hash(&order);
-    let digest = typed_data_hash(&domain, &struct_hash);
-    let process_id = digest;
-
-    let ops = vec![
-        KernelOp::Commit {
+    let mut process_id = B256::ZERO;
+    let mut orders = Vec::new();
+    let mut ops = Vec::new();
+    for (i, seller_key) in seller_keys.iter().enumerate() {
+        let order = Commitment {
+            process_id: if i == 0 { B256::ZERO } else { process_id },
+            buyer: address_of(buyer_key),
+            seller: address_of(seller_key),
+            token: TOKEN,
+            payment: U256::from(100u64),
+            running_total: U256::from(100u64 * (i as u64 + 1)),
+            checkout_hash,
+            salt: U256::from(salt + ((i as u64) << 32)),
+            commit_deadline: U256::from(2000u64),
+        };
+        let digest = typed_data_hash(&domain, &commitment_struct_hash(&order));
+        if i == 0 {
+            process_id = digest;
+        }
+        ops.push(KernelOp::Commit {
             commitment: order.clone(),
             buyer_sig: sign_digest(buyer_key, &digest),
             seller_sig: sign_digest(seller_key, &digest),
-        },
-        KernelOp::Resolve {
-            process_id,
-            running_total: order.payment,
-            commitments: vec![order.clone()],
-            buyer_sig: sign_digest(
-                buyer_key,
-                &typed_data_hash(&domain, &resolve_struct_hash(&process_id, &order.payment)),
-            ),
-        },
-    ];
-    (order, ops)
+        });
+        orders.push(order);
+    }
+    let total = orders.last().expect("at least one seller").running_total;
+    ops.push(KernelOp::Resolve {
+        process_id,
+        running_total: total,
+        commitments: orders.clone(),
+        buyer_sig: sign_digest(
+            buyer_key,
+            &typed_data_hash(&domain, &resolve_struct_hash(&process_id, &total)),
+        ),
+    });
+    (orders, ops)
 }
 
 fn batch(
@@ -323,7 +341,7 @@ fn rejects_a_clause_or_assembly_that_is_not_in_the_agreement() {
 
 /// A claim presented again in a later batch proves again: the order stays
 /// RESOLVED, and the guest keeps no counted set. The use it yields is the
-/// same one, and the counter, whose `processCounted` holds for both routes,
+/// same one, and the counter, whose `sellerCounted` holds for both routes,
 /// skips it.
 #[test]
 fn a_claim_presented_in_a_later_batch_yields_the_same_use() {
@@ -387,7 +405,7 @@ fn the_guest_refuses_a_claim_whose_order_the_witness_leaves_out() {
 }
 
 /// The same claim twice in one batch is one use: the guest gives each
-/// (kind, key, process) once, the first claim naming the seller.
+/// (kind, key, process, seller) once.
 #[test]
 fn a_claim_given_twice_in_one_batch_is_one_use() {
     let buyer = make_signing_key(BUYER_KEY);
@@ -402,8 +420,105 @@ fn a_claim_given_twice_in_one_batch_is_one_use() {
     ];
     let (_, _, events, _) =
         apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
-    assert_eq!(events.uses.len(), 1, "one use per (kind, key, process)");
-    assert_eq!(events.uses[0].process_id, pid(&order));
+    assert_eq!(
+        events.uses,
+        vec![BatchUse {
+            clause_or_process,
+            kind: USAGE_KIND_CLAUSE,
+            process_id: pid(&order),
+            seller: SELLER1,
+        }],
+        "one use for the one (kind, key, process, seller)"
+    );
+}
+
+/// Each seller of a process is one use: two orders of one process, each
+/// with its own seller and the same clause, give two uses of the clause,
+/// both naming the process, each naming its order's seller.
+#[test]
+fn two_sellers_of_one_process_are_two_uses() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller1 = make_signing_key(SELLER1_KEY);
+    let seller2 = make_signing_key(SELLER2_KEY);
+    let clause_or_process = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
+    let clause_data_hash = keccak256(b"clause-bytes");
+
+    let (orders, ops) = settled_process_under(
+        &buyer,
+        &[&seller1, &seller2],
+        single_clause_root(&clause_or_process, &clause_data_hash),
+        1,
+    );
+    let process_id = pid(&orders[0]);
+    assert_eq!(
+        pid(&orders[1]),
+        process_id,
+        "both orders are of one process"
+    );
+    let claims = vec![
+        clause_claim(&orders[0], clause_or_process, clause_data_hash),
+        clause_claim(&orders[1], clause_or_process, clause_data_hash),
+    ];
+    let (_, _, events, _) =
+        apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
+    assert_eq!(
+        events.uses,
+        vec![
+            BatchUse {
+                clause_or_process,
+                kind: USAGE_KIND_CLAUSE,
+                process_id,
+                seller: address_of(&seller1),
+            },
+            BatchUse {
+                clause_or_process,
+                kind: USAGE_KIND_CLAUSE,
+                process_id,
+                seller: address_of(&seller2),
+            },
+        ],
+        "one use per seller of the process"
+    );
+}
+
+/// A second order of the same seller in the same process adds nothing: two
+/// orders of one process, both with one seller and the same clause, give one
+/// use, naming the process and that seller.
+#[test]
+fn two_orders_of_one_seller_in_one_process_are_one_use() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    let clause_or_process = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
+    let clause_data_hash = keccak256(b"clause-bytes");
+
+    let (orders, ops) = settled_process_under(
+        &buyer,
+        &[&seller, &seller],
+        single_clause_root(&clause_or_process, &clause_data_hash),
+        1,
+    );
+    let process_id = pid(&orders[0]);
+    assert_eq!(
+        pid(&orders[1]),
+        process_id,
+        "both orders are of one process"
+    );
+    let claims = vec![
+        clause_claim(&orders[0], clause_or_process, clause_data_hash),
+        clause_claim(&orders[1], clause_or_process, clause_data_hash),
+    ];
+    let (_, _, events, _) =
+        apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
+    assert_eq!(
+        events.uses,
+        vec![BatchUse {
+            clause_or_process,
+            kind: USAGE_KIND_CLAUSE,
+            process_id,
+            seller: SELLER1,
+        }],
+        "one use for the one seller of the process"
+    );
 }
 
 // ── The seller each use names ─────────────────────────────────────

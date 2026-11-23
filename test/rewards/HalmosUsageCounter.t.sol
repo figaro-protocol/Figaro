@@ -76,7 +76,7 @@ contract UsageCounterHarness is UsageCounter {
 ///           2  route-blind counting        — two uses, each brought by
 ///              (check_aUseCountsTheSameOnEitherRoute)
 ///                                             either route, leave the tally,
-///                                             the counted processes, the
+///                                             the counted uses, the
 ///                                             seller set and the period total
 ///                                             exactly as two direct calls
 ///                                             leave them — the same process
@@ -273,10 +273,12 @@ contract HalmosUsageCounter is Test {
         assertEq(m.score, d.score, "the score is route-blind");
         assertEq(m.total, d.total, "the period total is route-blind");
         assertEq(
-            mixed.processCounted(KIND_CLAUSE, key, processId1), direct.processCounted(KIND_CLAUSE, key, processId1)
+            mixed.sellerCounted(KIND_CLAUSE, key, processId1, seller1),
+            direct.sellerCounted(KIND_CLAUSE, key, processId1, seller1)
         );
         assertEq(
-            mixed.processCounted(KIND_CLAUSE, key, processId2), direct.processCounted(KIND_CLAUSE, key, processId2)
+            mixed.sellerCounted(KIND_CLAUSE, key, processId2, seller2),
+            direct.sellerCounted(KIND_CLAUSE, key, processId2, seller2)
         );
         assertEq(mixed.sellerSeen(KIND_CLAUSE, key, 0, seller1), direct.sellerSeen(KIND_CLAUSE, key, 0, seller1));
         assertEq(mixed.sellerSeen(KIND_CLAUSE, key, 0, seller2), direct.sellerSeen(KIND_CLAUSE, key, 0, seller2));
@@ -423,7 +425,7 @@ contract HalmosUsageCounter is Test {
 
     /// A use counted under one kind — on either route — leaves every other
     /// kind's accrual at the same key untouched: no count, no score, no
-    /// counted process. The same process then still counts once under the
+    /// counted use. The same seller of that process then still counts once under the
     /// other kind. Both kinds are symbolic over the three, so every ordered
     /// pair is proved. This is what keeps a stake in one family at another
     /// family's bytes from earning that family's accrual.
@@ -447,7 +449,9 @@ contract HalmosUsageCounter is Test {
         assertEq(d, 0, "no breadth under the other kind");
         assertEq(score, 0, "no score under the other kind");
         assertEq(counter.scoreOf(otherKind, key, 0), 0, "the other kind scores nothing of it");
-        assertFalse(counter.processCounted(otherKind, key, processId), "the process is not counted for the other kind");
+        assertFalse(
+            counter.sellerCounted(otherKind, key, processId, seller), "the use is not counted for the other kind"
+        );
 
         counter.accrueAs(otherKind, key, 0, processId, seller);
         (c,,) = counter.accrualOf(otherKind, key, 0);
@@ -457,7 +461,7 @@ contract HalmosUsageCounter is Test {
     /// The reverse direction of `check_theKindsNeverShareAKey`: another kind
     /// already holds an accrual at the key, and a use counted under one kind —
     /// on either route, over either route for the earlier one — leaves that
-    /// accrual exactly as it was, its counted process included. A stake in one
+    /// accrual exactly as it was, its counted use included. A stake in one
     /// family neither earns another family's accrual nor disturbs it.
     /// The second use is a different process, so a write that ignored the
     /// kind would show in the other kind's
@@ -489,7 +493,9 @@ contract HalmosUsageCounter is Test {
         assertEq(heldAfter.c, held.c, "the other kind's count is untouched");
         assertEq(heldAfter.d, held.d, "the other kind's breadth is untouched");
         assertEq(heldAfter.score, held.score, "the other kind's score is untouched");
-        assertTrue(counter.processCounted(otherKind, key, processId), "the other kind's counted process is untouched");
+        assertTrue(
+            counter.sellerCounted(otherKind, key, processId, seller), "the other kind's counted use is untouched"
+        );
         assertEq(counter.scoreOf(otherKind, key, 0), held.score, "the other kind scores what it held, no more");
     }
 
@@ -570,7 +576,7 @@ contract HalmosUsageCounter is Test {
         bool viaBatch
     ) internal {
         assertTrue(_tryCount(counter, kind, key, processId, seller, viaBatch), "the call lands");
-        assertTrue(counter.processCounted(kind, key, processId), "the use is counted");
+        assertTrue(counter.sellerCounted(kind, key, processId, seller), "the use is counted");
     }
 
     /// @dev One kind's tally at `key` in period 0, with the period total.

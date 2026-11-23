@@ -291,7 +291,7 @@ page learns before any signature whether this relay takes its POST.
   RPC URL carries its key. `last_dropped_claim_error` is recorded the same way.
   `dropped_usage_claims` counts the usage claims dropped without landing —
   at the pre-filter (one the counter would skip: an un-live key, an unstaked
-  seller, a process already counted), at formation (one that would abort the
+  seller, a seller of a process already counted), at formation (one that would abort the
   proof, or a second claim of a use the batch carries), with no
   counter or accrual closed, or with a batch that did not land — apart from
   the operations, and `last_dropped_claim_error` carries the latest reason. Neither says whose

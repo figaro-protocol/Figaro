@@ -29,9 +29,15 @@ not by this paragraph. Current: `FigaroCoreTest`, `FigaroCore_RevertBranch`,
 `WeirdTokenTest`, `DeployWiringTest`, `HalmosFigaroCore`, `FlorinToken.t.sol`.
 
 `UsageCounterTest` covers the reward-accrual counter: the RESOLVED-order gate, merkle
-inclusion against the signed `checkoutHash`, per-(clause-or-assembly, process) GLOBAL idempotence (a
-process counts once ever — re-recording it in a later period reverts, and a later period
-counts only trade new to it), the **member-stake gate on the seller of record** (`SellerNotStaked` when the seller-of-record is
+inclusion against the signed `checkoutHash`, per-(kind, key, process, seller) GLOBAL idempotence (a
+use is one seller of one process and counts once ever — presenting it again in any period reverts,
+a later period counts only trade new to it, each seller of a process is its own use, and a
+second order of the same seller in the process adds nothing:
+`test_aTwoSellerProcessEndsInOneTallyWhicheverOrderIsRecordedFirst`,
+`test_twoOrdersOfOneSellerInOneProcessAreOneUse`,
+`test_batchAccrual_eachSellerOfAProcessIsOneUse_andARepeatIsSkipped`,
+`testFuzz_aProcessEndsInOneTallyWhateverTheSequenceOfItsSellers`,
+`test_aSellerPresentedInALaterPeriodCountsThere_andACountedOneNeverAgain`), the **member-stake gate on the seller of record** (`SellerNotStaked` when the seller-of-record is
 not registered; a seller who leaves the registry stops counting), **uniform scoring across clauses, agreements and assemblies** (no
 category, tag, or weight), the agreement and assembly legs from one provenance leaf
 (`test_oneOrderCreditsItsAgreementAndItsAssembly`), the membership proof refused under
@@ -45,7 +51,7 @@ the same `accrualOf`, the same seller counted once across both routes
 (`test_oneTally_sameSellerOnBothRoutesIsTwoUsesOneSeller`,
 `test_oneTally_twoSellersOnePerRouteIsTwoUsesTwoSellers`,
 `test_oneTally_aSellerCountedDirectThenInABatchIsCountedOnce`), the batch path's per-use
-gates (an unstaked seller's use, an un-live key, a process already counted on either route
+gates (an unstaked seller's use, an un-live key, a seller of a process already counted on either route
 skipped) and a fuzzed floor-cube-root property on `icbrt` **over the whole `uint256`
 domain** plus a no-saturation regression. Never bound a fuzz domain to less than the
 function's own: on `icbrt` a `uint64`-only domain is the one place a wrong cube bound is
@@ -149,7 +155,7 @@ allowance-pull composition end to end.
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
 | `HalmosMembersRegistry.t.sol` | 7 | The stake mechanics the designer-reward Sybil bound assumes: solvency, no stake recycling, de-surfacing at request, the counter reads that gate |
-| `HalmosUsageCounter.t.sol` | 9 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, `check_aUseCountsTheSameOnEitherRoute` — two uses, each brought by either route, leave the tally, the counted processes, the seller set and the period total exactly as two direct calls do, a repeated process or seller included — `check_scoreOfIsTheOneTally` (`scoreOf == accrualOf.score`), period bucketing ×2, isolation across keys, `check_theKindsNeverShareAKey` — a use counted under any one of the three kinds, on either route, leaves every other kind's accrual at the same key empty — `check_aKindNeverDisturbsAnotherKindsAccrual` — it leaves another kind's existing accrual at the key exactly as it was — and `check_anUnknownKindIsSkipped` — a batch use whose kind names no registry writes nothing under any kind and leaves the period total where it was. Mutation-checked against three counters: one whose batch path counts a process already counted fails `check_aUseCountsTheSameOnEitherRoute`; one whose batch path counts every use under the clause kind fails `check_aKindNeverDisturbsAnotherKindsAccrual`; one whose `scoreOf` reads more than the tally fails `check_scoreOfIsTheOneTally`. |
+| `HalmosUsageCounter.t.sol` | 9 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, `check_aUseCountsTheSameOnEitherRoute` — two uses, each brought by either route, leave the tally, the counted (process, seller) pairs, the seller set and the period total exactly as two direct calls do, a repeated process or seller included — `check_scoreOfIsTheOneTally` (`scoreOf == accrualOf.score`), period bucketing ×2, isolation across keys, `check_theKindsNeverShareAKey` — a use counted under any one of the three kinds, on either route, leaves every other kind's accrual at the same key empty — `check_aKindNeverDisturbsAnotherKindsAccrual` — it leaves another kind's existing accrual at the key exactly as it was — and `check_anUnknownKindIsSkipped` — a batch use whose kind names no registry writes nothing under any kind and leaves the period total where it was. Mutation-checked against three counters: one whose batch path counts a process already counted fails `check_aUseCountsTheSameOnEitherRoute`; one whose batch path counts every use under the clause kind fails `check_aKindNeverDisturbsAnotherKindsAccrual`; one whose `scoreOf` reads more than the tally fails `check_scoreOfIsTheOneTally`. |
 | `HalmosClauseAgreementAndAssemblyRegistries.t.sol` | 18 (6 per contract) | `HalmosClauseRegistry` + `HalmosProcessRegistry` + `HalmosAgreementRegistry` — the stake machines `RpgfMinter._isAuthor` reads, one per kind: solvency under arbitrary interleavings by two registering wallets, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked: solvency + first-write-wins on the clause and assembly contracts, 4/4 counterexamples. |
 
 Run with `scripts/test-halmos.sh` (seven passes). **Halmos does not model
@@ -263,7 +269,7 @@ off-chain guest mirror under arbitrary interleavings; the only harness that can
 see where the two paths meet (every other layer is per-contract).
 21 invariants: no double payout across the universes, token conservation +
 exact per-pool deposits, one route-blind tally (`scoreOf == accrualOf.score`, `c`
-the size of the one counted-process set, `d` the size of the period's one seller
+the size of the one counted set of (process, seller) pairs, `d` the size of the period's one seller
 set, counted only for resolved trade), `FigaroCore` blindness (`settleBatch` writes
 no `FigaroCore` `orderStatus`) — 45,000,639 states generated, 12,828,199 distinct, depth 18, ~29 min, for the shipped `.cfg` (`MinSellers = 1`). Mutation-checked: four mutated actions, each failing the invariant it targets — the batch counting a process already counted (`CountIsDistinctProcesses`), the batch adding a seller already in the period's set to `d` (`SellersCountedOnce`), a score that ignores the floor at `MinSellers = 2` (`FloorApplied`), a claim proved on a committed but unresolved order (`AccrualNeverOverPays`); and four reachability witnesses, each violated as expected — a key counted from both routes, one seller carrying uses on both routes as one unit of `d`, a sub-floor tally with uses, a batch-path process in the counted set. The floor case runs as a second pass with `MinSellers = 2` set by hand; this document gives no state counts for that pass.
 The model's `Artifacts` are one abstract keyspace; it does not model the
@@ -479,8 +485,9 @@ regenerates it), as hash-only batched attestations and asserts each event
 encodes to the coordinator's topics and data; the
 usage bridge in
 `prover/lib/tests/usage.rs` — same-batch credit against the post-state, one use per
-(kind, key, process) in a batch, a claim presented again in a later batch yielding the
-same use (the counter's `processCounted` skips it), claims moving no state root, each
+(kind, key, process, seller) in a batch (two sellers of one process are two uses, two orders
+of one seller one use), a claim presented again in a later batch yielding the
+same use (the counter's `sellerCounted` skips it), claims moving no state root, each
 use naming its process and seller, the agreement leg via the two-key provenance reproduction
 (`credits_an_agreement_through_the_provenance_leaf`, refused on a wrong
 `agreementHash` or `processDesignHash`, and under any key but the guest's own

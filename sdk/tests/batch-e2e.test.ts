@@ -572,7 +572,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             args: [USAGE_KIND_CLAUSE, clauseKey, 0],
         })) as readonly [bigint, bigint, bigint];
 
-        expect(tally[0], "one distinct resolved process").toBe(1n);
+        expect(tally[0], "one use: the one seller of the one resolved process").toBe(1n);
         expect(tally[1], "one distinct staked seller").toBe(1n);
         expect(tally[2], "and it is scored").toBeGreaterThan(0n);
 

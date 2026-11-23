@@ -31,7 +31,7 @@ pub const SETTLE_GAS_PER_ATTESTATION: u64 = 6_000;
 /// Execution gas of one spec binding checked against the registry.
 pub const SETTLE_GAS_PER_SPEC_BINDING: u64 = 4_500;
 /// Gas of one use the counter counts — the dearest: its registry and member
-/// stake reads, the counted-process, seller, tally and score writes, the
+/// stake reads, the counted-seller, period-seller, tally and score writes, the
 /// score's cube root and the `UsageRecorded` event. A key, a seller and a
 /// process each new to the counter measured about 366,000 on live Sepolia
 /// at block 12106674 (three fresh storage slots under EIP-8037); the ceiling also
@@ -231,7 +231,7 @@ pub struct SettleItems {
     pub positions: usize,
     pub attestations: usize,
     pub spec_bindings: usize,
-    /// The uses the counter is handed, one per (kind, key, process).
+    /// The uses the counter is handed, one per (kind, key, process, seller).
     pub uses: usize,
     /// The operation stream's 32-byte words, rounded up.
     pub stream_words: usize,

@@ -154,7 +154,7 @@ echo ""
 # ── Pass 4: the route-blind accounting ────────────────────────
 #
 # Direct-path accrual never regresses; two uses leave the same state whichever
-# route brought each (one tally, one counted-process set, one seller set);
+# route brought each (one tally, one counted set of sellers of processes, one seller set);
 # scoreOf == accrualOf.score; every timestamp buckets into
 # exactly its period window; clause A's record never touches clause B; one
 # kind's accrual never touches another kind's at the same key, and an unknown

@@ -61,7 +61,7 @@
  *       reverts UnknownProcess otherwise).
  *       WHAT IT CARRIES: NoDoublePayout, UniverseDisjointOrders,
  *       KernelBlindToBatch's usefulness, and ProcessCountedInOneUniverse
- *       (the RPGF face of the crease — the counter's one processCounted set
+ *       (the RPGF face of the crease — the counter's one sellerCounted set
  *       counts a process id once, which is counting a process once only
  *       because no id names a process in both universes).
  *
@@ -168,6 +168,10 @@ ZeroAcc  == [ c |-> 0, d |-> 0, score |-> 0 ]
 \* function of the stored counts above it. See § "WHAT IS ABSTRACTED".
 Score(c, d) == IF c = 0 \/ d < MinSellers THEN 0 ELSE c * d * d
 
+\* A use is one seller of one process: what the counter's `sellerCounted`
+\* keys under an artifact, read from an order's record.
+UseOf(rec) == << rec.pid, rec.seller >>
+
 
 \* ── Variables ────────────────────────────────────────────────
 VARIABLES
@@ -194,14 +198,14 @@ VARIABLES
 
   \* ── UsageCounter state — ONE tally, both routes ──
   accrual,      \* [Artifacts -> [Periods -> Accrual]]  — accrualOf
-  counted,      \* [Artifacts -> SUBSET Procs]          — processCounted
+  counted,      \* [Artifacts -> SUBSET (Procs \X Sellers)] — sellerCounted
   seen,         \* [Artifacts -> [Periods -> SUBSET Sellers]] — sellerSeen
   totalScore,   \* [Periods -> Int]                     — totalScoreIn
   period,       \* the OPEN period (ClosedPeriod == accrual closed forever)
 
   \* ── ghosts (never read by any action; invariant witnesses only) ──
   kResolvedGhost,  \* orders FigaroCore resolved, recorded at ResolveProcess
-  gSettled,        \* [Artifacts -> SUBSET Procs] — processes whose use a
+  gSettled,        \* [Artifacts -> SUBSET (Procs \X Sellers)] — uses a
                    \* landed batch carried
   dropped          \* a BatchAccrualSkipped was emitted
 
@@ -424,14 +428,15 @@ GResolve(pid) ==
 
 \* One in-proof usage claim (prover/lib/src/kernel.rs apply_usage_claims):
 \* the guest proves a RESOLVED (in ITS universe) process used an artifact and
-\* gives one use per (artifact, process) in the batch. The guest keeps no
-\* counted set: a process the counter has already counted may be claimed
-\* again, and the counter skips it. The whole batch carries ONE usage_period;
+\* gives one use per (artifact, process, seller) in the batch. The guest keeps
+\* no counted set: a seller of a process the counter has already counted may
+\* be claimed again, and the counter skips it. The whole batch carries ONE usage_period;
 \* a claim can only join a batch whose period is still the one now open.
 GClaimUsage(a, o) ==
   /\ period < ClosedPeriod
   /\ gStatus[o] = "Resolved"
-  /\ \A e \in penUse: ~( e.art = a /\ gRec[e.ord].pid = gRec[o].pid )
+  /\ \A e \in penUse: ~( e.art = a /\ gRec[e.ord].pid = gRec[o].pid
+                           /\ gRec[e.ord].seller = gRec[o].seller )
   /\ ( penUse # {} => penPeriod = period )
   /\ penUse' = penUse \union { [art |-> a, ord |-> o] }
   /\ penPeriod' = period
@@ -447,10 +452,10 @@ GClaimUsage(a, o) ==
 \*   8. advance state
 \* Step 7's failure NEVER unwinds step 5 (DESIGN_DECISIONS.md §19).
 \* Step 7 counts each use exactly as RecordUsage counts a direct one: a
-\* process already counted under the artifact is skipped, and a use that is
-\* counted adds one to c and, when its seller is new to the period's set, one
-\* to d. The batch's uses name distinct (artifact, process) pairs, so the
-\* order the counter walks them in changes nothing.
+\* seller of a process already counted under the artifact is skipped, and a
+\* use that is counted adds one to c and, when its seller is new to the
+\* period's set, one to d. The batch's uses name distinct (artifact, process,
+\* seller) triples, so the order the counter walks them in changes nothing.
 SettleBatch ==
   LET netSum  == SumFn(Participants, penNet)
       pp      == penPeriod
@@ -459,9 +464,9 @@ SettleBatch ==
       \* the uses the counter counts — none when the call reverts
       cnt     == [a \in Artifacts |->
                     IF gateOK
-                    THEN { e \in penUse: e.art = a /\ gRec[e.ord].pid \notin counted[a] }
+                    THEN { e \in penUse: e.art = a /\ UseOf(gRec[e.ord]) \notin counted[a] }
                     ELSE {}]
-      newP    == [a \in Artifacts |-> { gRec[e.ord].pid    : e \in cnt[a] }]
+      newP    == [a \in Artifacts |-> { UseOf(gRec[e.ord]) : e \in cnt[a] }]
       newS    == [a \in Artifacts |-> { gRec[e.ord].seller : e \in cnt[a] }]
       nc      == [a \in Artifacts |-> accrual[a][pp].c + Cardinality(newP[a])]
       nd      == [a \in Artifacts |-> accrual[a][pp].d
@@ -489,7 +494,7 @@ SettleBatch ==
      /\ totalScore' = [q \in Periods |->
                          IF q = pp THEN totalScore[q] + delta ELSE totalScore[q]]
      /\ gSettled' = [a \in Artifacts |->
-                       gSettled[a] \union { gRec[e.ord].pid : e \in { x \in penUse: x.art = a } }]
+                       gSettled[a] \union { UseOf(gRec[e.ord]) : e \in { x \in penUse: x.art = a } }]
      \* Parenthesised deliberately: `=` binds tighter than `\/` in TLA+, so
      \* dropping the parens silently turns this into a DISJUNCTION that leaves
      \* dropped' unassigned whenever the batch is skipped.
@@ -511,13 +516,13 @@ SettleBatch ==
 RecordUsage(a, o) ==
   /\ period < ClosedPeriod
   /\ kStatus[o] = "Resolved"                  \* reverts OrderNotResolved
-  /\ kRec[o].pid \notin counted[a]            \* reverts AlreadyCounted
+  /\ UseOf(kRec[o]) \notin counted[a]         \* reverts AlreadyCounted
   /\ LET s     == kRec[o].seller
          first == s \notin seen[a][period]
          c1    == accrual[a][period].c + 1
          d1    == accrual[a][period].d + ( IF first THEN 1 ELSE 0 )
          sc    == Score(c1, d1)
-     IN /\ counted' = [counted EXCEPT ![a] = @ \union { kRec[o].pid }]
+     IN /\ counted' = [counted EXCEPT ![a] = @ \union { UseOf(kRec[o]) }]
         /\ seen' = [seen EXCEPT ![a] =
                       [@ EXCEPT ![period] = @ \union { s }]]
         /\ accrual' = [accrual EXCEPT ![a] =
@@ -635,9 +640,9 @@ TotalScoreIntegrity ==
   \A q \in Periods:
     totalScore[q] = SumFn(Artifacts, [a \in Artifacts |-> ScoreOf(a, q)])
 
-\* c counts each process ONCE, whichever route brought it: the periods' c
-\* add up to exactly the counter's one counted-process set.
-CountIsDistinctProcesses ==
+\* c counts each use ONCE, a seller of a process, whichever route brought
+\* it: the periods' c add up to exactly the counter's one counted set.
+CountIsDistinctUses ==
   \A a \in Artifacts:
     SumFn(Periods, [q \in Periods |-> accrual[a][q].c]) = Cardinality(counted[a])
 
@@ -667,24 +672,25 @@ BatchInvisibleToKernelGates ==
 
 \* ── 5. RPGF: a process is counted in exactly one universe ────
 \* CARRIED BY: AssumeDomainSeparation. The counter keeps one counted set for
-\* both routes and counts a process id once; that counts a PROCESS once only
-\* because no counted id names a process in both universes.
+\* both routes and counts a seller of a process id once; that counts a seller
+\* of a PROCESS once only because no counted id names a process in both
+\* universes.
 ProcessCountedInOneUniverse ==
-  \A a \in Artifacts: \A p \in counted[a]:
-    ~( ( \E o \in BlockOf(p): kStatus[o] # "Unknown" )
-       /\ ( \E o \in BlockOf(p): gStatus[o] # "Unknown" ) )
+  \A a \in Artifacts: \A u \in counted[a]:
+    ~( ( \E o \in BlockOf(u[1]): kStatus[o] # "Unknown" )
+       /\ ( \E o \in BlockOf(u[1]): gStatus[o] # "Unknown" ) )
 
 
 \* ── 6. The uses under a period race ──────────────────────────
-\* The counter counts only resolved trade: every counted process was resolved
-\* in one of the universes. Holds UNCONDITIONALLY — neither assumption
-\* carries it.
-ResolvedPids ==
-  { kRec[o].pid : o \in { x \in Orders: kStatus[x] = "Resolved" } }
-  \union { gRec[o].pid : o \in { x \in Orders: gStatus[x] = "Resolved" } }
+\* The counter counts only resolved trade: every counted use is the seller of
+\* an order resolved in one of the universes. Holds UNCONDITIONALLY — neither
+\* assumption carries it.
+ResolvedUses ==
+  { UseOf(kRec[o]) : o \in { x \in Orders: kStatus[x] = "Resolved" } }
+  \union { UseOf(gRec[o]) : o \in { x \in Orders: gStatus[x] = "Resolved" } }
 
 AccrualNeverOverPays ==
-  \A a \in Artifacts: counted[a] \subseteq ResolvedPids
+  \A a \in Artifacts: counted[a] \subseteq ResolvedUses
 
 \* CARRIED BY: AssumeAccrualGatesAligned. Stated UNCONDITIONALLY on purpose —
 \* a `Assume... => ...` phrasing would go vacuously true the moment the

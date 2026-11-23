@@ -213,7 +213,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         /// @dev The provenance leaf key the guest proved agreement and assembly
         ///      claims against; the counter matches it to its own.
         bytes32 provenanceLeaf;
-        /// @dev One entry per (kind, key, process) the batch's claims
+        /// @dev One entry per (kind, key, process, seller) the batch's claims
         ///      proved, in the order of the claims.
         IUsageCounter.BatchUse[] uses;
     }
@@ -490,7 +490,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         // ── 7. Hand the batch's uses to the counter ─────────────────
         //    The uses are the proof's; the reward's own gates (open
         //    period, each seller's live member stake, registration, a
-        //    process already counted) are the counter's and are enforced
+        //    seller of a process already counted) are the counter's and are enforced
         //    there. A batch with no usage claims passes an empty array and
         //    the call is a no-op — which is what keeps trade resolving after
         //    accrual closes.

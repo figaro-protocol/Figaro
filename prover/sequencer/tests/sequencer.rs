@@ -673,9 +673,9 @@ fn claim_filter_quarantines_a_poison_claim_without_dropping_the_valid_one() {
 
 #[test]
 fn claim_filter_drops_an_intra_batch_duplicate() {
-    // The guest gives each (kind, key, process) one use per batch, so a second
-    // claim of one the batch already carries would add stream bytes and no
-    // use. The filter drops it individually.
+    // The guest gives each (kind, key, process, seller) one use per batch, so
+    // a second claim of one the batch already carries would add stream bytes
+    // and no use. The filter drops it individually.
     let input = build_canonical_batch_input();
     let claim = input.usage_claims[0].clone();
     let (kept, dropped) = assembler::filter_applicable_claims(
@@ -686,7 +686,11 @@ fn claim_filter_drops_an_intra_batch_duplicate() {
         &input.operations,
         vec![claim.clone(), claim],
     );
-    assert_eq!(kept.len(), 1, "the process is carried once: {dropped:?}");
+    assert_eq!(
+        kept.len(),
+        1,
+        "the seller's use is carried once: {dropped:?}"
+    );
     assert_eq!(dropped.len(), 1);
     assert!(
         dropped[0].1.contains("already carries"),

@@ -455,7 +455,7 @@ pub fn filter_commits_within_resolve_capacity(
 ///
 /// So each claim is trial-proved one at a time against the post-op state and
 /// poison is returned separately for the caller to drop. A second claim of a
-/// (kind, key, process) the batch already carries is dropped too: the guest
+/// (kind, key, process, seller) the batch already carries is dropped too: the guest
 /// would give it no use of its own, so it would cost the batch its stream
 /// bytes for nothing. This is the usage-claim twin of `filter_applicable_ops`;
 /// claims move no state and have no inter-claim ordering, so a single pass
@@ -498,7 +498,8 @@ pub fn filter_applicable_claims(
         );
     }
 
-    let mut carried: std::collections::HashSet<(u8, B256, B256)> = std::collections::HashSet::new();
+    let mut carried: std::collections::HashSet<(u8, B256, B256, Address)> =
+        std::collections::HashSet::new();
     let mut valid = Vec::with_capacity(claims.len());
     let mut poison = Vec::new();
     for claim in claims {
@@ -509,12 +510,14 @@ pub fn filter_applicable_claims(
             std::slice::from_ref(&claim),
         ) {
             Ok(uses) => match uses.first() {
-                Some(u) if carried.insert((u.kind, u.clause_or_process, u.process_id)) => {
+                Some(u)
+                    if carried.insert((u.kind, u.clause_or_process, u.process_id, u.seller)) =>
+                {
                     valid.push(claim)
                 }
                 _ => poison.push((
                     claim,
-                    "the batch already carries this (kind, key, process)".to_string(),
+                    "the batch already carries this (kind, key, process, seller)".to_string(),
                 )),
             },
             Err(e) => poison.push((claim, e.to_string())),

@@ -282,9 +282,9 @@ order's ORIGINAL commitment struct and its hydrated agreement:
 ```ts
 import { executeAction, recordProcessUsage } from "@figaro-protocol/sdk/agent";
 await executeAction(walletClient, publicClient, addresses, resolveAction);
-const report = await recordProcessUsage(walletClient, publicClient, addresses.usageCounter, [
-  { commitment: resolveAction.commitments[0], agreement },
-]);
+const report = await recordProcessUsage(walletClient, publicClient, addresses.usageCounter,
+  resolveAction.commitments.map((commitment, i) => ({ commitment, agreement: agreements[i] })),
+);
 ```
 
 `recordProcessUsage` is the direct path's: a process on the batch path has no
@@ -300,8 +300,11 @@ the 600M reward's uniformity across actors is exactly this call. Only the clause
 reaches calldata, so a private clause's plaintext never becomes public. Read the report,
 not the absence of an exception. **Every clause EARNS**: commerce rides on the agreements
 a designer composed with it and is scored for its designer of record like any other (the
-topology leaf is no clause and earns nothing), and `recordProcessUsage` sends one clause leg per distinct clause key the
-process carries (`attempted` / `recorded`). The once-per-process agreement and assembly credits are
+topology leaf is no clause and earns nothing). A use is one seller of one resolved process: the
+counter counts each (key, process, seller) once, so pass every order of the process.
+`recordProcessUsage` sends one clause leg for each distinct clause key and seller among the
+orders (`attempted` / `recorded`), and a key two orders of one seller carry is sent once. The
+agreement and assembly credits, one for each seller whose order carries them, are
 INDEPENDENT legs (`agreementRecorded`, `assemblyRecorded`): `recordAgreementUsage` is called
 with the agreement's `provenance` (both keys) and the provenance leaf's inclusion proof — the
 counter rebuilds the leaf under its `provenanceLeaf()` key, proves it, and requires the
