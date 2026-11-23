@@ -708,11 +708,11 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
     /**
      * @dev BATCH RESOLUTION DOS RISK
-     * Two causes revert the entire batch after its proof: a user who revokes approval before settleBatch
-     * executes, and a party whose wallet code refuses its wallet-code resolve or its wallet-code attestation
-     * at step 4 though it validated the bytes when the relay asked.
-     * Mitigation: Sequencer MUST verify approvals and ask each party's code immediately before proof submission.
-     * Users SHOULD maintain approvals, and wallet code its answer, until batch resolution is confirmed.
+     * A batch valid when proven still reverts whole when: another batch lands first (`StateRootMismatch`); a
+     * pull's approval or balance is gone; a token takes a cut or refuses a payout; wallet code refuses or is absent
+     * at step 4; a commit is past its deadline at this block; a bound clause is not registered; a usage call is
+     * starved of gas. Every other check after the proof refuses only a wrong or foreign batch.
+     * Mitigation: the relay rechecks approvals and each party's code just before it submits; users keep both.
      */
 
     /// @dev Reconcile net positions in two passes over the guest's order: every

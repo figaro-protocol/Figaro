@@ -494,18 +494,18 @@ pub struct PublicValues {
     pub usage_accrual_hash: B256,
     /// The clock the guest checked every commitment deadline against
     /// (`input.block_timestamp`). It is COMMITTED here so the on-chain verifier
-    /// can bound it against the real `block.timestamp` at resolution: a
-    /// prover-chosen time is otherwise unconstrained, and `settleBatch` is
-    /// permissionless, so an unbounded clock lets a caller pick `0` and bond a
-    /// signed commitment whose deadline has long passed — one the direct path
-    /// rejects with `DeadlineExpired`. Bounding it here makes the guest's
-    /// deadline gate real.
+    /// can hold it to the chain: `settleBatch` refuses a clock later than its
+    /// block and bounds no age of it, and it logs the clock so a rebuild
+    /// replays each commit at the time its proof used. A prover-chosen clock
+    /// bonds no expired commitment: the verifier reads each commit's deadline
+    /// in the stream and refuses one before its block with `DeadlineExpired`,
+    /// as the direct path does.
     pub block_timestamp: u64,
     /// `keccak256` of the batch's operation stream (`operation_stream`): every
-    /// commit and resolve the batch applied, whole, and every usage claim.
-    /// The on-chain verifier takes the stream as calldata and refuses a batch
-    /// whose bytes do not hash to this word, so a batch cannot land without
-    /// publishing what rebuilds the state behind its root.
+    /// commit and resolve the batch applied, whole, every wallet-code
+    /// attestation, and every usage claim. The on-chain verifier takes the
+    /// stream as calldata and refuses a batch whose bytes do not hash to this
+    /// word, so a batch cannot land without publishing what rebuilds its root.
     pub operations_hash: B256,
 }
 
