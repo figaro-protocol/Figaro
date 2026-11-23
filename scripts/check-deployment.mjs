@@ -17,6 +17,11 @@
 //   { "record": "<key>" }   the address the record gives under <key>
 //   { "code": "<Name>" }    an address that must hold the compiled <Name>'s code
 //
+// "treasurySafe" states the treasury's Safe by its owners, its threshold and a
+// salt; the record's daoTreasury must be the address Safe's factory gives for
+// them, and the Safe standing there must hold them (scripts/safe-treasury.mjs).
+// A file without the key is the devnet's, whose treasury is a mock vault.
+//
 // "links" maps "<contract>.<getter>" to a literal address a wired link must
 // read INSTEAD of the record's — a stated divergence, never a skip — or to
 // "absent": the deployed contract predates the getter, so the read must
@@ -52,6 +57,7 @@ import { computeClauseKey } from "../sdk/dist/discovery.js";
 import { checkRegistrars, plannedRegistrations } from "./check-deployment-registrars.mjs";
 import { checkMembers, plannedMembers } from "./check-deployment-members.mjs";
 import { checkReleaseRevision } from "./check-release-revision.mjs";
+import { treasurySafe } from "./safe-treasury.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -370,6 +376,26 @@ async function main() {
         if (r.undecided) { bad(`florin.balanceOf(${holder})`, `not decided — wallet "${holder}" has no address`); continue; }
         if (r.error) { bad(`florin.balanceOf(${holder})`, r.error); continue; }
         await expectValue(`florin.balanceOf(${holder})`, amount, String(await read(record.florinToken, "balanceOf", [r.address])));
+    }
+
+    console.log("\nThe treasury's Safe");
+    // The record's daoTreasury is checked against what the expectations file
+    // states, never against itself: the address Safe's factory gives for the
+    // stated owners, threshold and salt, and the Safe standing there.
+    if (e.treasurySafe === undefined) {
+        console.log("  · the expectations file has no treasurySafe: on this chain the treasury is not a Safe (the devnet's mock vault) — not checked");
+    } else if (e.treasurySafe === null) {
+        bad("treasurySafe", "not decided — the expectations file states no owners, threshold and salt");
+    } else {
+        const safe = await treasurySafe({ command: "check", expected: e, client });
+        if (safe.address === undefined) {
+            for (const why of safe.errors) bad("treasurySafe", why);
+        } else {
+            if (String(record.daoTreasury ?? "").toLowerCase() === safe.address.toLowerCase()) ok(`record.daoTreasury is the Safe the file states, ${safe.address}`);
+            else bad("record.daoTreasury", `${record.daoTreasury} is not the Safe the file states, ${safe.address}`);
+            if (safe.errors.length === 0) ok(`the Safe holds the stated owners and threshold`);
+            for (const why of safe.errors) bad("the treasury's Safe", why);
+        }
     }
 
     console.log("\nWho registered each clause");
