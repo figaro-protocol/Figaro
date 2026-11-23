@@ -61,7 +61,12 @@
  * `RpgfMinter._isAuthor` reads `depositOf(...).registeredBy`) — set:
  *   REGISTRAR_VAULT    — the vault's address; it becomes msg.sender/registrar
  *                        via its approve/execute cycle, staking deposits from
- *                        its own ETH balance (fund it first)
+ *                        its own ETH balance (fund it first). The vault is a
+ *                        Safe (v1.4.1) or the devnet's mock multisig; which
+ *                        one is read from the contract (`vaultInterface`).
+ *                        On a Safe each signer below that is not the executor
+ *                        sends `approveHash`, and the first key owner sends
+ *                        `execTransaction`, which counts as its approval.
  *   VAULT_OWNER_KEYS   — comma-separated owner private keys (threshold many,
  *                        or threshold-minus-one alongside a Ledger owner)
  *   VAULT_LEDGER_HD_PATH — an owner whose key lives on a Ledger device: its
@@ -125,7 +130,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-    createPublicClient, createWalletClient, defineChain, encodeFunctionData, http,
+    concatHex, createPublicClient, createWalletClient, defineChain, encodeFunctionData, getAddress, http, pad,
+    zeroAddress, zeroHash,
 } from 'viem';
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 // Protocol canonicals come from the SDK (@figaro-protocol/sdk, file:../sdk — the
@@ -178,9 +184,13 @@ export async function resolveChain() {
 
 /** Minimal MockTreasuryMultisig surface for the genesis-seed path — a
  *  mirror-by-necessity of `src/mocks/MockTreasuryMultisig.sol` (the mock has
- *  no SDK ABI export; keep in lockstep). Mainnet's canonical Safe replaces
- *  this flow with the Safe SDK at the custody ceremony (Task 9). */
+ *  no SDK ABI export; keep in lockstep). The vault on a public chain is a
+ *  Safe, which speaks `SAFE_ABI`; `vaultInterface` reads which one a vault
+ *  speaks. Both answer `isOwner(address)` in the same shape. */
 export const VAULT_ABI = [
+    { type: 'function', name: 'threshold', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+    { type: 'function', name: 'ownerCount', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+    { type: 'function', name: 'owners', stateMutability: 'view', inputs: [{ type: 'uint256' }], outputs: [{ type: 'address' }] },
     {
         type: 'function', name: 'transactionHash', stateMutability: 'view',
         inputs: [
@@ -205,6 +215,89 @@ export const VAULT_ABI = [
     { type: 'function', name: 'executed', stateMutability: 'view', inputs: [{ type: 'bytes32' }], outputs: [{ type: 'bool' }] },
     { type: 'function', name: 'isOwner', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'bool' }] },
 ];
+
+/** The surface of a Safe (v1.4.1) the vault path drives: its owners and
+ *  threshold, its transaction hash at its present nonce, an owner's approval
+ *  of that hash on chain (`approveHash`, read back through `approvedHashes`),
+ *  and the execution. */
+export const SAFE_ABI = [
+    { type: 'function', name: 'VERSION', stateMutability: 'view', inputs: [], outputs: [{ type: 'string' }] },
+    { type: 'function', name: 'getThreshold', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+    { type: 'function', name: 'getOwners', stateMutability: 'view', inputs: [], outputs: [{ type: 'address[]' }] },
+    { type: 'function', name: 'isOwner', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }], outputs: [{ type: 'bool' }] },
+    { type: 'function', name: 'nonce', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+    {
+        type: 'function', name: 'getTransactionHash', stateMutability: 'view',
+        inputs: [
+            { name: 'to', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'data', type: 'bytes' },
+            { name: 'operation', type: 'uint8' }, { name: 'safeTxGas', type: 'uint256' }, { name: 'baseGas', type: 'uint256' },
+            { name: 'gasPrice', type: 'uint256' }, { name: 'gasToken', type: 'address' }, { name: 'refundReceiver', type: 'address' },
+            { name: '_nonce', type: 'uint256' },
+        ],
+        outputs: [{ type: 'bytes32' }],
+    },
+    { type: 'function', name: 'approveHash', stateMutability: 'nonpayable', inputs: [{ name: 'hashToApprove', type: 'bytes32' }], outputs: [] },
+    {
+        type: 'function', name: 'approvedHashes', stateMutability: 'view',
+        inputs: [{ type: 'address' }, { type: 'bytes32' }], outputs: [{ type: 'uint256' }],
+    },
+    {
+        type: 'function', name: 'execTransaction', stateMutability: 'payable',
+        inputs: [
+            { name: 'to', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'data', type: 'bytes' },
+            { name: 'operation', type: 'uint8' }, { name: 'safeTxGas', type: 'uint256' }, { name: 'baseGas', type: 'uint256' },
+            { name: 'gasPrice', type: 'uint256' }, { name: 'gasToken', type: 'address' }, { name: 'refundReceiver', type: 'address' },
+            { name: 'signatures', type: 'bytes' },
+        ],
+        outputs: [{ type: 'bool' }],
+    },
+];
+
+/** Which interface the contract at `vault` speaks, read from the contract
+ *  itself: 'safe' when it answers `VERSION()` and `getThreshold()`, 'mock'
+ *  when it answers the mock multisig's `threshold()` and `executed(bytes32)`.
+ *  Throws when it answers neither. */
+export async function vaultInterface({ publicClient, vault }) {
+    const answers = (abi, functionName, args = []) =>
+        publicClient.readContract({ address: vault, abi, functionName, args }).then(() => true, () => false);
+    if (await answers(SAFE_ABI, 'VERSION') && await answers(SAFE_ABI, 'getThreshold')) return 'safe';
+    if (await answers(VAULT_ABI, 'threshold') && await answers(VAULT_ABI, 'executed', [zeroHash])) return 'mock';
+    throw new Error(`the vault ${vault} answers neither a Safe's VERSION() and getThreshold() nor the mock multisig's threshold() and executed(bytes32)`);
+}
+
+/** The `signatures` argument of a Safe's `execTransaction` for owners that
+ *  each approved the hash on chain or send the execution: per owner, `r` its
+ *  address as one word, `s` zero, `v` 1; owners in ascending address order,
+ *  as the Safe's signature check requires. */
+export function safeApprovalSignatures(owners) {
+    const sorted = [...new Set(owners.map((a) => getAddress(a)))]
+        .sort((a, b) => (BigInt(a) < BigInt(b) ? -1 : BigInt(a) > BigInt(b) ? 1 : 0));
+    return concatHex(sorted.map((owner) => concatHex([pad(owner, { size: 32 }), zeroHash, '0x01']))).toLowerCase();
+}
+
+/** Which owners carry a vault transaction to `threshold`, before anything is
+ *  sent: the executor when its sending counts as its approval (a Safe), then
+ *  the owners whose approval already stands on chain, then the signers that
+ *  still have to approve, in their order. `{ counted, toApprove }`: `counted`
+ *  holds `threshold` owners, `toApprove` the signers among them that send
+ *  `approveHash`. Throws when the approvals available are fewer than the
+ *  threshold. Addresses compare without case. */
+export function planVaultApprovals({ threshold, executor, executorCounts, standing, signers }) {
+    const counted = [];
+    const toApprove = [];
+    const has = (a) => counted.some((c) => c.toLowerCase() === a.toLowerCase());
+    const need = Number(threshold);
+    if (executorCounts && executor) counted.push(executor);
+    for (const a of standing) if (counted.length < need && !has(a)) counted.push(a);
+    for (const a of signers) {
+        if (counted.length >= need) break;
+        if (!has(a)) { counted.push(a); toApprove.push(a); }
+    }
+    if (counted.length < need) {
+        throw new Error(`the vault needs ${need} approvals and ${counted.length} are available (${counted.join(', ') || 'none'}) — add an owner's key to VAULT_OWNER_KEYS, or the Ledger owner through VAULT_LEDGER_HD_PATH`);
+    }
+    return { counted, toApprove };
+}
 
 /** A wallet whose key never leaves a Ledger device — usable both as a vault
  *  OWNER (approvals) and as a direct REGISTRAR (registrations, stake attached).
@@ -303,35 +396,87 @@ export async function vaultOwnerClients({ chain, rpcUrl }) {
 }
 const LEDGER_RETRY_MS = 10_000;
 
-/** Route one call through the vault multisig: threshold approvals from the
- *  owner wallets, then a single execute. Idempotent — approvals and the
- *  execution are each skipped when already on-chain. `nonce` must be unique
- *  per logical action and deterministic (callers derive it from the content
- *  key) so a re-run converges instead of re-registering. */
+/** One call as the vault's transaction, in the interface the vault speaks
+ *  (`vaultInterface`): its hash, whether it already ran, the threshold, the
+ *  owners, whether an owner approved the hash on chain, and its execution.
+ *  A Safe's hash is taken at the Safe's present nonce, which moves only when
+ *  a transaction runs: a call re-run after a partial run meets the same hash
+ *  and the approvals already standing for it, and a call that already ran is
+ *  skipped by the caller's own read of the registry (`registered`,
+ *  `bindings`). The mock's hash takes the caller's `nonce`, and the mock
+ *  keeps which hashes ran. */
+export async function vaultTransaction({ publicClient, vault, to, value, data, nonce }) {
+    const kind = await vaultInterface({ publicClient, vault });
+    if (kind === 'safe') {
+        const read = (functionName, args = []) => publicClient.readContract({ address: vault, abi: SAFE_ABI, functionName, args });
+        // A plain call (operation 0) with no gas refund: the executor pays its own gas.
+        const call = [to, value, data, 0, 0n, 0n, 0n, zeroAddress, zeroAddress];
+        const txHash = await read('getTransactionHash', [...call, await read('nonce')]);
+        return {
+            kind, abi: SAFE_ABI, txHash, executed: false,
+            threshold: await read('getThreshold'),
+            owners: await read('getOwners'),
+            // The Safe counts the sender of execTransaction as an owner that approved.
+            executorCounts: true,
+            approved: async (owner) => (await read('approvedHashes', [owner, txHash])) !== 0n,
+            execute: (client, counted) => client.writeContract({
+                address: vault, abi: SAFE_ABI, functionName: 'execTransaction', args: [...call, safeApprovalSignatures(counted)],
+            }),
+        };
+    }
+    const read = (functionName, args = []) => publicClient.readContract({ address: vault, abi: VAULT_ABI, functionName, args });
+    const txHash = await read('transactionHash', [to, value, data, nonce]);
+    const ownerCount = await read('ownerCount');
+    const owners = [];
+    for (let i = 0n; i < ownerCount; i++) owners.push(await read('owners', [i]));
+    return {
+        kind, abi: VAULT_ABI, txHash,
+        executed: await read('executed', [txHash]),
+        threshold: await read('threshold'),
+        owners,
+        executorCounts: false,
+        approved: (owner) => read('approvedBy', [txHash, owner]),
+        execute: (client) => client.writeContract({
+            address: vault, abi: VAULT_ABI, functionName: 'execute', args: [to, value, data, nonce],
+        }),
+    };
+}
+
+/** Route one call through the vault, a Safe or the mock multisig: the
+ *  threshold's approvals, then one execution by the first owner client.
+ *  Approvals that already stand on chain, by any owner, are counted and not
+ *  sent again; when the approvals available are fewer than the threshold it
+ *  refuses before sending anything. `nonce` is the mock's: unique per logical
+ *  action and deterministic (callers derive it from the content key) so a
+ *  re-run converges instead of re-registering; a Safe uses its own. */
 export async function vaultExecute({ publicClient, vault, ownerClients, to, value, data, nonce, log = console.log }) {
-    const txHash = await publicClient.readContract({
-        address: vault, abi: VAULT_ABI, functionName: 'transactionHash', args: [to, value, data, nonce],
-    });
-    if (await publicClient.readContract({
-        address: vault, abi: VAULT_ABI, functionName: 'executed', args: [txHash],
-    })) {
+    const tx = await vaultTransaction({ publicClient, vault, to, value, data, nonce });
+    if (tx.executed) {
         log('  · vault tx already executed, skipped');
         return;
     }
-    for (const ownerClient of ownerClients) {
-        const already = await publicClient.readContract({
-            address: vault, abi: VAULT_ABI, functionName: 'approvedBy', args: [txHash, ownerClient.account.address],
-        });
-        if (already) continue;
+    const executor = ownerClients[0];
+    const standing = [];
+    for (const owner of tx.owners) if (await tx.approved(owner)) standing.push(owner);
+    const { counted, toApprove } = planVaultApprovals({
+        threshold: tx.threshold,
+        executor: executor.account.address,
+        executorCounts: tx.executorCounts,
+        standing,
+        signers: ownerClients.map((c) => c.account.address),
+    });
+    for (const address of toApprove) {
+        const ownerClient = ownerClients.find((c) => c.account.address.toLowerCase() === address.toLowerCase());
         const hash = await ownerClient.writeContract({
-            address: vault, abi: VAULT_ABI, functionName: 'approveHash', args: [txHash],
+            address: vault, abi: tx.abi, functionName: 'approveHash', args: [tx.txHash],
         });
         await publicClient.waitForTransactionReceipt({ hash });
+        log(`  · ${address} approved vault tx ${tx.txHash}`);
     }
-    const execHash = await ownerClients[0].writeContract({
-        address: vault, abi: VAULT_ABI, functionName: 'execute', args: [to, value, data, nonce],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: execHash });
+    const execHash = await tx.execute(executor, counted);
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: execHash });
+    if (receipt.status !== 'success') throw new Error(`the vault's execution ${execHash} of ${tx.txHash} reverted`);
+    log(`  · the ${tx.kind === 'safe' ? 'Safe' : 'vault'} executed ${tx.txHash} with ${counted.join(', ')} (tx ${execHash})`);
 }
 
 /** Read frontend/.env.local into a flat key→value map. */

@@ -37,10 +37,12 @@
 #   daoOperator             DAO_OPERATOR_KEY
 #   deployer                PRIVATE_KEY (the deploy's key)
 #   the vault's owners      VAULT_OWNER_KEYS, with the founder's Ledger as the second approval.
-#                           These steps speak the devnet mock vault's interface
-#                           (frontend/scripts/populate-clauses.mjs VAULT_ABI); a Safe, the
-#                           vault on every public chain, is signed through its own interface,
-#                           which these steps do not speak yet
+#                           The vault is a Safe on every public chain and the mock multisig
+#                           on the devnet; frontend/scripts/populate-clauses.mjs reads which
+#                           one from the contract (vaultInterface). On a Safe the Ledger (or
+#                           the impersonated founder) sends approveHash and the first key in
+#                           VAULT_OWNER_KEYS sends execTransaction; fewer approvals than the
+#                           Safe's threshold are refused before anything is sent
 #   IMPERSONATE=1           fork rehearsal only: every wallet the plan names signs as its own
 #                           address, impersonated on the Anvil node (refused elsewhere)
 # Each signer's address is read and compared with the plan's before anything is sent.
@@ -151,12 +153,6 @@ case "$STEP" in
     unset REGISTRAR_LEDGER_HD_PATH REGISTRAR_IMPERSONATE REGISTRAR_PRIVATE_KEY SEED_ASSEMBLIES ASSEMBLY_TOKEN_ADDRESS
     vault_owners
     export REGISTRAR_VAULT="$VAULT" SEED_CLAUSES="$CLAUSES"
-    # A Safe names its version; the devnet mock vault has no such function.
-    if cast call "$VAULT" 'VERSION()(string)' --rpc-url "$RPC_URL" > /dev/null 2>&1; then
-      echo "❌ the vault $VAULT is a Safe, and this step speaks the devnet mock vault's interface only"
-      echo "   (frontend/scripts/populate-clauses.mjs VAULT_ABI): $CLAUSES cannot be registered through it yet"
-      exit 1
-    fi
     echo "   the vault $VAULT registers $CLAUSES"
     populate populate-clauses.mjs ;;
 
@@ -193,5 +189,5 @@ case "$STEP" in
     (cd "$REPO_ROOT/frontend" && node scripts/dao-operator-delegation.mjs grant) ;;
 
   *)
-    sed -n '2,45p' "$0"; exit 2 ;;
+    sed -n '2,47p' "$0"; exit 2 ;;
 esac
