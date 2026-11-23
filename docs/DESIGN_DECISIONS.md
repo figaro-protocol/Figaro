@@ -585,9 +585,9 @@ re-weight, or seize? — is the right question to ask.
 **Why it is correct**: the verifier has **no discretion**. It may call this
 function only with uses an SP1 proof committed under an IMMUTABLE
 verification key, against a state root that advances by that same proof. It
-cannot choose the uses, cannot invent a process, cannot count a process twice
-(the counter's one `processCounted` set holds for both routes, and a use whose
-process it holds is skipped), and cannot be repointed — `batchVerifier` is
+cannot choose the uses, cannot invent a process, cannot count a seller of a
+process twice (the counter's one `sellerCounted` set holds for both routes, and a
+use whose process and seller it holds is skipped), and cannot be repointed — `batchVerifier` is
 `immutable` and no setter exists. What it can do is exactly what the direct
 path lets *anyone* do permissionlessly: present proof that resolved trade used
 a clause, a registered agreement or an assembly.
@@ -604,17 +604,19 @@ a named caller is how a vkey's authority reaches storage.
 **What the counter still enforces itself**, because the proof cannot see live
 chain state: the open period, each use's seller's live `MembersRegistry` stake,
 each clause's, agreement's or assembly's live registration in its own kind's
-registry, and whether the process is already counted. The verifier deliberately checks none of these — it
+registry, and whether that seller of the process is already counted. The verifier deliberately checks none of these — it
 owns the proof, the counter owns the reward's gates.
 
 **Blast radius if the vkey were wrong**: a bad program could hand the counter
 uses no resolved trade made, for clauses, agreements or assemblies of its
 choosing — each still gated by a live registration and a live-staked seller, each
-process counted once — diluting every honest designer's pro-rata share of a
-period's budget. Because the counted-process set is shared by both routes, it
-could also hand over a use naming a direct-route process id under some key,
-pre-marking it in `processCounted`, so a later direct call for that process
-and key reverts `AlreadyCounted` and its use is never counted. It could not
+seller of a process counted once — diluting every honest designer's pro-rata share of a
+period's budget. Because the counted set is shared by both routes, it
+could also hand over a use naming a direct-route process id and one of its
+sellers under some key, pre-marking that pair in `sellerCounted`, so a later
+direct call for that process, seller and key reverts `AlreadyCounted` and that
+one use is never counted. The pre-mark holds one (process, seller) pair per use
+it hands over: the process's other sellers still count on a direct call. It could not
 mint, could not reach bonds or resolution, and could not
 withdraw anything — `RpgfMinter` still rewards only designers of record with a live stake. The mitigation is the same one the whole batch path already rests on:
 the vkey is immutable, and a program change means a NEW verifier deployment,
@@ -648,8 +650,8 @@ a batch path with no reward.
 **Related**: the two paths are DISJOINT — a batch-resolved
 process never acquires `FigaroCore` status, and a `FigaroCore`-resolved one is never in a
 batch, and a batch-path process id is derived under the verifier's EIP-712
-domain. That is why one counted-process set serves both routes: counting an id
-once is counting a process once. Both routes count into one tally (`accrualOf`),
+domain. That is why one counted set serves both routes: counting a (process id,
+seller) pair once is counting that seller of that process once. Both routes count into one tally (`accrualOf`),
 so a use scores the same whichever way its process reached the chain.
 
 
@@ -668,7 +670,7 @@ viable farm three deposits and three cooldowns, with no curation and no judgment
 open period nothing is lost: counting is never refused, `c` and `d` accrue below the floor,
 and the FULL score springs the moment the third distinct staked seller lands. State the
 edge honestly (the public page does): a period that CLOSES below the floor scores zero
-permanently — processes count once ever and cannot re-enter a later period, so
+permanently — each seller of a process counts once ever and a counted use cannot re-enter a later period, so
 sub-floor accrual defers within a period and expires at its boundary. The floor lives in
 `_score` and reads the one tally both routes feed, so a seller counts toward it once,
 whichever route carried their trade.
@@ -712,7 +714,7 @@ or silently skips it (batch path) unless the clause or assembly ALSO holds a liv
 merkle-leaf key a self-written agreement chooses freely, so without this gate a self-dealt
 process could accrue score to ANY `bytes32` and inflate `totalScoreIn` — the shared payout
 denominator — at gas cost, diluting every honest designer. The gate is the CLAUSE-OR-ASSEMBLY-SIDE twin
-of the member-stake gate on the seller of record: score counts only what a live stake has priced. It does
+of the member-stake gate on each use's seller: score counts only what a live stake has priced. It does
 not eliminate the paid replication lever (register N keys for N deposits) — that is the accepted, stake-priced cost the reward's uniform pro-rata already dilutes — it closes the
 FREE variant. Direct path reverts (a standalone tx with nothing to unwind); the batch path
 skips (see §19).
@@ -721,7 +723,7 @@ skips (see §19).
 
 **Looks wrong because:** `applyBatchAccrual` `continue`s past a use naming either reserved key,
 a clause, agreement or assembly without a live registration, a seller without a live stake, or a
-process already counted, instead of reverting, and `settleBatch` wraps the whole call in try/catch,
+seller of a process already counted, instead of reverting, and `settleBatch` wraps the whole call in try/catch,
 emitting `BatchAccrualSkipped` and resolving the batch anyway. A reward write that can be silently dropped looks
 like lost or manipulable accrual.
 
@@ -779,11 +781,11 @@ That reads like a griefing hole.
 
 **Is correct because:** the chain cannot
 see WHEN a process resolved (`FigaroCore` stores no per-order timestamp), which is
-the same reason `processCounted` is global — so the stake can only be gated at RECORDING time,
+the same reason `sellerCounted` is global — so the stake can only be gated at RECORDING time,
 never at resolution time. No stateless on-chain fix exists. The mitigation is a habit, not
 state: usage is recorded AT RESOLUTION (`createCapabilityExecutors.ts`, right after
 `resolveProcess` confirms), when the seller is definitionally still staked, closing the normal
-window. The denial is not lost usage: `processCounted` is once-ever and tied to no period, and a
+window. The denial is not lost usage: `sellerCounted` is once-ever and tied to no period, and a
 seller can stake again at once, so an uncounted use is counted in whichever period is open when
 it is next presented with its seller staked, on either route. It is lost only once the last
 period has closed. The residual grief is self-limiting — to deny a designer the griefer must
@@ -986,10 +988,10 @@ nothing.
 
 ## 23. The reward keys every accrual by (kind, key) — the registries have no edge between them
 
-**Pattern**: `UsageCounter` keys every accrual, count, counted process and
+**Pattern**: `UsageCounter` keys every accrual, count, counted (process, seller) pair and
 score by `(kind, key)`, kind `KIND_CLAUSE = 0`, `KIND_PROCESS = 1` or
 `KIND_AGREEMENT = 2` (`accrualOf[kind][key][period]`,
-`processCounted`, `scoreOf(kind, key, period)`). `recordClauseUsage` counts
+`sellerCounted`, `scoreOf(kind, key, period)`). `recordClauseUsage` counts
 under the clause kind and checks `ClauseRegistry` only;
 `recordAgreementUsage` counts under the agreement kind and checks
 `AgreementRegistry` only; `recordProcessDesignUsage` counts under the assembly kind
@@ -1114,8 +1116,9 @@ registered agreement, and a set root cannot express that. The index makes each
 leaf distinct, so the root commits the multiplicity, and the topology — which
 agreements each one follows — is a fill of the agreement, inside the leaf,
 never a field of the registered agreement. Usage still counts once per
-process per (kind, key) (`CONTRACTS.md` § "Usage accounting", idempotence),
-so a repeated agreement earns for the process, not per agreement.
+seller of a process per (kind, key) (`CONTRACTS.md` § "Usage accounting", idempotence),
+so a repeated agreement earns once for each seller of the process that carries
+it, never once per leaf: two orders of one seller under it are one use.
 
 **Tests**: the third vector assembly in `test/fixtures/assembly-vectors.json`
 holds one `agreementHash` in two of its three agreements, and every parity leg
@@ -1168,7 +1171,7 @@ under a new batch id.
 
 **Why it is correct**: The second landing has no effect a reader or a party
 relies on. Such a batch carries no net position, so no token moves. Every use
-it carries meets the counter's once-ever `processCounted` set, which holds for
+it carries meets the counter's once-ever `sellerCounted` set, which holds for
 both routes, and is skipped: the tally and the period total do not move.
 Re-emitted attestations are copies of the first landing's — the same order
 hash, attester, clause, stage and `contentRef` — so a reader that keys evidence
@@ -1558,7 +1561,7 @@ here.
    status 2. During a callback, only the orders the loop already finished
    read 2, and each one's payout has already left. A use counted then is the
    use a later transaction would count, and the counter's once-ever
-   `processCounted` stops a second count. If the resolve reverts, the count
+   `sellerCounted` stops a second count of that seller of the process. If the resolve reverts, the count
    reverts with it.
 
 The resolution is one transaction, so a reader outside it sees status 1
@@ -1982,6 +1985,54 @@ of the content's total.
 
 ---
 
+## 43. A use is one seller of one process — a process of three sellers is three uses of a key
+
+**Pattern**: `UsageCounter` counts a use once per (kind, key, process, seller):
+the set `sellerCounted(kind, key, processId, seller)` holds every use counted,
+on both routes. A direct call that repeats a counted pair reverts
+`AlreadyCounted`, and `applyBatchAccrual` skips it. Each admitted use adds one
+to `c`, and adds one to `d` when its seller is not yet in the period's
+`sellerSeen`. A process whose three sellers carry a key gives that key three
+uses; a second order of the same seller in the same process adds nothing. The
+proof program gives one use per (kind, key, process, seller) in a batch
+(`apply_usage_claims`, `prover/lib/src/kernel.rs`).
+
+**Why it looks wrong**: one process, one key and three uses reads as triple
+counting. A trade happened once, and the count looks inflated by the number of
+sellers it named.
+
+**Why it is correct**: a count of one per process makes the tally depend on
+the recorder. Anyone may present a use, with any order of the process. Under one count per process
+the first order presented names the seller, and every other order of the
+process is refused or skipped. A recorder that presents an order whose seller
+is already counted in the period closes the process against its other sellers,
+for the price of gas, and holds `d` down by as many sellers as it shuts out.
+Two recorders presenting the same process in different sequences reach
+different tallies. With the seller in the key, each order adds its own seller,
+and the tally is the same whoever presents the orders and in whatever sequence. Breadth is
+defined as the distinct live-staked sellers who carried the key, and a seller
+of a multi-seller process carried it as surely as the only seller of another
+process. Every unit of breadth still costs one live member stake and its
+withdrawal cooldown (§ 16): a process of three sellers buys no breadth that
+three stakes did not pay for. `d <= c` holds, because a seller enters `d` only
+with a use that also enters `c`, so the score `icbrt(c · d² · 1e18)` keeps its
+reading as distinct sellers weighted above the cube root of repeat depth.
+
+The edges, stated plainly. Three staked sellers reach the floor of § 16 in one
+process of three orders, as they would in three processes. A seller of a
+process first presented in a later period is a use in that later period; a
+seller already counted never counts again, in any period, on either route. One
+seller with two orders in one process is one use.
+
+**Tests**: `test/rewards/UsageCounterTest.t.sol` —
+`test_aTwoSellerProcessEndsInOneTallyWhicheverOrderIsRecordedFirst`,
+`test_twoOrdersOfOneSellerInOneProcessAreOneUse`,
+`test_batchAccrual_eachSellerOfAProcessIsOneUse_andARepeatIsSkipped`,
+`testFuzz_aProcessEndsInOneTallyWhateverTheSequenceOfItsSellers`,
+`test_aSellerPresentedInALaterPeriodCountsThere_andACountedOneNeverAgain`.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -2010,9 +2061,9 @@ of the content's total.
 | 22 | No site pinning account; a browser with no node and no service publishes nothing | site/pinning | A visitor without a node cannot publish until it sets one | A bundled credential names its holder and makes one account a central dependency; each publishing wallet pins through its own node or a service it chose, on every chain; with neither, a publishing page shows one line and the setting, and nothing is sent |
 | 23 | Reward keyed by (kind, key), three kinds | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause or an agreement would take its reward; the kind keeps a stake in one family from earning another's, and no kind's gate reads another kind's registry |
 | 24 | The assembly root is a merkle tree over registered agreement hashes | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |
-| 25 | Ordered agreements; one agreement may hold two | registry | A repeated key looks like a duplicate leaf | Designs repeat terms; the index makes each leaf distinct and the root commits the multiplicity; usage counts once per process per (kind, key) |
+| 25 | Ordered agreements; one agreement may hold two | registry | A repeated key looks like a duplicate leaf | Designs repeat terms; the index makes each leaf distinct and the root commits the multiplicity; usage counts once per seller of a process per (kind, key) |
 | 26 | The attestation signature does not cover the witness form | batch-path/evidence | A relay can submit a plaintext operation hash-only, and the event is the same for both forms, so the in-proof check is not legible | The evidence a reader relies on (signer, open order, inclusion, `contentRef`) is identical on every path; the in-proof check assures the attesting party's own submission, not a reader |
-| 27 | A state-neutral batch's proof can land twice | batch-path/reward-path | A proof submitted twice is the replay shape, and `BatchSettled` repeats | A batch that moves no state has prev root == new root; its second landing moves no token, and the counter's once-ever `processCounted` skips every use, so nothing a reader relies on changes; a batch that moved the root cannot land twice |
+| 27 | A state-neutral batch's proof can land twice | batch-path/reward-path | A proof submitted twice is the replay shape, and `BatchSettled` repeats | A batch that moves no state has prev root == new root; its second landing moves no token, and the counter's once-ever `sellerCounted` skips every use, so nothing a reader relies on changes; a batch that moved the root cannot land twice |
 | 28 | `FlorinToken.mint` checks the supply cap the minters' caps already bound | token | A check that cannot fire reads as dead code | It states the billion bound in the token, at the one function that creates florins, where a stranger reads it; one storage read, no outcome changes |
 | 29 | Public pieces no code of ours reads | registry/reward-path/token | Surface nothing reads is surface to audit for nothing | Each answers a stranger's question of the chain: who may mint, which keys are reserved, when a key was registered, where a stake went and how much, which sellers counted |
 | 30 | Topology is not in the commitment struct | Core-critical | The process's shape reads as part of what is bonded, and the events alone do not show the graph of orders | The bonds are sized by the running total alone; the parties sign the edges through the `checkoutHash`; a wallet outside the trade reads the design's edges between its entries from the registered process design, and matches no entry to an order; the counter-signer checks a sub-order's edges before it signs; version 3 validated parent ids on the chain, version 4 signed them in the struct, version 5 moved them into the agreement |
@@ -2028,3 +2079,4 @@ of the content's total.
 | 40 | The reference frontend reads a clause spec only when its bytes hash to the CID in the registered URI | frontend/reader | The key already anchors everything a party signs, and the registry accepts any URI | The key leaves the `block` out, so without the CID the `block` read is the transport's choice; with it, the registrant's; a URI form the frontend cannot recompute is the unchecked transport, so it is refused |
 | 41 | A withdrawn key forfeits its unclaimed periods; the key registries return a stake in one call | registry/reward-path | A period scored under a live stake and lost at a later withdrawal looks like earned rewards taken back; no wait beside the members' cooldown looks like a missing guard | The live-stake check runs at the count and at the claim, so the stake stays held through the period and its claim (`/papers/substrate-broadening-rpgf`); a designer claims first, then withdraws. A key holds no identity and no name, only bytes (§ 7); the stake prices it through the reward, and a wait would hold a second stake on every new version. Accepted residual: a rival can register a key and withdraw it in one transaction for gas, burning it, once per key tried; the one-act pin and register and a private mempool bound it |
 | 42 | A pattern past a size is refused at parse, and long values are refused rather than run | spec format/clause engine | Both engines are linear in the value, so a limit looks like the skip it replaced; a matching value or list can be refused; the fuller count refuses patterns a narrower count would admit | Linear is not cheap: the cost per character is the automaton's size, which the fuller count measures and the old one did not; a skip leaves a signed term unchecked, a refusal keeps every admitted term checked; the limit keeps the two engines' parse verdicts one, and the budgets bound one value's and one content's work in both |
+| 43 | A use is one seller of one process | reward-path | A process of three sellers counts three times for one key, which reads as triple counting | One count per process made the tally depend on who recorded first and with which order, and let a recorder close a process against its other sellers for gas; breadth is the distinct staked sellers who carried the key, each still one live stake and its cooldown; `d <= c` keeps the score's reading; one seller with two orders in one process is one use |

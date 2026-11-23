@@ -332,7 +332,7 @@ const SITES: Array<{
         },
         writes: () => [{ address: USAGE_COUNTER, functionName: "recordClauseUsage", args: [COMMITMENT, KEY, ORDER_HASH, [KEY]] }],
         errorName: "AlreadyCounted",
-        message: "This use of the clause, agreement or assembly was already counted for this process.",
+        message: "This use of the clause, agreement or assembly was already counted for this seller of this process.",
     },
     {
         site: "useUsageRecorder.recordUsage (agreement)",
@@ -343,7 +343,7 @@ const SITES: Array<{
         },
         writes: () => [{ address: USAGE_COUNTER, functionName: "recordAgreementUsage", args: [COMMITMENT, KEY, ORDER_HASH, [KEY]] }],
         errorName: "AlreadyCounted",
-        message: "This use of the clause, agreement or assembly was already counted for this process.",
+        message: "This use of the clause, agreement or assembly was already counted for this seller of this process.",
     },
     {
         site: "useUsageRecorder.recordUsage (assembly)",
@@ -357,7 +357,7 @@ const SITES: Array<{
         },
         writes: () => [{ address: USAGE_COUNTER, functionName: "recordProcessDesignUsage", args: [COMMITMENT, KEY, ORDER_HASH, TX, [KEY], [ORDER_HASH]] }],
         errorName: "AlreadyCounted",
-        message: "This use of the clause, agreement or assembly was already counted for this process.",
+        message: "This use of the clause, agreement or assembly was already counted for this seller of this process.",
     },
     {
         site: "useAttestationCoordinatorActions.submitAttestation",

@@ -160,7 +160,7 @@ function record(
 }
 
 describe("computeUsageAccruals", () => {
-    it("counts distinct processes and distinct staked sellers per clause or assembly, bucketed by period", () => {
+    it("counts uses and distinct staked sellers per clause or assembly, bucketed by period", () => {
         const s1 = sellerOf("seller1");
         const s2 = sellerOf("seller2");
         const accruals = computeUsageAccruals([
@@ -187,14 +187,49 @@ describe("computeUsageAccruals", () => {
         expect(accruals.get(0)!.byClauseOrProcess.get(id(CLAUSE_A))!).toMatchObject({ c: 3n, d: 1n });
     });
 
-    it("is idempotent per (clause or assembly, process) — a replay adds nothing", () => {
+    it("is idempotent per (clause or assembly, process, seller) — a replay adds nothing", () => {
         const s1 = sellerOf("seller1");
         const once = computeUsageAccruals([record(CLAUSE_A, "p1", s1)], 1n);
         const twice = computeUsageAccruals([record(CLAUSE_A, "p1", s1), record(CLAUSE_A, "p1", s1)], 1n);
         expect(twice.get(0)!.byClauseOrProcess.get(id(CLAUSE_A))).toEqual(once.get(0)!.byClauseOrProcess.get(id(CLAUSE_A)));
     });
 
-    it("counts a process ONCE EVER — re-recording it in a later period adds nothing", () => {
+    it("counts each seller of a process as one use: two sellers give two uses, each a unit of d", () => {
+        const accruals = computeUsageAccruals([
+            record(CLAUSE_A, "pm-1", sellerOf("seller1")),
+            record(CLAUSE_A, "pm-1", sellerOf("seller2")),
+        ], 1n);
+        expect(accruals.get(0)!.byClauseOrProcess.get(id(CLAUSE_A))!).toMatchObject({
+            c: 2n, d: 2n, score: usageScore(2n, 2n, 1n),
+        });
+    });
+
+    it("counts three sellers of one process as three uses, and a seller already seen in the period adds c only", () => {
+        const s1 = sellerOf("seller1");
+        const accruals = computeUsageAccruals([
+            record(CLAUSE_A, "pn-0", s1),
+            record(CLAUSE_A, "pn-1", s1),
+            record(CLAUSE_A, "pn-1", sellerOf("seller2")),
+            record(CLAUSE_A, "pn-1", sellerOf("seller3")),
+        ], 1n);
+        const entry = accruals.get(0)!.byClauseOrProcess.get(id(CLAUSE_A))!;
+        expect(entry).toMatchObject({ c: 4n, d: 3n });
+        expect(entry.d <= entry.c).toBe(true);
+    });
+
+    it("counts a second order of the same seller in the same process not at all", () => {
+        // Two records of one (process, seller) are what two orders of one
+        // seller in one process give: the counter refuses the second.
+        const s1 = sellerOf("seller1");
+        const accruals = computeUsageAccruals([
+            record(CLAUSE_A, "po-1", s1, { logIndex: 1 }),
+            record(CLAUSE_A, "po-1", s1, { logIndex: 2 }),
+            record(CLAUSE_A, "po-1", sellerOf("seller2"), { logIndex: 3 }),
+        ], 1n);
+        expect(accruals.get(0)!.byClauseOrProcess.get(id(CLAUSE_A))!).toMatchObject({ c: 2n, d: 2n });
+    });
+
+    it("counts a seller of a process ONCE EVER — re-recording it in a later period adds nothing", () => {
         // Global idempotence: a resolved order stays resolved
         // and its struct is public, so a per-period key would let the same trade
         // be re-presented every period — paying for recording gas, not adoption.
@@ -464,7 +499,7 @@ describe("computeRpgfAllocations", () => {
         ], 1n).get(0)!;
         const asAgreement = accruals.byClauseOrProcess.get(usageKeyId(USAGE_KIND_AGREEMENT, ASSEMBLY))!;
         const asAssembly = accruals.byClauseOrProcess.get(usageKeyId(USAGE_KIND_PROCESS, ASSEMBLY))!;
-        // The same process counts once per (kind, key), so kind 2 counts it beside kind 1.
+        // A seller of a process counts once per (kind, key), so kind 2 counts it beside kind 1.
         expect(asAssembly).toMatchObject({ c: 1n, d: 1n });
         expect(asAgreement).toMatchObject({ c: 2n, d: 2n });
         const out = computeRpgfAllocations(accruals, new Map([
@@ -617,11 +652,16 @@ describe("buildUsageClaims", () => {
         }, ASSEMBLY).some((c) => "Process" in c.kind)).toBe(true);
     });
 
-    // The counter counts a (kind, key) once per process: across a process's
-    // orders each pair is claimed once, by the first order carrying it, and an
-    // order whose claims do not build is refused alone.
-    it("buildProcessUsageClaims claims each (kind, key) once across the orders, and refuses an order that does not build alone", () => {
-        const second = { ...order, seller: "0x0000000000000000000000000000000000005E12" as Address };
+    // The counter counts a use once per (kind, key, process, seller): across a
+    // process's orders each pair is claimed once for each seller, by that
+    // seller's first order carrying it, and an order whose claims do not build
+    // is refused alone.
+    const keysOf = (claims: { claim: SequencerUsageClaim }[]) =>
+        claims.map(({ claim }) => usageKeyId(usageClaimKindCode(claim), claim.clause_or_process));
+    const SECOND_SELLER = "0x0000000000000000000000000000000000005E12" as Address;
+
+    it("buildProcessUsageClaims claims each (kind, key) once for each seller, and refuses an order that does not build alone", () => {
+        const second = { ...order, seller: SECOND_SELLER };
         const orders = [
             { name: "first", commitment: order, agreement: agreementWith([modalities, commerce], PROVENANCE), context: CONTEXT, assembly: ASSEMBLY },
             { name: "broken", commitment: second, agreement: agreementWith([modalities], PROVENANCE), context: CONTEXT },
@@ -631,10 +671,30 @@ describe("buildUsageClaims", () => {
         const claims = buildProcessUsageClaims(orders, (o, reason) => refused.push(`${o.name}: ${reason}`));
         expect(refused).toHaveLength(1);
         expect(refused[0]).toMatch(/^broken: .*assembly is needed/);
+        expect(claims.map(({ order: o }) => o.name)).toEqual(["first", "first", "first", "first", "second", "second", "second", "second"]);
+        const perOrder = buildUsageClaims(order, orders[0]!.agreement, CONTEXT, ASSEMBLY)
+            .map((c) => usageKeyId(usageClaimKindCode(c), c.clause_or_process));
+        expect(keysOf(claims)).toEqual([...perOrder, ...perOrder]);
+    });
+
+    it("buildProcessUsageClaims claims a key two orders of one seller carry once", () => {
+        const again = { ...order, salt: 7n, runningTotal: 200n };
+        const orders = [
+            { name: "first", commitment: order, agreement: agreementWith([modalities, commerce], PROVENANCE), context: CONTEXT, assembly: ASSEMBLY },
+            { name: "again", commitment: again, agreement: agreementWith([modalities, commerce], PROVENANCE), context: CONTEXT, assembly: ASSEMBLY },
+        ];
+        const claims = buildProcessUsageClaims(orders, () => { throw new Error("no order is refused"); });
         expect(claims.map(({ order: o }) => o.name)).toEqual(["first", "first", "first", "first"]);
-        expect(claims.map(({ claim }) => usageKeyId(usageClaimKindCode(claim), claim.clause_or_process)))
-            .toEqual(buildUsageClaims(order, orders[0]!.agreement, CONTEXT, ASSEMBLY)
-                .map((c) => usageKeyId(usageClaimKindCode(c), c.clause_or_process)));
+    });
+
+    it("buildProcessUsageClaims claims for a second seller only the keys its own order carries", () => {
+        const orders = [
+            { name: "first", commitment: order, agreement: agreementWith([modalities, commerce]), context: CONTEXT },
+            { name: "second", commitment: { ...order, seller: SECOND_SELLER }, agreement: agreementWith([modalities]), context: CONTEXT },
+        ];
+        const claims = buildProcessUsageClaims(orders, () => { throw new Error("no order is refused"); });
+        expect(claims.map(({ order: o }) => o.name)).toEqual(["first", "first", "second"]);
+        expect(keysOf(claims)[2]).toBe(usageKeyId(USAGE_KIND_CLAUSE, modalities.clause));
     });
 
     it("produces inclusion proofs that verify against the signed checkout hash", () => {
@@ -815,13 +875,18 @@ describe("fetchSkippedBatchUses — the uses a batch carried and the counter cou
         expect(skip.carried).toEqual({ period: 3, provenanceLeaf: PROVENANCE_LEAF_KEY, claims: [], uses: [] });
     });
 
-    it("derives one use per (kind, key, process), the first claim naming the seller, a root order's process under the verifier's domain", async () => {
+    it("derives one use per (kind, key, process, seller) in claim order, a root order's process under the verifier's domain", async () => {
         const root = { ...FIRST, process_id: `0x${"00".repeat(32)}` as Hex };
         const onRoot: SequencerUsageClaim = { ...CLAUSE_CLAIM, order: root };
-        const again: SequencerUsageClaim = { ...CLAUSE_CLAIM, order: SECOND };
+        // SECOND is another seller of the same process: a use of its own.
+        const otherSeller: SequencerUsageClaim = { ...CLAUSE_CLAIM, order: SECOND };
+        // A second order of FIRST's seller in the same process: no use.
+        const sameSeller: SequencerUsageClaim = { ...CLAUSE_CLAIM, order: { ...FIRST, salt: "9", running_total: "700" } };
         const client = stubClient([
             skippedLog(5n, SKIP_TX, 7n),
-            operationsLog(5n, SKIP_TX, 7n, concatHex([claimEntry(onRoot), claimEntry(CLAUSE_CLAIM), claimEntry(again)])),
+            operationsLog(5n, SKIP_TX, 7n, concatHex([
+                claimEntry(onRoot), claimEntry(CLAUSE_CLAIM), claimEntry(otherSeller), claimEntry(sameSeller), claimEntry(CLAUSE_CLAIM),
+            ])),
         ]);
         const [skip] = await fetchSkippedBatchUses(client, VERIFIER, { fromBlock: 0n, toBlock: 10n });
         const rootProcess = computeCommitmentProcessId(
@@ -833,8 +898,8 @@ describe("fetchSkippedBatchUses — the uses a batch carried and the counter cou
             CHAIN_ID,
             VERIFIER,
         );
-        expect(skip.carried.claims).toHaveLength(3);
-        expect(skip.carried.uses).toEqual(usesOf([onRoot, CLAUSE_CLAIM], [rootProcess, PROCESS]));
+        expect(skip.carried.claims).toHaveLength(5);
+        expect(skip.carried.uses).toEqual(usesOf([onRoot, CLAUSE_CLAIM, otherSeller], [rootProcess, PROCESS, PROCESS]));
     });
 
     it("refuses a skipped batch whose stream does not decode, and one whose BatchOperations log the node did not return", async () => {

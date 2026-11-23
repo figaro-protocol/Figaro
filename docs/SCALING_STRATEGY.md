@@ -73,11 +73,11 @@ returns 0 — UNKNOWN — for it, permanently. And the converse holds: a
   batch-resolved process satisfies neither, forever. That is why the usage
   bridge below exists.
 - **It is also why one counted set serves both routes.** The counter's
-  `processCounted` counts a process id once, whichever route presents it; the
-  guest keeps no usage state of its own. A batch-path process id is derived
-  under the verifier's EIP-712 domain, a direct one under `FigaroCore`'s, so no
-  id names a process on both paths, and counting an id once is counting a
-  process once.
+  `sellerCounted` counts each (process id, seller) pair once, whichever route
+  presents it; the guest keeps no usage state of its own. A batch-path process
+  id is derived under the verifier's EIP-712 domain, a direct one under
+  `FigaroCore`'s, so no id names a process on both paths, and counting a pair
+  once is counting that seller of that process once.
 - **A reader must fold BOTH.** The verifier emits `FigaroCore`'s own
   `OrderCommitted`, `OrderSeller`, `OrderResolved` and
   `ProcessResolved` for every batched order, and re-emits its attestations, so
@@ -632,7 +632,7 @@ leaf's key is no input: the guest proves agreement and assembly claims under
 its own constant and commits it in the usage hash. The
 relay's pre-filter checks each claim against its own kind's registry —
 `AgreementRegistry.bindings` for kind 2 — its seller's member stake and the
-counter's `processCounted` for its process, and drops a claim keyed on either
+counter's `sellerCounted` for its process and seller, and drops a claim keyed on either
 reserved key, one the counter would skip, or one whose read fails; a zero
 registry address does not disable the pre-filter. The local
 state is the sequencer's mirror of the batch path's state, maintained
@@ -696,7 +696,7 @@ uses to `UsageCounter.applyBatchAccrual`; advances the state root.
   the root. A batch that moves no state — usage claims or attestations only —
   names the current root as both prev and new, so anyone may land its proof
   again until the root moves: the counter's once-ever
-  `processCounted` skips every use the second time, no token moves, and the
+  `sellerCounted` skips every use the second time, no token moves, and the
   verifier re-emits the stream, the attestations and `BatchSettled` under a new
   batch id (`DESIGN_DECISIONS.md` § 27).
 - **Replay across chains or contracts** — `chainId` and `verifyingContract`

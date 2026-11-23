@@ -416,7 +416,7 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 // BATCH-RESOLVED trade never touches FigaroCore, so it can never travel that
 // path. Its uses arrive instead through `applyBatchAccrual`, which only
 // FigaroBatchVerifier may call and only with uses an SP1 proof committed, and
-// are counted into the SAME tally (`accrualOf`), the same counted-process set
+// are counted into the SAME tally (`accrualOf`), the same counted set, a seller of a process,
 // and the same seller set: a use is a use whichever way its process reached
 // the chain, and both routes emit `UsageRecorded`.
 
@@ -449,7 +449,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "function accrualOf(uint8 kind, bytes32 clauseOrProcess, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
     "function scoreOf(uint8 kind, bytes32 clauseOrProcess, uint8 period) view returns (uint256)",
     "function totalScoreIn(uint8 period) view returns (uint256)",
-    "function processCounted(uint8 kind, bytes32 clauseOrProcess, bytes32 processId) view returns (bool)",
+    "function sellerCounted(uint8 kind, bytes32 clauseOrProcess, bytes32 processId, address seller) view returns (bool)",
     "function sellerSeen(uint8 kind, bytes32 clauseOrProcess, uint8 period, address seller) view returns (bool)",
     "function minSellers() view returns (uint64)",
     "function icbrt(uint256 n) pure returns (uint256)",

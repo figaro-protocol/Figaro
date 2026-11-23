@@ -2,7 +2,7 @@
  * recordProcessUsage — the headless at-resolution usage recording. Every
  * committed clause earns a clause leg, the agreement's provenance leaf
  * earns the agreement leg and the assembly leg (with the agreement's
- * membership proof), and a key is sent once per process.
+ * membership proof), and a key is sent once for each seller of the process.
  */
 import { describe, it, expect } from "vitest";
 import { encodePacked, keccak256, type Address, type Hex, type PublicClient, type WalletClient } from "viem";
@@ -22,11 +22,14 @@ const AGREEMENT_HASH = keccak256(encodePacked(["string"], ["an-agreement"]));
 const ASSEMBLY: ProcessDesign = { agreements: [{ id: "agreement-0", agreementHash: AGREEMENT_HASH, clauses: {} }] };
 const COMPOSITION = processDesignHashOf(ASSEMBLY);
 
-function order(salt: bigint): Commitment {
+const SELLER = "0x0000000000000000000000000000000000005e11" as Address;
+const OTHER_SELLER = "0x0000000000000000000000000000000000005e12" as Address;
+
+function order(salt: bigint, seller: Address = SELLER): Commitment {
     return {
         processId: `0x${"0".repeat(64)}` as Hex,
         buyer: "0x0000000000000000000000000000000000000b0b" as Address,
-        seller: "0x0000000000000000000000000000000000005e11" as Address,
+        seller,
         token: "0x00000000000000000000000000000000000007ed" as Address,
         payment: 100n,
         runningTotal: 100n,
@@ -112,7 +115,7 @@ describe("recordProcessUsage", () => {
         expect(report.failures[0]).toMatch(/^agreement: .*0x12/);
     });
 
-    it("sends a key two orders carry once: the counter counts it once per process", async () => {
+    it("sends a key two orders of one seller carry once: the counter counts one use per seller of a process", async () => {
         const { publicClient, walletClient, sent } = clients();
         const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [
             { commitment: order(1n), agreement: agreement(), assembly: ASSEMBLY },
@@ -120,9 +123,26 @@ describe("recordProcessUsage", () => {
         ]);
 
         expect(sent).toHaveLength(4);
+        expect(sent.every((s) => (s.args[0] as Commitment).salt === 1n), "every leg goes through the seller's first order").toBe(true);
         expect(report.attempted).toBe(2);
         expect(report.recorded).toBe(2);
         expect(report.assemblyRecorded).toBe(true);
+    });
+
+    it("sends each key once for each seller whose order carries it: two sellers give two uses of every key", async () => {
+        const { publicClient, walletClient, sent } = clients();
+        const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [
+            { commitment: order(1n), agreement: agreement(), assembly: ASSEMBLY },
+            { commitment: order(2n, OTHER_SELLER), agreement: agreement(), assembly: ASSEMBLY },
+        ]);
+
+        expect(sent).toHaveLength(8);
+        for (const functionName of ["recordClauseUsage", "recordAgreementUsage", "recordProcessDesignUsage"]) {
+            const sellers = sent.filter((s) => s.functionName === functionName).map((s) => (s.args[0] as Commitment).seller);
+            expect(new Set(sellers), functionName).toEqual(new Set([SELLER, OTHER_SELLER]));
+        }
+        expect(sent.filter((s) => s.functionName === "recordProcessDesignUsage")).toHaveLength(2);
+        expect(report).toEqual({ attempted: 4, recorded: 4, assemblyRecorded: true, agreementRecorded: true, failures: [] });
     });
 
     it("a leg that fails lands in the report and the others still go", async () => {

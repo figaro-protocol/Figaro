@@ -314,8 +314,8 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         // ── RPGF USAGE RECORDING (count usage when it happens):
         //    the resolve capability records every committed
         //    clause's, agreement's and assembly's use on the UsageCounter — one
-        //    UsageRecorded per DISTINCT (kind, key) in the process (a key two
-        //    orders carry is planned once), INCLUDING each agreement's
+        //    UsageRecorded per DISTINCT (kind, key) for each seller of the
+        //    process (a key two orders of one seller carry is planned once), INCLUDING each agreement's
         //    agreement hash and the assembly's processDesignHash via the
         //    agreement's provenance leaf, which the checkout walk sets. Verified out-of-band
         //    from the chain, never from the UI. ──

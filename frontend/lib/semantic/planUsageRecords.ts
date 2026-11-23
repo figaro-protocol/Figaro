@@ -13,9 +13,11 @@
  * from the assembly's assembly. Planning here adds only what is
  * process-wide:
  *
- *  - ONE write per DISTINCT `(kind, key)` pair across the whole process —
- *    `UsageCounter` counts a pair once per process (`AlreadyCounted`), so the
- *    first order that carries it is the one planned. The kind keeps the three
+ *  - ONE write per DISTINCT `(kind, key)` pair for each seller of the
+ *    process — `UsageCounter` counts a use once per (kind, key, process,
+ *    seller) (`AlreadyCounted`), so each seller's first order that carries
+ *    the pair is the one planned, and a second order of the same seller plans
+ *    nothing for it. The kind keeps the three
  *    families apart: a clause key, an agreement hash and an assembly
  *    assembly hash with the same bytes are three pairs, each counted under
  *    its own registry;

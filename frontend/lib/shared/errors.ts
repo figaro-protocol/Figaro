@@ -83,7 +83,7 @@ export const FIGARO_ERROR_MESSAGES: Readonly<Record<string, string>> = {
     SupplyCapExceeded: "This would take the florin supply, or the sum of the minter caps, past the maximum supply.",
     ZeroAddress: "An address given is zero.",
     AccrualClosed: "The last accrual period has ended, so no further use is counted.",
-    AlreadyCounted: "This use of the clause, agreement or assembly was already counted for this process.",
+    AlreadyCounted: "This use of the clause, agreement or assembly was already counted for this seller of this process.",
     ClauseAgreementOrProcessNotRegistered: "The clause, agreement or assembly is not registered, or its stake was withdrawn.",
     EmptyPeriods: "The list of accrual periods is empty.",
     TooManyPeriods: "There are too many accrual periods.",

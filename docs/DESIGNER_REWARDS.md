@@ -55,10 +55,13 @@ A clause's, a registered agreement's or an assembly's score in a period is its
 
     score = icbrt(c · d² · 1e18)
 
-where `c` is the count of processes that used it and `d` the number of distinct
-live-staked sellers who carried it. The tally is one and route-blind: a use is
+where `c` is the count of uses and `d` the number of distinct live-staked
+sellers who carried it. A use is one seller of one resolved process: a process
+of three sellers that carry the key gives three uses, and a second order of the
+same seller in the same process adds nothing (`UsageCounter.sellerCounted`).
+So `d <= c`. The tally is one and route-blind: a use is
 a use whichever way its process reached the chain, through `FigaroCore` or in a
-proved batch, so `c` counts each process once and `d` each seller once across
+proved batch, so `c` counts each seller of each process once and `d` each seller once across
 both routes, and the score never depends on the route. Distinct sellers are weighted above raw
 volume, and below a minimum-support floor of distinct staked sellers the score
 is zero — counting continues, and the full score springs when the floor is met.
@@ -96,7 +99,7 @@ proved batch reaches the counter through the verifier alone, in the batch's own
 transaction, its resolution and its inclusion proved by the batch's own proof,
 and the counter counts it into the same tally a direct call feeds, checking the
 open period, the seller's live stake, the entry's live registration in its own
-registry and whether the process is already counted, as it does for a direct
+registry and whether that seller of the process is already counted, as it does for a direct
 call (`CONTRACTS.md` § "Usage accounting" owns the two routes). A batch whose
 call to the counter reverts whole still lands, with no use counted, and the
 verifier emits `BatchAccrualSkipped` (`DESIGN_DECISIONS.md` § 19). The relay
@@ -131,14 +134,14 @@ never becomes public in the counting.
 Both sides of a counted usage must have something at stake, in the base chain's
 own currency, at the moment it counts:
 
-- **Seller side** — usage counts only for a seller of record whose members
-  registry stake is live. `UsageCounter` gates every use on it, on either
+- **Seller side** — a use counts only for a seller whose members
+  registry stake is live; each seller of a process is its own use. `UsageCounter` gates every use on it, on either
   route: a direct call reverts and a batch skips that one use, which may be
   presented again. A seller enters a period's breadth once, whichever route
   carried their trade.
 - **Designer side** — two live stakes, both read at the claim. The claimant
   holds a live members registry stake, the same arrow the counter draws for
-  the seller of record: `RpgfMinter.claim` refuses a non-member
+  the seller of each use: `RpgfMinter.claim` refuses a non-member
   (`NotLiveMember`) before it reads any key, and `claimable` quotes a
   non-member zero; membership ends at the withdrawal request, and a wallet
   that registers again is paid again. And a claim rewards only entries whose

@@ -1,6 +1,6 @@
 /**
  * The buyer's at-resolution usage writes: planned before the confirm from the
- * counter's own facts (one per distinct (kind, key) across the process: every
+ * counter's own facts (one per distinct (kind, key) for each seller of the process: every
  * clause, and from the agreement's provenance leaf the registered
  * agreement and the assembly, the latter with its agreement's membership
  * proof from the assembly), each simulated before it is sent. Mirrors sdk/tests/recordProcessUsage.test.ts for the frontend path.
@@ -103,22 +103,28 @@ describe("planUsageRecords", () => {
         expect(problems).toEqual([]);
     });
 
-    it("plans a key two orders carry once, from the first order that carries it", () => {
+    it("plans a key two sellers' orders carry once for each seller: two sellers give two uses", () => {
         const { writes } = planUsageRecords([entry(1n, SELLER_A), entry(2n, SELLER_B)]);
         const commerce = writes.filter((w) => w.key.toLowerCase() === COMMERCE.toLowerCase());
-        expect(commerce).toHaveLength(1);
-        expect(commerce[0].orderHash).toBe("order-1");
-        expect(writes).toHaveLength(4); // two clauses + the agreement + the assembly, across two orders
+        expect(commerce.map((w) => w.orderHash)).toEqual(["order-1", "order-2"]);
+        expect(commerce.map((w) => w.order.seller)).toEqual([SELLER_A, SELLER_B]);
+        expect(writes).toHaveLength(8); // two clauses + the agreement + the assembly, for each of two sellers
     });
 
-    it("plans the agreement and assembly writes once per process, from the agreement's provenance", () => {
-        const { writes } = planUsageRecords([entry(1n, SELLER_A), entry(2n, SELLER_B)]);
+    it("plans a key two orders of one seller carry once, from that seller's first order", () => {
+        const { writes } = planUsageRecords([entry(1n, SELLER_A), entry(2n, SELLER_A)]);
+        expect(writes).toHaveLength(4);
+        expect(writes.every((w) => w.orderHash === "order-1")).toBe(true);
+    });
+
+    it("plans the agreement and assembly writes once for each seller, from the agreement's provenance", () => {
+        const { writes } = planUsageRecords([entry(1n, SELLER_A), entry(2n, SELLER_A), entry(3n, SELLER_B)]);
         const assembly = writes.filter((w) => w.kind === "assembly");
-        expect(assembly).toHaveLength(1);
-        expect(assembly[0].key.toLowerCase()).toBe(COMPOSITION.toLowerCase());
+        expect(assembly.map((w) => w.orderHash)).toEqual(["order-1", "order-3"]);
+        expect(assembly.every((w) => w.key.toLowerCase() === COMPOSITION.toLowerCase())).toBe(true);
         const agreements = writes.filter((w) => w.kind === "agreement");
-        expect(agreements).toHaveLength(1);
-        expect(agreements[0].key.toLowerCase()).toBe(AGREEMENT_HASH.toLowerCase());
+        expect(agreements.map((w) => w.orderHash)).toEqual(["order-1", "order-3"]);
+        expect(agreements.every((w) => w.key.toLowerCase() === AGREEMENT_HASH.toLowerCase())).toBe(true);
     });
 
     it("says a malformed provenance out loud and plans nothing for that order", () => {
@@ -188,7 +194,8 @@ describe("createCapabilityExecutors — resolve with usage writes", () => {
         const { deps: d } = deps();
         const errors = vi.spyOn(console, "error").mockImplementation(() => {});
         await createCapabilityExecutors(d).executorCallbacks.resolveProcess(PROCESS);
-        expect(d.confirmResolve).toHaveBeenCalledWith(4);
+        // Two sellers, each carrying two clauses, the agreement and the assembly.
+        expect(d.confirmResolve).toHaveBeenCalledWith(8);
         // One counter read serves every order the process resolves, and one
         // assembly read every order of the same assembly.
         expect(d.fetchUsageClaimContext).toHaveBeenCalledTimes(1);
@@ -223,8 +230,9 @@ describe("createCapabilityExecutors — resolve with usage writes", () => {
         const errors = vi.spyOn(console, "error").mockImplementation(() => {});
         await createCapabilityExecutors(d).executorCallbacks.resolveProcess(PROCESS);
         expect(sent.map((k) => k.toLowerCase())).not.toContain(MODALITIES.toLowerCase());
-        expect(sent.map((k) => k.toLowerCase()).sort()).toEqual([COMMERCE.toLowerCase(), AGREEMENT_HASH.toLowerCase(), COMPOSITION.toLowerCase()].sort());
-        expect(errors.mock.calls.map((c) => String(c[0])).join("\n")).toMatch(/recorded 3\/4 planned \(1 skipped after a reverted simulation\) \+ agreement \+ assembly/);
+        const kept = [COMMERCE, AGREEMENT_HASH, COMPOSITION].map((k) => k.toLowerCase());
+        expect(sent.map((k) => k.toLowerCase()).sort()).toEqual([...kept, ...kept].sort());
+        expect(errors.mock.calls.map((c) => String(c[0])).join("\n")).toMatch(/recorded 6\/8 planned \(2 skipped after a reverted simulation\) \+ agreement \+ assembly/);
         errors.mockRestore();
     });
 
@@ -241,7 +249,7 @@ describe("createCapabilityExecutors — resolve with usage writes", () => {
         });
         const errors = vi.spyOn(console, "error").mockImplementation(() => {});
         await createCapabilityExecutors(d).executorCallbacks.resolveProcess(PROCESS);
-        expect(sent).toHaveLength(4);
+        expect(sent).toHaveLength(8);
         errors.mockRestore();
     }, 2000);
 

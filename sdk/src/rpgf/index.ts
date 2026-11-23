@@ -185,8 +185,9 @@ function emptyEntry(kind: UsageKind, clauseOrProcess: Hex): ClauseOrProcessAccru
 }
 
 /** Replay the counter's counting rules over a record stream: idempotence per
- *  ((kind, key), process) — GLOBAL, so a process counts once ever and a later
- *  period is never paid for an earlier period's trade — then the
+ *  ((kind, key), process, seller) — GLOBAL, so each seller of a process is
+ *  one use, counted once ever, and a later period is never paid for an
+ *  earlier period's trade — then the
  *  distinct-STAKED-SELLER count PER PERIOD (breadth counts
  *  only what a stake has priced; pairs were free to mint on the buyer side)
  *  and the uniform floored score. Records are replayed in (blockNumber,
@@ -201,22 +202,23 @@ export function computeUsageAccruals(
     );
 
     const periods = new Map<number, UsagePeriodAccrual>();
-    const countedProcesses = new Map<string, Set<string>>(); // (kind, key) → processIds (GLOBAL)
+    const countedUses = new Map<string, Set<string>>(); // (kind, key) → processId|seller (GLOBAL)
     const sellersSeen = new Map<string, Set<string>>(); // (kind, key)|period → sellers
 
     for (const record of sorted) {
         const clauseOrProcess = record.clauseOrProcess.toLowerCase() as Hex;
         const id = usageKeyId(record.kind, clauseOrProcess);
         const scopeKey = `${id}|${record.period}`;
-
-        const seenProcesses = countedProcesses.get(id) ?? new Set<string>();
-        if (seenProcesses.has(record.processId.toLowerCase())) continue; // AlreadyCounted
-        const sellers = sellersSeen.get(scopeKey) ?? new Set<string>();
         const seller = record.seller.toLowerCase();
+        const use = `${record.processId.toLowerCase()}|${seller}`;
+
+        const seenUses = countedUses.get(id) ?? new Set<string>();
+        if (seenUses.has(use)) continue; // AlreadyCounted
+        const sellers = sellersSeen.get(scopeKey) ?? new Set<string>();
         const firstSeller = !sellers.has(seller);
 
-        seenProcesses.add(record.processId.toLowerCase());
-        countedProcesses.set(id, seenProcesses);
+        seenUses.add(use);
+        countedUses.set(id, seenUses);
         sellers.add(seller);
         sellersSeen.set(scopeKey, sellers);
 
@@ -387,14 +389,14 @@ const BATCH_OPERATIONS_EVENT = BATCH_VERIFIER_ABI.find(
  * (`AccrualClosed` is final). Anyone can send each claim in `carried.claims`
  * again with `SequencerClient.submitUsageClaim`, without the agreement.
  * `carried.uses` are the uses the guest derives from those claims
- * (`apply_usage_claims`, prover/lib/src/kernel.rs:788-882): one per
- * (kind, key, process), the first claim naming the seller, a root order's
+ * (`apply_usage_claims`, prover/lib/src/kernel.rs): one per
+ * (kind, key, process, seller), in claim order, a root order's
  * process id derived under the verifier's EIP-712 domain (the client's chain
  * id and `batchVerifier`); the proof binds them to the `settleBatch`
  * argument. A use the counter skips one by one inside a call that does not
- * revert (an unstaked seller, a key without a live registration, a process
- * already counted) emits no event, and this reader does not see it;
- * `UsageCounter.processCounted` answers for it.
+ * revert (an unstaked seller, a key without a live registration, a seller of
+ * a process already counted) emits no event, and this reader does not see it;
+ * `UsageCounter.sellerCounted` answers for it.
  *
  * `fromBlock` is required: a scan of a deployment starts at its
  * `FigaroDeploymentRecord.deploymentBlock`. The node is asked for the two
@@ -461,10 +463,11 @@ export async function fetchSkippedBatchUses(
     });
 }
 
-/** The uses the guest derives from `claims` (prover/lib/src/kernel.rs:792-882):
- *  one per (kind, key, process) in claim order, the first claim naming the
- *  seller; a root order's process id is its EIP-712 digest under the
- *  verifier's domain (kernel.rs:312-322). */
+/** The uses the guest derives from `claims` (prover/lib/src/kernel.rs
+ *  `apply_usage_claims`): one per (kind, key, process, seller) in claim order,
+ *  so each seller of a process is one use and a second claim through the same
+ *  seller's order gives none; a root order's process id is its EIP-712 digest
+ *  under the verifier's domain (kernel.rs:312-322). */
 function batchUsesOf(claims: SequencerUsageClaim[], chainId: number, batchVerifier: Address): BatchUse[] {
     const seen = new Set<string>();
     const uses: BatchUse[] = [];
@@ -486,7 +489,7 @@ function batchUsesOf(claims: SequencerUsageClaim[], chainId: number, batchVerifi
             batchVerifier,
         );
         const kind = usageClaimKindCode(claim);
-        const id = `${usageKeyId(kind, claim.clause_or_process)}|${processId.toLowerCase()}`;
+        const id = `${usageKeyId(kind, claim.clause_or_process)}|${processId.toLowerCase()}|${o.seller.toLowerCase()}`;
         if (seen.has(id)) continue;
         seen.add(id);
         uses.push({ clauseOrProcess: claim.clause_or_process, kind, processId, seller: o.seller });
@@ -633,10 +636,12 @@ export interface UsageClaimOrder {
 
 /**
  * The usage claims of a resolved process's orders ({@link buildUsageClaims}
- * on each, in order), each `(kind, key)` once: the counter counts a key once
- * per process, so a key two orders carry is claimed by the first order that
- * carries it. An order whose claims do not build contributes none, and
- * `refuse` is told why; the other orders go on.
+ * on each, in order), each `(kind, key)` once for each seller: the counter
+ * counts a use once per (kind, key, process, seller), so a key that orders of
+ * two sellers carry is claimed once through each seller's first order that
+ * carries it, and a key that two orders of one seller carry is claimed once.
+ * An order whose claims do not build contributes none, and `refuse` is told
+ * why; the other orders go on.
  */
 export function buildProcessUsageClaims<O extends UsageClaimOrder>(
     orders: readonly O[],
@@ -653,7 +658,7 @@ export function buildProcessUsageClaims<O extends UsageClaimOrder>(
             continue;
         }
         for (const claim of claims) {
-            const key = usageKeyId(usageClaimKindCode(claim), claim.clause_or_process);
+            const key = `${usageKeyId(usageClaimKindCode(claim), claim.clause_or_process)}|${order.commitment.seller.toLowerCase()}`;
             if (seen.has(key)) continue;
             seen.add(key);
             out.push({ order, claim });
