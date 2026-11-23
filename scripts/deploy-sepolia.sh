@@ -155,9 +155,9 @@ if [ "${#MISSING[@]}" -ne 0 ]; then
 fi
 
 # ── Guard 3: chain-id read-back before broadcasting ─────────────────────────
-echo "🔎 Reading chain id from $RPC_URL ..."
+echo "🔎 Reading chain id from $(printf '%s' "$RPC_URL" | node "$SCRIPT_DIR/url-host.mjs") (scheme and host only) ..."
 ACTUAL_CHAIN_ID=$(cast chain-id --rpc-url "$RPC_URL")
-echo "   RPC_URL   = $RPC_URL"
+echo "   RPC_URL   = $(printf '%s' "$RPC_URL" | node "$SCRIPT_DIR/url-host.mjs")"
 echo "   chain id  = $ACTUAL_CHAIN_ID (expecting $SEPOLIA_CHAIN_ID — Sepolia)"
 if [ "$ACTUAL_CHAIN_ID" != "$SEPOLIA_CHAIN_ID" ]; then
   echo "❌ Refusing to deploy — RPC_URL resolves to chain id $ACTUAL_CHAIN_ID, not"

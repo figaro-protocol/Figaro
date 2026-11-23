@@ -58,6 +58,7 @@ import { checkRegistrars, plannedRegistrations } from "./check-deployment-regist
 import { checkMembers, plannedMembers } from "./check-deployment-members.mjs";
 import { checkReleaseRevision } from "./check-release-revision.mjs";
 import { treasurySafe } from "./safe-treasury.mjs";
+import { withUrlHosts } from "./url-host.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -481,6 +482,7 @@ async function main() {
 }
 
 main().catch((err) => {
-    console.error(`check-deployment: ${err instanceof Error ? err.message : String(err)}`);
+    // An RPC error quotes the endpoint, whose path or query can carry a key.
+    console.error(`check-deployment: ${withUrlHosts(err instanceof Error ? err.message : String(err))}`);
     process.exit(1);
 });

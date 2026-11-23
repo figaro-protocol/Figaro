@@ -6,14 +6,14 @@ name: TLA+ Pass 4 (dispatch)
 # hand only: the pass is too long for a push or a schedule.
 #
 # Does one job carry it? Not on a standard runner, and the workflow is
-# designed for that. On a 16-thread developer machine the present model ran
-# for over four hours, past 480 million generated and 110 million distinct
-# states, without finishing. A standard GitHub-hosted Linux runner has 4 cores
-# and 16 GB, and a hosted job stops at 6 hours. At about a quarter of that
-# machine's throughput, one job of 5.5 hours generates about
-# 480M x (5.5 / 4) / 4 = about 165 million states: three chained jobs only
-# reach the point where that run stopped, and the full space is larger by an
-# unknown amount. So:
+# designed for that. On a 16-thread developer machine the present model runs
+# to its end in 6 hours 35 minutes: 576,760,543 states generated, 122,770,791
+# distinct, depth 26, no error. A standard GitHub-hosted Linux runner has 4
+# cores and 16 GB, and a hosted job stops at 6 hours. At about a quarter of
+# that machine's throughput, the whole check takes about 6.58 h x 4 = 26.3
+# hours, and one job of 5.5 hours generates about
+# 576.8M x (5.5 / 6.58) / 4 = about 120 million states: the check needs five
+# chained jobs, each resumed from the last one's checkpoint. So:
 #
 #   - TLC writes a checkpoint every `checkpoint_minutes` (-checkpoint) into
 #     its metadata directory, and the run stops itself after `run_minutes`,

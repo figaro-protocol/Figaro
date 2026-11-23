@@ -51,6 +51,7 @@ import {
     http, isAddress, keccak256, pad, parseAbi, toHex, zeroAddress,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { withUrlHosts } from "./url-host.mjs";
 
 /** Safe v1.4.1 as its registry publishes it for chains 1 and 11155111. */
 export const SAFE_1_4_1 = {
@@ -235,7 +236,7 @@ async function main() {
     }
     const result = await treasurySafe({ command, expected, client, wallet, log: (line) => console.error(`   ${line}`) });
     if (result.errors.length) {
-        for (const error of result.errors) console.error(`❌ ${error}`);
+        for (const error of result.errors) console.error(`❌ ${withUrlHosts(error)}`);
         process.exit(1);
     }
     if (result.created) console.error(`   created; it holds the stated owners and threshold`);
@@ -244,7 +245,8 @@ async function main() {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
     main().catch((error) => {
-        console.error(`❌ ${error.shortMessage ?? error.message}`);
+        // An RPC error quotes the endpoint, whose path or query can carry a key.
+        console.error(`❌ ${withUrlHosts(error.shortMessage ?? error.message)}`);
         process.exit(1);
     });
 }
