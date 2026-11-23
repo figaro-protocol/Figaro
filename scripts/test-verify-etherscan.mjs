@@ -9,8 +9,8 @@
 // a contract with no arguments gets none; the compiler settings come from the
 // artifact's metadata; the URL is Etherscan's multichain endpoint with the record's chain id;
 // a build that does not reproduce the creation code, a missing creation, and a
-// creation of another contract each fail; the optional vault is skipped when
-// the record names none; the command verifies every contract, keeps going past
+// creation of another contract each fail; the treasury a record names is not
+// verified, being no code of the deployment; the command verifies every contract, keeps going past
 // a failure, exits 1, and never puts the key on forge's command line.
 
 import assert from "node:assert/strict";
@@ -28,13 +28,12 @@ const codeOf = (i) => `0x6080${(i + 0x10).toString(16).padStart(4, "0")}00`;
 const ARG = "000000000000000000000000000000000000000000000000002386f26fc10000"; // 0.01 ether
 
 /** A world with every contract: artifacts, a broadcast file, a record. */
-function world({ withVault = true, tamper } = {}) {
+function world({ tamper } = {}) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-etherscan-"));
     const out = path.join(dir, "out");
     const record = { chainId: 11155111 };
     const transactions = [];
     VERIFIED_CONTRACTS.forEach(({ key, name }, i) => {
-        if (key === "daoTreasury" && !withVault) return;
         fs.mkdirSync(path.join(out, `${name}.sol`), { recursive: true });
         fs.writeFileSync(path.join(out, `${name}.sol`, `${name}.json`), JSON.stringify({
             bytecode: { object: codeOf(i) },
@@ -105,11 +104,11 @@ test("a record address with no creation, or a creation of another contract, fail
     assert.match(plan.find((e) => e.key === "rpgfMinter").error, /created FlorinToken/);
 });
 
-test("a record with no vault verifies the rest; a record missing a required contract fails", () => {
-    const plan = planOf(world({ withVault: false }));
-    assert.equal(plan.length, VERIFIED_CONTRACTS.length - 1);
-    assert.ok(plan.every((e) => !e.error));
-    const w = world({ withVault: false, tamper: ({ record }) => { delete record.batchVerifier; } });
+test("the treasury a record names is not verified; a record missing a contract fails", () => {
+    const plan = planOf(world({ tamper: ({ record }) => { record.daoTreasury = addr(77); } }));
+    assert.equal(plan.length, VERIFIED_CONTRACTS.length);
+    assert.ok(plan.every((e) => !e.error && e.key !== "daoTreasury"));
+    const w = world({ tamper: ({ record }) => { delete record.batchVerifier; } });
     assert.match(planOf(w).find((e) => e.key === "batchVerifier").error, /names no batchVerifier/);
 });
 
@@ -133,7 +132,7 @@ test("the command tries every contract, keeps going past a failure, and exits 1"
     assert.match(r.stdout, /usageCounter: forge verify-contract exited 1/);
     assert.ok(!r.stdout.includes("test-key"), "forge's echo of the request URL is printed without the key");
     assert.match(r.stdout, /apikey=<redacted>/);
-    assert.match(r.stdout, /11 verified, 1 did not/);
+    assert.match(r.stdout, /10 verified, 1 did not/);
 });
 
 test("--dry-run needs no key and runs no forge", () => {
@@ -141,7 +140,7 @@ test("--dry-run needs no key and runs no forge", () => {
     const r = spawnSync("node", [path.join(here, "verify-etherscan.mjs"), w.recordPath, "--broadcast", w.broadcast, "--artifacts", w.out, "--dry-run"],
         { encoding: "utf8", env: { ...process.env, FORGE_BIN: "/nonexistent", ETHERSCAN_API_KEY: "" } });
     assert.equal(r.status, 0, r.stdout + r.stderr);
-    assert.match(r.stdout, /12 planned, 0 did not/);
+    assert.match(r.stdout, /11 planned, 0 did not/);
 });
 
 test("the key is cut from forge's text, in a query string or bare", () => {

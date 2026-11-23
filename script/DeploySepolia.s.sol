@@ -15,28 +15,22 @@ import {UsageCounter} from "../src/rewards/UsageCounter.sol";
 import {ProcessRegistry} from "../src/registries/ProcessRegistry.sol";
 import {AgreementRegistry} from "../src/registries/AgreementRegistry.sol";
 import "../src/core/verifier/FigaroBatchVerifier.sol";
-import "../src/mocks/MockTreasuryMultisig.sol";
 
 /// @title DeploySepolia — Sepolia testnet rehearsal of the full Figaro stack
 ///
-/// @notice Mirror of `DeployMainnet.s.sol` (testnet = mainnet rehearsal). Every
-///         deviation from the mainnet script is a TESTNET DIVERGENCE listed here;
-///         anything not listed is byte-for-byte the mainnet parameterization.
-///
-/// TESTNET DIVERGENCE (exactly one — no weekly-period compression: this
-/// Sepolia deployment is the public incremental release, so it runs the
-/// REAL yearly schedule and the real 28-day cooldown; compressed-time claim
-/// rehearsal is devnet's job):
-///   1. DAO_WALLET is not read from env. The script deploys
-///      `MockTreasuryMultisig([FOUNDER_WALLET, SUPPORTERS_WALLET, deployer], 2)`
-///      and mints the 300M DAO allocation to it — the mock-as-code divergence
-///      (mainnet: a canonical Safe at DAO_WALLET, config never code —
-///      RELEASE_READINESS Task 9).
+/// @notice Mirror of `DeployMainnet.s.sol` (testnet = mainnet rehearsal), with
+///         no divergence: the same parameterization, the real yearly schedule
+///         and the real 28-day cooldown (compressed-time claim rehearsal is
+///         devnet's job), and the treasury read from DAO_WALLET as mainnet
+///         reads it, a Safe that stands on the chain before this script runs.
+///         The script deploys no mock.
 ///
 /// Required environment variables:
 ///   PRIVATE_KEY                — deployer private key
 ///   FOUNDER_WALLET             — address receiving the 70M founder allocation
 ///   SUPPORTERS_WALLET          — address receiving the 30M supporters allocation
+///   DAO_WALLET                 — address receiving the 300M DAO allocation: the
+///                                treasury's Safe (RELEASE_READINESS Task 9)
 ///   RPGF_GENESIS               — unix timestamp anchoring the reward schedule
 ///                                (nine ANNUAL periods derived from it, as mainnet)
 ///   SP1_VERIFIER               — the SP1 verifier Succinct's gateway routes for this
@@ -71,7 +65,7 @@ contract DeploySepolia is Script {
     function run() external {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
 
-        _validateEnv(vm.addr(privateKey));
+        _validateEnv();
 
         vm.startBroadcast(privateKey);
 
@@ -85,17 +79,10 @@ contract DeploySepolia is Script {
 
     // ── Environment validation ───────────────────────────────────────
 
-    function _validateEnv(address deployer) internal view {
-        address founder = vm.envAddress("FOUNDER_WALLET");
-        address supporters = vm.envAddress("SUPPORTERS_WALLET");
-        require(founder != address(0), "FOUNDER_WALLET not set");
-        require(supporters != address(0), "SUPPORTERS_WALLET not set");
-        // The mock treasury's 2-of-3 owner set (divergence 3) needs three
-        // distinct owners — MockTreasuryMultisig reverts on duplicates.
-        require(
-            founder != supporters && founder != deployer && supporters != deployer,
-            "FOUNDER/SUPPORTERS/deployer must be three distinct addresses"
-        );
+    function _validateEnv() internal view {
+        require(vm.envAddress("FOUNDER_WALLET") != address(0), "FOUNDER_WALLET not set");
+        require(vm.envAddress("SUPPORTERS_WALLET") != address(0), "SUPPORTERS_WALLET not set");
+        require(vm.envAddress("DAO_WALLET") != address(0), "DAO_WALLET not set");
         require(
             vm.envUint("RPGF_GENESIS") + PERIOD > block.timestamp,
             "RPGF_GENESIS must place the first annual period end in the future"
@@ -230,17 +217,11 @@ contract DeploySepolia is Script {
         console.log("RpgfMinter:             ", _rpgfMinter);
         florin.registerMinter(_rpgfMinter, RPGF_ALLOC);
 
-        // The one testnet divergence: the DAO wallet is a mock 2-of-3 deployed here, owners
-        // founder + supporters + deployer. Mainnet reads a canonical Safe from
-        // DAO_WALLET instead and deploys nothing.
+        // The treasury is the address DAO_WALLET names, as on mainnet: a Safe
+        // that stands before this script runs. Nothing is deployed for it.
         address deployer = vm.addr(privateKey);
-        address[] memory treasuryOwners = new address[](3);
-        treasuryOwners[0] = vm.envAddress("FOUNDER_WALLET");
-        treasuryOwners[1] = vm.envAddress("SUPPORTERS_WALLET");
-        treasuryOwners[2] = deployer;
-        MockTreasuryMultisig daoTreasury = new MockTreasuryMultisig(treasuryOwners, 2);
-        _daoTreasury = address(daoTreasury);
-        console.log("MockTreasuryMultisig:   ", _daoTreasury);
+        _daoTreasury = vm.envAddress("DAO_WALLET");
+        console.log("DAO_WALLET (treasury):  ", _daoTreasury);
 
         // Genesis distribution, one-shot deployer minter capped at exactly 400M.
         florin.registerMinter(deployer, FOUNDER_ALLOC + SUPPORTERS_ALLOC + DAO_ALLOC);
