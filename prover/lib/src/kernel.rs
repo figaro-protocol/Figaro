@@ -796,20 +796,21 @@ pub fn assembly_leaf(key: &B256, content_hash: &B256) -> B256 {
 /// What the guest CANNOT prove is live chain state, and the counter
 /// checks it as it checks a direct call: whether the seller holds a live
 /// MembersRegistry stake, whether a clause, agreement or assembly holds a
-/// live registration, and whether the process is already counted under the
-/// key — across batches and across the direct path, in the counter's one
-/// `processCounted` set. The guest keeps no usage state of its own.
+/// live registration, and whether the seller is already counted under the
+/// key in that process — across batches and across the direct path, in the
+/// counter's one `sellerCounted` set. The guest keeps no usage state of its own.
 ///
-/// Returns one use per (kind, key, process), in the order of the claims: a
-/// second claim of a (kind, key, process) already in this batch — another
-/// order of the same process, or the same claim again — adds nothing, as a
-/// direct call for a process already counted counts nothing.
+/// Returns one use per (kind, key, process, seller), in the order of the
+/// claims: each seller of a process is one use, and a second claim of a
+/// (kind, key, process, seller) already in this batch — another order of the
+/// same seller in the same process, or the same claim again — adds nothing,
+/// as a direct call for a seller already counted counts nothing.
 fn apply_usage_claims(
     state: &KernelState,
     domain: &B256,
     claims: &[UsageClaim],
 ) -> Result<Vec<BatchUse>, KernelError> {
-    let mut seen: BTreeSet<(u8, B256, B256)> = BTreeSet::new();
+    let mut seen: BTreeSet<(u8, B256, B256, Address)> = BTreeSet::new();
     let mut uses: Vec<BatchUse> = Vec::new();
 
     for claim in claims {
@@ -893,9 +894,14 @@ fn apply_usage_claims(
             }
         }
 
-        // 3. One use per (kind, key, process) in the batch: the first claim
-        //    names the seller, as the first direct call does.
-        if seen.insert((kind, claim.clause_or_process, process_id)) {
+        // 3. One use per (kind, key, process, seller) in the batch: each
+        //    seller of the process is one use, as each direct call is.
+        if seen.insert((
+            kind,
+            claim.clause_or_process,
+            process_id,
+            claim.order.seller,
+        )) {
             uses.push(BatchUse {
                 clause_or_process: claim.clause_or_process,
                 kind,

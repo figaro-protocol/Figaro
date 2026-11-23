@@ -118,14 +118,14 @@ export interface UsageRecordingEntry {
 }
 
 export interface UsageRecordingReport {
-    /** Clause legs sent: one per DISTINCT clause key the process carries
-     *  (the assembly leg is counted by flag). */
+    /** Clause legs sent: one per distinct (clause key, seller) among the
+     *  process's orders (the assembly and agreement legs are counted by flag). */
     attempted: number;
     /** Clause legs that landed. */
     recorded: number;
-    /** Whether the once-per-process assembly (designer) credit landed. */
+    /** Whether an assembly (designer) credit landed, for any seller. */
     assemblyRecorded: boolean;
-    /** Whether the registered-agreement (designer) credit landed. */
+    /** Whether a registered-agreement (designer) credit landed, for any seller. */
     agreementRecorded: boolean;
     /** Per-leg failures: a closed accrual, a seller whose stake is not
      *  live, a key another caller recorded first, an agreement whose leaves
@@ -149,8 +149,10 @@ export interface UsageRecordingReport {
  * (`Agreement.provenance`, the registered agreement and the assembly it
  * instantiated) gets the INDEPENDENT AGREEMENT leg (`recordAgreementUsage`)
  * and ASSEMBLY leg (`recordProcessDesignUsage`, with the agreement's membership
- * proof) — the counter reproduces the leaf from the two keys. A key is
- * counted once per process, so a key two orders carry is sent once.
+ * proof) — the counter reproduces the leaf from the two keys. A use is one
+ * seller of the process, so each key is sent once for each distinct seller
+ * whose order carries it, and a key two orders of one seller carry is sent
+ * once.
  * Tolerate-the-revert per leg; the report says what landed.
  */
 export async function recordProcessUsage(
@@ -181,9 +183,9 @@ export async function recordProcessUsage(
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         if (receipt.status !== "success") throw new Error(`${functionName} reverted on-chain (tx ${hash})`);
     };
-    // Once ever per (key, process): `processCounted` in the counter. Every
-    // entry here belongs to the one process just resolved, so each
-    // (kind, key) is sent once (`buildProcessUsageClaims`). The counter
+    // Once ever per (kind, key, process, seller): `sellerCounted` in the
+    // counter. Every entry here belongs to the one process just resolved, so
+    // each (kind, key) is sent once for each seller (`buildProcessUsageClaims`). The counter
     // re-hashes the SIGNED struct to find the order — a root signed
     // processId 0, so a derived-id commitment (the proposer's
     // event-reconstructed shape) must be restored exactly as the resolve
@@ -197,7 +199,6 @@ export async function recordProcessUsage(
     for (const { order: { commitment }, claim } of claims) {
         if ("Process" in claim.kind) {
             const { agreement_hash, agreement_content_hash, membership_proof } = claim.kind.Process;
-            if (report.assemblyRecorded) continue;
             try {
                 await send("recordProcessDesignUsage", [
                     commitment, claim.clause_or_process, agreement_hash, agreement_content_hash,

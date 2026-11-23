@@ -31,7 +31,7 @@ import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
 ///         attestation and the second the stream's `0x05` entry, which the
 ///         party's code validates under ERC-1271). Each resolution alternates
 ///         between the buyer's ECDSA signature and its wallet's code in the same
-///         way, and claims the root order's clause for designer rewards.
+///         way, and claims the clause of every order for designer rewards.
 ///
 ///         Compared, per row of `docs/VERIFICATION_MAP.md` § E-13's table: every
 ///         wallet and each contract's holding against the model and against the
@@ -583,10 +583,16 @@ contract CoreBatchEquivalenceTest is Test {
         vm.prank(buyer);
         core.resolveProcess(processIdOf[pid][DIRECT], listD);
 
-        Order storage root = orders[oids[0]];
-        bytes32[] memory proof = new bytes32[](1);
-        proof[0] = root.sibling;
-        counterD.recordClauseUsage(root.d, CLAUSE, root.dataHash, proof);
+        // Every order of the process is presented, in its commit sequence. A
+        // use is one seller of one process, so an order whose seller the
+        // process has already counted adds nothing and is not sent.
+        for (uint256 i = 0; i < oids.length; i++) {
+            Order storage o = orders[oids[i]];
+            if (counterD.sellerCounted(counterD.KIND_CLAUSE(), CLAUSE, processIdOf[pid][DIRECT], o.d.seller)) continue;
+            bytes32[] memory proof = new bytes32[](1);
+            proof[0] = o.sibling;
+            counterD.recordClauseUsage(o.d, CLAUSE, o.dataHash, proof);
+        }
 
         _resolveBatch(t, pid, row, byWalletCode);
     }
@@ -628,11 +634,22 @@ contract CoreBatchEquivalenceTest is Test {
             totalSignedResolves++;
         }
 
-        Order storage root = orders[oids[0]];
-        claimStream = bytes.concat(
-            claimStream, hex"03", _packCommitment(root.b), CLAUSE, hex"00", root.dataHash, hex"0001", root.sibling
-        );
-        pendingUses.push(IUsageCounter.BatchUse(CLAUSE, counterB.KIND_CLAUSE(), processId, root.b.seller));
+        // The guest's `apply_usage_claims`: every order's claim is in the
+        // stream, and the uses are one for each seller of the process, in
+        // the sequence of the claims.
+        for (uint256 i = 0; i < oids.length; i++) {
+            Order storage o = orders[oids[i]];
+            claimStream = bytes.concat(
+                claimStream, hex"03", _packCommitment(o.b), CLAUSE, hex"00", o.dataHash, hex"0001", o.sibling
+            );
+            bool sellerClaimed;
+            for (uint256 j = 0; j < i; j++) {
+                if (orders[oids[j]].b.seller == o.b.seller) sellerClaimed = true;
+            }
+            if (!sellerClaimed) {
+                pendingUses.push(IUsageCounter.BatchUse(CLAUSE, counterB.KIND_CLAUSE(), processId, o.b.seller));
+            }
+        }
     }
 
     // ── The batch, landed ────────────────────────────────────────────

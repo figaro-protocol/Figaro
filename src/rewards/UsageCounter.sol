@@ -83,13 +83,13 @@ interface IAgreementStake {
 ///         no snapshots, no checkpoint arrays, no history walk. Periods are
 ///         generic here: this contract knows nothing about tranches, rewards, or
 ///         who pays. A consumer maps its own schedule onto them. Each period
-///         counts only usage NEW to it: a process counts once ever (see
-///         `processCounted`), so a later period cannot be paid for an earlier
-///         period's trade.
+///         counts only usage NEW to it: a process counts once ever for each
+///         of its sellers (see `sellerCounted`), so a later period cannot be
+///         paid for an earlier period's trade.
 ///
 /// @dev    NO OWNER, NO ADMIN, NO PAUSE. Recording is permissionless and
-///         idempotent per (kind, key, process) — ONCE EVER, in whichever period
-///         the use is counted. Nothing here can be revoked, re-weighted, or swept.
+///         idempotent per (kind, key, process, seller) — ONCE EVER, in whichever
+///         period the use is counted. Nothing here can be revoked, re-weighted, or swept.
 ///
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 contract UsageCounter {
@@ -135,8 +135,8 @@ contract UsageCounter {
     ///         verifier has no discretion: it may call `applyBatchAccrual` only
     ///         with uses an SP1 proof committed under an IMMUTABLE
     ///         verification key, against a state root that advances by that
-    ///         same proof. It cannot choose the uses, cannot count a process
-    ///         twice (`processCounted` holds for both routes), and cannot be
+    ///         same proof. It cannot choose the uses, cannot count a seller of a
+    ///         process twice (`sellerCounted` holds for both routes), and cannot be
     ///         repointed — no setter exists. What it CAN do is
     ///         exactly what the direct path lets anyone do permissionlessly:
     ///         present proof that resolved trade used a clause, agreement or assembly. See
@@ -234,9 +234,11 @@ contract UsageCounter {
     // ── Accrual ─────────────────────────────────────────────────────
 
     struct Accrual {
-        /// @dev Distinct resolved processes that used this clause, agreement or assembly.
+        /// @dev The uses of this clause, agreement or assembly: one for each
+        ///      seller of each resolved process that carried it. A process of
+        ///      one seller is one use; a process of three sellers is three.
         uint64 c;
-        /// @dev Distinct live-staked sellers of record across those processes.
+        /// @dev Distinct live-staked sellers across those uses, so `d <= c`.
         uint64 d;
         /// @dev `icbrt(c * d^2 * 1e18)` — cached so `totalScore` can be
         ///      maintained in O(1) as a delta on every record.
@@ -248,9 +250,9 @@ contract UsageCounter {
     ///         way its process reached the chain — a direct call after
     ///         `FigaroCore` resolved it, or a proved batch through
     ///         `FigaroBatchVerifier` — through the same `_count`, the same
-    ///         `processCounted` and the same per-period `sellerSeen`, so `c`
-    ///         counts each process once and `d` counts each staked seller once
-    ///         across both routes. The key is the `ClauseRegistry`
+    ///         `sellerCounted` and the same per-period `sellerSeen`, so `c`
+    ///         counts each seller of each process once and `d` counts each
+    ///         staked seller once across both routes. The key is the `ClauseRegistry`
     ///         clause key under `KIND_CLAUSE`, the `ProcessRegistry`
     ///         processDesignHash under `KIND_PROCESS`, or the `AgreementRegistry`
     ///         agreementHash under `KIND_AGREEMENT` — the same identity each
@@ -262,12 +264,22 @@ contract UsageCounter {
     ///         is final once the period ends.
     mapping(uint8 => uint256) public totalScoreIn;
 
-    /// @notice kind → clause, agreement or assembly → processId → already counted. Idempotence is GLOBAL, not
-    ///         per period: a resolved process counts ONCE EVER toward a clause, agreement or assembly,
+    /// @notice kind → clause, agreement or assembly → processId → seller →
+    ///         already counted. A use is one seller of one resolved process,
+    ///         and it counts ONCE EVER toward a clause, agreement or assembly,
     ///         in whichever period it is first recorded, whichever route
     ///         brought it. A batch-resolved process's id is derived under the
     ///         verifier's EIP-712 domain and a direct one's under
     ///         `FigaroCore`'s, so the two routes never present the same id.
+    /// @dev    Why the seller is in the key. A process may have several
+    ///         sellers, and anyone may present any of its orders. Were a
+    ///         process counted once for the first order presented, the tally
+    ///         would depend on who came first and which order it chose: a
+    ///         caller presenting a seller already seen this period would
+    ///         close the process against its other sellers and hold `d` down
+    ///         for the price of gas. With the seller in the key each order
+    ///         adds its own seller, a repeat of that seller is refused, and
+    ///         the tally is the same whoever calls and in whatever sequence.
     /// @dev    Why not per period. A resolved order stays
     ///         resolved and its struct is public in the commit event, so anyone
     ///         can re-present it forever; the chain cannot see WHEN a process
@@ -281,7 +293,7 @@ contract UsageCounter {
     ///         every later period at record-gas only. Counting once ever makes
     ///         each period pay for usage that is NEW to it, which is what a
     ///         fixed per-period budget schedule assumes.
-    mapping(uint8 => mapping(bytes32 => mapping(bytes32 => bool))) public processCounted;
+    mapping(uint8 => mapping(bytes32 => mapping(bytes32 => mapping(address => bool)))) public sellerCounted;
 
     /// @notice kind → clause, agreement or assembly → period → seller → has this seller already contributed
     ///         to `d` in this period. Its only job is the distinct-staked-seller
@@ -312,7 +324,7 @@ contract UsageCounter {
     /// @param period    The accrual period the usage landed in.
     /// @param processId The resolved process that used it.
     /// @param seller    The recorded order's seller of record (live-staked).
-    /// @param c         The clause's, agreement's or assembly's distinct-process count after this count is taken.
+    /// @param c         The clause's, agreement's or assembly's count of uses after this count is taken.
     /// @param d         The clause's, agreement's or assembly's distinct-staked-seller count after this
     ///                  record.
     /// @param score     The clause's, agreement's or assembly's score after this count is taken.
@@ -612,7 +624,7 @@ contract UsageCounter {
     /// @notice One use a proved batch carries: a resolved batch-path process
     ///         that used a clause, agreement or assembly, and the seller of
     ///         the order the guest proved it through. The guest gives each
-    ///         (kind, key, process) once per batch; this contract counts it
+    ///         (kind, key, process, seller) once per batch; this contract counts it
     ///         exactly as a direct call counts a use, through `_count`.
     struct BatchUse {
         bytes32 clauseOrProcess;
@@ -632,8 +644,8 @@ contract UsageCounter {
     ///         re-check it: every use's order is real and RESOLVED in the
     ///         batch path's state, every clause, agreement or assembly was committed in the signed
     ///         agreement (merkle inclusion against `checkoutHash`), the process
-    ///         id and the seller are the order's, and no (kind, key, process)
-    ///         appears twice in the batch. `FigaroBatchVerifier` has already
+    ///         id and the seller are the order's, and no (kind, key, process,
+    ///         seller) appears twice in the batch. `FigaroBatchVerifier` has already
     ///         matched these uses against `usageAccrualHash`.
     ///
     /// @dev    WHAT THE PROOF CANNOT SEE, and is therefore checked HERE — the
@@ -643,7 +655,8 @@ contract UsageCounter {
     ///           2. whether the use's seller holds a live MembersRegistry stake,
     ///           3. whether the clause, assembly or agreement holds a live
     ///              registration — each use in its own kind's registry only,
-    ///           4. whether the process is already counted under that key.
+    ///           4. whether that seller of the process is already counted
+    ///              under that key.
     ///         The verifier deliberately checks none of them: it owns the
     ///         proof, this contract owns the reward's gates.
     ///
@@ -654,7 +667,7 @@ contract UsageCounter {
     ///                          its uses may be proved again in a later batch.
     /// @param claimedProvenanceLeaf The provenance leaf key the guest proved
     ///                          agreement and assembly claims against; must be `provenanceLeaf`.
-    /// @param uses              The batch's uses, one per (kind, key, process).
+    /// @param uses              The batch's uses, one per (kind, key, process, seller).
     function applyBatchAccrual(uint8 period, bytes32 claimedProvenanceLeaf, BatchUse[] calldata uses) external {
         if (msg.sender != batchVerifier) revert NotBatchVerifier();
 
@@ -702,7 +715,7 @@ contract UsageCounter {
             // LIVE stake now.
             if (!members.registered(u.seller)) continue;
             // Once ever, the direct path's own set.
-            if (processCounted[u.kind][u.clauseOrProcess][u.processId]) continue;
+            if (sellerCounted[u.kind][u.clauseOrProcess][u.processId][u.seller]) continue;
 
             _count(u.kind, u.clauseOrProcess, period, u.processId, u.seller);
         }
@@ -722,7 +735,7 @@ contract UsageCounter {
     }
 
     /// @dev The direct path's gates, each a revert, then the count. Idempotent
-    ///      per (kind, key, process) — once ever, whatever the period.
+    ///      per (kind, key, process, seller) — once ever, whatever the period.
     function _accrue(uint8 kind, bytes32 clauseOrProcess, uint8 period, bytes32 processId, address seller) internal {
         // The two reserved keys never accrue, on any kind: each is its format's
         // own, never a registration, and no registry entry at that key makes it
@@ -751,21 +764,22 @@ contract UsageCounter {
         // genuine one), which is why it is the registries' stake terms —
         // deposit AND withdrawal cooldown — that carry it.
         if (!members.registered(seller)) revert SellerNotStaked(seller);
-        // Once ever, not once per period — see `processCounted`.
-        if (processCounted[kind][clauseOrProcess][processId]) revert AlreadyCounted();
+        // Once ever, not once per period — see `sellerCounted`.
+        if (sellerCounted[kind][clauseOrProcess][processId][seller]) revert AlreadyCounted();
 
         _count(kind, clauseOrProcess, period, processId, seller);
     }
 
     /// @dev The counting itself, the one path both routes take once their
-    ///      gates have passed. Every admitted process feeds `c`; the first
-    ///      from each staked seller in the period also feeds `d`.
+    ///      gates have passed. Every admitted use, a seller of a process,
+    ///      feeds `c`; the first from each staked seller in the period also
+    ///      feeds `d`.
     function _count(uint8 kind, bytes32 clauseOrProcess, uint8 period, bytes32 processId, address seller) internal {
         // Breadth is counted PER PERIOD: a seller who carries the clause, agreement or assembly
         // again in a later period is new breadth for that period's tally.
         bool firstSeller = !sellerSeen[kind][clauseOrProcess][period][seller];
 
-        processCounted[kind][clauseOrProcess][processId] = true;
+        sellerCounted[kind][clauseOrProcess][processId][seller] = true;
         if (firstSeller) sellerSeen[kind][clauseOrProcess][period][seller] = true;
 
         Accrual storage a = accrualOf[kind][clauseOrProcess][period];

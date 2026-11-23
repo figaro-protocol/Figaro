@@ -849,7 +849,7 @@ sol! {
 }
 
 // The UsageCounter facts a batch's uses must agree with: the open period, and
-// whether a process is already counted under a key.
+// whether a seller of a process is already counted under a key.
 // All are re-checked by the counter at resolution, so reading them here is an
 // optimization (don't prove what the counter would not count), never a
 // source of authority.
@@ -857,7 +857,7 @@ sol! {
     #[sol(rpc)]
     interface IUsageCounter {
         function currentPeriod() external view returns (uint8);
-        function processCounted(uint8 kind, bytes32 clauseOrProcess, bytes32 processId) external view returns (bool);
+        function sellerCounted(uint8 kind, bytes32 clauseOrProcess, bytes32 processId, address seller) external view returns (bool);
     }
 }
 
@@ -1077,20 +1077,27 @@ pub async fn filter_usage_claims(
                 }
             }
 
-            // Once ever: the counter's one counted-process set, both routes.
+            // Once ever per seller of a process: the counter's one
+            // counted-seller set, both routes.
             let (_, process_id) =
                 figaro_kernel::kernel::derive_commitment_ids(&domain, &claim.order);
             match counter
-                .processCounted(claim.kind.code(), claim.clause_or_process, process_id)
+                .sellerCounted(
+                    claim.kind.code(),
+                    claim.clause_or_process,
+                    process_id,
+                    claim.order.seller,
+                )
                 .call()
                 .await
             {
                 Ok(false) => Ok(()),
-                Ok(true) => {
-                    Err("the counter has already counted this process under the key".to_string())
-                }
+                Ok(true) => Err(
+                    "the counter has already counted this seller of the process under the key"
+                        .to_string(),
+                ),
                 Err(e) => Err(format!(
-                    "counter processCounted read failed: {}",
+                    "counter sellerCounted read failed: {}",
                     without_urls(&e.to_string())
                 )),
             }
@@ -1735,12 +1742,12 @@ mod tests {
     /// A JSON-RPC double answering `eth_call` for the registries and the
     /// counter the pre-filter reads: `bindings(key)` is live for the
     /// (registry, key) pairs in `live`, every member is staked but those in
-    /// `unstaked`, the counter has counted a process under exactly the keys
-    /// in `counted`, and anything else is an unregistered binding. Returns
-    /// the URL it serves on.
+    /// `unstaked`, the counter has counted a seller under exactly the
+    /// (key, seller) pairs in `counted`, whatever the process, and anything
+    /// else is an unregistered binding. Returns the URL it serves on.
     async fn registries_double(
         live: Vec<(Address, B256)>,
-        counted: Vec<B256>,
+        counted: Vec<(B256, Address)>,
         unstaked: Vec<Address>,
     ) -> String {
         use crate::rpc_double::{call_of, hex_value, serve, unserved};
@@ -1755,10 +1762,12 @@ mod tests {
                     assert_eq!(to, MEMBERS, "the stake is the members registry's");
                     let member = Address::from_slice(&input[16..36]);
                     (!unstaked.contains(&member)).abi_encode()
-                } else if input[..4] == IUsageCounter::processCountedCall::SELECTOR {
+                } else if input[..4] == IUsageCounter::sellerCountedCall::SELECTOR {
                     assert_eq!(to, COUNTER, "the counted set is the counter's");
+                    let call = IUsageCounter::sellerCountedCall::abi_decode(&input)
+                        .expect("a sellerCounted call");
                     counted
-                        .contains(&B256::from_slice(&input[36..68]))
+                        .contains(&(call.clauseOrProcess, call.seller))
                         .abi_encode()
                 } else if input[..4] == IAgreementRegistry::bindingsCall::SELECTOR {
                     let key = B256::from_slice(&input[4..36]);
@@ -1846,31 +1855,30 @@ mod tests {
         }
     }
 
-    // A claim whose process the counter has already counted under its key —
-    // on either route — is dropped: the counter would skip its use, and the
-    // read goes to the counter's one counted-process set.
+    // A claim whose seller the counter has already counted under its key in
+    // its process — on either route — is dropped: the counter would skip its
+    // use. Another seller of the same process under the same key is kept,
+    // since each seller is one use; the read passes the claim's own seller.
     #[tokio::test]
-    async fn a_claim_the_counter_has_counted_is_dropped() {
-        let fresh = B256::repeat_byte(0x31);
-        let counted = B256::repeat_byte(0x32);
-        let url = registries_double(
-            vec![(AGREEMENTS, fresh), (AGREEMENTS, counted)],
-            vec![counted],
-            vec![],
-        )
-        .await;
+    async fn a_claim_the_counter_has_counted_for_its_seller_is_dropped() {
+        let key = B256::repeat_byte(0x32);
+        let counted_seller = Address::repeat_byte(0x11);
+        let other_seller = Address::repeat_byte(0x12);
+        let url =
+            registries_double(vec![(AGREEMENTS, key)], vec![(key, counted_seller)], vec![]).await;
         let config = live_config(url);
 
-        let (valid, dropped) = filter_usage_claims(
-            &config,
-            vec![agreement_claim(fresh), agreement_claim(counted)],
-        )
-        .await;
+        let mut counted_claim = agreement_claim(key);
+        counted_claim.order.seller = counted_seller;
+        let mut other_claim = agreement_claim(key);
+        other_claim.order.seller = other_seller;
+
+        let (valid, dropped) = filter_usage_claims(&config, vec![counted_claim, other_claim]).await;
 
         assert_eq!(valid.len(), 1);
-        assert_eq!(valid[0].clause_or_process, fresh);
+        assert_eq!(valid[0].order.seller, other_seller);
         assert_eq!(dropped.len(), 1);
-        assert_eq!(dropped[0].0.clause_or_process, counted);
+        assert_eq!(dropped[0].0.order.seller, counted_seller);
         assert!(dropped[0].1.contains("already counted"), "{}", dropped[0].1);
     }
 

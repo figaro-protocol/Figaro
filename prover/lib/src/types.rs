@@ -379,9 +379,9 @@ pub struct UsageClaim {
 /// that used a clause, agreement or assembly under its (kind, key), and the
 /// seller of the order the claim proved it through. The counter counts it
 /// exactly as a direct call counts a use — the same tally, the same
-/// counted-process set, the same per-period seller set — so a use is a use
+/// counted-seller set, the same per-period seller set — so a use is a use
 /// whichever way its process reached the chain. The guest gives each
-/// (kind, key, process) once per batch.
+/// (kind, key, process, seller) once per batch.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct BatchUse {
     pub clause_or_process: B256,
@@ -401,10 +401,11 @@ pub struct BatchUse {
 /// (`KernelState::compute_root`), whatever the entries' order; the guest
 /// never receives it, only a `StateWitness` of the entries a batch touches.
 ///
-/// No usage state lives here: `UsageCounter` holds the one counted-process
-/// set and the one seller set for both routes, and skips a use whose process
-/// it has already counted, so the guest proves each claim against the
-/// orders' state and leaves the counting to the chain.
+/// No usage state lives here: `UsageCounter` holds the one counted-seller
+/// set and the one period-seller set for both routes, and skips a use whose
+/// seller of the process it has already counted under the key, so the guest
+/// proves each claim against the orders' state and leaves the counting to
+/// the chain.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct KernelStateSnapshot {
     pub processes: Vec<(B256, ProcessState)>,
@@ -600,7 +601,7 @@ pub struct BatchEvents {
     /// Deduplicated, sorted — the verifier checks each against the
     /// live ClauseRegistry.
     pub spec_bindings: Vec<SpecBinding>,
-    /// The batch's uses, one per (kind, key, process), in the order of the
+    /// The batch's uses, one per (kind, key, process, seller), in the order of the
     /// claims. Empty when the batch carries no usage claims.
     pub uses: Vec<BatchUse>,
     /// The period the uses land in, echoed from the batch input and

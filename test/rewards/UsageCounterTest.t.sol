@@ -407,6 +407,99 @@ contract UsageCounterTest is Test {
         _record(c, CARGO_KEY);
     }
 
+    /// @dev A resolved process of two orders, the first with `seller1` and
+    ///      the second with `seller2`, each agreement committing `key`.
+    function _settledTwoSellerProcess(bytes32 key, uint256 salt)
+        internal
+        returns (CommitmentTypes.Commitment memory first, CommitmentTypes.Commitment memory second)
+    {
+        return _settledTwoOrderProcess(key, salt, seller2, SELLER2_KEY);
+    }
+
+    /// @dev A resolved process of two orders, the first with `seller1` and
+    ///      the second with `secondSeller`, each agreement committing `key`.
+    function _settledTwoOrderProcess(bytes32 key, uint256 salt, address secondSeller, uint256 secondSellerKey)
+        internal
+        returns (CommitmentTypes.Commitment memory first, CommitmentTypes.Commitment memory second)
+    {
+        first = CommitmentTypes.Commitment({
+            processId: bytes32(0),
+            buyer: buyer,
+            seller: seller1,
+            token: address(token),
+            payment: 100 ether,
+            runningTotal: 100 ether,
+            checkoutHash: AgreementTestHelper.singleClauseRoot(key, CLAUSE_DATA),
+            salt: salt,
+            commitDeadline: block.timestamp + 1 hours
+        });
+        (bytes32 processId,) = core.commit(first, _sign(first, BUYER_KEY), _sign(first, SELLER1_KEY));
+        second = CommitmentTypes.Commitment({
+            processId: processId,
+            buyer: buyer,
+            seller: secondSeller,
+            token: address(token),
+            payment: 100 ether,
+            runningTotal: 200 ether,
+            checkoutHash: first.checkoutHash,
+            salt: salt + 1,
+            commitDeadline: first.commitDeadline
+        });
+        core.commit(second, _sign(second, BUYER_KEY), _sign(second, secondSellerKey));
+
+        CommitmentTypes.Commitment[] memory all = new CommitmentTypes.Commitment[](2);
+        all[0] = first;
+        all[1] = second;
+        vm.prank(buyer);
+        core.resolveProcess(processId, all);
+    }
+
+    /// The tally of a process with two sellers does not depend on who records
+    /// its uses or in which sequence: each order counts once, for its own
+    /// seller, and recording one order closes nothing for the other.
+    function test_aTwoSellerProcessEndsInOneTallyWhicheverOrderIsRecordedFirst() public {
+        (CommitmentTypes.Commitment memory first, CommitmentTypes.Commitment memory second) =
+            _settledTwoSellerProcess(CARGO_KEY, 4100);
+        uint256 start = vm.snapshotState();
+
+        _record(first, CARGO_KEY);
+        _record(second, CARGO_KEY);
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c, 2, "each order is one use");
+        assertEq(d, 2, "each order's seller is counted");
+
+        vm.revertToState(start);
+        _record(second, CARGO_KEY);
+        _record(first, CARGO_KEY);
+        (uint64 c2, uint64 d2, uint256 score2) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c2, c, "the other sequence ends in the same count of uses");
+        assertEq(d2, d, "and the same count of sellers");
+        assertEq(score2, score);
+    }
+
+    /// One seller with two orders in one process is one use: its second
+    /// order is refused, whichever of the two is presented first.
+    function test_twoOrdersOfOneSellerInOneProcessAreOneUse() public {
+        (CommitmentTypes.Commitment memory first, CommitmentTypes.Commitment memory second) =
+            _settledTwoOrderProcess(CARGO_KEY, 4200, seller1, SELLER1_KEY);
+        uint256 start = vm.snapshotState();
+
+        _record(first, CARGO_KEY);
+        vm.expectRevert(UsageCounter.AlreadyCounted.selector);
+        _record(second, CARGO_KEY);
+        (uint64 c, uint64 d,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c, 1, "one seller of one process is one use");
+        assertEq(d, 1);
+
+        vm.revertToState(start);
+        _record(second, CARGO_KEY);
+        vm.expectRevert(UsageCounter.AlreadyCounted.selector);
+        _record(first, CARGO_KEY);
+        (c, d,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c, 1, "the other sequence ends in the same tally");
+        assertEq(d, 1);
+    }
+
     function test_distinctStakedSellersRaiseBreadth() public {
         // One buyer adopting through TWO staked sellers is two units of
         // breadth: d follows the priced identity, and both stakes are live.
@@ -762,9 +855,16 @@ contract UsageCounterTest is Test {
             assertEq(d, 1);
         }
         assertEq(real.totalScoreIn(0), 3 * _score(1, 1), "three entries, three scores");
-        assertFalse(real.processCounted(KIND_AGREEMENT, k, _pid(clauseOrder)), "a clause use is no agreement's");
-        assertFalse(real.processCounted(KIND_CLAUSE, k, _pid(agrOrder)), "an agreement use is no clause's");
-        assertFalse(real.processCounted(KIND_PROCESS, k, _pid(agrOrder)), "an agreement use is no assembly's");
+        assertFalse(
+            real.sellerCounted(KIND_AGREEMENT, k, _pid(clauseOrder), clauseOrder.seller),
+            "a clause use is no agreement's"
+        );
+        assertFalse(
+            real.sellerCounted(KIND_CLAUSE, k, _pid(agrOrder), agrOrder.seller), "an agreement use is no clause's"
+        );
+        assertFalse(
+            real.sellerCounted(KIND_PROCESS, k, _pid(agrOrder), agrOrder.seller), "an agreement use is no assembly's"
+        );
 
         // The agreement's own stake is withdrawn: its kind closes, and the
         // live clause and assembly stakes at the same bytes do not reopen it.
@@ -1399,7 +1499,9 @@ contract UsageCounterTest is Test {
         assertEq(counter.scoreOf(KIND_CLAUSE, CARGO_KEY, 0), score);
         assertEq(counter.totalScoreIn(0), score, "the score joins the period total");
         for (uint256 i = 0; i < u.length; ++i) {
-            assertTrue(counter.processCounted(KIND_CLAUSE, CARGO_KEY, u[i].processId), "each process is counted");
+            assertTrue(
+                counter.sellerCounted(KIND_CLAUSE, CARGO_KEY, u[i].processId, u[i].seller), "each process is counted"
+            );
         }
     }
 
@@ -1438,7 +1540,7 @@ contract UsageCounterTest is Test {
         assertEq(c, 1, "only the staked seller's use counts");
         assertEq(d, 1);
         assertFalse(counter.sellerSeen(KIND_CLAUSE, CARGO_KEY, 0, seller1));
-        assertFalse(counter.processCounted(KIND_CLAUSE, CARGO_KEY, keccak256("batch-process-a")));
+        assertFalse(counter.sellerCounted(KIND_CLAUSE, CARGO_KEY, keccak256("batch-process-a"), seller1));
     }
 
     function test_batchAccrualSkipsAnUnregisteredClauseOrAssembly() public {
@@ -1464,8 +1566,8 @@ contract UsageCounterTest is Test {
         counter.applyBatchAccrual(0, impostor, u);
     }
 
-    /// A process counts once ever, across batches and across routes: the
-    /// counter's own `processCounted` holds for both, so a use presented
+    /// A seller of a process counts once ever, across batches and across
+    /// routes: the counter's own `sellerCounted` holds for both, so a use presented
     /// again — in a later batch, or for a process the direct path already
     /// counted — is skipped.
     function test_batchAccrualSkipsAProcessAlreadyCounted() public {
@@ -1505,6 +1607,79 @@ contract UsageCounterTest is Test {
         assertEq(d, 4);
         assertEq(score, _score(6, 4));
         assertEq(counter.totalScoreIn(0), _score(6, 4), "total holds the tally's score");
+    }
+
+    /// On the batch route too, each seller of a process is one use, and a
+    /// seller of a process already counted is skipped: three sellers of one
+    /// process give three uses, and the same batch handed over again gives none.
+    function test_batchAccrual_eachSellerOfAProcessIsOneUse_andARepeatIsSkipped() public {
+        bytes32 process = keccak256("one-process-three-sellers");
+        UsageCounter.BatchUse[] memory u = new UsageCounter.BatchUse[](4);
+        u[0] = UsageCounter.BatchUse(CARGO_KEY, KIND_CLAUSE, process, seller1);
+        u[1] = UsageCounter.BatchUse(CARGO_KEY, KIND_CLAUSE, process, seller2);
+        u[2] = UsageCounter.BatchUse(CARGO_KEY, KIND_CLAUSE, process, seller3);
+        u[3] = UsageCounter.BatchUse(CARGO_KEY, KIND_CLAUSE, process, seller2);
+        vm.startPrank(batchVerifier);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c, 3, "three sellers of one process are three uses");
+        assertEq(d, 3);
+        assertEq(score, _score(3, 3));
+
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
+        vm.stopPrank();
+        (uint64 c2, uint64 d2, uint256 score2) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c2, c, "handed over again, every use is skipped");
+        assertEq(d2, d);
+        assertEq(score2, score);
+        assertEq(counter.totalScoreIn(0), score, "the period total holds the one score");
+    }
+
+    /// Within one period the tally of a process is the same whatever sequence
+    /// its sellers are presented in, and however often each is repeated: the
+    /// uses are the process's distinct sellers and nothing else. Twelve uses
+    /// drawn from three sellers, then each seller once more.
+    function testFuzz_aProcessEndsInOneTallyWhateverTheSequenceOfItsSellers(uint256 seed) public {
+        bytes32 process = keccak256("one-process-any-sequence");
+        address[3] memory all = [seller1, seller2, seller3];
+        UsageCounter.BatchUse[] memory u = new UsageCounter.BatchUse[](15);
+        for (uint256 i = 0; i < 12; ++i) {
+            u[i] = UsageCounter.BatchUse(
+                CARGO_KEY, KIND_CLAUSE, process, all[uint256(keccak256(abi.encode(seed, i))) % 3]
+            );
+        }
+        for (uint256 i = 0; i < 3; ++i) {
+            u[12 + i] = UsageCounter.BatchUse(CARGO_KEY, KIND_CLAUSE, process, all[i]);
+        }
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
+
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c, 3, "one use for each seller of the process");
+        assertEq(d, 3);
+        assertLe(d, c, "breadth never exceeds the uses");
+        assertEq(score, _score(3, 3));
+    }
+
+    /// A seller of a process counted in one period adds nothing when its
+    /// order is presented again in a later one, and another seller of that
+    /// process, first presented in the later period, is a use there.
+    function test_aSellerPresentedInALaterPeriodCountsThere_andACountedOneNeverAgain() public {
+        (CommitmentTypes.Commitment memory first, CommitmentTypes.Commitment memory second) =
+            _settledTwoSellerProcess(CARGO_KEY, 4300);
+        _record(first, CARGO_KEY);
+
+        vm.warp(P0_END + 1);
+        vm.expectRevert(UsageCounter.AlreadyCounted.selector);
+        _record(first, CARGO_KEY);
+        _record(second, CARGO_KEY);
+
+        (uint64 c0, uint64 d0,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        (uint64 c1, uint64 d1,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 1);
+        assertEq(c0, 1, "the first seller's use stays in the period it was counted in");
+        assertEq(d0, 1);
+        assertEq(c1, 1, "the second seller's use lands in the period open at its record");
+        assertEq(d1, 1);
     }
 
     /// LIVENESS: trade must keep resolving after the reward stops. An empty

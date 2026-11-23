@@ -193,8 +193,9 @@ const usage = (
 /** The chain: the designer registered two keys of each kind; one process
  *  resolved on `FigaroCore` and its uses were counted by a direct call; two
  *  processes resolved in one batch on `FigaroBatchVerifier`, whose call to the
- *  counter counted their uses in the same transaction. A process counts its
- *  clause, its agreement and its process design, one `UsageRecorded` each. */
+ *  counter counted their uses in the same transaction. Each process has one
+ *  seller, so it counts its clause, its agreement and its process design
+ *  once, one `UsageRecorded` each. */
 const CHAIN: RawLog[] = [
     ...KINDS.flatMap((k, i) => [
         k.registered(k.keyBoth, `ipfs://${k.family}-both`, { blockNumber: 2n, logIndex: 2 * i, transactionHash: word(0x0200 + 2 * i) }),
@@ -300,11 +301,11 @@ describe.each(KINDS)("the rewards page counts a use of $name from a batched trad
         expect(period.totalScore).toBe(ALL_SCORES);
     });
 
-    it("the page shows both keys, the shared one with two resolved processes and two sellers", async () => {
+    it("the page shows both keys, the shared one with two uses and two sellers", async () => {
         render(<RewardsView />);
         const both = await screen.findByTestId(`period-accrual-0-${k.family}-${k.keyBoth}`);
-        expect(both.textContent).toMatch(/2 resolved processes, 2 distinct staked sellers, score 1587/);
+        expect(both.textContent).toMatch(/2 uses, 2 distinct staked sellers, score 1587/);
         const batchOnly = screen.getByTestId(`period-accrual-0-${k.family}-${k.keyBatchOnly}`);
-        expect(batchOnly.textContent).toMatch(/1 resolved process, 1 distinct staked seller, score 1000/);
+        expect(batchOnly.textContent).toMatch(/1 use, 1 distinct staked seller, score 1000/);
     });
 });

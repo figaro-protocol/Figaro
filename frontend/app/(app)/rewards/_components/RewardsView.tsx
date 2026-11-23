@@ -212,8 +212,8 @@ export function RewardsView() {
                                                 className="font-mono break-all"
                                                 data-testid={`period-accrual-${t.periodId}-${a.family}-${a.clauseOrProcess.toLowerCase()}`}
                                             >
-                                                <span className="font-sans">{a.family} </span>{accrualLabel(a)} — {a.c.toString()} resolved process
-                                                {a.c === 1n ? "" : "es"},{" "}
+                                                <span className="font-sans">{a.family} </span>{accrualLabel(a)} — {a.c.toString()} use
+                                                {a.c === 1n ? "" : "s"},{" "}
                                                 {a.d.toString()} distinct staked seller
                                                 {a.d === 1n ? "" : "s"}, score{" "}
                                                 {a.score.toString()}

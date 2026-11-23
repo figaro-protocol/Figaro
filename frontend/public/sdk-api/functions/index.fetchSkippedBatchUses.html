@@ -34,14 +34,14 @@ period is open; <code>reason</code> tells the caller whether sending again can w
 (<code>AccrualClosed</code> is final). Anyone can send each claim in <code>carried.claims</code>
 again with <code>SequencerClient.submitUsageClaim</code>, without the agreement.
 <code>carried.uses</code> are the uses the guest derives from those claims
-(<code>apply_usage_claims</code>, prover/lib/src/kernel.rs:788-882): one per
-(kind, key, process), the first claim naming the seller, a root order's
+(<code>apply_usage_claims</code>, prover/lib/src/kernel.rs): one per
+(kind, key, process, seller), in claim order, a root order's
 process id derived under the verifier's EIP-712 domain (the client's chain
 id and <code>batchVerifier</code>); the proof binds them to the <code>settleBatch</code>
 argument. A use the counter skips one by one inside a call that does not
-revert (an unstaked seller, a key without a live registration, a process
-already counted) emits no event, and this reader does not see it;
-<code>UsageCounter.processCounted</code> answers for it.</p>
+revert (an unstaked seller, a key without a live registration, a seller of
+a process already counted) emits no event, and this reader does not see it;
+<code>UsageCounter.sellerCounted</code> answers for it.</p>
 <p><code>fromBlock</code> is required: a scan of a deployment starts at its
 <code>FigaroDeploymentRecord.deploymentBlock</code>. The node is asked for the two
 events only. A failed read throws, as every bulk reader of this SDK does
@@ -59,7 +59,7 @@ stream layout this SDK does not read, never a batch that carried nothing.</p>
 <li><span><span class="tsd-kind-parameter">params</span>: <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">chunkSize</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">fromBlock</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">toBlock</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;latest&quot;</span> <span class="tsd-signature-symbol">}</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.SkippedBatch.html" class="tsd-signature-type tsd-kind-interface">SkippedBatch</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L408">rpgf/index.ts:408</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L410">rpgf/index.ts:410</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

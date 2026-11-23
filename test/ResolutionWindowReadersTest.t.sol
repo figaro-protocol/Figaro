@@ -106,8 +106,8 @@ contract ResolutionWindowAgent {
 ///            without it.
 ///         2. The counter counts an order only at status 2, so only an order
 ///            the loop has finished. The count is the one a later transaction
-///            would make, and `processCounted` stops a second count, in the
-///            window and after it.
+///            would make, and `sellerCounted` stops a second count of that
+///            order's seller, in the window and after it.
 ///         3. When the resolution reverts, the attestation and the count made
 ///            inside it revert with it.
 contract ResolutionWindowReadersTest is Test {
@@ -271,7 +271,7 @@ contract ResolutionWindowReadersTest is Test {
         core.resolveProcess(pid, o);
         counter.recordClauseUsage(o[0], CLAUSE, CLAUSE_DATA_HASH, new bytes32[](0));
         (later.c, later.d, later.score) = counter.accrualOf(KIND_CLAUSE, CLAUSE, 0);
-        assertEq(later.c, 1, "the later transaction counts the process");
+        assertEq(later.c, 1, "the later transaction counts order 0's seller");
         vm.revertToState(snap);
     }
 
@@ -318,18 +318,29 @@ contract ResolutionWindowReadersTest is Test {
         assertEq(c, later.c, "c: as a later transaction");
         assertEq(d, later.d, "d: as a later transaction");
         assertEq(score, later.score, "score: as a later transaction");
-        assertTrue(counter.processCounted(KIND_CLAUSE, CLAUSE, pid), "the process is counted");
+        assertTrue(counter.sellerCounted(KIND_CLAUSE, CLAUSE, pid, sellers[0]), "order 0's seller is counted");
+        assertFalse(
+            counter.sellerCounted(KIND_CLAUSE, CLAUSE, pid, sellers[1]), "order 1 resolved after the last callback"
+        );
     }
 
-    /// The window has closed: no attestation on either order, no second count.
+    /// The window has closed: no attestation on either order, and no second
+    /// count of a seller. Order 1 resolved after the last callback, so its
+    /// seller is counted here, once.
     function _expectWindowClosed(CommitmentTypes.Commitment[] memory o) internal {
         for (uint256 i = 0; i < 2; i++) {
             vm.prank(buyer);
             vm.expectRevert(AttestationCoordinator.OrderAlreadyResolved.selector);
             coordinator.attestAsBuyer(o[i], CLAUSE, 1, CLAUSE_DATA_HASH, new bytes32[](0), bytes32(0));
-            vm.expectRevert(UsageCounter.AlreadyCounted.selector);
-            counter.recordClauseUsage(o[i], CLAUSE, CLAUSE_DATA_HASH, new bytes32[](0));
         }
+        vm.expectRevert(UsageCounter.AlreadyCounted.selector);
+        counter.recordClauseUsage(o[0], CLAUSE, CLAUSE_DATA_HASH, new bytes32[](0));
+        counter.recordClauseUsage(o[1], CLAUSE, CLAUSE_DATA_HASH, new bytes32[](0));
+        (uint64 c, uint64 d,) = counter.accrualOf(KIND_CLAUSE, CLAUSE, 0);
+        assertEq(c, 2, "each seller of the process is one use");
+        assertEq(d, 2);
+        vm.expectRevert(UsageCounter.AlreadyCounted.selector);
+        counter.recordClauseUsage(o[1], CLAUSE, CLAUSE_DATA_HASH, new bytes32[](0));
     }
 
     /// Every attestation on an order is emitted before that order's
@@ -400,7 +411,7 @@ contract ResolutionWindowReadersTest is Test {
         (uint8 status,,) = _seen(2, 0);
         assertEq(status, 0, "nothing the callbacks kept remains");
         // The count reverted with the resolution.
-        assertFalse(counter.processCounted(KIND_CLAUSE, CLAUSE, pid), "the count reverted");
+        assertFalse(counter.sellerCounted(KIND_CLAUSE, CLAUSE, pid, sellers[0]), "the count reverted");
         (uint64 c, uint64 d, uint256 score) = counter.accrualOf(KIND_CLAUSE, CLAUSE, 0);
         assertEq(c + d + score, 0, "the accrual is untouched");
         // The callbacks did attest and count inside the call: `recordLogs`

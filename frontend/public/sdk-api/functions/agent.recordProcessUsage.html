@@ -30,8 +30,10 @@ clauses stay off-chain), and the agreement's provenance leaf
 (<code>Agreement.provenance</code>, the registered agreement and the assembly it
 instantiated) gets the INDEPENDENT AGREEMENT leg (<code>recordAgreementUsage</code>)
 and ASSEMBLY leg (<code>recordProcessDesignUsage</code>, with the agreement's membership
-proof) — the counter reproduces the leaf from the two keys. A key is
-counted once per process, so a key two orders carry is sent once.
+proof) — the counter reproduces the leaf from the two keys. A use is one
+seller of the process, so each key is sent once for each distinct seller
+whose order carries it, and a key two orders of one seller carry is sent
+once.
 Tolerate-the-revert per leg; the report says what landed.</p>
 </div>
 <div class="tsd-parameters">
@@ -43,7 +45,7 @@ Tolerate-the-revert per leg; the report says what landed.</p>
 <li><span><span class="tsd-kind-parameter">entries</span>: <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/agent.UsageRecordingEntry.html" class="tsd-signature-type tsd-kind-interface">UsageRecordingEntry</a><span class="tsd-signature-symbol">[]</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/agent.UsageRecordingReport.html" class="tsd-signature-type tsd-kind-interface">UsageRecordingReport</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/autonomous.ts#L156">agent/autonomous.ts:156</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/autonomous.ts#L158">agent/autonomous.ts:158</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

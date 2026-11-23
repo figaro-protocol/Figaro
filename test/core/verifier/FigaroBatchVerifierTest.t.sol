@@ -1523,7 +1523,9 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(c, 3, "distinct resolved processes");
         assertEq(d, 1, "one staked seller");
         assertGt(score, 0, "and it is scored");
-        assertTrue(counter.processCounted(counter.KIND_CLAUSE(), clauseKey, usage.uses[0].processId));
+        assertTrue(
+            counter.sellerCounted(counter.KIND_CLAUSE(), clauseKey, usage.uses[0].processId, usage.uses[0].seller)
+        );
         assertEq(counter.scoreOf(counter.KIND_CLAUSE(), clauseKey, 0), score, "which is what the reward reads");
         assertEq(counter.totalScoreIn(0), score, "and what the period total counts");
     }
@@ -1978,7 +1980,7 @@ contract FigaroBatchVerifierTest is Test {
     /// guard against a second landing, and a batch whose prev and new roots
     /// are equal passes it as often as anyone submits it, until the root
     /// moves. The landing is inert for the reward: the counter's
-    /// once-ever `processCounted` skips every use it carries the second time,
+    /// once-ever `sellerCounted` skips every use it carries the second time,
     /// so the tally and the period total stay where the first landing left
     /// them. The verifier re-emits its stream and `BatchSettled` under a new
     /// batch id, and moves no token.
@@ -2071,7 +2073,7 @@ contract FigaroBatchVerifierTest is Test {
     /// A use the counter skipped inside `settleBatch` — its seller had left the
     /// registry — is counted when a later batch presents it again with the
     /// seller staked once more: the guest keeps no counted set, and the
-    /// counter's `processCounted` never recorded the skipped use.
+    /// counter's `sellerCounted` never recorded the skipped use.
     function test_settleBatch_aSkippedUseIsCountedWhenPresentedAgain() public {
         FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 1);
         (
@@ -2085,7 +2087,9 @@ contract FigaroBatchVerifierTest is Test {
         verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
         (uint64 c,,) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
         assertEq(c, 0, "skipped: the seller holds no live stake");
-        assertFalse(counter.processCounted(counter.KIND_CLAUSE(), clauseKey, usage.uses[0].processId));
+        assertFalse(
+            counter.sellerCounted(counter.KIND_CLAUSE(), clauseKey, usage.uses[0].processId, usage.uses[0].seller)
+        );
 
         vm.prank(seller);
         members.register("ipfs://seller-again");
@@ -2093,7 +2097,9 @@ contract FigaroBatchVerifierTest is Test {
         (uint64 c2, uint64 d2,) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
         assertEq(c2, 1, "presented again, the use is counted");
         assertEq(d2, 1);
-        assertTrue(counter.processCounted(counter.KIND_CLAUSE(), clauseKey, usage.uses[0].processId));
+        assertTrue(
+            counter.sellerCounted(counter.KIND_CLAUSE(), clauseKey, usage.uses[0].processId, usage.uses[0].seller)
+        );
     }
 
     /// Trade outlives the reward: once accrual closes, batches carrying no

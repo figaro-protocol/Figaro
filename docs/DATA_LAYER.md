@@ -155,11 +155,11 @@ loses, moves or retypes a field and this table does not move with it.
 | `UsageCounter` | `UsageRecorded` | 0 | `kind` | `uint8` | A designer's reward accrual keys each use by kind and key (`sdk/src/rpgf/index.ts:207`) | A small number |
 | `UsageCounter` | `UsageRecorded` | 1 | `clauseOrProcess` | `bytes32 indexed` | The same accrual (`sdk/src/rpgf/index.ts:206`) | A fingerprint: a clause key, an `agreementHash` or an `processDesignHash` |
 | `UsageCounter` | `UsageRecorded` | 2 | `period` | `uint8 indexed` | The same accrual (`sdk/src/rpgf/index.ts:208`) | A period number |
-| `UsageCounter` | `UsageRecorded` | 3 | `processId` | `bytes32 indexed` | The same accrual counts a process once (`sdk/src/rpgf/index.ts:211`) | A fingerprint |
-| `UsageCounter` | `UsageRecorded` | 4 | `seller` | `address` | The same accrual counts distinct sellers (`sdk/src/rpgf/index.ts:213`) | The wallet's address |
-| `UsageCounter` | `UsageRecorded` | 5 | `c` | `uint64` | no reader found: decoded (`sdk/src/rpgf/index.ts:318`); the accrual counts it again from the events. It answers a stranger's question: how many distinct processes has this key counted in the period, after this one? A reader checks its own count against it without replaying the period (`src/rewards/UsageCounter.sol:783`) | A count |
-| `UsageCounter` | `UsageRecorded` | 6 | `d` | `uint64` | no reader found: decoded (`sdk/src/rpgf/index.ts:319`); the accrual counts it again from the events. It answers a stranger's question: how many distinct staked sellers has this key counted in the period, after this one? (`src/rewards/UsageCounter.sol:783`) | A count |
-| `UsageCounter` | `UsageRecorded` | 7 | `score` | `uint256` | no reader found: decoded (`sdk/src/rpgf/index.ts:320`); the accrual computes it again from the events. It answers a stranger's question: what is this key's score in the period after this count? A designer reads its standing from its latest event alone (`src/rewards/UsageCounter.sol:783`) | A score |
+| `UsageCounter` | `UsageRecorded` | 3 | `processId` | `bytes32 indexed` | The same accrual counts each seller of a process once (`sdk/src/rpgf/index.ts:213`) | A fingerprint |
+| `UsageCounter` | `UsageRecorded` | 4 | `seller` | `address` | The same accrual counts distinct sellers (`sdk/src/rpgf/index.ts:218`) | The wallet's address |
+| `UsageCounter` | `UsageRecorded` | 5 | `c` | `uint64` | no reader found: decoded (`sdk/src/rpgf/index.ts:322`); the accrual counts it again from the events. It answers a stranger's question: how many uses, each one seller of one process, has this key counted in the period, after this one? A reader checks its own count against it without replaying the period (`src/rewards/UsageCounter.sol:797`) | A count |
+| `UsageCounter` | `UsageRecorded` | 6 | `d` | `uint64` | no reader found: decoded (`sdk/src/rpgf/index.ts:323`); the accrual counts it again from the events. It answers a stranger's question: how many distinct staked sellers has this key counted in the period, after this one? (`src/rewards/UsageCounter.sol:797`) | A count |
+| `UsageCounter` | `UsageRecorded` | 7 | `score` | `uint256` | no reader found: decoded (`sdk/src/rpgf/index.ts:324`); the accrual computes it again from the events. It answers a stranger's question: what is this key's score in the period after this count? A designer reads its standing from its latest event alone (`src/rewards/UsageCounter.sol:797`) | A score |
 
 ## The sealed side is the owner's asset
 
@@ -496,7 +496,7 @@ pro-rata for that real usage.
 
 **Neutrality comes from the stake, not from the weight.** What keeps the uniform
 reward honest is the two-sided **live ETH stake**, not a per-category multiplier.
-Usage counts only when the process's seller of record
+A use counts only when its seller
 holds a live `MembersRegistry` stake (`UsageCounter` reads `MembersRegistry.registered`,
 else `SellerNotStaked`), and a designer is rewarded only while it is itself a live member
 (`RpgfMinter.claim` reads `MembersRegistry.registered` on the claimant, else `NotLiveMember`)

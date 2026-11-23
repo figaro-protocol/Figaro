@@ -330,7 +330,7 @@ describe.skipIf(SKIP)("Batch E2E: a skipped accrual, then a later batch counts t
 
         // THE CHAIN FACT: the counter's own storage holds the use in period 1.
         const counted = await accrual(1);
-        expect(counted[0], "one distinct resolved process").toBe(1n);
+        expect(counted[0], "one use: the one seller of the one resolved process").toBe(1n);
         expect(counted[1], "one distinct staked seller").toBe(1n);
         expect(counted[2], "and it is scored").toBeGreaterThan(0n);
         expect(await accrual(0), "period 0 stays as it closed").toEqual([0n, 0n, 0n]);

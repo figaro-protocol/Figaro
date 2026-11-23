@@ -564,7 +564,7 @@ async fn batch_loop(
 
         // Pre-filter usage claims against live chain state so a claim the
         // counter would not count (a clause or assembly with no live
-        // registration, an unstaked seller, a process already counted) never
+        // registration, an unstaked seller, a seller of a process already counted) never
         // enters a proof. The counter's own gates remain the on-chain backstop
         // for the residual race (a seller unstaking after this read).
         let (usage_claims, dropped_claims) =
@@ -822,7 +822,7 @@ async fn batch_loop(
         // The claims against every operation drained: a claim that credits
         // no order the batch resolves, in any order, is poison and is dropped
         // (the guest would abort the whole proof on it). A second claim of a
-        // (kind, key, process) the batch already carries would not abort it —
+        // (kind, key, process, seller) the batch already carries would not abort it —
         // the guest gives it no use of its own — and is dropped too, so the
         // batch carries no stream bytes for nothing. A claim stranded by the
         // cut below is another matter, and waits.
