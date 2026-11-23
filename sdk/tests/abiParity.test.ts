@@ -183,6 +183,37 @@ describe("the Core has no third action (CLAUDE.md § 'The Core's rules', rule 3:
     });
 });
 
+describe("the registries change state only by registering, updating a profile and returning a stake", () => {
+    // Each registry's state-changing functions, whole: an added or a removed
+    // one, an owner, a pause or a sweep among them, fails the exact set.
+    it("ClauseRegistry changes state only through registerClause and withdrawDeposit", () => {
+        expect(stateChanging(compiled("ClauseRegistry"))).toEqual(["registerClause", "withdrawDeposit"]);
+    });
+
+    it("AgreementRegistry changes state only through registerAgreement and withdrawDeposit", () => {
+        expect(stateChanging(compiled("AgreementRegistry"))).toEqual(["registerAgreement", "withdrawDeposit"]);
+    });
+
+    it("ProcessRegistry changes state only through registerProcess and withdrawDeposit", () => {
+        expect(stateChanging(compiled("ProcessRegistry"))).toEqual(["registerProcess", "withdrawDeposit"]);
+    });
+
+    it("MembersRegistry changes state only through register, updateProfile, requestWithdrawal and withdraw", () => {
+        expect(stateChanging(compiled("MembersRegistry"))).toEqual([
+            "register", "requestWithdrawal", "updateProfile", "withdraw",
+        ]);
+    });
+
+    it("the check reads what it claims to: an owner's function on a registry is caught", () => {
+        const extra = [
+            ...compiled("MembersRegistry"),
+            { type: "function", name: "setRegistrationDeposit", inputs: [{ name: "v", type: "uint256" }], outputs: [], stateMutability: "nonpayable" },
+        ] as Abi;
+        expect(stateChanging(extra)).not.toEqual(stateChanging(compiled("MembersRegistry")));
+        expect(stateChanging(extra)).toContain("setRegistrationDeposit");
+    });
+});
+
 /** Every function and event name an ABI carries, sorted. */
 function itemNames(abi: Abi, type: "function" | "event"): string[] {
     return abi.filter((i) => i.type === type).map((i) => (i as { name: string }).name).sort();
@@ -245,6 +276,14 @@ describe("designer rewards: the florin carries no claim on revenue and no vote",
             "MAX_SUPPLY", "deployer", "deployerMintRenounced", "mint", "minters", "registerMinter",
             "renounceDeployerMint", "totalRegisteredCap",
         ].sort());
+    });
+
+    it("FlorinToken changes state only through the ERC-20 transfers and approval, permit, the minter registration, mint and the renounce", () => {
+        // src/rewards/FlorinToken.sol: registerMinter, mint and
+        // renounceDeployerMint beside what ERC20Permit inherits.
+        expect(stateChanging(compiled("FlorinToken"))).toEqual([
+            "approve", "mint", "permit", "registerMinter", "renounceDeployerMint", "transfer", "transferFrom",
+        ]);
     });
 
     it("FlorinToken's events are the ERC-20 events, EIP-5267's and the minter registration", () => {
