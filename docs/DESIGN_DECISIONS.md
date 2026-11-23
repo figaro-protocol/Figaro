@@ -905,8 +905,10 @@ window keeps running (`formal/RelayState.tla` `IsolateSpec`:
 relay, fails). The relay's gas plan for
 the wallet's own code (`WALLET_CODE_EXECUTION_GAS`) and for the bytes'
 length (`MAX_WALLET_AUTHORIZATION_BYTES`) is the relay's, never the protocol's:
-the verifier bounds neither, so code that needs more resolves through a relay
-that plans more or a batch its wallet submits itself.
+the verifier sets no gas limit on the code, and the stream's 16-bit length
+bounds the bytes at 65,535 (§ 45), so code that needs more than the relay
+plans resolves through a relay that plans more or a batch its wallet submits
+itself.
 
 **The wallet-code attestation's residual.** An attestation in the wallet-code
 form (§ 4) reverts the batch when the party's code refuses it, as a wallet-code
@@ -2033,6 +2035,148 @@ seller with two orders in one process is one use.
 
 ---
 
+## 44. A pattern-checked value is printable ASCII
+
+**Pattern**: a string field's `pattern` is written in printable ASCII
+(0x20–0x7E), and a value checked against a pattern is printable ASCII too.
+Both clause engines hold the rule. A pattern that holds any other character is
+outside the portable core, so the spec does not parse: `portablePatternSize`
+refuses it before it reads a construct (`isPortablePattern`,
+`sdk/src/clauses/safeRegex.ts`), and `portable_pattern_size` refuses it alike in
+the proof program (`prover/clause/src/validate.rs`). A value outside printable
+ASCII in a field that declares a pattern is refused with the reason "string
+does not match pattern" (`validateString`, `sdk/src/clauses/validate.ts`;
+`validate_string`, `prover/clause/src/validate.rs`), and `safeRegexTest` and
+`safe_regex_test` answer false on it. A field with no pattern takes any text, in
+any script, bounded by its `maxLength`, which both engines count in UTF-16
+units. The published definition states the rule in the `pattern` description
+(`sdk/src/clauses/clause-spec.schema.json`: "A patterned field's value is
+printable ASCII."), and `docs/CLAUSES.md` § "The SDK's validation" states the
+portable core.
+
+**Why it looks wrong**: a designer who writes in a script other than the Latin
+one cannot pattern-check a value written in it: a name in Arabic, a street in
+Greek or a reference in Devanagari digits. The rule reads as a Latin bias, and
+it is fixed in the proof program, whose bytes are its verification key.
+
+**Why it is correct**: the two engines must give one verdict on every value,
+and they run on two regex libraries, JavaScript's and Rust's `regex` crate.
+Inside printable ASCII the portable core reads alike in both
+(`sdk/tests/clauses/engineVectors.test.ts` locks each construct). Outside it
+they part: `\d`, `\w`, `\s`, `\b`, `.` and a negated class classify a
+character differently (the comment above `isPortablePattern` lists them), and
+JavaScript counts a value in UTF-16 code units where Rust reads UTF-8 bytes
+(`utf16_len`, `prover/clause/src/validate.rs`). One verdict per engine on such
+a value would let a party sign a term the SDK accepts and a proof of the same
+attestation refuses, or the reverse. A pattern is for a code: an identifier, a
+postal code, a reference number, a currency code. Free text needs no pattern;
+its `maxLength` bounds it, and a field with no pattern takes any script. A
+designer who needs a code in another script leaves it unpatterned and bounded
+by length.
+
+The cost is plain. The rule is part of the proof program, so it stays fixed
+for the life of a verification key; a wider rule needs a new key, and a new
+key is a new verifier at a new address (`docs/AUDITOR_HANDOVER.md` § "The guest
+and its verification key"). A value in another script that a pattern could
+have checked is checked by length alone.
+
+**Tests**: `sdk/tests/clauses/engineVectors.test.ts` freezes the SDK's verdicts
+into `test/fixtures/clause-engine-vectors.json`: the `core` group's `^é$`
+pattern does not parse; the `dialect` groups run values outside printable
+ASCII (`é`, `🚚`, `٣`, a no-break space, a line separator, control
+characters) against each pattern and refuse them; the encode case "string
+outside ASCII" takes `é🚚` in a field with no pattern.
+`prover/clause/tests/engine_vectors.rs` gives the guest's engine the same
+verdicts. `prover/clause/tests/conformance.rs`
+(`rejects_a_pattern_outside_the_portable_core`,
+`string_length_counts_utf16_code_units`) holds the portable core and the
+length count in the proof program.
+
+---
+
+## 45. Sizes the formats fix
+
+**Pattern**: the clause format and the operation stream each fix a few sizes.
+
+1. An `integer` field's value is a JSON number inside ±(2^53 − 1), however the
+   text writes it. Past that range the value is refused with "value … is
+   outside the safe integer range" (`validateInteger`,
+   `sdk/src/clauses/validate.ts`, by `Number.isSafeInteger`;
+   `validate_integer` with `as_js_integer`, `prover/clause/src/`). Every integer
+   a spec itself declares (its `version`, a bound, a length, an item count) is
+   inside the same range, or the spec does not parse. A larger number is a
+   `bigint` field's, written as a decimal string inside the uint256 word.
+   `docs/CLAUSES.md` § "The SDK's validation" states it.
+2. A field sits under at most 16 enclosing objects or arrays:
+   `MAX_FIELD_DEPTH` (16) in `sdk/src/clauses/spec.ts` and
+   `prover/clause/src/spec.rs`. A spec nested deeper does not parse, with
+   "field nesting exceeds the maximum depth of 16".
+3. An `enum` names at most 256 values, since a value encodes as its `uint8`
+   position; a spec with more does not parse (`parseFieldSpecCore`,
+   `sdk/src/clauses/spec.ts`; `prover/clause/src/spec.rs`). A stage key is
+   the decimal of an integer 0..255, since the attestation's `stage` is a
+   `uint8` (`stageOfKey`, `sdk/src/clauses/spec.ts`; `parse_stage_key`,
+   `prover/clause/src/spec.rs`). The published definition
+   (`sdk/src/clauses/clause-spec.schema.json`) and `docs/CLAUSES.md` § "The
+   SDK's validation" and § "Witness stages" state both.
+4. A count or a length in the operation stream is a big-endian 16-bit word, so
+   one entry carries at most 65,535 of a thing: the orders a resolve lists,
+   the words of an inclusion proof, and the bytes of a wallet-code
+   authorization in a `0x04` or a `0x05` entry. The proof program's encoder
+   panics past it (`put_count`, `prover/lib/src/operation_stream.rs`), and the
+   guest runs that encoder (`kernel.rs`), so a batch that holds more cannot be
+   proven. The verifier reads the same 16-bit word (`_countAt`, and the
+   stream's layout above `_walkOperations` in
+   `src/core/verifier/FigaroBatchVerifier.sol`). The relay this project runs
+   admits an authorization of at most `MAX_WALLET_AUTHORIZATION_BYTES`, 2,048
+   bytes (`prover/sequencer/src/gas.rs`), a plan of its own (§ 21).
+
+The two paths differ on the last size. On the direct path an authorization
+has no length: `FigaroCore.resolveProcess` reads `msg.sender`, and
+`AttestationCoordinator` reads the caller alike, so code the party's wallet
+installed acts in its own call and passes no bytes to the Core. On the batch
+path the bytes ride in the stream, and 65,535 is their ceiling.
+
+**Why it looks wrong**: each is a number a stranger's clause or wallet can
+reach, and nothing in the mechanism asks for 16, 256 or 65,535 in particular.
+A wallet whose code needs a longer authorization resolves on the direct path
+and not on the batch path.
+
+**Why it is correct**: each bounds work that both engines and the proof must
+do alike. A JSON number past 2^53 − 1 reads as one value in JavaScript and as
+another in Rust, so the two engines would give two verdicts and two
+encodings. A nesting bound turns a spec nested thousands deep into a refusal at
+parse, where without it the SDK throws on its stack and the guest crashes
+inside the proof. An `enum` and a stage are `uint8` words in what the parties
+sign and in the event the coordinator emits. A 16-bit count keeps the stream
+compact and read by one rule on both sides, and its ceiling for an
+authorization is some thirty times the 2,048 bytes the project's relay plans.
+The sizes are stated where a builder
+reads them: the integer range, the `enum` bound and the stage range in
+`docs/CLAUSES.md` and the published definition, the authorization plan in the docs-site's
+scaling page. The nesting bound and the stream's 16-bit counts are stated in
+the code that holds them (`spec.ts`, `spec.rs`, `operation_stream.rs` and the
+verifier's stream comment) and in this entry.
+
+**Tests**: `sdk/tests/clauses/validate.test.ts` ("keeps integer content
+inside the safe range") and `prover/clause/tests/conformance.rs`
+(`integer_content_stays_inside_the_safe_range`); the vectors of
+`sdk/tests/clauses/engineVectors.test.ts`, frozen in
+`test/fixtures/clause-engine-vectors.json` and given the same verdicts by
+`prover/clause/tests/engine_vectors.rs`: integers at and past 2^53 − 1,
+"nesting depth 16" and 17, "array nesting depth 16" and 17, "enum of 256
+values" and 257, and each stage-key spelling;
+`prover/clause/tests/conformance.rs` (`rejects_nesting_beyond_max_depth`);
+`sdk/tests/clauses/spec.test.ts` (a spec nested some 5,000 deep is refused
+without a stack overflow); `sdk/tests/clauses/schema-conformance.test.ts`
+(256 and 257 values, the stage keys, in the published definition and the
+parser alike);
+`prover/sequencer/tests/sequencer.rs`
+(`mempool_refuses_a_wallet_code_authorization_longer_than_the_relay_plans`).
+No test drives a stream count past 65,535.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -2080,3 +2224,5 @@ seller with two orders in one process is one use.
 | 41 | A withdrawn key forfeits its unclaimed periods; the key registries return a stake in one call | registry/reward-path | A period scored under a live stake and lost at a later withdrawal looks like earned rewards taken back; no wait beside the members' cooldown looks like a missing guard | The live-stake check runs at the count and at the claim, so the stake stays held through the period and its claim (`/papers/substrate-broadening-rpgf`); a designer claims first, then withdraws. A key holds no identity and no name, only bytes (§ 7); the stake prices it through the reward, and a wait would hold a second stake on every new version. Accepted residual: a rival can register a key and withdraw it in one transaction for gas, burning it, once per key tried; the one-act pin and register and a private mempool bound it |
 | 42 | A pattern past a size is refused at parse, and long values are refused rather than run | spec format/clause engine | Both engines are linear in the value, so a limit looks like the skip it replaced; a matching value or list can be refused; the fuller count refuses patterns a narrower count would admit | Linear is not cheap: the cost per character is the automaton's size, which the fuller count measures and the old one did not; a skip leaves a signed term unchecked, a refusal keeps every admitted term checked; the limit keeps the two engines' parse verdicts one, and the budgets bound one value's and one content's work in both |
 | 43 | A use is one seller of one process | reward-path | A process of three sellers counts three times for one key, which reads as triple counting | One count per process made the tally depend on who recorded first and with which order, and let a recorder close a process against its other sellers for gas; breadth is the distinct staked sellers who carried the key, each still one live stake and its cooldown; `d <= c` keeps the score's reading; one seller with two orders in one process is one use |
+| 44 | A pattern-checked value is printable ASCII | spec format/clause engine | A designer writing in another script cannot pattern-check a value, which reads as a Latin bias fixed in the proof program's key | The two engines run two regex libraries that classify and count characters differently outside ASCII, and must give one verdict; a pattern is for a code, free text is bounded by `maxLength` and takes any script; the cost is that the rule is fixed for the life of a verification key |
+| 45 | Sizes the formats fix | spec format/clause engine/batch path | An integer within ±(2^53 − 1), nesting to 16, 256 `enum` values, stages 0..255 and 16-bit stream counts are each a number a stranger's clause or wallet can reach; a wallet-code authorization past 65,535 bytes lands on the direct path only | Each bounds work both engines and the proof do alike: past 2^53 − 1 the two engines read two numbers, deep nesting would overflow a stack, an `enum` and a stage are `uint8` words, a 16-bit count is read by one rule on both sides; the direct path passes no authorization bytes, since the wallet's code acts in its own call |
