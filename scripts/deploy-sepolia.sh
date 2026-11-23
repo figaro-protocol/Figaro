@@ -41,7 +41,6 @@ set -e
 #   RPC_URL=https://... \
 #   PRIVATE_KEY=0x... \
 #   FOUNDER_WALLET=0x... SUPPORTERS_WALLET=0x... \
-#   RPGF_GENESIS=... \
 #   SP1_VERIFIER_GATEWAY=0x... SP1_PROGRAM_VKEY=0x... \
 #   ETHERSCAN_API_KEY=... \
 #   ./scripts/deploy-sepolia.sh
@@ -121,7 +120,8 @@ export PERMIT2="${PERMIT2:-0x000000000022D473030F116dDEE9F6B43aC78BA3}"
 #   SUPPORTERS_WALLET       — _validateEnv(): must be nonzero
 #   DAO_WALLET              — _validateEnv(): must be nonzero; set by this wrapper
 #                             to the treasury's Safe, never by hand
-#   RPGF_GENESIS            — _validateEnv(): RPGF_GENESIS + 365 days > now
+#   RPGF_GENESIS            — _validateEnv(): RPGF_GENESIS + 365 days > now; set by this
+#                             wrapper to the chain's time at the broadcast
 #   SP1_VERIFIER_GATEWAY    — the gateway the routed verifier is looked up on (Guard 4);
 #                             the script binds that route as SP1_VERIFIER, exported here
 #   SP1_PROGRAM_VKEY        — _deployProtocol(): must be nonzero
@@ -133,7 +133,7 @@ if [ "${PAIR_ONLY:-}" = "1" ]; then
   # RPGF_GENESIS is derived from the live counter below, never required.
   REQUIRED=(PRIVATE_KEY SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL)
 else
-  REQUIRED=(PRIVATE_KEY FOUNDER_WALLET SUPPORTERS_WALLET RPGF_GENESIS \
+  REQUIRED=(PRIVATE_KEY FOUNDER_WALLET SUPPORTERS_WALLET \
             SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL SWAP_ROUTER SWAP_QUOTER)
 fi
 if [ "${SKIP_VERIFY:-}" != "1" ]; then
@@ -183,6 +183,38 @@ printf '%s\n' "$ROUTE_OUT"
 export SP1_VERIFIER
 SP1_VERIFIER=$(printf '%s\n' "$ROUTE_OUT" | sed -n 's/^SP1_VERIFIER=//p' | tail -1)
 [ -n "$SP1_VERIFIER" ] || { echo "❌ the route preflight named no verifier"; exit 1; }
+
+# ── The verification key is this checkout's relay's ──────────────────────────
+# SP1_PROGRAM_VKEY is not taken as given. The verifier pins it for good, and a
+# key no built relay holds leaves a batch path nobody can prove on. It must be
+# the key this checkout's release relay prints (`sequencer --vkey`; the relay
+# embeds the proof program), and the key the expectations file states, which
+# is written from the release build before a deploy. This guard holds the
+# three to one value; it cannot tell how the relay was built. The release
+# build is scripts/prover-box/build-guest.sh, then build-sequencer.sh: a plain
+# `cargo build` replaces the reproducible proof program with a host build,
+# whose key is another.
+# EXPECTED_FILE names another expectations file; scripts/fork-rehearsal.sh
+# passes its rehearsal copy.
+EXPECTED_FILE="${EXPECTED_FILE:-$REPO_ROOT/deployments/${ACTUAL_CHAIN_ID}.expected.json}"
+RELAY_BIN="${RELAY_BIN:-$REPO_ROOT/prover/target/release/sequencer}"
+same_hex() { [ "$(printf '%s' "$1" | tr 'A-F' 'a-f')" = "$(printf '%s' "$2" | tr 'A-F' 'a-f')" ]; }
+[ -x "$RELAY_BIN" ] || { echo "❌ Refusing to deploy — no release relay at $RELAY_BIN to read the verification key from"; exit 1; }
+RELAY_KEY=$("$RELAY_BIN" --vkey | sed -n 's/^SP1_PROGRAM_VKEY=//p' | tail -1)
+[[ "$RELAY_KEY" =~ ^0x[0-9a-fA-F]{64}$ ]] || { echo "❌ Refusing to deploy — $RELAY_BIN --vkey printed no key"; exit 1; }
+if ! same_hex "$SP1_PROGRAM_VKEY" "$RELAY_KEY"; then
+  echo "❌ Refusing to deploy — SP1_PROGRAM_VKEY=$SP1_PROGRAM_VKEY is not the key this checkout's relay holds,"
+  echo "   $RELAY_KEY: a verifier that pins it could be proven on by no relay built here."
+  exit 1
+fi
+[ -f "$EXPECTED_FILE" ] || { echo "❌ Refusing to deploy — no expectations file $EXPECTED_FILE"; exit 1; }
+EXPECTED_KEY=$(jq -r '.batchVerifier.programVKey // empty' "$EXPECTED_FILE")
+if ! same_hex "$EXPECTED_KEY" "$RELAY_KEY"; then
+  echo "❌ Refusing to deploy — $EXPECTED_FILE states the key ${EXPECTED_KEY:-(none)},"
+  echo "   and this checkout's relay holds $RELAY_KEY: write the built key there before the deploy."
+  exit 1
+fi
+echo "   verification key            = $RELAY_KEY (the relay's, and the expectations file's)"
 
 # ── PAIR_ONLY: redeploy the counter↔verifier pair against the live stack ────
 if [ "${PAIR_ONLY:-}" = "1" ]; then
@@ -284,6 +316,23 @@ if [ "${PAIR_ONLY:-}" = "1" ]; then
   exit 0
 fi
 
+# ── The rewards schedule starts at this broadcast ───────────────────────────
+# RPGF_GENESIS only sets the period ends: a start before the broadcast
+# shortens the first period, and a later one lengthens it. The start is the
+# chain's present time. A value set by hand must be within an hour of it.
+CHAIN_NOW=$(cast block latest --field timestamp --rpc-url "$RPC_URL")
+[[ "$CHAIN_NOW" =~ ^[0-9]+$ ]] || { echo "❌ Refusing to deploy — the chain's time read as '$CHAIN_NOW', not a number"; exit 1; }
+if [ -z "${RPGF_GENESIS:-}" ]; then
+  export RPGF_GENESIS="$CHAIN_NOW"
+elif ! [[ "$RPGF_GENESIS" =~ ^[0-9]+$ ]]; then
+  echo "❌ Refusing to deploy — RPGF_GENESIS=$RPGF_GENESIS is not a decimal number of seconds; unset it to start the schedule at this broadcast."
+  exit 1
+elif [ "$RPGF_GENESIS" -gt $((CHAIN_NOW + 3600)) ] || [ "$RPGF_GENESIS" -lt $((CHAIN_NOW - 3600)) ]; then
+  echo "❌ Refusing to deploy — RPGF_GENESIS=$RPGF_GENESIS is more than an hour from the chain's time $CHAIN_NOW;"
+  echo "   unset it to start the schedule at this broadcast."
+  exit 1
+fi
+
 # ── The treasury's Safe ──────────────────────────────────────────────────────
 # DAO_WALLET is not an input. The treasury is the Safe the expectations file
 # states (treasurySafe: its owners, its threshold, a salt), at the address
@@ -291,8 +340,8 @@ fi
 # derives that address, creates the Safe when none stands there (the deploy's
 # key pays; the owners sign nothing), and checks its owners and threshold. A
 # DAO_WALLET set by hand must be that address.
-SAFE_ADDR=$(node "$SCRIPT_DIR/safe-treasury.mjs" ensure "$REPO_ROOT/deployments/${ACTUAL_CHAIN_ID}.expected.json" --rpc-url "$RPC_URL") || {
-  echo "❌ Refusing to deploy — the treasury's Safe is not as deployments/${ACTUAL_CHAIN_ID}.expected.json states it"
+SAFE_ADDR=$(node "$SCRIPT_DIR/safe-treasury.mjs" ensure "$EXPECTED_FILE" --rpc-url "$RPC_URL") || {
+  echo "❌ Refusing to deploy — the treasury's Safe is not as $EXPECTED_FILE states it"
   exit 1
 }
 [[ "$SAFE_ADDR" =~ ^0x[0-9a-fA-F]{40}$ ]] || { echo "❌ Refusing to deploy — the Safe step printed no address: $SAFE_ADDR"; exit 1; }
