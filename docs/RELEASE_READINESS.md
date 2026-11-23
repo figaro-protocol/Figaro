@@ -232,6 +232,12 @@ inline; derivation in `/papers/substrate-broadening-rpgf` §7). Before each publ
 broadcast: re-measure `g` — the marginal cost of one fabricated resolved process,
 batch path — on the target chain, and state the deployment's point on the γ curve
 where the release facts are kept.
+`scripts/gamma-point.mjs deployments/<chainId>.expected.json --json` states the
+point from the expectations file, the chain's deploy script, the relay's gas plan
+and the chain's present gas price, and its output is kept beside the deployment record
+as `deployments/<chainId>.gamma-point.json`, because the deployment record holds
+what the deploy put on the chain while the point is a measurement at one block's
+gas price, repeated before each broadcast.
 
 ### Task 6: Content durability
 
