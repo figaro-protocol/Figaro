@@ -833,3 +833,199 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod funding_door_tests {
+    //! The door's funding check on `/submit`, against the JSON-RPC stand-in
+    //! (`crate::rpc_double`): the bonds a commitment pulls are read from the
+    //! chain before the relay queues it.
+
+    use super::*;
+    use crate::rpc_double::{call_of, hex_value, serve, unserved, Answer, RpcDouble};
+    use alloy_primitives::{keccak256, U256};
+    use axum::body::Body;
+    use axum::http::Request;
+    use figaro_kernel::types::Commitment;
+    use figaro_prove_test::{build_canonical_batch_input, CHAIN_ID, CORE};
+    use tower::util::ServiceExt;
+
+    /// The spender the bonds are approved to in these tests.
+    const VERIFIER: Address = Address::repeat_byte(0x0b);
+
+    /// The canonical batch's commit, well formed and signed by both parties.
+    fn signed_commit() -> (KernelOp, Commitment) {
+        let op = build_canonical_batch_input().operations[0].clone();
+        let KernelOp::Commit { commitment, .. } = &op else {
+            panic!("the canonical batch opens on its commit");
+        };
+        let commitment = commitment.clone();
+        (op, commitment)
+    }
+
+    fn selector(signature: &str) -> [u8; 4] {
+        keccak256(signature.as_bytes())[..4].try_into().unwrap()
+    }
+
+    /// A stand-in chain node: each `eth_call` to `balanceOf(who)` or
+    /// `allowance(who, VERIFIER)` is answered by `funds(selector, who)`.
+    async fn node<F>(funds: F) -> RpcDouble
+    where
+        F: Fn([u8; 4], Address) -> Answer + Send + Sync + 'static,
+    {
+        serve(move |method, params| match method {
+            "eth_call" => {
+                let (_, input) = call_of(params);
+                let sel: [u8; 4] = input[..4].try_into().unwrap();
+                let who = Address::from_slice(&input[16..36]);
+                if sel == selector("allowance(address,address)") {
+                    assert_eq!(
+                        Address::from_slice(&input[48..68]),
+                        VERIFIER,
+                        "the allowance read names the verifier as spender"
+                    );
+                }
+                funds(sel, who)
+            }
+            other => unserved(other),
+        })
+        .await
+    }
+
+    fn word(amount: U256) -> Answer {
+        Ok(hex_value(&amount.to_be_bytes::<32>()))
+    }
+
+    /// A relay whose door reads the bonds from `rpc_url`.
+    fn relay(rpc_url: String) -> AppState {
+        AppState {
+            mempool: Mempool::new(CHAIN_ID, CORE),
+            state_mirror: StateMirror::genesis(),
+            batch_count: Arc::new(tokio::sync::RwLock::new(0)),
+            failures: FailureLog::default(),
+            funding: Some(FundingGate {
+                rpc_url,
+                verifier: VERIFIER,
+                chain_id: CHAIN_ID,
+            }),
+            identity: RelayIdentity {
+                chain_id: CHAIN_ID,
+                batch_verifier: VERIFIER,
+                program_vkey: B256::repeat_byte(0x5a),
+                browser_submit_origins: Vec::new(),
+            },
+        }
+    }
+
+    async fn submit(state: &AppState, op: &KernelOp) -> (StatusCode, serde_json::Value) {
+        let app = router(state.clone(), ApiConfig::default());
+        let req = Request::builder()
+            .method("POST")
+            .uri("/submit")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                serde_json::to_vec(&serde_json::json!({ "operation": op })).unwrap(),
+            ))
+            .unwrap();
+        let res = app.oneshot(req).await.unwrap();
+        let status = res.status();
+        let body = axum::body::to_bytes(res.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        (status, serde_json::from_slice(&body).unwrap())
+    }
+
+    /// The door queues a commitment only after the chain says both parties
+    /// hold and allow their bonds. So a relay whose chain node is down, or
+    /// answers every read with an error, turns away every commitment at the
+    /// door: each user is answered `503` with a retry, and nothing is
+    /// queued. A node that answers a balance or an allowance below the bond
+    /// gets the commitment refused `402`, naming the party and the figures.
+    /// A node that answers both bonds as covered gets the commitment queued.
+    #[tokio::test]
+    async fn the_door_refuses_a_commitment_whose_bonds_the_chain_cannot_read_or_does_not_cover() {
+        let (op, c) = signed_commit();
+        let (buyer_need, seller_need) = submitter::bonds_of(&c);
+        let (buyer, seller) = (c.buyer, c.seller);
+
+        // The node answers every read with an error.
+        let down = node(|_, _| Err((-32000, "header not found".to_string()))).await;
+        let state = relay(down.url.clone());
+        let (status, json) = submit(&state, &op).await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{json}");
+        let error = json["error"].as_str().unwrap();
+        assert!(
+            error.starts_with(&format!(
+                "the commitment's bonds could not be read; retry: balanceOf({buyer}) read failed: "
+            )),
+            "{error}"
+        );
+        assert!(error.contains("header not found"), "{error}");
+        assert!(
+            !down.calls_to("eth_call").is_empty(),
+            "the door asked the chain"
+        );
+        assert_eq!(state.mempool.len().await, 0, "nothing is queued");
+
+        // The buyer's balance is one below its bond.
+        let short_balance = node(move |sel, who| {
+            if who == buyer && sel == selector("balanceOf(address)") {
+                word(buyer_need - U256::from(1u64))
+            } else {
+                word(U256::MAX)
+            }
+        })
+        .await;
+        let state = relay(short_balance.url.clone());
+        let (status, json) = submit(&state, &op).await;
+        assert_eq!(status, StatusCode::PAYMENT_REQUIRED, "{json}");
+        assert_eq!(
+            json["error"],
+            format!(
+                "unfunded commitment: buyer {buyer} holds {} and allows {} to the verifier; the bond needs {buyer_need}",
+                buyer_need - U256::from(1u64),
+                U256::MAX
+            )
+        );
+        assert_eq!(state.mempool.len().await, 0, "nothing is queued");
+
+        // The seller's allowance to the verifier is one below its bond.
+        let short_allowance = node(move |sel, who| {
+            if who == seller && sel == selector("allowance(address,address)") {
+                word(seller_need - U256::from(1u64))
+            } else {
+                word(U256::MAX)
+            }
+        })
+        .await;
+        let state = relay(short_allowance.url.clone());
+        let (status, json) = submit(&state, &op).await;
+        assert_eq!(status, StatusCode::PAYMENT_REQUIRED, "{json}");
+        assert_eq!(
+            json["error"],
+            format!(
+                "unfunded commitment: seller {seller} holds {} and allows {} to the verifier; the bond needs {seller_need}",
+                U256::MAX,
+                seller_need - U256::from(1u64)
+            )
+        );
+        assert_eq!(state.mempool.len().await, 0, "nothing is queued");
+
+        // Both bonds covered exactly: the commitment is queued.
+        let covered = node(move |_, who| {
+            word(if who == buyer {
+                buyer_need
+            } else {
+                seller_need
+            })
+        })
+        .await;
+        let state = relay(covered.url.clone());
+        let (status, json) = submit(&state, &op).await;
+        assert_eq!(status, StatusCode::OK, "{json}");
+        assert_eq!(
+            state.mempool.len().await,
+            1,
+            "the funded commitment is queued"
+        );
+    }
+}

@@ -699,6 +699,90 @@ fn claim_filter_drops_an_intra_batch_duplicate() {
     );
 }
 
+#[test]
+fn claim_filter_keeps_one_claim_per_seller_of_one_process() {
+    // The guest gives each seller of a process one use of a key, so two
+    // claims of the same clause key in the same process by two different
+    // sellers are both kept, in the order given. A third claim repeating the
+    // first seller's is a duplicate and is dropped with the duplicate reason.
+    let input = build_canonical_batch_input();
+    let first = input.usage_claims[0].clone();
+    let root_op = input.operations[0].clone();
+    let root = first.order.clone();
+    let domain = domain();
+    let (_, process_id) = derive_commitment_ids(&domain, &root);
+
+    // A second order of the process, under the same agreement, with a
+    // second seller.
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller2_key = make_signing_key(0x5E22);
+    let unsigned = Commitment {
+        process_id,
+        seller: Address::ZERO,
+        payment: alloy_primitives::U256::from(7u64),
+        running_total: root.running_total + alloy_primitives::U256::from(7u64),
+        salt: root.salt + alloy_primitives::U256::from(1u64),
+        ..root.clone()
+    };
+    // The second seller's address, as the Core recovers it from a signature.
+    let probe = B256::repeat_byte(0x22);
+    let seller2 = recover_signer(&probe, &sign_digest(&seller2_key, &probe)).unwrap();
+    assert_ne!(seller2, root.seller, "the two orders have two sellers");
+    let second_order = Commitment {
+        seller: seller2,
+        ..unsigned
+    };
+    let second_op = KernelOp::Commit {
+        commitment: second_order.clone(),
+        buyer_sig: sign_commitment(&second_order, &domain, &buyer_key),
+        seller_sig: sign_commitment(&second_order, &domain, &seller2_key),
+    };
+    let resolve = KernelOp::Resolve {
+        process_id,
+        running_total: second_order.running_total,
+        commitments: vec![root.clone(), second_order.clone()],
+        buyer_sig: sign_digest(
+            &buyer_key,
+            &typed_data_hash(
+                &domain,
+                &resolve_struct_hash(&process_id, &second_order.running_total),
+            ),
+        ),
+    };
+    let ops = vec![root_op, second_op, resolve];
+    let (valid, poison) =
+        assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &empty_snapshot(), pend(ops));
+    assert!(poison.is_empty(), "the process resolves: {poison:?}");
+    let ops: Vec<KernelOp> = valid.into_iter().map(|p| p.op).collect();
+
+    // The same clause key, the same clause content, the second order.
+    let second = UsageClaim {
+        order: second_order,
+        ..first.clone()
+    };
+    let (kept, dropped) = assembler::filter_applicable_claims(
+        CHAIN_ID,
+        CORE,
+        1000,
+        &empty_snapshot(),
+        &ops,
+        vec![first.clone(), second.clone(), first.clone()],
+    );
+    let as_json = |c: &UsageClaim| serde_json::to_value(c).unwrap();
+    assert_eq!(
+        kept.iter().map(as_json).collect::<Vec<_>>(),
+        vec![as_json(&first), as_json(&second)],
+        "each seller's claim is kept, in order: {dropped:?}"
+    );
+    assert_eq!(dropped.len(), 1, "the repeat of the first seller's claim");
+    assert_eq!(as_json(&dropped[0].0), as_json(&first));
+    assert!(
+        dropped[0].1.contains("already carries"),
+        "duplicate reason: {}",
+        dropped[0].1
+    );
+}
+
 // ── HTTP API ──────────────────────────────────────────────────────
 
 fn test_app_state() -> AppState {
