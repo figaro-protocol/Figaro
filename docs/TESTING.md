@@ -1415,7 +1415,7 @@ test*` names a change adds under `test/` against `src/` as it stood before, and
 fails when every one passes there; a `Red-on-parent:` trailer in the commit
 message runs it from `.husky/commit-msg`.
 
-Four long runs also have a GitHub Actions workflow, each started by hand
+Five runs also have a GitHub Actions workflow, each started by hand
 (`workflow_dispatch`) at a full commit sha given as input, which it checks out
 and names in its job summary and artifacts. `tla-pass4.yml` runs TLA+ pass 4
 (`ResolutionUniverses`) with TLC checkpoints, uploads the checkpoint when the
@@ -1425,7 +1425,10 @@ across a matrix with `--shard k/n`, one `mutants.out` per shard; `mewt` has no
 workflow, since its `mewt.toml` is not in the repository. `kani-dispatch.yml`
 runs `cargo kani` in `formal/kani`. `guest-key-preview.yml` builds the proof
 program by `scripts/prover-box/build-guest.sh`, reads the key again from
-`sequencer --vkey`, and prints both. Each workflow's header states whether a
+`sequencer --vkey`, and prints both. `.github/workflows/prover-box-provision.yml` runs
+`scripts/prover-box/provision.sh` on a clean Ubuntu 24.04 container, with no
+swap file, and then asks a shell that reads no profile for every tool the
+prover box's steps call. Each workflow's header states whether a
 standard runner carries the run.
 
 ## Opportunistic — Mythril
