@@ -242,4 +242,17 @@ contract ProcessRegistryTest is Test {
         (address registeredBy,,,) = registry.bindings(PROCESS_DESIGN_HASH);
         assertEq(registeredBy, alice, "the assembly stays registered");
     }
+
+    // ── The key is taken as given ───────────────────────────────────────
+
+    /// The registry never checks that a processDesignHash is a merkle root
+    /// over agreements: any nonzero key registers, and a reader recomputes
+    /// the root from the document at contentURI. Zero is the one key it refuses.
+    function testFuzz_registerProcess_acceptsAnyNonzeroKey(bytes32 key) public {
+        vm.assume(key != bytes32(0));
+        vm.prank(alice);
+        registry.registerProcess{value: DEPOSIT}(key, CONTENT_URI);
+        (address registeredBy,,,) = registry.bindings(key);
+        assertEq(registeredBy, alice, "a key that is no root of anything is bound");
+    }
 }

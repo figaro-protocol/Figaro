@@ -204,6 +204,51 @@ fn the_decoder_refuses_a_truncated_stream_an_unknown_tag_and_a_claim_before_an_o
     );
 }
 
+/// The stream is exact-width and has no funding entry: a commit entry
+/// followed by a funding leg (a router, a token in and an amount, as ABI
+/// words, so its first byte is zero) does not decode, nor does one led by any
+/// byte at all when the leg is filled with a byte no length prefix can satisfy.
+/// The bytes after a commit can only be another of the five entries.
+#[test]
+fn a_commit_followed_by_a_funding_leg_does_not_decode() {
+    let commit = encode_operation_stream(
+        &[KernelOp::Commit {
+            commitment: commitment(1),
+            buyer_sig: signature(1),
+            seller_sig: signature(2),
+        }],
+        &[],
+    );
+    assert_eq!(commit.len(), 1 + COMMITMENT_BYTES + 2 * SIGNATURE_BYTES);
+    assert!(
+        decode_operation_stream(&commit).is_ok(),
+        "the commit alone decodes"
+    );
+
+    let mut abi_leg = Vec::new();
+    abi_leg.extend_from_slice(&[0u8; 12]);
+    abi_leg.extend_from_slice(Address::repeat_byte(0x5a).as_slice());
+    abi_leg.extend_from_slice(&[0u8; 12]);
+    abi_leg.extend_from_slice(Address::repeat_byte(0x7e).as_slice());
+    abi_leg.extend_from_slice(&U256::from(10u64).pow(U256::from(21u64)).to_be_bytes::<32>());
+    let mut with_abi_leg = commit.clone();
+    with_abi_leg.extend_from_slice(&abi_leg);
+    assert!(
+        decode_operation_stream(&with_abi_leg).is_err(),
+        "a commit followed by an ABI-encoded funding leg"
+    );
+
+    for lead in 0..=u8::MAX {
+        let mut stream = commit.clone();
+        stream.push(lead);
+        stream.extend_from_slice(&[0xab; 95]);
+        assert!(
+            decode_operation_stream(&stream).is_err(),
+            "a commit followed by a 96-byte leg led by 0x{lead:02x}"
+        );
+    }
+}
+
 #[test]
 fn a_batch_of_nothing_commits_the_empty_stream_hash_as_word_eight() {
     let input = BatchInput {
@@ -373,7 +418,10 @@ fn the_decoder_refuses_a_0x05_out_of_place_or_with_an_unknown_role() {
 fn the_decoder_refuses_a_resolve_after_a_claim_alone_or_a_wallet_code_attestation_alone() {
     let (ops, claims) = sample();
     let by_signature = encode_operation_stream(&ops[3..], &[]);
-    assert_eq!(by_signature[0], 0x02, "the sample's fourth operation is a resolve");
+    assert_eq!(
+        by_signature[0], 0x02,
+        "the sample's fourth operation is a resolve"
+    );
     let by_wallet_code = encode_operation_stream(
         &[KernelOp::ResolveByWalletCode {
             process_id: B256::repeat_byte(0x01),

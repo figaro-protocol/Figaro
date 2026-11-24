@@ -926,4 +926,205 @@ contract FigaroCoreTest is Test {
         assertEq(token.balanceOf(buyer) - before[0], 60 ether, "buyer paid as in sequence");
         assertEq(token.balanceOf(address(core)), 0, "FigaroCore holds nothing after");
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 24: The Core reads no term (docs/OPEN_WORLD.md § "Where a composed
+    // contract may stand", placement 1, the Core's half)
+    //
+    // The terms reach the Core only as `checkoutHash`, a fingerprint the
+    // parties sign. Two processes whose commitments differ in nothing but
+    // that fingerprint pull the same bonds, write the same accumulator and
+    // statuses, and pay the same amounts at resolution: only their ids differ.
+    // ═══════════════════════════════════════════════════════════════
+
+    /// What one run of a two-order process under one terms fingerprint did.
+    struct TermsRun {
+        bytes32 processId;
+        uint256[4] pulled;
+        uint256[4] paid;
+        address rootBuyer;
+        address processToken;
+        uint256 runningTotal;
+        uint256 openAfterCommit;
+        uint256 openAfterResolve;
+        uint8[2] statusAfterCommit;
+        uint8[2] statusAfterResolve;
+    }
+
+    function _wallets() internal view returns (address[4] memory) {
+        return [buyer, seller1, seller2, address(core)];
+    }
+
+    function _balancesOf(address[4] memory w) internal view returns (uint256[4] memory b) {
+        for (uint256 i = 0; i < 4; i++) {
+            b[i] = token.balanceOf(w[i]);
+        }
+    }
+
+    /// Commits a root of 10 to seller1 and a sub-order of 20 to seller2, both
+    /// carrying `terms` as their checkoutHash, then resolves the process.
+    function _runUnderTerms(bytes32 terms) internal returns (TermsRun memory r) {
+        address[4] memory w = _wallets();
+        uint256[4] memory start = _balancesOf(w);
+
+        CommitmentTypes.Commitment memory root = _rootCommitment(10 ether, 1);
+        root.checkoutHash = terms;
+        bytes32 rootHash;
+        (r.processId, rootHash) =
+            core.commit(root, _signCommitment(root, BUYER_KEY), _signCommitment(root, SELLER1_KEY));
+        CommitmentTypes.Commitment memory sub = _subCommitment(r.processId, seller2, 20 ether, 30 ether, 2);
+        sub.checkoutHash = terms;
+        (, bytes32 subHash) = core.commit(sub, _signCommitment(sub, BUYER_KEY), _signCommitment(sub, SELLER2_KEY));
+
+        uint256[4] memory committed = _balancesOf(w);
+        for (uint256 i = 0; i < 3; i++) {
+            r.pulled[i] = start[i] - committed[i];
+        }
+        r.pulled[3] = committed[3] - start[3];
+        (r.rootBuyer, r.processToken, r.runningTotal, r.openAfterCommit) = _processOf(r.processId);
+        r.statusAfterCommit = [core.orderStatus(rootHash), core.orderStatus(subHash)];
+
+        CommitmentTypes.Commitment[] memory list = new CommitmentTypes.Commitment[](2);
+        (list[0], list[1]) = (root, sub);
+        vm.prank(buyer);
+        core.resolveProcess(r.processId, list);
+
+        uint256[4] memory resolved = _balancesOf(w);
+        for (uint256 i = 0; i < 3; i++) {
+            r.paid[i] = resolved[i] - committed[i];
+        }
+        r.paid[3] = committed[3] - resolved[3];
+        (,,, r.openAfterResolve) = _processOf(r.processId);
+        r.statusAfterResolve = [core.orderStatus(rootHash), core.orderStatus(subHash)];
+    }
+
+    function _processOf(bytes32 processId) internal view returns (address, address, uint256, uint256) {
+        (address rootBuyer, IERC20 processToken, uint256 runningTotal, uint256 open) = core.processes(processId);
+        return (rootBuyer, address(processToken), runningTotal, open);
+    }
+
+    function testFuzz_theCoreTreatsAnyTwoTermsFingerprintsAlike(bytes32 termsA, bytes32 termsB) public {
+        vm.assume(termsA != termsB);
+        uint256 snap = vm.snapshotState();
+        TermsRun memory a = _runUnderTerms(termsA);
+        vm.revertToState(snap);
+        TermsRun memory b = _runUnderTerms(termsB);
+
+        assertTrue(a.processId != b.processId, "the ids differ, since the fingerprint is signed");
+        for (uint256 i = 0; i < 4; i++) {
+            assertEq(a.pulled[i], b.pulled[i], "the same bonds are pulled");
+            assertEq(a.paid[i], b.paid[i], "the same amounts are paid out");
+        }
+        assertEq(a.rootBuyer, b.rootBuyer, "the same root buyer");
+        assertEq(a.processToken, b.processToken, "the same token");
+        assertEq(a.runningTotal, b.runningTotal, "the same accumulator");
+        assertEq(a.openAfterCommit, b.openAfterCommit, "the same open-order count");
+        assertEq(a.openAfterResolve, b.openAfterResolve, "the same count after resolution");
+        for (uint256 i = 0; i < 2; i++) {
+            assertEq(a.statusAfterCommit[i], b.statusAfterCommit[i], "the same status at commit");
+            assertEq(a.statusAfterResolve[i], b.statusAfterResolve[i], "the same status at resolution");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 25: A contract that reads the Core after resolution never sits in the
+    // payment leg (docs/OPEN_WORLD.md § "Where a composed contract may
+    // stand", placement 4)
+    //
+    // A consequence contract reads the Core's getters and acts on what it
+    // reads. Its presence changes no transfer of the resolution, it holds no
+    // token, and neither of the Core's two state-changing functions moves a
+    // bond of the process when it calls them.
+    // ═══════════════════════════════════════════════════════════════
+
+    function _tokenTransfers(Vm.Log[] memory logs) internal view returns (bytes32) {
+        bytes memory acc;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].emitter == address(token)) acc = abi.encode(acc, logs[i].topics, logs[i].data);
+        }
+        return keccak256(acc);
+    }
+
+    /// The token transfers of the buyer's resolve of a three-order process,
+    /// with or without a reader deployed beside it.
+    function _resolveRecording(bytes32 processId, CommitmentTypes.Commitment[] memory list)
+        internal
+        returns (bytes32 transfers)
+    {
+        vm.recordLogs();
+        vm.prank(buyer);
+        core.resolveProcess(processId, list);
+        transfers = _tokenTransfers(vm.getRecordedLogs());
+    }
+
+    function test_aReaderOfTheResolutionNeverSitsInThePaymentLeg() public {
+        uint256 snap = vm.snapshotState();
+        (bytes32 pid, CommitmentTypes.Commitment[] memory o,) = _openProcess(3, 1);
+        bytes32 without = _resolveRecording(pid, o);
+        vm.revertToState(snap);
+
+        ResolutionReader reader = new ResolutionReader(core);
+        bytes32[] memory h;
+        (pid, o, h) = _openProcess(3, 1);
+        uint256 held = token.balanceOf(address(core));
+
+        // While the process is open, the reader cannot resolve it.
+        (bool ok, bytes memory ret) = reader.tryResolve(pid, o);
+        assertFalse(ok, "the reader's resolve is refused");
+        assertEq(bytes4(ret), FigaroCore.NotProcessBuyer.selector, "refused as not the buyer");
+        assertEq(token.balanceOf(address(core)), held, "the bonds stay in the Core");
+
+        assertEq(_resolveRecording(pid, o), without, "the resolution's transfers are the same with the reader present");
+
+        reader.read(pid, h[0]);
+        assertEq(reader.statusRead(), 2, "the reader sees the order resolved");
+        assertEq(reader.openRead(), 0, "and the process closed");
+        assertEq(token.balanceOf(address(reader)), 0, "the reader received no token");
+
+        // After resolution: neither state-changing function moves anything for it.
+        (ok, ret) = reader.tryResolve(pid, o);
+        assertFalse(ok, "a second resolve is refused");
+        assertEq(bytes4(ret), FigaroCore.NotProcessBuyer.selector, "refused as not the buyer");
+        (ok, ret) = reader.tryCommit(o[0], _signCommitment(o[0], BUYER_KEY), _signCommitment(o[0], SELLER1_KEY));
+        assertFalse(ok, "a replayed root commit is refused");
+        assertEq(bytes4(ret), FigaroCore.ProcessAlreadyExists.selector, "refused as an existing process");
+        CommitmentTypes.Commitment memory late = _subCommitment(pid, seller2, 5 ether, 65 ether, 77);
+        (ok, ret) = reader.tryCommit(late, _signCommitment(late, BUYER_KEY), _signCommitment(late, SELLER2_KEY));
+        assertFalse(ok, "a sub-order on the resolved process is refused");
+        assertEq(bytes4(ret), FigaroCore.ProcessAlreadyResolved.selector, "refused as resolved");
+        assertEq(token.balanceOf(address(core)), 0, "the Core holds nothing of the process");
+        assertEq(token.balanceOf(address(reader)), 0, "the reader holds no token");
+    }
+}
+
+/// A consequence contract: it reads the Core's two getters after a
+/// resolution, and tries the Core's two state-changing functions from its own
+/// address, returning what each answered.
+contract ResolutionReader {
+    FigaroCore public immutable core;
+    uint8 public statusRead;
+    uint256 public openRead;
+
+    constructor(FigaroCore core_) {
+        core = core_;
+    }
+
+    function read(bytes32 processId, bytes32 orderHash) external {
+        statusRead = core.orderStatus(orderHash);
+        (,,, openRead) = core.processes(processId);
+    }
+
+    function tryResolve(bytes32 processId, CommitmentTypes.Commitment[] calldata list)
+        external
+        returns (bool ok, bytes memory ret)
+    {
+        (ok, ret) = address(core).call(abi.encodeCall(FigaroCore.resolveProcess, (processId, list)));
+    }
+
+    function tryCommit(CommitmentTypes.Commitment calldata c, bytes calldata buyerSig, bytes calldata sellerSig)
+        external
+        returns (bool ok, bytes memory ret)
+    {
+        (ok, ret) = address(core).call(abi.encodeCall(FigaroCore.commit, (c, buyerSig, sellerSig)));
+    }
 }
