@@ -101,6 +101,17 @@ pub fn load_spec_json(clause_id_str: &str) -> String {
 /// agreement makes `checkout_hash` the lone clause leaf, so both
 /// inclusion proofs are empty.
 pub fn build_canonical_batch_input() -> BatchInput {
+    build_batch_input_of(1)
+}
+
+/// The canonical batch repeated over `processes` processes: each its own
+/// commit, seller attestation, buyer attestation and resolve, four operations
+/// in all, and one usage claim. The processes differ by the commitment's
+/// salt alone (42 for the first, as the canonical batch has it), so
+/// `build_batch_input_of(1)` is the canonical batch, and
+/// `build_batch_input_of(25)` holds the hundred operations a relay's batch
+/// is cut at by default (`MAX_BATCH_OPS`).
+pub fn build_batch_input_of(processes: usize) -> BatchInput {
     let buyer_key = make_signing_key(BUYER_KEY);
     let seller1_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
@@ -124,97 +135,106 @@ pub fn build_canonical_batch_input() -> BatchInput {
     leaf_preimage[32..].copy_from_slice(re_assert_content_ref.as_slice());
     let agreement_leaf = keccak256(keccak256(leaf_preimage));
 
-    let root = Commitment {
-        process_id: B256::ZERO,
-        buyer: BUYER,
-        seller: SELLER1,
-        token: TOKEN,
-        payment: U256::from(100_000_000_000_000_000_000u128),
-        running_total: U256::from(100_000_000_000_000_000_000u128),
-        checkout_hash: agreement_leaf,
-        salt: U256::from(42u64),
-        commit_deadline: U256::from(2000u64),
-    };
+    let mut operations = Vec::with_capacity(processes * 4);
+    // Designer rewards: a use of the clause for each process this batch resolves. A claim
+    // is proved against the POST-state, which is why an order committed and
+    // resolved inside one batch can still be counted by it. Single-clause
+    // agreement, so the clause leaf IS the checkout hash and the inclusion
+    // proof is empty.
+    let mut usage_claims = Vec::with_capacity(processes);
 
-    let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
-    let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
+    for i in 0..processes {
+        let root = Commitment {
+            process_id: B256::ZERO,
+            buyer: BUYER,
+            seller: SELLER1,
+            token: TOKEN,
+            payment: U256::from(100_000_000_000_000_000_000u128),
+            running_total: U256::from(100_000_000_000_000_000_000u128),
+            checkout_hash: agreement_leaf,
+            salt: U256::from(42u64 + i as u64),
+            commit_deadline: U256::from(2000u64),
+        };
 
-    let root_struct_hash = commitment_struct_hash(&root);
-    let process_id = typed_data_hash(&domain, &root_struct_hash);
-    let order_hash = compute_order_hash(&process_id, &root_struct_hash);
+        let root_buyer_sig = sign_commitment(&root, &domain, &buyer_key);
+        let root_seller_sig = sign_commitment(&root, &domain, &seller1_key);
 
-    let resolve_hash = resolve_struct_hash(&process_id, &root.payment);
-    let resolve_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &resolve_hash));
+        let root_struct_hash = commitment_struct_hash(&root);
+        let process_id = typed_data_hash(&domain, &root_struct_hash);
+        let order_hash = compute_order_hash(&process_id, &root_struct_hash);
 
-    let attest_struct =
-        attest_seller_struct_hash(&order_hash, &clause_key, 0, &witness_content_ref);
-    let attest_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &attest_struct));
+        let resolve_hash = resolve_struct_hash(&process_id, &root.payment);
+        let resolve_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &resolve_hash));
 
-    let buyer_attest_struct = attest_buyer_struct_hash(
-        &process_id,
-        &order_hash,
-        &clause_key,
-        0,
-        &re_assert_content_ref,
-    );
-    let buyer_attest_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &buyer_attest_struct));
+        let attest_struct =
+            attest_seller_struct_hash(&order_hash, &clause_key, 0, &witness_content_ref);
+        let attest_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &attest_struct));
 
-    BatchInput {
-        chain_id: CHAIN_ID,
-        verifying_contract: CORE,
-        block_timestamp: 1000,
-        operations: vec![
-            KernelOp::Commit {
-                commitment: root.clone(),
-                buyer_sig: root_buyer_sig,
-                seller_sig: root_seller_sig,
+        let buyer_attest_struct = attest_buyer_struct_hash(
+            &process_id,
+            &order_hash,
+            &clause_key,
+            0,
+            &re_assert_content_ref,
+        );
+        let buyer_attest_sig =
+            sign_digest(&buyer_key, &typed_data_hash(&domain, &buyer_attest_struct));
+
+        // Attestations precede the resolve: the evidence window closes at
+        // resolution.
+        operations.push(KernelOp::Commit {
+            commitment: root.clone(),
+            buyer_sig: root_buyer_sig,
+            seller_sig: root_seller_sig,
+        });
+        operations.push(KernelOp::AttestAsSeller {
+            target: root.clone(),
+            clause_id: clause_key,
+            stage: 0,
+            content_ref: witness_content_ref,
+            seller_sig: attest_sig,
+            proof: AttestationWitness {
+                clause_data_hash: keccak256(CLAUSE_DATA.as_bytes()),
+                inclusion_proof: vec![],
             },
-            KernelOp::AttestAsSeller {
-                target: root.clone(),
-                clause_id: clause_key,
-                stage: 0,
-                content_ref: witness_content_ref,
-                seller_sig: attest_sig,
-                proof: AttestationWitness {
-                    clause_data_hash: keccak256(CLAUSE_DATA.as_bytes()),
-                    inclusion_proof: vec![],
-                },
+        });
+        operations.push(KernelOp::AttestAsBuyer {
+            target: root.clone(),
+            clause_id: clause_key,
+            stage: 0,
+            content_ref: re_assert_content_ref,
+            buyer_sig: buyer_attest_sig,
+            proof: AttestationWitness {
+                clause_data_hash: keccak256(CLAUSE_DATA.as_bytes()),
+                inclusion_proof: vec![],
             },
-            KernelOp::AttestAsBuyer {
-                target: root.clone(),
-                clause_id: clause_key,
-                stage: 0,
-                content_ref: re_assert_content_ref,
-                buyer_sig: buyer_attest_sig,
-                proof: AttestationWitness {
-                    clause_data_hash: keccak256(CLAUSE_DATA.as_bytes()),
-                    inclusion_proof: vec![],
-                },
-            },
-            KernelOp::Resolve {
-                process_id,
-                running_total: root.payment,
-                commitments: vec![root.clone()],
-                buyer_sig: resolve_sig,
-            },
-        ],
-        prev_state: KernelStateSnapshot {
-            processes: vec![],
-            order_status: vec![],
-        },
-        // RPGF: credit the clause for the process this batch just resolved.
-        // The claim is proved against the POST-state, which is why an order
-        // committed and resolved inside one batch can still be counted by it.
-        // Single-clause agreement, so the clause leaf IS the checkout hash
-        // and the inclusion proof is empty.
-        usage_claims: vec![UsageClaim {
+        });
+        operations.push(KernelOp::Resolve {
+            process_id,
+            running_total: root.payment,
+            commitments: vec![root.clone()],
+            buyer_sig: resolve_sig,
+        });
+        usage_claims.push(UsageClaim {
             order: root,
             clause_or_process: clause_key,
             kind: UsageClaimKind::Clause {
                 clause_data_hash: re_assert_content_ref,
             },
             inclusion_proof: vec![],
-        }],
+        });
+    }
+
+    BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations,
+        prev_state: KernelStateSnapshot {
+            processes: vec![],
+            order_status: vec![],
+        },
+        usage_claims,
         usage_period: 0,
     }
 }

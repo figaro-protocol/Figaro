@@ -174,11 +174,14 @@ operation stream: every commit and resolve the batch applied, whole — a
 wallet-code resolve with its authorization bytes — and every usage claim,
 `prover/lib/src/operation_stream.rs`), and the clock the
 guest checked deadlines against. The canonical
-batch (all four op kinds) executes in 1,212,320 cycles with the k256 SP1
-precompile on an otherwise empty state, 1,611,935 beside 1,000 stored orders
-and 1,663,155 beside 10,000 (`prover/script/tests/guest_cycles.rs`, run with
+batch (all four op kinds) executes in 976,999 cycles with the k256 SP1
+precompile on an otherwise empty state, 1,496,718 beside 1,000 stored orders
+and 1,528,258 beside 10,000 (`prover/script/tests/guest_cycles.rs`, run with
 `--ignored`): the witness grows with the logarithm of the state, not with the
-state.
+state. A batch of one hundred operations, the size this project's relay cuts
+a batch at by default (`MAX_BATCH_OPS`), executes in 21,345,189 cycles, about
+213,000 an operation: twenty-five processes of a commit, two attestations and
+a resolve each, with their usage claims (`the_guests_cycles_for_a_full_batch`).
 
 **On-chain verifier** (`src/core/verifier/FigaroBatchVerifier.sol`):
 accepts SP1 proofs, verifies state-root continuity and chain binding,
