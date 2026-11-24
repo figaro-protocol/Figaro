@@ -56,6 +56,7 @@
 #   RELEASE_COMMIT  required; the full sha of the release revision
 #   FORK_URL        required; never printed
 #   FORK_PORT       default 8546
+#   FORK_CUPS       default 100; the compute units a second the fork asks of FORK_URL
 #   REHEARSAL_DIR   default ${TMPDIR:-/tmp}/figaro-fork-rehearsal-<chainId>
 #   NEXT_PUBLIC_IPFS_API_URL / IPFS_PIN_SERVICE_JWT   where the seeding pins
 #                   (default: the local Kubo node, http://127.0.0.1:5001)
@@ -101,7 +102,12 @@ step "1. an Anvil fork of chain $CHAIN_ID on port $FORK_PORT"
 if cast chain-id --rpc-url "$FORK" > /dev/null 2>&1; then
   echo "❌ something already answers on $FORK; choose another FORK_PORT"; exit 1
 fi
-anvil --quiet --fork-url "$FORK_URL" --port "$FORK_PORT" --chain-id "$CHAIN_ID" --no-rate-limit > "$REHEARSAL_DIR/anvil.log" 2>&1 &
+# The fork paces what it asks of the upstream node (FORK_CUPS, compute units a
+# second) and retries a refusal with a growing wait: with the pacing off, a
+# deploy's burst of state reads is answered "Too Many Requests" by a keyed
+# node on a metered plan, and the deploy fails on a read.
+anvil --quiet --fork-url "$FORK_URL" --port "$FORK_PORT" --chain-id "$CHAIN_ID" \
+  --compute-units-per-second "${FORK_CUPS:-100}" --retries 10 --fork-retry-backoff 1500 > "$REHEARSAL_DIR/anvil.log" 2>&1 &
 ANVIL_PID=$!
 trap 'kill "$ANVIL_PID" 2>/dev/null || true' EXIT
 for _ in $(seq 1 60); do cast chain-id --rpc-url "$FORK" > /dev/null 2>&1 && break; sleep 1; done
