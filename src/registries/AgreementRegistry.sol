@@ -152,8 +152,8 @@ contract AgreementRegistry {
     ///         key and the assembly terms leaf key are constants of the
     ///         formats, never an agreement.
     ///         Content validity is the publisher's responsibility off-chain;
-    ///         clause content well-formedness is the SDK's off-chain validator's
-    ///         concern — there is no on-chain content validation.
+    ///         clause content well-formedness is checked off the chain, by a
+    ///         signer's tool and by a reader: no contract validates content.
     /// @param agreementHash The merkle root over the agreement's clause
     ///                     leaves.
     /// @param contentURI   Full off-chain agreement document pointer

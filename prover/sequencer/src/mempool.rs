@@ -4,10 +4,9 @@
 /// Pre-checks are advisory only. The proof enforces all invariants.
 /// Pre-checks exist to reject clearly invalid operations early and
 /// avoid wasting prover compute. The attestation gate is the mirror's own
-/// `validate_attestation_witness` — the exact function the guest runs, in
-/// either form (hash-only: inclusion alone; plaintext: spec, content and
-/// inclusion) — so mempool acceptance and in-proof acceptance cannot
-/// drift.
+/// `validate_attestation_witness` — the exact function the guest runs, the
+/// leaf's inclusion under the signed agreement — so mempool acceptance and
+/// in-proof acceptance cannot drift.
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -341,8 +340,8 @@ impl Mempool {
     /// The key covers every input the proof or the verifier judges: a
     /// resolve's signer (admission checks it against the root buyer of a
     /// held or queued process, and it stays in the key) and its order list, an
-    /// attestation's witness spec bytes (the
-    /// guest requires them to hash to the clause key). Two submissions
+    /// attestation's clause data hash (the guest opens the leaf it names
+    /// against the signed agreement). Two submissions
     /// share a slot only when both are accepted or both are refused, so one
     /// that will be refused never makes the one that will be accepted a
     /// duplicate.
@@ -1320,17 +1319,10 @@ impl Mempool {
                 if recovered != target.seller {
                     return Err("attest-seller sig does not match target.seller".into());
                 }
-                // The mirror's witness gates (agreement inclusion; spec
-                // identity and content for the plaintext form) — the same
+                // The mirror's witness gate (agreement inclusion), the same
                 // code the guest runs.
-                validate_attestation_witness(
-                    proof,
-                    content_ref,
-                    clause_id,
-                    *stage,
-                    &target.checkout_hash,
-                )
-                .map_err(|e| format!("attestation witness gates rejected: {e}"))?;
+                validate_attestation_witness(proof, clause_id, &target.checkout_hash)
+                    .map_err(|e| format!("attestation witness gate rejected: {e}"))?;
                 Ok(())
             }
             KernelOp::AttestAsBuyer {
@@ -1355,21 +1347,13 @@ impl Mempool {
                 if recovered != target.buyer {
                     return Err("attest-buyer sig does not match target.buyer".into());
                 }
-                validate_attestation_witness(
-                    proof,
-                    content_ref,
-                    clause_id,
-                    *stage,
-                    &target.checkout_hash,
-                )
-                .map_err(|e| format!("attestation witness gates rejected: {e}"))?;
+                validate_attestation_witness(proof, clause_id, &target.checkout_hash)
+                    .map_err(|e| format!("attestation witness gate rejected: {e}"))?;
                 Ok(())
             }
             KernelOp::AttestByWalletCode {
                 target,
                 clause_id,
-                stage,
-                content_ref,
                 authorization,
                 proof,
                 ..
@@ -1377,7 +1361,7 @@ impl Mempool {
                 // The bytes are the party's code's to judge, at resolution;
                 // the relay asks the same code at its door and again at batch
                 // formation (`submitter::check_wallet_code`). Here: the
-                // length this relay plans for, and the witness gates the
+                // length this relay plans for, and the witness gate the
                 // guest runs, as for the signed form.
                 if authorization.len() > crate::gas::MAX_WALLET_AUTHORIZATION_BYTES {
                     return Err(format!(
@@ -1386,14 +1370,8 @@ impl Mempool {
                         crate::gas::MAX_WALLET_AUTHORIZATION_BYTES
                     ));
                 }
-                validate_attestation_witness(
-                    proof,
-                    content_ref,
-                    clause_id,
-                    *stage,
-                    &target.checkout_hash,
-                )
-                .map_err(|e| format!("attestation witness gates rejected: {e}"))?;
+                validate_attestation_witness(proof, clause_id, &target.checkout_hash)
+                    .map_err(|e| format!("attestation witness gate rejected: {e}"))?;
                 Ok(())
             }
         }
@@ -1408,21 +1386,9 @@ fn commit_key(order_hash: &B256) -> B256 {
 }
 
 /// The part of an attestation's dedup key its witness contributes: the
-/// form, and the clauseData hash (hash-only) or the spec's hash
-/// (plaintext).
+/// clauseData hash.
 fn witness_key(buf: &mut Vec<u8>, witness: &AttestationWitness) {
-    match witness {
-        AttestationWitness::HashOnly {
-            clause_data_hash, ..
-        } => {
-            buf.extend_from_slice(b"hash-only");
-            buf.extend_from_slice(clause_data_hash.as_slice());
-        }
-        AttestationWitness::Plaintext(proof) => {
-            buf.extend_from_slice(b"plaintext");
-            buf.extend_from_slice(keccak256(proof.spec_json.as_bytes()).as_slice());
-        }
-    }
+    buf.extend_from_slice(witness.clause_data_hash.as_slice());
 }
 
 /// Whether the commit `c` precedes `f` in a process `f` touches: `c` is a

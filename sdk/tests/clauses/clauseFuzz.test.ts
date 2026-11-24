@@ -1,10 +1,8 @@
 /**
- * Clause fuzz vectors — the generated leg of the clause-engine lock.
+ * Clause fuzz — the SDK's clause engine (`src/clauses/`) on generated cases.
  *
- * The clause engine exists twice: Layer A here (`src/clauses/`), and the
- * Rust mirror the guest runs (`prover/clause`). The fixed conformance
- * vectors lock the two on hand-written cases. This file GENERATES cases
- * from a seed and records what Layer A did with each:
+ * The hand-written boundaries are in `engineVectors.test.ts`. This file
+ * GENERATES cases from a seed:
  *
  *   - the spec: every protocol clause in `clauses/`, and generated specs —
  *     clauses nobody has seen, some of them malformed; their fields carry
@@ -13,20 +11,14 @@
  *   - the content: drawn from the spec's own field shapes — half of the
  *     draws aim inside every bound, half also cross them (a wrong type, a
  *     bound crossed, a geohash finer than its grain cap, a required field
- *     dropped, an unknown field added); strings leave ASCII in both;
- *   - the answers: whether the spec parses, whether the content validates,
- *     and the canonical ABI bytes when it does.
+ *     dropped, an unknown field added); strings leave ASCII.
  *
- * `prover/clause/tests/fuzz_vectors.rs` reads the vectors and must give the
- * same three answers. Layer A's answer is the oracle; the generator asserts
- * nothing about what a case deserves.
- *
- * Runs only under `CLAUSE_FUZZ_SEED=<n>` (`scripts/test-cross-impl-fuzz.sh`
- * sets it), writing `test/fixtures/streams/clauses.jsonl`, one JSON object per
- * line. Without the variable the file asserts the generator itself: the
- * same seed yields the same vectors.
+ * On every case the parser and the validator answer without throwing, and
+ * content the validator accepts encodes to ABI bytes without throwing. The
+ * generator asserts nothing about what a case deserves; the coverage test
+ * checks that the draws reach the grain cap and the private set's rules.
  */
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -55,7 +47,6 @@ const GRAIN_REFUSAL = /geohash carries at most \d+ characters/;
 const PRIVATE_SET_REFUSAL = /blinding|mix public and private/;
 
 const CLAUSES_DIR = path.resolve(__dirname, "../../../clauses");
-const OUT_PATH = path.resolve(__dirname, "../../../test/fixtures/streams/clauses.jsonl");
 
 // ── Content, drawn from a field's shape ─────────────────────────────────────
 
@@ -92,9 +83,9 @@ function geohashArb(disposition: FieldDisposition | undefined, careful: boolean)
 }
 
 /** Values at both edges of a large pattern's work budget: the longest the
- *  pattern runs on, and one character more, which both engines refuse. Only
- *  for a pattern of expanded size 256 or more, so a value stays under
- *  16,385 characters and the stream stays small. */
+ *  pattern runs on, and one character more, which the validator refuses.
+ *  Only for a pattern of expanded size 256 or more, so a value stays under
+ *  16,385 characters and the run stays short. */
 function workEdgeArb(pattern: string): fc.Arbitrary<string> | null {
     const size = portablePatternSize(pattern);
     if (size === null || size < 256) return null;
@@ -115,7 +106,7 @@ function stringArb(
     const min = field.minLength ?? 0;
     const max = Math.max(min, Math.min(field.maxLength ?? min + 24, min + 48));
     // A format named by a sibling resolves at validation; a geohash is the
-    // one whose grain the engines cap, so the draw is geohash-like.
+    // one whose grain the validator caps, so the draw is geohash-like.
     if (field.formatFromField !== undefined) {
         return careful ? geohashArb(disposition, true) : fc.oneof(geohashArb(disposition, false), anyString(min, max));
     }
@@ -258,8 +249,7 @@ function contentArb(
 // ── Specs nobody has seen ───────────────────────────────────────────────────
 
 /** A pattern: a known one, or characters drawn from the alphabet regexes are
- *  written in — most draws are outside the portable core, some inside it,
- *  and the parse verdict on each is one of the three answers. */
+ *  written in — most draws are outside the portable core, some inside it. */
 const PATTERN_ALPHABET = [..."abc019 .*+?()[]{}|^$\\-,:=!<>&~#dwsbDWSB", "(?:", "(?=", "(?!", "\\d", "\\w", "\\.", "[a-z]", "[^0-9]", "{2}", "{1,3}"];
 const patternArb = fc.oneof(
     { weight: 2, arbitrary: fc.constantFrom("^[a-z]+$", "^[0-9a-f]{4}$", "^(a|b)*c$", "^UN[0-9]{4}$", "^[A-Za-z0-9 ./-]{0,8}$") },
@@ -287,7 +277,7 @@ const patternArb = fc.oneof(
 const nameArb = fc.stringMatching(/^[a-z][a-zA-Z0-9]{0,7}$/);
 
 /** A field's disposition: absent most of the time, sometimes either value,
- *  sometimes one no engine admits. */
+ *  sometimes one the parser refuses. */
 const dispositionArb = fc.oneof(
     { weight: 12, arbitrary: fc.constant(undefined) },
     { weight: 2, arbitrary: fc.constantFrom("public", "private") },
@@ -295,7 +285,7 @@ const dispositionArb = fc.oneof(
 );
 
 /** A string field's `formatFromField`: absent most of the time, a drawn name
- *  (a sibling's now and then), or a value no engine admits. */
+ *  (a sibling's now and then), or a value the parser refuses. */
 const formatFromFieldArb = fc.oneof(
     { weight: 12, arbitrary: fc.constant(undefined) },
     { weight: 2, arbitrary: nameArb },
@@ -426,7 +416,7 @@ const fieldSetArb: fc.Arbitrary<Record<string, unknown>[]> = fc
     });
 
 /** A stage key: most draws in the one spelling a stage key has, the decimal
- *  of an integer 0..255; the rest in spellings both engines refuse. */
+ *  of an integer 0..255; the rest in spellings the parser refuses. */
 const stageKeyArb: fc.Arbitrary<string> = fc.oneof(
     { weight: 3, arbitrary: fc.constantFrom("0", "1", "2", "3", "255") },
     { weight: 2, arbitrary: fc.constantFrom("01", "00", "+1", " 1", "1 ", "1.0", "0x1", "-0", "", "256", "1e1", "\u0661", "a") },
@@ -444,7 +434,7 @@ const generatedSpecArb: fc.Arbitrary<Record<string, unknown>> = fc
         },
         { requiredKeys: ["clauseId", "version", "title", "description", "fields"] },
     )
-    // Sometimes malformed: the parse verdict is one of the three answers.
+    // Sometimes malformed, so the parser refuses some draws.
     .chain((spec) =>
         fc.tuple(fc.integer({ min: 0, max: 19 }), stageKeyArb).map(([roll, key]) => {
             const damaged: Record<string, unknown> = { ...spec };
@@ -462,37 +452,29 @@ const generatedSpecArb: fc.Arbitrary<Record<string, unknown>> = fc
         }),
     );
 
-// ── The vectors ─────────────────────────────────────────────────────────────
+// ── The cases ───────────────────────────────────────────────────────────────
 
-interface Vector {
-    type: "vector";
-    index: number;
+interface Case {
     origin: string;
     spec: unknown;
-    specOk: boolean;
     stage: number | null;
     content: unknown;
     validateOk: boolean | null;
-    encoded: string | null;
 }
 
-function answer(index: number, origin: string, rawSpec: unknown, stage: number | null, content: unknown): Vector {
-    const base = { type: "vector" as const, index, origin, spec: rawSpec, stage, content };
+/** Parse, validate and, when the content validates, encode. A throw from
+ *  any of the three fails the test that drew the case. */
+function answer(origin: string, rawSpec: unknown, stage: number | null, content: unknown): Case {
+    const base = { origin, spec: rawSpec, stage, content };
     const parsed = parseClauseSpec(rawSpec);
-    if (!parsed.ok) return { ...base, specOk: false, validateOk: null, encoded: null };
+    if (!parsed.ok) return { ...base, validateOk: null };
     const options = stage === null ? {} : { stage };
     const verdict = validateContent(content, parsed.spec, options);
-    if (!verdict.ok) return { ...base, specOk: true, validateOk: false, encoded: null };
-    // Content Layer A validates, Layer A encodes: a throw here is a defect in
-    // Layer A itself, and fails the generator.
-    return {
-        ...base,
-        specOk: true,
-        validateOk: true,
-        encoded: encodeContentFromSpec(parsed.spec, content as Record<string, unknown>, options),
-    };
+    if (!verdict.ok) return { ...base, validateOk: false };
+    const encoded = encodeContentFromSpec(parsed.spec, content as Record<string, unknown>, options);
+    expect(encoded, `${origin}: validated content encodes to ABI bytes`).toMatch(/^0x(?:[0-9a-fA-F]{2})*$/);
+    return { ...base, validateOk: true };
 }
-
 function fieldsOf(rawSpec: unknown, stage: number | null): readonly FieldSpec[] {
     const parsed = parseClauseSpec(rawSpec);
     if (!parsed.ok) return [];
@@ -506,7 +488,7 @@ function stagesOf(rawSpec: unknown): (number | null)[] {
     return [null, ...Object.keys(parsed.spec.stages ?? {}).map((key) => stageOfKey(key) as number), 9];
 }
 
-function build(seed: number, perSpec: number, generatedSpecs: number): Vector[] {
+function build(seed: number, perSpec: number, generatedSpecs: number): Case[] {
     const protocol = readdirSync(CLAUSES_DIR)
         .filter((f) => f.endsWith(".json"))
         .sort()
@@ -529,7 +511,7 @@ function build(seed: number, perSpec: number, generatedSpecs: number): Vector[] 
             } as unknown,
         }));
 
-    const vectors: Vector[] = [];
+    const cases: Case[] = [];
     [...protocol, ...generated, ...patterned].forEach(({ origin, spec }, s) => {
         for (const stage of stagesOf(spec)) {
             const fields = fieldsOf(spec, stage);
@@ -539,14 +521,14 @@ function build(seed: number, perSpec: number, generatedSpecs: number): Vector[] 
                 ...fc.sample(contentArb(fields, false), { seed: draw, numRuns: perSpec }),
             ];
             for (const content of contents) {
-                vectors.push(answer(vectors.length, origin, spec, stage, content));
+                cases.push(answer(origin, spec, stage, content));
             }
         }
     });
 
     // A list of values under one large pattern, at both edges of the
     // content's total: the most values it runs on, and one value more, which
-    // both engines refuse. Only for a pattern of expanded size 256 or more,
+    // the validator refuses. Only for a pattern of expanded size 256 or more,
     // so a content stays under 65,537 characters.
     // Most draws are a counted range that matches the values, so the total
     // alone decides the verdict at its edge; the rest are large patterns of
@@ -575,46 +557,32 @@ function build(seed: number, perSpec: number, generatedSpecs: number): Vector[] 
         };
         const count = Math.floor(MAX_CONTENT_PATTERN_WORK / (length * size)) + over;
         const content = { v: Array.from({ length: count }, () => unit.repeat(length)) };
-        vectors.push(answer(vectors.length, `pattern-total-${i}`, spec, null, content));
+        cases.push(answer(`pattern-total-${i}`, spec, null, content));
     });
-    return vectors;
+    return cases;
 }
 
-describe("Clause fuzz vectors — the generated leg of the clause-engine lock", () => {
-    if (process.env.CLAUSE_FUZZ_SEED !== undefined) {
-        it("writes generated vectors to test/fixtures/streams/clauses.jsonl", () => {
-            const seed = Number(process.env.CLAUSE_FUZZ_SEED);
-            expect(Number.isSafeInteger(seed), "CLAUSE_FUZZ_SEED is an integer").toBe(true);
-            const vectors = build(seed, Number(process.env.CLAUSE_FUZZ_PER_SPEC ?? "8"), 40);
-            const valid = vectors.filter((v) => v.validateOk === true).length;
-            const invalid = vectors.filter((v) => v.validateOk === false).length;
-            const unparsed = vectors.filter((v) => !v.specOk).length;
-            expect(valid, "the vectors hold content Layer A accepts").toBeGreaterThan(0);
-            expect(invalid, "the vectors hold content Layer A rejects").toBeGreaterThan(0);
-            expect(unparsed, "the vectors hold specs Layer A refuses").toBeGreaterThan(0);
-            mkdirSync(path.dirname(OUT_PATH), { recursive: true });
-            const header = { type: "header", seed, count: vectors.length, valid, invalid, unparsed };
-            writeFileSync(OUT_PATH, `${[header, ...vectors].map((v) => JSON.stringify(v)).join("\n")}\n`);
-        });
-        return;
-    }
+describe("Clause fuzz — the SDK's clause engine on generated specs and content", () => {
+    // Drawn once, inside the first test that reads them, so a throw fails a test.
+    let drawn: Case[][] | undefined;
+    const runs = (): Case[][] => (drawn ??= [1, 2, 3].map((seed) => build(seed, 8, 40)));
 
-    it("the same seed yields the same vectors", () => {
-        const a = build(1, 3, 6);
-        const b = build(1, 3, 6);
-        expect(a.length).toBeGreaterThan(0);
-        expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+    it("parse, validate and encode never throw, and the draws hold every verdict", () => {
+        for (const cases of runs()) {
+            expect(cases.some((c) => c.validateOk === true), "content the validator accepts").toBe(true);
+            expect(cases.some((c) => c.validateOk === false), "content the validator refuses").toBe(true);
+            expect(cases.some((c) => c.validateOk === null), "specs the parser refuses").toBe(true);
+        }
     });
 
-    it("the stream reaches the grain cap, the private set's rules and a valid private set", () => {
-        // Both engines apply these rules, so the stream holds cases of each:
-        // content the cap alone refuses, specs the private set's rules alone
-        // refuse, and a private set whose content both engines encode.
+    it("the draws reach the grain cap, the private set's rules and a valid private set", () => {
+        // Content the cap alone refuses, specs the private set's rules alone
+        // refuse, and a private set whose content validates and encodes.
         let capRefusals = 0;
         let privateSetRefusals = 0;
         let privateSetsEncoded = 0;
-        for (const seed of [1, 2, 3]) {
-            for (const v of build(seed, 8, 40)) {
+        for (const cases of runs()) {
+            for (const v of cases) {
                 const parsed = parseClauseSpec(v.spec);
                 if (!parsed.ok) {
                     if (parsed.errors.every((e) => PRIVATE_SET_REFUSAL.test(e.message))) privateSetRefusals += 1;

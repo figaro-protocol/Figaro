@@ -7,8 +7,8 @@
 //! `AttestationCoordinator`, and writes what the contract did to
 //! `test/fixtures/streams/kernel.jsonl`, one JSON object per line. This
 //! file replays the stream through `apply_batch_with_state`, one operation
-//! per batch over the state the previous batch left — each attestation as
-//! `AttestationWitness::HashOnly`, the coordinator's own arguments — and
+//! per batch over the state the previous batch left — each attestation
+//! carrying the coordinator's own arguments — and
 //! asserts:
 //!
 //!   - every operation FigaroCore accepted, the mirror accepts, with the
@@ -17,7 +17,7 @@
 //!     same error;
 //!   - every attestation the coordinator accepted, the mirror accepts and
 //!     emits the coordinator's log — the same topics and data, byte for
-//!     byte — with no spec binding; every one it refused, the mirror
+//!     byte; every one it refused, the mirror
 //!     refuses with the same error;
 //!   - every wallet's deposits and payouts, per token, are FigaroCore's;
 //!   - every process ends on FigaroCore's accumulator and active count.
@@ -243,7 +243,7 @@ fn sentinel_attestation() -> KernelOp {
         stage: 0,
         content_ref: B256::ZERO,
         authorization: Default::default(),
-        proof: AttestationWitness::HashOnly {
+        proof: AttestationWitness {
             clause_data_hash: B256::ZERO,
             inclusion_proof: vec![],
         },
@@ -569,7 +569,7 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                 let stage: u8 = s(&step["stage"]).parse().unwrap();
                 let content_ref = b256(&step["contentRef"]);
                 let key = &keys[&addr(&step["caller"])];
-                let proof = AttestationWitness::HashOnly {
+                let proof = AttestationWitness {
                     clause_data_hash: b256(&step["clauseDataHash"]),
                     inclusion_proof: words(&step["inclusionProof"]),
                 };
@@ -682,7 +682,7 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                     attestations += 1;
                     wallet_code_attestations += 1;
                     if !events.attestations.is_empty() {
-                        divergences.push(format!("step {i} ({kind}): the wallet-code form put an event in public value 6"));
+                        divergences.push(format!("step {i} ({kind}): the wallet-code form put an event in public value 5"));
                     }
                 } else if kind.starts_with("attest") {
                     attestations += 1;
@@ -698,11 +698,6 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                             "step {i} ({kind}): {} events, the coordinator emitted one",
                             other.len()
                         )),
-                    }
-                    if !events.spec_bindings.is_empty() {
-                        divergences.push(format!(
-                            "step {i} ({kind}): a hash-only attestation committed a spec binding"
-                        ));
                     }
                 }
                 if kind == "commit" {

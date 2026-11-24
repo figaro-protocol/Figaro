@@ -82,10 +82,11 @@ reverts) while the outer resolution completes exactly once — across
 `FigaroBatchVerifier.settleBatch`.
 
 `FigaroBatchVerifierTest` covers the batch verifier: the happy path
-with value legs, the ClauseRegistry spec-binding anchor gate (permissive-spec
-substitution + unregistered clause both revert; a never-seen registered clause
-resolves with zero verifier changes), state-root continuity, calldata-tamper
-reverts, and constructor guards; and the resolve authorized by the buyer's
+with value legs, a clause key nobody registered attested through a batch
+(`test_permissionless_anUnregisteredClauseKeyIsAttestedThroughABatch`), public
+values of any length but 288 bytes refused
+(`test_settleBatch_revertsOnPublicValuesOfAnotherLength`), state-root
+continuity, calldata-tamper reverts, and constructor guards; and the resolve authorized by the buyer's
 wallet code (`test_settleBatch_walletCodeResolve_*`): with
 `MockERC1271Wallet` etched at the buyer, code that validates the digest and
 bytes resolves the process and pays out, code that refuses them or reverts
@@ -104,11 +105,14 @@ of both roles included, expecting each attestation's `Attestation` before the
 Core's events, and `BatchGasCeilingTest`
 measures the wallet-code check (`test_Gas_settleStreamWalletCodeCheck`) and the wallet-code attestation entry (`test_Gas_settleStreamWalletCodeAttestation`).
 `BatchVerifierStepsWriteNoStorageTest` holds the premise under which
-`certora/BatchVerifierStateRoot.spec` summarizes three steps of `settleBatch`:
+`certora/BatchVerifierStateRoot.spec` summarizes two steps of `settleBatch`:
 through a test-only subcontract, `VerifierSteps`, it runs the operation
-stream's walk over every harvested stream (asking and publishing), the token
-step and the registry anchor check, each under `vm.record`, and requires that
+stream's walk over every harvested stream (asking and publishing) and the token
+step, each under `vm.record`, and requires that
 the verifier's address recorded no storage write.
+`BatchVerifierNeverRegistersTest` watches every call a batch makes while it lands
+and holds that none reaches a registry, read or write
+(`test_theVerifierMakesNoCallToAnyRegistryReadOrWrite`).
 
 `CoreBatchEquivalenceTest` is the model-based differential run behind
 `VERIFICATION_MAP.md` § "E-13 — the two paths, operation by observable". It
@@ -180,7 +184,7 @@ it *could* fail.
 | `TokenOpsVerification.spec` | 7 | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
 | `FlorinToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
 | `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier's token step, `_executePositions`, alone, over two positions of any token addresses (each a standard ERC-20) and users, read through `certora/harness/FigaroBatchVerifierHarness.sol`'s `executePositions`: each user moves by payout−deposit, the verifier by the batch's pulls minus payouts per token, no other balance moves, and no payout asks the verifier for more than it holds once the batch's pulls are in (the two-pass order). The argument for longer lists is stated in the spec. Mutation-checked: all four, against five mutants over two runs (`VERIFICATION_MAP.md` §10). |
-| `BatchVerifierStateRoot.spec` | 3 | FigaroBatchVerifier's state root chains: a resolved batch's `prevRoot` is the root the verifier held and its `newRoot` the root it leaves; each resolved batch advances `batchCount` by one; no other function moves either. So the `BatchSettled` events form one unbroken, gap-free chain from the initial root. Read through `certora/harness/FigaroBatchVerifierHarness.sol` (the contract plus a pure `decodedRoots` view over its own `_decodePV`), with `_executePositions`, `_checkSpecBindings` and `_walkOperations` summarized, since none writes the verifier's storage. Mutation-checked: all three. A mutant writing `batchCount` inside the summarized `_walkOperations` survives the spec, since the summary hides the body; Foundry's `BatchVerifierStepsWriteNoStorageTest` checks that the three summarized steps write no verifier storage, and catches it (`VERIFICATION_MAP.md` §10). |
+| `BatchVerifierStateRoot.spec` | 3 | FigaroBatchVerifier's state root chains: a resolved batch's `prevRoot` is the root the verifier held and its `newRoot` the root it leaves; each resolved batch advances `batchCount` by one; no other function moves either. So the `BatchSettled` events form one unbroken, gap-free chain from the initial root. Read through `certora/harness/FigaroBatchVerifierHarness.sol` (the contract plus a pure `decodedRoots` view over its own `_decodePV`), with `_executePositions` and `_walkOperations` summarized, since neither writes the verifier's storage. Mutation-checked: all three. A mutant writing `batchCount` inside the summarized `_walkOperations` survives the spec, since the summary hides the body; Foundry's `BatchVerifierStepsWriteNoStorageTest` checks that the two summarized steps write no verifier storage, and catches it (`VERIFICATION_MAP.md` §10). |
 | `RpgfMinter.spec` | 10 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-clause-or-assembly rejection, live-stake eligibility (`_isAuthor`, the gate on a live registration), the designer-side membership gate (a claimant with no live member stake reverts and mints nothing; `claimable` quotes it zero), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked: conservation, double-claim, eligibility. |
 | `RpgfMinterAuthor.spec` | 2 | `RpgfMinter._isAuthor` as written — the kind selection `RpgfMinter.spec` summarizes to a ghost: for each of the three kinds the answer is the live designer of record in the one registry that kind names, whatever the other two hold at the same key, and a kind past the three reverts. Read through `certora/harness/RpgfMinterAuthorHarness.sol` (the contract plus a view calling `_isAuthor`) against `certora/harness/AuthorRegistryMocks.sol` (one getter contract per registry family, linked to the minter's three registry addresses). Compiled without via-IR: under via-IR the prover's call resolution fails on `_isAuthor`'s decoding of the dynamic `string` that `bindings` returns. Verified, both rules: https://prover.certora.com/output/9512759/f62a013cbdb44692b77bf04219670f75 |
 | `SwapCoordinatorTokenOps.spec` | 1 | `WitnessSwapAndCommitCoordinator` keeps no token: on every completing path of `swapAndCommit`, linked to `FigaroCore` and to the Foundry stand-ins for Permit2 (`MockWitnessPermit2`) and the swap venue (`MockSwapVenue`), the coordinator's balance of each of the two tokens is what it was. The three `_fund` entries of `certora/token-ops.inventory` cite this rule. Its run is in `VERIFICATION_MAP.md` §14. |
@@ -204,18 +208,17 @@ same `echidna_` properties, actors and sequence length as `echidna.yaml`; `medus
 config. Pass 1 runs 900s, Pass 2 300s; the coverage reports land in `medusa/corpus/coverage/`.
 Run with `scripts/test-medusa.sh`. Success: no property listed as failed.
 
-## cargo-fuzz (`fuzz/prover/`) — 2 targets
+## cargo-fuzz (`fuzz/prover/`) — 1 target
 
-A crate outside `prover/`, with its own workspace and lock, that reaches `prover/lib` and
-`prover/clause` by path, so the proof program's bytes and its key do not move.
+A crate outside `prover/`, with its own workspace and lock, that reaches `prover/lib` by path, so
+the proof program's bytes and its key do not move.
 
 | Target | What it holds |
 |---|---|
 | `operation_stream` | `decode_operation_stream` over any bytes: no panic, and every stream it accepts re-encodes through `encode_stream_parts` to the same bytes |
-| `clause_spec` | `kernel::validate_attestation_content` (gates S, C and I) over any spec JSON, content JSON and clause data, the clause id set to `keccak256` of the spec so the bytes reach the parser, the validator and the encoder: no panic |
 
-Run with `cargo +nightly fuzz run <target> --fuzz-dir fuzz/prover -- -max_total_time=600`.
-Seeds: `python3 -I fuzz/prover/seed.py` writes the canonical specs in `clauses/` and the streams in
+Run with `cargo +nightly fuzz run operation_stream --fuzz-dir fuzz/prover -- -max_total_time=600`.
+Seeds: `python3 -I fuzz/prover/seed.py` writes the streams in
 `test/fixtures/operation-stream-vectors.json` into `fuzz/prover/corpus/`. A crash is saved under
 `fuzz/prover/artifacts/`. Success: the run ends on `Done N runs`, with no crash file.
 
@@ -441,16 +444,12 @@ or without the depth-256 refusal each fails the build.
 
 ## Rust — the proof apparatus (`prover/`)
 
-`cargo test` from `prover/` — five crates, one suite. Prereq: three of the five
+`cargo test` from `prover/` — four crates, one suite. Prereq: three of the four
 (`figaro-prover` — the SP1 guest at `prover/program` — plus `figaro-prove-test`
 and `figaro-sequencer`) need the SP1 toolchain (`cargo prove`) to build; without
-it, `cargo test -p figaro-clause -p figaro-kernel` runs the two host-only crates,
+it, `cargo test -p figaro-kernel` runs the host-only crate,
 the subset `prover-ci` gates on every PR (its `sp1` job runs the other three on
-main). The crates: `figaro-clause`
-(off-chain conformance: every spec in `clauses/` parses — count derived from the
-directory; the encode vectors in `prover/clause/tests/encode_conformance.rs`,
-generated from the live TS encoder, lock byte parity — signed int256,
-stage-scoped witnesses, tuple[] arrays, top-level bytes32 and address words, open formats), `figaro-kernel` (frozen Foundry parity vectors for commit/resolve;
+main). The crates: `figaro-kernel` (frozen Foundry parity vectors for commit/resolve;
 the transition replay — `prover/lib/tests/transition_vectors.rs` replays
 `test/fixtures/kernel-transition-vectors.json`, harvested from the live `FigaroCore`
 by `KernelTransitionVectorsTest`, and asserts every id, bond, payout,
@@ -471,18 +470,19 @@ reach it; the guest's cycles beside a growing stored state
 `--ignored`); the three packer vectors (`packers.rs`) and the
 Merkle leg of the agreement-tree lock (`merkle_parity.rs`), both asserted on
 the Solidity side too +
-the witness-gate suite: spec-identity substitution (Gate S,
-`keccak256(spec_json) == clause_id`), a lookalike spec under the same name
-refused, content-hash mismatch, inclusion failure, attest-after-resolve; the
-hash-only form, accepted on inclusion with no spec binding and refused on a
-wrong `clauseDataHash`, a wrong inclusion proof or a wrong signer
-(`a_hash_only_*`), its provenance-leaf attestation accepted on inclusion
-alone (`usage.rs`); the attestation lock —
+the witness-gate suite in `parity.rs`: a seller's and a buyer's attestation
+accepted on the leaf's inclusion
+(`a_seller_attestation_is_accepted_on_the_leaf_s_inclusion`,
+`a_buyer_attestation_is_accepted_on_the_leaf_s_inclusion`), and refused on a
+wrong `clauseDataHash`, a wrong inclusion proof, a wrong signer or a resolved
+order; the provenance-leaf attestation accepted on inclusion alone and refused
+on an uncommitted leaf (`usage.rs`); the attestation lock —
 `prover/lib/tests/attestation_vectors.rs` submits the arguments
 `AttestationVectorsTest` ran on the live coordinator, recorded in
 `test/fixtures/attestation-vectors.json` (`HARVEST_ATTESTATION_VECTORS=true`
-regenerates it), as hash-only batched attestations and asserts each event
-encodes to the coordinator's topics and data; the
+regenerates it), as batched attestations and asserts each event
+encodes to the coordinator's topics and data
+(`a_batched_attestation_emits_the_coordinator_s_event_bytes`); the
 usage bridge in
 `prover/lib/tests/usage.rs` — same-batch credit against the post-state, one use per
 (kind, key, process, seller) in a batch (two sellers of one process are two uses, two orders
@@ -498,9 +498,7 @@ the agreement's membership proof (refused on another agreement's hash, a proof
 under another root, or the wrong agreement content), one provenance leaf crediting
 the agreement and the assembly apart, both reserved keys refused on every kind
 (`every_kind_keyed_on_a_reserved_key_is_refused`) and the terms leaf never
-passing as an agreement, the reserved provenance leaf attestable without a
-spec (and refused on an uncommitted key, a foreign contentRef or non-canonical
-bytes), a clause and an assembly on the same key accruing apart, and the usage-hash vector (each
+passing as an agreement, a clause and an assembly on the same key accruing apart, and the usage-hash vector (each
 use `key ‖ kind ‖ processId ‖ seller`) asserted verbatim on the Solidity side; bincode roundtrips
 fence the SP1 stdin landmines; `recover_signer` refuses the high-s twin `(r, n − s, v')` of a valid
 signature as `InvalidSignature`, as `ECDSA.recover` refuses it,
@@ -508,20 +506,23 @@ signature as `InvalidSignature`, as `ECDSA.recover` refuses it,
 exercised through the next crate), `figaro-prove-test` (SP1 mock-executor guest tests — the guest's committed
 bytes must equal the host's `PublicValues.abi_encode` byte-for-byte — the exact
 words the on-chain verifier hashes against the proof's digest — and decode back
-field-for-field against host `apply_batch`; in-VM Gate-S
-rejection; the guest on SP1's patched `ecdsa`/`k256` aborts on the high-s twin of the canonical
+field-for-field against host `apply_batch`; in-VM rejection of a witness whose
+leaf the agreement does not hold
+(`guest_program_rejects_a_witness_whose_leaf_the_agreement_does_not_hold`);
+the guest on SP1's patched `ecdsa`/`k256` aborts on the high-s twin of the canonical
 batch's buyer signature, which on the host recovers the same buyer
 (`guest_program_rejects_the_high_s_twin_of_the_buyer_signature`); `SP1_REAL_PROOF=1` generates + verifies a real local Core proof;
 `prover/script/tests/clause_keys.rs` canonicalizes every `clauses/*.json` without its
 `block` and asserts it hashes to the SDK's key in `test/fixtures/clause-keys.json`),
-and `figaro-sequencer` (mempool runs the mirror's own witness gates at the
-door, admitting a hash-only attestation and refusing a wrong `clauseDataHash`;
-the relay writes no attestation content to its logs, state file, journal
-or `/status`, a refused attestation logged without its reason
-(`the_relay_writes_no_attestation_content_to_its_logs_state_or_routes`); a dedup slot belongs to the submission that will be accepted — a
+and `figaro-sequencer` (mempool runs the mirror's own witness gate at the
+door, admitting an attestation whose leaf opens and refusing a `clauseDataHash`
+the agreement never committed
+(`mempool_rejects_a_clause_data_hash_the_agreement_never_committed`); a body in
+a retired witness shape is refused at the door and logged by its status alone
+(`an_attestation_in_another_witness_shape_is_refused_without_logging_its_values`); a dedup slot belongs to the submission that will be accepted — a
 stranger's resolve, the buyer's signature over another order list or another
 cumulative value, and an
-attestation with other witness spec bytes each leave the real one queued; the state store — the kept state
+attestation with another `clauseDataHash` each leave the real one queued; the state store — the kept state
 survives a restart with its root, a batch's state is held across a crash
 before its receipt and for as long as the batch can land, a held root is not
 replaced, a damaged state file or journal is refused, a verifier root the
@@ -569,8 +570,9 @@ refuses missing logs, which found an unpaired `BatchOperations` dropped
 silently and refused only later under another reason, now refused by name).
 
 `sdk/tests/batch-e2e.test.ts` is the cross-language lock: TS signs + builds
-a plaintext attestation witness, the Rust sequencer binary proves + submits, the Solidity
-verifier checks the hashes and the registry anchor on a live Anvil — value
+an attestation's witness (the clauseData hash and the inclusion proof, as the
+coordinator takes them), the Rust sequencer binary proves + submits, the Solidity
+verifier checks the hashes on a live Anvil — value
 legs asserted from the chain. Between its two batches the test starts a relay
 that holds no state, which must refuse to start; starts a second relay with
 `REBUILD_FROM_CHAIN=1`, which must rebuild the state behind the verifier's root
@@ -742,11 +744,9 @@ each of its three parts, moves no clause key, no leaf, no `agreementHash` and no
 `checkoutHash` of the reference agreement `agreements/counter-sale.json`, while an
 edit to the `title` or a field's type moves the key. `prover/script/tests/clause_keys.rs`
 (`figaro-prove-test`) and `prover/lib/tests/parity.rs` read the same fixture
-and assert the Rust canonicalization lands on every key; `parity.rs`
-`attest_witness_carrying_block_is_refused_and_without_it_is_accepted` holds Gate S
-to the witness without `block`. The Rust tests keep one canonical form,
-`prover/script/src/canonical.rs`, which the test crates of `prover/lib` and
-`prover/clause` include by path. `test/fixtures/clause-key-canonical-form.json`,
+and assert the Rust canonicalization lands on every key. The Rust tests keep one
+canonical form, `prover/script/src/canonical.rs`, which the test crate of
+`prover/lib` includes by path. `test/fixtures/clause-key-canonical-form.json`,
 a spec with floats, integers above 2^53 and index-like keys, gives one key in
 `clauseKeys.test.ts` and in `clause_keys.rs`
 (`the_canonical_form_vector_hashes_to_the_sdk_key`): numbers are written as
@@ -771,38 +771,37 @@ commitments with the same keys, applies them through `apply_batch`, and asserts
 every figure — the mirror's bond and payout arithmetic is locked to
 `FigaroCore`'s, not to a comment.
 
-**Clause-engine vectors — the engine's boundaries, one by one.**
-`sdk/tests/clauses/engineVectors.test.ts` names each boundary of the clause
+**Clause-engine vectors — the SDK engine's boundaries, one by one.**
+`sdk/tests/clauses/engineVectors.test.ts` names each boundary of the SDK's clause
 engine — every character position of the datetime format, every hex width,
-every shape the regex screen reads, every construct on which the two regex
+every shape the regex screen reads, every construct on which regex
 libraries part and every edge of the portable pattern core, every bound a
-spec declares, the specs that parse and the ones that do not — and freezes Layer A's verdict on each
-into `test/fixtures/clause-engine-vectors.json`
-(`HARVEST_CLAUSE_ENGINE_VECTORS=1` regenerates);
-`prover/clause/tests/engine_vectors.rs` asserts the guest's engine gives the
-same verdicts and the same bytes on every case. The two engines apply the same
-rules: the vectors hold each rule of the disposition, of `formatFromField`, of
+spec declares, the specs that parse and the ones that do not — and states the
+verdict or the bytes beside each case. The vectors hold each rule of the
+disposition, of `formatFromField`, of
 the private set's blinding field (a set that declares a private field declares
 exactly one, of one shape, at its top level, and never mixes public and private
 fields), of the enum's 256 values and of the geohash grain cap by disposition,
 with both verdicts, and the encode cases hold a private set and a private stage
-with their blinding values. A proof of a plaintext attestation therefore
-attests the grain and the presence of a blinding value, for the party that
-submitted that form; a reader of the chain cannot tell which form an
-attestation took (`docs/DESIGN_DECISIONS.md` § 26). The test "The rules
-both engines apply", in the same file, derives every attribute a spec or a
+with their blinding values. A test in the same file ("The vectors cover the published
+format") derives every attribute a spec or a
 field may carry from the published clause-spec definition
 (`sdk/src/clauses/clause-spec.schema.json`), and fails unless the vectors hold
 a spec that parses with it and a spec the parser refuses for it, or a table in
 the test names why the parser never refuses it; so an attribute added to the
-definition and the parser forces a vector, which the guest then replays. It fails
+definition and the parser forces a vector. It fails
 too if the vectors lose an accepted or a refused case of the cap, the private
-disposition, `formatFromField` or the blinding field. The lock cannot see a
-rule added to one engine alone on an input no vector and no fuzz draw
-exercises: such a rule passes unseen.
-`prover/lib/tests/parity.rs` reads two of the encode cases: a blinded private
-clause passes the plaintext form's gates, and a private stage's content
-reference is the SDK's. The EIP-712 fixture carries the batch
+disposition, `formatFromField` or the blinding field.
+`sdk/tests/clauses/clauseFuzz.test.ts` draws cases from every spec in
+`clauses/` and from generated specs nobody has seen (some malformed; their
+fields carry dispositions, `formatFromField` and blinding fields, in private
+sets that keep the set's rules and in sets that break one), with content drawn
+from each spec's field shapes — half of the draws inside every bound, half
+crossing them, geohashes past their grain cap among them, strings leaving
+ASCII — and holds that the parser, the validator and the encoder answer
+without throwing, and that the draws reach the grain cap, the private set's
+rules and a valid private set.
+The EIP-712 fixture carries the batch
 path's three authorizations — `ResolveProcess` (over the process id and the
 cumulative value the buyer accepts), `AttestSeller`, `AttestBuyer`, hashed by
 viem from the type strings — and
@@ -818,22 +817,7 @@ property generator) and writes each root, leaf and inclusion proof to
 `test/fixtures/streams/agreements.json` in the Merkle fixture's format;
 `MerkleParityTest` and `prover/lib/tests/merkle_parity.rs` read that file
 through `MERKLE_VECTORS`, rebuild every leaf, open every proof, and refuse a
-tampered leaf. The clause stream:
-`sdk/tests/clauses/clauseFuzzVectors.test.ts` under `CLAUSE_FUZZ_SEED` draws
-cases from every spec in `clauses/` and from generated specs nobody has seen
-(some malformed; their fields carry dispositions, `formatFromField` and
-blinding fields, in private sets that keep the set's rules and in sets that
-break one) and from specs of one patterned field whose pattern is drawn
-from the characters regexes are written in, with content drawn from each
-spec's field shapes — half of
-the draws inside every bound, half crossing them, geohashes past their grain
-cap among them, strings leaving ASCII in both — and writes the SDK's three answers to `test/fixtures/streams/clauses.jsonl`:
-whether the spec parses, whether the content validates, and the canonical ABI
-bytes; `prover/clause/tests/fuzz_vectors.rs` asks the guest's engine the same
-three questions. Without the variable the SDK file asserts the generator is
-deterministic, and that its stream holds content the grain cap alone refuses,
-specs the private set's rules alone refuse, and a private set whose content
-validates. The `FigaroCore` stream has two halves.
+tampered leaf. The `FigaroCore` stream has two halves.
 `test/core/kernel/KernelDifferentialFuzzTest.t.sol` draws a stream of commits,
 resolutions and attestations from the seed, over five wallets and two tokens,
 every order signing a two-clause agreement derived from its salt: valid ones,
@@ -856,9 +840,10 @@ asserts nothing about which error a malformed operation earns: `FigaroCore`'s
 answer is the oracle. `prover/lib/tests/fuzz_stream.rs` replays the stream
 through `apply_batch_with_state`, one operation per batch over the state the
 previous batch left, with the stream's own commit signature bytes, each
-attestation in the hash-only form and each wallet-code resolution as
+attestation with the clauseData hash and inclusion proof the coordinator
+takes, and each wallet-code resolution as
 `ResolveByWalletCode`, and asserts the same acceptance, the same
-error, the same ids, the coordinator's log bytes with no spec binding, for each
+error, the same ids, the coordinator's log bytes, for each
 `0x04` entry the bytes `FigaroBatchVerifier`'s stream reader read (the guest's
 encoder writes them, and its decoder reads back the same process, the u16-length
 authorization, the orders and the listed payments' sum, and stops where the
@@ -936,12 +921,13 @@ links nothing while the corpus still lands. A batch whose use the counter
 skipped (`BatchAccrualSkipped`) emits no `UsageRecorded`, so its process is
 linked only by its provenance attestation.
 
-**Packer vectors — the batch verifier's four hand-packed hashes.** The usage
+**Packer vectors — the batch verifier's three hand-packed hashes.** The usage
 packer's Rust-generated vector is asserted against the contract's assembly
-(`test_usageHash_matchesTheRustVector`); the positions, attestations and
-spec-bindings packers have theirs in `prover/lib/tests/packers.rs`, asserted in
-`test_packerHashes_matchTheRustVectors` through a `settleBatch` that passes all
-three hash checks and stops at the spec-binding anchor.
+(`test_usageHash_matchesTheRustVector`); the positions and attestations
+packers have theirs in `prover/lib/tests/packers.rs`, asserted in
+`test_packerHashes_matchTheRustVectors` through a `settleBatch` that passes
+the positions, attestations and usage hash checks and stops at the operation
+stream (`MalformedOperationStream`).
 
 ## Playwright — the project model (`playwright.config.ts`)
 
@@ -1259,8 +1245,8 @@ Per workflow, what it runs and when:
   `abi/*.json`, compared as parsed JSON in order; the workflow also runs on
   `abi/**`, so the bundle `sdk/tests/abiParity.test.ts` reads is the build's.
 - **`prover-ci`** — path-filtered. Three jobs: `test` on every push/PR —
-  `cargo test`, Clippy and Semgrep on the two host-only prover crates
-  (`figaro-clause`, `figaro-kernel`); `cross-impl-fuzz` on every push — four
+  `cargo test` and Clippy on the host-only prover crate (`figaro-kernel`),
+  and Semgrep over the guest's and the relay's sources; `cross-impl-fuzz` on every push — four
   rounds of the differential fuzz seeded from the run id; `sp1` on push to
   main and dispatch — installs the SP1
   toolchain the way `sequencer-release` does, builds the sequencer, runs
@@ -1270,15 +1256,11 @@ Per workflow, what it runs and when:
   `REQUIRE_BATCH_E2E=1`, so a missing chain or binary fails instead of
   skipping.
 - **`sdk-ci`** — push/PR, path-filtered (re-triggers on
-  `frontend/public/sdk-api/**`, the encoder vectors, `abi/**` and
+  `frontend/public/sdk-api/**`, `ecosystem-agents/runtime/**`, `abi/**` and
   `docs/DATA_LAYER.md`, whose event-field table `sdk/tests/abiParity.test.ts`
   reads, too): tsc type-check,
-  `npm test`, build, the typedoc freshness gate — the committed API reference
-  (`frontend/public/sdk-api`) must equal what typedoc emits from source — and
-  the encoder-vector freshness gate — the committed Rust conformance vectors
-  (`prover/clause/tests/encode_conformance.rs`) must equal what the live TS
-  encoder emits through `scripts/generate-encode-conformance-vectors.mjs`. A
-  second job runs the agent runtime's `node --test` suite
+  `npm test`, build, and the typedoc freshness gate — the committed API reference
+  (`frontend/public/sdk-api`) must equal what typedoc emits from source. A second job runs the agent runtime's `node --test` suite
   (`ecosystem-agents/runtime/tests/`) against the SDK's build, on every push
   that changes the SDK or the runtime; its macOS sandbox tests skip on the
   Linux runner.
@@ -1424,7 +1406,7 @@ two halves unconditionally.
 Four maintainer-side scripts, none run by CI. `scripts/mewt-run.sh <target.sol>`
 and `scripts/cargo-mutants-run.sh <crate>` launch one mutation run detached,
 holding `.mewt.lock` (the two never overlap; `cargo-mutants-run.sh` runs
-`--in-place` over `figaro-kernel` or `figaro-clause`, from a full checkout). Both
+`--in-place` over `figaro-kernel`, from a full checkout). Both
 print `gate_layers` from `scripts/frozen-scope.sh` first: "full gate" when a
 scope file's stripped code moved or a build configuration changed since the
 handover's baseline commit, else "quick layers only" (the mutation and Certora
@@ -1438,7 +1420,7 @@ Four long runs also have a GitHub Actions workflow, each started by hand
 and names in its job summary and artifacts. `tla-pass4.yml` runs TLA+ pass 4
 (`ResolutionUniverses`) with TLC checkpoints, uploads the checkpoint when the
 run's time is out, and resumes it from an earlier run's id. `mutation-dispatch.yml`
-runs `cargo mutants --in-place` over `figaro-kernel` and `figaro-clause`, split
+runs `cargo mutants --in-place` over `figaro-kernel`, split
 across a matrix with `--shard k/n`, one `mutants.out` per shard; `mewt` has no
 workflow, since its `mewt.toml` is not in the repository. `kani-dispatch.yml`
 runs `cargo kani` in `formal/kani`. `guest-key-preview.yml` builds the proof

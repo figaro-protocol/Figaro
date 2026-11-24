@@ -1,22 +1,20 @@
-//! The cross-language lock for the three sibling packers — positions,
-//! attestations, spec bindings. `FigaroBatchVerifier` packs each by hand in
+//! The cross-language lock for the two sibling packers — positions and
+//! attestations. `FigaroBatchVerifier` packs each by hand in
 //! assembly and the guest packs each in `compute_*_hash`; each side has an
 //! independent mirror in its own suite, which proves each side is
 //! self-consistent but NOT that the two agree. These vectors are generated
 //! HERE and asserted verbatim on the Solidity side
 //! (`test/core/verifier/FigaroBatchVerifierTest.t.sol::test_packerHashes_matchTheRustVectors`),
 //! the way `usage.rs::the_usage_hash_matches_the_solidity_vector` locks the
-//! fourth packer. A byte of layout drift in either language fails exactly
+//! third packer. A byte of layout drift in either language fails exactly
 //! one of the two.
 //!
 //! The string literals are OPAQUE PREIMAGE BYTES pinned byte-for-byte to the
 //! Solidity side; renaming one here without the other breaks the lock.
 use alloy_primitives::{address, b256, keccak256, U256};
 
-use figaro_kernel::kernel::{
-    compute_attestation_events_hash, compute_positions_hash, compute_spec_bindings_hash,
-};
-use figaro_kernel::types::{AttestationEventData, NetPosition, SpecBinding};
+use figaro_kernel::kernel::{compute_attestation_events_hash, compute_positions_hash};
+use figaro_kernel::types::{AttestationEventData, NetPosition};
 
 fn ether(n: u64) -> U256 {
     U256::from(n) * U256::from(1_000_000_000_000_000_000u64)
@@ -67,21 +65,5 @@ fn the_attestations_hash_matches_the_solidity_vector() {
     assert_eq!(
         compute_attestation_events_hash(&events),
         b256!("8d905f5a099cb2530f0912090a34135967c19e660b79a2ba7275489145a74dfc")
-    );
-}
-
-#[test]
-fn the_spec_bindings_hash_matches_the_solidity_vector() {
-    let bindings = vec![
-        SpecBinding {
-            clause_id: keccak256(b"clause-a"),
-        },
-        SpecBinding {
-            clause_id: keccak256(b"clause-b"),
-        },
-    ];
-    assert_eq!(
-        compute_spec_bindings_hash(&bindings),
-        b256!("91d0c5f7eda867b0d10fb4d5cc8f3d1b73e675ab798d2ea8b8b2835c39c85469")
     );
 }

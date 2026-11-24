@@ -1,9 +1,8 @@
 //! Reusable test-fixture builders for the figaro-prover guest program.
 //!
 //! `build_canonical_batch_input` produces a comprehensive end-to-end batch
-//! (commit → seller attest in the plaintext form, every witness gate →
-//! buyer attest in the hash-only form → resolve) that the SP1 mock or real prover can execute against the
-//! guest program in `../program`.
+//! (commit → seller attest → buyer attest → resolve) that the SP1 mock or
+//! real prover can execute against the guest program in `../program`.
 //!
 //! Used by:
 //! - `src/main.rs` — the manual prove-test exerciser (`cargo run -p
@@ -14,14 +13,10 @@
 //!   normal Rust test suite. Catches guest-program drift without
 //!   requiring the full real-proof CPU budget.
 //!
-//! The clause spec is a WITNESS INPUT of the plaintext form: the builder
-//! loads the canonical JSON from `clauses/` (the ClauseRegistry seed
-//! source) on the host and ships its exact bytes inside the seller's
-//! `AttestationContentProof`. Nothing is
-//! embedded in the guest — the clause key IS `keccak256` of those bytes,
-//! the batch commits the clause key as its spec binding, and on-chain the
-//! verifier checks the key is
-//! `ClauseRegistry.registered`.
+//! The guest reads no clause: an attestation carries the clause key, the
+//! committed clauseData's hash and the inclusion proof, as the coordinator
+//! takes them. The builder loads the canonical spec from `clauses/` on the
+//! host only to derive the clause key, `keccak256` of those bytes.
 
 use alloy_primitives::{address, keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
@@ -93,21 +88,13 @@ pub fn load_spec_json(clause_id_str: &str) -> String {
     canonicalize(&value)
 }
 
-fn parse_spec(spec_json: &str) -> figaro_clause::ClauseSpec {
-    let value: serde_json::Value = serde_json::from_str(spec_json).expect("spec JSON");
-    match figaro_clause::parse_clause_spec(&value) {
-        figaro_clause::ParseClauseSpecResult::Ok(s) => s,
-        figaro_clause::ParseClauseSpecResult::Err(errors) => panic!("spec parse: {errors:?}"),
-    }
-}
-
 // ── Canonical batch builder ──────────────────────────────────────────
 
 /// Construct the canonical end-to-end batch the guest program exercises:
-/// commit → seller attest (the plaintext form, RuntimeWitness: validate +
-/// generic-encode + keccak binding + agreement inclusion, all in-VM) →
-/// buyer attest (the hash-only form: the committed clauseData's hash and
-/// its inclusion proof, gate I alone) → resolve.
+/// commit → seller attest (a runtime witness's fingerprint) → buyer attest
+/// (the committed clauseData's fingerprint) → resolve. Each attestation
+/// carries the committed clauseData's hash and its inclusion proof, the
+/// coordinator's arguments, and the guest checks the leaf's inclusion.
 ///
 /// Attestations precede the resolve because the evidence window closes at
 /// resolution (the mirror's OrderAlreadyResolved gate). The single-clause
@@ -118,21 +105,12 @@ pub fn build_canonical_batch_input() -> BatchInput {
     let seller1_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
 
-    // The witness spec + its clause key: keccak256 of the bytes it carries.
-    let spec_json = load_spec_json("figaro-modalities");
-    let spec = parse_spec(&spec_json);
-    let clause_key = keccak256(spec_json.as_bytes());
+    // The clause key: keccak256 of the canonical spec's bytes.
+    let clause_key = keccak256(load_spec_json("figaro-modalities").as_bytes());
 
-    // RuntimeWitness content_ref = keccak256 of the canonical ABI
-    // encoding of the content under the spec at stage 0.
-    let content: serde_json::Value = serde_json::from_str(CLAUSE_DATA).unwrap();
-    let canonical_bytes = figaro_clause::encode_content_from_spec(
-        &spec,
-        &content,
-        figaro_clause::EncodeOptions { stage: Some(0) },
-    )
-    .expect("script-time encoding must succeed");
-    let witness_content_ref = keccak256(canonical_bytes.as_slice());
+    // The seller's content_ref: the fingerprint of a runtime witness the
+    // seller holds. The guest re-emits it as signed and reads nothing behind it.
+    let witness_content_ref = keccak256(b"the seller's runtime witness of the canonical batch");
 
     // The buyer's content_ref: keccak256 of the committed clauseData bytes,
     // the clause leaf's fingerprint as well.
@@ -197,13 +175,10 @@ pub fn build_canonical_batch_input() -> BatchInput {
                 stage: 0,
                 content_ref: witness_content_ref,
                 seller_sig: attest_sig,
-                proof: AttestationWitness::Plaintext(AttestationContentProof {
-                    spec_json,
-                    content_json: CLAUSE_DATA.to_string(),
-                    clause_data: CLAUSE_DATA.to_string(),
+                proof: AttestationWitness {
+                    clause_data_hash: keccak256(CLAUSE_DATA.as_bytes()),
                     inclusion_proof: vec![],
-                    content_kind: ContentKind::RuntimeWitness,
-                }),
+                },
             },
             KernelOp::AttestAsBuyer {
                 target: root.clone(),
@@ -211,9 +186,7 @@ pub fn build_canonical_batch_input() -> BatchInput {
                 stage: 0,
                 content_ref: re_assert_content_ref,
                 buyer_sig: buyer_attest_sig,
-                // The default form: the buyer's attestation carries the
-                // coordinator's arguments alone, so the batch holds both forms.
-                proof: AttestationWitness::HashOnly {
+                proof: AttestationWitness {
                     clause_data_hash: keccak256(CLAUSE_DATA.as_bytes()),
                     inclusion_proof: vec![],
                 },

@@ -48,17 +48,12 @@ import "../src/core/verifier/FigaroBatchVerifier.sol";
 ///                           no per-wallet cap; each key claimed once per
 ///                           closed annual period.
 ///
-/// @dev Clause-content validation is path-split. The DIRECT path binds an
-///      attestation to its signed agreement (merkle inclusion) and to its
-///      content (keccak256) but validates no shape — well-formedness is an
-///      off-chain SDK / read-time concern. The BATCHED path binds the same
-///      hashes by default; for an attestation its party sends in the
-///      plaintext form it proves content against the registered spec in-proof
-///      (the prover's generic engine takes the spec as witness input) and
-///      `FigaroBatchVerifier` resolves only if the spec hash is the clause key
-///      and `ClauseRegistry.registered` holds it. Any
-///      registered clause is attestable — and batch-resolvable — with no
-///      per-clause on-chain code.
+/// @dev Both paths bind an attestation the same way: to its signed agreement
+///      (merkle inclusion) and to its content (keccak256), and neither
+///      validates the content's shape — well-formedness is an off-chain SDK /
+///      read-time concern. Neither `AttestationCoordinator` nor
+///      `FigaroBatchVerifier` reads a registry, so any clause key is
+///      attestable — and batch-resolvable — with no per-clause on-chain code.
 ///
 /// @dev Deployer renounces minting rights at the end of this script. No new minters
 ///      can ever be registered afterward.
@@ -218,9 +213,7 @@ contract DeployMainnet is Script {
         // SP1_PROGRAM_VKEY: the guest program's verification key —
         // `SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test --release`.
         // The genesis root is the contract's own (`genesisRoot()`, zero: the
-        // guest's state tree over no entries). ClauseRegistry anchors the witness specs: the clause key IS
-        // the spec hash, so settleBatch requires each proof's binding to carry
-        // one word twice and the key registered. Not a florin minter, never will be.
+        // guest's state tree over no entries). Not a florin minter, never will be.
         require(vm.envAddress("SP1_VERIFIER") != address(0), "SP1_VERIFIER not set");
         require(vm.envBytes32("SP1_PROGRAM_VKEY") != bytes32(0), "SP1_PROGRAM_VKEY not set");
 
@@ -233,9 +226,8 @@ contract DeployMainnet is Script {
         _deployUsageCounter(predictedVerifier);
 
         // The genesis root is the contract's own (`genesisRoot()`, zero).
-        FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
-            vm.envAddress("SP1_VERIFIER"), vm.envBytes32("SP1_PROGRAM_VKEY"), _clauses, _usageCounter
-        );
+        FigaroBatchVerifier batchVerifier =
+            new FigaroBatchVerifier(vm.envAddress("SP1_VERIFIER"), vm.envBytes32("SP1_PROGRAM_VKEY"), _usageCounter);
         _batchVerifier = address(batchVerifier);
         require(_batchVerifier == predictedVerifier, "verifier address prediction failed");
         console.log("FigaroBatchVerifier:    ", _batchVerifier);

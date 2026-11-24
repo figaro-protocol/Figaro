@@ -37,117 +37,33 @@ pub struct Signature {
     pub s: B256,
 }
 
-// ── Attestation witness (hash-only, or plaintext for the in-proof clause gates) ──
+// ── Attestation witness ───────────────────────────────────────────
 
-/// How the attestation's `content` bytes relate to the clause spec —
-/// the two content conventions the protocol carries today.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ContentKind {
-    /// A runtime witness: `content` is the ABI encoding of
-    /// `content_json` under the spec's fields at the op's `stage`
-    /// (`contentRef = keccak256(abi bytes)`).
-    RuntimeWitness,
-    /// A re-asserting attestation: `content` IS the committed
-    /// canonical-JSON `clauseData` (`contentRef = keccak256(clauseData)`),
-    /// re-anchoring the signed clause as runtime evidence.
-    ReAssert,
-}
-
-/// What a batched attestation carries to prove its clause, in one of two
-/// forms the attesting party picks.
-///
-/// **`HashOnly`, the default**, carries exactly what
-/// `AttestationCoordinator.attestAsSeller` / `attestAsBuyer` take: the
+/// What a batched attestation carries to prove its clause: exactly what
+/// `AttestationCoordinator.attestAsSeller` / `attestAsBuyer` take, the
 /// `clauseDataHash` and the inclusion proof (the op carries `contentRef`).
-/// The guest runs gate I alone — leaf
+/// The guest runs one gate, the coordinator's: the leaf
 /// `keccak256(keccak256(clause_id ++ clause_data_hash))` opens against the
-/// TARGET order's signed `checkout_hash`, as `_verifyInclusion` does — and
-/// re-emits `content_ref` verbatim; no spec binding is committed. The
-/// relay, and the proving network under `SP1_PROVER=network`, see the same
-/// fingerprints the chain sees on the direct path, never the parties' data.
+/// TARGET order's signed `checkout_hash`, as `_verifyInclusion` does, and
+/// `content_ref` is re-emitted as signed. The relay, and the proving network
+/// under `SP1_PROVER=network`, see the fingerprints the chain sees on the
+/// direct path, never the parties' data. The guest reads no clause, no spec
+/// and no content: whether content is well formed is a reader's check
+/// against the spec the clause key names, on this path as on the direct one.
 ///
-/// **`Plaintext`** is the party's explicit choice to have its content
-/// checked inside the proof: it carries the spec, the content and the
-/// committed clauseData in plaintext (`AttestationContentProof`), which
-/// the relay receives and, under `SP1_PROVER=network`, forwards to the
-/// proving network. The guest runs gates S, C and I and commits a
-/// `SpecBinding`.
-///
-/// The reserved provenance leaf (`kernel::PROVENANCE_LEAF_KEY`): under
-/// `HashOnly` the guest binds the leaf's hash and cannot read its bytes,
-/// exactly as the coordinator cannot, so the attestation is accepted on
-/// inclusion alone; the check that the bytes name the registered agreement
-/// and assembly stays where it is, at the usage claim (`UsageCounter`, and
-/// the guest's usage-claim path). Under `Plaintext` the guest keeps the
-/// agreement format's byte check (`kernel::validate_attestation_content`).
+/// The reserved provenance leaf (`kernel::PROVENANCE_LEAF_KEY`) is attested
+/// like any leaf, on inclusion alone, as the coordinator accepts it; the
+/// check that its bytes name the registered agreement and process design is
+/// made at the usage claim (`UsageCounter`, and the guest's usage-claim path).
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum AttestationWitness {
-    /// The coordinator's arguments: fingerprints only.
-    HashOnly {
-        /// `keccak256(clauseData)` — the committed clause's fingerprint,
-        /// as the coordinator's `clauseDataHash`.
-        clause_data_hash: B256,
-        /// Sorted-pair Merkle proof binding the clause leaf to the target
-        /// order's signed `checkout_hash`. Empty for a single-clause
-        /// agreement, where the leaf is the root itself.
-        inclusion_proof: Vec<B256>,
-    },
-    /// The plaintext form: the content checked inside the proof.
-    Plaintext(AttestationContentProof),
-}
-
-/// The plaintext form of a batched attestation's witness
-/// (`AttestationWitness::Plaintext`), sent only at the attesting party's
-/// choice: the direct path, and the batch path's default
-/// (`AttestationWitness::HashOnly`), bind hashes and validate no content
-/// shape; this form has the content validated inside the proof.
-///
-/// In-proof gates (see `kernel::validate_attestation_content`):
-///
-///   S. Spec identity + binding — `spec_json` parses as a `ClauseSpec`
-///      and `keccak256(spec_json bytes)`, hashed verbatim as carried,
-///      equals the op's `clause_id` (a clause key IS its spec's hash);
-///      the key is committed as a `SpecBinding` public value. The on-chain
-///      verifier accepts the batch only if
-///      `ClauseRegistry.registered(clause_id)` for every binding — the registry is the
-///      trust anchor, the vkey covers the ENGINE, and a caller cannot
-///      weaken validation with a permissive spec.
-///   C. Content — per `content_kind` (validate + generic-encode for a
-///      runtime witness; clauseData hash + default-fields validation
-///      for a re-assert). Binds `content_ref` to validated content.
-///   I. Agreement inclusion — the sorted-pair Merkle `inclusion_proof`
-///      verifies leaf `keccak256(clause_id ++ keccak256(clause_data))`
-///      against the TARGET commitment's signed `checkout_hash`,
-///      mirroring the coordinator's mandatory `_verifyInclusion`.
-///
-/// The one key the gates do not run for is the agreement format's
-/// reserved provenance leaf (`kernel::PROVENANCE_LEAF_KEY`): it is not a
-/// clause, so S and C give way to the format's own rule — `clause_data`
-/// is the reproduction of the agreementHash and processDesignHash it carries, `content_ref` is
-/// its keccak — and I runs as for any leaf; no spec binding is committed.
-///
-/// JSON crosses the SP1 stdin boundary as pre-serialized `String`s —
-/// bincode (non-self-describing) cannot carry `serde_json::Value`, and
-/// no field here may use `skip_serializing_if` (either desyncs the
-/// guest's deserializer; see `tests/bincode_roundtrip.rs`).
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AttestationContentProof {
-    /// The clause's canonical spec JSON without its top-level `block`
-    /// (exact bytes — `keccak256` of them must equal the clause key the
-    /// registry holds).
-    pub spec_json: String,
-    /// The structured content the engine validates and (for a runtime
-    /// witness) re-encodes to canonical ABI bytes.
-    pub content_json: String,
-    /// Canonical-JSON `clauseData` bytes (as a UTF-8 string) — the
-    /// committed agreement clause this attestation declares against.
-    pub clause_data: String,
+pub struct AttestationWitness {
+    /// `keccak256(clauseData)`, the committed clause's fingerprint, as the
+    /// coordinator's `clauseDataHash`.
+    pub clause_data_hash: B256,
     /// Sorted-pair Merkle proof binding the clause leaf to the target
     /// order's signed `checkout_hash`. Empty for a single-clause
     /// agreement, where the leaf is the root itself.
     pub inclusion_proof: Vec<B256>,
-    /// Which content convention `content_ref` follows.
-    pub content_kind: ContentKind,
 }
 
 // ── Batch operations ──────────────────────────────────────────────
@@ -191,7 +107,7 @@ pub enum KernelOp {
     /// key is lost. The guest cannot run the wallet's code: it checks the
     /// process, the value and the order list exactly as for `Resolve` and
     /// nothing about the bytes, and publishes them in the operation stream
-    /// (public value 9). `FigaroBatchVerifier.settleBatch` derives the
+    /// (public value 8). `FigaroBatchVerifier.settleBatch` derives the
     /// digest under its own domain, requires the buyer's account to have
     /// code, calls its `isValidSignature`, and refuses the whole batch on any
     /// other answer: the proven root holds the resolve, so it never drops alone.
@@ -238,11 +154,10 @@ pub enum KernelOp {
     /// that party's own account code validates (ERC-1271
     /// `isValidSignature`) for the same `AttestSeller` / `AttestBuyer`
     /// digest the signed form signs. The guest cannot run the code: it runs
-    /// every check of the signed form but the signer's recovery, commits
-    /// the spec binding of the plaintext form, leaves the attestation OUT
-    /// of the attestation events (public value 6 carries the signed
-    /// attestations only), and publishes the entry in the operation stream
-    /// (`0x05`, public value 9). `FigaroBatchVerifier.settleBatch` asks the
+    /// every check of the signed form but the signer's recovery, leaves the
+    /// attestation OUT of the attestation events (public value 5 carries the
+    /// signed attestations only), and publishes the entry in the operation
+    /// stream (`0x05`, public value 8). `FigaroBatchVerifier.settleBatch` asks the
     /// party's code and emits the coordinator's `Attestation` event only on
     /// the magic value; on any other answer, or when the party's account
     /// has no code, the whole batch reverts by name, so a batch that lands
@@ -479,11 +394,6 @@ pub struct PublicValues {
     /// Hash of attestation events emitted in this batch.
     /// The on-chain verifier re-emits these events.
     pub attestation_events_hash: B256,
-    /// Hash of the deduplicated clause keys the in-proof clause gates
-    /// validated against, each the hash of its witness spec. The on-chain
-    /// verifier checks each key is `ClauseRegistry.registered` before
-    /// accepting the batch.
-    pub spec_bindings_hash: B256,
     /// Hash of the batch's designer-reward uses — the period, the
     /// provenance leaf's key and every (kind, key, process, seller) use.
     /// The on-chain verifier re-derives it from calldata and hands the uses
@@ -511,13 +421,13 @@ pub struct PublicValues {
 }
 
 impl PublicValues {
-    /// The ONE byte layout of the public values: 10 × 32-byte ABI words,
+    /// The ONE byte layout of the public values: 9 × 32-byte ABI words,
     /// exactly what `FigaroBatchVerifier._decodePV` abi.decodes. The guest
     /// commits these bytes, the host submits them, and the on-chain SP1
     /// verifier hashes the submission against the proof's committed digest —
     /// so a second encoding anywhere is a `ProofInvalid` by construction.
     pub fn abi_encode(&self) -> Vec<u8> {
-        let mut data = Vec::with_capacity(320);
+        let mut data = Vec::with_capacity(288);
         data.extend_from_slice(self.prev_state_root.as_slice());
         data.extend_from_slice(self.new_state_root.as_slice());
         let mut chain_word = [0u8; 32];
@@ -528,7 +438,6 @@ impl PublicValues {
         data.extend_from_slice(&addr_word);
         data.extend_from_slice(self.token_ops_hash.as_slice());
         data.extend_from_slice(self.attestation_events_hash.as_slice());
-        data.extend_from_slice(self.spec_bindings_hash.as_slice());
         data.extend_from_slice(self.usage_accrual_hash.as_slice());
         let mut ts_word = [0u8; 32];
         ts_word[24..].copy_from_slice(&self.block_timestamp.to_be_bytes());
@@ -540,9 +449,9 @@ impl PublicValues {
     /// Inverse of `abi_encode` — the only sanctioned way to read a committed
     /// public-values stream. Strict: the length and every pad byte must hold.
     pub fn abi_decode(data: &[u8]) -> Result<Self, String> {
-        if data.len() != 320 {
+        if data.len() != 288 {
             return Err(format!(
-                "public values must be 320 bytes, got {}",
+                "public values must be 288 bytes, got {}",
                 data.len()
             ));
         }
@@ -555,7 +464,7 @@ impl PublicValues {
         if addr_word[..12] != [0u8; 12] {
             return Err("verifying_contract word has nonzero padding".into());
         }
-        let ts_word = word(8);
+        let ts_word = word(7);
         if ts_word[..24] != [0u8; 24] {
             return Err("block_timestamp word has nonzero padding".into());
         }
@@ -566,10 +475,9 @@ impl PublicValues {
             verifying_contract: Address::from_slice(&addr_word[12..]),
             token_ops_hash: B256::from(word(4)),
             attestation_events_hash: B256::from(word(5)),
-            spec_bindings_hash: B256::from(word(6)),
-            usage_accrual_hash: B256::from(word(7)),
+            usage_accrual_hash: B256::from(word(6)),
             block_timestamp: u64::from_be_bytes(ts_word[24..].try_into().unwrap()),
-            operations_hash: B256::from(word(9)),
+            operations_hash: B256::from(word(8)),
         })
     }
 }
@@ -586,21 +494,10 @@ pub struct AttestationEventData {
     pub content_ref: B256,
 }
 
-/// One clause key used by the batch's clause gates. Gate S requires the
-/// key to be `keccak256` of the exact witness spec bytes, so the key alone
-/// names the document the gates read.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct SpecBinding {
-    pub clause_id: B256,
-}
-
 /// Collected side-effect data from batch execution.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BatchEvents {
     pub attestations: Vec<AttestationEventData>,
-    /// Deduplicated, sorted — the verifier checks each against the
-    /// live ClauseRegistry.
-    pub spec_bindings: Vec<SpecBinding>,
     /// The batch's uses, one per (kind, key, process, seller), in the order of the
     /// claims. Empty when the batch carries no usage claims.
     pub uses: Vec<BatchUse>,
@@ -661,26 +558,11 @@ pub enum KernelError {
     /// Attestation against a resolved order — the evidence window closes
     /// at resolution (coordinator's `OrderAlreadyResolved` gate).
     OrderAlreadyResolved,
-    /// Gate I: the sorted-pair Merkle `inclusion_proof` does not verify
+    /// The sorted-pair Merkle `inclusion_proof` does not verify
     /// the clause leaf against the target order's signed
     /// `checkout_hash` — the attested clause was not part of the
     /// agreement both parties signed.
     InvalidInclusionProof,
-    // In-proof clause gates (figaro-clause engine)
-    /// Gate S: the witness spec is not valid JSON / not a well-formed
-    /// ClauseSpec.
-    ClauseSpecParseFailed(String),
-    /// Gate S: the witness spec's bytes do not hash to the op's
-    /// `clause_id` — the caller supplied the spec of a different clause.
-    SpecIdentityMismatch(B256),
-    /// Gate C: `content_json` (or a re-assert's `clause_data`) fails
-    /// the spec's validation.
-    ClauseContentInvalid(String),
-    /// Gate C: the generic encoder could not derive canonical ABI bytes
-    /// (bad field type, malformed hex, undeclared enum value, …).
-    ContentEncodingFailed(String),
-    /// Gate C: the derived content bytes do not hash to `content_ref`.
-    ContentHashMismatch,
     // Usage accrual (the RPGF bridge)
     /// Usage was claimed for an order the batch path has not resolved.
     /// Usage is what a FINISHED process leaves behind — the inverse of
@@ -692,10 +574,6 @@ pub enum KernelError {
     /// provenance leaf — or, for an assembly claim, the agreement's leaf is not
     /// a leaf of the processDesignHash.
     UsageInvalidInclusionProof,
-    /// An attestation of the reserved provenance leaf whose bytes are not
-    /// `{"agreementHash":"0x<64 lowercase hex>","processDesignHash":"0x<64 lowercase hex>"}`
-    /// reproduced from the two keys they carry.
-    ProvenanceLeafNotCanonical,
     /// A usage claim keyed on a reserved key of the format (the
     /// provenance leaf's or the assembly terms leaf's), or an assembly
     /// claim whose agreement position names one as its agreementHash. Neither key is
@@ -733,7 +611,6 @@ impl core::fmt::Display for KernelError {
                 )
             }
             Self::OrderNotCommitted(h) => write!(f, "OrderNotCommitted({h})"),
-            Self::SpecIdentityMismatch(h) => write!(f, "SpecIdentityMismatch({h})"),
             Self::UsageOrderNotResolved(h) => write!(f, "UsageOrderNotResolved({h})"),
             other => write!(f, "{other:?}"),
         }

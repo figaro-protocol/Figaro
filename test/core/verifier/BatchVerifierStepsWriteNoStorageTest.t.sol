@@ -3,13 +3,12 @@ pragma solidity 0.8.26;
 
 import "test/core/verifier/OperationStreamVectorsTest.t.sol";
 
-/// @notice FigaroBatchVerifier with the three steps of `settleBatch` that
+/// @notice FigaroBatchVerifier with the two steps of `settleBatch` that
 ///         `certora/BatchVerifierStateRoot.spec` summarizes exposed as they
-///         are written: the operation stream's walk, the token step and the
-///         registry anchor check.
+///         are written: the operation stream's walk and the token step.
 contract VerifierSteps is FigaroBatchVerifier {
-    constructor(address _verifier, bytes32 _programVKey, address _clauseRegistry, address _usageCounter)
-        FigaroBatchVerifier(_verifier, _programVKey, _clauseRegistry, _usageCounter)
+    constructor(address _verifier, bytes32 _programVKey, address _usageCounter)
+        FigaroBatchVerifier(_verifier, _programVKey, _usageCounter)
     {}
 
     function walk(bytes calldata operations, bool publish) external {
@@ -19,18 +18,12 @@ contract VerifierSteps is FigaroBatchVerifier {
     function executePositions(NetPosition[] calldata positions) external {
         _executePositions(positions);
     }
-
-    /// Not `view`, so a version of the step that writes storage still
-    /// compiles here and fails the test rather than the build.
-    function checkSpecBindings(SpecBinding[] calldata bindings) external {
-        _checkSpecBindings(bindings);
-    }
 }
 
-/// @title The state-root spec's summaries hold: the three steps write no verifier storage
-/// @notice `certora/BatchVerifierStateRoot.spec` summarizes `_walkOperations`,
-///         `_executePositions` and `_checkSpecBindings` as NONDET, so its three
-///         rules hold only if none of them writes the verifier's storage; the
+/// @title The state-root spec's summaries hold: the two steps write no verifier storage
+/// @notice `certora/BatchVerifierStateRoot.spec` summarizes `_walkOperations`
+///         and `_executePositions` as NONDET, so its three
+///         rules hold only if neither of them writes the verifier's storage; the
 ///         prover cannot check that itself (with `_walkOperations` read as
 ///         written, no rule is processed within its two-hour budget). Each test
 ///         here runs one step, as written, on real inputs under `vm.record`, and
@@ -48,7 +41,7 @@ contract BatchVerifierStepsWriteNoStorageTest is OperationStreamVectorsTest {
     function _deploySteps() internal {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
         vm.mockCall(address(counter), abi.encodeWithSignature("batchVerifier()"), abi.encode(predicted));
-        steps = new VerifierSteps(address(sp1), VKEY, address(registry), address(counter));
+        steps = new VerifierSteps(address(sp1), VKEY, address(counter));
         vm.clearMockedCalls();
         verifier = FigaroBatchVerifier(address(steps));
     }
@@ -96,19 +89,5 @@ contract BatchVerifierStepsWriteNoStorageTest is OperationStreamVectorsTest {
         assertEq(token.balanceOf(payee), 60 ether, "the payout landed");
         assertEq(token.balanceOf(payer), 40 ether, "the pull landed");
         assertEq(token.balanceOf(address(steps)), 0, "the verifier holds the batch's net");
-    }
-
-    function test_theRegistryAnchorCheckWritesNoVerifierStorage() public {
-        _deploySteps();
-        bytes32 key = keccak256("a registered clause spec");
-        vm.deal(address(this), 1 ether);
-        registry.registerClause{value: 0.001 ether}(key, "ipfs://spec");
-        FigaroBatchVerifier.SpecBinding[] memory bindings = new FigaroBatchVerifier.SpecBinding[](2);
-        bindings[0] = FigaroBatchVerifier.SpecBinding(key);
-        bindings[1] = FigaroBatchVerifier.SpecBinding(key);
-
-        vm.record();
-        steps.checkSpecBindings(bindings);
-        _assertNoVerifierWrite("the registry anchor check wrote verifier storage");
     }
 }

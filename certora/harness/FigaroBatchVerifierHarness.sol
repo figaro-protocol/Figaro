@@ -12,8 +12,8 @@ import "src/core/verifier/FigaroBatchVerifier.sol";
 ///         that moves tokens, so `BatchVerifierTokenOps.spec` proves that step
 ///         alone.
 contract FigaroBatchVerifierHarness is FigaroBatchVerifier {
-    constructor(address _verifier, bytes32 _programVKey, address _clauseRegistry, address _usageCounter)
-        FigaroBatchVerifier(_verifier, _programVKey, _clauseRegistry, _usageCounter)
+    constructor(address _verifier, bytes32 _programVKey, address _usageCounter)
+        FigaroBatchVerifier(_verifier, _programVKey, _usageCounter)
     {}
 
     function decodedRoots(bytes calldata publicValues) external pure returns (bytes32 prevRoot, bytes32 newRoot) {

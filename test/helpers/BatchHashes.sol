@@ -3,8 +3,9 @@ pragma solidity 0.8.26;
 
 import "src/core/verifier/FigaroBatchVerifier.sol";
 
-/// @notice The four calldata hashes `FigaroBatchVerifier.settleBatch` checks
-///         against public values 4–7, packed the way the guest's
+/// @notice Three of the four calldata hashes `FigaroBatchVerifier.settleBatch`
+///         checks, against public values 4–6 (the fourth, the operation
+///         stream's, is a plain keccak256 of the stream's bytes), packed the way the guest's
 ///         `compute_*_hash` functions pack them (`prover/lib/src/kernel.rs`).
 ///         Built from `abi.encodePacked`, never from the contract's assembly,
 ///         so a slip in the contract's hand-rolled packing (a wrong offset, a
@@ -36,15 +37,6 @@ library BatchHashes {
                     atts[i].contentRef
                 )
             );
-        }
-        return keccak256(packed);
-    }
-
-    /// @dev clauseId(32) per binding.
-    function bindings(FigaroBatchVerifier.SpecBinding[] memory bs) internal pure returns (bytes32) {
-        bytes memory packed;
-        for (uint256 i = 0; i < bs.length; i++) {
-            packed = bytes.concat(packed, abi.encodePacked(bs[i].clauseId));
         }
         return keccak256(packed);
     }

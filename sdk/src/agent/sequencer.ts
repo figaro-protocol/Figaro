@@ -13,18 +13,13 @@
  * mutations (clause/seller/assembly registration) are once-per-registration
  * ETH-staked intents that stay on the direct path.
  *
- * A batched attestation carries, by default, exactly what
- * `AttestationCoordinator` takes on the direct path: the `clauseDataHash`,
- * the agreement inclusion proof and the `contentRef` — fingerprints only,
- * so the relay sees what the chain sees and never the parties' data. The
- * plaintext form — the clause's spec without `block` (`clauseKeyPreimage`), the content and the
- * committed clauseData — is sent only when the caller sets
- * `checkContentInProof`, to have the content validated inside the proof;
- * the relay then receives that plaintext and, when it proves on the
- * Succinct network (`SP1_PROVER=network`), forwards it there.
+ * A batched attestation carries exactly what `AttestationCoordinator`
+ * takes on the direct path: the `clauseDataHash`, the agreement inclusion
+ * proof and the `contentRef` — fingerprints only, so the relay and the
+ * proving network see what the chain sees and never the parties' data.
+ * No operation carries a party's content.
  */
 
-import { keccak256, stringToHex } from "viem";
 import type { Hex, Address, Commitment, EIP712Domain } from "../types.js";
 import { buildDomain, computeCommitmentProcessId, computeOrderHash } from "../commitments.js";
 import { readCappedBytes } from "../cappedRead.js";
@@ -38,37 +33,15 @@ export interface SequencerSignature {
     s: Hex;
 }
 
-/** How the attestation's content bytes relate to the clause spec. */
-export type SequencerContentKind = "RuntimeWitness" | "ReAssert";
-
-/** The plaintext form of a batched attestation's witness — mirrors the
- *  Rust `AttestationContentProof`. Sent only at the attesting party's
- *  choice (`checkContentInProof`): it hands the relay the clause's
- *  content. */
-export interface SequencerContentProof {
-    /** The clause's spec JSON without its top-level `block`, canonical —
-     *  `clauseKeyPreimage(spec)`; `keccak256` of these bytes is the clause key
-     *  the attestation names. */
-    spec_json: string;
-    /** The structured content validated (and, for a RuntimeWitness,
-     *  generically ABI-encoded) in-proof. */
-    content_json: string;
-    /** Canonical-JSON clauseData bytes — the committed agreement
-     *  clause this attestation declares against. */
-    clause_data: string;
+/** What a batched attestation carries — the Rust `AttestationWitness`:
+ *  the coordinator's arguments beside the signed `contentRef`. */
+export interface SequencerAttestationWitness {
+    /** `keccak256` of the committed clauseData. */
+    clause_data_hash: Hex;
     /** Sorted-pair Merkle proof binding the clause leaf to the target
      *  order's signed checkoutHash. Empty for a single-clause agreement. */
     inclusion_proof: Hex[];
-    content_kind: SequencerContentKind;
 }
-
-/** What a batched attestation carries — serde's externally tagged encoding
- *  of the Rust `AttestationWitness`. `HashOnly` is the coordinator's
- *  arguments (the default); `Plaintext` has the content checked in the
- *  proof. */
-export type SequencerAttestationWitness =
-    | { HashOnly: { clause_data_hash: Hex; inclusion_proof: Hex[] } }
-    | { Plaintext: SequencerContentProof };
 
 export type SequencerOp =
     | {
@@ -368,24 +341,9 @@ export function toSequencerSig(sig: Hex): SequencerSignature {
     };
 }
 
-/**
- * The witness a convenience submission carries: the hash-only form unless
- * the caller set `checkContentInProof`. The plaintext form's clauseData
- * must hash to `clauseDataHash`, so the two forms name the same leaf.
- */
-function attestationWitness(args: {
-    clauseDataHash: Hex;
-    inclusionProof: Hex[];
-    checkContentInProof?: Omit<SequencerContentProof, "inclusion_proof">;
-}): SequencerAttestationWitness {
-    const content = args.checkContentInProof;
-    if (content === undefined) {
-        return { HashOnly: { clause_data_hash: args.clauseDataHash, inclusion_proof: args.inclusionProof } };
-    }
-    if (keccak256(stringToHex(content.clause_data)).toLowerCase() !== args.clauseDataHash.toLowerCase()) {
-        throw new SequencerError("checkContentInProof.clause_data does not hash to clauseDataHash", 0);
-    }
-    return { Plaintext: { ...content, inclusion_proof: args.inclusionProof } };
+/** The witness a convenience submission carries. */
+function attestationWitness(args: { clauseDataHash: Hex; inclusionProof: Hex[] }): SequencerAttestationWitness {
+    return { clause_data_hash: args.clauseDataHash, inclusion_proof: args.inclusionProof };
 }
 
 // ── Response reads ──────────────────────────────────────────────────────────
@@ -540,12 +498,9 @@ export class SequencerClient {
      * own order — the signer must be `target.seller` — and carries the
      * checkoutHash the inclusion proof opens against.
      *
-     * By default the submission carries the coordinator's arguments alone:
-     * `clauseDataHash` and `inclusionProof` (with `contentRef` under the
-     * signature). Set `checkContentInProof` to have the content validated
-     * inside the proof: it sends the spec, the content and the clauseData
-     * in plaintext to the relay, and on to the proving network when the
-     * relay proves there.
+     * The submission carries the coordinator's arguments alone:
+     * `clauseDataHash` and `inclusionProof`, with `contentRef` under the
+     * signature.
      */
     async submitAttestAsSeller(args: {
         target: Commitment;
@@ -555,7 +510,6 @@ export class SequencerClient {
         sellerSig: Hex;
         clauseDataHash: Hex;
         inclusionProof: Hex[];
-        checkContentInProof?: Omit<SequencerContentProof, "inclusion_proof">;
     }): Promise<SubmitResult> {
         return this.submit({
             type: "AttestAsSeller",
@@ -568,8 +522,8 @@ export class SequencerClient {
         });
     }
 
-    /** Submit a buyer attestation using SDK types; the two forms as for
-     *  {@link SequencerClient.submitAttestAsSeller}. */
+    /** Submit a buyer attestation using SDK types, as
+     *  {@link SequencerClient.submitAttestAsSeller} does for the seller. */
     async submitAttestAsBuyer(args: {
         target: Commitment;
         clauseId: Hex;
@@ -578,7 +532,6 @@ export class SequencerClient {
         buyerSig: Hex;
         clauseDataHash: Hex;
         inclusionProof: Hex[];
-        checkContentInProof?: Omit<SequencerContentProof, "inclusion_proof">;
     }): Promise<SubmitResult> {
         return this.submit({
             type: "AttestAsBuyer",
@@ -591,7 +544,7 @@ export class SequencerClient {
         });
     }
 
-    /** Submit `at` as `role`, in the hash-only form, with the party's
+    /** Submit `at` as `role`, with the party's
      *  signature over {@link batchAttestationTypedData} for the same role. */
     async submitSignedAttestation(role: BatchAttestationRole, at: BatchAttestation, signature: Hex): Promise<SubmitResult> {
         const witness = {
@@ -622,7 +575,7 @@ export class SequencerClient {
      * `Attestation` on the magic value; any other answer, a call that ran out
      * of gas included, reverts the whole batch, so a batch that lands carries
      * the attestation. The relay asks the same code at its door and refuses bytes
-     * the code does not validate. The witness forms are those of
+     * the code does not validate. The witness is that of
      * {@link SequencerClient.submitAttestAsSeller}.
      */
     async submitAttestByWalletCode(args: {
@@ -634,7 +587,6 @@ export class SequencerClient {
         authorization: Hex;
         clauseDataHash: Hex;
         inclusionProof: Hex[];
-        checkContentInProof?: Omit<SequencerContentProof, "inclusion_proof">;
     }): Promise<SubmitResult> {
         return this.submit({
             type: "AttestByWalletCode",

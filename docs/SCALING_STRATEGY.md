@@ -3,8 +3,8 @@
 Two resolution paths, one set of rules — `FigaroCore`'s. The direct path — `FigaroCore`'s atomic
 `resolveProcess`, per-process ceiling about 550 orders under the chain's cap on one transaction's gas (EIP-7825's 2^24, which mainnet enforces; the block's budget where that is smaller — about 920 at a 30M block on a chain without the cap; the SDK reads the limit live and takes the cap) — is
 the always-available floor. The batch path is the throughput tier beside it: a
-Rust mirror of `FigaroCore` plus a generic clause engine (`prover/lib`,
-`prover/clause`) executes many `FigaroCore` transitions off-chain, an SP1 guest
+Rust mirror of `FigaroCore` and of `AttestationCoordinator`'s checks
+(`prover/lib`) executes many `FigaroCore` transitions off-chain, an SP1 guest
 (`prover/program`) proves them, and `FigaroBatchVerifier` verifies the proof
 on-chain and reconciles net token positions. A sequencer (`prover/sequencer`)
 carries operations to the prover; the SDK's `SequencerClient` speaks its wire.
@@ -153,8 +153,9 @@ reachable from the prior state root under `FigaroCore`'s rules.
 ### The live surface
 
 **Rust `FigaroCore` mirror** (`prover/lib/`): `FigaroCore`'s commit/resolve logic
-plus the attestation gates (inclusion for every attestation; spec identity and
-content for one sent in the plaintext form) and the usage bridge, translated to Rust.
+plus the coordinator's attestation checks (the attesting party, an open order,
+the leaf's inclusion under the signed `checkoutHash`) and the usage bridge,
+translated to Rust. It reads no clause, no spec and no content.
 Five `KernelOp` variants — `Commit`, `Resolve`, `ResolveByWalletCode`,
 `AttestAsSeller`, `AttestAsBuyer` (registry mutations never enter a batch);
 the two resolves are one rule under two forms of the buyer's authorization. Two-member state
@@ -164,25 +165,11 @@ batch touches, proved against the previous root, so its work grows with the batc
 logarithm of the state, not with the state; a usage claim moves no state. EIP-712 signature
 verification with byte-exact parity to the Solidity.
 
-**Generic clause engine** (`prover/clause/`): parse + validate + encode over
-any clause spec supplied as witness input — the Rust mirror of the SDK's
-off-chain module (`@figaro-protocol/sdk/clauses`). The two engines apply the
-same rules, the geohash grain cap by disposition and the private set's rules
-among them (a set that declares a private field declares exactly one blinding
-field, of one shape, at its top level, and never mixes public and private
-fields), and give the same verdict on every case of the shared vectors and of
-the generated stream. A proof of a plaintext attestation therefore binds the
-spec and the content's shape, and attests the grain and the presence of a
-blinding value. That check binds for the party that submitted the plaintext
-form; a reader of the chain cannot tell which form an attestation took
-(`docs/DESIGN_DECISIONS.md` § 26). No per-clause code, by design ("Prover Clause
-Architecture" below).
-
 **SP1 guest program** (`prover/program/`): reads the batch with the witness of
 the state entries it touches (`GuestInput`), executes `apply_guest()` in the SP1
-zkVM and commits `PublicValues` — ten fields: prev/new state roots, chain
-binding (chainId + verifyingContract), five commitment hashes (token
-positions, attestation events, spec bindings, the uses, and the
+zkVM and commits `PublicValues` — nine fields, 288 bytes: prev/new state roots, chain
+binding (chainId + verifyingContract), four commitment hashes (token
+positions, attestation events, the uses, and the
 operation stream: every commit and resolve the batch applied, whole — a
 wallet-code resolve with its authorization bytes — and every usage claim,
 `prover/lib/src/operation_stream.rs`), and the clock the
@@ -195,9 +182,8 @@ state.
 
 **On-chain verifier** (`src/core/verifier/FigaroBatchVerifier.sol`):
 accepts SP1 proofs, verifies state-root continuity and chain binding,
-hash-verifies auxiliary calldata (positions, attestation events, spec
-bindings, the uses), checks each spec binding — its clause key
-`ClauseRegistry.registered` — executes net
+hash-verifies auxiliary calldata (positions, attestation events, the uses,
+the operation stream), reads no registry, executes net
 token transfers, re-emits
 proven `Attestation` events, emits the Core's order and process events from
 the operation stream and logs the stream itself (`BatchOperations`), asks
@@ -234,9 +220,8 @@ that accepts any proof.
 3. each attestation preserved the coordinator's checks — its signer is the
    party, its order is committed and open, and its `clauseDataHash` opens
    against the order's signed `checkoutHash` under its inclusion proof — and
-   re-emits its `contentRef` as signed; an attestation sent in the plaintext
-   form also had its content validated against a witness spec whose bytes
-   hash to a clause key `ClauseRegistry.registered` holds
+   re-emits its `contentRef` as signed; like the coordinator, the proof reads
+   no clause, no spec and no content
 4. the resulting state root follows from the prior state root under the
    `FigaroCore`'s rules — no transition skipped, reordered, or fabricated
 
@@ -367,10 +352,10 @@ ceiling several-fold and negates the batch path's gas advantage entirely.
    against the landing block. Whoever builds and proves the batch chooses that
    clock; `settleBatch` accepts it when it is no later than the landing
    block's `block.timestamp`, however old it is
-   (`src/core/verifier/FigaroBatchVerifier.sol:451`), so a proof that took
+   (`src/core/verifier/FigaroBatchVerifier.sol:419`), so a proof that took
    long to make still lands. `settleBatch` then reads
    each commit's deadline in the operation stream's `0x01` entry and refuses
-   the batch (`DeadlineExpired`, `src/core/verifier/FigaroBatchVerifier.sol:810`) when it is before the landing block's
+   the batch (`DeadlineExpired`, `src/core/verifier/FigaroBatchVerifier.sol:741`) when it is before the landing block's
    `block.timestamp`, as `FigaroCore.commit` refuses the commitment
    (`src/core/kernel/FigaroCore.sol:147`). A commitment therefore bonds on
    either path only while its deadline has not passed at the block that bonds
@@ -410,7 +395,7 @@ first secondary deployment; no mixed-chain single-process resolution; no
 cross-chain routing before single-chain parity exists; candidate selection is
 security-first, never cost-first.
 
-## Prover Clause Architecture — generic engine, not compiled-in specs
+## The proof program reads no clause
 
 Permissionless clause composition is an axiom of the protocol, not a forecast.
 `ClauseRegistry.registerClause` is permissionless and first-write-wins;
@@ -429,128 +414,61 @@ owns something. Per-clause anything — embedded specs, `clauseId` dispatch,
 per-clause validator contracts — is permanently rejected (`CONTRACTS.md`
 § "What the protocol has no contract for").
 
-**The live architecture.** The guest holds a generic clause *engine* — parse +
-validate + encode (`prover/clause/src/spec.rs`, `validate.rs`, `encode.rs`) —
-and no clauses: no embedded spec table, no per-clause code path anywhere in
-`prover/`. The engine runs for an attestation the party sends in the plaintext
-form (§ "The two attestation forms"). The spec is a witness input, and its clause key IS its content
-hash: `registerClause` anchors `clauseKey = keccak256(canonical spec JSON
-without its top-level block)`, the witness carries exactly those bytes, and
-the guest's Gate S requires `keccak256(spec_json bytes) == clause_id` on the
-bytes it was given, canonicalizing nothing (`prover/lib/src/kernel.rs`), the
-guest commits the deduplicated clause keys it validated against
-(`spec_bindings_hash`), and `settleBatch` requires
-`ClauseRegistry.registered(clauseKey)` for each before
-accepting the batch; `ClauseRegistry` is the trust anchor. Adding a clause is
-a `ClauseRegistry` transaction and nothing else: no guest rebuild, no vkey
-change, no verifier redeploy
-(`test_permissionless_newClause_settlesWithZeroVerifierChanges`). The vkey
-covers *the engine* — "content validated against whatever spec the registry
-says is canonical for this id." The protocol's own specs in `clauses/` are
-input like any other clause's — nothing is special-cased, and a never-seen
-clause resolves through the proven path with zero code changes.
+**The live architecture.** The guest reads no clause: no spec, no content, no
+embedded table and no per-clause code path anywhere in `prover/`. It checks a
+batched attestation as `AttestationCoordinator` checks a direct one, and
+`FigaroBatchVerifier` reads no registry. Adding a clause is a `ClauseRegistry`
+transaction and nothing else: no guest rebuild, no vkey change, no verifier
+redeploy. A clause key nobody registered is attested through a batch as it is
+through the coordinator
+(`test_permissionless_anUnregisteredClauseKeyIsAttestedThroughABatch`), and
+the verifier makes no call to any registry
+(`test_theVerifierMakesNoCallToAnyRegistryReadOrWrite`). The vkey freezes the
+Core's rules and the coordinator's checks, never a clause format: a change to
+the clause format's rules needs no new key, as a new clause, agreement or
+process design needs none. The protocol's own specs in `clauses/` are clauses
+like any other, and a never-seen clause resolves through the proven path with
+zero code changes.
 
-### The two attestation forms
+### What a batched attestation carries
 
-A batched attestation carries its witness in one of two forms
-(`AttestationWitness`, `prover/lib/src/types.rs`), picked by the attesting
-party:
+A batched attestation carries what `AttestationCoordinator` takes on the
+direct path (`AttestationWitness`, `prover/lib/src/types.rs`): the committed
+clause data's hash (`clauseDataHash`) and the inclusion proof, beside the
+signed `contentRef`. The guest checks who attests, that the order is committed
+and open, and that the leaf
+`keccak256(keccak256(clauseId ++ clauseDataHash))` opens against the order's
+signed `checkoutHash` (`validate_attestation_witness`,
+`prover/lib/src/kernel.rs`), and re-emits the `contentRef` as signed. No
+operation carries a clause's content, so the relay and, under
+`SP1_PROVER=network`, the proving network never receive it.
 
-- **Hash-only, the default.** Exactly what `AttestationCoordinator` takes: the
-  `clauseDataHash` and the inclusion proof, beside the signed `contentRef`. The
-  guest runs Gate I alone — the leaf
-  `keccak256(keccak256(clauseId ++ clauseDataHash))` opens against the order's
-  signed `checkoutHash` — re-emits the `contentRef` as signed, and commits no
-  spec binding, so the verifier consults no registry for it, as the
-  coordinator consults none. The relay and the proving network see the
-  fingerprints the chain sees on the direct path, never the parties' data.
-- **Plaintext, the party's choice.** The spec, the content and the committed
-  clauseData, to have the content checked inside the proof: Gate S (the
-  witness spec, the canonical spec without its `block`, hashes to the clause key), Gate C (the content validates against
-  the spec and hashes to the `contentRef`) and Gate I, with a spec binding
-  committed for the verifier's registry check. The relay receives that
-  plaintext and, under `SP1_PROVER=network`, forwards it to the proving
-  network.
+The reserved provenance leaf (`PROVENANCE_LEAF_KEY`) is attested like any
+leaf, on inclusion alone (`a_provenance_attestation_is_accepted_on_inclusion_alone`,
+`a_provenance_attestation_of_an_uncommitted_leaf_is_refused`,
+`prover/lib/tests/usage.rs`). The check that the leaf names the registered
+agreement and process design is made at the usage claim: `UsageCounter`, and
+the guest's `apply_usage_claims`, rebuild the leaf from the claim's
+`agreementHash` and `processDesignHash`.
 
-The reserved provenance leaf (`PROVENANCE_LEAF_KEY`): hash-only, the guest
-binds the leaf's hash and cannot read its bytes, exactly as the coordinator
-cannot, so the attestation is accepted on inclusion alone; the check that the
-bytes name the registered agreement and assembly stays at the usage claim
-(`UsageCounter`, and the guest's usage-claim path). Plaintext, the guest
-keeps the agreement format's byte check.
-
-Both forms bind what a direct attestation binds — the signer, an open order,
-the leaf, the `contentRef` — and the event the verifier re-emits for a
-hash-only attestation is the coordinator's byte for byte
-(`prover/lib/tests/attestation_vectors.rs` against
+The event the verifier re-emits is the coordinator's byte for byte
+(`prover/lib/tests/attestation_vectors.rs`,
+`a_batched_attestation_emits_the_coordinator_s_event_bytes`, against
 `test/core/attestation/AttestationVectorsTest.t.sol`; the differential fuzz,
 `KernelDifferentialFuzzTest` with `fuzz_stream.rs`, replays every coordinator
-attestation in the hash-only form).
+attestation through the batch path).
 
-The engine exists once in each of the two lockstep languages: Rust
-(`prover/clause`, used by the guest and the sequencer) and TypeScript
-(`@figaro-protocol/sdk/clauses`) — parse/validate behavior locked by
-`prover/clause/tests/conformance.rs` against the canonical clause JSONs,
-encoding locked byte-for-byte against the TypeScript vectors by
-`prover/clause/tests/encode_conformance.rs`.
-
-### Keystone design — canonical ABI mapping
-
-The keystone that makes the generic encoder possible: the canonical ABI
-encoding of a clause's content is a **total function of its `ClauseSpec`** —
-no per-clause code. `encode_content_from_spec` (`prover/clause/src/encode.rs`)
-and its TypeScript mirror (`sdk/src/clauses/encode.ts`) implement it,
-byte-identical under the encode-conformance suite. This is the cross-form
-binding `FigaroCore` uses inside the proof: `content_bytes` are derived from the
-JSON content, and the guest asserts `keccak256(content_bytes) == content_ref`,
-so "some bytes hash to content_ref" and "some JSON validates" cannot be forged
-apart.
-
-**Encoding algorithm.** Content encodes as `abi_encode_params` of the
-top-level `spec.fields`, in declaration order. Each field encodes recursively
-by type; an absent optional field encodes as the ABI zero-value of its type
-(`0`, `""`, `false`, empty array, zero-bytes). A required field that is absent
-is a validation error, not an encoding case. Stage selection mirrors
-validation: when the caller passes a stage and the spec declares a matching
-`stages[stage]` override, those fields drive the encoding; otherwise the
-spec's default `fields` apply.
-
-**The type mapping.**
-
-| `FieldSpec`              | ABI type                                    |
-|--------------------------|---------------------------------------------|
-| `boolean`                | `bool`                                      |
-| `bigint`                 | `uint256` (unsigned decimal string)         |
-| `integer`                | `int256` — SIGNED; the spec grammar admits negative bounds |
-| `enum`                   | `uint8` — 0-based position in `values`      |
-| `string`, no format      | `string`                                    |
-| `string`, `bytes32-hex`  | `bytes32`                                   |
-| `string`, `address-hex`  | `address`                                   |
-| `string`, `bytes-hex`    | `bytes`                                     |
-| `array<T>`               | `T[]` — element type mapped recursively     |
-| `object`                 | `tuple(...)` of its fields, declared order  |
-
-Width never enters encoding: `abi_encode_params` pads every value to a 32-byte
-word, so integer `min`/`max` bounds are a *validation*-range concern only. The
-string `format` axis is OPEN — a clause may declare any format
-permissionlessly; an unknown one validates as a plain string and encodes as
-`string`, never a hard failure. A spec's optional `default` is composition
-metadata, shape-validated at parse; it never affects encoding — "absent
-optional → ABI zero-value" is the whole rule. Every spec in `clauses/` — and
-any third-party spec — encodes under this one rule, and the conformance
-vectors derive from the same specs.
-
-**Cost posture.** Generic JSON parsing in-circuit is heavier than a
-specialized path (mitigable: per-batch spec amortization, since a batch's
-attestations share clauses). That in-circuit cost buys the deletion of the
-*recurring* cost a compiled-in design imposes: a verifier redeploy per clause,
-forever. None of this touches `FigaroCore` or its invariants.
+Neither path checks a content against its spec. A signer's tool checks the
+content before signing, and a reader checks a disclosed content against the
+spec its clause key names; this project's SDK (`@figaro-protocol/sdk/clauses`)
+is one such tool, and the published clause format
+(`sdk/src/clauses/clause-spec.schema.json`) states its rules for any other
+(`docs/DESIGN_DECISIONS.md` § 26).
 
 ## Proving Infrastructure — Succinct (SP1)
 
 Two Succinct surfaces beyond the zkVM itself; both are proving
-infrastructure, separate from the clause-engine work and sequenced
-independently of it.
+infrastructure.
 
 **On-chain verification — one pinned SP1 verifier.** `FigaroBatchVerifier`
 verifies a batch proof through `ISP1Verifier.verifyProof` on one specific SP1
@@ -577,12 +495,13 @@ participants). It is a liveness dependency only: the proof still verifies
 against the program vkey, so a faulty or adversarial prover cannot forge a
 proof that resolves — the same liveness-not-safety boundary the sequencer
 trust model draws. It is not only a cost choice: under `network` the whole
-batch input reaches the network's provers — every operation, and the spec,
-content and clauseData of any attestation sent in the plaintext form; a
-hash-only attestation sends them its fingerprints alone. `SP1_PROOF_MODE` (`groth16` default | `plonk`) picks the
-form; it must be the form of the SP1 verifier contract the deployed verifier pins. The generic
-clause engine's in-circuit cost is what makes offloading proof generation to
-the network the natural answer rather than scaling a self-hosted prover.
+batch input reaches the network's provers: the signed commitments (the
+parties, the token, the payment, the running total, the salt and the
+deadline), the signatures or wallet-code authorization bytes, the clause keys
+and stages, and the fingerprints (`KernelOp` and `UsageClaim`,
+`prover/lib/src/types.rs`). No operation carries a clause's content.
+`SP1_PROOF_MODE` (`groth16` default | `plonk`) picks the
+form; it must be the form of the SP1 verifier contract the deployed verifier pins.
 
 ---
 
@@ -611,8 +530,8 @@ anything (`FigaroCore` takes no cut, and the relay's order chooses only among wh
 **1. Submission.** Participants submit signed operations over HTTP. Each
 carries the operation type (commit, resolve, attest-as-seller,
 attest-as-buyer), the payload, and the required EIP-712 signatures; an
-attestation carries the hash-only form by default, or the plaintext form at
-the attesting party's choice (§ "The two attestation forms"). The
+attestation carries what the coordinator takes (§ "What a batched attestation
+carries"). The
 sequencer validates signatures on receipt and rejects malformed or mis-signed
 operations.
 
@@ -639,9 +558,9 @@ state is the sequencer's mirror of the batch path's state, maintained
 by replaying its own landed batches.
 
 **4. Proving.** The prover executes the mirror program in the zkVM and
-produces the validity proof, the ten `PublicValues`, the `NetPosition[]`
-(aggregated token movements), and the `BatchEvents` (attestations, spec
-bindings, the uses and their period). A devnet uses the
+produces the validity proof, the nine `PublicValues`, the `NetPosition[]`
+(aggregated token movements), and the `BatchEvents` (attestations, the uses
+and their period). A devnet uses the
 mock prover; otherwise `SP1_PROVER` selects `cpu`, `cuda`, or `network`. No
 backend is a trust assumption: the proof verifies against the program vkey
 regardless of who generated it — a sequencer self-proves the way a validator
@@ -650,8 +569,7 @@ runs node software, or buys liveness, never safety, from the network.
 **5. The resolution transaction.** One call to `settleBatch(proof,
 publicValues, positions, events, usage, operations)`. The verifier: verifies the proof;
 checks state-root continuity and chain binding; verifies the auxiliary
-calldata hashes against the proof's commitments; checks each spec binding
-(`ClauseRegistry.registered(clauseId)`); executes the net token transfers, every pull before any payout, so a payout listed before the pull it needs lands;
+calldata hashes against the proof's commitments; executes the net token transfers, every pull before any payout, so a payout listed before the pull it needs lands;
 re-emits the attestations and emits the Core's order and process events from
 the operation stream, and logs the stream (`BatchOperations`); hands the
 uses to `UsageCounter.applyBatchAccrual`; advances the state root.

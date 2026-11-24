@@ -2,10 +2,10 @@
  * E2E integration test: SDK → Sequencer → FigaroBatchVerifier → on-chain.
  *
  * The cross-language lock for the proof apparatus: TypeScript signs the
- * ops and builds a plaintext attestation witness, the Rust sequencer runs the mirror
- * + guest and submits, and the Solidity verifier checks the hashes and
- * the ClauseRegistry spec-binding anchor. If any layer's bytes drift,
- * this test fails.
+ * ops and builds the attestation's witness (the clauseData hash and the
+ * inclusion proof, as AttestationCoordinator takes them), the Rust sequencer
+ * runs the mirror + guest and submits, and the Solidity verifier checks the
+ * hashes. If any layer's bytes drift, this test fails.
  *
  * Requires:
  *   - Anvil running at http://127.0.0.1:8545 (or at ANVIL_URL)
@@ -16,16 +16,19 @@
  *
  * Flow:
  *   1. Deploy MockERC20, MockSP1Verifier, ClauseRegistry, FigaroBatchVerifier
- *   2. Register figaro-modalities on ClauseRegistry under its key (the hash of its canonical spec without `block`)
+ *   2. Register figaro-modalities on ClauseRegistry under its key (the hash of
+ *      its canonical spec without `block`): the usage claim of step 7 counts
+ *      only a registered clause; the attestation needs no registration
  *   3. Mint tokens, approve bonds to FigaroBatchVerifier
  *   4. Start sequencer as child process
- *   5. Submit Commit + AttestAsSeller (the plaintext form, RuntimeWitness) via SequencerClient
+ *   5. Submit Commit + AttestAsSeller (clauseDataHash and inclusion proof) via SequencerClient
  *   6. Wait for batch 1: bonds pulled, Attestation re-emitted
  *   6b. A relay holding no state refuses to start; a second relay starts
  *       on the state it rebuilds from the verifier's logs
  *       (REBUILD_FROM_CHAIN=1); the relay that built batch 1 restarts and
  *       resumes on its kept state
- *   7. Submit Resolve to the second relay; it settles batch 2
+ *   7. Submit Resolve and the clause's usage claim to the second relay; it
+ *      settles batch 2, and the counter credits the use
  *   8. Verify: final balances, state root advanced, batch count
  */
 
@@ -69,7 +72,6 @@ import {
 import { parseClauseSpec, encodeContentFromSpec } from "../src/clauses/index.js";
 import { SequencerClient } from "../src/agent/sequencer.js";
 import { proveAndSettle } from "../src/relay/index.js";
-import type { SequencerContentProof } from "../src/agent/sequencer.js";
 
 import {
     ANVIL_URL,
@@ -180,16 +182,16 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
     const SEQUENCER_URL = `http://127.0.0.1:${SEQUENCER_PORT}`;
 
-    // The witness clause, prepared once: exact spec bytes, clause key,
-    // content_ref (canonical ABI encoding at stage 0), and the clause
-    // leaf that becomes the single-clause checkoutHash.
+    // The clause, prepared once: exact spec bytes, clause key, content_ref
+    // (canonical ABI encoding at stage 0), and the clause leaf that becomes
+    // the single-clause checkoutHash.
     const specJson = loadSpecJson("figaro-modalities");
     const parsedSpec = (() => {
         const r = parseClauseSpec(JSON.parse(specJson));
         if (!r.ok) throw new Error(`spec parse failed: ${JSON.stringify(r.errors)}`);
         return r.spec;
     })();
-    // The key is the hash of the bytes the witness carries: the canonical spec without `block`.
+    // The key is the hash of the canonical spec without `block`.
     const clauseKey = keccak256(stringToHex(specJson));
     const contentRef = keccak256(
         encodeContentFromSpec(parsedSpec, JSON.parse(CLAUSE_DATA), { stage: 0 }),
@@ -201,14 +203,6 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             encodePacked(["bytes32", "bytes32"], [clauseKey, keccak256(stringToHex(CLAUSE_DATA))]),
         ),
     );
-    // The plaintext form: the content is validated inside the proof, so the
-    // spec binding reaches the verifier's ClauseRegistry check.
-    const witnessContent: Omit<SequencerContentProof, "inclusion_proof"> = {
-        spec_json: specJson,
-        content_json: CLAUSE_DATA,
-        clause_data: CLAUSE_DATA,
-        content_kind: "RuntimeWitness",
-    };
 
     beforeAll(async () => {
         alive = await anvilReachable();
@@ -217,7 +211,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         hasBinary = sequencerBinaryExists();
         if (!hasBinary) return;
 
-        // ── Deploy the stack and anchor the witness clause ─────
+        // ── Deploy the stack; register the clause the usage claim counts ──
 
         const stack = await deployBatchStack(publicClient, deployerWallet, {
             specJson,
@@ -339,7 +333,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         expect(hasBinary).toBe(true);
     });
 
-    it("full batch lifecycle: commit + witness attest resolve in a batch, then resolve pays out", async () => {
+    it("full batch lifecycle: commit + attest land in a batch, then resolve pays out", async () => {
         if (!alive || !hasBinary) return;
 
         // ── 1. Build commitment ─────────────────────────────────
@@ -375,7 +369,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         );
         expect(typeof commitResult.id).toBe("number");
 
-        // ── 3. Sign + submit the witness attestation ────────────
+        // ── 3. Sign + submit the seller's attestation ───────────
         // For root orders, processId = the commitment's EIP-712 digest.
 
         // computeOrderHash derives the root processId itself from the
@@ -398,7 +392,6 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             sellerSig: attestSig,
             clauseDataHash: keccak256(stringToHex(CLAUSE_DATA)),
             inclusionProof: [],
-            checkContentInProof: witnessContent,
         });
         expect(typeof attestResult.id).toBe("number");
 

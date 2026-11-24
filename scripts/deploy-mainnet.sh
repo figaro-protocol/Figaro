@@ -315,7 +315,6 @@ expect_eq() { # label, got, want
 read_call() { cast call --rpc-url "$RPC_URL" "$1" "$2" "${@:3}"; }
 
 expect_eq "batchVerifier.usageCounter()"  "$(read_call "$BATCH_VERIFIER_ADDR" 'usageCounter()(address)')"   "$USAGE_COUNTER_ADDR"
-expect_eq "batchVerifier.clauseRegistry()" "$(read_call "$BATCH_VERIFIER_ADDR" 'clauseRegistry()(address)')" "$CLAUSE_ADDR"
 expect_eq "batchVerifier.verifier()"       "$(read_call "$BATCH_VERIFIER_ADDR" 'verifier()(address)')"       "$SP1_VERIFIER"
 PROGRAM_VKEY_ONCHAIN=$(read_call "$BATCH_VERIFIER_ADDR" 'programVKey()(bytes32)')
 expect_eq "batchVerifier.programVKey()"    "$PROGRAM_VKEY_ONCHAIN"    "$SP1_PROGRAM_VKEY"

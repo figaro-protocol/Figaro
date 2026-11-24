@@ -1,4 +1,4 @@
-//! The attestation lock: a hash-only batched attestation re-emits the
+//! The attestation lock: a batched attestation re-emits the
 //! coordinator's event, byte for byte.
 //!
 //! `test/core/attestation/AttestationVectorsTest.t.sol` runs three direct
@@ -7,17 +7,16 @@
 //! buyer's on the reserved provenance leaf) and writes each call's arguments
 //! and the log it emitted to `test/fixtures/attestation-vectors.json`. This
 //! file commits the same order through the mirror, submits the same
-//! arguments as `AttestationWitness::HashOnly` attestations — the
-//! `clauseDataHash`, the inclusion proof and the `contentRef`, nothing
-//! else — and asserts that each event the guest commits encodes to the
-//! coordinator's topics and data, and that no spec binding is committed.
+//! arguments as batched attestations — the `clauseDataHash`, the inclusion
+//! proof and the `contentRef`, nothing else — and asserts that each event
+//! the guest commits encodes to the coordinator's topics and data.
 use std::str::FromStr;
 
 use alloy_primitives::{keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
-use figaro_kernel::kernel::{apply_batch, compute_spec_bindings_hash};
+use figaro_kernel::kernel::apply_batch;
 use figaro_kernel::types::*;
 
 const BUYER_KEY: u64 = 0xB0B;
@@ -90,7 +89,7 @@ fn encode_log(e: &AttestationEventData) -> (Vec<B256>, Vec<u8>) {
 }
 
 #[test]
-fn a_hash_only_batched_attestation_emits_the_coordinator_s_event_bytes() {
+fn a_batched_attestation_emits_the_coordinator_s_event_bytes() {
     let fx = fixture();
     let chain_id: u64 = s(&fx["chainId"]).parse().unwrap();
     let core = addr(&fx["verifyingContract"]);
@@ -125,7 +124,7 @@ fn a_hash_only_batched_attestation_emits_the_coordinator_s_event_bytes() {
         let clause_id = b256(&v["clauseId"]);
         let stage: u8 = s(&v["stage"]).parse().unwrap();
         let content_ref = b256(&v["contentRef"]);
-        let proof = AttestationWitness::HashOnly {
+        let proof = AttestationWitness {
             clause_data_hash: b256(&v["clauseDataHash"]),
             inclusion_proof: words(&v["inclusionProof"]),
         };
@@ -174,7 +173,7 @@ fn a_hash_only_batched_attestation_emits_the_coordinator_s_event_bytes() {
         usage_claims: vec![],
         usage_period: 0,
     };
-    let (pv, _positions, events) = apply_batch(&input).expect("the hash-only attestations apply");
+    let (_pv, _positions, events) = apply_batch(&input).expect("the attestations apply");
 
     assert_eq!(events.attestations.len(), count);
     for (k, e) in events.attestations.iter().enumerate() {
@@ -191,9 +190,4 @@ fn a_hash_only_batched_attestation_emits_the_coordinator_s_event_bytes() {
             "vector {k}: the data is the coordinator's"
         );
     }
-    assert!(
-        events.spec_bindings.is_empty(),
-        "the hash-only form commits no spec binding"
-    );
-    assert_eq!(pv.spec_bindings_hash, compute_spec_bindings_hash(&[]));
 }

@@ -397,13 +397,10 @@ describe("parseClauseSpec — the blinding field of a private set", () => {
     });
 });
 
-// The guest reads a plaintext attestation's spec with serde_json, which
+// A strict JSON reader in another language (Rust's serde_json, for one)
 // refuses a lone UTF-16 surrogate; JSON.parse keeps one, and `canonicalize`
 // writes it back into the bytes the clause key hashes. The SDK refuses such
-// a spec at parse, so no clause it reads is one the batch path cannot read.
-// The shared JSON fixture cannot hold a lone surrogate, so each engine keeps
-// its own leg: the guest's is
-// `attest_spec_holding_a_lone_surrogate_fails` in prover/lib/tests/parity.rs.
+// a spec at parse, so no clause it reads is one such a reader cannot read.
 describe("parseClauseSpec — a lone UTF-16 surrogate in the spec's own JSON", () => {
     const text = (title: string, description: string, label: string) =>
         `{"clauseId":"t","version":1,"title":"${title}","description":"${description}",`

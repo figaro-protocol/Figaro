@@ -1030,11 +1030,6 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                                 { name: 'stage', type: 'uint8' }, { name: 'contentRef', type: 'bytes32' },
                             ],
                         },
-                        {
-                            name: 'specBindings', type: 'tuple[]', components: [
-                                { name: 'clauseId', type: 'bytes32' },
-                            ],
-                        },
                     ],
                 },
                 {
@@ -1067,11 +1062,9 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         { type: 'error', name: 'VerifyingContractMismatch', inputs: [{ name: 'expected', type: 'address' }, { name: 'actual', type: 'address' }] },
         { type: 'error', name: 'PositionHashMismatch', inputs: [] },
         { type: 'error', name: 'AttestationHashMismatch', inputs: [] },
-        { type: 'error', name: 'SpecBindingsHashMismatch', inputs: [] },
         { type: 'error', name: 'UsageAccrualHashMismatch', inputs: [] },
         { type: 'error', name: 'BatchTimestampOutOfRange', inputs: [{ name: 'committed', type: 'uint64' }, { name: 'current', type: 'uint64' }] },
         { type: 'error', name: 'PublicValuesLengthMismatch', inputs: [{ name: 'expected', type: 'uint256' }, { name: 'actual', type: 'uint256' }] },
-        { type: 'error', name: 'ClauseNotRegistered', inputs: [{ name: 'clauseId', type: 'bytes32' }] },
     ] as const;
 
     test('the batch-universe leg — one mock-verified settleBatch, and the overlay row folds both universes by ADDRESS', async ({ page }) => {
@@ -1126,7 +1119,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         await pinWitnessBytes(content);
         expect(await fetchWitnessBytes(contentRef), 'the batch substance resolves from its own fingerprint').toBe(content);
 
-        // Public values: 10 static ABI words, 320 bytes; the verifier refuses
+        // Public values: 9 static ABI words, 288 bytes; the verifier refuses
         // any other length by name. prevRoot
         // must be the LIVE root (it advances every resolve — never hardcode
         // genesis). newRoot is the SAME root: this batch carries an
@@ -1138,7 +1131,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         // devnet's state from the chain, since replaying an empty stream
         // reaches the root it started from (`batch-events.devnet.spec.ts`
         // starts such a relay).
-        // The ninth word is the batch's clock, and it is the CHAIN's: the
+        // The eighth word is the batch's clock, and it is the CHAIN's: the
         // verifier refuses one ahead of its block or more than an hour behind.
         const prevRoot = await publicClient.readContract({
             address: batchVerifier, abi: BATCH_VERIFIER_ABI, functionName: 'stateRoot',
@@ -1152,28 +1145,24 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             ['bytes32', 'bytes32', 'address', 'bytes32', 'uint8', 'bytes32'],
             [orderHash, processId, surveyor.address, geoKey, stage, contentRef],
         ));
-        // The verifier's open-world gate: the spec binding is the clause key,
-        // which IS the hash of the canonical spec, without its `block`, the
-        // proof validated against.
-        const specBindingsHash = keccak256(encodePacked(['bytes32'], [geoKey]));
         const emptyPositionsHash = keccak256('0x');
         const emptyUsageHash = keccak256(encodePacked(['uint8', 'bytes32', 'uint64'], [0, zeroHash, 0n]));
         const batchTimestamp = (await publicClient.getBlock()).timestamp;
         const publicValues = encodeAbiParameters(
             [
                 { type: 'bytes32' }, { type: 'bytes32' }, { type: 'uint64' }, { type: 'address' },
-                { type: 'bytes32' }, { type: 'bytes32' }, { type: 'bytes32' }, { type: 'bytes32' },
+                { type: 'bytes32' }, { type: 'bytes32' }, { type: 'bytes32' },
                 { type: 'uint64' }, { type: 'bytes32' },
             ],
-            [prevRoot, newRoot, BigInt(LOCAL_ANVIL.id), batchVerifier, emptyPositionsHash, attestationsHash, specBindingsHash, emptyUsageHash, batchTimestamp, keccak256('0x')],
+            [prevRoot, newRoot, BigInt(LOCAL_ANVIL.id), batchVerifier, emptyPositionsHash, attestationsHash, emptyUsageHash, batchTimestamp, keccak256('0x')],
         );
-        expect(publicValues.length, 'ten words, 320 bytes').toBe(2 + 320 * 2);
+        expect(publicValues.length, 'nine words, 288 bytes').toBe(2 + 288 * 2);
 
         const settleReceipt = await receipt(await surveyorWallet.writeContract({
             address: batchVerifier, abi: BATCH_VERIFIER_ABI, functionName: 'settleBatch',
             args: [
                 '0x', publicValues, [],
-                { attestations: [attestation], specBindings: [{ clauseId: geoKey }] },
+                { attestations: [attestation] },
                 { period: 0, provenanceLeaf: zeroHash, uses: [] },
                 // The batch's operation stream: this leg lands an attestation
                 // alone, which moves no state, so the stream is empty.

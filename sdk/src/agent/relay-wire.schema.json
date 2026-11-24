@@ -49,44 +49,14 @@
             }
         },
         "AttestationWitness": {
-            "description": "What a batched attestation carries: the coordinator's arguments (HashOnly), or the clause's content to be checked inside the proof (Plaintext).",
-            "oneOf": [
-                {
-                    "type": "object",
-                    "required": ["HashOnly"],
-                    "additionalProperties": false,
-                    "properties": {
-                        "HashOnly": {
-                            "type": "object",
-                            "required": ["clause_data_hash", "inclusion_proof"],
-                            "additionalProperties": false,
-                            "properties": {
-                                "clause_data_hash": { "$ref": "#/$defs/Bytes32" },
-                                "inclusion_proof": { "$ref": "#/$defs/Proof" }
-                            }
-                        }
-                    }
-                },
-                {
-                    "type": "object",
-                    "required": ["Plaintext"],
-                    "additionalProperties": false,
-                    "properties": {
-                        "Plaintext": {
-                            "type": "object",
-                            "required": ["spec_json", "content_json", "clause_data", "inclusion_proof", "content_kind"],
-                            "additionalProperties": false,
-                            "properties": {
-                                "spec_json": { "type": "string" },
-                                "content_json": { "type": "string" },
-                                "clause_data": { "type": "string" },
-                                "inclusion_proof": { "$ref": "#/$defs/Proof" },
-                                "content_kind": { "enum": ["RuntimeWitness", "ReAssert"] }
-                            }
-                        }
-                    }
-                }
-            ]
+            "description": "What a batched attestation carries: the coordinator's arguments, the committed clause data's hash and the proof that its leaf is in the signed agreement. No operation carries a party's content.",
+            "type": "object",
+            "required": ["clause_data_hash", "inclusion_proof"],
+            "additionalProperties": false,
+            "properties": {
+                "clause_data_hash": { "$ref": "#/$defs/Bytes32" },
+                "inclusion_proof": { "$ref": "#/$defs/Proof" }
+            }
         },
         "Operation": {
             "description": "One signed operation, as an externally tagged enum: an object with exactly one key, the operation's kind.",

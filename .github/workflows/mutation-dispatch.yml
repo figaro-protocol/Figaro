@@ -1,35 +1,36 @@
 name: Mutation (dispatch)
 
-# Runs cargo-mutants over the proof program's two host crates, figaro-kernel
-# (prover/lib) and figaro-clause (prover/clause), at the commit given as
-# input, split across a job matrix with `--shard k/n`. Each shard uploads its
-# mutants.out. Started by hand only.
+# Runs cargo-mutants over the proof program's host crate, figaro-kernel
+# (prover/lib), at the commit given as input, split across a job matrix with
+# `--shard k/n`. Each shard uploads its mutants.out. Started by hand only.
 #
 # The command is the one scripts/cargo-mutants-run.sh builds:
-# `cargo mutants --in-place -p <crate>`, run in prover/. In place, because the
-# clause conformance tests read ../clauses/ and ../test/fixtures/ from the
-# workspace root, which cargo-mutants' copy of prover/ leaves out. The script
-# itself detaches and holds .mewt.lock for a shared machine; a runner is used
-# by one shard alone, so the job calls cargo-mutants directly.
+# `cargo mutants --in-place -p figaro-kernel`, run in prover/. In place,
+# because the kernel's parity tests read ../clauses/ and ../test/fixtures/
+# from the workspace root, which cargo-mutants' copy of prover/ leaves out.
+# The script itself detaches and holds .mewt.lock for a shared machine; a
+# runner is used by one shard alone, so the job calls cargo-mutants directly.
 #
 # The shard count. One mutant's tests took about 33 minutes on a developer
-# machine. A hosted job stops at 360 minutes; this one stops at 355. Each
-# shard first spends about 15 minutes on the toolchain, the cargo-mutants
-# install and the first build, then about 33 on the unmutated baseline that
-# cargo-mutants runs before any mutant. That leaves about
-# 355 - 15 - 33 = 307 minutes, so 307 / 33 = 9 mutants per shard at most.
-# `cargo mutants --list` counts 330 mutants in figaro-kernel and 745 in
-# figaro-clause, so ceil(330 / 9) = 37 and ceil(745 / 9) = 83 shards. The
-# `auto` default takes 40 and 90 for the margin. Shards are dealt round-robin
-# (`--sharding round-robin`), so each holds 8 or 9 mutants and none is empty;
-# the slice default leaves the last shards empty. A standard runner (4 cores,
-# 16 GB) is slower than the developer machine, so a shard may still run out
-# of time: raise `shards` and run again. A caught mutant usually fails fast;
-# the 33 minutes is the cost of one that runs the whole suite.
+# machine; the measurement does not say which of the two crates the
+# workspace then held it was taken on. A hosted job stops at 360 minutes;
+# this one stops at 355. Each shard first spends about 15 minutes on the
+# toolchain, the cargo-mutants install and the first build, then about 33
+# on the unmutated baseline that cargo-mutants runs before any mutant. That
+# leaves about 355 - 15 - 33 = 307 minutes, so 307 / 33 = 9 mutants per
+# shard at most. `cargo mutants --list` counted 330 mutants in
+# figaro-kernel when this header was first written, so ceil(330 / 9) = 37
+# shards; the `auto` default takes 40 for the margin. Shards are dealt
+# round-robin (`--sharding round-robin`), so each holds 8 or 9 mutants and
+# none is empty; the slice default leaves the last shards empty. A standard
+# runner (4 cores, 16 GB) is slower than the developer machine, so a shard
+# may still run out of time: raise `shards` and run again. A caught mutant
+# usually fails fast; the 33 minutes is the cost of one that runs the whole
+# suite.
 #
-# Both crates under `auto` make 130 jobs, within the 256 a matrix allows. An
-# account runs a limited number of jobs at once (20 on the free plan), so the
-# matrix queues: about seven rounds of up to six hours.
+# `auto` makes 40 jobs, within the 256 a matrix allows. An account runs a
+# limited number of jobs at once (20 on the free plan), so the matrix
+# queues: two rounds of up to six hours.
 #
 # mewt over the contracts is left out. scripts/mewt-run.sh runs
 # `mewt run <target.sol>` and needs a mewt.toml whose [targets] and [test]
@@ -43,13 +44,8 @@ on:
                 description: "Full 40-character sha the run must be at: start the workflow from the branch or tag whose head it is"
                 required: true
                 type: string
-            crate:
-                description: "Which crate to mutate"
-                type: choice
-                options: [both, figaro-kernel, figaro-clause]
-                default: both
             shards:
-                description: "Shards per crate: auto (40 for figaro-kernel, 90 for figaro-clause) or a number from 1 to 128"
+                description: "Shards: auto (40) or a number from 1 to 128"
                 required: false
                 type: string
                 default: auto
@@ -63,6 +59,7 @@ concurrency:
 
 env:
     CARGO_MUTANTS_VERSION: 27.1.0
+    CRATE: figaro-kernel
 
 jobs:
     preflight:
@@ -77,35 +74,23 @@ jobs:
               id: v
               env:
                   COMMIT: ${{ inputs.commit }}
-                  CRATE: ${{ inputs.crate }}
                   SHARDS: ${{ inputs.shards }}
               run: |
                   set -euo pipefail
                   [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::commit must be a full 40-character lowercase sha"; exit 1; }
-                  case "$CRATE" in
-                      both) crates="figaro-kernel figaro-clause" ;;
-                      figaro-kernel|figaro-clause) crates="$CRATE" ;;
-                      *) echo "::error::crate must be both, figaro-kernel or figaro-clause"; exit 1 ;;
-                  esac
-                  if [ "$SHARDS" != "auto" ]; then
+                  if [ "$SHARDS" = "auto" ]; then
+                      n=40
+                  else
                       [[ "$SHARDS" =~ ^[0-9]{1,3}$ ]] && (( SHARDS >= 1 && SHARDS <= 128 )) || { echo "::error::shards must be auto or a number from 1 to 128"; exit 1; }
+                      n=$SHARDS
                   fi
-                  include="[]"
-                  for c in $crates; do
-                      if [ "$SHARDS" = "auto" ]; then
-                          case "$c" in figaro-kernel) n=40 ;; figaro-clause) n=90 ;; esac
-                      else
-                          n=$SHARDS
-                      fi
-                      include=$(jq -c --arg c "$c" --argjson n "$n" \
-                          '. + [range(0; $n) | {crate: $c, shard: ., of: $n}]' <<< "$include")
-                  done
+                  include=$(jq -cn --argjson n "$n" '[range(0; $n) | {shard: ., of: $n}]')
                   echo "sha=$COMMIT" >> "$GITHUB_OUTPUT"
                   echo "matrix={\"include\":$include}" >> "$GITHUB_OUTPUT"
                   echo "jobs: $(jq length <<< "$include")"
 
     cargo-mutants:
-        name: cargo-mutants ${{ matrix.crate }} ${{ matrix.shard }}/${{ matrix.of }}
+        name: cargo-mutants figaro-kernel ${{ matrix.shard }}/${{ matrix.of }}
         needs: preflight
         runs-on: ubuntu-24.04
         timeout-minutes: 355
@@ -114,7 +99,6 @@ jobs:
             matrix: ${{ fromJSON(needs.preflight.outputs.matrix) }}
         env:
             COMMIT: ${{ needs.preflight.outputs.sha }}
-            CRATE: ${{ matrix.crate }}
             SHARD: ${{ matrix.shard }}
             OF: ${{ matrix.of }}
         steps:
@@ -195,7 +179,7 @@ jobs:
               if: always()
               uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
               with:
-                  name: mutants-${{ matrix.crate }}-${{ needs.preflight.outputs.sha }}-shard-${{ matrix.shard }}-of-${{ matrix.of }}
+                  name: mutants-figaro-kernel-${{ needs.preflight.outputs.sha }}-shard-${{ matrix.shard }}-of-${{ matrix.of }}
                   path: ${{ runner.temp }}/mutants
                   retention-days: 90
                   if-no-files-found: warn

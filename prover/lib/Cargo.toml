@@ -8,13 +8,9 @@ rust-version.workspace = true
 [dependencies]
 alloy-primitives = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["float_roundtrip"] }
 k256 = { version = "0.13", features = ["ecdsa"] }
-# Layer B clause validator — invoked from apply_batch when an attestation
-# op carries a content payload. See validate_attestation_content() in
-# kernel.rs.
-figaro-clause = { path = "../clause" }
 
 [dev-dependencies]
+serde_json = { version = "1", features = ["float_roundtrip"] }
 k256 = { version = "0.13", features = ["ecdsa", "arithmetic"] }
 bincode = "1.3"

@@ -1193,27 +1193,9 @@ fn crediting_usage_leaves_the_state_root_where_the_operations_left_it() {
 
 /// A buyer attestation of the reserved provenance leaf on an OPEN process:
 /// the order is committed (not resolved) under an agreement whose lone
-/// leaf is the provenance leaf over the bytes hashing to `committed`.
+/// leaf is the provenance leaf over the bytes hashing to `committed`, and
+/// the attestation carries `witness`.
 fn provenance_attestation(
-    committed: B256,
-    clause_data: &str,
-    content_ref: B256,
-) -> (BatchInput, B256) {
-    provenance_attestation_with(
-        committed,
-        AttestationWitness::Plaintext(AttestationContentProof {
-            spec_json: String::new(),
-            content_json: String::new(),
-            clause_data: clause_data.to_string(),
-            inclusion_proof: vec![],
-            content_kind: ContentKind::ReAssert,
-        }),
-        content_ref,
-    )
-}
-
-/// The same buyer attestation of the provenance leaf, carrying `witness`.
-fn provenance_attestation_with(
     committed: B256,
     witness: AttestationWitness,
     content_ref: B256,
@@ -1247,136 +1229,62 @@ fn the_guest_s_provenance_leaf_key_is_the_format_s_constant() {
     assert_eq!(PROVENANCE_LEAF_KEY, provenance_key());
 }
 
-/// The reserved provenance leaf is attestable on the batch path: the guest
-/// verifies its inclusion under the signed agreement with the bytes
-/// reproduced from the two keys they carry, consults no spec, and commits
-/// NO spec binding (there is no registry entry to anchor).
-#[test]
-fn the_provenance_leaf_is_attestable_without_a_spec() {
-    let bytes = provenance_bytes(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
-    let hash = keccak256(bytes.as_bytes());
-    let (input, process_id) = provenance_attestation(hash, &bytes, hash);
-
-    let (_, _, events, _) = apply_batch_with_state(&input).expect("provenance attestation applies");
-    assert_eq!(events.attestations.len(), 1);
-    assert_eq!(events.attestations[0].clause_id, provenance_key());
-    assert_eq!(events.attestations[0].process_id, process_id);
-    assert_eq!(events.attestations[0].content_ref, hash);
-    assert!(
-        events.spec_bindings.is_empty(),
-        "the provenance leaf is a fact of the agreement format; nothing anchors it in ClauseRegistry"
-    );
-}
-
-/// Hash-only, the provenance leaf is accepted on inclusion alone: the
+/// The provenance leaf is attested like any leaf, on inclusion alone: the
 /// guest binds the leaf's hash and cannot read its bytes, exactly as the
-/// coordinator cannot. The check that the bytes name the registered
-/// agreement and assembly stays at the usage claim. No spec binding, and
-/// the contentRef is re-emitted as signed.
+/// coordinator cannot, and the contentRef is re-emitted as signed. The
+/// check that the bytes name the registered agreement and process design
+/// stays at the usage claim, so a signed agreement whose provenance leaf
+/// carries bytes that are not the format's reproduction is attested too.
 #[test]
-fn a_hash_only_provenance_attestation_is_accepted_on_inclusion_alone() {
-    let committed =
-        provenance_leaf_data_hash(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
-    let content_ref = keccak256(b"the buyer's evidence");
-    let witness = AttestationWitness::HashOnly {
-        clause_data_hash: committed,
-        inclusion_proof: vec![],
-    };
-    let (input, process_id) = provenance_attestation_with(committed, witness, content_ref);
-
-    let (_, _, events, _) =
-        apply_batch_with_state(&input).expect("hash-only provenance attestation applies");
-    assert_eq!(events.attestations.len(), 1);
-    assert_eq!(events.attestations[0].clause_id, provenance_key());
-    assert_eq!(events.attestations[0].process_id, process_id);
-    assert_eq!(events.attestations[0].content_ref, content_ref);
-    assert!(events.spec_bindings.is_empty());
-}
-
-/// Hash-only, a provenance fingerprint the order never committed opens no
-/// leaf.
-#[test]
-fn a_hash_only_provenance_attestation_of_an_uncommitted_hash_is_refused() {
-    let committed =
-        provenance_leaf_data_hash(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
-    let other = provenance_leaf_data_hash(
-        &keccak256(b"another-agreement"),
-        &keccak256(b"a-composition"),
+fn a_provenance_attestation_is_accepted_on_inclusion_alone() {
+    let agreement = keccak256(b"an-agreement");
+    let composition = keccak256(b"a-composition");
+    let upper = |w: &B256| -> String { w.iter().map(|b| format!("{b:02X}")).collect() };
+    let not_the_reproduction = format!(
+        "{{\"agreementHash\":\"0x{}\",\"processDesignHash\":\"0x{}\"}}",
+        upper(&agreement),
+        upper(&composition)
     );
-    let witness = AttestationWitness::HashOnly {
-        clause_data_hash: other,
-        inclusion_proof: vec![],
-    };
-    let (input, _) = provenance_attestation_with(committed, witness, keccak256(b"evidence"));
+    for committed in [
+        provenance_leaf_data_hash(&agreement, &composition),
+        keccak256(not_the_reproduction.as_bytes()),
+    ] {
+        let content_ref = keccak256(b"the buyer's evidence");
+        let witness = AttestationWitness {
+            clause_data_hash: committed,
+            inclusion_proof: vec![],
+        };
+        let (input, process_id) = provenance_attestation(committed, witness, content_ref);
 
-    match apply_batch_with_state(&input).map(|_| ()) {
-        Err(KernelError::InvalidInclusionProof) => {}
-        other => panic!("expected InvalidInclusionProof, got {other:?}"),
+        let (_, _, events, _) =
+            apply_batch_with_state(&input).expect("the provenance attestation applies");
+        assert_eq!(events.attestations.len(), 1);
+        assert_eq!(events.attestations[0].clause_id, provenance_key());
+        assert_eq!(events.attestations[0].process_id, process_id);
+        assert_eq!(events.attestations[0].content_ref, content_ref);
     }
 }
 
-/// Bytes that name a composition, or an agreement, the order never
-/// committed derive a leaf that is not in the tree.
+/// A provenance fingerprint the order never committed, one naming another
+/// agreement or another process design, opens no leaf of the signed
+/// agreement.
 #[test]
-fn a_provenance_attestation_of_an_uncommitted_key_is_refused() {
+fn a_provenance_attestation_of_an_uncommitted_leaf_is_refused() {
     let agreement = keccak256(b"an-agreement");
     let composition = keccak256(b"a-composition");
     let committed = provenance_leaf_data_hash(&agreement, &composition);
     for other in [
-        provenance_bytes(&agreement, &keccak256(b"a-different-composition")),
-        provenance_bytes(&keccak256(b"another-agreement"), &composition),
+        provenance_leaf_data_hash(&agreement, &keccak256(b"a-different-composition")),
+        provenance_leaf_data_hash(&keccak256(b"another-agreement"), &composition),
     ] {
-        let (input, _) = provenance_attestation(committed, &other, keccak256(other.as_bytes()));
+        let witness = AttestationWitness {
+            clause_data_hash: other,
+            inclusion_proof: vec![],
+        };
+        let (input, _) = provenance_attestation(committed, witness, keccak256(b"evidence"));
         match apply_batch_with_state(&input).map(|_| ()) {
             Err(KernelError::InvalidInclusionProof) => {}
             other => panic!("expected InvalidInclusionProof, got {other:?}"),
-        }
-    }
-}
-
-/// The attestation's contentRef is the keccak of the provenance bytes,
-/// exactly as a clause's clauseDataHash.
-#[test]
-fn a_provenance_attestation_whose_content_ref_is_not_the_bytes_is_refused() {
-    let bytes = provenance_bytes(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
-    let hash = keccak256(bytes.as_bytes());
-    let (input, _) = provenance_attestation(hash, &bytes, keccak256(b"something else"));
-
-    match apply_batch_with_state(&input).map(|_| ()) {
-        Err(KernelError::ContentHashMismatch) => {}
-        other => panic!("expected ContentHashMismatch, got {other:?}"),
-    }
-}
-
-/// Bytes under the reserved key that are not the reproduction of their own
-/// two keys are refused even when the signed agreement carries exactly
-/// those bytes: the leaf's content is a rule of the agreement format,
-/// reproduced, never parsed loosely. Upper-case hex, the keys swapped, and
-/// the one-key form naming the processDesignHash alone are each refused.
-#[test]
-fn non_canonical_provenance_bytes_are_refused() {
-    let agreement = keccak256(b"an-agreement");
-    let composition = keccak256(b"a-composition");
-    let hex = |w: &B256| -> String { w.iter().map(|b| format!("{b:02x}")).collect() };
-    let upper = |w: &B256| -> String { w.iter().map(|b| format!("{b:02X}")).collect() };
-    for bytes in [
-        format!(
-            "{{\"agreementHash\":\"0x{}\",\"processDesignHash\":\"0x{}\"}}",
-            upper(&agreement),
-            upper(&composition)
-        ),
-        format!(
-            "{{\"processDesignHash\":\"0x{}\",\"agreementHash\":\"0x{}\"}}",
-            hex(&composition),
-            hex(&agreement)
-        ),
-        format!("{{\"processDesignHash\":\"0x{}\"}}", hex(&composition)),
-    ] {
-        let hash = keccak256(bytes.as_bytes());
-        let (input, _) = provenance_attestation(hash, &bytes, hash);
-        match apply_batch_with_state(&input).map(|_| ()) {
-            Err(KernelError::ProvenanceLeafNotCanonical) => {}
-            other => panic!("expected ProvenanceLeafNotCanonical for {bytes}, got {other:?}"),
         }
     }
 }

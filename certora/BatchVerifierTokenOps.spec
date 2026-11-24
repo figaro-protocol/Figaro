@@ -6,8 +6,8 @@
 // over the guest's order, every pull before any payout. These rules run that
 // step alone, through `certora/harness/FigaroBatchVerifierHarness.sol`'s
 // `executePositions`, on two positions of any tokens and any users. The rest of
-// `settleBatch` (the proof, the public values, the hash checks, the registry
-// anchor, the operation stream, the counter call) moves no token; Foundry holds
+// `settleBatch` (the proof, the public values, the hash checks, the operation
+// stream, the counter call) moves no token; Foundry holds
 // that `settleBatch` executes exactly the positions the proof committed
 // (`PositionHashMismatch`), and the equivalence run under VERIFICATION_MAP E-13
 // holds it against `FigaroCore`. A rule over all of `settleBatch` processed no
@@ -58,14 +58,11 @@ methods {
     // `_hashUsage`'s assembly packing alone exhausted its two-hour budget, so
     // each is summarized as `certora/BatchVerifierStateRoot.spec` does.
     function _.verifyProof(bytes32, bytes, bytes) external => NONDET;
-    function _.registered(bytes32) external => NONDET;
     function _.applyBatchAccrual(uint8, bytes32, IUsageCounter.BatchUse[]) external => NONDET;
     function FigaroBatchVerifier._hashPositions(FigaroBatchVerifier.NetPosition[] calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._hashAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal returns (bytes32) => NONDET;
-    function FigaroBatchVerifier._hashSpecBindings(FigaroBatchVerifier.SpecBinding[] calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._hashUsage(FigaroBatchVerifier.BatchUsageData calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._emitAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal => NONDET;
-    function FigaroBatchVerifier._checkSpecBindings(FigaroBatchVerifier.SpecBinding[] calldata) internal => NONDET;
     function FigaroBatchVerifier._walkOperations(bytes calldata, bool) internal => NONDET;
 }
 

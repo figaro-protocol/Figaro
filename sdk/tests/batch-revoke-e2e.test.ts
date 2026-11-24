@@ -138,7 +138,7 @@ describe.skipIf(SKIP)("Batch E2E: a revocation mid-flight dead-letters the revok
         const specJson = loadSpecJson("figaro-modalities");
         const parsed = parseClauseSpec(JSON.parse(specJson));
         if (!parsed.ok) throw new Error(`spec parse failed: ${JSON.stringify(parsed.errors)}`);
-        // The key is the hash of the bytes the witness carries: the canonical spec without `block`.
+        // The key is the hash of the canonical spec without `block`.
         const clauseKey = keccak256(stringToHex(specJson));
         const stack = await deployBatchStack(publicClient, deployerWallet, {
             specJson,

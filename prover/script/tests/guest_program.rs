@@ -17,12 +17,12 @@ use figaro_kernel::eip712::{
 use figaro_kernel::kernel::{apply_batch, provenance_leaf_bytes};
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::{
-    AttestationWitness, BatchInput, Commitment, KernelOp, KernelStateSnapshot, PublicValues,
-    UsageClaim, UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_PROCESS,
+    BatchInput, Commitment, KernelOp, KernelStateSnapshot, PublicValues, UsageClaim,
+    UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_PROCESS,
 };
 use figaro_prove_test::{
-    build_canonical_batch_input, load_spec_json, make_signing_key, sign_commitment, sign_digest,
-    BUYER, BUYER_KEY, CHAIN_ID, CORE, SELLER1, SELLER1_KEY, TOKEN,
+    build_canonical_batch_input, make_signing_key, sign_commitment, sign_digest, BUYER, BUYER_KEY,
+    CHAIN_ID, CORE, SELLER1, SELLER1_KEY, TOKEN,
 };
 use sp1_sdk::{Prover, ProverClient, SP1Stdin};
 
@@ -66,11 +66,6 @@ async fn guest_program_executes_canonical_batch() {
         B256::ZERO,
         "attestation events must be hashed"
     );
-    assert_ne!(
-        pv.spec_bindings_hash,
-        B256::ZERO,
-        "spec bindings must be committed"
-    );
 }
 
 #[tokio::test]
@@ -94,12 +89,8 @@ async fn guest_output_matches_host_apply_batch_exactly() {
         guest_pv.attestation_events_hash,
         host_pv.attestation_events_hash
     );
-    assert_eq!(guest_pv.spec_bindings_hash, host_pv.spec_bindings_hash);
     assert_eq!(guest_pv.usage_accrual_hash, host_pv.usage_accrual_hash);
-
-    // The batch carried one clause across both attestations → exactly one
-    // deduplicated spec binding.
-    assert_eq!(host_events.spec_bindings.len(), 1);
+    assert_eq!(guest_pv.operations_hash, host_pv.operations_hash);
 
     // And it credited the clause for the process it resolved — asserted here
     // because "field for field" above is only as strong as the batch it runs
@@ -229,18 +220,17 @@ async fn guest_program_rejects_the_high_s_twin_of_the_buyer_signature() {
 }
 
 #[tokio::test]
-async fn guest_program_rejects_substituted_witness_spec() {
-    // Gate S inside the VM: swapping the witness spec for a different
-    // clause's spec (a permissive-spec substitution) must kill the batch —
-    // the spec's bytes no longer hash to the op's clause key.
+async fn guest_program_rejects_a_witness_whose_leaf_the_agreement_does_not_hold() {
+    // The inclusion gate inside the VM: the witness is not under the
+    // signature, so a dishonest prover may swap its clauseData hash; the
+    // leaf it names is then no leaf of the signed agreement, and the batch
+    // must die.
     let mut input = figaro_kernel::kernel::guest_input(&build_canonical_batch_input())
         .expect("the canonical batch's witness");
-    let wrong_spec = load_spec_json("figaro-handoff");
     match &mut input.operations[1] {
-        KernelOp::AttestAsSeller {
-            proof: AttestationWitness::Plaintext(proof),
-            ..
-        } => proof.spec_json = wrong_spec,
+        KernelOp::AttestAsSeller { proof, .. } => {
+            proof.clause_data_hash = keccak256(b"a clause the agreement does not hold")
+        }
         other => panic!("expected op[1] to be AttestAsSeller, got {other:?}"),
     }
 
@@ -255,7 +245,7 @@ async fn guest_program_rejects_substituted_witness_spec() {
 
     assert!(
         public_values.as_slice().is_empty(),
-        "spec substitution must abort the guest before any commitment",
+        "a leaf the agreement does not hold must abort the guest before any commitment",
     );
 }
 

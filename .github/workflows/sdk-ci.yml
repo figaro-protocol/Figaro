@@ -9,10 +9,6 @@ on:
             # The freshness gate diffs the committed typedoc regen — a commit
             # that only updates the regen must re-run the gate that failed it.
             - "frontend/public/sdk-api/**"
-            # The encoder-vector gate diffs the committed Rust vectors against
-            # what the live TS encoder emits — either side moving re-runs it.
-            - "prover/clause/tests/encode_conformance.rs"
-            - "scripts/generate-encode-conformance-vectors.mjs"
             # The agent runtime consumes the SDK's build; either moving re-runs it.
             - "ecosystem-agents/runtime/**"
             # The ABI parity test reads the compiled ABIs: a contract that
@@ -26,8 +22,6 @@ on:
         paths:
             - "sdk/**"
             - "frontend/public/sdk-api/**"
-            - "prover/clause/tests/encode_conformance.rs"
-            - "scripts/generate-encode-conformance-vectors.mjs"
             - "ecosystem-agents/runtime/**"
             - "abi/**"
             - "docs/DATA_LAYER.md"
@@ -79,17 +73,6 @@ jobs:
                   git status --short -- ../frontend/public/sdk-api
                   [ -z "$(git status --porcelain -- ../frontend/public/sdk-api)" ] \
                     || { echo "frontend/public/sdk-api is stale — run 'cd sdk && npm run docs' and commit the regen"; exit 1; }
-
-            # The Rust clause engine's encode-conformance vectors are generated
-            # FROM the TS encoder (scripts/generate-encode-conformance-vectors.mjs,
-            # run against sdk/dist — built above). The committed vectors must
-            # equal what the live encoder emits, or the Rust side is locked to
-            # a stale TS.
-            - name: Encoder-vector freshness (Rust ↔ TS)
-              run: |
-                  node scripts/generate-encode-conformance-vectors.mjs
-                  git diff --exit-code --stat -- prover/clause/tests/encode_conformance.rs \
-                    || { echo "prover/clause/tests/encode_conformance.rs is stale — run 'node scripts/generate-encode-conformance-vectors.mjs' and commit the regen"; exit 1; }
 
     # The agent runtime (ecosystem-agents/runtime) is the SDK's first consumer
     # outside this repo's frontend: it links the SDK's build, so an SDK change

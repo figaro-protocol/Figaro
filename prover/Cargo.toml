@@ -1,8 +1,5 @@
 [workspace]
-# The clause engine landed first in the rebuild; the mirror of FigaroCore,
-# guest program, prove-script, and sequencer crates rejoin as each is
-# realigned to the current contract ABIs.
-members = ["clause", "lib", "program", "script", "sequencer"]
+members = ["lib", "program", "script", "sequencer"]
 # Resolver 3 honours `rust-version`: with the host toolchain pinned to 1.93.0
 # (rust-toolchain.toml — the release's reproducibility pin), dependency
 # resolution picks the newest versions that still build on it (the AWS SDK

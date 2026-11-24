@@ -12,10 +12,10 @@
  *      counts its root order's clause on a `UsageCounter` bound to that Core;
  *   2. the batch path: the same steps signed under `FigaroBatchVerifier`'s
  *      domain and sent to the relay's release binary, which runs the proof
- *      program (`prover/program`, `prover/lib`, `prover/clause`) and lands
- *      each batch with one `settleBatch`; the attestations go to the relay in
- *      the hash-only form, and each resolution's usage claim to its usage
- *      queue.
+ *      program (`prover/program`, `prover/lib`) and lands each batch with
+ *      one `settleBatch`; each attestation goes to the relay with the
+ *      clauseData hash and inclusion proof the coordinator takes, and each
+ *      resolution's usage claim to its usage queue.
  *
  * Every party is a fresh wallet per trace, and every trace counts its own
  * registered clause, so the traces of a wave run side by side on one chain and

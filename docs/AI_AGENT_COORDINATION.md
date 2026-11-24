@@ -232,11 +232,10 @@ leaves under `checkoutHash`, so a provenance claim is verifiable by inclusion pr
 against the on-chain root instead of trusted from an index. That supports asking
 which processes instantiated a given assembly and how their orders relate. It does
 not support "assembly compliance": nothing on chain compares a live agreement
-against the assembly it came from. What IS enforced is that every composed section
-validates against its clause spec before a signature is emitted
-(`assertAgreementSignable`) and, on the batched path, inside the proof for an
-attestation its party sends in the plaintext form; and, off chain
-at the same gate, that every designer value arrives as the assembly the agreement's
+against the assembly it came from. What this project's sign gate enforces, off
+chain, is that every composed section validates against its clause spec before
+a signature is emitted (`assertAgreementSignable`), and, at the same gate, that
+every designer value arrives as the assembly the agreement's
 provenance leaf names gives it.
 
 **Buying the sealed part.** What a fingerprint anchors is not readable from the

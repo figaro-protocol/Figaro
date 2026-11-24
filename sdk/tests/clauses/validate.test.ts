@@ -107,13 +107,11 @@ describe("validateContent — happy paths", () => {
         expect(validateContent({ tags: ["a", ""] }, spec).ok).toBe(false);
     });
 
-    it("enforces every pattern, a quantified group holding a quantifier included (Rust-mirror conformance)", () => {
+    it("enforces every pattern, a quantified group holding a quantifier included", () => {
         const plain = specOf([{ name: "s", type: "string", required: true, pattern: "^a+$" }]);
         expect(validateContent({ s: "aaa" }, plain).ok).toBe(true);
         expect(validateContent({ s: "aab" }, plain).ok).toBe(false);
 
-        // The guest's conformance test (`prover/clause/tests/conformance.rs`)
-        // asserts the same verdicts, so the batch path reads the field alike.
         const nested = specOf([{ name: "s", type: "string", required: true, pattern: "(a+)+$" }]);
         expect(validateContent({ s: "aaaa" }, nested).ok).toBe(true);
         expect(validateContent({ s: "a".repeat(40) + "!" }, nested).ok).toBe(false);
@@ -260,10 +258,9 @@ describe("validateContent — the geohash grain cap, keyed on the spec's own att
     });
 });
 
-// The guest reads content with serde_json, which refuses a lone UTF-16
-// surrogate; JSON.parse keeps one. The SDK refuses it too, so a party never
-// signs content the batch path cannot read. The guest's leg of this vector is
-// `attest_content_holding_a_lone_surrogate_fails` in prover/lib/tests/parity.rs.
+// A strict JSON reader in another language (Rust's serde_json, for one)
+// refuses a lone UTF-16 surrogate; JSON.parse keeps one. The SDK refuses it,
+// so a party never signs content such a reader cannot read.
 describe("validateContent — a lone UTF-16 surrogate", () => {
     const spec = specOf([{ name: "s", type: "string", required: true }]);
 

@@ -4,35 +4,25 @@ version = "0.0.0"
 publish = false
 edition = "2021"
 license = "MIT"
-description = "cargo-fuzz targets for the bytes the proof program reads from a witness: the operation-stream decoder (prover/lib) and the clause-spec engine (prover/clause)."
+description = "cargo-fuzz target for the bytes the relay and a rebuild read from the chain: the operation-stream decoder (prover/lib)."
 
 [package.metadata]
 cargo-fuzz = true
 
 # Its own workspace and its own lock: the proof program's workspace
 # (prover/Cargo.toml, prover/Cargo.lock) and its toolchain pin stay as they
-# are, so the verification key does not move. The two crates are reached by
-# path, read only.
+# are, so the verification key does not move. The crate is reached by path,
+# read only.
 [workspace]
 members = ["."]
 
 [dependencies]
 libfuzzer-sys = "0.4"
-serde_json = { version = "1", features = ["float_roundtrip"] }
-alloy-primitives = "1"
 figaro-kernel = { path = "../../prover/lib" }
-figaro-clause = { path = "../../prover/clause" }
 
 [[bin]]
 name = "operation_stream"
 path = "fuzz_targets/operation_stream.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "clause_spec"
-path = "fuzz_targets/clause_spec.rs"
 test = false
 doc = false
 bench = false

@@ -31,10 +31,10 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
                  hands uses │   │ reads accrual
                             │   │
           FigaroBatchVerifier   RpgfMinter ──▶ ClauseRegistry, AgreementRegistry, ProcessRegistry, MembersRegistry
-              │        │            │              (designer of record)
-              ▼        ▼            ▼
-       (SP1 verifier) ClauseRegistry   FlorinToken
-                      (registered)     (registered minter at genesis, 600M cap)
+              │                     │              (designer of record)
+              ▼                     ▼
+       (SP1 verifier)                  FlorinToken
+                                       (registered minter at genesis, 600M cap)
 ```
 
 - `FigaroCore` — no outbound edges: it reads no contract above it.
@@ -118,18 +118,17 @@ The proof-based path that resolves batches of processes beside the direct
 
 **`src/core/verifier/FigaroBatchVerifier.sol`** — One external function,
 `settleBatch(proof, publicValues, positions, events, usage, operations)`:
-- refuses public values of any length but `PUBLIC_VALUES_LENGTH` (320 bytes,
-  ten words) with `PublicValuesLengthMismatch`, before the proof is read;
+- refuses public values of any length but `PUBLIC_VALUES_LENGTH` (288 bytes,
+  nine words) with `PublicValuesLengthMismatch`, before the proof is read;
 - verifies an SP1 proof of a batch of `FigaroCore` operations (commits, resolutions,
-  attestations, each proved by inclusion as the coordinator proves it and, in
-  the plaintext form the attesting party may choose, by its content too)
-  against the immutable `programVKey`;
+  attestations, each proved by inclusion as the coordinator proves it, with
+  no clause, spec or content read) against the immutable `programVKey`;
 - checks state-root continuity and chain binding, and hash-verifies the
-  calldata (positions, attestations, spec bindings, usage, and the operation
+  calldata (positions, attestations, usage, and the operation
   stream) byte-for-byte against the Rust mirror's `compute_*_hash`; the
   operation stream (`prover/lib/src/operation_stream.rs`) is every commit and
   resolve the batch applied, whole, and every usage claim, bound to public
-  value 9 (`OperationsHashMismatch`), so a batch cannot land without
+  value 8 (`OperationsHashMismatch`), so a batch cannot land without
   publishing, in its own transaction, what rebuilds the state behind its root;
 - before any token moves, asks the buyer's account code about every resolve
   the stream carries in the wallet-code form (`0x04`, bytes the buyer's own code validates — the
@@ -148,13 +147,8 @@ The proof-based path that resolves batches of processes beside the direct
   coordinator's `Attestation` on the magic value, and reverts the whole batch
   on any other answer (`WalletCodeAttestationRefused`), so a batch that lands
   carries the `Attestation` of every `0x05` entry its stream publishes;
-- checks every spec binding, one per clause a plaintext attestation names (a
-  hash-only attestation commits none, as the coordinator consults no
-  registry): the binding is the clause key, which the proof program requires
-  to be the hash of the witness spec, and the key must be
-  `ClauseRegistry.registered` (`ClauseNotRegistered`) — the vkey
-  covers the generic clause engine, the registry anchors the constraint set,
-  so a new clause never touches the prover;
+- reads no registry, as the coordinator reads none, so a new clause never
+  touches the prover or this contract;
 - reconciles net token positions (pulls net deposits, pushes net payouts;
   `FeeOnTransferDetected` guard), re-emits proven `Attestation` events (same
   topic as the coordinator's — indexers filter by address), emits the Core's own
@@ -168,8 +162,7 @@ The proof-based path that resolves batches of processes beside the direct
   `UsageCounter.applyBatchAccrual` (a whole-call revert there is caught and
   logged as `BatchAccrualSkipped`, so the reward never unwinds the trade), and
   advances the state root.
-- Immutable `verifier` / `verifierHash` / `programVKey` / `clauseRegistry` /
-  `usageCounter`; no admin, no upgrade path — a program change is a fresh
+- Immutable `verifier` / `verifierHash` / `programVKey` / `usageCounter`; no admin, no upgrade path — a program change is a fresh
   deploy. Not a florin minter. The constructor binds one routed SP1 verifier
   contract, never a gateway: it probes `VERIFIER_HASH()` and refuses a contract
   without one (`VerifierNotPinned`), so no route owner stands between a proven
@@ -184,7 +177,7 @@ status (`core.orderStatus` stays 0 for it), so every reader folds both
 streams. The uses are the one thing that crosses: the guest proves each
 claim — the order RESOLVED in the batch path's state, the key committed in its
 agreement — and gives one use per (kind, key, process, seller), each naming
-the order's seller; an eighth public value (`usageAccrualHash`) commits the period, the
+the order's seller; a seventh public value (`usageAccrualHash`) commits the period, the
 provenance leaf key and the uses (the count prefixed; each use packed
 `key(32) ‖ kind(1) ‖ processId(32) ‖ seller(20)`, a span of `41 + 85n` bytes
 for n uses), and `settleBatch` re-derives that hash from calldata before
@@ -220,9 +213,10 @@ anchoring under a stake.
   (`WrongDeposit`); refuses the zero key (`ZeroClauseKey`) and an empty URI
   (`EmptyContentURI`); emits `ClauseRegistered(clauseKey, contentURI,
   registeredBy)`.
-- State: `registered[clauseKey]`, never cleared — the anchor
-  `FigaroBatchVerifier` checks every spec binding against — and
-  `depositOf[clauseKey] = {registeredBy, withdrawn}`.
+- State: `registered[clauseKey]`, never cleared, and
+  `depositOf[clauseKey] = {registeredBy, withdrawn}`, which the designer
+  rewards read (`UsageCounter`, `RpgfMinter`); no contract of the Core reads
+  either.
 - `withdrawDeposit(clauseKey)` — the registering wallet only, once, no time lock;
   refunds the stake and emits `DepositWithdrawn`. The binding stays; readers
   remove the clause from view for new compositions, and orders already
@@ -688,13 +682,12 @@ addresses are deployment configuration, never code written here.
 
 ## What the protocol has no contract for
 
-Clause content is validated off-chain by the SDK against the spec. On chain,
-content validation exists only inside a proof and only at the attesting
-party's choice: a batched attestation in the plaintext form has its content
-validated in proof against a spec whose key `ClauseRegistry.registered` holds.
-The default on both paths binds hashes: the coordinator takes the
-`clauseDataHash`, the inclusion proof and the `contentRef`, and a batched
-attestation in its default hash-only form carries exactly those. There are
+Clause content is validated off the chain against the spec: by a signer's
+tool before signing, and by a reader against a disclosed content
+(`CLAUSES.md`). Neither path validates content, on the chain or in the proof
+program. Both bind hashes: the coordinator takes the `clauseDataHash`, the
+inclusion proof and the `contentRef`, and a batched attestation carries
+exactly those. There are
 no per-clause validator contracts, and a never-seen clause is attestable and
 batch-resolvable with zero per-clause code (`CLAUSES.md`). A use for designer
 rewards is counted by a call made after its process resolves: on the direct

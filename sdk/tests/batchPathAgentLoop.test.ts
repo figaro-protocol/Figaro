@@ -188,7 +188,7 @@ describe("executeAction on a batched process", () => {
         const op = bodies[0].AttestAsSeller;
         expect(op.clause_id).toBe(id(0xdd));
         expect(op.content_ref).toBe(id(0xce));
-        expect(op.proof).toEqual({ HashOnly: { clause_data_hash: id(0xcd), inclusion_proof: [id(0x99)] } });
+        expect(op.proof).toEqual({ clause_data_hash: id(0xcd), inclusion_proof: [id(0x99)] });
     });
 
     it("with a relay: the buyer's attestation names the verifier's process id and goes to the relay", async () => {

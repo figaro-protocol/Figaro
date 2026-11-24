@@ -365,7 +365,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `commitOrder` | `/derive` | A process's orders in commit order, by the running total each commit carried, the same on either path. |
 | `computeCheckoutHash` | root | The agreement's merkle root over its sorted clause leaves, its two-key provenance leaf and its topology leaf. |
 | `computeClauseKey` | root | A clause's key: `keccak256` of `clauseKeyPreimage(spec)`, the canonical bytes of the spec without its top-level `block` — the registry key, every clause's `clause`, and the attest calls' `clauseId`. |
-| `clauseKeyPreimage` | root | The bytes a clause key hashes: `canonicalize` of the spec without its top-level `block`. A plaintext attestation's witness carries them as `spec_json`. |
+| `clauseKeyPreimage` | root | The bytes a clause key hashes: `canonicalize` of the spec without its top-level `block`. |
 | `computeDeadline` | root | A deadline from CHAIN time; pair with `readChainTimestamp` — there is no wall-clock fallback. |
 | `computeRpgfAllocations` | root | Off-chain mirror of the 600M pro-rata split for a closed accrual period. |
 | `computeClauseLeaf` | root | One merkle leaf — double-hashed, so a leaf preimage can never be replayed as an internal node. |
@@ -1340,17 +1340,15 @@ await seq.submitResolve(processId, runningTotal, commitments, buyerSig);
 // MAX_WALLET_AUTHORIZATION_BYTES for it (prover/sequencer/src/gas.rs).
 const digest = hashResolveProcess(processId, runningTotal, { chainId, core: verifier }); // the wallet's code validates walletCodeBytes for it
 await seq.submitResolveByWalletCode(processId, runningTotal, commitments, walletCodeBytes);
-// An attestation sends, by default, exactly what AttestationCoordinator takes on
-// the direct path — clauseDataHash, the inclusion proof, contentRef — so the
-// relay sees fingerprints only. `checkContentInProof: { spec_json, content_json,
-// clause_data, content_kind }` sends the plaintext to have the content validated
-// inside the proof: the relay receives it, and so does the Succinct Prover
-// Network when the relay proves there (SP1_PROVER=network). Its clause_data must
-// hash to clauseDataHash.
+// An attestation sends exactly what AttestationCoordinator takes on the direct
+// path — clauseDataHash, the inclusion proof, contentRef — and the proof checks
+// it as the coordinator does: the attester, the open order, the leaf in the
+// signed checkoutHash. No operation carries a clause's content; on the wire the
+// witness is { clause_data_hash, inclusion_proof } (SequencerAttestationWitness).
 await seq.submitAttestAsSeller({ target, clauseId, stage, contentRef, sellerSig, clauseDataHash, inclusionProof });
 // The same, for either role, from one value: batchAttestationTypedData gives the
 // AttestSeller or AttestBuyer typed data under the verifier's domain, your wallet
-// signs it, and submitSignedAttestation sends the hash-only form.
+// signs it, and submitSignedAttestation sends it.
 const at = { target, clauseId, stage, contentRef, clauseDataHash, proof: inclusionProof };
 const signature = await walletClient.signTypedData({ account, ...batchAttestationTypedData("buyer", at, chainId, verifier) });
 await seq.submitSignedAttestation("buyer", at, signature);
@@ -1482,7 +1480,7 @@ client raises it as a `SequencerError` carrying `.statusCode`:
 |---|---|---|
 | `400` | admission rejection (EIP-712 recovery failed, or the recovered address is not the party named in the struct; a resolve, wallet-code resolve, sub-order or attestation on a process or order the relay neither holds nor has queued; a resolve not signed by the process's root buyer; a usage claim with a zero clause-or-assembly or no checkout hash), malformed JSON | the relay's reason string is carried verbatim into the error message; for an unknown process or order, submit its commit first |
 | `402` | a commit whose bonds do not fund (balance and allowance to the verifier, read at admission) | the reason names the party and the shortfall; fund the bond and resubmit |
-| `413` | body over the 1 MiB cap | a plaintext attestation witness is tens of KB, a hash-only one a few hundred bytes — this is abuse headroom, not a normal limit |
+| `413` | body over the 1 MiB cap | an attestation witness is a hash and its inclusion proof, a few hundred bytes — this is abuse headroom, not a normal limit |
 | `415` | wrong content type | send `application/json` |
 | `422` | valid JSON that is not the operation or claim shape | wrong shape, unknown variant, missing field |
 | `503` | mempool at capacity, or the relay could not read a commit's bonds or a wallet-code resolve's buyer code from the chain | never rejection — retry (after the next batch resolves, for capacity) |
@@ -1656,15 +1654,16 @@ to its signed agreement and content-hashes the evidence — it does NOT validate
 clause content. So a never-seen clause is attestable with zero per-clause on-chain
 code.
 
-> On the BATCHED path a batched attestation carries, by default, the same
-> hashes the coordinator takes, and the proof checks inclusion alone. Content
-> is validated in-proof only when the attesting party sends the plaintext form
-> (`checkContentInProof` on `submitAttestAsSeller` / `submitAttestAsBuyer`): a
-> Rust mirror of this same module validates and re-encodes the content against
-> the clause's spec supplied as a witness input, and `FigaroBatchVerifier`
-> resolves the batch only if the clause key the proof committed (the hash of
-> the witness's spec bytes, the canonical spec without `block`) is registered on `ClauseRegistry` — so never-seen
-> clauses stay attestable AND batch-resolvable with zero per-clause code. There are no per-clause validator
+> On the BATCHED path a batched attestation carries the same hashes the
+> coordinator takes, and the proof checks it as the coordinator does: the
+> attester, the open order, the leaf in the signed `checkoutHash`. It reads no
+> spec, no content and no registry, so no contract and no proof validates
+> content on either path, and a clause nobody registered is attestable and
+> batch-resolvable with zero per-clause code. A signer's tool validates content
+> before signing (this module is one such tool), and a reader validates a
+> disclosed content against the spec its clause key names. A tool of your own,
+> in any language, applies the limits the published format states
+> (`src/clauses/clause-spec.schema.json`). There are no per-clause validator
 > contracts, permanently. The contract catalog that states this is published
 > at `/spec`; the clause-authoring path is at `/clauses`.
 
@@ -1769,8 +1768,7 @@ if (!taken) await walletClient.writeContract({
 A reader verifies a fetched spec by recomputing its key:
 `anchorClauseSpec(bytes, clauseKey)` parses the bytes, drops the top-level
 `block`, canonicalizes and returns the parsed spec only when its hash is
-`clauseKey`. A plaintext attestation's witness `spec_json` is
-`clauseKeyPreimage(spec)`: the proof program hashes it as carried.
+`clauseKey`.
 
 **Seed-time authoring: `resolveAuthoredClauseKeys(doc, specs)`.** A person
 writes an assembly or a member document by clause NAME; a published

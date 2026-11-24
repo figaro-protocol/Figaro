@@ -8,7 +8,6 @@ import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 import "src/core/attestation/AttestationCoordinator.sol";
 import "src/core/verifier/FigaroBatchVerifier.sol";
-import "src/registries/ClauseRegistry.sol";
 import {UsageCounter} from "src/rewards/UsageCounter.sol";
 import {MembersRegistry} from "src/registries/MembersRegistry.sol";
 import "src/mocks/MockSP1Verifier.sol";
@@ -206,12 +205,11 @@ contract CoreBatchEquivalenceTest is Test {
 
         FigaroCore unusedCore = new FigaroCore();
         MockSP1Verifier sp1 = new MockSP1Verifier();
-        ClauseRegistry registry = new ClauseRegistry(0.001 ether);
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
         counterB = new UsageCounter(
             address(unusedCore), address(members), address(stake), address(stake), address(stake), predicted, 1, periods
         );
-        verifier = new FigaroBatchVerifier(address(sp1), keccak256("vkey"), address(registry), address(counterB));
+        verifier = new FigaroBatchVerifier(address(sp1), keccak256("vkey"), address(counterB));
         assertEq(address(verifier), predicted, "the counter names this verifier");
 
         tokenD = new MockERC20("Direct", "D");
@@ -658,7 +656,6 @@ contract CoreBatchEquivalenceTest is Test {
         FigaroBatchVerifier.NetPosition[] memory positions = _positions();
         FigaroBatchVerifier.BatchEventData memory events;
         events.attestations = pendingAttestations;
-        events.specBindings = new FigaroBatchVerifier.SpecBinding[](0); // hash-only attestations bind no spec
         FigaroBatchVerifier.BatchUsageData memory usage;
         usage.period = counterB.currentPeriod();
         usage.provenanceLeaf = counterB.provenanceLeaf();
@@ -673,7 +670,6 @@ contract CoreBatchEquivalenceTest is Test {
             address(verifier),
             BatchHashes.positions(positions),
             BatchHashes.attestations(events.attestations),
-            BatchHashes.bindings(events.specBindings),
             BatchHashes.usage(usage),
             uint64(block.timestamp),
             keccak256(operations)

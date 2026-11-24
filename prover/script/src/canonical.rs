@@ -1,8 +1,8 @@
 //! The SDK's `canonicalize` (`sdk/src/agreement.ts`) — `JSON.stringify`
 //! with every object's keys sorted, compact — reproduced byte for byte. It
 //! is the one canonical form of the Rust tests: this crate uses it as a
-//! module, and the test crates of `prover/lib` and `prover/clause` include
-//! this file by path, so no test keeps a form of its own.
+//! module, and the test crate of `prover/lib` includes this file by path,
+//! so no test keeps a form of its own.
 //!
 //! Two rules make it ECMAScript's and not serde_json's:
 //! - `JSON.stringify` writes an object's array-index keys (`"2"`, `"10"`)

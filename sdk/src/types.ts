@@ -307,7 +307,7 @@ export interface FigaroAddresses {
     membersRegistry?: Address;
     processRegistry?: Address;
     agreementRegistry?: Address;
-    /** FigaroBatchVerifier — batch-resolved clause content verification (batch path only). */
+    /** FigaroBatchVerifier — the batch path: resolves a proven batch of commits, resolutions and attestations. */
     batchVerifier?: Address;
     /** UsageCounter — records verified clause, assembly and agreement usage per accrual period. */
     usageCounter?: Address;

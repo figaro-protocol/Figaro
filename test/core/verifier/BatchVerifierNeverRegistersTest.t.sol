@@ -28,22 +28,22 @@ contract CallsRegisterClause {
 
 /// "Registering never enters a batch" on the contract side, proved by what a
 /// batch does and not by how the code is compiled. A real batch runs through
-/// `settleBatch` (a deposit leg, a payout leg, an attestation with a spec
-/// binding so the clause registry is read, and a resolution) under Foundry's
-/// state-diff recording, which lists every call made during it. The test reads
-/// that list: the verifier calls no write function of any of the four registries,
-/// calls the clause registry's `registered(bytes32)`, and calls neither the
-/// agreement, the assembly nor the members registry at all. The operation
+/// `settleBatch` (a deposit leg, a payout leg, an attestation of a clause key no
+/// registry holds, and a resolution) under Foundry's state-diff recording, which
+/// lists every call made during it. The test reads that list: no one calls a
+/// write function of any of the four registries, and the verifier itself makes
+/// no call at all, read or write, to any of them. The usage counter the
+/// verifier hands each batch's uses to reads the registries on its own account;
+/// the assertion on reads is about the verifier's own calls only. The operation
 /// stream's own tags are the proof program's side (not tested here).
 contract BatchVerifierNeverRegistersTest is Test {
     bytes32 constant VKEY = bytes32(uint256(0xF16A20));
     uint256 constant DEPOSIT = 0.001 ether;
     uint64 constant PERIOD_END = 1_000_000;
-    bytes constant SPEC_BYTES = bytes('{"clauseId":"figaro-modalities","version":1}');
-    bytes32 constant SPEC_HASH = keccak256(SPEC_BYTES);
+    /// A clause key no registry holds: the batch attests it all the same.
+    bytes32 constant CLAUSE_KEY = keccak256("a clause no registry holds");
     bytes32 constant PROCESS = keccak256("never-registers-process");
     uint256 constant PAYMENT = 10 ether;
-    bytes4 constant REGISTERED = bytes4(keccak256("registered(bytes32)"));
 
     FigaroBatchVerifier verifier;
     ClauseRegistry clauses;
@@ -77,12 +77,10 @@ contract BatchVerifierNeverRegistersTest is Test {
             1,
             periods
         );
-        verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(clauses), address(counter));
+        verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(counter));
         assertEq(address(verifier), predicted, "verifier address prediction");
 
         vm.warp(PERIOD_END - 1000);
-        vm.deal(address(this), 1 ether);
-        clauses.registerClause{value: DEPOSIT}(SPEC_HASH, "ipfs://spec");
 
         token = new MockERC20("Mock", "MOCK");
         token.mint(depositor, 1_000 ether);
@@ -196,7 +194,7 @@ contract BatchVerifierNeverRegistersTest is Test {
     }
 
     /// Run one batch: a deposit leg, the resolution's payout legs, an attestation
-    /// with its spec binding, and a resolve entry; return the recorded calls.
+    /// of an unregistered clause key, and a resolve entry; return the recorded calls.
     function _runBatchRecorded() internal returns (VmSafe.AccountAccess[] memory log) {
         CommitmentTypes.Commitment memory c;
         c.processId = PROCESS;
@@ -220,11 +218,9 @@ contract BatchVerifierNeverRegistersTest is Test {
 
         FigaroBatchVerifier.AttestationData[] memory atts = new FigaroBatchVerifier.AttestationData[](1);
         atts[0] = FigaroBatchVerifier.AttestationData(
-            keccak256("order"), PROCESS, seller, SPEC_HASH, 0, keccak256("content")
+            keccak256("order"), PROCESS, seller, CLAUSE_KEY, 0, keccak256("content")
         );
-        FigaroBatchVerifier.SpecBinding[] memory bindings = new FigaroBatchVerifier.SpecBinding[](1);
-        bindings[0] = FigaroBatchVerifier.SpecBinding(SPEC_HASH);
-        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(atts, bindings);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(atts);
         FigaroBatchVerifier.BatchUsageData memory usage;
         usage.uses = new IUsageCounter.BatchUse[](0);
 
@@ -236,7 +232,6 @@ contract BatchVerifierNeverRegistersTest is Test {
             address(verifier),
             BatchHashes.positions(positions),
             BatchHashes.attestations(atts),
-            BatchHashes.bindings(bindings),
             keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0))),
             uint64(block.timestamp),
             keccak256(operations)
@@ -254,15 +249,12 @@ contract BatchVerifierNeverRegistersTest is Test {
         assertEq(_registryWrites(log, _registries()), 0, "no call to a registry's write function, by anyone");
     }
 
-    function test_aBatchsOnlyCallToARegistryIsTheClauseRegistrysRegisteredRead() public {
+    function test_theVerifierMakesNoCallToAnyRegistryReadOrWrite() public {
         VmSafe.AccountAccess[] memory log = _runBatchRecorded();
         address v = address(verifier);
-        assertGt(_count(log, v, address(clauses), REGISTERED), 0, "the anchor read is made");
-        assertEq(
-            _count(log, v, address(clauses), bytes4(0)),
-            _count(log, v, address(clauses), REGISTERED),
-            "the clause registry is called for nothing else"
-        );
+        assertGt(_count(log, v, address(0), bytes4(0)), 0, "the recording sees the verifier's calls");
+        assertEq(verifier.batchCount(), 1, "the batch attested an unregistered clause key and landed");
+        assertEq(_count(log, v, address(clauses), bytes4(0)), 0, "no call to the clause registry");
         assertEq(_count(log, v, address(agreements), bytes4(0)), 0, "no call to the agreement registry");
         assertEq(_count(log, v, address(assemblies), bytes4(0)), 0, "no call to the process registry");
         assertEq(_count(log, v, address(members), bytes4(0)), 0, "no call to the members registry");

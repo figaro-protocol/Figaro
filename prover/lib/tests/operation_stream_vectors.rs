@@ -110,7 +110,7 @@ fn vectors() -> Value {
                 content_ref: B256::repeat_byte(0xE0 + seed),
                 authorization: alloy_primitives::Bytes::from(authorization),
                 // The witness never enters the stream.
-                proof: AttestationWitness::HashOnly {
+                proof: AttestationWitness {
                     clause_data_hash: B256::repeat_byte(0xF0 + seed),
                     inclusion_proof: vec![],
                 },
