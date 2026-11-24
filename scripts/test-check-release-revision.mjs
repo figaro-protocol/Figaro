@@ -6,7 +6,8 @@
 //
 // Cases: HEAD at the release revision holds; a later commit outside the
 // compared paths holds; a later commit under a compared path fails, naming
-// the file; a dirty tree fails, an untracked file included; no revision, an
+// the file; a modified or untracked file under a compared path fails, and
+// one outside them holds, as the deployment's record is; no revision, an
 // abbreviated one and one the checkout lacks each refuse; the command prints
 // both shas and the paths compared, and exits 1 on a refusal.
 
@@ -78,15 +79,25 @@ for (const p of ["src/a.txt", "prover/a.txt", "certora/a.txt", "formal/a.txt", "
     });
 }
 
-test("a modified tracked file fails, outside the compared paths too", () => {
+test("a modified tracked file under a compared path fails", () => {
     const { repo, release } = fixture();
-    write(repo, "docs/a.md", "dirty\n");
+    write(repo, "prover/a.txt", "dirty\n");
     const r = checkReleaseRevision({ repo, release });
     assert.equal(r.holds, false);
     assert.match(r.problems.join("\n"), /not clean/);
+    assert.match(r.problems.join("\n"), /prover\/a\.txt/);
 });
 
-test("an untracked file fails", () => {
+test("a modified or untracked file outside the compared paths holds: the deploy writes its record there", () => {
+    const { repo, release } = fixture();
+    write(repo, "docs/a.md", "dirty\n");
+    write(repo, "deployments/11155111.json", "{}\n");
+    const r = checkReleaseRevision({ repo, release });
+    assert.deepEqual(r.problems, []);
+    assert.equal(r.holds, true);
+});
+
+test("an untracked file under a compared path fails", () => {
     const { repo, release } = fixture();
     write(repo, "src/new.txt", "new\n");
     const r = checkReleaseRevision({ repo, release });

@@ -17,7 +17,7 @@ On a fresh Ubuntu x86_64 host (16 cores / 30 GB RAM / 150 GB disk is the
 proven sizing):
 
 ```sh
-./provision.sh <release-commit> [<checkout dir>]   # toolchains, the repo at that commit, sp1 image, 48G swapfile
+./provision.sh <release-commit> [<checkout dir>]   # toolchains, jq, the repo at that commit with its submodules and packages, the sp1 and sp1-gnark images, 48G swapfile
 <checkout dir>/scripts/prover-box/build-guest.sh <release sha>   # the release-revision check, then the docker-reproducible ELF + inject + print the vkey
 <checkout dir>/scripts/prover-box/build-sequencer.sh             # sequencer release binary + guest drift tests
 ```
