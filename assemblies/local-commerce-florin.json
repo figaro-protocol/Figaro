@@ -1,6 +1,6 @@
 {
     "name": "Local commerce, priced in florins",
-    "summary": "A meal to the door, with the merchant and the courier paid in florins and no other token.",
+    "summary": "A meal to the door, with the merchant and the courier priced and bonded in florins.",
     "description": "The same two orders as the open local-commerce design, unchanged: the merchant makes the meal and the courier carries it to the door, both bonded and both paid when the buyer resolves. One term is added. The designer pins the florin, the token that rewards the designers of clauses, agreements and processes, as the one token both orders are priced and bonded in. Checkout writes the florin into both agreements, so no token picker appears and every bond and every payment moves in florins. This is the designer's choice, not the protocol's: the open local-commerce design stays registered beside it and runs in any ERC-20 token.",
     "deployTimeCurrency": {
         "deployment": "florinToken"
