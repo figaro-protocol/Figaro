@@ -140,9 +140,21 @@ jobs:
             # Exit codes of cargo-mutants: 0 every mutant caught or unviable,
             # 2 a mutant missed, 3 a mutant timed out, 4 the baseline failed.
             # The step keeps the code and the last step decides.
+            # A mutant can make a loop or a recursion that never ends while it
+            # allocates (the stream reader's cursor that stops advancing, the
+            # tree prover's partition turned round). Its test never finishes,
+            # which is no pass, but the runner runs out of memory and is shut
+            # down before cargo-mutants can write the result, and the shard
+            # uploads nothing. Each test binary therefore runs under an
+            # address-space limit of 4 GiB: such a mutant then fails its
+            # allocation, its test fails, and it is written down as caught.
+            # The limit is the test binaries' alone (cargo's runner for the
+            # target), never the compiler's.
             - name: cargo mutants --shard
               id: run
               working-directory: ./prover
+              env:
+                  CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: prlimit --as=4294967296
               run: |
                   set -uo pipefail
                   out="$RUNNER_TEMP/mutants"
