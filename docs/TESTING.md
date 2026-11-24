@@ -270,7 +270,7 @@ ResolutionUniverses (`ResolutionUniverses.tla` + `.cfg`): the
 CROSS-CONTRACT model — FigaroCore + FigaroBatchVerifier + UsageCounter + the
 off-chain guest mirror under arbitrary interleavings; the only harness that can
 see where the two paths meet (every other layer is per-contract).
-21 invariants: no double payout across the universes, token conservation +
+22 invariants: no double payout across the universes, token conservation +
 exact per-pool deposits, one route-blind tally (`scoreOf == accrualOf.score`, `c`
 the size of the one counted set of (process, seller) pairs, `d` the size of the period's one seller
 set, counted only for resolved trade), `FigaroCore` blindness (`settleBatch` writes

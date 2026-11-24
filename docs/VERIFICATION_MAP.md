@@ -328,14 +328,14 @@ target invariant.
 
 The CROSS-CONTRACT model: FigaroCore + FigaroBatchVerifier + UsageCounter +
 the off-chain guest mirror under arbitrary interleavings — the only harness that
-can see where the two paths meet (every other layer is per-contract). 21 invariants; the load-bearing rows:
+can see where the two paths meet (every other layer is per-contract). 22 invariants; the load-bearing rows:
 
 | Property | Code | Formal |
 |---|---|---|
 | An order resolved on the batch path never acquires `FigaroCore` status; `orderStatus` gates are blind to batched trade | `FigaroBatchVerifier.settleBatch` (no `FigaroCore` write) | `KernelBlindToBatch`, `BatchInvisibleToKernelGates` |
 | The same signed commitment cannot resolve on both paths | EIP-712 domain separation: `FigaroBatchVerifier.sol` reverts `VerifyingContractMismatch` unless `pv.verifyingContract == address(this)`, against `FigaroCore`'s own domain; processId IS the typed-data digest | `NoDoublePayout`, `UniverseDisjointOrders` — carried by **`AssumeDomainSeparation`** (CONTRACT-ENFORCED; flipping it violates 4 invariants) |
 | Token conservation + pool disjointness across `FigaroCore` + verifier | per-order exact deposits both sides | `TokenConservation`, `CoreExactEscrow`, `VerifierExactEscrow`, `ResolutionAlwaysPossible` |
-| One tally, route-blind: `scoreOf == accrualOf.score`; `c` is the size of the one counted set of (process, seller) pairs and `d` of the period's one seller set, whichever route brought each use | `UsageCounter._count`, reached by the direct calls and by `applyBatchAccrual` | `ScoreCacheCorrect`, `TotalScoreIntegrity`, `CountIsDistinctUses`, `SellersCountedOnce`, `FloorApplied` |
+| One tally, route-blind: `scoreOf == accrualOf.score`; `c` is the size of the one counted set of (process, seller) pairs and `d` of the period's one seller set, whichever route brought each use, and `d` never exceeds `c` | `UsageCounter._count`, reached by the direct calls and by `applyBatchAccrual` | `ScoreCacheCorrect`, `TotalScoreIntegrity`, `CountIsDistinctUses`, `SellersCountedOnce`, `BreadthWithinUses`, `FloorApplied` |
 | A counted process id names one process — the one counted set counts each seller of a process once | `UsageCounter.sellerCounted`, both routes; the verifier's EIP-712 domain | `ProcessCountedInOneUniverse` — carried by `AssumeDomainSeparation` |
 | Only resolved trade is counted; a batch refused for its period under-pays, never over-pays, and its uses may be proved again | `settleBatch`'s try/catch around `applyBatchAccrual`; the guest keeps no counted set | `AccrualNeverOverPays` (unconditional) vs `AccrualNotLost` — carried by **`AssumeAccrualGatesAligned`** (NOT contract-enforced — the documented conservative-under-pay posture) |
 

@@ -651,6 +651,12 @@ CountIsDistinctUses ==
 SellersCountedOnce ==
   \A a \in Artifacts, q \in Periods: accrual[a][q].d = Cardinality(seen[a][q])
 
+\* The breadth never exceeds the uses: a seller enters a period's seller set
+\* only with a use counted in that period, so d <= c for every artifact and
+\* every period.
+BreadthWithinUses ==
+  \A a \in Artifacts, q \in Periods: accrual[a][q].d <= accrual[a][q].c
+
 \* The minimum-support floor is applied to the one tally.
 FloorApplied ==
   \A a \in Artifacts, q \in Periods:

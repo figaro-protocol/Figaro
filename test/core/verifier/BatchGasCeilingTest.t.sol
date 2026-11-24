@@ -26,14 +26,23 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     // Each is a CEILING on the cold execution marginal measured below on
     // this pre-fork EVM (`foundry.toml`, cancun; the default profile, whose
     // figures stand a little above the via-IR profile's): a payout position
-    // 26,335, a deposit position 10,901, an attestation event 3,925, a use
-    // 132,219 (a key, a seller and a process each new
-    // to the counter), the fixed execution 54,458. The live chain is past Glamsterdam, which reprices
+    // 26,093, a deposit position 10,691, an attestation event 3,583, a use
+    // 132,205 (a key, a seller and a process each new
+    // to the counter), the fixed execution 70,775 for a verifier's first
+    // batch and 25,975 for every later one. The live chain is past Glamsterdam, which reprices
     // state creation (EIP-8037) and refunds (EIP-7778): FigaroCore's
     // resolve measured 29,800 an order on post-fork receipts against 11,960
     // here. So each constant carries an allowance over its measurement —
-    // at least twice for the items that write state (the position, the
-    // use, the fixed execution), at least half again for the event. One
+    // at least twice for the position and the use, which write state, at
+    // least half again for the event, and four times a later batch's fixed
+    // execution. A verifier's first batch is the exception: it writes
+    // `stateRoot` and `batchCount` from zero, two storage slots at 77,920
+    // more each on the live chain, about 226,000 against the fixed anchor
+    // of 105,000. No anchor is raised for it: a first batch finds an empty
+    // state, so it holds a commit, and the relay's ceiling for a batch adds
+    // one more planned transfer for each of its positions and a quarter
+    // over the whole (`gas::settle_ceiling`), more than that difference
+    // for a commit whose two parties each lock a bond. One
     // position
     // constant covers both kinds: a payout to a fresh balance is the dearer,
     // and it assumes a plain ERC-20 — a token whose transfer costs more is
@@ -47,11 +56,11 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     // re-created the verifier's emptied token balance and cost about 90,000
     // more than the same items at block 12107045. So the two items that
     // create state are re-anchored:
-    // - a position: the payout to a fresh balance, 26,335 here with its
+    // - a position: the payout to a fresh balance, 26,093 here with its
     //   20,000 storage slot, is about 104,000 live; the ceiling 120,000.
     // - a use: the use at block 12106674 (a key, a seller and a process each
     //   new to the counter, three fresh storage slots) cost about 366,000 live,
-    //   132,219 here plus three storage slots at 77,920 more each, which its receipt
+    //   132,205 here plus three storage slots at 77,920 more each, which its receipt
     //   bounds between 350,000 and 368,000. A use that also takes the score
     //   and the period's total from zero (the seller that reaches
     //   `minSellers`) writes four fresh storage slots and runs the cube root; the
@@ -474,10 +483,17 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         );
     }
 
+    /// @dev A verifier's first batch sets `stateRoot` and `batchCount` from
+    ///      zero; every later batch overwrites them. Both are measured: the
+    ///      first is the dearer here, and on a chain that prices a storage
+    ///      word set from zero apart (EIP-8037) it is dearer still.
     function test_Gas_settleFixedExecution() public {
-        uint256 g = _settleExecGas(new FigaroBatchVerifier.NetPosition[](0), _noEvents(), _emptyUsage());
-        emit log_named_uint("settle_fixed_exec_gas", g);
-        assertLe(g, SETTLE_FIXED_EXEC_GAS, "the fixed execution cost rose past its anchor (re-measure)");
+        uint256 first = _settleExecGas(new FigaroBatchVerifier.NetPosition[](0), _noEvents(), _emptyUsage());
+        uint256 later = _settleExecGas(new FigaroBatchVerifier.NetPosition[](0), _noEvents(), _emptyUsage());
+        emit log_named_uint("settle_fixed_exec_gas", first);
+        emit log_named_uint("settle_fixed_exec_gas_later_batch", later);
+        assertLt(later, first, "a later batch writes no storage word from zero");
+        assertLe(first, SETTLE_FIXED_EXEC_GAS, "the fixed execution cost rose past its anchor (re-measure)");
     }
 
     function test_Gas_settlePayoutPositionMarginal() public {
