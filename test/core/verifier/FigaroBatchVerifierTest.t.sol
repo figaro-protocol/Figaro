@@ -2112,6 +2112,99 @@ contract FigaroBatchVerifierTest is Test {
         verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
     }
 
+    /// What a later verifier earns: nothing in florins (docs/DESIGN_DECISIONS.md
+    /// § 15). A second verifier with a counter of its own lands a batch whose
+    /// use its counter counts; the minter reads the first counter, fixed at
+    /// deploy, so the use pays no designer, and the first counter refuses the
+    /// second verifier's accrual. A second minter over the second counter is
+    /// refused by the florin once the deployer has renounced.
+    function test_aVerifierDeployedAfterTheFlorinEarnsNoFlorins() public {
+        address designer = address(0xDE519);
+        vm.prank(designer);
+        members.register("ipfs://designer");
+        vm.deal(designer, DEPOSIT);
+        vm.prank(designer);
+        registry.registerClause{value: DEPOSIT}(clauseKey, "ipfs://clause");
+
+        ProcessRegistry assemblies = new ProcessRegistry(0);
+        (RpgfMinter minter, FlorinToken florin) = _rewireOnRealRegistries(assemblies);
+        florin.renounceDeployerMint();
+        UsageCounter first = counter;
+        FigaroBatchVerifier firstVerifier = verifier;
+
+        RpgfMinter laterMinter = _laterPairAndMinter(assemblies, florin);
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 3);
+        _settleWithUsage(usage);
+
+        uint8 kindClause = first.KIND_CLAUSE();
+        assertGt(counter.scoreOf(kindClause, clauseKey, 0), 0, "the later counter counts the use");
+        assertEq(first.scoreOf(kindClause, clauseKey, 0), 0, "the first counter does not");
+        assertEq(first.totalScoreIn(0), 0, "and its period total is empty");
+
+        vm.prank(address(verifier));
+        vm.expectRevert(UsageCounter.NotBatchVerifier.selector);
+        IUsageCounter(address(first)).applyBatchAccrual(usage.period, usage.provenanceLeaf, usage.uses);
+
+        // Each link is an immutable read back from the contract that holds it.
+        assertEq(address(minter.counter()), address(first), "the minter reads the first counter");
+        assertEq(first.batchVerifier(), address(firstVerifier), "the first counter names the first verifier");
+        assertEq(address(firstVerifier.usageCounter()), address(first), "and that verifier its counter");
+
+        vm.warp(PERIOD_END + 1);
+        RpgfMinter.ClauseOrProcessKey[] memory entry = new RpgfMinter.ClauseOrProcessKey[](1);
+        entry[0] = RpgfMinter.ClauseOrProcessKey(kindClause, clauseKey);
+        assertEq(minter.claimable(0, designer, entry), 0, "the minter quotes the designer nothing");
+        vm.prank(designer);
+        vm.expectRevert(RpgfMinter.NothingToClaim.selector);
+        minter.claim(0, entry);
+        vm.prank(designer);
+        vm.expectRevert(FlorinToken.MinterNotRegistered.selector);
+        laterMinter.claim(0, entry);
+        assertEq(florin.totalSupply(), 0, "no florin is minted for the later verifier's use");
+    }
+
+    /// @dev Replaces the `counter` and `verifier` fields with a later pair over
+    ///      the same registries, wired as the first was, and deploys a minter
+    ///      over the later counter, which the florin refuses to register.
+    function _laterPairAndMinter(ProcessRegistry assemblies, FlorinToken florin)
+        internal
+        returns (RpgfMinter laterMinter)
+    {
+        AgreementRegistry agreements = new AgreementRegistry(0);
+        uint64[] memory periods = new uint64[](1);
+        periods[0] = PERIOD_END;
+        address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
+        counter = new UsageCounter(
+            address(core),
+            address(members),
+            address(registry),
+            address(assemblies),
+            address(agreements),
+            predicted,
+            1,
+            periods
+        );
+        verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(counter));
+        assertEq(address(verifier), predicted, "verifier address prediction");
+        token.mint(address(verifier), 1_000 ether);
+        vm.prank(buyer);
+        token.approve(address(verifier), type(uint256).max);
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 45_000_000 ether;
+        laterMinter = new RpgfMinter(
+            address(florin),
+            address(counter),
+            address(members),
+            address(registry),
+            address(assemblies),
+            address(agreements),
+            amounts
+        );
+        vm.expectRevert(FlorinToken.DeployerMintRenounced.selector);
+        florin.registerMinter(address(laterMinter), amounts[0]);
+    }
+
     // ── Differential fuzz: the assembly packers against the mirrors ──
 
     /// @dev A full-width pseudo-random word from the fuzzer's seed, so every

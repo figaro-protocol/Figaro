@@ -24,11 +24,13 @@
 //     attestation must have opened the proof).
 
 using FigaroCore as core;
+using MockERC20A as token;
 
 methods {
     // FigaroCore view functions called by AttestationCoordinator (linked contract)
     function core.orderStatus(bytes32) external returns (uint8) envfree;
     function core.processes(bytes32) external returns (address, address, uint256, uint256) envfree;
+    function token.balanceOf(address) external returns (uint256) envfree;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -218,4 +220,37 @@ rule attestationCannotChangeProcessState(bytes32 watchedProcess, method f)
            cumValBefore     == cumValAfter    &&
            countBefore      == countAfter,
         "No AttestationCoordinator function can change FigaroCore process state";
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RULE 5: An attestation moves no token and writes no storage
+//
+// A standard ERC-20 (MockERC20A) is in the scene beside the coordinator and
+// the Core. After any coordinator call that succeeds, the token's balance of
+// any account is what it was, and the storage of the coordinator, of the Core
+// and of the token is unchanged, compared whole. A token call the coordinator
+// made, resolved to the token or left unresolved (which havocs the other
+// contracts' storage), would move the token's storage and fail the rule.
+// ═══════════════════════════════════════════════════════════════════
+
+rule anAttestationMovesNoTokenAndWritesNoStorage(address a, method f)
+    filtered { f -> f.contract == currentContract && !f.isView }
+{
+    uint256 balanceBefore = token.balanceOf(a);
+    storage before = lastStorage;
+
+    env e;
+    calldataarg args;
+    f(e, args);
+
+    storage after = lastStorage;
+
+    assert token.balanceOf(a) == balanceBefore,
+        "No attestation moves any account's token balance";
+    assert before[currentContract] == after[currentContract],
+        "No attestation writes the coordinator's storage";
+    assert before[core] == after[core],
+        "No attestation writes the Core's storage";
+    assert before[token] == after[token],
+        "No attestation writes the token's storage";
 }

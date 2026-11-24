@@ -259,4 +259,18 @@ contract AgreementRegistryTest is Test {
         (address registeredBy,,,) = registry.bindings(AGREEMENT_HASH);
         assertEq(registeredBy, alice, "the agreement stays registered");
     }
+
+    // ── The key is taken as given ───────────────────────────────────────
+
+    /// The registry never checks that an agreementHash is a merkle root over
+    /// clauses: any nonzero key but the two reserved ones registers, and a
+    /// reader recomputes the root from the document at contentURI.
+    function testFuzz_registerAgreement_acceptsAnyKeyItDoesNotReserve(bytes32 key) public {
+        vm.assume(key != bytes32(0));
+        vm.assume(key != registry.PROVENANCE_LEAF_KEY() && key != registry.PROCESS_TERMS_LEAF_KEY());
+        vm.prank(alice);
+        registry.registerAgreement{value: DEPOSIT}(key, CONTENT_URI);
+        (address registeredBy,,,) = registry.bindings(key);
+        assertEq(registeredBy, alice, "a key that is no root of anything is bound");
+    }
 }

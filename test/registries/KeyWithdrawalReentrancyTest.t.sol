@@ -39,6 +39,19 @@ contract ReenteringRegistrant {
     }
 }
 
+/// @notice A rival that registers a key and withdraws its stake inside one
+///         call, so one transaction leaves the key bound and withdrawn.
+contract KeyBurner {
+    function burn(address registry, bytes4 registerSelector, bytes32 key) external payable {
+        (bool ok,) = registry.call{value: msg.value}(abi.encodeWithSelector(registerSelector, key, "ipfs://burn"));
+        require(ok, "register failed");
+        (ok,) = registry.call(abi.encodeWithSignature("withdrawDeposit(bytes32)", key));
+        require(ok, "withdraw failed");
+    }
+
+    receive() external payable {}
+}
+
 /// @notice The one-call stake withdrawal of the three key registries pays a
 ///         stake once, even to a registrant that calls back from inside the
 ///         transfer. Each registry sets its withdrawn flag before it sends
@@ -89,5 +102,58 @@ contract KeyWithdrawalReentrancyTest is Test {
     function test_processRegistry_aWithdrawalFromInsideTheTransferIsRefused() public {
         ProcessRegistry registry = new ProcessRegistry(STAKE);
         _run(address(registry), ProcessRegistry.registerProcess.selector, ProcessRegistry.AlreadyWithdrawn.selector);
+    }
+
+    // ── A key burned for the price of gas (docs/DESIGN_DECISIONS.md § 41) ──
+
+    /// A rival registers `KEY` and withdraws in one transaction: its stake
+    /// comes back whole, the key stays bound for good and no one can register
+    /// it again, and the designer escapes only by registering other bytes.
+    function _burn(address registry, bytes4 registerSelector, bytes4 alreadyRegistered) internal {
+        KeyBurner rival = new KeyBurner();
+        vm.deal(address(this), 2 * STAKE);
+        rival.burn{value: STAKE}(registry, registerSelector, KEY);
+        assertEq(address(rival).balance, STAKE, "the rival ends with its stake back");
+        assertEq(registry.balance, 0, "the registry holds nothing for the burned key");
+
+        address designer = makeAddr("designer");
+        vm.deal(designer, 2 * STAKE);
+        vm.prank(designer);
+        (bool ok, bytes memory ret) =
+            registry.call{value: STAKE}(abi.encodeWithSelector(registerSelector, KEY, "ipfs://designer"));
+        assertFalse(ok, "the designer cannot register the burned key");
+        assertEq(ret, abi.encodeWithSelector(alreadyRegistered, KEY), "refused as already registered");
+
+        vm.prank(address(rival));
+        (ok, ret) = registry.call{value: 0}(abi.encodeWithSignature("withdrawDeposit(bytes32)", KEY));
+        assertFalse(ok, "the rival cannot withdraw twice");
+
+        vm.prank(designer);
+        (ok,) = registry.call{value: STAKE}(abi.encodeWithSelector(registerSelector, OTHER_KEY, "ipfs://designer"));
+        assertTrue(ok, "the designer registers the changed bytes' key");
+        assertEq(registry.balance, STAKE, "and its stake is held");
+    }
+
+    function test_clauseRegistry_aKeyRegisteredAndWithdrawnInOneTransactionIsBurnedForEveryone() public {
+        ClauseRegistry registry = new ClauseRegistry(STAKE);
+        _burn(address(registry), ClauseRegistry.registerClause.selector, ClauseRegistry.AlreadyRegistered.selector);
+    }
+
+    function test_agreementRegistry_aKeyRegisteredAndWithdrawnInOneTransactionIsBurnedForEveryone() public {
+        AgreementRegistry registry = new AgreementRegistry(STAKE);
+        _burn(
+            address(registry),
+            AgreementRegistry.registerAgreement.selector,
+            AgreementRegistry.AgreementAlreadyRegistered.selector
+        );
+    }
+
+    function test_processRegistry_aKeyRegisteredAndWithdrawnInOneTransactionIsBurnedForEveryone() public {
+        ProcessRegistry registry = new ProcessRegistry(STAKE);
+        _burn(
+            address(registry),
+            ProcessRegistry.registerProcess.selector,
+            ProcessRegistry.ProcessAlreadyRegistered.selector
+        );
     }
 }

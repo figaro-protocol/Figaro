@@ -1716,6 +1716,79 @@ async fn e2e_http_submission_flows_into_formed_batch() {
     assert_eq!(state.state_mirror.state_root().await, pv.new_state_root);
 }
 
+/// A bond paid through a swap is direct path only: `KernelOp::Commit` carries
+/// no funding leg, and no type in the request derives `deny_unknown_fields`,
+/// so the door does not refuse a body that names one. It drops the field,
+/// admits the ordinary commit the signatures cover, and the batch pulls both
+/// bonds from the parties' own balances: the buyer twice the payment, the
+/// seller twice the running total, and nothing from anyone else.
+#[tokio::test]
+async fn the_door_drops_a_funding_leg_and_the_batch_pulls_both_bonds_from_the_parties() {
+    let state = test_app_state();
+    let app = api::router(state.clone(), ApiConfig::default());
+
+    let op = canonical_ops()[0].clone();
+    let KernelOp::Commit { commitment, .. } = &op else {
+        panic!("ops[0] is the commit");
+    };
+    let funding = serde_json::json!({
+        "router": format!("{:#x}", Address::repeat_byte(0x5a)),
+        "tokenIn": format!("{:#x}", Address::repeat_byte(0x7e)),
+        "amountIn": "1000000000000000000000",
+        "payer": format!("{:#x}", Address::repeat_byte(0xfa)),
+    });
+    let mut operation = serde_json::to_value(&op).unwrap();
+    operation["Commit"]["funding"] = funding.clone();
+    let body = serde_json::json!({ "operation": operation, "funding": funding });
+
+    let (status, answer_body) = answer(&app, json_post("/submit", &body)).await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "the door admits the body: {answer_body}"
+    );
+
+    let pending = state.mempool.drain().await;
+    assert_eq!(pending.len(), 1);
+    assert_eq!(
+        serde_json::to_value(&pending[0].op).unwrap(),
+        serde_json::to_value(&op).unwrap(),
+        "what was queued is the ordinary commit, the funding leg gone"
+    );
+
+    let prev = state.state_mirror.snapshot().await;
+    let (valid, poison) = assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &prev, pending);
+    assert!(poison.is_empty(), "{poison:?}");
+    let ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
+    let batch = assembler::assemble_batch(CHAIN_ID, CORE, 1000, ops, prev, UsageContext::default());
+    let (_, positions, _, _) = apply_batch_with_state(&batch).unwrap();
+
+    let two = alloy_primitives::U256::from(2u8);
+    let position = |user: Address| {
+        positions
+            .iter()
+            .find(|p| p.user == user)
+            .unwrap_or_else(|| panic!("a position for {user}"))
+    };
+    assert_ne!(commitment.buyer, commitment.seller, "two parties");
+    assert_eq!(positions.len(), 2, "the buyer and the seller, no one else");
+    let buyer = position(commitment.buyer);
+    assert_eq!(
+        buyer.deposit,
+        commitment.payment * two,
+        "the buyer bonds twice the payment"
+    );
+    assert_eq!(buyer.payout, alloy_primitives::U256::ZERO);
+    let seller = position(commitment.seller);
+    assert_eq!(
+        seller.deposit,
+        commitment.running_total * two,
+        "the seller bonds twice the running total"
+    );
+    assert_eq!(seller.payout, alloy_primitives::U256::ZERO);
+    assert!(positions.iter().all(|p| p.token == commitment.token));
+}
+
 // ── The canonical fixture's ids ─────────────────────────────────
 
 fn domain() -> B256 {

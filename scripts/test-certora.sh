@@ -13,6 +13,7 @@
 #   certora/FigaroCore.spec             — FigaroCore state-machine invariants
 #   certora/AttestationCoordinator.spec — role-gate + parametric Core-immutability
 #   certora/TokenOpsVerification.spec   — FigaroCore token-flow invariants
+#   certora/FigaroCoreSums.spec         — FigaroCore running total, open-order count, multi-order payouts
 #   certora/FlorinToken.spec            — supply cap + minter registry
 #   certora/BatchVerifierTokenOps.spec  — batch-path token-flow invariants
 #   certora/BatchVerifierStateRoot.spec — the batch state root's unbroken chain
@@ -92,7 +93,7 @@ fi
 if [ "$#" -gt 0 ]; then
     SPECS=("$@")
 else
-    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification FlorinToken BatchVerifierTokenOps BatchVerifierStateRoot RpgfMinter RpgfMinterAuthor SwapCoordinatorTokenOps)
+    SPECS=(FigaroCore FigaroCoreSums AttestationCoordinator TokenOpsVerification FlorinToken BatchVerifierTokenOps BatchVerifierStateRoot RpgfMinter RpgfMinterAuthor SwapCoordinatorTokenOps)
 fi
 
 for spec in "${SPECS[@]}"; do
