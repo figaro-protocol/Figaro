@@ -20,7 +20,7 @@ import path from "node:path";
 import type { Abi, AbiParameter } from "viem";
 import {
     CORE_ABI, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI,
-    PROCESS_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, FLORIN_TOKEN_ABI, USAGE_COUNTER_ABI, RPGF_MINTER_ABI, BATCH_VERIFIER_ABI,
+    PROCESS_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, FLORIN_TOKEN_ABI, USAGE_COUNTER_ABI, RPGF_MINTER_ABI, BATCH_VERIFIER_ABI, WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI,
 } from "../src/abis.js";
 
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -80,6 +80,7 @@ const PAIRS: [string, Abi, string, (() => Abi)?][] = [
     ["USAGE_COUNTER_ABI", USAGE_COUNTER_ABI, "UsageCounter"],
     ["RPGF_MINTER_ABI", RPGF_MINTER_ABI, "RpgfMinter"],
     ["BATCH_VERIFIER_ABI", BATCH_VERIFIER_ABI, "FigaroBatchVerifier"],
+    ["WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI", WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI, "WitnessSwapAndCommitCoordinator"],
 ];
 
 describe("the SDK's ABIs are the contracts' ABIs", () => {
@@ -180,6 +181,22 @@ describe("the Core has no third action (CLAUDE.md § 'The Core's rules', rule 3:
             { type: "function", name: "sweep", inputs: [], outputs: [], stateMutability: "nonpayable" },
         ] as Abi;
         expect(stateChanging(extra)).toEqual(["commit", "resolveProcess", "sweep"]);
+    });
+});
+
+describe("a composed contract changes state only by its one act", () => {
+    // The swap coordinator funds a bond from a swap and commits, in one call.
+    // Its state-changing functions, whole: an added one, an owner, a pause or
+    // a sweep among them, fails the exact set.
+    it("WitnessSwapAndCommitCoordinator changes state only through swapAndCommit", () => {
+        expect(stateChanging(compiled("WitnessSwapAndCommitCoordinator"))).toEqual(["swapAndCommit"]);
+    });
+
+    it("it names no owner, pause, upgrade, sweep or withdraw function", () => {
+        const names = compiled("WitnessSwapAndCommitCoordinator")
+            .filter((i) => i.type === "function")
+            .map((i) => (i as { name: string }).name);
+        expect(escapeHatchNames(names)).toEqual([]);
     });
 });
 

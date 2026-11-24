@@ -8,6 +8,7 @@ import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 import "src/composability/WitnessSwapAndCommitCoordinator.sol";
 import "src/mocks/MockERC20.sol";
+import "src/mocks/MockReentrantToken.sol";
 import "src/mocks/MockSwapVenue.sol";
 import "src/mocks/MockWitnessPermit2.sol";
 
@@ -518,6 +519,38 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         assertEq(bond.balanceOf(address(coord)), 0, "no bond currency");
         assertEq(buyerInput.balanceOf(address(coord)), 0, "no buyer input");
         assertEq(sellerInput.balanceOf(address(coord)), 0, "no seller input");
+    }
+
+    // ── No call re-enters while a swap is under way ──────────────
+
+    /// @notice The input token is the party's choice, so its code runs inside
+    ///         `swapAndCommit`. A token that calls `swapAndCommit` again while
+    ///         Permit2 pulls it is refused by the guard, by the guard's own
+    ///         error, and the order it was funding still commits.
+    function test_AnInputTokenThatCallsBackIsRefusedByTheGuard() public {
+        MockReentrantToken hostile = new MockReentrantToken();
+        MockERC20 input = MockERC20(address(hostile));
+        _fundInput(buyer, input, 2 * P);
+        _selfFundBond(seller, 2 * P);
+
+        CommitmentTypes.Commitment memory c = _rootCommitment(31);
+        bytes memory bSig = _sign(c, BUYER_KEY);
+        bytes memory sSig = _sign(c, SELLER_KEY);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _leg(c, BUYER, input, 2 * P, BUYER_KEY);
+
+        hostile.arm(address(coord), abi.encodeCall(coord.swapAndCommit, (c, bSig, sSig, leg, _disabled())));
+        vm.prank(relayer);
+        coord.swapAndCommit(c, bSig, sSig, leg, _disabled());
+
+        assertTrue(hostile.reentryAttempted(), "the token called back");
+        assertTrue(hostile.reentryBlocked(), "the call back was refused");
+        assertEq(
+            hostile.reentryRevertSelector(),
+            ReentrancyGuard.ReentrancyGuardReentrantCall.selector,
+            "refused by the guard, by its own error"
+        );
+        assertEq(bond.balanceOf(address(core)), 4 * P, "the order committed once, with both bonds");
+        assertEq(hostile.balanceOf(address(coord)), 0, "the coordinator holds none of the input");
     }
 
     // ── The leg is bound to its commitment and its role ──────────

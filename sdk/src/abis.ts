@@ -162,6 +162,10 @@ export const WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI = parseAbi([
     "error NothingToFund()",
     "error SwapCallFailed()",
     "error OutputBelowBond(uint256 received, uint256 required)",
+    // The guard against a call back into the swap, and the token library's
+    // refusal of a transfer or an approval a token did not make.
+    "error ReentrancyGuardReentrantCall()",
+    "error SafeERC20FailedOperation(address token)",
 ]);
 
 // ── Permit2 ABI (Uniswap canonical, external contract) ──────────────────────

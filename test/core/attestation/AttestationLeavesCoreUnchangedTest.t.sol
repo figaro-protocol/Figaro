@@ -185,6 +185,26 @@ contract AttestationLeavesCoreUnchangedTest is Test {
         _assertUnchanged(before);
     }
 
+    /// The coordinator keeps no storage of its own: an attestation by either
+    /// party reads none of it and writes none of it, so the `Attestation`
+    /// event is the whole of what the call leaves.
+    function testFuzz_anAttestationTouchesNoCoordinatorStorage(
+        uint256 orderIdx,
+        uint256 clauseIdx,
+        uint8 stage,
+        bytes32 contentRef,
+        bool asBuyer
+    ) public {
+        orderIdx = bound(orderIdx, 0, ORDERS - 1);
+        clauseIdx = bound(clauseIdx, 0, CLAUSES - 1);
+
+        vm.record();
+        _attest(orderIdx, clauseIdx, stage, contentRef, asBuyer);
+        (bytes32[] memory reads, bytes32[] memory writes) = vm.accesses(address(coordinator));
+        assertEq(writes.length, 0, "the coordinator wrote storage");
+        assertEq(reads.length, 0, "the coordinator read storage of its own");
+    }
+
     function testFuzz_manyAttestationsLeaveTheCoreUnchanged(uint256 seed, uint8 count) public {
         count = uint8(bound(count, 1, 24));
 

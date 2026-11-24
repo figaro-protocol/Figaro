@@ -1,0 +1,308 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "figaroCore_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "permit2_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "router_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "figaroCore",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IFigaroCore"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "permit2",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IPermit2WitnessTransfer"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "router",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "swapAndCommit",
+    "inputs": [
+      {
+        "name": "c",
+        "type": "tuple",
+        "internalType": "struct CommitmentTypes.Commitment",
+        "components": [
+          {
+            "name": "processId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "buyer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "seller",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "token",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "payment",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "runningTotal",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "checkoutHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "salt",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "commitDeadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "buyerSig",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "sellerSig",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "buyerFunding",
+        "type": "tuple",
+        "internalType": "struct WitnessSwapAndCommitCoordinator.SwapFunding",
+        "components": [
+          {
+            "name": "enabled",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "inputToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "maxInput",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "permitNonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "permitDeadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "permitSignature",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "swapData",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      },
+      {
+        "name": "sellerFunding",
+        "type": "tuple",
+        "internalType": "struct WitnessSwapAndCommitCoordinator.SwapFunding",
+        "components": [
+          {
+            "name": "enabled",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "inputToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "maxInput",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "permitNonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "permitDeadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "permitSignature",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "swapData",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "processId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "orderHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "swapWitness",
+    "inputs": [
+      {
+        "name": "inputToken",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "maxInput",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "swapData",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "commitmentHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "role",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "error",
+    "name": "NothingToFund",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OutputBelowBond",
+    "inputs": [
+      {
+        "name": "received",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "required",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SwapCallFailed",
+    "inputs": []
+  }
+]

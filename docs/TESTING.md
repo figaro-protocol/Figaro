@@ -862,7 +862,7 @@ stream skips) and every usage-claim kind, proofs of zero to four words, and
 asserts the guest's decoder gives back what was encoded, field for field,
 that re-encoding gives back the bytes, and that the stream one byte short or
 long is refused; the run asserts it met every entry kind it writes, a kind-2
-(agreement) claim and a claim with an inclusion proof among them. `OperationStreamVectorsTest`
+(agreement) claim and a claim with an inclusion proof among them. The order of the stream's entries is held one refusal at a time: `the_decoder_refuses_a_0x05_out_of_place_or_with_an_unknown_role`, and `the_decoder_refuses_a_resolve_after_a_claim_alone_or_a_wallet_code_attestation_alone` for a resolve of either form. `OperationStreamVectorsTest`
 draws streams of the same format from a fuzzed seed and lands each through
 `settleBatch` (`testFuzz_everyGeneratedStreamLandsAndEmitsItsEntries`: the
 `Attestation` of every wallet-code attestation and the Core's events for every

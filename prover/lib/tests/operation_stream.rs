@@ -364,6 +364,48 @@ fn the_decoder_refuses_a_0x05_out_of_place_or_with_an_unknown_role() {
     );
 }
 
+/// A resolve, by signature (`0x02`) or by wallet code (`0x04`), comes before
+/// every usage claim and every wallet-code attestation. After a claim alone,
+/// or after a wallet-code attestation alone, the decoder refuses it: accepted,
+/// its three lists would re-encode with the resolve first, to other bytes
+/// than the ones read.
+#[test]
+fn the_decoder_refuses_a_resolve_after_a_claim_alone_or_a_wallet_code_attestation_alone() {
+    let (ops, claims) = sample();
+    let by_signature = encode_operation_stream(&ops[3..], &[]);
+    assert_eq!(by_signature[0], 0x02, "the sample's fourth operation is a resolve");
+    let by_wallet_code = encode_operation_stream(
+        &[KernelOp::ResolveByWalletCode {
+            process_id: B256::repeat_byte(0x01),
+            running_total: U256::from(300u64),
+            commitments: vec![commitment(1), commitment(2)],
+            authorization: alloy_primitives::Bytes::from(vec![0xab; 97]),
+        }],
+        &[],
+    );
+    assert_eq!(by_wallet_code[0], 0x04);
+    let a_claim = encode_operation_stream(&[], &claims[..1]);
+    let an_attestation =
+        encode_operation_stream(&[wallet_code_attestation(1, AttesterRole::Seller, 3)], &[]);
+    for (resolve, form) in [(&by_signature, "0x02"), (&by_wallet_code, "0x04")] {
+        assert!(
+            decode_operation_stream(resolve).is_ok(),
+            "the {form} resolve alone decodes"
+        );
+        for (before, what) in [
+            (&a_claim, "a usage claim"),
+            (&an_attestation, "a wallet-code attestation"),
+        ] {
+            let mut stream = before.clone();
+            stream.extend(resolve.iter());
+            assert!(
+                decode_operation_stream(&stream).is_err(),
+                "a {form} resolve after {what} alone"
+            );
+        }
+    }
+}
+
 // ── The round trip as a property: decode(encode(x)) == x over generated streams ──
 
 /// A seeded generator (splitmix64), so a failing case is reproduced by its
