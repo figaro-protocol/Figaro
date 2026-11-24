@@ -1,6 +1,6 @@
 {
     "name": "Containerized import chain, priced in florins",
-    "summary": "The six-party reefer import, open only to buyers and sellers who trade in florins.",
+    "summary": "The six-party reefer import, priced and bonded in florins.",
     "description": "The same containerized import chain as the open design, with the same six agreements unchanged: shipper, pre-shipment inspection, freight forwarder, reefer ocean carrier, customs agent and destination drayage, each bonded for more than its own leg is worth. One term is added. The designer pins the florin, the token that rewards the designers of clauses, agreements and processes, as the one token every order of the chain is priced and bonded in. Checkout writes the florin into every agreement, so no token picker appears and every bond and every payment of the chain moves in florins. This is the designer's choice, not the protocol's: the open import chain stays registered beside it and runs in any ERC-20 token.",
     "deployTimeCurrency": {
         "deployment": "florinToken"
