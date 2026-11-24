@@ -7,9 +7,14 @@
 // the stack is broadcast from it. This check ties each of those steps to the
 // one revision. It holds when both of these hold:
 //
-//   1. the working tree is clean: `git status --porcelain` prints nothing;
-//   2. `git diff --stat <release> HEAD` prints nothing over the paths the
-//      contracts, the guest, their proofs and their build read (COMPARED).
+//   1. the working tree is clean over the paths the contracts, the guest,
+//      their proofs and their build read (COMPARED): `git status --porcelain`
+//      prints nothing for them, a modified file and an untracked one alike;
+//   2. `git diff --stat <release> HEAD` prints nothing over the same paths.
+//
+// A file outside those paths may differ: the deploy writes its record and
+// the key it built under `deployments/` between two runs of this check, and
+// nothing the build reads is there.
 //
 // It refuses a release revision that is not a full 40-character sha, and one
 // the checkout does not carry. A missing revision is a refusal, never a skip.
@@ -70,9 +75,9 @@ export function checkReleaseRevision({ repo, release, requireClean = true }) {
         return result;
     }
     if (requireClean) {
-        const status = git(repo, ["status", "--porcelain"]);
+        const status = git(repo, ["status", "--porcelain", "--", ...COMPARED]);
         if (status.code !== 0) problems.push(`git status failed: ${status.err}`);
-        else if (status.out) problems.push(`the working tree is not clean:\n${status.out}`);
+        else if (status.out) problems.push(`the working tree is not clean in the compared paths:\n${status.out}`);
     }
     const diff = git(repo, ["diff", "--stat", release, "HEAD", "--", ...COMPARED]);
     if (diff.code !== 0) problems.push(`git diff failed: ${diff.err}`);
