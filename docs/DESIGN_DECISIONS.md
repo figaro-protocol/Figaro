@@ -749,6 +749,16 @@ held before it therefore consumed what it was given, and `settleBatch` reverts
 (`AccrualStarvedOfGas`, `_applyAccrual`). The 1/32 leaves room for a registry read one frame down,
 which hands the counter back at most 1/64 of its remainder.
 
+The check holds on a chain that prices new state apart (EIP-8037,
+https://eips.ethereum.org/EIPS/eip-8037, read at its specification). There the gas a contract
+reads leaves out a reservoir that exists only for a transaction above the per-transaction cap, and
+a state charge is taken from the reservoir first and from the readable gas after. A gate's refusal
+is a revert, which hands the callee's remaining gas back with the state charges it made, so it
+still reads as a refusal. A call that cannot pay a charge of either kind halts, and a halt leaves
+the callee nothing to hand back, so it still reads as starved. This project's relay sends no batch
+above the cap (`DEFAULT_SETTLE_GAS_CAP`, `prover/sequencer/src/gas.rs`), so its batches carry no
+reservoir and every charge comes from the gas the verifier reads.
+
 The revert stays because `settleBatch` is open to anyone. An observer can copy a relay's pending
 call and send it first with a gas limit inside the band. Without the revert, that copy lands the
 batch with its uses uncounted. The relay's own send then fails its root check, because the root

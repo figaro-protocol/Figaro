@@ -9,13 +9,14 @@
  *
  *   1. the direct path: each step a call to `FigaroCore`, beside it both
  *      parties attest through `AttestationCoordinator`, and each resolution
- *      counts its root order's clause on a `UsageCounter` bound to that Core;
+ *      counts the clause once for each seller of the process, on a
+ *      `UsageCounter` bound to that Core;
  *   2. the batch path: the same steps signed under `FigaroBatchVerifier`'s
  *      domain and sent to the relay's release binary, which runs the proof
  *      program (`prover/program`, `prover/lib`) and lands each batch with
  *      one `settleBatch`; each attestation goes to the relay with the
  *      clauseData hash and inclusion proof the coordinator takes, and each
- *      resolution's usage claim to its usage queue.
+ *      resolution's usage claims, one for each seller, to its usage queue.
  *
  * Every party is a fresh wallet per trace, and every trace counts its own
  * registered clause, so the traces of a wave run side by side on one chain and
@@ -249,6 +250,8 @@ interface TraceRun {
     processId: Record<Path, Map<number, Hex>>;
     chunks: number[][];
     resolveCount: number;
+    /** The uses the trace's resolutions count: one for each seller of each process. */
+    uses: number;
     /** The model's row after the last step each path applied. */
     at: Record<Path, number[] | null>;
 }
@@ -688,7 +691,7 @@ describe.skipIf(SKIP)("Batch E2E: the model's traces through the Core and the pr
         return { orderHashB };
     }
 
-    async function resolveStep(run: TraceRun, row: number[]): Promise<{ processIdB: Hex }> {
+    async function resolveStep(run: TraceRun, row: number[]): Promise<{ processIdB: Hex; uses: number }> {
         const pid = row[C_PID];
         const oids = run.processOrders.get(pid)!;
         const buyer = run.parties[row[C_BUYER]];
@@ -696,10 +699,24 @@ describe.skipIf(SKIP)("Batch E2E: the model's traces through the Core and the pr
         const listB = oids.map((o) => run.orders[o - 1].b);
         const runningTotal = BigInt(row[C_CUMULATIVE]);
 
-        // The direct path: the buyer's call, then the root order's clause counted.
+        // A use is one seller of one process, so the clause is claimed through
+        // the first order of each seller, in the orders' commit sequence: the
+        // process's first order and every later order of another seller.
+        const sellers = new Set<string>();
+        const claimable = oids
+            .map((o) => run.orders[o - 1])
+            .filter((order) => {
+                const seller = order.d.seller.toLowerCase();
+                if (sellers.has(seller)) return false;
+                sellers.add(seller);
+                return true;
+            });
+
+        // The direct path: the buyer's call, then the clause counted for each seller.
         await send(buyer, core, CORE_ABI, "resolveProcess", [run.processId.direct.get(pid)!, listD]);
-        const root = run.orders[oids[0] - 1];
-        await send(null, counterD, USAGE_COUNTER_ABI, "recordClauseUsage", [root.d, run.clause, root.clauseDataHash, root.proof]);
+        for (const order of claimable) {
+            await send(null, counterD, USAGE_COUNTER_ABI, "recordClauseUsage", [order.d, run.clause, order.clauseDataHash, order.proof]);
+        }
 
         // The batch path: the buyer's signature, or bytes its wallet code validates.
         const processIdB = run.processId.batch.get(pid)!;
@@ -727,21 +744,24 @@ describe.skipIf(SKIP)("Batch E2E: the model's traces through the Core and the pr
             await relay.submitResolve(processIdB, runningTotal, listB, sig);
             expectEntry(run.t, "op", concat(["0x02", processIdB, sig, u16(listB.length), listed]));
         }
-        claimsToSend.push(root.claim);
-        expectEntry(
-            run.t,
-            "claim",
-            concat([
-                "0x03",
-                packCommitment(root.b),
-                run.clause,
-                "0x00",
-                root.clauseDataHash,
-                u16(root.proof.length),
-                ...root.proof,
-            ]),
-        );
-        return { processIdB };
+        for (const order of claimable) {
+            claimsToSend.push(order.claim);
+            expectEntry(
+                run.t,
+                "claim",
+                concat([
+                    "0x03",
+                    packCommitment(order.b),
+                    run.clause,
+                    "0x00",
+                    order.clauseDataHash,
+                    u16(order.proof.length),
+                    ...order.proof,
+                ]),
+            );
+        }
+        run.uses += claimable.length;
+        return { processIdB, uses: claimable.length };
     }
 
     // ── The checks ────────────────────────────────────────────────────────
@@ -893,6 +913,7 @@ describe.skipIf(SKIP)("Batch E2E: the model's traces through the Core and the pr
                     processId: { direct: new Map(), batch: new Map() },
                     chunks: cut(t, rows.length),
                     resolveCount: 0,
+                    uses: 0,
                     at: { direct: null, batch: null },
                 });
             }
@@ -912,8 +933,9 @@ describe.skipIf(SKIP)("Batch E2E: the model's traces through the Core and the pr
                     for (const j of run.chunks[k] ?? []) {
                         const row = run.rows[j];
                         if (row[C_ACTION] === 2) {
-                            resolutions.add((await resolveStep(run, row)).processIdB.toLowerCase());
-                            usesExpected++;
+                            const resolved = await resolveStep(run, row);
+                            resolutions.add(resolved.processIdB.toLowerCase());
+                            usesExpected += resolved.uses;
                         } else {
                             commits.add((await commitStep(run, j, landSentSoFar)).orderHashB.toLowerCase());
                         }
@@ -965,7 +987,8 @@ describe.skipIf(SKIP)("Batch E2E: the model's traces through the Core and the pr
             }
             expect(d.get(`${run.t}/OrderCommitted`)!.length, `trace ${run.t}: one OrderCommitted per commit`).toBe(commitsInTrace);
             expect(d.get(`${run.t}/ProcessResolved`)!.length, `trace ${run.t}: one ProcessResolved per resolution`).toBe(resolvesInTrace);
-            expect(d.get(`${run.t}/UsageRecorded`)!.length, `trace ${run.t}: one use per resolution`).toBe(resolvesInTrace);
+            expect(d.get(`${run.t}/UsageRecorded`)!.length, `trace ${run.t}: one use for each seller of each resolved process`).toBe(run.uses);
+            expect(run.uses, `trace ${run.t}: at least one use per resolution`).toBeGreaterThanOrEqual(resolvesInTrace);
 
             // ── Uses: each counter's tally for the trace's clause ──
             const [tallyD, tallyB] = await Promise.all(
@@ -974,7 +997,7 @@ describe.skipIf(SKIP)("Batch E2E: the model's traces through the Core and the pr
                 ),
             );
             expect(tallyB, `uses: the tally of trace ${run.t}'s clause`).toEqual(tallyD);
-            expect((tallyD as readonly bigint[])[0]).toBe(BigInt(resolvesInTrace));
+            expect((tallyD as readonly bigint[])[0]).toBe(BigInt(run.uses));
 
             // ── Final tokens: the model's, on both paths ──
             for (const p of ["direct", "batch"] as const) {
