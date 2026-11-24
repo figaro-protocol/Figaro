@@ -10,7 +10,7 @@
 use alloy_primitives::{Address, B256, U256};
 use figaro_kernel::kernel::guest_input;
 use figaro_kernel::types::ProcessState;
-use figaro_prove_test::build_canonical_batch_input;
+use figaro_prove_test::{build_batch_input_of, build_canonical_batch_input};
 use sp1_sdk::{Prover, ProverClient, SP1Stdin};
 
 #[tokio::test]
@@ -50,5 +50,37 @@ async fn the_guests_cycles_do_not_grow_with_the_stored_state() {
     assert!(
         cycles[2] < cycles[0] * 2,
         "cycles grew with the stored state: {cycles:?}"
+    );
+}
+
+/// The guest's cycles for a full batch: the hundred operations a relay's
+/// batch is cut at by default (`MAX_BATCH_OPS`), as twenty-five processes of
+/// a commit, two attestations and a resolve each, with their usage claims.
+/// It prints the figure beside the canonical batch's, and holds that a
+/// batch's cycles grow with its operations and no faster: twenty-five times
+/// the operations cost no more than twenty-five times the cycles.
+#[tokio::test]
+#[ignore]
+async fn the_guests_cycles_for_a_full_batch() {
+    let elf = sp1_sdk::include_elf!("figaro-prover");
+    let client = ProverClient::builder().mock().build().await;
+    let mut cycles = Vec::new();
+    for processes in [1usize, 25] {
+        let input = build_batch_input_of(processes);
+        let operations = input.operations.len();
+        let guest = guest_input(&input).expect("the batch's witness");
+        let mut stdin = SP1Stdin::new();
+        stdin.write(&guest);
+        let (_, report) = client
+            .execute(elf.clone(), stdin)
+            .await
+            .expect("the guest executes");
+        let total = report.total_instruction_count();
+        println!("CYCLES operations={operations} cycles={total}");
+        cycles.push(total);
+    }
+    assert!(
+        cycles[1] <= cycles[0] * 25,
+        "a full batch's cycles grew faster than its operations: {cycles:?}"
     );
 }
