@@ -9,10 +9,8 @@
       "clause_id": "0x037534789810d0f2a242575421dd8d44e4fc401d6b1b622b318af636354f53e3",
       "content_ref": "0xe85d2ce8c15fa9c68d775ae45e40e1f0d851a20a43350cf101e514e34000b7d1",
       "proof": {
-        "HashOnly": {
-          "clause_data_hash": "0xe85d2ce8c15fa9c68d775ae45e40e1f0d851a20a43350cf101e514e34000b7d1",
-          "inclusion_proof": []
-        }
+        "clause_data_hash": "0xe85d2ce8c15fa9c68d775ae45e40e1f0d851a20a43350cf101e514e34000b7d1",
+        "inclusion_proof": []
       },
       "stage": 0,
       "target": {

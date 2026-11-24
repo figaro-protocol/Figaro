@@ -12,11 +12,10 @@
  * automaton over the portable core (the statement below) and runs that
  * automaton as a state set over the value: each character is read once,
  * against at most every state of the automaton, so the work is bounded by
- * the automaton's size times the value's length. The guest's `regex` crate
- * (`prover/clause/src/validate.rs`) is also an automaton engine, and the two
- * give one verdict on every portable pattern.
+ * the automaton's size times the value's length.
  *
- * Two bounds, the guest's too, keep that work small. A pattern whose
+ * Two bounds keep that work small, so the sign gate's own work in a browser
+ * stays bounded whatever spec it is handed. A pattern whose
  * expanded size (the statement below) is past MAX_PATTERN_EXPANSION does not
  * parse. A value whose length times its pattern's expanded size is past
  * MAX_PATTERN_WORK is refused without the pattern run
@@ -25,12 +24,14 @@
 
 // ── The portable pattern ─────────────────────────────────────────────────────
 //
-// A pattern is read by two regex libraries: JavaScript's here, Rust's in the
-// guest (`prover/clause`). They agree on a core and part ways outside it —
-// lookaround and backreferences exist in one, inline flags and possessive
-// quantifiers in the other; `\d`, `\w`, `.` and a negated class read
-// differently outside ASCII; `[a&&b]` is three characters here and an
-// intersection there. A clause both paths read alike is written in the core:
+// A spec is read by whatever tool its reader runs, in whatever language, so
+// a pattern is read by more than one regex library. The libraries agree on a
+// core and part ways outside it — JavaScript's has lookaround and
+// backreferences, Rust's `regex` crate has inline flags and possessive
+// quantifiers; `\d`, `\w`, `.` and a negated class read differently outside
+// ASCII; `[a&&b]` is three characters in one and an intersection in another.
+// The published clause format (`clause-spec.schema.json`, `pattern`) states
+// this core, so every reader that applies it gives one verdict:
 //
 //   - the pattern is printable ASCII (0x20–0x7E);
 //   - atoms: a literal, `.`, a class `[...]`, a group `(...)` or `(?:...)`,
@@ -45,19 +46,18 @@
 //     and a counted quantifier counts what it follows plus one, times `m` for
 //     `{n,m}`, `n` for `{n}` and `n + 1` for `{n,}`. The size counts every
 //     state an automaton holds, so it bounds the work per character of the
-//     value, in both engines: the SDK's automaton holds at most three
-//     instructions per unit, and the guest's no more. Nested counts multiply,
+//     value: the SDK's automaton holds at most three instructions per unit.
+//     Nested counts multiply,
 //     so `(?:(?:(?:(?:a{64}){64}){64}){64})` is short and portable in every
 //     other way, and still too large;
 //   - a class holds literals, ranges `a-z` between two literals, the six
 //     letter escapes, escaped punctuation, and `-` first or last; it is never
 //     empty, and holds no `[`, no `&&`, `--` or `~~`.
 //
-// `isPortablePattern` is the one statement of that core; the guest's
-// `is_portable_pattern` is its port, and the two are conformance-locked. A
-// spec whose pattern is outside the core does not parse, in either engine.
-// A patterned field's VALUE is printable ASCII too: outside it the two
-// libraries count and classify characters differently.
+// `isPortablePattern` is the SDK's statement of that core. A spec whose
+// pattern is outside the core does not parse. A patterned field's VALUE is
+// printable ASCII too: outside it regex libraries count and classify
+// characters differently.
 
 /** Longest pattern a spec may declare. */
 export const MAX_PATTERN_LENGTH = 256;
@@ -65,7 +65,7 @@ export const MAX_PATTERN_LENGTH = 256;
 export const MAX_PATTERN_REPEAT = 64;
 /** Largest expanded size a pattern may have (the statement above). Any
  *  running total past it is held at MAX_PATTERN_EXPANSION + 1, so the count
- *  is the same exact integer in both engines. */
+ *  is an exact integer in any language's arithmetic. */
 export const MAX_PATTERN_EXPANSION = 4096;
 /** Largest work a value may cost its pattern: the value's length in UTF-16
  *  units times the pattern's expanded size. A value past it is refused,
@@ -187,8 +187,7 @@ export function isPortablePattern(pattern: string): boolean {
 
 /**
  * The expanded size of a portable `pattern` (the statement above), or null
- * when the pattern is outside the portable core. The guest's
- * `portable_pattern_size` computes the same integer.
+ * when the pattern is outside the portable core.
  */
 export function portablePatternSize(pattern: string): number | null {
     if (pattern.length === 0 || pattern.length > MAX_PATTERN_LENGTH) return null;
@@ -282,8 +281,7 @@ export function portablePatternSize(pattern: string): number | null {
  * the value's length in UTF-16 units times the pattern's expanded size past
  * it? Such a value is refused without the pattern run. False for a pattern
  * outside the portable core, which never parses and which `safeRegexTest`
- * refuses on its own. The guest's `pattern_work_exceeded` gives the same
- * answer.
+ * refuses on its own.
  */
 export function patternWorkExceeded(pattern: string, value: string): boolean {
     const size = portablePatternSize(pattern);
@@ -297,10 +295,10 @@ export function patternWorkExceeded(pattern: string, value: string): boolean {
 // value as a set of states: each step reads one character and moves every
 // live state at once, so no choice is ever retried. The verdict is whether the
 // pattern matches anywhere in the value, which is what `RegExp.prototype.test`
-// and the guest's `Regex::is_match` both answer. Laziness changes which match
+// and Rust's `Regex::is_match` both answer. Laziness changes which match
 // a backtracking engine reports, never whether one exists, so a lazy
-// quantifier compiles as its greedy form. The classes are read as the guest
-// reads them, with its Unicode tables off: `\d` is `[0-9]`, `\w` is
+// quantifier compiles as its greedy form. The classes are read in ASCII,
+// with no Unicode tables: `\d` is `[0-9]`, `\w` is
 // `[0-9A-Za-z_]`, `\s` is `[\t\n\v\f\r ]`, `.` is every character but `\n`,
 // and `\b` is the boundary between a `\w` character and any other. On a
 // printable-ASCII value, the only kind a pattern runs on, JavaScript's
@@ -690,8 +688,7 @@ export function portablePatternMatches(pattern: string, value: string): boolean 
 
 /**
  * Can `pattern` be run: is it portable, and does its automaton build? A spec
- * parses only with such a pattern (`parseClauseSpec`), as the guest parses
- * one only when the pattern compiles.
+ * parses only with such a pattern (`parseClauseSpec`).
  */
 export function isRunnablePattern(pattern: string): boolean {
     return programOf(pattern) !== null;
@@ -703,8 +700,7 @@ export function isRunnablePattern(pattern: string): boolean {
  * printable ASCII, when it would cost the pattern more than MAX_PATTERN_WORK
  * (`patternWorkExceeded`), when the pattern cannot be run
  * (`isRunnablePattern`), or when it does not match: a value that was not
- * checked never counts as matching. The guest's `safe_regex_test` gives the
- * same verdict on every case a parsed spec reaches.
+ * checked never counts as matching.
  */
 export function safeRegexTest(pattern: string, value: string): boolean {
     if (!isPrintableAscii(value)) return false;

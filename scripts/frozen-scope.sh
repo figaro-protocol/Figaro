@@ -10,7 +10,7 @@ in_scope() {
     case "$1" in
         src/core/*.sol|src/registries/*.sol|src/rewards/*.sol|src/composability/*.sol) return 0 ;;
         script/Deploy.s.sol|script/DeployMainnet.s.sol|script/DeploySwapCoordinator.s.sol) return 0 ;;
-        prover/program/*|prover/lib/*|prover/clause/*|prover/sequencer/*)
+        prover/program/*|prover/lib/*|prover/sequencer/*)
             case "$1" in *.rs|*/Cargo.toml) return 0 ;; esac ;;
         prover/Cargo.toml|prover/Cargo.lock) return 0 ;;
     esac

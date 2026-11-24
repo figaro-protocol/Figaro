@@ -41,14 +41,10 @@ fn dummy_commitment() -> Commitment {
     }
 }
 
-fn dummy_proof(kind: ContentKind) -> AttestationContentProof {
-    AttestationContentProof {
-        spec_json: r#"{"clauseId":"t","version":1,"title":"T","description":"D","fields":[]}"#
-            .to_string(),
-        content_json: r#"{"scope":1}"#.to_string(),
-        clause_data: r#"{"k":"v"}"#.to_string(),
-        inclusion_proof: vec![B256::repeat_byte(0xcc)],
-        content_kind: kind,
+fn dummy_witness() -> AttestationWitness {
+    AttestationWitness {
+        clause_data_hash: B256::repeat_byte(0xab),
+        inclusion_proof: vec![B256::repeat_byte(0xcc), B256::repeat_byte(0xdd)],
     }
 }
 
@@ -77,7 +73,7 @@ fn bincode_roundtrip_full_batchinput() {
                 stage: 1,
                 content_ref: B256::ZERO,
                 seller_sig: dummy_sig(),
-                proof: AttestationWitness::Plaintext(dummy_proof(ContentKind::RuntimeWitness)),
+                proof: dummy_witness(),
             },
             KernelOp::AttestAsBuyer {
                 target: dummy_commitment(),
@@ -85,10 +81,7 @@ fn bincode_roundtrip_full_batchinput() {
                 stage: 0,
                 content_ref: B256::ZERO,
                 buyer_sig: dummy_sig(),
-                proof: AttestationWitness::HashOnly {
-                    clause_data_hash: B256::repeat_byte(0xab),
-                    inclusion_proof: vec![B256::repeat_byte(0xcc)],
-                },
+                proof: dummy_witness(),
             },
             KernelOp::Resolve {
                 process_id: B256::ZERO,
@@ -108,47 +101,14 @@ fn bincode_roundtrip_full_batchinput() {
 }
 
 #[test]
-fn bincode_roundtrip_just_attestation_content_proof() {
-    let v = dummy_proof(ContentKind::RuntimeWitness);
-    let bytes = bincode::serialize(&v).expect("serialize");
-    eprintln!("proof bytes: {} bytes", bytes.len());
-    let decoded: AttestationContentProof = bincode::deserialize(&bytes).expect("deserialize");
-    assert_eq!(decoded.content_json, r#"{"scope":1}"#);
-    assert_eq!(decoded.content_kind, ContentKind::RuntimeWitness);
-}
-
-#[test]
-fn bincode_roundtrip_both_witness_forms() {
-    let hash_only = AttestationWitness::HashOnly {
-        clause_data_hash: B256::repeat_byte(0xab),
-        inclusion_proof: vec![B256::repeat_byte(0xcc), B256::repeat_byte(0xdd)],
-    };
-    let bytes = bincode::serialize(&hash_only).expect("serialize");
-    match bincode::deserialize(&bytes).expect("deserialize") {
-        AttestationWitness::HashOnly {
-            clause_data_hash,
-            inclusion_proof,
-        } => {
-            assert_eq!(clause_data_hash, B256::repeat_byte(0xab));
-            assert_eq!(inclusion_proof.len(), 2);
-        }
-        other => panic!("expected HashOnly, got {other:?}"),
-    }
-    let plaintext = AttestationWitness::Plaintext(dummy_proof(ContentKind::ReAssert));
-    let bytes = bincode::serialize(&plaintext).expect("serialize");
-    match bincode::deserialize(&bytes).expect("deserialize") {
-        AttestationWitness::Plaintext(p) => assert_eq!(p.content_kind, ContentKind::ReAssert),
-        other => panic!("expected Plaintext, got {other:?}"),
-    }
-}
-
-#[test]
-fn bincode_roundtrip_content_kind_variants() {
-    for kind in [ContentKind::RuntimeWitness, ContentKind::ReAssert] {
-        let bytes = bincode::serialize(&kind).expect("serialize");
-        let decoded: ContentKind = bincode::deserialize(&bytes).expect("deserialize");
-        assert_eq!(decoded, kind);
-    }
+fn bincode_roundtrip_the_attestation_witness() {
+    let bytes = bincode::serialize(&dummy_witness()).expect("serialize");
+    let decoded: AttestationWitness = bincode::deserialize(&bytes).expect("deserialize");
+    assert_eq!(decoded.clause_data_hash, B256::repeat_byte(0xab));
+    assert_eq!(
+        decoded.inclusion_proof,
+        vec![B256::repeat_byte(0xcc), B256::repeat_byte(0xdd)]
+    );
 }
 
 #[test]
@@ -163,7 +123,7 @@ fn bincode_roundtrip_single_attest_seller() {
             stage: 0,
             content_ref: B256::ZERO,
             seller_sig: dummy_sig(),
-            proof: AttestationWitness::Plaintext(dummy_proof(ContentKind::RuntimeWitness)),
+            proof: dummy_witness(),
         }],
         prev_state: empty_snapshot(),
         usage_claims: vec![],
@@ -203,25 +163,12 @@ fn bincode_roundtrip_public_values_and_events() {
         verifying_contract: BUYER,
         token_ops_hash: B256::repeat_byte(0x03),
         attestation_events_hash: B256::repeat_byte(0x04),
-        spec_bindings_hash: B256::repeat_byte(0x05),
         usage_accrual_hash: B256::repeat_byte(0x0a),
         block_timestamp: 1000,
         operations_hash: B256::repeat_byte(0x0b),
     };
     let bytes = bincode::serialize(&pv).expect("serialize");
     let _decoded: PublicValues = bincode::deserialize(&bytes).expect("deserialize");
-
-    // The ABI layout the on-chain verifier decodes: 10 words (320 bytes), with
-    // block_timestamp as word 8. A drift here silently mis-decodes on chain.
-    let abi = pv.abi_encode();
-    assert_eq!(abi.len(), 320, "public values are 10 × 32-byte words");
-    let abi_decoded = PublicValues::abi_decode(&abi).expect("abi round-trips");
-    assert_eq!(
-        abi_decoded.block_timestamp, pv.block_timestamp,
-        "block_timestamp survives the abi round-trip"
-    );
-    assert_eq!(abi_decoded.prev_state_root, pv.prev_state_root);
-    assert_eq!(abi_decoded.usage_accrual_hash, pv.usage_accrual_hash);
 
     let events = BatchEvents {
         attestations: vec![AttestationEventData {
@@ -231,9 +178,6 @@ fn bincode_roundtrip_public_values_and_events() {
             clause_id: B256::repeat_byte(0x08),
             stage: 2,
             content_ref: B256::repeat_byte(0x09),
-        }],
-        spec_bindings: vec![SpecBinding {
-            clause_id: B256::repeat_byte(0x0a),
         }],
         uses: vec![BatchUse {
             clause_or_process: B256::repeat_byte(0x0c),
@@ -245,6 +189,81 @@ fn bincode_roundtrip_public_values_and_events() {
     };
     let bytes = bincode::serialize(&events).expect("serialize");
     let _decoded: BatchEvents = bincode::deserialize(&bytes).expect("deserialize");
+}
+
+/// The ABI layout `FigaroBatchVerifier._decodePV` decodes: 9 words, 288
+/// bytes, in the order prev root, new root, chain id, verifying contract,
+/// token ops hash, attestation events hash, usage accrual hash, block
+/// timestamp, operations hash. A drift here silently mis-decodes on chain,
+/// and the 320-byte layout that carried a spec-bindings word is refused.
+#[test]
+fn the_public_values_are_nine_words_each_at_its_index() {
+    let pv = PublicValues {
+        prev_state_root: B256::repeat_byte(0x01),
+        new_state_root: B256::repeat_byte(0x02),
+        chain_id: 31337,
+        verifying_contract: BUYER,
+        token_ops_hash: B256::repeat_byte(0x03),
+        attestation_events_hash: B256::repeat_byte(0x04),
+        usage_accrual_hash: B256::repeat_byte(0x05),
+        block_timestamp: 1000,
+        operations_hash: B256::repeat_byte(0x06),
+    };
+    let abi = pv.abi_encode();
+    assert_eq!(abi.len(), 288, "public values are 9 × 32-byte words");
+
+    let word = |i: usize| B256::from_slice(&abi[i * 32..(i + 1) * 32]);
+    let mut chain_word = [0u8; 32];
+    chain_word[24..].copy_from_slice(&31337u64.to_be_bytes());
+    let mut addr_word = [0u8; 32];
+    addr_word[12..].copy_from_slice(BUYER.as_slice());
+    let mut ts_word = [0u8; 32];
+    ts_word[24..].copy_from_slice(&1000u64.to_be_bytes());
+    assert_eq!(word(0), pv.prev_state_root, "word 0: the previous root");
+    assert_eq!(word(1), pv.new_state_root, "word 1: the new root");
+    assert_eq!(word(2), B256::from(chain_word), "word 2: the chain id");
+    assert_eq!(
+        word(3),
+        B256::from(addr_word),
+        "word 3: the verifying contract"
+    );
+    assert_eq!(word(4), pv.token_ops_hash, "word 4: the token ops hash");
+    assert_eq!(
+        word(5),
+        pv.attestation_events_hash,
+        "word 5: the attestation events hash"
+    );
+    assert_eq!(
+        word(6),
+        pv.usage_accrual_hash,
+        "word 6: the usage accrual hash"
+    );
+    assert_eq!(word(7), B256::from(ts_word), "word 7: the block timestamp");
+    assert_eq!(word(8), pv.operations_hash, "word 8: the operations hash");
+
+    let decoded = PublicValues::abi_decode(&abi).expect("its own encoding decodes");
+    assert_eq!(decoded.prev_state_root, pv.prev_state_root);
+    assert_eq!(decoded.new_state_root, pv.new_state_root);
+    assert_eq!(decoded.chain_id, pv.chain_id);
+    assert_eq!(decoded.verifying_contract, pv.verifying_contract);
+    assert_eq!(decoded.token_ops_hash, pv.token_ops_hash);
+    assert_eq!(decoded.attestation_events_hash, pv.attestation_events_hash);
+    assert_eq!(decoded.usage_accrual_hash, pv.usage_accrual_hash);
+    assert_eq!(decoded.block_timestamp, pv.block_timestamp);
+    assert_eq!(decoded.operations_hash, pv.operations_hash);
+
+    // Ten words, the length that carried a spec-bindings word: refused.
+    let mut ten_words = abi.clone();
+    ten_words.extend_from_slice(&[0u8; 32]);
+    assert_eq!(ten_words.len(), 320);
+    assert!(
+        PublicValues::abi_decode(&ten_words).is_err(),
+        "320 bytes are refused"
+    );
+    assert!(
+        PublicValues::abi_decode(&abi[..256]).is_err(),
+        "eight words are refused"
+    );
 }
 
 /// Every usage-claim kind crosses SP1 stdin: the enum's variant tag and the

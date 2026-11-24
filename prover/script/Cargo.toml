@@ -11,11 +11,10 @@ path = "src/main.rs"
 
 [dependencies]
 figaro-kernel = { path = "../lib" }
-# Used to build the canonical content_proof on the seller attestation so
-# the end-to-end SP1 run exercises the Layer B gate in the zkVM.
-figaro-clause = { path = "../clause" }
 sp1-sdk = "6.0"
-serde_json = "1"
+# `float_roundtrip`: the canonicalizer reads a spec's fractions and writes
+# them back as ECMAScript does, so each must survive the parse exactly.
+serde_json = { version = "1", features = ["float_roundtrip"] }
 alloy-primitives = { version = "1", features = ["serde"] }
 k256 = { version = "0.13", features = ["ecdsa", "arithmetic"] }
 tokio = { version = "1", features = ["full"] }

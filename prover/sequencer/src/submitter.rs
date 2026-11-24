@@ -14,7 +14,7 @@ use tracing::info;
 
 use alloy::primitives::U256;
 use figaro_kernel::types::{
-    AttestationWitness, BatchEvents, Commitment, KernelOp, NetPosition, UsageClaim, UsageClaimKind,
+    BatchEvents, Commitment, KernelOp, NetPosition, UsageClaim, UsageClaimKind,
 };
 
 use crate::mempool::PendingOp;
@@ -328,109 +328,6 @@ pub async fn filter_funded_commits(
         }
     }
     allocate_funding(pending, &funds)
-}
-
-/// A plaintext attestation's clause key and the hash of the witness spec
-/// bytes it carries — the guest requires them equal (Gate S) and the
-/// verifier requires the key `registered(clauseKey)`; either failing
-/// reverts the WHOLE batch, in either authorization form (the wallet-code
-/// form commits the binding too). `None` for a hash-only attestation, which
-/// commits no spec binding (the verifier checks no registry for it, as the
-/// coordinator checks none), and for every other op.
-pub fn attestation_spec(
-    op: &KernelOp,
-) -> Option<(alloy::primitives::B256, alloy::primitives::B256)> {
-    match op {
-        KernelOp::AttestAsSeller {
-            clause_id,
-            proof: AttestationWitness::Plaintext(proof),
-            ..
-        }
-        | KernelOp::AttestAsBuyer {
-            clause_id,
-            proof: AttestationWitness::Plaintext(proof),
-            ..
-        }
-        | KernelOp::AttestByWalletCode {
-            clause_id,
-            proof: AttestationWitness::Plaintext(proof),
-            ..
-        } => Some((
-            *clause_id,
-            alloy::primitives::keccak256(proof.spec_json.as_bytes()),
-        )),
-        _ => None,
-    }
-}
-
-/// Drop every attestation whose witness spec does not hash to its clause
-/// key, or whose key the registry has not registered, before proving: one
-/// such op reverts the whole batch on chain, and anyone can copy a landed
-/// attestation with one byte of the spec changed. The registry is the
-/// verifier's own (`clauseRegistry()`), read once per batch per clause; a
-/// read failure drops conservatively. `None` (no verifier configured — a
-/// prove-only dry run) passes everything through.
-pub async fn filter_anchored_attestations(
-    gate: Option<&FundingGate>,
-    pending: Vec<PendingOp>,
-) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
-    let Some(gate) = gate else {
-        return (pending, Vec::new());
-    };
-    if !pending.iter().any(|p| attestation_spec(&p.op).is_some()) {
-        return (pending, Vec::new());
-    }
-    let mut anchors: HashMap<alloy::primitives::B256, Option<bool>> = HashMap::new();
-    let registry = match gate.rpc_url.parse() {
-        Ok(url) => {
-            let provider = ProviderBuilder::new().connect_http(url);
-            IFigaroBatchVerifier::new(gate.verifier, &provider)
-                .clauseRegistry()
-                .call()
-                .await
-                .ok()
-                .map(|r| (r, provider))
-        }
-        Err(_) => None,
-    };
-    let mut valid = Vec::with_capacity(pending.len());
-    let mut dropped = Vec::new();
-    for op in pending {
-        let Some((clause, witness_hash)) = attestation_spec(&op.op) else {
-            valid.push(op);
-            continue;
-        };
-        if witness_hash != clause {
-            dropped.push((
-                op,
-                format!("witness spec {witness_hash} does not hash to clause key {clause} — the guest would refuse the batch"),
-            ));
-            continue;
-        }
-        if let std::collections::hash_map::Entry::Vacant(slot) = anchors.entry(clause) {
-            let registered = match &registry {
-                Some((address, provider)) => IClauseRegistry::new(*address, provider)
-                    .registered(clause)
-                    .call()
-                    .await
-                    .ok(),
-                None => None,
-            };
-            slot.insert(registered);
-        }
-        match anchors[&clause] {
-            Some(true) => valid.push(op),
-            Some(false) => dropped.push((
-                op,
-                format!("clause key {clause} is not registered — the verifier would revert the batch"),
-            )),
-            None => dropped.push((
-                op,
-                format!("the registry's record of clause {clause} could not be read — dropped conservatively"),
-            )),
-        }
-    }
-    (valid, dropped)
 }
 
 // ── Wallet-code operations: the party's code must validate ─────────
@@ -803,13 +700,8 @@ sol! {
             bytes32 contentRef;
         }
 
-        struct SpecBindingCall {
-            bytes32 clauseId;
-        }
-
         struct BatchEventDataCall {
             AttestationDataCall[] attestations;
-            SpecBindingCall[] specBindings;
         }
 
         struct BatchUseCall {
@@ -843,7 +735,6 @@ sol! {
         );
 
         function stateRoot() external view returns (bytes32);
-        function clauseRegistry() external view returns (address);
         function programVKey() external view returns (bytes32);
     }
 }
@@ -870,7 +761,6 @@ sol! {
     #[sol(rpc)]
     interface IClauseRegistry {
         function depositOf(bytes32 idHash) external view returns (address registeredBy, bool withdrawn);
-        function registered(bytes32 clauseKey) external view returns (bool);
     }
 }
 
@@ -1316,19 +1206,7 @@ pub fn settle_call_args(
             contentRef: a.content_ref,
         })
         .collect();
-    // The clause keys the proof committed — the verifier checks each key is
-    // registered.
-    let spec_bindings = events
-        .spec_bindings
-        .iter()
-        .map(|b| IFigaroBatchVerifier::SpecBindingCall {
-            clauseId: b.clause_id,
-        })
-        .collect();
-    let events_call = IFigaroBatchVerifier::BatchEventDataCall {
-        attestations,
-        specBindings: spec_bindings,
-    };
+    let events_call = IFigaroBatchVerifier::BatchEventDataCall { attestations };
     // The uses the proof committed. An empty array is normal and resolves
     // fine — the counter treats it as a no-op, which is what lets trade keep
     // resolving after the reward's last period ends. The provenance leaf's

@@ -8,8 +8,8 @@
 //! transaction, the signed operations behind its root. A stranger rebuilds
 //! the state behind any root from the chain alone with this stream and what
 //! the same transaction carries beside it: the period and the provenance
-//! leaf of the `usage` argument (bound by public value 7), and the chain id,
-//! the verifying contract and the clock of public values 2, 3 and 8.
+//! leaf of the `usage` argument (bound by public value 6), and the chain id,
+//! the verifying contract and the clock of public values 2, 3 and 7.
 //!
 //! What the stream carries, and what it does not:
 //! - every `Commit`, whole: the signed commitment and both signatures, as the
@@ -29,7 +29,7 @@
 //!   orders' (every order of a process carries its root buyer);
 //! - every usage claim, whole: a claim moves no state, but the uses the
 //!   verifier hands the counter are proved from the claims, so a replay of
-//!   the stream re-derives the batch's usage hash (public value 7);
+//!   the stream re-derives the batch's usage hash (public value 6);
 //! - every `AttestByWalletCode`, as its own entry after every commit and
 //!   resolve: the role byte naming the party, the target commitment whole,
 //!   the clause id, the stage, the content reference and the bytes the
@@ -38,8 +38,8 @@
 //!   the commitment, takes the attester from the role, asks that account's
 //!   `isValidSignature` (ERC-1271), and emits the coordinator's `Attestation`
 //!   event only on the magic value; any other answer reverts the batch. No
-//!   fingerprint of the witness enters the entry: the clause data hash, the
-//!   inclusion proof and any plaintext stay with the relay and the prover;
+//!   fingerprint of the witness enters the entry: the clause data hash and the
+//!   inclusion proof stay with the relay and the prover;
 //! - no signed attestation: an attestation moves no state (`apply_operations`
 //!   writes nothing to the state for it), and a signed one's evidence is
 //!   already bound by `attestation_events_hash` and re-emitted by the

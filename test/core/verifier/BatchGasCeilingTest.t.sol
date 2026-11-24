@@ -9,8 +9,8 @@ import {Vm} from "forge-std/Vm.sol";
 
 /// @title Batch gas ceiling anchors — the empirical per-item cost of `settleBatch`
 /// @notice What a batch costs the chain is what it PUBLISHES — the net positions
-///         it transfers, the attestation events it re-emits, the spec bindings it
-///         anchors and the uses it hands the counter — not the number of
+///         it transfers, the attestation events it re-emits and the uses it
+///         hands the counter — not the number of
 ///         operations it proves. The relay bounds a batch by this cost against the
 ///         live block gas limit (`prover/sequencer/src/gas.rs`); the constants
 ///         below are the execution marginals it carries, measured here with the
@@ -26,15 +26,15 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     // Each is a CEILING on the cold execution marginal measured below on
     // this pre-fork EVM (`foundry.toml`, cancun; the default profile, whose
     // figures stand a little above the via-IR profile's): a payout position
-    // 26,335, a deposit position 10,901, an attestation event 3,925, a spec
-    // binding 2,841, a use 132,219 (a key, a seller and a process each new
+    // 26,335, a deposit position 10,901, an attestation event 3,925, a use
+    // 132,219 (a key, a seller and a process each new
     // to the counter), the fixed execution 54,458. The live chain is past Glamsterdam, which reprices
     // state creation (EIP-8037) and refunds (EIP-7778): FigaroCore's
     // resolve measured 29,800 an order on post-fork receipts against 11,960
     // here. So each constant carries an allowance over its measurement —
     // at least twice for the items that write state (the position, the
-    // use, the fixed execution), at least half again for the event and
-    // the registry read. One position
+    // use, the fixed execution), at least half again for the event. One
+    // position
     // constant covers both kinds: a payout to a fresh balance is the dearer,
     // and it assumes a plain ERC-20 — a token whose transfer costs more is
     // the parties' choice, and a batch it over-runs fails at the send.
@@ -59,7 +59,6 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     // The other items create no state, and every receipt sits under its plan.
     uint256 internal constant SETTLE_GAS_PER_POSITION = 120_000;
     uint256 internal constant SETTLE_GAS_PER_ATTESTATION = 6_000;
-    uint256 internal constant SETTLE_GAS_PER_SPEC_BINDING = 4_500;
     uint256 internal constant SETTLE_GAS_PER_USE = 500_000;
     uint256 internal constant SETTLE_FIXED_EXEC_GAS = 105_000;
     /// @dev The operation stream's execution: the calldata copy, the keccak
@@ -144,7 +143,6 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
             address(verifier),
             _hashPositions(positions),
             _hashAttestations(events.attestations),
-            _hashBindings(events.specBindings),
             _hashUsage(usage),
             uint64(block.timestamp),
             keccak256(stream)
@@ -154,7 +152,6 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         vm.cool(address(verifier));
         vm.cool(address(sp1));
         vm.cool(address(token));
-        vm.cool(address(registry));
         vm.cool(address(counter));
         vm.cool(address(members));
         verifier.settleBatch(hex"", pv, positions, events, usage, stream);
@@ -170,9 +167,7 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     }
 
     function _noEvents() internal pure returns (FigaroBatchVerifier.BatchEventData memory) {
-        return FigaroBatchVerifier.BatchEventData(
-            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
-        );
+        return FigaroBatchVerifier.BatchEventData(new FigaroBatchVerifier.AttestationData[](0));
     }
 
     function _payouts(uint256 n, uint256 seed) internal view returns (FigaroBatchVerifier.NetPosition[] memory ps) {
@@ -199,7 +194,6 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         returns (FigaroBatchVerifier.BatchEventData memory ev)
     {
         ev.attestations = new FigaroBatchVerifier.AttestationData[](n);
-        ev.specBindings = new FigaroBatchVerifier.SpecBinding[](0);
         for (uint256 i = 0; i < n; i++) {
             ev.attestations[i] = FigaroBatchVerifier.AttestationData(
                 keccak256(abi.encode("order", seed, i)),
@@ -209,19 +203,6 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
                 0,
                 keccak256(abi.encode("content", seed, i))
             );
-        }
-    }
-
-    /// @dev `n` bindings of `n` DISTINCT registered clauses — each a cold registry read.
-    function _bindings(uint256 n, uint256 seed) internal returns (FigaroBatchVerifier.BatchEventData memory ev) {
-        ev.attestations = new FigaroBatchVerifier.AttestationData[](0);
-        ev.specBindings = new FigaroBatchVerifier.SpecBinding[](n);
-        vm.deal(address(this), n * DEPOSIT);
-        for (uint256 i = 0; i < n; i++) {
-            // The key is keccak256 of the spec's bytes, so a binding carries it twice.
-            bytes32 clauseKey = keccak256(abi.encodePacked("gas-clause-spec-", vm.toString(seed + i)));
-            registry.registerClause{value: DEPOSIT}(clauseKey, "ipfs://gas");
-            ev.specBindings[i] = FigaroBatchVerifier.SpecBinding(clauseKey);
         }
     }
 
@@ -256,7 +237,6 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
             address(verifier),
             _hashPositions(positions),
             _hashAttestations(events.attestations),
-            _hashBindings(events.specBindings),
             _hashUsage(_emptyUsage()),
             uint64(block.timestamp),
             keccak256(stream)
@@ -272,7 +252,6 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         vm.cool(address(verifier));
         vm.cool(address(sp1));
         vm.cool(address(token));
-        vm.cool(address(registry));
         vm.cool(address(counter));
         vm.cool(address(members));
         uint256 before = gasleft();
@@ -526,15 +505,6 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         emit log_named_uint("settle_attestation_marginal", marginal);
         assertGe(marginal, 1_000, "an attestation event dropped unexpectedly (verifier change?)");
         assertLe(marginal, SETTLE_GAS_PER_ATTESTATION, "an attestation event rose past its anchor (re-measure)");
-    }
-
-    function test_Gas_settleSpecBindingMarginal() public {
-        uint256 g20 = _settleExecGas(new FigaroBatchVerifier.NetPosition[](0), _bindings(20, 100), _emptyUsage());
-        uint256 g70 = _settleExecGas(new FigaroBatchVerifier.NetPosition[](0), _bindings(70, 200), _emptyUsage());
-        uint256 marginal = (g70 - g20) / 50;
-        emit log_named_uint("settle_spec_binding_marginal", marginal);
-        assertGe(marginal, 1_000, "a spec binding dropped unexpectedly (verifier change?)");
-        assertLe(marginal, SETTLE_GAS_PER_SPEC_BINDING, "a spec binding rose past its anchor (re-measure)");
     }
 
     function test_Gas_settleUseMarginal() public {

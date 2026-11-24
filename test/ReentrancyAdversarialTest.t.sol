@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 import "src/core/verifier/FigaroBatchVerifier.sol";
-import "src/registries/ClauseRegistry.sol";
 import "src/mocks/MockSP1Verifier.sol";
 import "src/mocks/MockReentrantToken.sol";
 import {UsageCounter} from "src/rewards/UsageCounter.sol";
@@ -161,7 +160,6 @@ contract ReentrancyAdversarialTest is Test {
         // hand-built public values (this suite exercises the reentrancy guard,
         // not the proof — the proof path is covered in FigaroBatchVerifierTest).
         MockSP1Verifier sp1 = new MockSP1Verifier();
-        ClauseRegistry registry = new ClauseRegistry(0);
 
         // A counter is required for construction; this batch credits no usage,
         // so the verifier's call to it is a no-op and only the guard is under
@@ -178,8 +176,7 @@ contract ReentrancyAdversarialTest is Test {
             1,
             periods
         );
-        FigaroBatchVerifier verifier =
-            new FigaroBatchVerifier(address(sp1), bytes32(uint256(1)), address(registry), address(usageCounter));
+        FigaroBatchVerifier verifier = new FigaroBatchVerifier(address(sp1), bytes32(uint256(1)), address(usageCounter));
 
         // One payout position: the verifier pushes 10 tokens to `seller` from
         // its own balance. Fund the verifier and route the push through the
@@ -188,9 +185,8 @@ contract ReentrancyAdversarialTest is Test {
 
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](1);
         positions[0] = FigaroBatchVerifier.NetPosition(address(token), seller, 0, 10 ether);
-        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
-            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
-        );
+        FigaroBatchVerifier.BatchEventData memory events =
+            FigaroBatchVerifier.BatchEventData(new FigaroBatchVerifier.AttestationData[](0));
 
         bytes memory pv = abi.encode(
             verifier.genesisRoot(),
@@ -199,7 +195,6 @@ contract ReentrancyAdversarialTest is Test {
             address(verifier),
             _hashPositions(positions),
             keccak256(""), // empty attestations
-            keccak256(""), // empty spec bindings
             keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0))), // no uses
             uint64(block.timestamp),
             keccak256("") // empty operation stream

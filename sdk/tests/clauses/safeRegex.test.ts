@@ -19,8 +19,7 @@ import { parseClauseSpec, validateContent } from "../../src/clauses/index.js";
  * A clause's `pattern` is untrusted: anyone registers a spec. The SDK matches
  * it with its own automaton, in time linear in the value. A pattern past its
  * size limit does not parse, and a value past the work budget is refused;
- * every other value is run, as the guest does, so the two engines give one
- * verdict.
+ * every other value is run.
  */
 describe("safeRegexTest — linear-time pattern matching", () => {
     it("matches overlapping alternation in linear time (^(a|a)*$ on 40 a's and !)", () => {
@@ -150,7 +149,7 @@ describe("safeRegexTest — linear-time pattern matching", () => {
     });
 });
 
-describe("the expanded size — one measure in both engines", () => {
+describe("the expanded size — the one measure of a pattern", () => {
     it("counts each atom, assertion and `|` one, a group and `*`, `+`, `?` one more, a count its item plus one times the count", () => {
         const cases: [string, number][] = [
             ["a", 1],
@@ -245,8 +244,7 @@ describe("the work budget — a long value is refused, never counted as matching
     });
 
     // The costliest patterns found at the size limit, each on the longest
-    // value the budget lets it run on. The guest's leg is
-    // `prover/clause/tests/conformance.rs`.
+    // value the budget lets it run on.
     it("matches the costliest patterns at the budget's edge in bounded time", () => {
         const patterns = [
             "^(?:(?:(?:(?:a)*)*){64}){9}$",

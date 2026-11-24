@@ -29,8 +29,8 @@ import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
 ///         header, the steps, then every wallet's deposits and payouts and
 ///         every process's final state.
 ///         `prover/lib/tests/fuzz_stream.rs` replays the same stream through
-///         the mirror, one operation per batch — each attestation in the
-///         hash-only form, the coordinator's own arguments — and must accept
+///         the mirror, one operation per batch — each attestation carrying
+///         the coordinator's own arguments — and must accept
 ///         what the contracts accepted, reject what they rejected with the
 ///         same error, emit the coordinator's log bytes, and arrive at the
 ///         same figures. `scripts/test-cross-impl-fuzz.sh` runs
@@ -911,9 +911,9 @@ contract KernelDifferentialFuzzTest is Test {
 ///      asked about every `0x04` entry and the attesting party's code about
 ///      every `0x05` entry) and 6 (`publish` true, the Core's events), and the
 ///      `ResolveProcess` and attestation digests under this verifier's domain.
-///      The registry and counter are never reached by the walk.
+///      The counter is never reached by the walk.
 contract StreamReader is FigaroBatchVerifier {
-    constructor(address sp1, address counter) FigaroBatchVerifier(sp1, bytes32(uint256(1)), address(1), counter) {}
+    constructor(address sp1, address counter) FigaroBatchVerifier(sp1, bytes32(uint256(1)), counter) {}
 
     function walk(bytes calldata s, bool publish) external {
         _walkOperations(s, publish);

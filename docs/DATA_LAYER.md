@@ -60,16 +60,15 @@ discloses the raw capture to a forum, which recomputes every fingerprint from
 it. The capture's kind and time, its geohash cell and accuracy, and the
 types of its NDEF records stay public, and two orders that share them can be
 linked by them. Where the rule caps a public field's precision, the clause
-engines hold the cap, never one frontend's taste and never the spec: the SDK's
-`validateContent` (`sdk/src/clauses/validate.ts`, with the caps in
-`sdk/src/clauses/grain.ts`) and the guest's engine (`prover/clause/src/grain.rs`)
-each carry one table of caps, keyed by the field's disposition and its
-standard. The spec declares no cap. It declares the standard and the
+validator holds the cap, never one frontend's taste and never the spec: the
+SDK's `validateContent` (`sdk/src/clauses/validate.ts`, with the caps in
+`sdk/src/clauses/grain.ts`) carries one table of caps, keyed by the field's
+disposition and its standard. The spec declares no cap. It declares the standard and the
 disposition, and a structural ceiling (`maxLength`): the field's `disposition`
 (absent reads as public), and its format, static (`format`) or named by a
 sibling (the value of the field `formatFromField` names, as the
 `figaro-geolocation` spec in `clauses/` names its `geocodeStandard`). When that
-format is one of the four standards in the engines' table, each engine refuses
+format is one of the four standards in the table, the validator refuses
 a value finer than its disposition's cap, and a value that is no code of the
 standard. The public caps are neighborhood grade: a geohash of 6 characters, an
 H3 cell of resolution 8, an S2 cell of level 13, an Open Location Code of
@@ -89,12 +88,9 @@ The sign gate (`assertAgreementSignable`) runs that validation, so a party whose
 tool uses the SDK refuses to sign a finer value. The limit of the rule: the
 chain holds a fingerprint, so two parties whose tools skip this validation can
 commit a finer value, and every reader of the SDK then shows it as it is,
-because no read path of committed content validates it. The batch path's
-engine (`prover/clause`) applies the same cap to the content of an attestation
-sent in the plaintext form, so a proof of one attests its grain to the party
-that submitted that form; a reader of the chain cannot tell which form an
-attestation took (`docs/DESIGN_DECISIONS.md` § 26). A commit and a hash-only attestation carry a
-fingerprint, which no engine reads.
+because no read path of committed content validates it. A commit and an
+attestation carry a fingerprint on both paths, and neither the chain nor the
+proof program reads the content behind it (`docs/DESIGN_DECISIONS.md` § 26).
 
 ## The fields the chain's events carry, and who reads them
 
@@ -133,7 +129,7 @@ loses, moves or retypes a field and this table does not move with it.
 | `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 3 | `buyerPayout` | `uint256` | The same readers (`sdk/src/state.ts:201`, `frontend/lib/data/audit/processTimeline.ts:281`) | The exact amount |
 | `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 0 | `processId` | `bytes32 indexed` | Any reader marks the process resolved (`sdk/src/state.ts:205`); a party waits on it after a batched resolution (`sdk/src/relay/index.ts:149`) | A fingerprint |
 | `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 1 | `buyer` | `address indexed` | no reader found: decoded (`sdk/src/events.ts:90`) and never read. It answers a stranger's question: which processes did this wallet close as buyer? A filter on the indexed topic finds them without reading any order (`src/core/kernel/FigaroCore.sol:291`) | The wallet's address, repeated from `OrderCommitted` |
-| `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 2 | `orderCount` | `uint256` | no reader found: decoded (`sdk/src/events.ts:91`) and never read. It answers a stranger's question: how many orders did this one call pay? A reader checks it against the `OrderResolved` events it holds (`src/core/kernel/FigaroCore.sol:291`, `src/core/verifier/FigaroBatchVerifier.sol:825`) | A count |
+| `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 2 | `orderCount` | `uint256` | no reader found: decoded (`sdk/src/events.ts:91`) and never read. It answers a stranger's question: how many orders did this one call pay? A reader checks it against the `OrderResolved` events it holds (`src/core/kernel/FigaroCore.sol:291`, `src/core/verifier/FigaroBatchVerifier.sol:756`) | A count |
 | `FigaroCore`, `FigaroBatchVerifier` | `EIP712DomainChanged` | — | — | — | no reader found: OpenZeppelin's `EIP712` declares the event and nothing in `src/` emits it. It answers the question ERC-5267 asks: did the signing domain change? The domain is fixed at construction, so the answer is never (`src/core/kernel/FigaroCore.sol:27`) | No field |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 0 | `orderHash` | `bytes32 indexed` | Any reader groups attestations by order (`sdk/src/derive/attestation.ts:41`) | A fingerprint |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 1 | `processId` | `bytes32 indexed` | Any reader: attestations by process (`sdk/src/derive/attestation.ts:31`); the data explorer attributes a process to its assembly (`frontend/lib/data/graphCorpus.ts:247`) | A fingerprint |
@@ -149,7 +145,7 @@ loses, moves or retypes a field and this table does not move with it.
 | `FigaroBatchVerifier` | `BatchSettled` | 0 | `batchId` | `uint64 indexed` | A party waiting on its batched resolution (`sdk/src/relay/index.ts:167`); a rebuilding relay (`prover/sequencer/src/rebuild.rs:91`) | A counter |
 | `FigaroBatchVerifier` | `BatchSettled` | 1 | `prevStateRoot` | `bytes32 indexed` | A rebuilding relay checks the chain of roots (`prover/sequencer/src/rebuild.rs:94`) | A fingerprint: a state root |
 | `FigaroBatchVerifier` | `BatchSettled` | 2 | `newStateRoot` | `bytes32 indexed` | The same relay (`prover/sequencer/src/rebuild.rs:110`) | A fingerprint: a state root |
-| `FigaroBatchVerifier` | `BatchSettled` | 3 | `positionCount` | `uint256` | no reader found. It answers a stranger's question: how many net token positions did this batch move, each with at most one transfer? (`src/core/verifier/FigaroBatchVerifier.sol:527`) | A count |
+| `FigaroBatchVerifier` | `BatchSettled` | 3 | `positionCount` | `uint256` | no reader found. It answers a stranger's question: how many net token positions did this batch move, each with at most one transfer? (`src/core/verifier/FigaroBatchVerifier.sol:490`) | A count |
 | `FigaroBatchVerifier` | `BatchAccrualSkipped` | 0 | `batchId` | `uint64 indexed` | A party finding the uses a batch left uncounted, to send them again, reads the claims and uses from the `BatchOperations` log of the same transaction and batch id, on every call route (`fetchSkippedBatchUses`, `sdk/src/rpgf/index.ts:447`); the Sepolia monitor (`scripts/monitor-sepolia.mjs:145`) | A counter |
 | `FigaroBatchVerifier` | `BatchAccrualSkipped` | 1 | `reason` | `bytes` | The same reader passes it on unread (`sdk/src/rpgf/index.ts:434`); the Sepolia monitor reports it (`scripts/monitor-sepolia.mjs:149`) | The counter's revert data |
 | `UsageCounter` | `UsageRecorded` | 0 | `kind` | `uint8` | A designer's reward accrual keys each use by kind and key (`sdk/src/rpgf/index.ts:207`) | A small number |
@@ -329,9 +325,7 @@ Four limits, stated plainly:
 
 What the blinding value does not hide: that a clause, a private stage and a
 field set were used; the spec's structure, since the spec is public; who
-traded, when, and the clause key and stage of every attestation; and, on the
-batch path's plaintext form, the content and its blinding value from the relay
-and the proving network the attesting party chose to show it to.
+traded, when, and the clause key and stage of every attestation.
 
 The voluntary data market around that capacity is Core-native and needs no
 contract of its own: data products are catalog items; the disclosure regime for

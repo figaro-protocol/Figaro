@@ -46,7 +46,7 @@ async fn main() {
     println!("Verifying contract:  {:?}", pv.verifying_contract);
     println!("Token ops hash:      {:?}", pv.token_ops_hash);
     println!("Attestation hash:    {:?}", pv.attestation_events_hash);
-    println!("Spec bindings hash:  {:?}", pv.spec_bindings_hash);
+    println!("Usage accrual hash:  {:?}", pv.usage_accrual_hash);
 
     assert_ne!(pv.prev_state_root, pv.new_state_root, "state should change");
     assert_eq!(pv.chain_id, CHAIN_ID);
@@ -91,8 +91,8 @@ async fn main() {
         let pv =
             PublicValues::abi_decode(proof.public_values.as_slice()).expect("decode public values");
         println!(
-            "Proof public values — new_state_root: {:?}, spec_bindings_hash: {:?}",
-            pv.new_state_root, pv.spec_bindings_hash,
+            "Proof public values — new_state_root: {:?}, operations_hash: {:?}",
+            pv.new_state_root, pv.operations_hash,
         );
 
         println!("Verifying proof...");

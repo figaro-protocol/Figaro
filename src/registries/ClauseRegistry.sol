@@ -40,9 +40,10 @@ pragma solidity 0.8.26;
 ///
 ///         Clauses anchor the off-chain vocabulary used by checkoutHash
 ///         pre-images, AttestationCoordinator attestations, and mechanism
-///         modules: an agreement's leaf carries the clause key, and the batch
-///         verifier accepts an in-proof clause validation only for a key
-///         registered here.
+///         modules: an agreement's leaf carries the clause key. Neither
+///         path of the Core reads this registry; a registration is what a
+///         reader discovers a clause by, and what the designer's reward
+///         requires of a counted use.
 ///
 ///         Registration is permissionless and first-write-wins on the key —
 ///         anyone can register a clause, and the first registrant of a key is
@@ -72,9 +73,8 @@ contract ClauseRegistry {
 
     /// @notice Dedup guard — true if this clause key has been registered.
     ///         Never cleared: the binding is permanent even after the
-    ///         deposit is withdrawn. The batch verifier reads it to accept
-    ///         an in-proof clause validation: the key IS the spec hash, so a
-    ///         registered key anchors at most one document.
+    ///         deposit is withdrawn. The key IS the spec hash, so a
+    ///         registered key names at most one document.
     mapping(bytes32 => bool) public registered;
 
     /// @dev Stake accounting per clause key. `registeredBy` is the designer of record

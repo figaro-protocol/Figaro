@@ -83,8 +83,7 @@ function protocolHalf(spec: unknown): unknown {
  * (`canonicalize`) of the spec without its top-level `block`. They cover
  * `clauseId`, `version`, `title`, `description`, `fields`, `stages` and every
  * other top-level attribute; `block` is presentation, which any frontend may
- * replace. These are the bytes a plaintext attestation's witness carries as
- * `spec_json`, which the proof program hashes to the clause key.
+ * replace. A reader that fetched a spec recomputes its key from these bytes.
  */
 export function clauseKeyPreimage(spec: unknown): string {
     return canonicalize(protocolHalf(spec));

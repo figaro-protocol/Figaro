@@ -19,7 +19,7 @@ pub struct ProveResult {
     /// Raw public values bytes (ABI-encoded for on-chain submission).
     pub public_values_bytes: Vec<u8>,
     /// The batch's operation stream, the bytes `settleBatch` publishes and
-    /// hashes against public value 9 (`figaro_kernel::operation_stream`).
+    /// hashes against public value 8 (`figaro_kernel::operation_stream`).
     pub operations_bytes: Vec<u8>,
     /// Post-batch mirror state for advancing the state mirror.
     pub post_state: KernelState,
@@ -37,9 +37,8 @@ pub struct ProveResult {
 /// requests a proof pays for it (the relay operator) — never the protocol,
 /// never its users. The inputs it submits are the batch's operations, its
 /// usage claims and the witness of the state entries it touches (never the
-/// whole state), so the spec, content and clauseData of an attestation sent
-/// in the plaintext form reach the network's provers; a hash-only
-/// attestation carries its fingerprints alone. The proof FORM is `SP1_PROOF_MODE`:
+/// whole state); an attestation carries its fingerprints alone, so no
+/// party's content reaches the network's provers. The proof FORM is `SP1_PROOF_MODE`:
 /// `groth16` (default) or `plonk` — it must match the SP1 verifier gateway
 /// `FigaroBatchVerifier` was deployed against (Succinct runs one gateway per
 /// form; a proof of the other form is `RouteNotFound` on-chain).

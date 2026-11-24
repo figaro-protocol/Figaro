@@ -182,9 +182,6 @@ contract Deploy is Script {
         // `SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test --release`
         // (DeployMainnet.s.sol). The genesis root is the contract's own
         // (`genesisRoot()`, zero: the guest's state tree over no entries).
-        // ClauseRegistry is the witness-spec anchor:
-        // the clause key IS the spec hash, so settleBatch requires each
-        // proof's binding to carry one word twice and the key registered.
         // Note: FigaroBatchVerifier is NOT a florin minter and never will be.
         _deployUsageAndVerifier(address(_core), address(_members), deployer);
 
@@ -281,7 +278,6 @@ contract Deploy is Script {
     ///      verifier can write to, which would look healthy right up until the
     ///      first batch resolved.
     function _deployUsageAndVerifier(address core, address members, address deployer) internal {
-        address clauseRegistry = address(_clauses);
         MockSP1Verifier mockSp1 = new MockSP1Verifier();
         console.log("MockSP1Verifier deployed at:", address(mockSp1));
 
@@ -300,7 +296,6 @@ contract Deploy is Script {
         FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
             address(mockSp1),
             vm.envOr("SP1_PROGRAM_VKEY", keccak256(abi.encodePacked("figaro-kernel-dev"))),
-            clauseRegistry,
             _usageCounter
         );
         _batchVerifier = address(batchVerifier);

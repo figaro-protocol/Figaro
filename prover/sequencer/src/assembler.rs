@@ -187,13 +187,7 @@ pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bo
         | KernelError::NotProcessBuyer
         | KernelError::TokenMismatch
         | KernelError::NotAuthorized
-        | KernelError::InvalidInclusionProof
-        | KernelError::ClauseSpecParseFailed(_)
-        | KernelError::SpecIdentityMismatch(_)
-        | KernelError::ClauseContentInvalid(_)
-        | KernelError::ContentEncodingFailed(_)
-        | KernelError::ContentHashMismatch
-        | KernelError::ProvenanceLeafNotCanonical => true,
+        | KernelError::InvalidInclusionProof => true,
         KernelError::UnknownProcess | KernelError::UnknownOrder => false,
         // A usage claim's refusals; an operation never meets them.
         KernelError::UsageOrderNotResolved(_)

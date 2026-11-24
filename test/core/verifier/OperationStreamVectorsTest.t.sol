@@ -7,7 +7,6 @@ import "src/core/kernel/CommitmentTypes.sol";
 import "src/mocks/MockSP1Verifier.sol";
 import "src/mocks/MockERC20.sol";
 import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
-import "src/registries/ClauseRegistry.sol";
 import {MembersRegistry} from "src/registries/MembersRegistry.sol";
 import "src/rewards/UsageCounter.sol";
 import "src/core/kernel/FigaroCore.sol";
@@ -31,7 +30,6 @@ contract OperationStreamVectorsTest is Test {
 
     FigaroBatchVerifier verifier;
     MockSP1Verifier sp1;
-    ClauseRegistry registry;
     UsageCounter counter;
     MembersRegistry members;
     FigaroCore core;
@@ -44,7 +42,6 @@ contract OperationStreamVectorsTest is Test {
 
     function setUp() public {
         sp1 = new MockSP1Verifier();
-        registry = new ClauseRegistry(0.001 ether);
         core = new FigaroCore();
         members = new MembersRegistry(0, 0);
         uint64[] memory periods = new uint64[](1);
@@ -61,7 +58,7 @@ contract OperationStreamVectorsTest is Test {
             1,
             periods
         );
-        verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(counter));
+        verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(counter));
         vm.warp(PERIOD_END - 1000);
         token = new MockERC20("Mock", "MOCK");
     }
@@ -114,9 +111,8 @@ contract OperationStreamVectorsTest is Test {
         bytes32 prev = verifier.stateRoot();
         nextRoot = keccak256(abi.encode(nextRoot));
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
-        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
-            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
-        );
+        FigaroBatchVerifier.BatchEventData memory events =
+            FigaroBatchVerifier.BatchEventData(new FigaroBatchVerifier.AttestationData[](0));
         FigaroBatchVerifier.BatchUsageData memory usage;
         usage.uses = new IUsageCounter.BatchUse[](0);
         bytes memory pv = abi.encode(
@@ -124,7 +120,6 @@ contract OperationStreamVectorsTest is Test {
             nextRoot,
             uint64(block.chainid),
             address(verifier),
-            keccak256(""),
             keccak256(""),
             keccak256(""),
             keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0))),
@@ -354,9 +349,8 @@ contract OperationStreamVectorsTest is Test {
 
     function _settleCalldata(bytes32 prev, bytes32 next, bytes memory stream) internal view returns (bytes memory) {
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
-        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
-            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
-        );
+        FigaroBatchVerifier.BatchEventData memory events =
+            FigaroBatchVerifier.BatchEventData(new FigaroBatchVerifier.AttestationData[](0));
         FigaroBatchVerifier.BatchUsageData memory usage;
         usage.uses = new IUsageCounter.BatchUse[](0);
         bytes memory pv = abi.encode(
@@ -364,7 +358,6 @@ contract OperationStreamVectorsTest is Test {
             next,
             uint64(block.chainid),
             address(verifier),
-            keccak256(""),
             keccak256(""),
             keccak256(""),
             keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0))),
@@ -380,9 +373,8 @@ contract OperationStreamVectorsTest is Test {
         bytes memory other = bytes.concat(stream, hex"00");
         bytes32 prev = verifier.stateRoot();
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
-        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
-            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
-        );
+        FigaroBatchVerifier.BatchEventData memory events =
+            FigaroBatchVerifier.BatchEventData(new FigaroBatchVerifier.AttestationData[](0));
         FigaroBatchVerifier.BatchUsageData memory usage;
         usage.uses = new IUsageCounter.BatchUse[](0);
         bytes memory pv = abi.encode(
@@ -390,7 +382,6 @@ contract OperationStreamVectorsTest is Test {
             keccak256("next"),
             uint64(block.chainid),
             address(verifier),
-            keccak256(""),
             keccak256(""),
             keccak256(""),
             keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0))),
@@ -666,7 +657,7 @@ contract OperationStreamVectorsTest is Test {
     function test_aVerifierWithoutACircuitHashIsRefused() public {
         // The gateway's shape: a contract with code but no VERIFIER_HASH().
         vm.expectRevert(FigaroBatchVerifier.VerifierNotPinned.selector);
-        new FigaroBatchVerifier(address(token), VKEY, address(registry), address(counter));
+        new FigaroBatchVerifier(address(token), VKEY, address(counter));
     }
 }
 

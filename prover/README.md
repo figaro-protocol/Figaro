@@ -1,18 +1,17 @@
 # `prover/` — the SP1 batch-resolution proof apparatus
 
-A Rust Cargo workspace of five crates that together let anyone prove and
+A Rust Cargo workspace of four crates that together let anyone prove and
 resolve a batch of Figaro commitments against `FigaroBatchVerifier`, without
 touching `FigaroCore` per-order. Architecture, trust model, and what the
 sequencer is/isn't trusted for → `docs/SCALING_STRATEGY.md`. This file is
 just: what the crates are, how to build the toolchain, and how to run the
 tests.
 
-## The five crates
+## The four crates
 
 | Crate (dir) | Package name | What it is |
 |---|---|---|
-| `clause/` | `figaro-clause` | Generic clause-validation engine — the Rust mirror of `@figaro-protocol/sdk/clauses` (the TS off-chain reference). Validates any clause spec supplied as witness input; used by both the guest program and the sequencer. No per-clause code, by design. |
-| `lib/` | `figaro-kernel` | The off-chain mirror of `FigaroCore`'s commit/resolve logic plus the witness gates (spec-identity substitution, content-hash mismatch, inclusion failure, attest-after-resolve) and the RPGF usage bridge. Depends on `figaro-clause` for Layer B content validation. |
+| `lib/` | `figaro-kernel` | The off-chain mirror of `FigaroCore`'s commit/resolve logic, the `AttestationCoordinator`'s gates (the inclusion proof against the target order's signed `checkoutHash`, no attestation after resolution) and the usage claims `UsageCounter` counts for the designer rewards. It reads no clause, no spec and no content: an attestation carries the fingerprints the chain sees on the direct path (`src/types.rs`, `AttestationWitness`). |
 | `program/` | `figaro-prover` | The SP1 guest program — `figaro-kernel` compiled to the RISC-V zkVM target. Its compiled ELF's hash IS the verification key `FigaroBatchVerifier` pins as `programVKey`, so this crate's toolchain determines whether a proof verifies at all. |
 | `script/` | `figaro-prove-test` | Host-side proving harness (binary `prove`): SP1 mock-executor guest tests, in-VM gate-rejection tests, and (`SP1_REAL_PROOF=1`) a real local SP1 Core proof of the canonical batch. |
 | `sequencer/` | `figaro-sequencer` | The public relay binary (`sequencer`) — mempool, batch assembler, prover driver, submitter, and the read routes (`/health`, `/status`, `/state`). One relay among any number; `docs/SCALING_STRATEGY.md` + `sequencer/README.md` own the trust model. |
@@ -44,7 +43,7 @@ tests.
 ```bash
 cd prover
 cargo fetch          # pull crates.io deps (CONTRIBUTING.md quickstart)
-cargo test           # all five crates, one suite — see docs/TESTING.md "Rust" for the inventory
+cargo test           # all four crates, one suite — see docs/TESTING.md "Rust" for the inventory
 ```
 
 `cargo test -p figaro-sequencer` (etc.) scopes to a single crate.

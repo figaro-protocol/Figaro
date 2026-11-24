@@ -525,22 +525,20 @@ export const RPGF_MINTER_ABI = parseAbi([
 
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────
 // The batch-resolution verifier (proof-based scaling). settleBatch carries the
-// proof, the ten-word public values, net positions, the event data — the
-// attestations to re-emit plus the spec bindings — each a clause key, which IS
-// the hash of the spec the proof read, so the contract requires the key
-// registered on ClauseRegistry before resolving — and the RPGF usage accrual,
+// proof, the nine-word public values, net positions, the event data — the
+// attestations to re-emit — and the RPGF usage accrual,
 // each entry naming its kind (clause 0, assembly 1, agreement 2), which it forwards to
 // UsageCounter. A batch that
 // credits no usage passes empty arrays; that call is a no-op, which is what
 // lets trade keep resolving after the reward's last period closes. Last, the
 // batch's operation stream: every commit and resolve it applied, whole, and
 // every usage claim, in the guest's canonical bytes, hash-bound to public value
-// 9 — published with the settle so the state behind the root can be rebuilt
+// 8 — published with the settle so the state behind the root can be rebuilt
 // from the chain alone.
 
 export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch resolution ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId)[] specBindings) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrProcess, uint8 kind, bytes32 processId, address seller)[] uses) usage, bytes operations) external",
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrProcess, uint8 kind, bytes32 processId, address seller)[] uses) usage, bytes operations) external",
 
     // ── The Core's own order and process events, emitted from the stream ──
     // Filter on the verifier's address beside FigaroCore's: the same events,
@@ -560,7 +558,6 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     "function batchCount() view returns (uint64)",
     "function verifier() view returns (address)",
     "function programVKey() view returns (bytes32)",
-    "function clauseRegistry() view returns (address)",
     "function usageCounter() view returns (address)",
 
     // ── Events (Attestation shares its topic with the coordinator's —
@@ -582,9 +579,7 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     "error VerifyingContractMismatch(address expected, address actual)",
     "error PositionHashMismatch()",
     "error AttestationHashMismatch()",
-    "error SpecBindingsHashMismatch()",
     "error UsageAccrualHashMismatch()",
-    "error ClauseNotRegistered(bytes32 clauseId)",
     "error FeeOnTransferDetected()",
     // A resolve in the wallet-code form: the buyer's account has no code, or
     // its `isValidSignature` did not answer with the ERC-1271 magic value.
@@ -611,7 +606,6 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     "error ZeroVerifier()",
     "error VerifierNotContract()",
     "error VerifierNotPinned()",
-    "error ZeroClauseRegistry()",
     "error ZeroUsageCounter()",
     "error UsageCounterNotBoundToThis()",
     // OpenZeppelin library errors the verifier compiles: SafeERC20 on every

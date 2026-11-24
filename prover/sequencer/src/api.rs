@@ -4,7 +4,7 @@
 /// no privilege: it only relays signed submissions into the mempool, where
 /// admission runs the same EIP-712 recovery and witness gates the proof
 /// enforces. Every failure is a structured
-/// `{ "error": … }` JSON body — never a panic, never a plaintext rejection.
+/// `{ "error": … }` JSON body — never a panic, never a bare-text rejection.
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::{Arc, Mutex};
@@ -244,10 +244,10 @@ pub async fn record_dropped(
 /// HTTP-boundary limits.
 #[derive(Clone, Copy, Debug)]
 pub struct ApiConfig {
-    /// Per-request body cap in bytes. A plaintext attestation witness
-    /// (spec JSON + content + agreement clauses + inclusion proof) is tens
-    /// of KB, a hash-only one a few hundred bytes; 1 MiB is generous
-    /// headroom without inviting memory abuse.
+    /// Per-request body cap in bytes. An attestation carries fingerprints
+    /// and an inclusion proof, a few hundred bytes; the largest body is a
+    /// resolve naming every order of its process. 1 MiB is generous headroom
+    /// without inviting memory abuse.
     pub max_body_bytes: usize,
     /// A request that has not completed by then is answered `408`.
     pub request_timeout: Duration,
@@ -508,9 +508,10 @@ pub fn router(state: AppState, config: ApiConfig) -> Router {
 fn payload_error(route: &'static str, rej: JsonRejection) -> Response {
     let status = rej.status();
     let error = rej.body_text();
-    // serde's reason quotes the value it could not read, and a body may be a
-    // plaintext attestation: the log carries the status alone, the reason
-    // goes to the sender.
+    // serde's reason quotes the value it could not read, and a body is the
+    // sender's to choose: a client may post its content here though no
+    // operation takes any. The log carries the status alone, the reason goes
+    // to the sender.
     warn!(route, %status, "payload rejected");
     (status, Json(ErrorResponse { error })).into_response()
 }
@@ -521,17 +522,9 @@ fn submit_error(route: &'static str, kind: &'static str, e: SubmitError) -> Resp
         SubmitError::Invalid(_) => StatusCode::BAD_REQUEST,
     };
     let error = e.to_string();
-    // An attestation's refusal can quote its content (a value outside a
-    // spec's bounds), so the relay logs the refusal without its reason; the
-    // reason goes to the sender alone, whose content it is.
-    if matches!(
-        kind,
-        "AttestAsSeller" | "AttestAsBuyer" | "AttestByWalletCode"
-    ) {
-        warn!(route, kind, %status, "submission rejected");
-    } else {
-        warn!(route, kind, %status, %error, "submission rejected");
-    }
+    // No operation carries a party's content, so a refusal's reason names
+    // fingerprints and addresses alone.
+    warn!(route, kind, %status, %error, "submission rejected");
     (status, Json(ErrorResponse { error })).into_response()
 }
 

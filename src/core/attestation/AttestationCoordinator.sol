@@ -146,7 +146,8 @@ contract AttestationCoordinator {
     ///      agreement. The chain binds the attestation to the signed agreement
     ///      (merkle inclusion) and, separately, to its content (the caller's
     ///      `contentRef`, emitted verbatim); it does not validate content shape —
-    ///      that is an off-chain SDK / read-time concern. The leaf is built from
+    ///      that is a check a signer's tool makes before signing and a reader makes
+    ///      on a disclosed content. The leaf is built from
     ///      the caller-supplied `clauseDataHash` (`keccak256(clauseData)`), never a
     ///      preimage, so a `private` clause's plaintext never touches calldata; a
     ///      wrong hash simply fails to open, so this is exactly as sound as taking

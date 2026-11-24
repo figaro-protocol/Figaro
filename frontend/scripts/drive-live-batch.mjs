@@ -18,8 +18,9 @@
  * approvals, and, for the wallet-code forms only, the delegation and digest
  * approvals described below):
  *   1. Preflight — chain id vs record, relay mirror vs on-chain state root,
- *      canonical spec bytes vs the ClauseRegistry anchor, the seller's member
- *      stake, balances — name every gap and stop before spending.
+ *      the clause's live ClauseRegistry registration (the usage claim counts
+ *      only a registered clause), the seller's member stake, balances — name
+ *      every gap and stop before spending.
  *   2. Approve bonds to FigaroBatchVerifier (buyer 2×payment, seller
  *      2×runningTotal).
  *   3. Submit the Commit and each selected attestation form (EIP-712 over the
@@ -37,17 +38,13 @@
  *      the verifier's BatchSettled / BatchOperations logs.
  *
  * The forms, and how each is checked on chain:
- *   - Hash-only attestation (the default form; ATTEST_HASH_ONLY): the seller
- *     signs AttestSeller and the relay receives the clauseDataHash and the
- *     inclusion proof alone. Check: one verifier-emitted Attestation for the
- *     order with the seller as attester and this form's contentRef.
- *   - Plaintext attestation (the attesting party's explicit choice,
- *     `checkContentInProof`; ATTEST_PLAINTEXT): the spec, content and
- *     clauseData go to the relay and are validated inside the proof. Same
- *     check, under its own contentRef.
- *     Each hash-only form fingerprints its own small attested document, so
- *     every form's event is told apart by its contentRef; the plaintext
- *     form's contentRef is the spec-encoded content, which the proof checks.
+ *   - Signed attestation (ATTEST_SIGNED): the seller signs AttestSeller and
+ *     the relay receives the clauseDataHash and the inclusion proof, as
+ *     AttestationCoordinator takes them on the direct path. Check: one
+ *     verifier-emitted Attestation for the order with the seller as attester
+ *     and this form's contentRef.
+ *     Each attestation form fingerprints its own small attested document, so
+ *     every form's event is told apart by its contentRef.
  *   - Wallet-code attestation (ATTEST_BY_WALLET_CODE = seller | buyer |
  *     both): the party's EOA carries code installed by an EIP-7702
  *     delegation; the code is told to validate exactly the role's attestation
@@ -131,9 +128,9 @@
  *                           assemblies with, ../../deployments/<chainId>.expected.json
  *                           § registrations.assemblyToken)
  *   PAYMENT               — payment in the token's base units (default 1000000)
- *   WITNESS_CLAUSE        — the file in clauses/ the witness attestation's
- *                           spec is read from (default figaro-modalities);
- *                           its key is the hash of its canonical bytes
+ *   WITNESS_CLAUSE        — the file in clauses/ the order's one clause is
+ *                           read from (default figaro-modalities); its key is
+ *                           the hash of its canonical bytes
  *   BATCH_WAIT_TIMEOUT_MS — per-wait timeout (default 7200000 — a local CPU
  *                           Groth16 proof takes minutes to tens of minutes)
  *   RECORDS_DIR           — where the signed records persist (default
@@ -143,8 +140,7 @@
  *                           signed, every signature and authorization, and the
  *                           domain, enough to re-verify or re-publish.
  *  The forms (1 = on):
- *   ATTEST_HASH_ONLY          — seller signed attestation, hash-only (default 1)
- *   ATTEST_PLAINTEXT          — seller signed attestation, plaintext (default 1)
+ *   ATTEST_SIGNED             — the seller's signed attestation (default 1)
  *   ATTEST_BY_WALLET_CODE     — seller | buyer | both | 1 (= seller); default off
  *   RESOLVE_BY_WALLET_CODE    — resolve by the buyer's wallet code (default 0:
  *                               the buyer's signature)
@@ -172,7 +168,7 @@ import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {
     createPublicClient, createWalletClient, defineChain, http,
-    keccak256, hashTypedData, toHex, stringToHex, parseAbi, encodeFunctionData,
+    keccak256, hashTypedData, stringToHex, parseAbi, encodeFunctionData,
     zeroAddress, maxUint256, parseAbiItem,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -180,10 +176,10 @@ import {
     BATCH_VERIFIER_ABI, CLAUSE_REGISTRY_ABI, ERC20_ABI,
     MEMBERS_REGISTRY_ABI, USAGE_COUNTER_ABI,
     buildCommitment, buildDomain, calculateBonds, computeOrderHash,
-    computeCheckoutHash, computeClauseKey, clauseKeyPreimage, canonicalize, hashResolveProcess,
+    computeCheckoutHash, computeClauseKey, canonicalize, hashResolveProcess,
     fetchUsageClaimContext, buildUsageClaims, USAGE_KIND_CLAUSE,
 } from '@figaro-protocol/sdk';
-import { parseClauseSpec, encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
+import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 import { SequencerClient } from '@figaro-protocol/sdk/agent';
 import { proveAndSettle } from '@figaro-protocol/sdk/relay';
 import { execSync } from 'node:child_process';
@@ -217,8 +213,7 @@ const BATCH_WAIT_TIMEOUT_MS = Number(process.env.BATCH_WAIT_TIMEOUT_MS ?? 7_200_
 
 const ALL = flag('BATCH_ALL_FORMS', '0');
 const FORMS = {
-    hashOnly: ALL || flag('ATTEST_HASH_ONLY', '1'),
-    plaintext: ALL || flag('ATTEST_PLAINTEXT', '1'),
+    signed: ALL || flag('ATTEST_SIGNED', '1'),
     walletCodeAttest: (() => {
         const v = ALL ? 'both' : (process.env.ATTEST_BY_WALLET_CODE ?? '');
         if (v === '' || v === '0') return [];
@@ -281,14 +276,10 @@ const isAnvil = await publicClient.request({ method: 'anvil_nodeInfo' }).then(()
 const verifier = record.batchVerifier;
 const bonds = calculateBonds(PAYMENT, PAYMENT);
 
-// ── The witness clause: the bytes its clause key hashes ─────────────────────
-// The clause key IS keccak over the canonical serialization of the spec
-// without its top-level `block` (`clauseKeyPreimage`), so the witness proof
-// carries that same string for the guest's hash to meet the key.
+// ── The order's clause ──────────────────────────────────────────────────────
 
 const specObject = JSON.parse(fs.readFileSync(
     path.resolve(__dirname, `../../clauses/${WITNESS_CLAUSE}.json`), 'utf-8'));
-const specJson = clauseKeyPreimage(specObject);
 const parseResult = parseClauseSpec(specObject);
 if (!parseResult.ok) {
     console.error(`spec parse failed: ${JSON.stringify(parseResult.errors)}`);
@@ -310,21 +301,9 @@ const agreement = {
 };
 const checkoutHash = computeCheckoutHash(agreement);
 
-// The plaintext form, the attesting party's choice: the content is validated
-// inside the proof, and the relay receives it (and the proving network, when
-// the relay proves there). Its contentRef is the spec-encoded content, which
-// the proof checks.
-const witnessContent = {
-    spec_json: specJson,
-    content_json: clauseData,
-    clause_data: clauseData,
-    content_kind: 'RuntimeWitness',
-};
-const plaintextContentRef = keccak256(encodeContentFromSpec(spec, clauseObject, { stage: 0 }));
-
-// A hash-only attestation's contentRef is the fingerprint of the document the
-// attester keeps off chain. Each hash-only form here attests its own small
-// document, so each form's Attestation is told apart by its contentRef.
+// An attestation's contentRef is the fingerprint of the document the
+// attester keeps off chain. Each form here attests its own small document,
+// so each form's Attestation is told apart by its contentRef.
 const runTag = `0x${randomBytes(8).toString('hex')}`;
 function attestedDocument(form) {
     const doc = canonicalize({ form, modality: clauseObject.modality, run: runTag });
@@ -380,9 +359,6 @@ const [stateRoot, batchCount, clauseRegistered, deposit, sellerRegistered,
     read(TOKEN, ERC20_ABI, 'symbol'),
 ]);
 
-if (keccak256(toHex(specJson)) !== clauseKey) {
-    gaps.push(`witness spec bytes do not hash to the clause key ${clauseKey}`);
-}
 if (!clauseRegistered) {
     gaps.push(`${WITNESS_CLAUSE} (key ${clauseKey}) is not registered — the local spec differs from every registered one, or it was never seeded`);
 }
@@ -432,12 +408,12 @@ console.log(`record:            ${RECORD_PATH}`);
 console.log(`verifier:          ${verifier}`);
 console.log(`state root:        ${stateRoot}  (batchCount ${batchCount})`);
 console.log(`sequencer:         ${SEQUENCER_URL}  (mirror ${status.state_root}, resolved ${status.batches_settled}, pending ${status.pending_ops}, pending claims ${status.pending_usage_claims})`);
-console.log(`witness clause:    ${spec.clauseId} v${spec.version}  key ${clauseKey}`);
+console.log(`clause:            ${spec.clauseId} v${spec.version}  key ${clauseKey}`);
 console.log(`buyer:             ${buyerAccount.address}  ${fmt(buyerToken)}`);
 console.log(`seller:            ${sellerAccount.address}  ${fmt(sellerToken)}  member=${sellerRegistered}`);
 console.log(`payment:           ${fmt(PAYMENT)}  bonds: buyer ${fmt(bonds.buyerBond)}, seller ${fmt(bonds.sellerBond)}`);
 console.log(`counter period:    ${currentPeriod}  (minSellers floor ${minSellers})`);
-console.log(`forms:             hash-only ${FORMS.hashOnly}, plaintext ${FORMS.plaintext}, wallet-code attestation [${FORMS.walletCodeAttest.join(', ')}], wallet-code resolve ${FORMS.resolveByWalletCode}, refusal check ${FORMS.refusalCheck}`);
+console.log(`forms:             signed attestation ${FORMS.signed}, wallet-code attestation [${FORMS.walletCodeAttest.join(', ')}], wallet-code resolve ${FORMS.resolveByWalletCode}, refusal check ${FORMS.refusalCheck}`);
 if (batchCount === 0n) {
     console.log('NOTE: batchCount is 0 — no batch has ever resolved here; this run is the genesis-root proof.');
 }
@@ -681,31 +657,17 @@ try {
     // Each expected Attestation: who attests, under which contentRef.
     const expected = [];
 
-    if (FORMS.hashOnly) {
-        const { doc, contentRef } = attestedDocument('hash-only');
+    if (FORMS.signed) {
+        const { doc, contentRef } = attestedDocument('signed');
         const sig = await sellerWallet.signTypedData(attestTypedData('Seller', { orderHash, processId, contentRef }));
-        signedRecord.attestations.push({ form: 'hash-only', role: 'Seller', clauseId: clauseKey, stage: 0, contentRef, document: doc, clauseData, sellerSig: sig });
+        signedRecord.attestations.push({ form: 'signed', role: 'Seller', clauseId: clauseKey, stage: 0, contentRef, document: doc, clauseData, sellerSig: sig });
         saveRecord({});
         const r = await sequencer.submitAttestAsSeller({
             target: commitment, clauseId: clauseKey, stage: 0, contentRef,
             sellerSig: sig, clauseDataHash, inclusionProof: [],
         });
-        console.log(`submitted AttestAsSeller, hash-only (op ${r.id})  contentRef ${contentRef}`);
-        expected.push({ label: 'hash-only seller attestation', attester: sellerAccount.address, contentRef });
-    }
-
-    if (FORMS.plaintext) {
-        const contentRef = plaintextContentRef;
-        const sig = await sellerWallet.signTypedData(attestTypedData('Seller', { orderHash, processId, contentRef }));
-        signedRecord.attestations.push({ form: 'plaintext', role: 'Seller', clauseId: clauseKey, stage: 0, contentRef, clauseData, sellerSig: sig });
-        saveRecord({});
-        const r = await sequencer.submitAttestAsSeller({
-            target: commitment, clauseId: clauseKey, stage: 0, contentRef,
-            sellerSig: sig, clauseDataHash, inclusionProof: [],
-            checkContentInProof: witnessContent,
-        });
-        console.log(`submitted AttestAsSeller, plaintext (op ${r.id})  contentRef ${contentRef}`);
-        expected.push({ label: 'plaintext seller attestation', attester: sellerAccount.address, contentRef });
+        console.log(`submitted AttestAsSeller (op ${r.id})  contentRef ${contentRef}`);
+        expected.push({ label: 'signed seller attestation', attester: sellerAccount.address, contentRef });
     }
 
     for (const role of FORMS.walletCodeAttest) {

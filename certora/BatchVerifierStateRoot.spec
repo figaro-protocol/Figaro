@@ -18,7 +18,6 @@
 // Summarized (none of these writes the verifier's storage):
 //   verifyProof        — the SP1 verifier; NONDET: any proof is accepted, so
 //                        the rules hold whatever the proof system admits
-//   registered         — the ClauseRegistry anchor read; a view
 //   applyBatchAccrual  — the UsageCounter write, behind try/catch
 //   SafeERC20 transfers — token moves; a token cannot write the verifier's
 //                        storage, and `nonReentrant` refuses a re-entry into
@@ -26,12 +25,11 @@
 //   the hash helpers and `_emitAttestations` — pure or event-only; their
 //                        results only decide whether the call reverts, which
 //                        every rule already allows
-//   _executePositions, _checkSpecBindings, _walkOperations — the token step,
-//                        the registry anchor and the operation stream's walk
-//                        (the wallet-code questions and the Core's events).
-//                        None writes the verifier's storage: the first moves
-//                        tokens, the second reads, the third emits and makes
-//                        static calls (a refused wallet-code resolve reverts;
+//   _executePositions, _walkOperations — the token step and the operation
+//                        stream's walk (the wallet-code questions and the
+//                        Core's events). Neither writes the verifier's
+//                        storage: the first moves tokens, the second emits
+//                        and makes static calls (a refused wallet-code resolve reverts;
 //                        a wallet-code attestation is emitted or reverts,
 //                        which moves no storage either). Each can only revert
 //                        the call or emit, which every rule allows; summarized, `settleBatch` is
@@ -45,7 +43,6 @@ methods {
     function decodedRoots(bytes) external returns (bytes32, bytes32) envfree;
 
     function _.verifyProof(bytes32, bytes, bytes) external => NONDET;
-    function _.registered(bytes32) external => NONDET;
     function _.applyBatchAccrual(uint8, bytes32, IUsageCounter.BatchUse[]) external => NONDET;
 
     function SafeERC20.safeTransfer(address, address, uint256) internal => NONDET;
@@ -53,11 +50,9 @@ methods {
 
     function FigaroBatchVerifier._hashPositions(FigaroBatchVerifier.NetPosition[] calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._hashAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal returns (bytes32) => NONDET;
-    function FigaroBatchVerifier._hashSpecBindings(FigaroBatchVerifier.SpecBinding[] calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._hashUsage(FigaroBatchVerifier.BatchUsageData calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._emitAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal => NONDET;
     function FigaroBatchVerifier._executePositions(FigaroBatchVerifier.NetPosition[] calldata) internal => NONDET;
-    function FigaroBatchVerifier._checkSpecBindings(FigaroBatchVerifier.SpecBinding[] calldata) internal => NONDET;
     function FigaroBatchVerifier._walkOperations(bytes calldata, bool) internal => NONDET;
 }
 

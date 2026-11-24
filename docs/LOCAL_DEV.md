@@ -25,15 +25,15 @@ forge test --via-ir
                               #   Prelude: the maintainers' pre-commit guard battery gates
                               #   certora/token-ops.inventory against every ERC20 token-moving
                               #   call site in production src/.
-./scripts/test-cross-impl-fuzz.sh  # Differential fuzz under one seed: FigaroCore vs its mirror; agreement tree, three legs; clause engine, SDK vs guest
+./scripts/test-cross-impl-fuzz.sh  # Differential fuzz under one seed: FigaroCore vs its mirror; agreement tree, three legs
                               #   (args: [seed] [steps]; FUZZ_ROUNDS=n for n consecutive seeds).
 # --- Mutation runs and the test-first proof (maintainer-side; each holds .mewt.lock and prints the gate layers the change re-runs) ---
 ./scripts/mewt-run.sh <target.sol> [log]            # mewt over one Solidity contract, detached
-./scripts/cargo-mutants-run.sh <crate> [log] [args] # cargo-mutants over figaro-kernel or figaro-clause, in place, detached (MUTANTS_DRY_RUN=1 prints the command)
+./scripts/cargo-mutants-run.sh <crate> [log] [args] # cargo-mutants over figaro-kernel, in place, detached (MUTANTS_DRY_RUN=1 prints the command)
 bash scripts/check-red-on-parent.sh [<commit>]      # the change's new tests fail on src/ before it (a `Red-on-parent:` trailer in the message runs it at commit-msg)
 source scripts/frozen-scope.sh && gate_layers       # "full gate" or "quick layers only" for a change from the handover's baseline to HEAD
 cd prover && cargo test       # Rust prover workspace. Prereq: SP1 toolchain (cargo prove); without it,
-                              #   cargo test -p figaro-clause -p figaro-kernel (host-only crates, = prover-ci).
+                              #   cargo test -p figaro-kernel (the host-only crate, = prover-ci).
 
 # Direct Halmos invocation (single contract)
 FOUNDRY_PROFILE=halmos halmos --contract HalmosFigaroCore \

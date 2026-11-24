@@ -11,9 +11,8 @@ use figaro_kernel::operation_stream::{
 };
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::{
-    AttestationContentProof, AttestationWitness, AttesterRole, BatchInput, Commitment, ContentKind,
-    KernelOp, Signature, UsageClaim, UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_CLAUSE,
-    USAGE_KIND_PROCESS,
+    AttestationWitness, AttesterRole, BatchInput, Commitment, KernelOp, Signature, UsageClaim,
+    UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_CLAUSE, USAGE_KIND_PROCESS,
 };
 
 fn commitment(seed: u8) -> Commitment {
@@ -45,13 +44,10 @@ fn attestation(seed: u8) -> KernelOp {
         stage: 0,
         content_ref: B256::repeat_byte(0x71),
         seller_sig: signature(seed),
-        proof: AttestationWitness::Plaintext(AttestationContentProof {
-            spec_json: "{}".into(),
-            content_json: "{}".into(),
-            clause_data: "{}".into(),
+        proof: AttestationWitness {
+            clause_data_hash: B256::repeat_byte(0x74),
             inclusion_proof: vec![],
-            content_kind: ContentKind::ReAssert,
-        }),
+        },
     }
 }
 
@@ -209,7 +205,7 @@ fn the_decoder_refuses_a_truncated_stream_an_unknown_tag_and_a_claim_before_an_o
 }
 
 #[test]
-fn a_batch_of_nothing_commits_the_empty_stream_hash_as_word_nine() {
+fn a_batch_of_nothing_commits_the_empty_stream_hash_as_word_eight() {
     let input = BatchInput {
         chain_id: 31337,
         verifying_contract: Address::repeat_byte(0xee),
@@ -222,11 +218,11 @@ fn a_batch_of_nothing_commits_the_empty_stream_hash_as_word_nine() {
     let (pv, _, _) = apply_batch(&input).expect("an empty batch applies");
     assert_eq!(pv.operations_hash, keccak256([]));
     let abi = pv.abi_encode();
-    assert_eq!(abi.len(), 320);
+    assert_eq!(abi.len(), 288);
     assert_eq!(
-        &abi[288..320],
+        &abi[256..288],
         pv.operations_hash.as_slice(),
-        "word nine is the operations hash"
+        "word eight is the operations hash"
     );
 }
 
@@ -277,7 +273,7 @@ fn wallet_code_attestation(seed: u8, role: AttesterRole, len: usize) -> KernelOp
         stage: 2,
         content_ref: B256::repeat_byte(0x73),
         authorization: alloy_primitives::Bytes::from(vec![0xcd; len]),
-        proof: AttestationWitness::HashOnly {
+        proof: AttestationWitness {
             clause_data_hash: B256::repeat_byte(0x74),
             inclusion_proof: vec![],
         },
@@ -435,7 +431,7 @@ impl Gen {
         (0..self.below(4)).map(|_| self.commitment(true)).collect()
     }
     fn witness(&mut self) -> AttestationWitness {
-        AttestationWitness::HashOnly {
+        AttestationWitness {
             clause_data_hash: self.b256(),
             inclusion_proof: self.words(3),
         }

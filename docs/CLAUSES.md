@@ -1,19 +1,17 @@
 # Clauses — the spec, its validation, and how to add one
 
 A clause is data: a JSON spec, registered publicly, that defines one term of an
-agreement. Its content is validated in one place — off-chain, by the SDK
-(`@figaro-protocol/sdk/clauses`) — against the spec. The chain registers the
+agreement. Its content is validated off the chain against the spec: by a
+signer's tool before signing, and by a reader against a disclosed content. The
+published format (`sdk/src/clauses/clause-spec.schema.json`) states the rules
+for any tool in any language; this project's SDK (`@figaro-protocol/sdk/clauses`)
+is one such tool. The chain registers the
 clause's key — `keccak256` of the canonical bytes of the spec without its
 top-level `block`, its identity and its content hash at once — and binds each attestation to the signed
-agreement; it validates no content shape. Content validation exists on chain
-only inside a proof and only at the attesting party's choice: a batched
-attestation sent in the plaintext form has its content validated in proof by
-a generic clause engine (the Rust mirror of the SDK's validator, in
-`prover/clause`) that takes the spec as a witness input whose hash is the
-clause key, accepted for a key `ClauseRegistry.registered` holds —
-`SCALING_STRATEGY.md` owns that argument. The default on both paths binds
-hashes: a batched attestation in its hash-only form carries exactly the
-coordinator's `clauseDataHash`, inclusion proof and `contentRef`.
+agreement; it validates no content shape. The batch path binds the same
+hashes: a batched attestation carries the coordinator's `clauseDataHash`,
+inclusion proof and `contentRef`, and the proof program reads no spec
+(`SCALING_STRATEGY.md` § "The proof program reads no clause").
 Both paths keep the property that matters: a never-seen clause is attestable,
 and batch-resolvable, with zero per-clause on-chain code.
 
@@ -67,9 +65,10 @@ leaf. The SDK owns the format (`PROVENANCE_LEAF_KEY`,
 `provenanceLeafBytes`, `computeProvenanceLeaf`, `agreementLeaves`,
 `buildProvenanceInclusionProof`, `provenanceLeafAttestation` in
 `sdk/src/agreement.ts`); `UsageCounter.provenanceLeaf` and the guest's
-`PROVENANCE_LEAF_KEY` hold the same constant, and the guest verifies an
-attestation of the leaf by inclusion with the bytes reproduced, consulting no
-spec. `decodeProvenanceContent(bytes)` returns `{ agreementHash,
+`PROVENANCE_LEAF_KEY` hold the same constant. The guest accepts an
+attestation of the leaf on inclusion alone, as the coordinator does, and
+rebuilds the leaf from a usage claim's `agreementHash` and `processDesignHash`
+only at the claim (`apply_usage_claims`). `decodeProvenanceContent(bytes)` returns `{ agreementHash,
 processDesignHash }` or `null`.
 
 The agreement format carries a second leaf of its own: the **topology leaf**,
@@ -263,8 +262,8 @@ its manual.
   (`sdk/src/clauses/clause-spec.schema.json`): a closed subset of JSON Schema
   (`string`, `integer`, `bigint` as a decimal string, `boolean`, `enum`,
   `array`, `object`). An `enum` field names at most 256 values, since a
-  value encodes as its `uint8` position; a spec with more does not parse in
-  either engine. A string field's `format` is an open axis: any non-empty
+  value encodes as its `uint8` position; a spec with more is refused at
+  parse. A string field's `format` is an open axis: any non-empty
   string is a valid value; the validator enforces the formats it knows
   and treats the rest as plain strings; an interface may map a known format to
   a richer input. It applies the private set's rules (§ "Clause-spec format",
@@ -273,14 +272,10 @@ its manual.
   level, and no set mixes public and private fields. The attribute is present
   only as `true`: a field carrying `"blinding": false` is refused. A
   `disposition` other than `"public"` or `"private"`, and a `formatFromField`
-  that is not a non-empty string, are refused too. The guest's engine
-  (`prover/clause`) applies every one of these rules, so a spec that breaks
-  them fails gate S of a plaintext attestation, and a proof of a private
-  set's content attests that its blinding value is present
-  (`sdk/tests/clauses/engineVectors.test.ts`, `prover/clause/tests/engine_vectors.rs`).
-  That check binds for the party that submitted the plaintext form; a
-  reader of the chain cannot tell which form an attestation took
-  (`docs/DESIGN_DECISIONS.md` § 26).
+  that is not a non-empty string, are refused too. The verdicts are pinned
+  case by case in `sdk/tests/clauses/engineVectors.test.ts`, and
+  `sdk/tests/clauses/clauseFuzz.test.ts` runs the parser and the validator on
+  generated specs and content.
 - `validateContent(content, spec, { stage? })` — validates a value against a
   parsed spec; rejects unknown fields; applies `spec.stages[stage]` when a
   stage is named. It applies the grain cap, cap(disposition,
@@ -290,7 +285,7 @@ its manual.
   sibling's committed value, then that sibling's default, then `format`. A
   stage field's `formatFromField` names a field of the same stage, and
   resolves among that stage's fields only. When two fields share the
-  sibling's name, the first gives the default. Each engine reads the
+  sibling's name, the first gives the default. The validator reads the
   defaults from a map it builds once per object, so a set of n fields costs
   n lookups. The cap knows four standards, by
   their format value, and reads the grain each one writes in its code:
@@ -317,27 +312,25 @@ its manual.
   standard it carries no grain knowledge of is bounded by `maxLength` only. The
   reference clause `figaro-geolocation` declares `geocodeStandard` as an
   `enum` of the four, so under it every public endpoint is capped
-  (`docs/DESIGN_DECISIONS.md` § 37). The guest's engine
-  (`prover/clause/src/grain.rs`, `validate.rs`) applies the same cap through
-  the same resolution, so a proof of a plaintext attestation attests the
-  grain, for the party that submitted that form; a reader of the chain cannot
-  tell which form an attestation took (`docs/DESIGN_DECISIONS.md` § 26). An
+  (`docs/DESIGN_DECISIONS.md` § 37). An
   `integer` value is a JSON number inside the safe range
   (±(2^53 − 1)), however the text writes it (`5`, `5.0` and `5e0` are one
-  integer, read exactly by both engines); a `bigint` value is an unsigned decimal string inside the
-  uint256 word. Content that validates encodes, in both engines. Every
+  integer, read exactly in any language); a `bigint` value is an unsigned decimal string inside the
+  uint256 word. Content that validates encodes. Every
   integer a spec itself declares (`version`, a bound, a length, an item
   count) is inside the safe range too.
 - A string field's `pattern` is a regex written in the **portable core** —
-  the constructs JavaScript's regex library (Layer A) and Rust's (the guest)
-  read alike. `isPortablePattern` (`sdk/src/clauses/safeRegex.ts`) is its one
-  statement and `is_portable_pattern` (`prover/clause/src/validate.rs`) its
-  port: printable ASCII, at most 256 characters; literals, `.`, classes,
+  the constructs that regex libraries in different languages read alike
+  (JavaScript's and Rust's `regex` crate among them), so every reader of the
+  published format gives one verdict. The published format states the core
+  (`sdk/src/clauses/clause-spec.schema.json`, `pattern`), and
+  `isPortablePattern` (`sdk/src/clauses/safeRegex.ts`) is the SDK's statement
+  of it: printable ASCII, at most 256 characters; literals, `.`, classes,
   groups `(...)` and `(?:...)`, `\d \D \w \W \s \S`, escaped punctuation,
   `^ $ \b \B`, alternation, and the quantifiers `* + ? {n} {n,} {n,m}` with
   counts up to 64, each optionally lazy. The pattern's **expanded size**
-  (`portablePatternSize`, `portable_pattern_size`) is one integer, computed
-  alike in both engines with integer arithmetic. Each atom and each
+  (`portablePatternSize`) is one integer, computed with integer arithmetic, so
+  it is exact in any language. Each atom and each
   assertion counts one, and each `|` counts one. A group counts one more
   than what it holds, and `*`, `+` and `?` count one more than what they
   follow. A counted quantifier counts what it follows plus one, times `m`
@@ -347,69 +340,60 @@ its manual.
   13, and the longest in `clauses/`, `^[A-Za-z0-9][A-Za-z0-9 ./-]{0,63}$`,
   counts 129.
 - A pattern whose expanded size is past 4,096 (`MAX_PATTERN_EXPANSION`)
-  does not parse, in either engine. Nested counts multiply, so a short
+  does not parse. Nested counts multiply, so a short
   pattern such as `(?:(?:(?:(?:a{64}){64}){64}){64})` stands for millions of
-  states. Under the limit the guest compiles every portable pattern, with
-  an explicit size limit of 8 MiB (`PATTERN_SIZE_LIMIT`), for `regex`
-  1.13.1 with `regex-automata` 0.4.18. A portable class holds at most 49
-  byte ranges of 8 bytes each, so the classes of a pattern at the limit
-  cost at most some 1.6 MB; the widest class found needs 1,002,192 bytes in
-  all, about 244 bytes a unit. It compiles with the Unicode tables off,
-  which on a printable-ASCII value match as JavaScript's classes do, and
-  compiles each pattern once, when the spec parses. Under the limit the
-  SDK's automaton holds at most three instructions per unit of size, and
-  the SDK builds it when the spec parses, so a pattern that cannot be built
-  is a parse refusal in both engines. A value under a pattern the SDK
-  cannot run, as in a spec built in code, is refused with the reason
-  "cannot be run", never counted as matching. A spec whose pattern is
-  outside the core does not parse, in either engine. A patterned field's
+  states. Under the limit the SDK's automaton holds at most three
+  instructions per unit of size, and the SDK builds it when the spec parses,
+  so a pattern that cannot be built is a parse refusal. A value under a
+  pattern the SDK cannot run, as in a spec built in code, is refused with the
+  reason "cannot be run", never counted as matching. A spec whose pattern is
+  outside the core does not parse. A patterned field's
   value is printable ASCII; a value outside it does not validate.
-- A pattern is untrusted, since anyone registers a spec, and neither engine
-  runs it by backtracking. The guest's `regex` crate is an automaton engine.
-  The SDK never runs a spec's pattern on JavaScript's `RegExp`, which takes
+- A pattern is untrusted, since anyone registers a spec, and the SDK never
+  runs it by backtracking. It never runs a spec's pattern on JavaScript's
+  `RegExp`, which takes
   exponential time on a pattern such as `(a+)+$` or `^(a|a)*$`: it compiles
   the pattern once, into a Thompson automaton over the portable core, and
   runs it as a state set, so a value is matched in time linear in its length
-  (`portablePatternMatches`, `sdk/src/clauses/safeRegex.ts`). The SDK reads
-  the classes as the guest reads them with its Unicode tables off.
+  (`portablePatternMatches`, `sdk/src/clauses/safeRegex.ts`). It reads the
+  classes in ASCII, with no Unicode tables.
 - The work of matching a value is its length in UTF-16 units times its
   pattern's expanded size. A value whose work is past 4,194,304
   (`MAX_PATTERN_WORK`) is refused with the reason "string too long for
-  pattern", without the pattern run, in both engines; it never counts as
+  pattern", without the pattern run; it never counts as
   matching. Every other value is run against its pattern. A pattern of
   size 4,096 runs on up to 1,024 characters, the domain-name pattern on
   322,638, and `^0x[0-9a-fA-F]{40}$` (size 84) on 49,932. A value over the
   field's `maxLength` is refused with that reason alone, and its pattern is
   not run.
 - One content's pattern work is bounded too. One call of `validateContent`
-  or `validate_content` is one content: one clause entry's signed content
-  at the sign gate, or one attestation's stage content in the guest and the
-  relay. Both engines visit its values in one order: the spec's fields in
-  the order it declares them, an array's items by index, depth first. They
-  add the work of each value a pattern is run on; a value refused for its
+  is one content: one clause entry's signed content at the sign gate, or one
+  attestation's stage content. The validator visits its values in one order:
+  the spec's fields in
+  the order it declares them, an array's items by index, depth first. It
+  adds the work of each value a pattern is run on; a value refused for its
   `maxLength` or its own budget adds nothing. When the next value would
   take the total past 16,777,216 (`MAX_CONTENT_PATTERN_WORK`), the content
   is refused once, at `$`, with the reason "content too long for its
   patterns", and no further pattern runs. The total admits 1,925 32-byte
-  hashes (`^0x[0-9a-fA-F]{64}$`, size 132) or about 4,700 addresses. At the
-  per-value edge the costliest pattern found, the widest classes, cost the
-  guest 50 to 175 ms natively in a release build. At the content's edge the
-  costliest content found cost the guest 0.2 to 0.53 seconds, and the SDK
-  about 0.6 seconds (`docs/DESIGN_DECISIONS.md` #42).
+  hashes (`^0x[0-9a-fA-F]{64}$`, size 132) or about 4,700 addresses. The
+  bounds keep the sign gate's own work small whatever spec it is handed; the
+  costliest content found at that edge took the SDK about 0.6 seconds
+  (`docs/DESIGN_DECISIONS.md` #42).
   `sdk/tests/clauses/safeRegex.test.ts` compares the automaton with
-  `RegExp` on every pattern in `clauses/`, and the shared vectors lock the
-  verdicts, every limit included, to the guest's.
+  `RegExp` on every pattern in `clauses/`, and
+  `sdk/tests/clauses/engineVectors.test.ts` pins the verdicts, every limit
+  included.
 - A `string` value holds no lone UTF-16 surrogate (`"\ud800"` with no low
-  half after it, or a low half alone). `JSON.parse` keeps one and
-  `serde_json`, which reads content in the guest, refuses it; the SDK's
-  `validateContent` refuses it too, so no party signs content the batch
-  path cannot read. The spec's own JSON holds none either, in a string or
+  half after it, or a low half alone). `JSON.parse` keeps one, and a strict
+  JSON reader in another language (Rust's `serde_json`, for one) refuses it;
+  the published format refuses it, and the SDK's `validateContent` refuses
+  it too, so no party signs content such a reader cannot read. The spec's own
+  JSON holds none either, in a string or
   in a key of any top-level attribute but `block`: those are the bytes a
-  clause key hashes and a plaintext attestation's witness carries, and
-  gate S refuses them when `serde_json` reads them. `parseClauseSpec`
+  clause key hashes. `parseClauseSpec`
   refuses such a spec, and names where the surrogate is
-  (`sdk/tests/clauses/spec.test.ts`; `attest_spec_holding_a_lone_surrogate_fails`,
-  `prover/lib/tests/parity.rs`).
+  (`sdk/tests/clauses/spec.test.ts`).
 - `encodeContentFromSpec` / `decodeContentFromSpec` — the one spec-driven
   encoder and its inverse, reading the field-to-position mapping from the
   parsed spec for any clause, with the same stage selection. There is no
@@ -417,6 +401,49 @@ its manual.
 
 Every consumer loads each spec live from `ClauseRegistry` → IPFS; nothing
 bundles a copy.
+
+### The content's encoding
+
+The canonical ABI encoding of a clause's content is a **total function of its
+`ClauseSpec`** — no per-clause code. `encodeContentFromSpec`
+(`sdk/src/clauses/encode.ts`) implements it. A signer's tool writes an
+attestation's `contentRef` as the `keccak256` of these bytes, and a reader
+re-encodes a disclosed content and compares; the chain and the proof program
+read only the hash.
+
+**Encoding algorithm.** Content encodes as `encodeAbiParameters` of the
+top-level `spec.fields`, in declaration order. Each field encodes recursively
+by type; an absent optional field encodes as the ABI zero-value of its type
+(`0`, `""`, `false`, empty array, zero-bytes). A required field that is absent
+is a validation error, not an encoding case. Stage selection mirrors
+validation: when the caller passes a stage and the spec declares a matching
+`stages[stage]` override, those fields drive the encoding; otherwise the
+spec's default `fields` apply.
+
+**The type mapping.**
+
+| `FieldSpec`              | ABI type                                    |
+|--------------------------|---------------------------------------------|
+| `boolean`                | `bool`                                      |
+| `bigint`                 | `uint256` (unsigned decimal string)         |
+| `integer`                | `int256` — SIGNED; the spec grammar admits negative bounds |
+| `enum`                   | `uint8` — 0-based position in `values`      |
+| `string`, no format      | `string`                                    |
+| `string`, `bytes32-hex`  | `bytes32`                                   |
+| `string`, `address-hex`  | `address`                                   |
+| `string`, `bytes-hex`    | `bytes`                                     |
+| `array<T>`               | `T[]` — element type mapped recursively     |
+| `object`                 | `tuple(...)` of its fields, declared order  |
+
+Width never enters encoding: `encodeAbiParameters` pads every value to a 32-byte
+word, so integer `min`/`max` bounds are a *validation*-range concern only. The
+string `format` axis is OPEN — a clause may declare any format
+permissionlessly; an unknown one validates as a plain string and encodes as
+`string`, never a hard failure. A spec's optional `default` is composition
+metadata, shape-validated at parse; it never affects encoding — "absent
+optional → ABI zero-value" is the whole rule. Every spec in `clauses/` — and
+any third-party spec — encodes under this one rule, and
+`sdk/tests/clauses/engineVectors.test.ts` pins the bytes case by case.
 
 ### Witness stages
 
@@ -426,21 +453,19 @@ declares that content as `spec.stages[N]`, a per-stage field set keyed by the
 on-chain `uint8 stage`. The content the parties sign is validated over
 `fields` alone, or is the empty anchor `{}` for a spec that declares
 `emptyAnchor` (§ "Clause-spec format"), at the sign gate
-(`validateCommitmentAgreement` in `sdk/src/projection.ts`) and in the guest's
-gate for a re-asserted clause (`validate_attestation_content` in
-`prover/lib/src/kernel.rs`), both through the one rule
-(`validateSignedContent`, `validate_signed_content`). Content
+(`validateCommitmentAgreement` in `sdk/src/projection.ts`), through the one
+rule (`validateSignedContent`). Content
 attested at stage N, stage 0 included, is encoded and validated over
-`stages[N]` where the spec declares it, else over `fields`, in both engines.
+`stages[N]` where the spec declares it, else over `fields`.
 So a stage-0 attestation is not the signed content: it re-asserts that
 content only when its `contentRef` is the leaf's data hash
 (`hashClauseData`), and a reader compares the two
 (`docs/DESIGN_DECISIONS.md` § 36).
 A stage key has one spelling: the decimal of an integer from 0 to 255, digits
 only, with no sign, no leading zero and no whitespace (`"0"`, `"1"`, `"255"`).
-A spec with any other key does not parse in either engine, and the issue names
-the key (`stageOfKey` and `stageKey` in `sdk/src/clauses/spec.ts`,
-`parse_stage_key` in `prover/clause/src/spec.rs`). `ClauseRegistry` reads no
+A spec with any other key does not parse, and the issue names
+the key (`stageOfKey` and `stageKey` in `sdk/src/clauses/spec.ts`); the
+published format states the same rule (`stages`). `ClauseRegistry` reads no
 spec and registers such a clause anyway; the reference tooling never loads it.
 The spec's stage list is the whole signal: an interface derives a witness capability
 for any composed clause that declares stages, renders the form from the
@@ -461,9 +486,8 @@ ordinal of the event in the enum field `block.runtime.ladder` marks, and no
 top-level fields, as any later one is; the reference frontend groups such
 clauses under the `attestations` article, which is presentation. One rule says which set an attestation's content is encoded over: at
 stage N, `stages[N]` where the spec declares it, else the top-level `fields`.
-The SDK (`contentFieldsFor` in `sdk/src/clauses/encode.ts`) and the proof
-program (`encode_content_from_spec` in `prover/clause/src/encode.rs`) apply it
-alike, and the reference frontend reads the same rule
+The SDK applies it (`contentFieldsFor` in `sdk/src/clauses/encode.ts`), and
+the reference frontend reads the same rule
 (`attestationContentFields` in `frontend/lib/shared/clauseSpecSource.ts`). A
 ladder that declares no stage sets encodes each of its events, with the stage,
 to the same bytes as with none: over its top-level fields. A ladder that
@@ -549,10 +573,8 @@ mutable-name software and keep semver.
 `checkoutHash` and emits `Attestation` with the caller's `contentRef`. It takes
 fingerprints, never preimages — `clauseDataHash = keccak256(clauseData)`,
 `contentRef = keccak256(content)` — so a private clause's plaintext never
-touches the chain. The batch path's default form takes the same three, and the
-relay and the proving network see only those fingerprints; the plaintext form
-reaches them only when the attesting party sends it to have its content
-checked in the proof. A clause not committed at signing cannot be attested (the
+touches the chain. A batched attestation carries the same three, so no
+clause's content reaches the relay or the proving network. A clause not committed at signing cannot be attested (the
 proof will not open); any committed clause attests with zero per-clause code.
 Public content is fingerprint-addressed: the attesting party pins the exact
 content bytes so that the IPFS address is derived from `contentRef` alone, and
@@ -791,29 +813,25 @@ whose content is all attested while the process is open, such as a
 process-log ladder (`figaro-merchant-process`, `figaro-courier-process`),
 declares `"emptyAnchor": true` at the top level. The parties then sign `{}`
 for it, and its `fields` and `stages` are the shapes of what is attested. One
-rule decides what a party may sign for a clause, in both engines
-(`validateSignedContent` in `sdk/src/clauses/validate.ts`,
-`validate_signed_content` in `prover/clause/src/validate.rs`):
+rule decides what a party may sign for a clause (`validateSignedContent` in
+`sdk/src/clauses/validate.ts`):
 
 1. A spec that declares `emptyAnchor` signs `{}` and nothing else. The sign
-   gate refuses any other content for it, and the guest's gate refuses a
-   re-asserted clause whose committed content is any other.
+   gate refuses any other content for it.
 2. Every other spec's signed content is validated over its `fields`, `{}`
    included: `{}` passes only when no field is required.
 
 The parsers accept the attribute only as `true`, and refuse a spec that
 declares it beside a `default` on a top-level field, since a default fills the
-signed content and this one has none (`parseClauseSpec`,
-`parse_clause_spec`). A default on a stage field is allowed. The rule reads
+signed content and this one has none (`parseClauseSpec`). A default on a stage field is allowed. The rule reads
 the top level only, never the article or anything else in `block`, so a
 stranger's clause under any article signs the empty anchor by declaring it,
 and a clause under the `attestations` article that does not declare it signs
 its content. The reference tooling fills no default and draws no blinding
 value into an empty anchor (`withSpecDefaults`, `withClauseBlinding`), and
 its checkout offers the buyer no input for such a clause. The attribute is
-part of the clause key, so declaring it is a new clause. The shared vectors
-hold both engines to the rule (`signed` in
-`test/fixtures/clause-engine-vectors.json`).
+part of the clause key, so declaring it is a new clause.
+`sdk/tests/clauses/engineVectors.test.ts` pins the rule's verdicts.
 
 **Public and private fields, and the blinding field.** A field's
 `disposition` is `"public"` (the default) or `"private"`. The leaf model
@@ -843,8 +861,7 @@ format (`sdk/src/clauses/clause-spec.schema.json`):
    rule as the top-level set is. A field counts as private when it or a field
    nested in it (an object's `fields`, an array's `items`, at any depth) is,
    so a private field nested in a public one makes the set mixed
-   (`fieldCarriesPrivate` in `sdk/src/clauses/spec.ts`,
-   `field_carries_private` in `prover/clause/src/spec.rs`).
+   (`fieldCarriesPrivate` in `sdk/src/clauses/spec.ts`).
 4. The sign gate (`validateCommitmentAgreement`) refuses an agreement whose
    clause spec names the blinding field in `block.design.fills`,
    `block.checkout.catalogueFills`, `block.checkout.profileFills`,
@@ -1041,8 +1058,7 @@ clause key is bound on a public chain.
 ## Adding a new clause — checklist
 
 A new clause is a spec plus a registration — nothing else. The proof apparatus
-needs no step: the prover's engine is generic and takes the spec as a witness
-input whose hash is the registered clause key.
+needs no step: the proof program reads no clause.
 
 1. Write the spec at `clauses/<clause>.json` — the canonical spec and the
    registry's seed data; nothing bundles a copy.

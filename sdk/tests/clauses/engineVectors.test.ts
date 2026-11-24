@@ -1,20 +1,16 @@
 /**
- * Clause-engine vectors — the hand-written leg of the clause-engine lock.
+ * Clause-engine vectors — the SDK's clause engine (`src/clauses/`) at its
+ * boundaries, named one by one.
  *
- * The generated leg (`clauseFuzzVectors.test.ts`) draws cases at random; this
- * file names the boundaries one by one: each character position of the
- * datetime format, each hex width, each shape the regex screen reads, each
- * bound a spec declares. Every case is a field spec, a value, and Layer A's
- * verdict; every spec case is a raw spec and whether Layer A parses it.
- *
- * The verdicts are frozen into `test/fixtures/clause-engine-vectors.json`;
- * `prover/clause/tests/engine_vectors.rs` asserts the guest's engine gives
- * the same ones.
- *
- *   1. Regenerate the fixture on `HARVEST_CLAUSE_ENGINE_VECTORS=1`.
- *   2. Otherwise, assert Layer A still reproduces the frozen verdicts.
+ * The generated cases (`clauseFuzz.test.ts`) are drawn at random; this file
+ * names the boundaries: each character position of the datetime format, each
+ * hex width, each shape the regex screen reads, each bound a spec declares.
+ * Every value case is a field spec, a value, and the verdict the engine must
+ * give; every spec case is a raw spec and whether the parser accepts it; every
+ * encode case is content and the ABI bytes it must encode to. The expected
+ * verdicts and bytes are stated in this file, beside the cases.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { canonicalize } from "../../src/agreement.js";
@@ -26,8 +22,6 @@ import {
     validateContent,
     validateSignedContent,
 } from "../../src/clauses/index.js";
-
-const FIXTURE_PATH = path.resolve(__dirname, "../../../test/fixtures/clause-engine-vectors.json");
 
 type Field = Record<string, unknown>;
 
@@ -145,8 +139,8 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
         values: ["abc", "", "ABC", "ab1", "a"],
     },
     // Quantified groups whose body holds a quantifier, and their near
-    // misses. Both engines run every one of them on every value, so a value
-    // the pattern rejects is refused in both.
+    // misses. The engine runs every one of them on every value, so a value
+    // the pattern rejects is refused.
     ...[
         "(a+)+$",
         "(a*)*$",
@@ -191,9 +185,10 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
         field: str({ pattern }),
         values: ["zzz", "a", "aa", "ab", "aab", "abc", "(a)", "+", "a+", ""],
     })),
-    // The two engines run a pattern on two regex libraries. These are the
-    // constructs and the inputs on which the libraries part; the portable
-    // core (`isPortablePattern`) keeps a spec and a value clear of them.
+    // Regex libraries part on these constructs and inputs; the portable core
+    // (`isPortablePattern`) keeps a spec and a value clear of them, so a tool
+    // in another language that applies the published format gives the same
+    // verdicts.
     ...[
         "^(?!foo).*$",
         "^(?=a).*$",
@@ -339,9 +334,8 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
         values: ["a", "aa", "aaa", "ab", "ac", "b", "c", "-", "]", "^", "~", "[", "}", ".", "\\", "<", "_", " ", "n", "t", "1", "UN1234", "en-GB", "a".repeat(64), "a".repeat(65), "é", "\n", "\t", ""],
     })),
     {
-        // Expanded size 4,034, run: the guest reads its classes in ASCII,
-        // and on a printable-ASCII value they match as JavaScript's. The
-        // budget lets it run on 1,039 characters (4,194,304 / 4,034).
+        // Expanded size 4,034, run. The budget lets it run on 1,039
+        // characters (4,194,304 / 4,034).
         group: "pattern near the size limit",
         field: str({ pattern: "^(?:\\w{1,31}){63}$" }),
         values: ["a".repeat(63), "a".repeat(62), "a".repeat(1039), "a".repeat(1040), "-".repeat(100), ""],
@@ -368,7 +362,7 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
         values: [" ".repeat(1040), " ".repeat(1041), " ".repeat(1039) + "!", "b".repeat(64), "a"],
     },
     {
-        // Expanded size 4,097: the spec parses in neither engine.
+        // Expanded size 4,097: the spec does not parse.
         group: "pattern just over the size limit",
         field: str({ pattern: "(?:a{31}){64}a" }),
         values: ["a".repeat(1985), "b"],
@@ -397,8 +391,7 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
     },
     {
         // Quantifiers nested twenty deep, under counts: the SDK folds them
-        // into one, the guest compiles them as written, and the verdicts
-        // agree.
+        // into one, and the verdicts are those of the pattern as written.
         group: "pattern, quantifiers nested under counts",
         field: str({ pattern: `^(?:(?:${"(?:".repeat(20)}a${")+".repeat(20)}){4}){4}$` }),
         values: ["a".repeat(16), "a".repeat(300), "a".repeat(15), "b", ""],
@@ -410,7 +403,7 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
     },
     {
         // The same shapes under counts that take them past the size limit:
-        // refused at parse in both engines.
+        // refused at parse.
         group: "pattern, quantifiers nested past the size limit",
         field: str({ pattern: `^(?:(?:${"(?:".repeat(20)}a${")*".repeat(20)}){64}){63}$` }),
         values: ["a", "b"],
@@ -612,7 +605,7 @@ const CONTENT_CASES: { label: string; fields: Field[]; content: unknown }[] = [
         },
     })),
     // A value refused for its maxLength adds nothing to the total, so the
-    // content's verdict is that refusal alone in both engines.
+    // content's verdict is that refusal alone.
     {
         label: "content total, values over maxLength add nothing",
         fields: [{ name: "v", type: "array", required: true, items: { type: "string", maxLength: 1039, pattern: "^(?:a{0,64}){31}$" } }],
@@ -726,8 +719,7 @@ const CONTENT_CASES: { label: string; fields: Field[]; content: unknown }[] = [
         fields: [{ name: "loc", type: "string", required: true, formatFromField: "loc" }],
         content,
     })),
-    // Two fields share the sibling's name: the first of them gives the default, in both engines,
-    // whether the engine scans the set or reads a map built once per object.
+    // Two fields share the sibling's name: the first of them gives the default.
     ...[
         ["the first with no default", [{ name: "std", type: "string", required: false }, { name: "std", type: "string", required: false, default: "geohash" }]],
         ["the first whose default is geohash", [{ name: "std", type: "string", required: false, default: "geohash" }, { name: "std", type: "string", required: false }]],
@@ -862,9 +854,7 @@ const SPEC_CASES: { label: string; spec: unknown }[] = [
     { label: "pattern not a string", spec: specOf(f({ type: "string", pattern: 5 })) },
     // The expanded size (MAX_PATTERN_EXPANSION, 4096). Counts multiply when
     // they nest, so a short pattern can stand for millions of items: the
-    // guest's regex library refuses such a pattern past its size limit, and
-    // the bound refuses it in both engines first. Under the bound, every
-    // atom compiles in the guest, the large Unicode classes included.
+    // bound refuses such a pattern at parse, before any value is read.
     ...[
         "(?:a{31}){64}",
         "(?:a{31}){64}a",
@@ -908,8 +898,7 @@ const SPEC_CASES: { label: string; spec: unknown }[] = [
     ].map((pattern) => ({ label: `pattern expansion ${pattern}`, spec: specOf(f({ type: "string", pattern })) })),
     // Shapes fitted to the size limit, each under the largest count that
     // keeps it at or under MAX_PATTERN_EXPANSION and under one count more.
-    // The guest compiles every one the SDK parses, so no spec parses in one
-    // engine and not the other.
+    // Each verdict is pinned in SPEC_VERDICTS below.
     ...nearLimitPatterns().map((pattern) => ({ label: `pattern near the size limit ${pattern}`, spec: specOf(f({ type: "string", pattern })) })),
     ...[6, 7, 8, 9, 10, 11, 12, 16, 17, 32, 33].map((depth) => ({ label: `array nesting depth ${depth}`, spec: specOf([nestArrays(depth)]) })),
     { label: "stages", spec: specOf(f({ type: "boolean" }), { 1: f({ type: "integer" }) }) },
@@ -993,7 +982,7 @@ const SPEC_CASES: { label: string; spec: unknown }[] = [
             BLINDING,
         ]),
     },
-    { label: "a private field nested in a public object", spec: specOf(f({ type: "object", fields: [{ name: "w", type: "boolean", required: true, disposition: "private" }] })) },
+    { label: "a private field nested in a public object named v", spec: specOf(f({ type: "object", fields: [{ name: "w", type: "boolean", required: true, disposition: "private" }] })) },
     // Each stage's set keeps the same rules.
     { label: "a private stage with its blinding field", spec: specOf(f({ type: "boolean" }), { 1: [{ name: "r", type: "integer", required: true, disposition: "private" }, BLINDING] }) },
     { label: "a private stage without a blinding field", spec: specOf(f({ type: "boolean" }), { 1: [{ name: "r", type: "integer", required: true, disposition: "private" }] }) },
@@ -1009,32 +998,32 @@ const SPEC_CASES: { label: string; spec: unknown }[] = [
 ];
 
 /** The content the parties SIGN, under the sign gate's one rule
- *  (`validateSignedContent`, `validate_signed_content`): `{}` and nothing else
+ *  (`validateSignedContent`): `{}` and nothing else
  *  for a spec that declares `emptyAnchor`, content valid over `fields` for
  *  every other, `{}` included. The spec is a stranger's: its `block` names an
  *  article no code knows, and the rule reads none of it. */
 const LADDER: Field[] = [{ name: "call", type: "enum", values: ["arrived", "berthed", "sailed"], required: true }];
 const STRANGER_BLOCK = { design: { article: "harbor-log" } };
-const SIGNED_CASES: { label: string; spec: Record<string, unknown>; content: unknown }[] = [
-    { label: "the empty anchor, declared", spec: { ...specOf(LADDER), emptyAnchor: true, block: STRANGER_BLOCK }, content: {} },
-    { label: "content, under a declared empty anchor", spec: { ...specOf(LADDER), emptyAnchor: true, block: STRANGER_BLOCK }, content: { call: "arrived" } },
-    { label: "an array, under a declared empty anchor", spec: { ...specOf(LADDER), emptyAnchor: true, block: STRANGER_BLOCK }, content: [] },
-    { label: "null, under a declared empty anchor", spec: { ...specOf(LADDER), emptyAnchor: true, block: STRANGER_BLOCK }, content: null },
-    { label: "the empty anchor, declared, beside a stage set", spec: { ...specOf(LADDER, { 1: f({ type: "string" }) }), emptyAnchor: true, block: STRANGER_BLOCK }, content: {} },
-    { label: "the empty anchor, not declared, required field", spec: { ...specOf(LADDER), block: STRANGER_BLOCK }, content: {} },
-    { label: "the empty anchor, not declared, the attestations article", spec: { ...specOf(LADDER), block: { design: { article: "attestations" } } }, content: {} },
-    { label: "content, not declared", spec: { ...specOf(LADDER), block: STRANGER_BLOCK }, content: { call: "arrived" } },
-    { label: "the empty anchor, not declared, no required field", spec: specOf([{ name: "note", type: "string", required: false }]), content: {} },
+const SIGNED_CASES: { label: string; spec: Record<string, unknown>; content: unknown; ok: boolean }[] = [
+    { label: "the empty anchor, declared", spec: { ...specOf(LADDER), emptyAnchor: true, block: STRANGER_BLOCK }, content: {}, ok: true },
+    { label: "content, under a declared empty anchor", spec: { ...specOf(LADDER), emptyAnchor: true, block: STRANGER_BLOCK }, content: { call: "arrived" }, ok: false },
+    { label: "an array, under a declared empty anchor", spec: { ...specOf(LADDER), emptyAnchor: true, block: STRANGER_BLOCK }, content: [], ok: false },
+    { label: "null, under a declared empty anchor", spec: { ...specOf(LADDER), emptyAnchor: true, block: STRANGER_BLOCK }, content: null, ok: false },
+    { label: "the empty anchor, declared, beside a stage set", spec: { ...specOf(LADDER, { 1: f({ type: "string" }) }), emptyAnchor: true, block: STRANGER_BLOCK }, content: {}, ok: true },
+    { label: "the empty anchor, not declared, required field", spec: { ...specOf(LADDER), block: STRANGER_BLOCK }, content: {}, ok: false },
+    { label: "the empty anchor, not declared, the attestations article", spec: { ...specOf(LADDER), block: { design: { article: "attestations" } } }, content: {}, ok: false },
+    { label: "content, not declared", spec: { ...specOf(LADDER), block: STRANGER_BLOCK }, content: { call: "arrived" }, ok: true },
+    { label: "the empty anchor, not declared, no required field", spec: specOf([{ name: "note", type: "string", required: false }]), content: {}, ok: true },
 ];
 
 /** Encoded bytes for the values whose bytes a verdict alone does not show. */
-const ENCODE_CASES: { label: string; fields: Field[]; stages?: Record<number, Field[]>; stage?: number; content: Record<string, unknown> }[] = [
-    // A blinding value encodes as bytes32 in a private set; `prover/lib`'s
-    // tests read these two cases' bytes as a TypeScript content reference.
+const ENCODE_CASES: { label: string; fields: Field[]; stages?: Record<number, Field[]>; stage?: number; content: Record<string, unknown>; encoded: string }[] = [
+    // A blinding value encodes as bytes32 in a private set.
     {
         label: "a private set with its blinding value",
         fields: [{ name: "grade", type: "enum", values: ["a", "b", "c"], required: true, disposition: "private" }, BLINDING],
         content: { grade: "b", b: B32 },
+        encoded: "0x0000000000000000000000000000000000000000000000000000000000000001abababababababababababababababababababababababababababababababab",
     },
     {
         label: "a private stage with its blinding value",
@@ -1042,6 +1031,7 @@ const ENCODE_CASES: { label: string; fields: Field[]; stages?: Record<number, Fi
         stages: { 1: [{ name: "reading", type: "integer", required: true, disposition: "private" }, BLINDING] },
         stage: 1,
         content: { reading: 42, b: `0x${"cd".repeat(32)}` },
+        encoded: "0x000000000000000000000000000000000000000000000000000000000000002acdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
     },
     // A spec that declares `stages["0"]` encodes stage-0 content over that set.
     {
@@ -1050,40 +1040,717 @@ const ENCODE_CASES: { label: string; fields: Field[]; stages?: Record<number, Fi
         stages: { 0: [{ name: "reading", type: "integer", required: true }] },
         stage: 0,
         content: { reading: 7 },
+        encoded: "0x0000000000000000000000000000000000000000000000000000000000000007",
     },
-    { label: "a public geohash at the cap", fields: [str({ format: "geohash" })], content: { v: "dr5reg" } },
-    { label: "bytes-hex empty", fields: [str({ format: "bytes-hex" })], content: { v: "0x" } },
-    { label: "bytes-hex one byte", fields: [str({ format: "bytes-hex" })], content: { v: "0x00" } },
-    { label: "bytes-hex 01", fields: [str({ format: "bytes-hex" })], content: { v: "0x01" } },
-    { label: "bytes-hex long", fields: [str({ format: "bytes-hex" })], content: { v: `0x${"ab".repeat(40)}` } },
-    { label: "bytes-hex upper", fields: [str({ format: "bytes-hex" })], content: { v: "0xABCD" } },
-    { label: "bigint leading zeros", fields: [{ name: "v", type: "bigint", required: true }], content: { v: "007" } },
-    { label: "integer negative", fields: [{ name: "v", type: "integer", required: true }], content: { v: -273 } },
-    { label: "integer safe max", fields: [{ name: "v", type: "integer", required: true }], content: { v: 9007199254740991 } },
-    { label: "string outside ASCII", fields: [str()], content: { v: "é🚚" } },
+    { label: "a public geohash at the cap", fields: [str({ format: "geohash" })], content: { v: "dr5reg" }, encoded: "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000066472357265670000000000000000000000000000000000000000000000000000" },
+    { label: "bytes-hex empty", fields: [str({ format: "bytes-hex" })], content: { v: "0x" }, encoded: "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000" },
+    { label: "bytes-hex one byte", fields: [str({ format: "bytes-hex" })], content: { v: "0x00" }, encoded: "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000" },
+    { label: "bytes-hex 01", fields: [str({ format: "bytes-hex" })], content: { v: "0x01" }, encoded: "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010100000000000000000000000000000000000000000000000000000000000000" },
+    { label: "bytes-hex long", fields: [str({ format: "bytes-hex" })], content: { v: `0x${"ab".repeat(40)}` }, encoded: "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000028abababababababababababababababababababababababababababababababababababababababab000000000000000000000000000000000000000000000000" },
+    { label: "bytes-hex upper", fields: [str({ format: "bytes-hex" })], content: { v: "0xABCD" }, encoded: "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000002ABCD000000000000000000000000000000000000000000000000000000000000" },
+    { label: "bigint leading zeros", fields: [{ name: "v", type: "bigint", required: true }], content: { v: "007" }, encoded: "0x0000000000000000000000000000000000000000000000000000000000000007" },
+    { label: "integer negative", fields: [{ name: "v", type: "integer", required: true }], content: { v: -273 }, encoded: "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeef" },
+    { label: "integer safe max", fields: [{ name: "v", type: "integer", required: true }], content: { v: 9007199254740991 }, encoded: "0x000000000000000000000000000000000000000000000000001fffffffffffff" },
+    { label: "string outside ASCII", fields: [str()], content: { v: "é🚚" }, encoded: "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000006c3a9f09f9a9a0000000000000000000000000000000000000000000000000000" },
 ];
 
-// ── The fixture ─────────────────────────────────────────────────────────────
+// ── The verdicts ────────────────────────────────────────────────────────────
 
+/** A value case's verdict: `true` accepted, `false` refused, `null` when the
+ *  field's own spec does not parse. */
 function verdict(fields: unknown, content: unknown): boolean | null {
     const parsed = parseClauseSpec(specOf(fields));
     if (!parsed.ok) return null;
     return validateContent(content, parsed.spec).ok;
 }
 
+/** Each value group's verdicts, one letter per value in the order the group
+ *  lists them: T accepted, F refused, - the field's own spec does not parse. */
+const VALUE_VERDICTS: Readonly<Record<string, string>> = {
+    "iso-datetime": "TTTTTTTFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "bytes32-hex": "TTFFFFFF",
+    "address-hex": "TTFFFFFFFF",
+    "bytes-hex": "TTTTFFFFFFFT",
+    "open format": "TTT",
+    "string length, UTF-16 units": "FFTTFFTTTFT",
+    "pattern": "TFFFT",
+    "nested (a+)+$": "FTTFFFFFFF",
+    "nested (a*)*$": "TTTTTTTTTT",
+    "nested (a+)*$": "TTTTTTTTTT",
+    "nested (a{2,})+$": "FFTFFFFFFF",
+    "nested ((a+))+$": "FTTFFFFFFF",
+    "nested ((a)+)+$": "FTTFFFFFFF",
+    "nested (a|b+)+$": "FTTTTFFFFF",
+    "nested ^(a+)$": "FTTFFFFFFF",
+    "nested ^(ab)+$": "FFFTFFFFFF",
+    "nested ^a+b+$": "FFFTTFFFFF",
+    "nested ^(a)(b+)$": "FFFTFFFFFF",
+    "nested ^(a+)(b)+$": "FFFTTFFFFF",
+    "nested ^\\(a+\\)+$": "FFFFFFTFFF",
+    "nested ^[+*]+$": "FFFFFFFTFF",
+    "nested ^[(+)]+$": "FFFFFFFTFF",
+    "nested ^[\\]+]+$": "FFFFFFFTFF",
+    "nested ^(a[+*])+$": "FFFFFFFFTF",
+    "nested ^(a\\+)+$": "FFFFFFFFTF",
+    "nested ^(a)+$": "FTTFFFFFFF",
+    "nested ^(a){2}$": "FFTFFFFFFF",
+    "nested ^(a+){2}$": "FFTFFFFFFF",
+    "nested ^(a+)?$": "FTTFFFFFFT",
+    "nested ^((a)(b+))+$": "FFFTFFFFFF",
+    "nested ^(a(b+)c)*$": "FFFFFTFFFT",
+    "nested ^(a(b)c)*$": "FFFFFTFFFT",
+    "nested ^(?:a+)+$": "FTTFFFFFFF",
+    "nested ^a{2}$": "FFTFFFFFFF",
+    "nested ^([+])+$": "FFFFFFFTFF",
+    "nested ^([a][+])+$": "FFFFFFFFTF",
+    "nested ^([a][b][*])+$": "FFFFFFFFFF",
+    "nested ^([\\]+])+$": "FFFFFFFTFF",
+    "nested ^([\\]][+])+$": "FFFFFFFFFF",
+    "nested ^([\\\\][+])+$": "FFFFFFFFFF",
+    "nested ^([+\\]])+$": "FFFFFFFTFF",
+    "nested ^([{])+$": "FFFFFFFFFF",
+    "nested ^(a[+]b+)+$": "FFFFFFFFFF",
+    "nested ^([+]b)+$": "FFFFFFFFFF",
+    "dialect ^(?!foo).*$": "-------------------------",
+    "dialect ^(?=a).*$": "-------------------------",
+    "dialect ^(?<=a)b$": "-------------------------",
+    "dialect ^(a)\\1$": "-------------------------",
+    "dialect ^(?<n>a)\\k<n>$": "-------------------------",
+    "dialect ^(?<n>a)$": "-------------------------",
+    "dialect (?i)^a$": "-------------------------",
+    "dialect ^\\d$": "FFFFFFFFFFFFFFTFFFFFFFFFF",
+    "dialect ^\\w+$": "TTTTTTFFFTTFFFTFFFFFFFFFF",
+    "dialect ^\\s$": "FFFFFFFFFFFFFFFFFFFTFFFFF",
+    "dialect ^.$": "FTFFTTTTTTTFFFTFFFFTFFFFF",
+    "dialect ^..$": "FFTTFFFFFFFFFFFFFFFFFFFFF",
+    "dialect ^a$": "FTFFFFFFFFFFFFFFFFFFFFFFF",
+    "dialect ^[a&&b]$": "-------------------------",
+    "dialect ^[a--b]$": "-------------------------",
+    "dialect ^[[:alpha:]]$": "-------------------------",
+    "dialect ^\\p{L}$": "-------------------------",
+    "dialect ^a*+$": "-------------------------",
+    "dialect ^a++$": "-------------------------",
+    "dialect ^\\x41$": "-------------------------",
+    "dialect ^\\u0041$": "-------------------------",
+    "dialect ^\\u{41}$": "-------------------------",
+    "dialect ^\\cA$": "-------------------------",
+    "dialect ^[^a]$": "FFFFTTTTTTTFFFTFFFFTFFFFF",
+    "dialect ^\\bfoo\\b$": "TFFFFFFFFFFFFFFFFFFFFFFFF",
+    "dialect ^a{,2}$": "-------------------------",
+    "dialect ^a{2,1}$": "-------------------------",
+    "dialect ^\\/$": "FFFFFFFFTFFFFFFFFFFFFFFFF",
+    "dialect ^\\-$": "FFFFFFFTFFFFFFFFFFFFFFFFF",
+    "dialect ^[\\w-]+$": "TTTTTTFTFTTFFFTFFFFFFFFFF",
+    "dialect ^\\e$": "-------------------------",
+    "dialect ^\\a$": "-------------------------",
+    "dialect ^\\z$": "-------------------------",
+    "dialect ^a\\Z$": "-------------------------",
+    "dialect ^\\Aa$": "-------------------------",
+    "core ^[A-Za-z][A-Za-z0-9-]{1,15}$": "FTTTTFFFFFFFFFFFFFFFFTTFFFFFF",
+    "core ^[A-Za-z0-9][A-Za-z0-9 ./-]{0,63}$": "TTTTTTTFFFFFFFFFFFTTTTTTFFFFF",
+    "core ^[A-Za-z]{2,3}(-[A-Za-z]{2,4})?$": "FTTTTFFFFFFFFFFFFFFFFFTFFFFFF",
+    "core ^UN[0-9]{4}$": "FFFFFFFFFFFFFFFFFFFFFTFFFFFFF",
+    "core ^[-a]$": "TFFFFFFTFFFFFFFFFFFFFFFFFFFFF",
+    "core ^[a-]$": "TFFFFFFTFFFFFFFFFFFFFFFFFFFFF",
+    "core ^[a-c-]$": "TFFFFTTTFFFFFFFFFFFFFFFFFFFFF",
+    "core ^[z-a]$": "-----------------------------",
+    "core ^[a-c-e]$": "-----------------------------",
+    "core ^[a\\-c]$": "TFFFFFTTFFFFFFFFFFFFFFFFFFFFF",
+    "core ^[\\d-z]$": "-----------------------------",
+    "core ^[a-\\d]$": "-----------------------------",
+    "core ^[]a]$": "-----------------------------",
+    "core ^[^]a]$": "-----------------------------",
+    "core ^[^]$": "-----------------------------",
+    "core ^[a[b]]$": "-----------------------------",
+    "core ^[a~~b]$": "-----------------------------",
+    "core ^a{2}$": "FTFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "core ^a{2,}$": "FTTFFFFFFFFFFFFFFFFFFFFTTFFFF",
+    "core ^a{2,3}$": "FTTFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "core ^a{3,2}$": "-----------------------------",
+    "core ^a{64}$": "FFFFFFFFFFFFFFFFFFFFFFFTFFFFF",
+    "core ^a{65}$": "-----------------------------",
+    "core ^a{0,64}$": "TTTFFFFFFFFFFFFFFFFFFFFTFFFFT",
+    "core ^a{1000}$": "-----------------------------",
+    "core ^a{}$": "-----------------------------",
+    "core ^a{,}$": "-----------------------------",
+    "core ^a{2,3$": "-----------------------------",
+    "core ^a}$": "-----------------------------",
+    "core ^a]$": "-----------------------------",
+    "core ^a*?$": "TTTFFFFFFFFFFFFFFFFFFFFTTFFFT",
+    "core ^a+?$": "TTTFFFFFFFFFFFFFFFFFFFFTTFFFF",
+    "core ^a??$": "TFFFFFFFFFFFFFFFFFFFFFFFFFFFT",
+    "core ^a{2}?$": "FTFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "core ^a**$": "-----------------------------",
+    "core ^a?*$": "-----------------------------",
+    "core ^*a$": "-----------------------------",
+    "core ^(*a)$": "-----------------------------",
+    "core ^a|*b$": "-----------------------------",
+    "core ^$*": "-----------------------------",
+    "core ^\\b*a$": "-----------------------------",
+    "core ^(?:a|b)c$": "FFFFTFFFFFFFFFFFFFFFFFFFFFFFF",
+    "core ^(a|)c$": "FFFFTFTFFFFFFFFFFFFFFFFFFFFFF",
+    "core ^a|$": "TTTTTTTTTTTTTTTTTTTTTTTTTFFFT",
+    "core ^()$": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFT",
+    "core ^(a$": "-----------------------------",
+    "core ^a)$": "-----------------------------",
+    "core ^\\.$": "FFFFFFFFFFFFFTFFFFFFFFFFFFFFF",
+    "core ^\\\\$": "FFFFFFFFFFFFFFTFFFFFFFFFFFFFF",
+    "core ^\\<$": "-----------------------------",
+    "core ^\\_$": "-----------------------------",
+    "core ^\\ $": "-----------------------------",
+    "core ^\\n$": "-----------------------------",
+    "core ^\\t$": "-----------------------------",
+    "core ^\\1$": "-----------------------------",
+    "core ^\\": "-----------------------------",
+    "core abc(?:\\n)": "-----------------------------",
+    "core abc(?:d)": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "core ^[a&b]$": "TFFFFTFFFFFFFFFFFFFFFFFFFFFFF",
+    "core ^[a~b]$": "TFFFFTFFFFTFFFFFFFFFFFFFFFFFF",
+    "core ^[&]$": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "core ^[a&]$": "TFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "core ^[~a]$": "TFFFFFFFFFTFFFFFFFFFFFFFFFFFF",
+    "core ^[a&&]$": "-----------------------------",
+    "core ^[&&a]$": "-----------------------------",
+    "core ^[A-\\d]$": "-----------------------------",
+    "core ^[A-\\]]$": "-----------------------------",
+    "core ^[A-[a]$": "-----------------------------",
+    "core ^[!-\\.]$": "-----------------------------",
+    "core ^[a-a]$": "TFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "core ^[a-b]$": "TFFFFTFFFFFFFFFFFFFFFFFFFFFFF",
+    "core ^[\\n]$": "-----------------------------",
+    "core ^[\\x]$": "-----------------------------",
+    "core ^[a\\b]$": "-----------------------------",
+    "core ^[\\d\\w\\s]$": "TFFFFTTFFFFFFFFFTTTTTFFFFFFFF",
+    "core ^[\\.\\-\\]]$": "FFFFFFFTTFFFFTFFFFFFFFFFFFFFF",
+    "core ^[^-a]$": "FFFFFTTFTTTTTTTTTTTTTFFFFFFFF",
+    "core ^[^a-]$": "FFFFFTTFTTTTTTTTTTTTTFFFFFFFF",
+    "core ^[^^]$": "TFFFFTTTTFTTTTTTTTTTTFFFFFFFF",
+    "core ^a{2": "-----------------------------",
+    "core a{12": "-----------------------------",
+    "core a{1,2": "-----------------------------",
+    "core a{1,": "-----------------------------",
+    "core ^a{064}$": "FFFFFFFFFFFFFFFFFFFFFFFTFFFFF",
+    "core ^a{001}$": "TFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "core ^a{0001}$": "-----------------------------",
+    "core ^a{0064}$": "-----------------------------",
+    "core ^a{1,064}$": "TTTFFFFFFFFFFFFFFFFFFFFTFFFFF",
+    "core ^a{1,0064}$": "-----------------------------",
+    "core ^a{065}$": "-----------------------------",
+    "core ^a{0,0}$": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFT",
+    "core ^a{0}$": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFT",
+    "core aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "core aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "-----------------------------",
+    "core ^é$": "-----------------------------",
+    "core ": "-----------------------------",
+    "pattern near the size limit": "TFTFFF",
+    "pattern at the size limit, values at the work budget": "TFTFF",
+    "pattern of size 2048, values at the work budget": "TFT",
+    "pattern, the widest class near the size limit, values at the work budget": "TFFTF",
+    "pattern just over the size limit": "--",
+    "pattern on values around 4,096 characters": "FFFF",
+    "pattern on values over 4,096 characters": "TFF",
+    "pattern, a quantified group holding a quantifier": "TTFFFTFF",
+    "pattern, overlapping alternation": "FTT",
+    "pattern, quantifiers nested under counts": "TTFFF",
+    "pattern, optional items nested under counts": "TTFF",
+    "pattern, quantifiers nested past the size limit": "--",
+    "integer": "FTTTFFTFFFFFFF",
+    "integer, unbounded": "TTFFFT",
+    "bigint": "FTTTFTTFTFFFFFFFFF",
+    "bigint, zero and its written forms": "TTTTTTFFFT",
+    "bigint, a signed zero bound": "TTFF",
+    "bigint, a negative lower bound": "TTTTFF",
+    "bigint, unbounded": "TTTFTT",
+    "enum": "TTFFFFF",
+    "boolean": "TTFFFF",
+    "array": "FTTFFFFFF",
+    "object": "TTFFFFFFFF",
+    "optional": "TFF",
+    "geohash, no disposition": "TTTTFFFTFTFF",
+    "geohash, public": "TTTTFFFTFTFF",
+    "h3, public": "TTTFFFFFF",
+    "s2, public": "TTTFFFFFFF",
+    "olc, public": "TTTFFFFFFF",
+    "a format the cap does not read": "TT",
+    "geohash items of a public array": "TTFFF",
+    "geohash in a nested object, public": "TF",
+    "formatFromField with no sibling, a static geohash format": "TF",
+    "formatFromField with no sibling, no static format": "T",
+};
+
+/** Each whole-content case's verdict. */
+const CONTENT_VERDICTS: Readonly<Record<string, boolean>> = {
+    "absent optional": true,
+    "absent required": false,
+    "unknown field": false,
+    "unknown field beside a known one": false,
+    "content total, 4 values of 1040 characters": true,
+    "content total, 5 values of 1040 characters": false,
+    "content total, 260 values of 16 characters": true,
+    "content total, 261 values of 16 characters": false,
+    "content total over two fields, 2 and 2 values": true,
+    "content total over two fields, 2 and 3 values": false,
+    "content total, values over maxLength add nothing": false,
+    "content is an array": false,
+    "content is null": false,
+    "content is a string": false,
+    "private geohash {\"g\":\"dr5regw3pg6s\",\"b\":\"0xabababababababababababababababababababababababababababababababab\"}": true,
+    "private geohash {\"g\":\"dr5regw3pg6st\",\"b\":\"0xabababababababababababababababababababababababababababababababab\"}": false,
+    "private geohash {\"g\":\"dr5reg\"}": false,
+    "private geohash {\"g\":\"dr5reg\",\"b\":\"0xab\"}": false,
+    "private h3 \"8f28308280db6db\"": true,
+    "private h3 \"8e28308280db6df\"": true,
+    "private h3 \"8f28308280db6db0\"": false,
+    "private s2 \"89c259b1e3d47a4b\"": true,
+    "private s2 \"89c259b1e3d47a4c\"": true,
+    "private s2 \"89c259b1e3d47a4b0\"": false,
+    "private olc \"8FVC9G8F+6X23456\"": true,
+    "private olc \"9G8F+6X\"": true,
+    "private olc \"8FVC9G8F+6X234567\"": false,
+    "formatFromField, an enum sibling of the capped standards {\"std\":\"h3\",\"loc\":\"8828308281fffff\"}": true,
+    "formatFromField, an enum sibling of the capped standards {\"std\":\"h3\",\"loc\":\"8928308280fffff\"}": false,
+    "formatFromField, an enum sibling of the capped standards {\"std\":\"s2\",\"loc\":\"89c259b4\"}": true,
+    "formatFromField, an enum sibling of the capped standards {\"std\":\"s2\",\"loc\":\"89c259b1\"}": false,
+    "formatFromField, an enum sibling of the capped standards {\"std\":\"s2\",\"loc\":\"dr5reg\"}": false,
+    "formatFromField, an enum sibling of the capped standards {\"std\":\"olc\",\"loc\":\"8FVC9G00+\"}": true,
+    "formatFromField, an enum sibling of the capped standards {\"std\":\"olc\",\"loc\":\"8FVC9G8F+\"}": false,
+    "formatFromField, an enum sibling of the capped standards {\"loc\":\"dr5reg\"}": true,
+    "formatFromField, an enum sibling of the capped standards {\"loc\":\"dr5regw\"}": false,
+    "geohash in a nested object, private, in a private set {\"v\":{\"g\":\"dr5regw\"},\"b\":\"0xabababababababababababababababababababababababababababababababab\"}": true,
+    "geohash in a nested object, private, in a private set {\"v\":{\"g\":\"dr5regw3pg6s\"},\"b\":\"0xabababababababababababababababababababababababababababababababab\"}": true,
+    "geohash in a nested object, private, in a private set {\"v\":{\"g\":\"dr5regw3pg6st\"},\"b\":\"0xabababababababababababababababababababababababababababababababab\"}": false,
+    "geohash items marked private in a private array {\"v\":[\"dr5regw3pg6s\"],\"b\":\"0xabababababababababababababababababababababababababababababababab\"}": true,
+    "geohash items marked private in a private array {\"v\":[\"dr5regw3pg6st\"],\"b\":\"0xabababababababababababababababababababababababababababababababab\"}": false,
+    "private array of geohashes {\"a\":[\"dr5regw3pg6s\"],\"b\":\"0xabababababababababababababababababababababababababababababababab\"}": true,
+    "private array of geohashes {\"a\":[\"dr5regw3pg6st\"],\"b\":\"0xabababababababababababababababababababababababababababababababab\"}": false,
+    "formatFromField, a sibling with no default {\"std\":\"geohash\",\"loc\":\"dr5regw\"}": false,
+    "formatFromField, a sibling with no default {\"std\":\"geohash\",\"loc\":\"dr5reg\"}": true,
+    "formatFromField, a sibling with no default {\"std\":\"plus-code\",\"loc\":\"dr5regw3pg6st\"}": true,
+    "formatFromField, a sibling with no default {\"std\":\"\",\"loc\":\"dr5regw\"}": true,
+    "formatFromField, a sibling with no default {\"loc\":\"dr5regw\"}": true,
+    "formatFromField, a sibling whose default is geohash {\"loc\":\"dr5regw\"}": false,
+    "formatFromField, a sibling whose default is geohash {\"std\":\"\",\"loc\":\"dr5regw\"}": false,
+    "formatFromField, a sibling whose default is geohash {\"std\":\"plus-code\",\"loc\":\"dr5regw\"}": true,
+    "formatFromField, a sibling whose default is geohash {\"std\":\"geohash\",\"loc\":\"dr5reg\"}": true,
+    "formatFromField, an enum sibling whose default is geohash {\"loc\":\"dr5regw\"}": false,
+    "formatFromField, an enum sibling whose default is geohash {\"std\":\"geohash\",\"loc\":\"dr5regw\"}": false,
+    "formatFromField over a static geohash format {\"loc\":\"dr5regw\"}": false,
+    "formatFromField over a static geohash format {\"std\":\"plus-code\",\"loc\":\"dr5regw\"}": true,
+    "formatFromField, a sibling whose value is no string": false,
+    "formatFromField naming the field itself {\"loc\":\"geohash\"}": false,
+    "formatFromField naming the field itself {\"loc\":\"dr5regw\"}": true,
+    "formatFromField, two siblings of one name, the first with no default": true,
+    "formatFromField, two siblings of one name, the first whose default is geohash": false,
+    "an absent optional field named toString": true,
+    "an absent optional field named constructor": true,
+    "an absent optional field named valueOf": true,
+    "an absent optional field named hasOwnProperty": true,
+    "an absent optional field named __proto__": true,
+    "an absent optional object field named constructor": true,
+    "an absent required field named toString": false,
+    "a present field named __proto__": true,
+    "an undeclared key named toString": false,
+};
+
+/** Whether the parser accepts each spec case. */
+const SPEC_VERDICTS: Readonly<Record<string, boolean>> = {
+    "minimal": true,
+    "empty field name": false,
+    "missing required flag": false,
+    "unknown type": false,
+    "version 0": true,
+    "version -1": false,
+    "version 1.5": false,
+    "version 1.0": true,
+    "version 1e21": false,
+    "version as string": false,
+    "version past the safe range": false,
+    "version at the safe range": true,
+    "integer max past the safe range": false,
+    "maxLength past the safe range": false,
+    "minLength 0": true,
+    "minLength -1": false,
+    "minLength 1.5": false,
+    "maxLength -1": false,
+    "integer min 1.5": false,
+    "integer min -3": true,
+    "bigint min empty": false,
+    "bigint min signed": true,
+    "bigint min lone sign": false,
+    "bigint min hex": false,
+    "bigint min number": false,
+    "bigint max plus": false,
+    "enum empty values": false,
+    "enum no values": false,
+    "enum one value": true,
+    "enum sentinel": true,
+    "enum sentinel not a value": false,
+    "enum valueLabels": true,
+    "enum valueLabels key not a value": false,
+    "enum valueLabels entry a number": false,
+    "enum valueLabels an array": false,
+    "field label": true,
+    "field label a number": false,
+    "field description a number": false,
+    "clauseId empty": false,
+    "title empty": false,
+    "description a number": false,
+    "array without items": false,
+    "array items a string": false,
+    "array items an array": false,
+    "array items ok": true,
+    "array minItems -1": false,
+    "array maxItems -1": false,
+    "object without fields": false,
+    "object empty fields": true,
+    "default string": true,
+    "default string wrong type": false,
+    "default integer": true,
+    "default integer at min": true,
+    "default integer above max": false,
+    "default integer below min": false,
+    "default integer 1.5": false,
+    "default integer 2.0": true,
+    "default bigint": true,
+    "default bigint number": false,
+    "default bigint malformed": false,
+    "default boolean": true,
+    "default boolean wrong type": false,
+    "default enum member": true,
+    "default enum stranger": false,
+    "default enum sentinel": false,
+    "default array of enum": true,
+    "default array of enum stranger": false,
+    "default array not an array": false,
+    "default on an object": false,
+    "nesting depth 6": true,
+    "nesting depth 7": true,
+    "nesting depth 8": true,
+    "nesting depth 9": true,
+    "nesting depth 10": true,
+    "nesting depth 11": true,
+    "nesting depth 12": true,
+    "nesting depth 16": true,
+    "nesting depth 17": false,
+    "nesting depth 32": false,
+    "nesting depth 33": false,
+    "pattern unbalanced close": false,
+    "pattern unbalanced open": false,
+    "pattern open class": false,
+    "pattern not a string": false,
+    "pattern expansion (?:a{31}){64}": true,
+    "pattern expansion (?:a{31}){64}a": false,
+    "pattern expansion (?:a{0,31}){64}": true,
+    "pattern expansion (?:\\w{31}){64}": true,
+    "pattern expansion (?:\\W{31}){64}": true,
+    "pattern expansion (?:.{31}){64}": true,
+    "pattern expansion (?:[^a]{31}){64}": true,
+    "pattern expansion (?:\\b\\w{30}){64}": true,
+    "pattern expansion (?:[!#%')+/13579;=?ACEGIKMOQSUWY_acegikmoqsuwy{}]{0,63}){32}": true,
+    "pattern expansion (?:[!#%')+/13579;=?ACEGIKMOQSUWY_acegikmoqsuwy{}]{0,63}){32}a": false,
+    "pattern expansion (?:[^!#%')+\\-/13579;=?ACEGIKMOQSUWY\\[\\]_acegikmoqsuwy{}]{0,63}){32}": true,
+    "pattern expansion (?:[^!#%')+\\-/13579;=?ACEGIKMOQSUWY\\[\\]_acegikmoqsuwy{}]{0,63}){32}a": false,
+    "pattern expansion ^(?:[^!#%')+\\-/13579;=?ACEGIKMOQSUWY\\[\\]_acegikmoqsuwy{}]{0,64}){31}$": true,
+    "pattern expansion (?:(?:(?:(?:a{64}){64}){64}){64})": false,
+    "pattern expansion (?:a{64}){64}": false,
+    "pattern expansion (?:a{64}){64}a": false,
+    "pattern expansion ^(?:a{64}){63}a{62}$": false,
+    "pattern expansion ^(?:a{64}){63}a{63}$": false,
+    "pattern expansion (?:(?:ab|cd){64}){16}": false,
+    "pattern expansion (?:(?:ab|cd){64}){16}e": false,
+    "pattern expansion (?:a{64,}){63}": false,
+    "pattern expansion (?:a{64,}){64}": false,
+    "pattern expansion (?:a{1,64}){64}": false,
+    "pattern expansion (?:a{1,64}){64}?": false,
+    "pattern expansion (?:a{64}){64}b{0}": false,
+    "pattern expansion (?:a{64}){64}(?:bc){0}": false,
+    "pattern expansion (?:(?:(?:(?:a{64}){64}){64}){64}){0}": true,
+    "pattern expansion (?:(?:(?:(?:a{64}){64}){64}){64}){0}b": true,
+    "pattern expansion (?:a+){64}(?:b*){64}": true,
+    "pattern expansion (?:\\w{64}){64}": false,
+    "pattern expansion (?:\\W{64}){64}": false,
+    "pattern expansion (?:\\D{64}){64}": false,
+    "pattern expansion (?:\\S{64}){64}": false,
+    "pattern expansion (?:.{64}){64}": false,
+    "pattern expansion (?:[^a]{64}){64}": false,
+    "pattern expansion (?:\\b\\w{63}){64}": false,
+    "pattern expansion \\w{64}\\w{64}\\w{64}\\w{64}\\w{64}": true,
+    "pattern near the size limit ^(?:(?:(?:a)*){64}){12}$": true,
+    "pattern near the size limit ^(?:(?:(?:a)*){64}){13}$": false,
+    "pattern near the size limit ^(?:(?:a)*){64}$": true,
+    "pattern near the size limit ^(?:(?:(a)*){64}){12}$": true,
+    "pattern near the size limit ^(?:(?:(a)*){64}){13}$": false,
+    "pattern near the size limit ^(?:(a)*){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:a)*)*)*)*)*){64}){4}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:a)*)*)*)*)*){64}){5}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:a)*)*)*)*)*){64}$": true,
+    "pattern near the size limit ^(?:(?:(((((a)*)*)*)*)*){64}){4}$": true,
+    "pattern near the size limit ^(?:(?:(((((a)*)*)*)*)*){64}){5}$": false,
+    "pattern near the size limit ^(?:(((((a)*)*)*)*)*){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*){64}){1}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*){64}){2}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*){64}$": true,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((a)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*){64}){1}$": true,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((a)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*){64}){2}$": false,
+    "pattern near the size limit ^(?:((((((((((((((((((((a)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*){64}){1}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*){49}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*){50}$": false,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((((((((((((((((((((((a)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*){64}){1}$": false,
+    "pattern near the size limit ^(?:((((((((((((((((((((((((((((((((((((((((a)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*){49}$": true,
+    "pattern near the size limit ^(?:((((((((((((((((((((((((((((((((((((((((a)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*)*){50}$": false,
+    "pattern near the size limit ^(?:(?:(?:a)+){64}){12}$": true,
+    "pattern near the size limit ^(?:(?:(?:a)+){64}){13}$": false,
+    "pattern near the size limit ^(?:(?:a)+){64}$": true,
+    "pattern near the size limit ^(?:(?:(a)+){64}){12}$": true,
+    "pattern near the size limit ^(?:(?:(a)+){64}){13}$": false,
+    "pattern near the size limit ^(?:(a)+){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:a)+)+)+)+)+){64}){4}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:a)+)+)+)+)+){64}){5}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:a)+)+)+)+)+){64}$": true,
+    "pattern near the size limit ^(?:(?:(((((a)+)+)+)+)+){64}){4}$": true,
+    "pattern near the size limit ^(?:(?:(((((a)+)+)+)+)+){64}){5}$": false,
+    "pattern near the size limit ^(?:(((((a)+)+)+)+)+){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+){64}){1}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+){64}){2}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+){64}$": true,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((a)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+){64}){1}$": true,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((a)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+){64}){2}$": false,
+    "pattern near the size limit ^(?:((((((((((((((((((((a)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+){64}){1}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+){49}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+){50}$": false,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((((((((((((((((((((((a)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+){64}){1}$": false,
+    "pattern near the size limit ^(?:((((((((((((((((((((((((((((((((((((((((a)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+){49}$": true,
+    "pattern near the size limit ^(?:((((((((((((((((((((((((((((((((((((((((a)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+)+){50}$": false,
+    "pattern near the size limit ^(?:(?:(?:a)?){64}){12}$": true,
+    "pattern near the size limit ^(?:(?:(?:a)?){64}){13}$": false,
+    "pattern near the size limit ^(?:(?:a)?){64}$": true,
+    "pattern near the size limit ^(?:(?:(a)?){64}){12}$": true,
+    "pattern near the size limit ^(?:(?:(a)?){64}){13}$": false,
+    "pattern near the size limit ^(?:(a)?){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:a)?)?)?)?)?){64}){4}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:a)?)?)?)?)?){64}){5}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:a)?)?)?)?)?){64}$": true,
+    "pattern near the size limit ^(?:(?:(((((a)?)?)?)?)?){64}){4}$": true,
+    "pattern near the size limit ^(?:(?:(((((a)?)?)?)?)?){64}){5}$": false,
+    "pattern near the size limit ^(?:(((((a)?)?)?)?)?){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?){64}){1}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?){64}){2}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?){64}$": true,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((a)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?){64}){1}$": true,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((a)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?){64}){2}$": false,
+    "pattern near the size limit ^(?:((((((((((((((((((((a)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?){64}){1}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?){49}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?){50}$": false,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((((((((((((((((((((((a)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?){64}){1}$": false,
+    "pattern near the size limit ^(?:((((((((((((((((((((((((((((((((((((((((a)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?){49}$": true,
+    "pattern near the size limit ^(?:((((((((((((((((((((((((((((((((((((((((a)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?)?){50}$": false,
+    "pattern near the size limit ^(?:(?:(?:a){0,}){64}){12}$": true,
+    "pattern near the size limit ^(?:(?:(?:a){0,}){64}){13}$": false,
+    "pattern near the size limit ^(?:(?:a){0,}){64}$": true,
+    "pattern near the size limit ^(?:(?:(a){0,}){64}){12}$": true,
+    "pattern near the size limit ^(?:(?:(a){0,}){64}){13}$": false,
+    "pattern near the size limit ^(?:(a){0,}){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:a){0,}){0,}){0,}){0,}){0,}){64}){4}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:a){0,}){0,}){0,}){0,}){0,}){64}){5}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:a){0,}){0,}){0,}){0,}){0,}){64}$": true,
+    "pattern near the size limit ^(?:(?:(((((a){0,}){0,}){0,}){0,}){0,}){64}){4}$": true,
+    "pattern near the size limit ^(?:(?:(((((a){0,}){0,}){0,}){0,}){0,}){64}){5}$": false,
+    "pattern near the size limit ^(?:(((((a){0,}){0,}){0,}){0,}){0,}){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){64}){1}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){64}){2}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){64}$": true,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((a){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){64}){1}$": true,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((a){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){64}){2}$": false,
+    "pattern near the size limit ^(?:((((((((((((((((((((a){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){64}){1}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){1}$": false,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((((((((((((((((((((((a){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){64}){1}$": false,
+    "pattern near the size limit ^(?:((((((((((((((((((((((((((((((((((((((((a){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){49}$": true,
+    "pattern near the size limit ^(?:((((((((((((((((((((((((((((((((((((((((a){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){0,}){50}$": false,
+    "pattern near the size limit ^(?:(?:(?:a){1,}){64}){7}$": true,
+    "pattern near the size limit ^(?:(?:(?:a){1,}){64}){8}$": false,
+    "pattern near the size limit ^(?:(?:a){1,}){64}$": true,
+    "pattern near the size limit ^(?:(?:(a){1,}){64}){7}$": true,
+    "pattern near the size limit ^(?:(?:(a){1,}){64}){8}$": false,
+    "pattern near the size limit ^(?:(a){1,}){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:a){1,}){1,}){1,}){1,}){1,}){64}){1}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:a){1,}){1,}){1,}){1,}){1,}){25}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:a){1,}){1,}){1,}){1,}){1,}){26}$": false,
+    "pattern near the size limit ^(?:(?:(((((a){1,}){1,}){1,}){1,}){1,}){64}){1}$": false,
+    "pattern near the size limit ^(?:(((((a){1,}){1,}){1,}){1,}){1,}){25}$": true,
+    "pattern near the size limit ^(?:(((((a){1,}){1,}){1,}){1,}){1,}){26}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){64}){1}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1}$": false,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((a){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){64}){1}$": false,
+    "pattern near the size limit ^(?:((((((((((((((((((((a){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){64}){1}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1}$": false,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((((((((((((((((((((((a){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){64}){1}$": false,
+    "pattern near the size limit ^(?:((((((((((((((((((((((((((((((((((((((((a){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1,}){1}$": false,
+    "pattern near the size limit ^(?:(?:(?:a){0,1}){64}){12}$": true,
+    "pattern near the size limit ^(?:(?:(?:a){0,1}){64}){13}$": false,
+    "pattern near the size limit ^(?:(?:a){0,1}){64}$": true,
+    "pattern near the size limit ^(?:(?:(a){0,1}){64}){12}$": true,
+    "pattern near the size limit ^(?:(?:(a){0,1}){64}){13}$": false,
+    "pattern near the size limit ^(?:(a){0,1}){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:a){0,1}){0,1}){0,1}){0,1}){0,1}){64}){4}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:a){0,1}){0,1}){0,1}){0,1}){0,1}){64}){5}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:a){0,1}){0,1}){0,1}){0,1}){0,1}){64}$": true,
+    "pattern near the size limit ^(?:(?:(((((a){0,1}){0,1}){0,1}){0,1}){0,1}){64}){4}$": true,
+    "pattern near the size limit ^(?:(?:(((((a){0,1}){0,1}){0,1}){0,1}){0,1}){64}){5}$": false,
+    "pattern near the size limit ^(?:(((((a){0,1}){0,1}){0,1}){0,1}){0,1}){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){64}){1}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){64}){2}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){64}$": true,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((a){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){64}){1}$": true,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((a){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){64}){2}$": false,
+    "pattern near the size limit ^(?:((((((((((((((((((((a){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){64}){1}$": false,
+    "pattern near the size limit ^(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:a){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){1}$": false,
+    "pattern near the size limit ^(?:(?:((((((((((((((((((((((((((((((((((((((((a){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){64}){1}$": false,
+    "pattern near the size limit ^(?:((((((((((((((((((((((((((((((((((((((((a){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){0,1}){1}$": false,
+    "pattern near the size limit ^(?:(?:a|b){64}){12}$": true,
+    "pattern near the size limit ^(?:(?:a|b){64}){13}$": false,
+    "pattern near the size limit ^(?:a|b){64}$": true,
+    "pattern near the size limit ^(?:(?:a|a){64}){12}$": true,
+    "pattern near the size limit ^(?:(?:a|a){64}){13}$": false,
+    "pattern near the size limit ^(?:a|a){64}$": true,
+    "pattern near the size limit ^(?:(?:a|){64}){15}$": true,
+    "pattern near the size limit ^(?:(?:a|){64}){16}$": false,
+    "pattern near the size limit ^(?:a|){64}$": true,
+    "pattern near the size limit ^(?:(?:a|b|c|d|e|f|g|h){64}){3}$": true,
+    "pattern near the size limit ^(?:(?:a|b|c|d|e|f|g|h){64}){4}$": false,
+    "pattern near the size limit ^(?:a|b|c|d|e|f|g|h){64}$": true,
+    "pattern near the size limit ^(?:(?:(?:a|a)*){64}){9}$": true,
+    "pattern near the size limit ^(?:(?:(?:a|a)*){64}){10}$": false,
+    "pattern near the size limit ^(?:(?:a|a)*){64}$": true,
+    "pattern near the size limit ^(?:(?:a?|b?){64}){9}$": true,
+    "pattern near the size limit ^(?:(?:a?|b?){64}){10}$": false,
+    "pattern near the size limit ^(?:a?|b?){64}$": true,
+    "pattern near the size limit ^(?:(?:a*|b*){64}){9}$": true,
+    "pattern near the size limit ^(?:(?:a*|b*){64}){10}$": false,
+    "pattern near the size limit ^(?:a*|b*){64}$": true,
+    "pattern near the size limit ^(?:(?:a{0,64}){64}){1}$": false,
+    "pattern near the size limit ^(?:a{0,64}){31}$": true,
+    "pattern near the size limit ^(?:a{0,64}){32}$": false,
+    "pattern near the size limit ^(?:(?:a{1,64}){64}){1}$": false,
+    "pattern near the size limit ^(?:a{1,64}){31}$": true,
+    "pattern near the size limit ^(?:a{1,64}){32}$": false,
+    "pattern near the size limit ^(?:(?:(?:a{0,8}){8}){64}){1}$": false,
+    "pattern near the size limit ^(?:(?:a{0,8}){8}){28}$": true,
+    "pattern near the size limit ^(?:(?:a{0,8}){8}){29}$": false,
+    "pattern near the size limit ^(?:(?:(?:\\ba)*){64}){10}$": true,
+    "pattern near the size limit ^(?:(?:(?:\\ba)*){64}){11}$": false,
+    "pattern near the size limit ^(?:(?:\\ba)*){64}$": true,
+    "pattern near the size limit ^(?:(?:\\w*\\W?){64}){10}$": true,
+    "pattern near the size limit ^(?:(?:\\w*\\W?){64}){11}$": false,
+    "pattern near the size limit ^(?:\\w*\\W?){64}$": true,
+    "array nesting depth 6": true,
+    "array nesting depth 7": true,
+    "array nesting depth 8": true,
+    "array nesting depth 9": true,
+    "array nesting depth 10": true,
+    "array nesting depth 11": true,
+    "array nesting depth 12": true,
+    "array nesting depth 16": true,
+    "array nesting depth 17": false,
+    "array nesting depth 32": false,
+    "array nesting depth 33": false,
+    "stages": true,
+    "stages not an object": false,
+    "stage key \"0\"": true,
+    "stage key \"1\"": true,
+    "stage key \"255\"": true,
+    "stage key \"01\"": false,
+    "stage key \"00\"": false,
+    "stage key \"+1\"": false,
+    "stage key \" 1\"": false,
+    "stage key \"1 \"": false,
+    "stage key \"1.0\"": false,
+    "stage key \"0x1\"": false,
+    "stage key \"-0\"": false,
+    "stage key \"\"": false,
+    "stage key \"256\"": false,
+    "stage key \"1e1\"": false,
+    "stage key \"١\"": false,
+    "stage key \"a\"": false,
+    "stage keys \"1\" and \"01\" in one spec": false,
+    "fields not an array": false,
+    "empty fields": true,
+    "spec is an array": false,
+    "spec is null": false,
+    "enum of 256 values": true,
+    "enum of 257 values": false,
+    "disposition public": true,
+    "disposition secret": false,
+    "disposition null": false,
+    "disposition true": false,
+    "disposition PRIVATE": false,
+    "formatFromField": true,
+    "formatFromField naming no sibling": true,
+    "formatFromField empty": false,
+    "formatFromField a number": false,
+    "formatFromField null": false,
+    "formatFromField on an integer field": true,
+    "private set with its blinding field": true,
+    "private set, the blinding field first": true,
+    "private set without a blinding field": false,
+    "private set with two blinding fields": false,
+    "a blinding field alone": false,
+    "a blinding field beside a public field": false,
+    "a mixed set": false,
+    "a mixed set, public written out": false,
+    "a public field beside a private object": false,
+    "a private field nested in a public object": false,
+    "a private field nested in a public object named v": false,
+    "a private field nested in a public object, with a blinding field": false,
+    "a private field two objects deep in a public object, with a blinding field": false,
+    "a private item in a public array": false,
+    "a private item in a public array, with a blinding field": false,
+    "a private field nested in a private object, with a blinding field": true,
+    "a private field nested in a public stage object": false,
+    "blinding false": false,
+    "blinding as a string": false,
+    "blinding null": false,
+    "a blinding field of type integer": false,
+    "a blinding field of type enum": false,
+    "a blinding field with no format": false,
+    "a blinding field of format bytes-hex": false,
+    "a blinding field not required": false,
+    "a blinding field public": false,
+    "a blinding field with no disposition": false,
+    "a blinding field with a default": false,
+    "a blinding field with a default of the wrong type": false,
+    "a blinding field nested in an object": false,
+    "a blinding field as an array item": false,
+    "a private stage with its blinding field": true,
+    "a private stage without a blinding field": false,
+    "a mixed stage": false,
+    "a public stage with a blinding field": false,
+    "an empty stage": true,
+    "emptyAnchor true": true,
+    "emptyAnchor false": false,
+    "emptyAnchor as a string": false,
+    "emptyAnchor beside a top-level default": false,
+    "emptyAnchor beside a stage field's default": true,
+};
+
 // ── Canonical bytes ─────────────────────────────────────────────────────────
 
 /** Contents whose canonical JSON (`canonicalize`, the bytes a clause's data
- *  hash covers and a re-assertion carries to the guest) keeps every key,
- *  those named as a property every object inherits among them. The guest
- *  hashes the bytes it is handed and reads the content from them, so a key
- *  the SDK's form dropped would leave two contents under one data hash. */
-const DATA_CASES: { label: string; content: unknown }[] = [
-    { label: "a key named __proto__, value A", content: JSON.parse('{"x":1,"__proto__":"A"}') as unknown },
-    { label: "a key named __proto__, value B", content: JSON.parse('{"x":1,"__proto__":"B"}') as unknown },
-    { label: "a key named __proto__ holding an object", content: JSON.parse('{"__proto__":{"y":2},"x":1}') as unknown },
-    { label: "a nested key named __proto__", content: JSON.parse('{"o":{"z":1,"__proto__":"A"}}') as unknown },
-    { label: "keys named constructor, toString and prototype", content: JSON.parse('{"toString":"t","prototype":"p","constructor":"c"}') as unknown },
+ *  hash covers) keeps every key, those named as a property every object
+ *  inherits among them. A reader hashes the bytes it is handed and reads the
+ *  content from them, so a key the SDK's form dropped would leave two
+ *  contents under one data hash. */
+const DATA_CASES: { label: string; content: unknown; bytes: string }[] = [
+    { label: "a key named __proto__, value A", content: JSON.parse('{"x":1,"__proto__":"A"}') as unknown , bytes: '{"__proto__":"A","x":1}' },
+    { label: "a key named __proto__, value B", content: JSON.parse('{"x":1,"__proto__":"B"}') as unknown , bytes: '{"__proto__":"B","x":1}' },
+    { label: "a key named __proto__ holding an object", content: JSON.parse('{"__proto__":{"y":2},"x":1}') as unknown , bytes: '{"__proto__":{"y":2},"x":1}' },
+    { label: "a nested key named __proto__", content: JSON.parse('{"o":{"z":1,"__proto__":"A"}}') as unknown , bytes: '{"o":{"__proto__":"A","z":1}}' },
+    { label: "keys named constructor, toString and prototype", content: JSON.parse('{"toString":"t","prototype":"p","constructor":"c"}') as unknown , bytes: '{"constructor":"c","prototype":"p","toString":"t"}' },
 ];
 
 function build() {
@@ -1096,39 +1763,51 @@ function build() {
         signed: SIGNED_CASES.map(({ label, spec, content }) => {
             const parsed = parseClauseSpec(spec);
             if (!parsed.ok) throw new Error(`signed case ${label}: the spec does not parse`);
-            return { label, spec, content, ok: validateSignedContent(content, parsed.spec).ok };
+            return { label, ok: validateSignedContent(content, parsed.spec).ok };
         }),
         encodings: ENCODE_CASES.map(({ label, fields, stages, stage, content }) => {
             const parsed = parseClauseSpec(specOf(fields, stages));
             if (!parsed.ok) throw new Error(`encode case ${label}: the spec does not parse`);
             const options = stage === undefined ? {} : { stage };
             if (!validateContent(content, parsed.spec, options).ok) throw new Error(`encode case ${label}: the content does not validate`);
-            return { label, fields, stages, stage, content, encoded: encodeContentFromSpec(parsed.spec, content, options) };
+            return { label, fields, stages, encoded: encodeContentFromSpec(parsed.spec, content, options) };
         }),
-        dataBytes: DATA_CASES.map(({ label, content }) => ({ label, content, bytes: canonicalize(content) })),
+        dataBytes: DATA_CASES.map(({ label, content }) => ({ label, bytes: canonicalize(content) })),
     };
 }
 
-describe("Clause-engine vectors — the hand-written leg of the clause-engine lock", () => {
-    if (process.env.HARVEST_CLAUSE_ENGINE_VECTORS === "1") {
-        it("regenerates test/fixtures/clause-engine-vectors.json", () => {
-            mkdirSync(path.dirname(FIXTURE_PATH), { recursive: true });
-            writeFileSync(FIXTURE_PATH, `${JSON.stringify(build(), null, 1)}\n`);
-        });
-        return;
-    }
+describe("Clause-engine vectors — each case gives the verdict or the bytes stated beside it", () => {
+    const built = build();
 
-    it("Layer A reproduces the frozen verdicts byte-for-byte", () => {
-        expect(existsSync(FIXTURE_PATH), "fixture missing — harvest with HARVEST_CLAUSE_ENGINE_VECTORS=1").toBe(true);
-        expect(`${JSON.stringify(build(), null, 1)}\n`).toBe(readFileSync(FIXTURE_PATH, "utf8"));
+    it("every value case gives its stated verdict", () => {
+        const letters: Record<string, string> = {};
+        for (const c of built.values) letters[c.group] = (letters[c.group] ?? "") + (c.ok === null ? "-" : c.ok ? "T" : "F");
+        expect(letters).toEqual(VALUE_VERDICTS);
+    });
+
+    it("every whole-content case gives its stated verdict", () => {
+        expect(new Set(CONTENT_CASES.map((c) => c.label)).size, "content labels are unique").toBe(CONTENT_CASES.length);
+        expect(Object.fromEntries(built.contents.map((c) => [c.label, c.ok]))).toEqual(CONTENT_VERDICTS);
+    });
+
+    it("the parser accepts exactly the spec cases stated", () => {
+        expect(new Set(SPEC_CASES.map((c) => c.label)).size, "spec labels are unique").toBe(SPEC_CASES.length);
+        expect(Object.fromEntries(built.specs.map((c) => [c.label, c.ok]))).toEqual(SPEC_VERDICTS);
+    });
+
+    it("the sign gate gives every signed case its stated verdict", () => {
+        built.signed.forEach((c, i) => expect(c.ok, c.label).toBe(SIGNED_CASES[i].ok));
+    });
+
+    it("every encode case encodes to its stated bytes", () => {
+        built.encodings.forEach((c, i) => expect(c.encoded, c.label).toBe(ENCODE_CASES[i].encoded));
     });
 
     it("the vectors hold both verdicts in every group that can have both", () => {
-        const built = build();
         expect(built.values.some((c) => c.ok === true)).toBe(true);
         expect(built.values.some((c) => c.ok === false)).toBe(true);
         // `null`: the field's own spec does not parse — a pattern outside the
-        // portable core, which both engines refuse before any value is read.
+        // portable core, which the parser refuses before any value is read.
         expect(built.values.some((c) => c.ok === null)).toBe(true);
         expect(
             built.values.filter((c) => c.ok === null).every((c) => "pattern" in c.field),
@@ -1157,11 +1836,7 @@ describe("Clause-engine vectors — the hand-written leg of the clause-engine lo
     });
 
     it("the canonical bytes keep a key named __proto__, so two contents that differ there differ in their bytes", () => {
-        const [a, b, nested, deep] = build().dataBytes;
-        expect(a.bytes).toBe('{"__proto__":"A","x":1}');
-        expect(b.bytes).toBe('{"__proto__":"B","x":1}');
-        expect(nested.bytes).toBe('{"__proto__":{"y":2},"x":1}');
-        expect(deep.bytes).toBe('{"o":{"__proto__":"A","z":1}}');
+        built.dataBytes.forEach((c, i) => expect(c.bytes, c.label).toBe(DATA_CASES[i].bytes));
         expect(Object.prototype).not.toHaveProperty("y");
     });
 
@@ -1183,8 +1858,7 @@ describe("Clause-engine vectors — the hand-written leg of the clause-engine lo
  * vectors that parses, and in one the parser refuses for that attribute (an
  * error path that ends in its name). An attribute the parser never refuses
  * on its own stands in the table below with the reason. So an attribute added
- * to the schema and the parser fails here until the vectors hold it, and the
- * guest's engine then replays those vectors (`prover/clause/tests/engine_vectors.rs`).
+ * to the schema and the parser fails here until the vectors hold it.
  */
 const NO_REFUSING_CASE: Readonly<Record<string, string>> = {};
 
@@ -1250,14 +1924,14 @@ function attributeOfPath(errorPath: string): string | undefined {
     return undefined;
 }
 
-describe("The rules both engines apply", () => {
-    it("every attribute the schema declares has a parsing spec and a refusing one in the shared vectors, or a reason in the table", () => {
-        const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as ReturnType<typeof build>;
+describe("The vectors cover the published format", () => {
+    it("every attribute the schema declares has a parsing spec and a refusing one in the vectors, or a reason in the table", () => {
+        const built = build();
         const specs: unknown[] = [
-            ...fixture.values.map((c) => specOf([c.field])),
-            ...fixture.contents.map((c) => specOf(c.fields)),
-            ...fixture.specs.map((c) => c.spec),
-            ...fixture.encodings.map((c) => specOf(c.fields, c.stages)),
+            ...built.values.map((c) => specOf([c.field])),
+            ...built.contents.map((c) => specOf(c.fields)),
+            ...built.specs.map((c) => c.spec),
+            ...built.encodings.map((c) => specOf(c.fields, c.stages)),
         ];
         const parsing = new Set<string>();
         const refused = new Set<string>();
@@ -1284,7 +1958,7 @@ describe("The rules both engines apply", () => {
         expect(unrefused, "attributes no refused spec of the vectors is refused for, and the table does not name").toEqual([]);
     });
 
-    it("the frozen vectors hold the grain cap, the disposition, formatFromField and the blinding field, each with both verdicts", () => {
+    it("the vectors hold the grain cap, the disposition, formatFromField and the blinding field, each with both verdicts", () => {
         const built = build();
         const holds = (needle: RegExp, ok: boolean) =>
             [...built.values.map((c) => ({ text: JSON.stringify(c.field), ok: c.ok })),

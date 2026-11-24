@@ -75,8 +75,8 @@ export function useRelayActions(relay: KnownRelay | null) {
 
     /** One attestation as `role`: `AttestSeller` or `AttestBuyer` signed under
      *  the verifier's domain over the order's id there
-     *  (`batchAttestationTypedData`), sent in the hash-only form (fingerprints
-     *  only, as the coordinator takes them). */
+     *  (`batchAttestationTypedData`), sent with its fingerprints only, as the
+     *  coordinator takes them. */
     const attest = useCallback(async (role: PartyRole, at: BatchAttestation): Promise<RelayReceipt> => {
         const { url, client } = known();
         const signature = await signTypedDataAsync(batchAttestationTypedData(role, at, chainId, pathContract("batch")));

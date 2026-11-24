@@ -340,7 +340,7 @@ fn require_known_active_commitment(
     }
 }
 
-// ── In-proof clause gates (figaro-clause engine) ──────────────────
+// ── The agreement format's reserved keys, and the attestation gate ──
 
 /// The key of the agreement format's reserved PROVENANCE leaf,
 /// `keccak256("figaro-agreement-provenance")` — the leaf that links an
@@ -381,220 +381,27 @@ pub fn is_reserved_key(key: &B256) -> bool {
     *key == PROVENANCE_LEAF_KEY || *key == PROCESS_TERMS_LEAF_KEY
 }
 
-/// The agreement format's rule for a plaintext attestation of the reserved
-/// provenance leaf. The leaf's content is fixed by the format, so the
-/// guest REPRODUCES it rather than validating it against a spec: the
-/// committed bytes must be exactly `provenance_leaf_bytes` of the
-/// agreementHash and processDesignHash they carry, `content_ref` must be their keccak (as a
-/// clause's clauseDataHash), and the leaf over them must open against the
-/// signed `checkout_hash`. `spec_json`, `content_json` and `content_kind`
-/// are not consulted, and no spec binding is emitted: there is no registry
-/// entry to anchor.
-fn validate_provenance_attestation(
-    proof: &AttestationContentProof,
-    content_ref: &B256,
-    checkout_hash: &B256,
-) -> Result<(), KernelError> {
-    let bytes = proof.clause_data.as_bytes();
-    if bytes.len() != PROVENANCE_LEAF_LEN || !bytes.starts_with(PROVENANCE_AGREEMENT_PREFIX) {
-        return Err(KernelError::ProvenanceLeafNotCanonical);
-    }
-    let first = PROVENANCE_AGREEMENT_PREFIX.len();
-    let second = first + 64 + PROVENANCE_PROCESS_DESIGN_INFIX.len();
-    let word = |at: usize| {
-        alloy_primitives::hex::decode(&bytes[at..at + 64])
-            .ok()
-            .map(|raw| B256::from_slice(&raw))
-            .ok_or(KernelError::ProvenanceLeafNotCanonical)
-    };
-    let agreement_hash = word(first)?;
-    let process_design_hash = word(second)?;
-    if provenance_leaf_bytes(&agreement_hash, &process_design_hash) != bytes {
-        return Err(KernelError::ProvenanceLeafNotCanonical);
-    }
-
-    let clause_data_hash = keccak256(bytes);
-    if clause_data_hash != *content_ref {
-        return Err(KernelError::ContentHashMismatch);
-    }
-
-    let leaf = format_leaf(&PROVENANCE_LEAF_KEY, &clause_data_hash);
-    if !crate::merkle::verify_inclusion(&proof.inclusion_proof, *checkout_hash, leaf) {
-        return Err(KernelError::InvalidInclusionProof);
-    }
-    Ok(())
-}
-
-/// Run the plaintext form's gates for one attestation and return the spec binding
-/// the batch commits for on-chain verification — or `None` for the
-/// reserved provenance leaf, which the agreement format's own rule
-/// (`validate_provenance_attestation`) verifies with no spec.
-///
-///   Gate S — spec identity: `spec_json` parses as a `ClauseSpec`, and
-///     `keccak256` of its bytes, hashed verbatim as carried, equals the
-///     op's `clause_id` — a clause key IS the hash of the canonical spec
-///     without `block`, the bytes the witness carries; the spec's own
-///     `clauseId` and `version` are words inside it and key nothing. The binding `(clause_id, keccak256(spec_json))`, both
-///     fields equal, is returned for the public-values commitment; the
-///     on-chain verifier accepts the batch only if they are equal and
-///     `ClauseRegistry.registered(clause_id)` — so the constraint set is
-///     anchored by the registry, not by anything compiled in, and a caller
-///     cannot weaken validation with a permissive spec.
-///   Gate C — content: for a `RuntimeWitness`, `content_json` validates
-///     at the op's stage, the generic encoder derives canonical ABI
-///     bytes from it (the cross-form binding — the bytes are derived
-///     FROM the JSON, so they describe the same content by
-///     construction), and `keccak256(bytes) == content_ref`. For a
-///     `ReAssert`, the content IS the committed `clause_data`
-///     (`content_ref == keccak256(clause_data)`), which must itself
-///     pass the sign gate's rule (`figaro_clause::validate_signed_content`):
-///     the empty anchor `{}` alone for a spec that declares `emptyAnchor`,
-///     content valid over the spec's default fields for every other.
-///   Gate I — agreement inclusion: leaf
-///     `keccak256(clause_id ++ keccak256(clause_data))` opens against
-///     the target's signed `checkout_hash` via the sorted-pair Merkle
-///     `inclusion_proof` — mandatory for every mode, mirroring the
-///     coordinator.
-/// The plaintext form's gates, reached through
-/// `validate_attestation_witness`.
-pub fn validate_attestation_content(
-    proof: &AttestationContentProof,
-    content_ref: &B256,
-    clause_id: &B256,
-    stage: u8,
-    checkout_hash: &B256,
-) -> Result<Option<SpecBinding>, KernelError> {
-    // The reserved provenance leaf is a fact of the agreement format, not
-    // a clause: its key is the format's constant, never a registered id.
-    if *clause_id == PROVENANCE_LEAF_KEY {
-        validate_provenance_attestation(proof, content_ref, checkout_hash)?;
-        return Ok(None);
-    }
-
-    // ── Gate S: witness spec parses + its identity matches the op ──
-    let spec_value: serde_json::Value = serde_json::from_str(&proof.spec_json)
-        .map_err(|e| KernelError::ClauseSpecParseFailed(format!("spec not valid JSON: {e}")))?;
-    let parsed = match figaro_clause::parse_clause_spec(&spec_value) {
-        figaro_clause::ParseClauseSpecResult::Ok(s) => s,
-        figaro_clause::ParseClauseSpecResult::Err(errors) => {
-            let first = errors
-                .first()
-                .map(|e| format!("{}: {}", e.path, e.message))
-                .unwrap_or_else(|| "unknown parse error".to_string());
-            return Err(KernelError::ClauseSpecParseFailed(first));
-        }
-    };
-    if keccak256(proof.spec_json.as_bytes()) != *clause_id {
-        return Err(KernelError::SpecIdentityMismatch(*clause_id));
-    }
-    let binding = SpecBinding {
-        clause_id: *clause_id,
-    };
-
-    // ── Gate C: content satisfies the spec and hashes to content_ref ──
-    match proof.content_kind {
-        ContentKind::RuntimeWitness => {
-            let content: serde_json::Value =
-                serde_json::from_str(&proof.content_json).map_err(|e| {
-                    KernelError::ContentEncodingFailed(format!("content_json not valid JSON: {e}"))
-                })?;
-            let options = figaro_clause::ValidateOptions { stage: Some(stage) };
-            if let figaro_clause::ValidationResult::Err(errors) =
-                figaro_clause::validate_content(&content, &parsed, options)
-            {
-                let first = errors
-                    .first()
-                    .map(|e| format!("{}: {}", e.path, e.message))
-                    .unwrap_or_else(|| "unknown validation error".to_string());
-                return Err(KernelError::ClauseContentInvalid(first));
-            }
-            let derived = figaro_clause::encode_content_from_spec(
-                &parsed,
-                &content,
-                figaro_clause::EncodeOptions { stage: Some(stage) },
-            )
-            .map_err(|e| KernelError::ContentEncodingFailed(e.to_string()))?;
-            if keccak256(derived.as_slice()) != *content_ref {
-                return Err(KernelError::ContentHashMismatch);
-            }
-        }
-        ContentKind::ReAssert => {
-            // The content IS the committed clauseData — re-anchored as
-            // runtime evidence. It must be the signing-time content, so it
-            // passes the sign gate's rule (`validate_signed_content`): the
-            // empty anchor `{}` and nothing else for a spec that declares
-            // `emptyAnchor`, content valid over the spec's DEFAULT fields
-            // for every other, `{}` included. The rule reads the spec's top
-            // level, never its `block`.
-            if keccak256(proof.clause_data.as_bytes()) != *content_ref {
-                return Err(KernelError::ContentHashMismatch);
-            }
-            let clause_data: serde_json::Value =
-                serde_json::from_str(&proof.clause_data).map_err(|e| {
-                    KernelError::ClauseContentInvalid(format!("clause_data not valid JSON: {e}"))
-                })?;
-            if let figaro_clause::ValidationResult::Err(errors) =
-                figaro_clause::validate_signed_content(&clause_data, &parsed)
-            {
-                let first = errors
-                    .first()
-                    .map(|e| format!("{}: {}", e.path, e.message))
-                    .unwrap_or_else(|| "unknown validation error".to_string());
-                return Err(KernelError::ClauseContentInvalid(first));
-            }
-        }
-    }
-
-    // ── Gate I: the clause is a leaf of the signed agreement ──
-    // Leaf = keccak256(keccak256(clauseId ++ keccak256(clauseData))) —
-    // double-hashed for leaf/node domain separation, mirroring
-    // AttestationCoordinator._verifyInclusion (mandatory, every mode).
-    let clause_data_hash = keccak256(proof.clause_data.as_bytes());
-    let leaf = format_leaf(clause_id, &clause_data_hash);
-    if !crate::merkle::verify_inclusion(&proof.inclusion_proof, *checkout_hash, leaf) {
-        return Err(KernelError::InvalidInclusionProof);
-    }
-
-    Ok(Some(binding))
-}
-
-/// Run the gates for one batched attestation's witness, in the form the
-/// attesting party picked (`AttestationWitness`), and return the spec
-/// binding the batch commits — `None` for the hash-only form.
-///
-///   `HashOnly` — gate I alone, exactly `AttestationCoordinator._verifyInclusion`:
-///     leaf `keccak256(keccak256(clause_id ++ clause_data_hash))` opens
-///     against the target's signed `checkout_hash`; `content_ref` is
-///     re-emitted as signed and no spec binding is committed. The reserved
-///     provenance leaf is accepted on inclusion alone, as the coordinator
-///     accepts it: the bytes behind its hash are checked at the usage claim.
-///   `Plaintext` — gates S, C and I (`validate_attestation_content`).
+/// The gate of one batched attestation's witness, exactly
+/// `AttestationCoordinator._verifyInclusion`: the leaf
+/// `keccak256(keccak256(clause_id ++ clause_data_hash))` opens against the
+/// target's signed `checkout_hash`. `content_ref` is re-emitted as signed and
+/// is not read here. The reserved provenance leaf is accepted on inclusion
+/// alone, as the coordinator accepts it: the bytes behind its hash are
+/// checked at the usage claim.
 ///
 /// Public so the sequencer's mempool pre-checks run the EXACT gate the
 /// guest will run — advisory there, enforced here; one implementation,
 /// no drift.
 pub fn validate_attestation_witness(
     witness: &AttestationWitness,
-    content_ref: &B256,
     clause_id: &B256,
-    stage: u8,
     checkout_hash: &B256,
-) -> Result<Option<SpecBinding>, KernelError> {
-    match witness {
-        AttestationWitness::HashOnly {
-            clause_data_hash,
-            inclusion_proof,
-        } => {
-            let leaf = format_leaf(clause_id, clause_data_hash);
-            if !crate::merkle::verify_inclusion(inclusion_proof, *checkout_hash, leaf) {
-                return Err(KernelError::InvalidInclusionProof);
-            }
-            Ok(None)
-        }
-        AttestationWitness::Plaintext(proof) => {
-            validate_attestation_content(proof, content_ref, clause_id, stage, checkout_hash)
-        }
+) -> Result<(), KernelError> {
+    let leaf = format_leaf(clause_id, &witness.clause_data_hash);
+    if !crate::merkle::verify_inclusion(&witness.inclusion_proof, *checkout_hash, leaf) {
+        return Err(KernelError::InvalidInclusionProof);
     }
+    Ok(())
 }
 
 // ── attestAsSeller / attestAsBuyer ─────────────────────────────────
@@ -608,7 +415,7 @@ pub fn validate_attestation_witness(
 /// `signature` is the signed form's ECDSA signature over the role's digest
 /// (`AttestSeller` or `AttestBuyer`), recovered here in place of the direct
 /// path's `msg.sender`; the attestation's event is committed in public value
-/// 6. `None` is the wallet-code form (`KernelOp::AttestByWalletCode`): every
+/// 5. `None` is the wallet-code form (`KernelOp::AttestByWalletCode`): every
 /// gate but the recovery runs, the attester is the role's party, and no event
 /// is committed here: `FigaroBatchVerifier` asks the party's code about the
 /// stream's `0x05` entry and emits the event only on the magic value.
@@ -624,7 +431,6 @@ fn apply_attestation(
     signature: Option<&Signature>,
     proof: &AttestationWitness,
     events: &mut Vec<AttestationEventData>,
-    bindings: &mut BTreeSet<SpecBinding>,
 ) -> Result<(), KernelError> {
     // ── Target must be committed and active ──
     let (target_order_hash, target_process_id) =
@@ -652,11 +458,8 @@ fn apply_attestation(
         }
     }
 
-    // ── Witness gates: agreement inclusion; spec identity and content
-    //    for the plaintext form ──
-    let binding =
-        validate_attestation_witness(proof, content_ref, clause_id, stage, &target.checkout_hash)?;
-    bindings.extend(binding);
+    // ── Witness gate: the leaf is one of the signed agreement's ──
+    validate_attestation_witness(proof, clause_id, &target.checkout_hash)?;
 
     if signature.is_some() {
         events.push(AttestationEventData {
@@ -684,16 +487,6 @@ pub fn compute_attestation_events_hash(events: &[AttestationEventData]) -> B256 
         data.extend_from_slice(e.clause_id.as_slice());
         data.push(e.stage);
         data.extend_from_slice(e.content_ref.as_slice());
-    }
-    keccak256(&data)
-}
-
-/// Deterministic hash of the deduplicated, sorted spec bindings.
-/// Packed per binding: clauseId(32).
-pub fn compute_spec_bindings_hash(bindings: &[SpecBinding]) -> B256 {
-    let mut data = Vec::with_capacity(bindings.len() * 32);
-    for b in bindings {
-        data.extend_from_slice(b.clause_id.as_slice());
     }
     keccak256(&data)
 }
@@ -935,12 +728,11 @@ pub fn apply_batch_with_state(
 }
 
 /// What a run of operations produced beside the state it moved: the net
-/// token positions, the attestation events and the spec bindings. The proof
+/// token positions and the attestation events. The proof
 /// path hashes them into the public values; a trial discards them.
 pub struct OperationEffects {
     pub positions: Vec<NetPosition>,
     pub attestations: Vec<AttestationEventData>,
-    pub spec_bindings: BTreeSet<SpecBinding>,
 }
 
 /// Apply `operations` to `state`, in order, under the Core's rules, with no
@@ -962,7 +754,6 @@ pub fn apply_operations(
     let domain = domain_separator(chain_id, verifying_contract);
     let mut tracker = TokenTracker::new();
     let mut attestations = Vec::new();
-    let mut spec_bindings: BTreeSet<SpecBinding> = BTreeSet::new();
 
     for op in operations {
         match op {
@@ -1032,7 +823,6 @@ pub fn apply_operations(
                     Some(seller_sig),
                     proof,
                     &mut attestations,
-                    &mut spec_bindings,
                 )?;
             }
             KernelOp::AttestAsBuyer {
@@ -1054,7 +844,6 @@ pub fn apply_operations(
                     Some(buyer_sig),
                     proof,
                     &mut attestations,
-                    &mut spec_bindings,
                 )?;
             }
             KernelOp::AttestByWalletCode {
@@ -1077,7 +866,6 @@ pub fn apply_operations(
                     None,
                     proof,
                     &mut attestations,
-                    &mut spec_bindings,
                 )?;
             }
         }
@@ -1086,7 +874,6 @@ pub fn apply_operations(
     Ok(OperationEffects {
         positions: tracker.net_positions(),
         attestations,
-        spec_bindings,
     })
 }
 
@@ -1109,7 +896,6 @@ struct Executed {
     events: BatchEvents,
     positions_hash: B256,
     attestation_events_hash: B256,
-    spec_bindings_hash: B256,
     usage_accrual_hash: B256,
     operations_hash: B256,
 }
@@ -1146,20 +932,16 @@ fn execute(
         &crate::operation_stream::encode_operation_stream(operations, usage_claims),
     );
     let attestation_events_hash = compute_attestation_events_hash(&attestation_events);
-    let bindings: Vec<SpecBinding> = effects.spec_bindings.into_iter().collect();
-    let spec_bindings_hash = compute_spec_bindings_hash(&bindings);
     let usage_accrual_hash = compute_usage_accrual_hash(usage_period, &PROVENANCE_LEAF_KEY, &uses);
     Ok(Executed {
         positions,
         events: BatchEvents {
             attestations: attestation_events,
-            spec_bindings: bindings,
             uses,
             usage_period,
         },
         positions_hash,
         attestation_events_hash,
-        spec_bindings_hash,
         usage_accrual_hash,
         operations_hash,
     })
@@ -1180,7 +962,6 @@ fn public_values(
         verifying_contract,
         token_ops_hash: ex.positions_hash,
         attestation_events_hash: ex.attestation_events_hash,
-        spec_bindings_hash: ex.spec_bindings_hash,
         usage_accrual_hash: ex.usage_accrual_hash,
         block_timestamp,
         operations_hash: ex.operations_hash,

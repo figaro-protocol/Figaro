@@ -29,7 +29,7 @@ verifier's root, and any relay can rebuild that state from the chain
 does the same for every batch: it emits those events, under its own address,
 for every commit and resolution the batch carries, with the ids derived under
 its own EIP-712 domain, and logs the batch's whole operation stream
-(`BatchOperations`, bound to public value 9 before it is logged). So a
+(`BatchOperations`, bound to public value 8 before it is logged). So a
 batched order is read from the chain as a direct one is, and a relay
 publishes nothing a reader needs: it is transport. A relay that delays a
 batch costs time; it cannot hide one, because the batch it lands carries its
@@ -132,10 +132,8 @@ real verifier, set `SP1_PROVER=cpu` (or `cuda`) so the sequencer self-proves
 locally — or `SP1_PROVER=network` with `NETWORK_PRIVATE_KEY` to have the
 Succinct Prover Network prove it (a relay operator without hardware; paid per
 proof in PROVE by that operator; liveness only — the proof still verifies
-against the vkey). `network` is not only a cost choice: the whole batch input
-goes to the network's provers, so an attestation a party sent in the plaintext
-form (its spec, content and clauseData) reaches them as well; a hash-only
-attestation, the default, carries fingerprints alone. Set `SP1_PROOF_MODE` to the proof FORM the deployed
+against the vkey). The whole batch input goes to the network's provers; an
+attestation carries fingerprints alone, so no party's content reaches them. Set `SP1_PROOF_MODE` to the proof FORM the deployed
 `FigaroBatchVerifier`'s SP1 gateway routes — `groth16` (default) or `plonk`.
 Succinct runs one gateway per form (their `contracts/deployments/<chainId>.json`
 names both); a proof of the other form reverts `RouteNotFound` on-chain, so
@@ -158,7 +156,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `PROCESS_REGISTRY_ADDRESS` | zero | `ProcessRegistry`, read by the usage-claim pre-filter for an assembly claim (kind 1) |
 | `AGREEMENT_REGISTRY_ADDRESS` | zero | `AgreementRegistry`, read by the usage-claim pre-filter for an agreement claim (kind 2) |
 | `MEMBERS_REGISTRY_ADDRESS` | zero | `MembersRegistry`, read by the usage-claim pre-filter; with `USAGE_COUNTER_ADDRESS` set, a registry left zero drops every claim that reads it |
-| `SP1_PROVER` | `mock` | `mock` (devnet), `cpu`, `cuda` (local), `network` (the Succinct Prover Network; `NETWORK_PRIVATE_KEY` = the requester key that pays in PROVE — the relay operator's cost, never the protocol's or its users') — who proves, and who receives the batch input: under `network`, the plaintext of any attestation sent in the plaintext form |
+| `SP1_PROVER` | `mock` | `mock` (devnet), `cpu`, `cuda` (local), `network` (the Succinct Prover Network; `NETWORK_PRIVATE_KEY` = the requester key that pays in PROVE — the relay operator's cost, never the protocol's or its users') — who proves, and who receives the batch input: under `network`, the network's provers receive every operation (the signed commitments, the signatures, the clause keys and stages, and the fingerprints); no operation carries a clause's content |
 | `SP1_PROOF_MODE` | `groth16` | `groth16` or `plonk` — the on-chain proof form; must match the deployed gateway |
 | `SEQUENCER_PRIVATE_KEY` | none — required | Resolution tx signer (pays gas; no protocol privilege); the relay refuses to start without it |
 | `LISTEN_ADDR` | `0.0.0.0:3001` | HTTP listen address |
@@ -187,13 +185,10 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   serde externally-tagged enum (`{"Commit":{…}}`, `{"Resolve":{…}}`,
   `{"ResolveByWalletCode":{…}}`, `{"AttestAsSeller":{…}}`, `{"AttestAsBuyer":{…}}`); the SDK's
   `SequencerClient` (`@figaro-protocol/sdk/agent`) emits exactly this wire format.
-  An attestation's `proof` is `{"HashOnly":{"clause_data_hash","inclusion_proof"}}`
-  — the coordinator's arguments, which the SDK sends by default — or
-  `{"Plaintext":{"spec_json","content_json","clause_data","inclusion_proof","content_kind"}}`,
-  sent when the party chooses to have its content checked in the proof. The
-  relay writes no attestation content to its logs, its state file, its
-  journal or `/status`; a refused attestation is logged without
-  its reason, which goes to the sender alone.
+  An attestation's `proof` is `{"clause_data_hash","inclusion_proof"}`, the
+  coordinator's arguments; no operation carries a party's content. A body
+  the relay cannot read as an operation is logged by its status alone, since
+  a client may have put content in it; the reason goes to the sender.
   A resolve is `{"Resolve":{"process_id","running_total","commitments","buyer_sig"}}`:
   `buyer_sig` signs `ResolveProcess(bytes32 processId,uint256 runningTotal)`
   under the verifier's domain, and the proof refuses the resolve unless the
@@ -216,7 +211,7 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   original id and enqueues nothing. The identity covers every input the proof
   or the verifier judges — a resolve's signer (admission checks it against
   the root buyer of a held or queued process, and it stays in the key), its
-  signed cumulative value and its order list, an attestation's witness form with its clauseData hash or its spec bytes — so a submission that will be refused never makes the one that
+  signed cumulative value and its order list, an attestation's clauseData hash — so a submission that will be refused never makes the one that
   will be accepted a duplicate. `400` on signature or witness-gate
   rejection, on a resolve that lists an order twice (the Core resolves the
   first listing and refuses the second, whatever the state), on an operation
@@ -282,7 +277,7 @@ page learns before any signature whether this relay takes its POST.
   `pending_ops` counts the deferred operations with the queued ones.
   `dead_lettered_ops` counts, for the whole relay, the ops dropped without
   resolving, whatever the path — one deferred at formation whose window ran
-  out, one whose bond its wallet cannot cover, unanchored or past the resolve
+  out, one whose bond its wallet cannot cover or past the resolve
   capacity, one that fits no resolution, a batch
   that failed to prove or to plan, a batch the chain refused — every one
   re-submittable, and `last_settle_error` carries the most recent failure's
@@ -321,7 +316,7 @@ The verifier holds a state ROOT. The state itself — every open process and
 order, and the usage already counted — is held off chain, and a bond
 committed on the batch path is refunded only by a batch built on that state.
 Every landed batch logs its whole operation stream (`BatchOperations`, its
-hash checked against the proof's public value 9), so anyone can rebuild the
+hash checked against the proof's public value 8), so anyone can rebuild the
 state from the verifier's logs (`REBUILD_FROM_CHAIN=1`, `src/rebuild.rs`).
 This relay also keeps it on disk:
 
@@ -394,16 +389,6 @@ of losing the batch:
   deadline against it, and the verifier refuses one ahead of its own block.
   A clock that cannot be read builds nothing that tick. The host's clock is
   never read.
-- **The witness spec.** An attestation in the plaintext form carries its
-  clause spec's canonical text without the top-level `block` (a hash-only
-  one carries none and commits no binding), and the clause key is the
-  `keccak256` of those bytes: the guest refuses a
-  spec that does not hash to the key, and the verifier refuses a key
-  `ClauseRegistry.registered` does not hold — either reverts the whole
-  batch. The relay checks the hash itself, reads `registered` from the
-  verifier's own registry (`clauseRegistry()`), and drops an attestation
-  that fails either, so a copy of a landed attestation with one byte
-  changed costs nobody else their batch.
 - **The buyer's wallet code.** A wallet-code resolve is asked of the buyer's
   account code as the verifier will ask it — `isValidSignature(digest,
   authorization)` from the verifier's address, the digest `ResolveProcess`
@@ -534,8 +519,8 @@ the model then finds.
 A batch has to fit one block and be proved in one sitting. The second bound
 is the operator's, `MAX_BATCH_OPS`. The first is the chain's and is derived:
 what a batch costs the chain is what it publishes — the net positions
-`settleBatch` transfers, the attestation events it re-emits, the spec
-bindings it anchors, the uses it hands the counter — plus the proof's
+`settleBatch` transfers, the attestation events it re-emits, the uses it
+hands the counter — plus the proof's
 verification, the call's fixed execution and the calldata it carries, never
 the number of operations proved. Before proving, the relay executes the
 assembled batch on its mirror, counts those items, encodes the calldata they

@@ -16,8 +16,8 @@ use figaro_kernel::kernel::{apply_batch_with_state, derive_commitment_ids, resol
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
 use figaro_prove_test::{
-    build_canonical_batch_input, load_spec_json, make_signing_key, sign_commitment, sign_digest,
-    BUYER_KEY, CHAIN_ID, CORE, SELLER1_KEY,
+    build_canonical_batch_input, make_signing_key, sign_commitment, sign_digest, BUYER_KEY,
+    CHAIN_ID, CORE, SELLER1_KEY,
 };
 use figaro_sequencer::api::{self, record_dropped, ApiConfig, AppState, FailureLog};
 use figaro_sequencer::assembler::{self, UsageContext};
@@ -123,7 +123,7 @@ async fn mempool_requeue_preserves_order() {
     assert_eq!(mp.len().await, 1);
 }
 
-// ── Mempool: the mirror's witness gates run at the door ───────────
+// ── Mempool: the mirror's witness gate runs at the door ───────────
 
 #[tokio::test]
 async fn mempool_accepts_attest_with_valid_witness() {
@@ -139,75 +139,12 @@ async fn mempool_accepts_attest_with_valid_witness() {
 }
 
 #[tokio::test]
-async fn mempool_rejects_substituted_witness_spec() {
-    // Gate S at the door: the spec is not under the signature, so this
-    // mutation leaves the signature valid — the identity gate must catch it.
+async fn mempool_rejects_a_clause_data_hash_the_agreement_never_committed() {
+    // The witness is not under the signature; a clauseData hash the signed
+    // agreement never committed opens no leaf of it.
     let mut ops = canonical_ops();
-    if let KernelOp::AttestAsSeller {
-        proof: AttestationWitness::Plaintext(proof),
-        ..
-    } = &mut ops[1]
-    {
-        proof.spec_json = load_spec_json("figaro-handoff");
-    }
-    let err = mempool()
-        .submit(ops[1].clone())
-        .await
-        .unwrap_err()
-        .to_string();
-    assert!(err.contains("SpecIdentityMismatch"), "{err}");
-}
-
-#[tokio::test]
-async fn mempool_rejects_content_hash_mismatch() {
-    // Re-sign over a content_ref the content does not hash to — the
-    // signature gate passes, Gate C must reject.
-    let ops = canonical_ops();
-    let (target, clause_id, stage, proof) = match &ops[1] {
-        KernelOp::AttestAsSeller {
-            target,
-            clause_id,
-            stage,
-            proof,
-            ..
-        } => (target.clone(), *clause_id, *stage, proof.clone()),
-        other => panic!("expected AttestAsSeller, got {other:?}"),
-    };
-    let bogus_ref = keccak256("not the content");
-    let domain = domain_separator(CHAIN_ID, CORE);
-    let (target_order_hash, _) = figaro_kernel::kernel::derive_commitment_ids(&domain, &target);
-    let struct_hash = attest_seller_struct_hash(&target_order_hash, &clause_id, stage, &bogus_ref);
-    let sig = sign_digest(
-        &make_signing_key(SELLER1_KEY),
-        &typed_data_hash(&domain, &struct_hash),
-    );
-
-    let err = mempool()
-        .submit(KernelOp::AttestAsSeller {
-            target,
-            clause_id,
-            stage,
-            content_ref: bogus_ref,
-            seller_sig: sig,
-            proof,
-        })
-        .await
-        .unwrap_err()
-        .to_string();
-    assert!(err.contains("ContentHashMismatch"), "{err}");
-}
-
-#[tokio::test]
-async fn mempool_rejects_corrupt_clause_data() {
-    // clause_data is not under the signature either; corrupting it
-    // breaks the agreement-inclusion leaf (Gate I).
-    let mut ops = canonical_ops();
-    if let KernelOp::AttestAsSeller {
-        proof: AttestationWitness::Plaintext(proof),
-        ..
-    } = &mut ops[1]
-    {
-        proof.clause_data = r#"{"modality":"pickup"}"#.to_string();
+    if let KernelOp::AttestAsSeller { proof, .. } = &mut ops[1] {
+        proof.clause_data_hash = keccak256(r#"{"modality":"pickup"}"#);
     }
     let err = mempool()
         .submit(ops[1].clone())
@@ -1315,7 +1252,6 @@ async fn e2e_mempool_to_kernel() {
 
     assert_ne!(pv.prev_state_root, pv.new_state_root);
     assert_eq!(events.attestations.len(), 2);
-    assert_eq!(events.spec_bindings.len(), 1);
     assert!(!positions.is_empty());
 
     mirror.advance(post).await;
@@ -2111,42 +2047,30 @@ async fn state_store_without_a_path_holds_for_the_process_only() {
     assert!(store.next_roots().await.is_empty());
 }
 
-// ── Mempool: an attestation's witness spec is part of its identity ────
+// ── Mempool: an attestation's witness is part of its identity ─────────
 
 #[tokio::test]
-async fn mempool_attest_with_other_spec_bytes_does_not_take_the_slot() {
-    // The clause key is the hash of the spec's bytes, and admission runs the
-    // guest's Gate S: a copy of a plaintext attestation whose spec bytes
-    // differ (here: trailing whitespace) is refused at the door and never
-    // makes the real one a duplicate. (ops[1] is the canonical batch's
-    // plaintext attestation.)
-    {
-        let index = 1usize;
-        let real_op = canonical_ops()[index].clone();
-        let mut copy = real_op.clone();
-        match &mut copy {
-            KernelOp::AttestAsSeller {
-                proof: AttestationWitness::Plaintext(proof),
-                ..
-            }
-            | KernelOp::AttestAsBuyer {
-                proof: AttestationWitness::Plaintext(proof),
-                ..
-            } => {
-                proof.spec_json.push('\n');
-            }
-            other => panic!("canonical ops[{index}] is a plaintext attestation, got {other:?}"),
+async fn mempool_attest_with_another_clause_data_hash_does_not_take_the_slot() {
+    // The witness is not under the signature, and admission runs the guest's
+    // inclusion gate: a copy of an attestation whose clauseData hash differs
+    // is refused at the door and never makes the real one a duplicate.
+    let real_op = canonical_ops()[1].clone();
+    let mut copy = real_op.clone();
+    match &mut copy {
+        KernelOp::AttestAsSeller { proof, .. } => {
+            proof.clause_data_hash = keccak256(b"a clause the agreement does not hold");
         }
-        let mp = mempool();
-        let squat = mp.submit(copy).await;
-        let err = format!(
-            "{:?}",
-            squat.expect_err("a spec that does not hash to the key is refused")
-        );
-        assert!(err.contains("SpecIdentityMismatch"), "ops[{index}]: {err}");
-        let real = mp.submit(real_op).await.unwrap();
-        assert!(!real.duplicate, "ops[{index}]");
+        other => panic!("canonical ops[1] is the seller's attestation, got {other:?}"),
     }
+    let mp = mempool();
+    let squat = mp.submit(copy).await;
+    let err = format!(
+        "{:?}",
+        squat.expect_err("a leaf the agreement does not hold is refused")
+    );
+    assert!(err.contains("InvalidInclusionProof"), "{err}");
+    let real = mp.submit(real_op).await.unwrap();
+    assert!(!real.duplicate);
 }
 
 // ── A batch is bounded ────────────────────────────────────────────────
@@ -2276,73 +2200,6 @@ fn funding_is_allocated_across_a_wallets_commits_in_order() {
     let (valid, dropped) = allocate_funding(vec![commit_from(&same, 1, 10)], &one);
     assert!(valid.is_empty(), "40 of bonds from a wallet holding 30");
     assert_eq!(dropped.len(), 1);
-}
-
-// ── An attestation's spec is checked against its key before proving ──
-
-#[test]
-fn the_spec_an_attestation_carries_is_what_the_registry_check_reads() {
-    use figaro_sequencer::submitter::attestation_spec;
-    let ops = canonical_ops();
-    {
-        let index = 1usize;
-        let (clause, witness_hash) =
-            attestation_spec(&ops[index]).expect("a plaintext attestation");
-        let (expected_clause, spec_json) = match &ops[index] {
-            KernelOp::AttestAsSeller {
-                clause_id,
-                proof: AttestationWitness::Plaintext(proof),
-                ..
-            }
-            | KernelOp::AttestAsBuyer {
-                clause_id,
-                proof: AttestationWitness::Plaintext(proof),
-                ..
-            } => (*clause_id, proof.spec_json.clone()),
-            _ => unreachable!(),
-        };
-        assert_eq!(clause, expected_clause);
-        // keccak256 of the exact bytes, which the clause key must be.
-        assert_eq!(witness_hash, keccak256(spec_json.as_bytes()));
-        assert_eq!(clause, witness_hash, "the clause key is the spec's hash");
-        let mut copy = ops[index].clone();
-        if let KernelOp::AttestAsSeller {
-            proof: AttestationWitness::Plaintext(proof),
-            ..
-        }
-        | KernelOp::AttestAsBuyer {
-            proof: AttestationWitness::Plaintext(proof),
-            ..
-        } = &mut copy
-        {
-            proof.spec_json.push(' ');
-        }
-        assert_ne!(
-            attestation_spec(&copy).unwrap().1,
-            witness_hash,
-            "one byte moves the hash"
-        );
-    }
-    // ops[2] is hash-only: no spec, so nothing for the registry check to
-    // read, as the verifier reads no registry for it.
-    assert!(matches!(
-        &ops[2],
-        KernelOp::AttestAsBuyer {
-            proof: AttestationWitness::HashOnly { .. },
-            ..
-        }
-    ));
-    assert!(attestation_spec(&ops[2]).is_none());
-    assert!(attestation_spec(&ops[0]).is_none());
-    assert!(attestation_spec(&ops[3]).is_none());
-    // The wallet-code form commits the plaintext form's spec binding too, so
-    // the verifier's registry check reads it: the relay reads the same spec.
-    let wallet_code = wallet_code_attestation("Seller", b"session-key-approval");
-    assert_eq!(
-        attestation_spec(&wallet_code),
-        attestation_spec(&ops[1]),
-        "a plaintext wallet-code attestation carries its spec to the registry check"
-    );
 }
 
 // ── The state is rebuilt from the chain, never served ───────────────────
@@ -2587,7 +2444,7 @@ fn the_published_stream_rebuilds_the_root_the_batch_committed() {
     assert_eq!(
         pv.operations_hash,
         keccak256(&stream),
-        "word nine is the stream's hash"
+        "word eight is the stream's hash"
     );
     let (operations, _, claims) =
         decode_operation_stream(&stream).expect("the published stream decodes");
@@ -2646,7 +2503,7 @@ fn a_two_order_resolve_replays_from_its_stream_to_the_same_root() {
     assert_eq!(
         pv.operations_hash,
         keccak256(&stream),
-        "word nine is the stream's hash"
+        "word eight is the stream's hash"
     );
     let (operations, _, _) = decode_operation_stream(&stream).expect("the stream decodes");
     match &operations[2] {
@@ -4058,40 +3915,6 @@ fn a_chain_of_99_sub_orders_behind_an_unread_one_is_marked_within_the_cap() {
     assert!(took < MARKING_CEILING, "{took:?}");
 }
 
-// ── The two attestation forms at the relay ────────────────────────
-
-/// The canonical batch's buyer attestation is hash-only: it is admitted on
-/// the coordinator's arguments alone, and a clauseData hash the agreement
-/// never committed is refused at the door.
-#[tokio::test]
-async fn mempool_admits_a_hash_only_attestation_and_refuses_a_wrong_hash() {
-    let ops = canonical_ops();
-    assert!(matches!(
-        &ops[2],
-        KernelOp::AttestAsBuyer {
-            proof: AttestationWitness::HashOnly { .. },
-            ..
-        }
-    ));
-    assert!(
-        mempool().submit(ops[2].clone()).await.is_ok(),
-        "hash-only buyer attest"
-    );
-
-    let mut wrong = ops[2].clone();
-    if let KernelOp::AttestAsBuyer {
-        proof: AttestationWitness::HashOnly {
-            clause_data_hash, ..
-        },
-        ..
-    } = &mut wrong
-    {
-        *clause_data_hash = keccak256(r#"{"modality":"pickup"}"#);
-    }
-    let err = mempool().submit(wrong).await.unwrap_err().to_string();
-    assert!(err.contains("InvalidInclusionProof"), "{err}");
-}
-
 /// A buffer the test's tracing subscriber writes every log line into.
 #[derive(Clone, Default)]
 struct LogSink(std::sync::Arc<std::sync::Mutex<Vec<u8>>>);
@@ -4113,57 +3936,15 @@ impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for LogSink {
     }
 }
 
-/// An order whose one-clause agreement commits `clause_data` under a spec
-/// nobody registered (a clause key is its spec's hash), and the buyer's
-/// plaintext re-assert of that clause.
-fn plaintext_attestation_of(spec_json: &str, clause_data: &str, salt: u64) -> (KernelOp, KernelOp) {
-    let domain = domain_separator(CHAIN_ID, CORE);
-    let buyer_key = make_signing_key(BUYER_KEY);
-    let seller_key = make_signing_key(SELLER1_KEY);
-    let clause_key = keccak256(spec_json.as_bytes());
-    let data_hash = keccak256(clause_data.as_bytes());
-    let mut preimage = [0u8; 64];
-    preimage[..32].copy_from_slice(clause_key.as_slice());
-    preimage[32..].copy_from_slice(data_hash.as_slice());
-    let mut order = match &canonical_ops()[0] {
-        KernelOp::Commit { commitment, .. } => commitment.clone(),
-        other => panic!("canonical ops[0] is a commit, got {other:?}"),
-    };
-    order.checkout_hash = keccak256(keccak256(preimage));
-    order.salt = alloy_primitives::U256::from(salt);
-    let commit = KernelOp::Commit {
-        commitment: order.clone(),
-        buyer_sig: sign_commitment(&order, &domain, &buyer_key),
-        seller_sig: sign_commitment(&order, &domain, &seller_key),
-    };
-    let (order_hash, process_id) = derive_commitment_ids(&domain, &order);
-    let struct_hash =
-        attest_buyer_struct_hash(&process_id, &order_hash, &clause_key, 0, &data_hash);
-    let attest = KernelOp::AttestAsBuyer {
-        target: order,
-        clause_id: clause_key,
-        stage: 0,
-        content_ref: data_hash,
-        buyer_sig: sign_digest(&buyer_key, &typed_data_hash(&domain, &struct_hash)),
-        proof: AttestationWitness::Plaintext(AttestationContentProof {
-            spec_json: spec_json.to_string(),
-            content_json: clause_data.to_string(),
-            clause_data: clause_data.to_string(),
-            inclusion_proof: vec![],
-            content_kind: ContentKind::ReAssert,
-        }),
-    };
-    (commit, attest)
-}
-
-/// The relay never writes an attestation's content anywhere it keeps or
-/// serves: not its logs, not the kept state file or the next-state journal,
-/// not `/state` or `/status`. A party that sends the plaintext form gives
-/// its content to the relay for the proof alone. Two plaintext submissions
-/// carry a marker: one admitted, one refused with an error that quotes the
-/// marker back to the submitter (the refusal's body is the sender's own).
+/// A body the relay cannot read as an operation is refused with serde's
+/// reason, which may quote a value from the body: the reason goes to the
+/// sender, and the log carries the status alone. An attestation whose
+/// witness is any shape but the struct of two fields is such a body, a
+/// tagged `HashOnly` and a `Plaintext` carrying a spec and content among
+/// them: refused at the door, and the content a sender put in it never
+/// reaches the relay's logs.
 #[tokio::test]
-async fn the_relay_writes_no_attestation_content_to_its_logs_state_or_routes() {
+async fn an_attestation_in_another_witness_shape_is_refused_without_logging_its_values() {
     const MARKER: &str = "attpriv-the-parties-own-data";
     let sink = LogSink::default();
     let subscriber = tracing_subscriber::fmt()
@@ -4173,153 +3954,68 @@ async fn the_relay_writes_no_attestation_content_to_its_logs_state_or_routes() {
         .finish();
     let _guard = tracing::subscriber::set_default(subscriber);
 
-    let note_spec = r#"{"clauseId":"attpriv-note","version":1,"title":"Note","description":"A free note.","fields":[{"name":"note","type":"string","required":true}],"stages":{}}"#;
-    let choice_spec = r#"{"clauseId":"attpriv-choice","version":1,"title":"Choice","description":"One of two.","fields":[{"name":"choice","type":"enum","required":true,"values":["a","b"]}],"stages":{}}"#;
-    let (commit, admitted) =
-        plaintext_attestation_of(note_spec, &format!(r#"{{"note":"{MARKER}"}}"#), 9001);
-    let (_, refused) =
-        plaintext_attestation_of(choice_spec, &format!(r#"{{"choice":"{MARKER}"}}"#), 9002);
-
-    let state = test_app_state();
-    let app = api::router(state.clone(), ApiConfig::default());
-    for (op, expect) in [
-        (&commit, StatusCode::OK),
-        (&admitted, StatusCode::OK),
-        (&refused, StatusCode::BAD_REQUEST),
+    let attest = canonical_ops()[2].clone();
+    let clause_data_hash = match &attest {
+        KernelOp::AttestAsBuyer { proof, .. } => proof.clause_data_hash,
+        other => panic!("canonical ops[2] is the buyer's attestation, got {other:?}"),
+    };
+    let app = api::router(test_app_state(), ApiConfig::default());
+    for (shape, proof) in [
+        (
+            "HashOnly",
+            serde_json::json!({ "HashOnly": {
+                "clause_data_hash": clause_data_hash,
+                "inclusion_proof": [],
+                "note": MARKER,
+            } }),
+        ),
+        (
+            "Plaintext",
+            serde_json::json!({ "Plaintext": {
+                "spec_json": r#"{"clauseId":"attpriv-note","version":1,"title":"Note","description":"A free note.","fields":[{"name":"note","type":"string","required":true}],"stages":{}}"#,
+                "content_json": MARKER,
+                "clause_data": MARKER,
+                "inclusion_proof": [],
+                "content_kind": MARKER,
+            } }),
+        ),
     ] {
+        let mut body = serde_json::json!({ "operation": attest });
+        body["operation"]["AttestAsBuyer"]["proof"] = proof;
+        let req = Request::builder()
+            .method("POST")
+            .uri("/submit")
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_vec(&body).unwrap()))
+            .unwrap();
         let response = app
             .clone()
-            .oneshot(from_ip(submit_request(op), [10, 0, 0, 9]))
+            .oneshot(from_ip(req, [10, 0, 0, 10]))
             .await
             .unwrap();
         let status = response.status();
-        let body = axum::body::to_bytes(response.into_body(), 1 << 16)
-            .await
-            .unwrap();
-        assert_eq!(status, expect, "{}", String::from_utf8_lossy(&body));
-        if expect == StatusCode::BAD_REQUEST {
-            assert!(
-                String::from_utf8_lossy(&body).contains(MARKER),
-                "the refusal names the failing value to its sender: {}",
-                String::from_utf8_lossy(&body)
-            );
-        }
+        let text = String::from_utf8_lossy(
+            &axum::body::to_bytes(response.into_body(), 1 << 16)
+                .await
+                .unwrap(),
+        )
+        .to_string();
+        assert!(status.is_client_error(), "{shape}: {status} {text}");
     }
-
-    // The batch loop's path: drain, filter, apply, hold the next state,
-    // keep it, advance the mirror.
-    let pending = state.mempool.drain().await;
-    let prev = state.state_mirror.snapshot().await;
-    let (valid, poison) = assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &prev, pending);
-    assert!(poison.is_empty(), "{poison:?}");
-    let ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
-    assert_eq!(ops.len(), 2);
-    let batch = assembler::assemble_batch(CHAIN_ID, CORE, 1000, ops, prev, UsageContext::default());
-    let (pv, _, events, post) = apply_batch_with_state(&batch).expect("the batch applies");
-    assert_eq!(events.attestations.len(), 1);
-    let path = temp_state("attpriv");
-    let (store, _) = StateStore::open(Some(path.clone())).await.unwrap();
-    let next = NextState {
-        root: pv.new_state_root,
-        state: post.to_snapshot(),
-        prev_root: pv.prev_state_root,
-    };
-    store.hold_next(next.clone()).await.unwrap();
-    let mut journal = path.clone().into_os_string();
-    journal.push(".next.jsonl");
-    let journal_text =
-        std::fs::read_to_string(&journal).expect("the journal is written while the batch is held");
-    store.keep(next.root, &next.state).await.unwrap();
-    let kept_text = std::fs::read_to_string(&path).expect("the kept state is written");
-    state.state_mirror.advance(post).await;
-
-    let mut served = String::new();
-    for route in ["/status"] {
-        let response = app
-            .clone()
-            .oneshot(Request::builder().uri(route).body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::OK, "{route}");
-        let body = axum::body::to_bytes(response.into_body(), 1 << 20)
-            .await
-            .unwrap();
-        served.push_str(&String::from_utf8_lossy(&body));
-    }
-    let logs = String::from_utf8(sink.0.lock().unwrap().clone()).unwrap();
-    assert!(
-        logs.contains("operation admitted"),
-        "the subscriber captured the relay's logs: {logs}"
-    );
-
-    for (surface, text) in [
-        ("the logs", &logs),
-        ("the next-state journal", &journal_text),
-        ("the kept state file", &kept_text),
-        ("/status", &served),
-    ] {
-        assert!(
-            !text.contains(MARKER),
-            "{surface} carry attestation content: {text}"
-        );
-        assert!(
-            !text.contains("attpriv-note") && !text.contains("attpriv-choice"),
-            "{surface} carry a spec"
-        );
-    }
-    let _ = std::fs::remove_file(&path);
-    let _ = std::fs::remove_file(&journal);
-}
-
-/// A body the relay cannot read as an operation is refused with serde's
-/// reason, which quotes the mistyped value: the reason goes to the sender,
-/// and the log carries the status alone, so a plaintext attestation with a
-/// mistyped scalar never writes that value to the relay's logs.
-#[tokio::test]
-async fn a_malformed_plaintext_body_is_refused_without_logging_its_values() {
-    const MARKER: &str = "attpriv-mistyped-scalar";
-    let sink = LogSink::default();
-    let subscriber = tracing_subscriber::fmt()
-        .with_writer(sink.clone())
-        .with_max_level(tracing::Level::TRACE)
-        .with_ansi(false)
-        .finish();
-    let _guard = tracing::subscriber::set_default(subscriber);
-
-    let note_spec = r#"{"clauseId":"attpriv-note","version":1,"title":"Note","description":"A free note.","fields":[{"name":"note","type":"string","required":true}],"stages":{}}"#;
-    let (_, attest) = plaintext_attestation_of(note_spec, r#"{"note":"x"}"#, 9003);
-    let mut body = serde_json::json!({ "operation": attest });
-    body["operation"]["AttestAsBuyer"]["proof"]["Plaintext"]["content_kind"] =
-        serde_json::json!(MARKER);
-    let req = Request::builder()
-        .method("POST")
-        .uri("/submit")
-        .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_vec(&body).unwrap()))
-        .unwrap();
-    let app = api::router(test_app_state(), ApiConfig::default());
-    let response = app.oneshot(from_ip(req, [10, 0, 0, 10])).await.unwrap();
-    let status = response.status();
-    let text = String::from_utf8_lossy(
-        &axum::body::to_bytes(response.into_body(), 1 << 16)
-            .await
-            .unwrap(),
-    )
-    .to_string();
-    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{text}");
-    assert!(
-        text.contains(MARKER),
-        "the sender is told which value failed: {text}"
-    );
 
     let logs = String::from_utf8(sink.0.lock().unwrap().clone()).unwrap();
-    assert!(
-        logs.contains("payload rejected"),
-        "the refusal is logged: {logs}"
+    assert_eq!(
+        logs.matches("payload rejected").count(),
+        2,
+        "each refusal is logged: {logs}"
     );
     assert!(
         !logs.contains(MARKER),
         "the log quotes a value from the body: {logs}"
+    );
+    assert!(
+        !logs.contains("attpriv-note"),
+        "the log quotes the spec the body carried: {logs}"
     );
 }
 
@@ -5211,7 +4907,7 @@ fn the_plan_counts_a_wallet_code_attestation_entry() {
     assert_eq!(items.stream_wallet_code_attestations, 1);
     assert_eq!(
         items.attestations, 1,
-        "the buyer's signed attestation alone is in public value 6"
+        "the buyer's signed attestation alone is in public value 5"
     );
     let without = SettleItems {
         stream_wallet_code_attestations: 0,

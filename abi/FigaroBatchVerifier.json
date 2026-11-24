@@ -13,11 +13,6 @@
         "internalType": "bytes32"
       },
       {
-        "name": "_clauseRegistry",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
         "name": "_usageCounter",
         "type": "address",
         "internalType": "address"
@@ -47,19 +42,6 @@
         "name": "",
         "type": "uint64",
         "internalType": "uint64"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "clauseRegistry",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IClauseRegistryAnchor"
       }
     ],
     "stateMutability": "view"
@@ -211,18 +193,6 @@
               },
               {
                 "name": "contentRef",
-                "type": "bytes32",
-                "internalType": "bytes32"
-              }
-            ]
-          },
-          {
-            "name": "specBindings",
-            "type": "tuple[]",
-            "internalType": "struct FigaroBatchVerifier.SpecBinding[]",
-            "components": [
-              {
-                "name": "clauseId",
                 "type": "bytes32",
                 "internalType": "bytes32"
               }
@@ -689,17 +659,6 @@
   },
   {
     "type": "error",
-    "name": "ClauseNotRegistered",
-    "inputs": [
-      {
-        "name": "clauseId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ]
-  },
-  {
-    "type": "error",
     "name": "DeadlineExpired",
     "inputs": []
   },
@@ -759,11 +718,6 @@
         "internalType": "address"
       }
     ]
-  },
-  {
-    "type": "error",
-    "name": "SpecBindingsHashMismatch",
-    "inputs": []
   },
   {
     "type": "error",
@@ -859,11 +813,6 @@
         "internalType": "address"
       }
     ]
-  },
-  {
-    "type": "error",
-    "name": "ZeroClauseRegistry",
-    "inputs": []
   },
   {
     "type": "error",

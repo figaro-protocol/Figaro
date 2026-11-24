@@ -8,13 +8,6 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "src/core/verifier/ISP1Verifier.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 
-/// @notice Minimal ClauseRegistry surface the verifier reads — the
-///         anchor for witness specs. A clause key is keccak256 of the canonical
-///         spec without `block`, so a registered key anchors at most one spec.
-interface IClauseRegistryAnchor {
-    function registered(bytes32 clauseKey) external view returns (bool);
-}
-
 /// @notice Minimal UsageCounter surface the verifier writes — the RPGF
 ///         bridge. Local-minimal binding per the coordinator exemplar,
 ///         never a vendored dependency; the struct is re-declared here
@@ -36,8 +29,7 @@ interface IUsageCounter {
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice Accepts a zero-knowledge proof that a batch of protocol operations
 ///         (commits, resolves, attestations) produces a valid state transition.
-///         The contract verifies the proof, checks every witness-spec binding
-///         against the live ClauseRegistry, reconciles net token positions,
+///         The contract verifies the proof, reconciles net token positions,
 ///         re-emits protocol-compatible attestation events, and advances the
 ///         state root. Registry mutations are NOT batched — they are
 ///         once-per-clause-agreement-or-assembly ETH-staked intents that stay on the
@@ -47,15 +39,14 @@ interface IUsageCounter {
 ///         The Core's philosophy: no owner, no fee, no upgrade path. If the program
 ///         changes, deploy a new verifier.
 ///
-///         The spec-binding check is what makes the in-proof clause validation
-///         OPEN-WORLD: for an attestation sent in the plaintext form the guest validates content against a witness spec and
-///         commits the clause key, which it requires to equal keccak256(spec bytes); a hash-only attestation commits no
-///         binding; this contract accepts the batch only if
-///         `ClauseRegistry.registered(clauseKey)` for each binding.
-///         The program verification key covers the ENGINE, the registry
-///         anchors the constraint set — a never-seen clause resolves through
-///         the proven path with zero code changes, and a permissive-spec
-///         substitution cannot resolve.
+///         A batched attestation binds what `AttestationCoordinator` binds on
+///         the direct path: the attesting party, an open order, the leaf's
+///         inclusion under the signed `checkoutHash`, and the `contentRef`.
+///         The guest reads no clause, no spec and no content, and this
+///         contract reads no registry: a clause nobody has seen is attested
+///         through a batch with no change to the program or to this contract,
+///         and a reader checks a disclosed content against the spec its clause
+///         key names, as on the direct path.
 ///
 ///         RPGF: a batch-resolved process never acquires FigaroCore status,
 ///         so `UsageCounter`'s direct path — which requires
@@ -70,17 +61,16 @@ interface IUsageCounter {
 ///         seller's live member stake, registration, a process already
 ///         counted) are the counter's own and are checked there, not here.
 ///
-///         Public values (ABI-encoded, 10 × 32-byte words):
+///         Public values (ABI-encoded, 9 × 32-byte words):
 ///           0: prevStateRoot     (bytes32)
 ///           1: newStateRoot      (bytes32)
 ///           2: chainId           (uint64, left-padded to 32 bytes)
 ///           3: verifyingContract (address, left-padded to 32 bytes)
 ///           4: tokenOpsHash      (bytes32)
 ///           5: attestationEventsHash (bytes32)
-///           6: specBindingsHash  (bytes32)
-///           7: usageAccrualHash  (bytes32)
-///           8: blockTimestamp    (uint64, left-padded to 32 bytes)
-///           9: operationsHash    (bytes32) — keccak256 of the batch's operation
+///           6: usageAccrualHash  (bytes32)
+///           7: blockTimestamp    (uint64, left-padded to 32 bytes)
+///           8: operationsHash    (bytes32) — keccak256 of the batch's operation
 ///              stream: every commit and resolve the batch applied, whole,
 ///              every attestation authorized by a party's wallet code, and
 ///              every usage claim. `settleBatch` takes the stream as calldata
@@ -140,12 +130,11 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///         freeze the path between a proven batch and its resolution.
     bytes32 public immutable verifierHash;
     bytes32 public immutable programVKey;
-    IClauseRegistryAnchor public immutable clauseRegistry;
     /// @notice The RPGF counter this verifier is the proof-gated writer for.
     IUsageCounter public immutable usageCounter;
 
     // No constant bounds the age of the time the guest checked deadlines
-    // against (public value 8). `settleBatch` refuses a time later than this
+    // against (public value 7). `settleBatch` refuses a time later than this
     // block and nothing else about it: only a commit reads that time, and
     // each commit's deadline is checked again here against this block, as
     // `FigaroCore.commit` checks it (`DeadlineExpired`, in `_walkOperations`).
@@ -156,10 +145,10 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     // a second time while the root has not moved: no token moves, and no
     // use counts that a fresh proof could not (`docs/DESIGN_DECISIONS.md` § 27).
 
-    /// @notice The length of the public values, in bytes: ten 32-byte words.
+    /// @notice The length of the public values, in bytes: nine 32-byte words.
     ///         A stream of any other length is another program's, or a
     ///         malformed one, and is refused by name before anything reads it.
-    uint256 public constant PUBLIC_VALUES_LENGTH = 320;
+    uint256 public constant PUBLIC_VALUES_LENGTH = 288;
 
     // ── State ─────────────────────────────────────────────────────
 
@@ -184,20 +173,11 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         bytes32 contentRef;
     }
 
-    /// @dev One clause key the batch's in-proof clause gates validated
-    ///      against. Deduplicated and sorted ascending by clauseId in the
-    ///      prover. The clause key is keccak256 of the canonical spec without `block`, and
-    ///      the prover refuses a witness spec whose hash is not the key, so the
-    ///      key alone names the document the proof read.
-    struct SpecBinding {
-        bytes32 clauseId;
-    }
-
-    /// @dev Wraps the event arrays to reduce settleBatch parameter count
-    ///      and avoid stack-too-deep.
+    /// @dev The batch's signed attestations, hash-verified against
+    ///      `attestationEventsHash`. A struct of one array: a calldata struct
+    ///      is one word on the stack of `settleBatch` where a bare array is two.
     struct BatchEventData {
         AttestationData[] attestations;
-        SpecBinding[] specBindings;
     }
 
     /// @dev The batch's uses, hash-verified against
@@ -291,7 +271,6 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     error VerifyingContractMismatch(address expected, address actual);
     error PositionHashMismatch();
     error AttestationHashMismatch();
-    error SpecBindingsHashMismatch();
     error UsageAccrualHashMismatch();
     error OperationsHashMismatch();
     error MalformedOperationStream();
@@ -305,13 +284,9 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///      Landing the batch would leave its uses uncounted for want of gas.
     error AccrualStarvedOfGas();
     error PublicValuesLengthMismatch(uint256 expected, uint256 actual);
-    /// @dev The proof validated content against a spec whose key the
-    ///      registry has never registered.
-    error ClauseNotRegistered(bytes32 clauseId);
     error FeeOnTransferDetected();
     error ZeroVerifier();
     error VerifierNotContract();
-    error ZeroClauseRegistry();
     error ZeroUsageCounter();
     /// @notice The counter names another verifier, so it would refuse every
     ///         accrual this one hands it.
@@ -337,17 +312,13 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     /// @param _verifier       The SP1 verifier contract for one proof form, pinned by its
     ///                        `VERIFIER_HASH()`; a gateway, which has none, is refused.
     /// @param _programVKey    The verification key of the Figaro guest program.
-    /// @param _clauseRegistry The live ClauseRegistry — the witness-spec anchor.
     /// @param _usageCounter   The counter this verifier hands each batch's uses to.
     ///         The state root starts at `genesisRoot()`, the empty state's,
     ///         computed here and never supplied: a verifier always starts on a
     ///         state anyone can rebuild from nothing.
-    constructor(address _verifier, bytes32 _programVKey, address _clauseRegistry, address _usageCounter)
-        EIP712("FigaroCore", "3")
-    {
+    constructor(address _verifier, bytes32 _programVKey, address _usageCounter) EIP712("FigaroCore", "3") {
         if (_verifier == address(0)) revert ZeroVerifier();
         if (_verifier.code.length == 0) revert VerifierNotContract();
-        if (_clauseRegistry == address(0)) revert ZeroClauseRegistry();
         if (_usageCounter == address(0)) revert ZeroUsageCounter();
         // The pin: the bound contract names its circuit. A gateway has no
         // `VERIFIER_HASH()` and is refused here, so the path from a proven
@@ -365,7 +336,6 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         verifier = ISP1Verifier(_verifier);
         verifierHash = named;
         programVKey = _programVKey;
-        clauseRegistry = IClauseRegistryAnchor(_clauseRegistry);
         usageCounter = IUsageCounter(_usageCounter);
         stateRoot = genesisRoot();
     }
@@ -386,7 +356,6 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         address verifyingContract;
         bytes32 tokenOpsHash;
         bytes32 attEventsHash;
-        bytes32 specBindingsHash;
         bytes32 usageAccrualHash;
         uint64 blockTimestamp;
         bytes32 operationsHash;
@@ -396,14 +365,13 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
     /// @notice Resolve a batch of Figaro protocol operations.
     /// @param proof        The SP1 validity proof for the batch.
-    /// @param publicValues ABI-encoded public values (10 × 32-byte words).
+    /// @param publicValues ABI-encoded public values (9 × 32-byte words).
     /// @param positions    Net token positions to reconcile (hash-verified against proof).
-    /// @param events       Attestation events to re-emit + spec bindings to
-    ///                     check against the ClauseRegistry (both hash-verified).
+    /// @param events       Attestation events to re-emit (hash-verified).
     /// @param usage        The batch's uses (hash-verified). Pass an empty
     ///                     array for a batch that credits no usage.
     /// @param operations   The batch's operation stream (hash-verified against
-    ///                     public value 9): every commit and resolve it applied,
+    ///                     public value 8): every commit and resolve it applied,
     ///                     whole, every attestation authorized by a party's
     ///                     wallet code, and every usage claim, in the guest's canonical
     ///                     bytes (`prover/lib/src/operation_stream.rs`). The
@@ -459,9 +427,6 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         if (_hashAttestations(events.attestations) != pv.attEventsHash) {
             revert AttestationHashMismatch();
         }
-        if (_hashSpecBindings(events.specBindings) != pv.specBindingsHash) {
-            revert SpecBindingsHashMismatch();
-        }
         if (_hashUsage(usage) != pv.usageAccrualHash) {
             revert UsageAccrualHashMismatch();
         }
@@ -469,9 +434,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             revert OperationsHashMismatch();
         }
 
-        // ── 4. Anchor every witness spec to the live registry ─────
-        _checkSpecBindings(events.specBindings);
-        //    and ask the buyer's code about every wallet-code resolve and the
+        // ── 4. Ask the buyer's code about every wallet-code resolve and the
         //    attesting party's code about every wallet-code attestation (a
         //    yes emits its `Attestation`); any refusal of either reverts the
         //    batch. Both are asked against the state before the batch moves
@@ -562,16 +525,15 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             pv.verifyingContract,
             pv.tokenOpsHash,
             pv.attEventsHash,
-            pv.specBindingsHash,
             pv.usageAccrualHash
-        ) = abi.decode(publicValues, (bytes32, bytes32, uint64, address, bytes32, bytes32, bytes32, bytes32));
-        // Words 8 and 9 are blockTimestamp and operationsHash — read from the
+        ) = abi.decode(publicValues, (bytes32, bytes32, uint64, address, bytes32, bytes32, bytes32));
+        // Words 7 and 8 are blockTimestamp and operationsHash — read from the
         // calldata slice rather than a wider tuple abi.decode, which tips
         // settleBatch over the legacy-codegen stack limit. The SP1 verifier
-        // already bound the whole 320-byte stream to the proof, so these read
+        // already bound the whole 288-byte stream to the proof, so these read
         // committed words.
-        pv.blockTimestamp = uint64(uint256(bytes32(publicValues[256:288])));
-        pv.operationsHash = bytes32(publicValues[288:320]);
+        pv.blockTimestamp = uint64(uint256(bytes32(publicValues[224:256])));
+        pv.operationsHash = bytes32(publicValues[256:288]);
     }
 
     // ── Hash functions (byte-exact parity with the Rust mirror) ───────
@@ -626,22 +588,6 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         return keccak256(packed);
     }
 
-    /// @dev Pack: clauseId(32) = 32 bytes per binding,
-    ///      matching the Rust `compute_spec_bindings_hash`.
-    function _hashSpecBindings(SpecBinding[] calldata bindings) internal pure returns (bytes32) {
-        uint256 len = bindings.length;
-        bytes memory packed = new bytes(len * 32);
-        uint256 offset;
-        for (uint256 i = 0; i < len; i++) {
-            bytes32 clauseId = bindings[i].clauseId;
-            assembly ("memory-safe") {
-                mstore(add(add(packed, 32), offset), clauseId)
-            }
-            offset += 32;
-        }
-        return keccak256(packed);
-    }
-
     /// @dev Pack: period(1) ++ provenanceLeaf(32)
     ///            ++ len(uses)(8) ++ [clauseOrProcess(32) ++ kind(1) ++ processId(32) ++ seller(20)]*
     ///      — span 41 + 85n bytes for n uses —
@@ -690,28 +636,13 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         return keccak256(packed);
     }
 
-    // ── Spec-binding anchor check ─────────────────────────────────
-
-    /// @dev The open-world gate: each witness spec the proof validated
-    ///      against must be the exact document a registered clause key names.
-    ///      The key IS the spec hash, which the proof checks, so the key must be
-    ///      registered. One SLOAD-backed external view call per distinct clause
-    ///      per batch (the prover deduplicates).
-    function _checkSpecBindings(SpecBinding[] calldata bindings) internal view {
-        for (uint256 i = 0; i < bindings.length; i++) {
-            bytes32 clauseKey = bindings[i].clauseId;
-            if (!clauseRegistry.registered(clauseKey)) revert ClauseNotRegistered(clauseKey);
-        }
-    }
-
     // ── Token execution ───────────────────────────────────────────
 
     /**
      * @dev BATCH RESOLUTION DOS RISK
      * A batch valid when proven still reverts whole when: another batch lands first (`StateRootMismatch`); a
      * pull's approval or balance is gone; a token takes a cut or refuses a payout; wallet code refuses or is absent
-     * at step 4; a commit is past its deadline at this block; a bound clause is not registered; a usage call is
-     * starved of gas. Every other check after the proof refuses only a wrong or foreign batch.
+     * at step 4; a commit is past its deadline at this block; a usage call is starved of gas. Every other check after the proof refuses only a wrong or foreign batch.
      * Mitigation: the relay rechecks approvals and each party's code just before it submits; users keep both.
      */
 

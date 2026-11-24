@@ -1,13 +1,10 @@
 /**
- * Figaro clause-spec format — the single source of truth for clause-content
- * validation. This off-chain TypeScript module (frontend form gates, SDK
- * agent-action preflight) is the reference implementation; the Rust prover mirror
- * (`prover/clause`) re-runs the same semantics in-proof on the batched path,
- * for an attestation its party sends in the plaintext form, against the spec
- * as a witness input whose bytes hash to the clause key.
- * The DIRECT path's chain validates no content — it merkle-binds attestations
- * and content-hash-binds the evidence; well-formedness there is this layer's
- * job + a read-time concern.
+ * Figaro clause-spec format — the parser of the published clause format
+ * (`clause-spec.schema.json`). This off-chain TypeScript module (frontend form
+ * gates, SDK agent-action preflight) is the sign gate of this project's tools.
+ * Neither path validates content: the chain and the proof program merkle-bind
+ * attestations and carry the evidence's fingerprint; well-formedness is this
+ * layer's job and a reader's check against the spec the clause key names.
  *
  * The format is a closed subset of JSON Schema: small and predictable. A spec
  * is DATA (a JSON file in `clauses/`, anchored on `ClauseRegistry` → IPFS),
@@ -174,7 +171,7 @@ export type FieldSpec =
  * The value a content object holds under `key` as its own property, or
  * `undefined` when it holds none. A property the object inherits (`toString`,
  * `constructor`) is no value of the content: a field of that name that the
- * content leaves out is absent, as the guest's engine reads it.
+ * content leaves out is absent, as a JSON reader in any language reads it.
  */
 export function ownValue(values: Record<string, unknown> | undefined, key: string): unknown {
     return values !== undefined && Object.prototype.hasOwnProperty.call(values, key) ? values[key] : undefined;
@@ -255,8 +252,8 @@ export interface ClauseSpec {
      *  `fields` like any clause, `{}` included. Present only as `true`, and
      *  never beside a top-level field's `default`, since a default fills the
      *  signed content and this one has none (`parseClauseSpec`). It is
-     *  protocol, read by the sign gate in both engines, never by a clause's
-     *  name or its `block`. */
+     *  protocol, read by the sign gate, never by a clause's name or its
+     *  `block`. */
     emptyAnchor?: true;
     // The `block` slice of the spec JSON (designer/runtime composition metadata)
     // is NOT parsed here — it's pure presentation the SDK never reads. The
@@ -282,8 +279,9 @@ const VALID_FIELD_TYPES: ReadonlySet<string> = new Set([
 
 /** The bigint grammar: a plain decimal integer, optionally negative.
  *  Deliberately TIGHTER than bare `BigInt()` (which coerces `""`, `"0x10"`,
- *  and padded whitespace) — the spec's contract is "decimal string", and the
- *  prover's Rust mirror enforces the same grammar in lockstep. */
+ *  and padded whitespace) — the published format's contract is "decimal
+ *  string" (`clause-spec.schema.json`, a field's `type`), so a reader's tool
+ *  in any language applies the same grammar. */
 const DECIMAL_BIGINT_RE = /^-?[0-9]+$/;
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -345,8 +343,8 @@ export function parseFieldSpec(raw: unknown, path: string, errors: SpecParseErro
     return spec;
 }
 
-/** The format a blinding field carries: 32 bytes as hex, which both engines
- *  validate and encode as `bytes32`. */
+/** The format a blinding field carries: 32 bytes as hex, which the
+ *  validator checks and the encoder writes as `bytes32`. */
 const BLINDING_FORMAT = "bytes32-hex";
 
 /** The one shape of a blinding field (`BaseFieldSpec.blinding`): a top-level
@@ -540,9 +538,8 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
                     errors.push({ path: `${path}.pattern`, message: "pattern must be a valid regex" });
                     return null;
                 }
-                // The automaton is built now, as the guest compiles the
-                // pattern when the spec parses: a pattern that cannot be
-                // built never reaches a value.
+                // The automaton is built now, when the spec parses: a
+                // pattern that cannot be built never reaches a value.
                 if (!isRunnablePattern(raw.pattern)) {
                     errors.push({ path: `${path}.pattern`, message: "pattern must compile to an automaton" });
                     return null;
@@ -695,11 +692,10 @@ export function hasLoneSurrogate(value: string): boolean {
  * Push an issue for each string and each object key of the protocol half of a
  * spec (every top-level attribute but `block`) that holds a lone UTF-16
  * surrogate. `JSON.parse` keeps one (`"\ud800"`), and `canonicalize` writes
- * it back as that escape, so the bytes a clause key hashes, and a plaintext
- * attestation's witness carries, hold it; `serde_json`, which reads those
- * bytes in the guest (`validate_attestation_content`, `prover/lib/src/kernel.rs`),
- * refuses them. A spec the batch path cannot read does not parse here either.
- * `block` is left out of the key and the witness, so it is not walked. The
+ * it back as that escape, so the bytes a clause key hashes hold it; a strict
+ * JSON reader in another language (Rust's `serde_json`, for one) refuses
+ * them. A spec such a reader cannot read does not parse here either.
+ * `block` is left out of the key, so it is not walked. The
  * walk keeps its own stack, so a deep unknown attribute cannot overflow the
  * call stack.
  */
@@ -732,8 +728,8 @@ const STAGE_KEY_MESSAGE = "stage key must be the decimal of an integer 0..255: d
  * key. A stage key has one spelling: the decimal of the on-chain
  * `uint8 stage`, digits only, with no sign, no leading zero and no
  * whitespace ("0" to "255"). A spec with any other key does not parse. The
- * guest's engine reads a key by the same rule (`parse_stage_key` in
- * `prover/clause/src/spec.rs`).
+ * published format states the same rule (`clause-spec.schema.json`,
+ * `stages`).
  */
 export function stageOfKey(key: string): number | undefined {
     if (!/^(?:0|[1-9][0-9]{0,2})$/.test(key)) return undefined;

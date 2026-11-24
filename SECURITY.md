@@ -36,8 +36,8 @@ In scope:
   swap-and-commit coordinator, the florin token, the usage counter and the
   designer-rewards minter (`RpgfMinter.sol`). (Per-clause
   validator contracts do not exist, permanently — clause content validation
-  is off-chain, plus the batch path's generic proof engine.)
-- `prover/program/`, `prover/lib/`, `prover/clause/` — the guest: the Rust
+  is off-chain, on both paths.)
+- `prover/program/`, `prover/lib/` — the guest: the Rust code
   the batch path's proof is a proof OF. A batch the guest resolves
   differently from `FigaroCore` is the same class of defect as a defect in
   `FigaroCore`.

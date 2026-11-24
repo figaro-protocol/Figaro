@@ -53,8 +53,8 @@ they published. The paper at `/papers/figaro-as-a-cryptoeconomic-system` says wh
   reconstructing state, building and signing commitments, validating and
   encoding clause content, the agent runtime. `sdk/README.md` opens with
   **Your first commit**, a walkthrough from a cold machine to a bonded order.
-- **Prover** — `prover/`: the Rust mirror of `FigaroCore`, the generic clause engine,
-  the SP1 guest, and the sequencer behind the batch path. `docs/SCALING_STRATEGY.md`.
+- **Prover** — `prover/`: the Rust mirror of `FigaroCore`, the SP1 guest, and
+  the sequencer behind the batch path. `docs/SCALING_STRATEGY.md`.
 - **Site** — `frontend/`, statically exported: the public pages, the paper
   corpus, the builder references, the wallet-connected surfaces, and the
   generated SDK reference. `docs/FRONTEND.md`.

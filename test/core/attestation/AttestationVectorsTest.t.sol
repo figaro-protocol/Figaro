@@ -8,8 +8,8 @@ import "src/core/attestation/AttestationCoordinator.sol";
 import "src/mocks/MockPermitToken.sol";
 
 /// @title AttestationVectorsTest — the attestation lock between the
-///        coordinator and the batch path's hash-only form
-/// @notice A batched attestation in its default form carries exactly what
+///        coordinator and the batch path
+/// @notice A batched attestation carries exactly what
 ///         `AttestationCoordinator` takes — the `clauseDataHash`, the
 ///         inclusion proof and the `contentRef` — and the event the batch
 ///         re-emits must be the coordinator's, byte for byte. This test
@@ -20,7 +20,7 @@ import "src/mocks/MockPermitToken.sol";
 ///         arguments and the log it emitted — topics and data — to
 ///         `test/fixtures/attestation-vectors.json`;
 ///         `prover/lib/tests/attestation_vectors.rs` submits the same
-///         arguments as hash-only batched attestations and asserts the
+///         arguments as batched attestations and asserts the
 ///         guest's events encode to the same topics and data.
 ///
 ///         `HARVEST_ATTESTATION_VECTORS=true` regenerates the fixture;

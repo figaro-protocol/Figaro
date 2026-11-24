@@ -2,25 +2,21 @@
  * Content validator — validates a content value against a parsed ClauseSpec.
  *
  * Call sites: frontend form gates, SDK agent-action preflight. This is the
- * off-chain reference implementation. The Rust prover mirror (`prover/clause`)
- * re-runs the validation inside the SP1 proof on the batched resolution path,
- * and the two engines apply the same rules: the spec format's (the
+ * sign gate of this project's tools. It applies the rules of the published
+ * clause format (`clause-spec.schema.json`): the spec format's (the
  * disposition, `formatFromField`, the private set's blinding field and its
  * one shape, the enum's 256 values) and content validation's (the grain cap
  * of geohash, H3, S2 and Open Location Code by disposition, `validateGrain`,
- * here, among them). They give the
- * same verdict on every case of the shared vectors
- * (`test/fixtures/clause-engine-vectors.json`) and of the generated stream
- * (`tests/clauses/clauseFuzzVectors.test.ts`). A proof of a plaintext
- * attestation therefore attests that its spec keeps the private set's rules,
- * that a private set's content carries its blinding value, and that each
- * location code of a capped standard keeps its disposition's grain. That check binds for the party that
- * submitted the plaintext form; a reader of the chain cannot tell which form
- * an attestation took (`docs/DESIGN_DECISIONS.md` § 26). The DIRECT path validates no content
- * shape on-chain — the coordinator merkle-binds an attestation to its signed
- * agreement and content-hash-binds the evidence; well-formedness there is this
- * layer's job + a read-time concern. There are no per-clause validator
- * contracts, permanently.
+ * here, among them). Its verdicts are pinned case by case in
+ * `tests/clauses/engineVectors.test.ts`, and `tests/clauses/clauseFuzz.test.ts`
+ * runs it on generated specs and content.
+ *
+ * Neither path validates content shape on-chain or in the proof program: the
+ * coordinator, and the proof program on the batch path, merkle-bind an
+ * attestation to its signed agreement and carry the evidence's fingerprint.
+ * Well-formedness is this layer's job and a reader's check against the spec
+ * the clause key names. There are no per-clause validator contracts,
+ * permanently.
  */
 
 import type {
@@ -66,8 +62,9 @@ const BYTES_HEX_RE = /^0x([0-9a-fA-F]{2})*$/;
 const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 /** The bigint grammar: a plain decimal integer, optionally negative.
  *  Deliberately TIGHTER than bare `BigInt()` (which coerces `""`, `"0x10"`,
- *  and padded whitespace) — the spec's contract is "decimal string", and the
- *  prover's Rust mirror enforces the same grammar in lockstep. */
+ *  and padded whitespace) — the published format's contract is "decimal
+ *  string" (`clause-spec.schema.json`, a field's `type`), so a reader's tool
+ *  in any language applies the same grammar. */
 const DECIMAL_BIGINT_RE = /^-?[0-9]+$/;
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -77,12 +74,12 @@ function isObject(value: unknown): value is Record<string, unknown> {
 /**
  * The pattern work one content has spent: the sum, over every value a
  * pattern is run on, of the value's length in UTF-16 units times the
- * pattern's expanded size. Values are visited in one order in both
- * engines: a spec's fields in the order it declares them, an array's items
- * by index, depth first. When the next value would take the total past
- * MAX_CONTENT_PATTERN_WORK, the content is refused once, at `$`, and no
- * further pattern runs. The guest keeps the same total (`PatternWork`,
- * `prover/clause/src/validate.rs`).
+ * pattern's expanded size. Values are visited in one order: a spec's fields
+ * in the order it declares them, an array's items by index, depth first.
+ * When the next value would take the total past MAX_CONTENT_PATTERN_WORK,
+ * the content is refused once, at `$`, and no further pattern runs. The
+ * total bounds the sign gate's own work on one content, whatever spec it is
+ * handed; the published format states the same limit (`pattern`).
  */
 interface PatternWork {
     total: number;
@@ -102,9 +99,10 @@ function validateString(
         errors.push({ path, message: `expected string, got ${typeof value}` });
         return;
     }
-    // JSON.parse keeps a lone UTF-16 surrogate (`"\ud800"`); serde_json, which
-    // reads the content in the guest (prover/lib/src/kernel.rs), refuses it.
-    // A string the batch path cannot read is refused here too.
+    // JSON.parse keeps a lone UTF-16 surrogate (`"\ud800"`); a strict JSON
+    // reader in another language (Rust's serde_json, for one) refuses it.
+    // The published format refuses it too (`clause-spec.schema.json`, a
+    // field's `type`), so no party signs content such a reader cannot read.
     if (hasLoneSurrogate(value)) {
         errors.push({ path, message: "string holds a lone UTF-16 surrogate" });
         return;
@@ -116,16 +114,13 @@ function validateString(
     if (overMaxLength) {
         errors.push({ path, message: `string longer than maxLength ${spec.maxLength}` });
     }
-    // A value over `maxLength` is already refused, so its pattern is not run;
-    // the guest does the same.
+    // A value over `maxLength` is already refused, so its pattern is not run.
     if (spec.pattern !== undefined && !overMaxLength) {
         // `pattern` comes from a permissionless clause spec, so it is
         // untrusted. A value that would cost it more than MAX_PATTERN_WORK is
         // refused unrun, and so is the whole content once its values would
         // cost their patterns more than MAX_CONTENT_PATTERN_WORK; every other
-        // value is matched in time linear in its length (safeRegex.ts), as
-        // the guest does (prover/clause/src/validate.rs, `safe_regex_test`),
-        // so the two engines give one verdict.
+        // value is matched in time linear in its length (safeRegex.ts).
         // A pattern that cannot be run refuses the value: a parsed spec never
         // carries one, but a spec built in code may, and no value is counted
         // as matching unchecked.
@@ -176,8 +171,8 @@ function validateInteger(value: unknown, spec: IntegerFieldSpec, path: string, e
     // An `integer` is a JSON number, exact only inside the safe range: past
     // it two JSON texts name one JS number, and a reader in another language
     // reads a different integer from the same text. Larger values are a
-    // `bigint` field's, carried as a decimal string. The prover's Rust mirror
-    // enforces the same bound in lockstep.
+    // `bigint` field's, carried as a decimal string. The published format
+    // states the same bound (`clause-spec.schema.json`, a field's `type`).
     if (!Number.isSafeInteger(value)) {
         errors.push({ path, message: `value ${value} is outside the safe integer range` });
         return;
@@ -201,8 +196,8 @@ function validateBigint(value: unknown, spec: BigintFieldSpec, path: string, err
     }
     const parsed = BigInt(value);
     // The field's ABI word is uint256: a signed value or one past the word
-    // validates nowhere, because it encodes nowhere. The prover's Rust mirror
-    // enforces the same range in lockstep.
+    // validates nowhere, because it encodes nowhere. The published format
+    // states the same range (`clause-spec.schema.json`, a field's `type`).
     if (value.startsWith("-") || parsed > UINT256_MAX) {
         errors.push({ path, message: `value ${value} is outside the uint256 range` });
         return;
@@ -372,8 +367,6 @@ export function validateContent(
  * empty anchor `{}` and nothing else; every other spec's signed content,
  * `{}` included, validates over its top-level `fields` (`validateContent`
  * with no stage). The rule reads the spec's top level, never its `block`.
- * The guest's engine applies the same rule (`validate_signed_content` in
- * `prover/clause/src/validate.rs`).
  */
 export function validateSignedContent(content: unknown, spec: ClauseSpec): ValidationResult {
     if (spec.emptyAnchor !== true) return validateContent(content, spec);

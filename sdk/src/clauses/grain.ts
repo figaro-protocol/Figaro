@@ -39,8 +39,7 @@
  * cap can be shown to hold.
  *
  * `validateContent` refuses a value finer than the cap; a form input
- * truncates to it. Both read these functions, so the rule has one home. The
- * guest's engine (`prover/clause/src/grain.rs`) applies the same caps.
+ * truncates to it. Both read these functions, so the rule has one home.
  */
 
 import type { FieldDisposition } from "./spec.js";

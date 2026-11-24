@@ -157,9 +157,8 @@ contract DeploySepolia is Script {
         address predictedVerifier = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
         _deployUsageCounter(predictedVerifier);
 
-        FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
-            vm.envAddress("SP1_VERIFIER"), vm.envBytes32("SP1_PROGRAM_VKEY"), _clauses, _usageCounter
-        );
+        FigaroBatchVerifier batchVerifier =
+            new FigaroBatchVerifier(vm.envAddress("SP1_VERIFIER"), vm.envBytes32("SP1_PROGRAM_VKEY"), _usageCounter);
         _batchVerifier = address(batchVerifier);
         require(_batchVerifier == predictedVerifier, "verifier address prediction failed");
         console.log("FigaroBatchVerifier:    ", _batchVerifier);

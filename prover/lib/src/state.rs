@@ -35,10 +35,9 @@ pub fn order_value_hash(status: u8) -> B256 {
 }
 
 /// Working mirror state with indexed mappings — the FigaroCore mappings
-/// only. Registry state (clauses, members, assemblies) is NOT mirrored:
-/// registry mutations stay on the direct path, and the clause gates bind
-/// witness specs to the live `ClauseRegistry` via the verifier-checked
-/// spec bindings instead of proven registry state.
+/// only. Registry state (clauses, agreements, process designs, members) is
+/// NOT mirrored: registry mutations stay on the direct path, and nothing the
+/// guest proves reads a registry.
 ///
 /// Two modes. The relay and the rebuild hold every entry (`new`,
 /// `from_snapshot`): any key not in a map is absent. The guest holds only

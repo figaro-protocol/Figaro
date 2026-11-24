@@ -4,13 +4,11 @@ name: Prover CI
 #
 # Two jobs, two costs.
 #
-# `test` — every push and PR: the two crates that build and test WITHOUT the
-# SP1 toolchain, `figaro-clause` (prover/clause) and `figaro-kernel`
-# (prover/lib). They have no build.rs and no sp1-* deps (figaro-kernel depends
-# on figaro-clause, alloy-primitives, k256 — see prover/lib/Cargo.toml and
-# prover/clause/Cargo.toml), so `cargo test` on just those two exercises the
-# Layer-B clause-validation mirror and the mirror of FigaroCore without the
-# guest-program toolchain tax.
+# `test` — every push and PR: the one crate that builds and tests WITHOUT the
+# SP1 toolchain, `figaro-kernel` (prover/lib). It has no build.rs and no sp1-*
+# deps (it depends on alloy-primitives, serde and k256 — see
+# prover/lib/Cargo.toml), so `cargo test` on it exercises the mirror of
+# FigaroCore without the guest-program toolchain tax.
 #
 # `test` also runs the static analysis: clippy with its correctness and
 # suspicious groups denied, and Semgrep's Rust ruleset failing on any WARNING
@@ -19,8 +17,7 @@ name: Prover CI
 # `cross-impl-fuzz` — every push and PR: the differential fuzz across the
 # implementations (scripts/test-cross-impl-fuzz.sh). Foundry runs a seeded
 # stream of operations on FigaroCore and figaro-kernel replays it; the SDK
-# generates agreements and both Merkle verifiers open their proofs; the SDK
-# draws clause cases and the guest's engine gives the same answers. The seed
+# generates agreements and both Merkle verifiers open their proofs. The seed
 # is the run id, so every run draws new streams, and the log prints it.
 #
 # `sp1` — push to main and dispatch only: the other three workspace members —
@@ -49,9 +46,6 @@ on:
             - "sdk/src/agreement.ts"
             - "sdk/src/clauses/**"
             - "sdk/tests/merkleParity.test.ts"
-            - "sdk/tests/clauses/clauseFuzzVectors.test.ts"
-            - "sdk/tests/clauses/engineVectors.test.ts"
-            - "test/fixtures/clause-engine-vectors.json"
             - "clauses/**"
             - "test/fixtures/clause-keys.json"
             - "scripts/test-cross-impl-fuzz.sh"
@@ -88,9 +82,6 @@ on:
             - "sdk/src/agreement.ts"
             - "sdk/src/clauses/**"
             - "sdk/tests/merkleParity.test.ts"
-            - "sdk/tests/clauses/clauseFuzzVectors.test.ts"
-            - "sdk/tests/clauses/engineVectors.test.ts"
-            - "test/fixtures/clause-engine-vectors.json"
             - "clauses/**"
             - "test/fixtures/clause-keys.json"
             - "scripts/test-cross-impl-fuzz.sh"
@@ -100,7 +91,7 @@ permissions:
 
 jobs:
     test:
-        name: cargo test (figaro-clause, figaro-kernel)
+        name: cargo test (figaro-kernel)
         runs-on: ubuntu-24.04
         steps:
             - name: Checkout code
@@ -138,21 +129,21 @@ jobs:
                   restore-keys: |
                       ${{ runner.os }}-prover-cargo-
 
-            - name: cargo test (figaro-clause, figaro-kernel)
+            - name: cargo test (figaro-kernel)
               working-directory: ./prover
-              run: cargo test --locked -p figaro-clause -p figaro-kernel
+              run: cargo test --locked -p figaro-kernel
 
-            # Static analysis over the guest's two crates. Clippy's correctness
+            # Static analysis over the guest's crate. Clippy's correctness
             # and suspicious groups are denied; its style groups are printed,
             # not gated. Semgrep's Rust ruleset fails on any WARNING or ERROR
             # (--error), over every crate in scope, the relay included.
             - name: Install clippy
               run: rustup component add clippy --toolchain "$RUST_TOOLCHAIN"
 
-            - name: cargo clippy (figaro-clause, figaro-kernel)
+            - name: cargo clippy (figaro-kernel)
               working-directory: ./prover
               run: >-
-                  cargo clippy --locked -p figaro-clause -p figaro-kernel --all-targets
+                  cargo clippy --locked -p figaro-kernel --all-targets
                   -- -D clippy::correctness -D clippy::suspicious
 
             - name: Install Semgrep
@@ -161,10 +152,10 @@ jobs:
             - name: Run Semgrep (Rust)
               run: >-
                   semgrep --config p/rust --error --severity ERROR --severity WARNING
-                  prover/program/src prover/lib/src prover/clause/src prover/sequencer/src
+                  prover/program/src prover/lib/src prover/sequencer/src
 
     cross-impl-fuzz:
-        name: differential fuzz (FigaroCore, agreement tree, clause engine)
+        name: differential fuzz (FigaroCore, agreement tree)
         runs-on: ubuntu-24.04
         steps:
             - name: Checkout code

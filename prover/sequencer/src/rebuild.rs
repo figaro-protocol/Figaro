@@ -1,7 +1,7 @@
 //! Rebuilding the state behind the verifier's root from the chain alone.
 //!
 //! Every batch `FigaroBatchVerifier.settleBatch` lands logs its operation
-//! stream in `BatchOperations` (bound to public value 9 before it is logged)
+//! stream in `BatchOperations` (bound to public value 8 before it is logged)
 //! with the clock and usage period its replay needs, and
 //! names its previous and new root in `BatchSettled`, both in the same
 //! transaction. So the state behind any root the verifier holds is a replay

@@ -641,32 +641,21 @@ async fn batch_loop(
                 p
             })
             .collect();
-        // An attestation whose witness spec does not hash to its clause key,
-        // or whose key is not registered, reverts the whole batch on chain:
-        // dropped here, alone.
-        let (valid, mut unanchored) =
-            submitter::filter_anchored_attestations(funding.as_ref(), valid).await;
-        for (p, reason) in &unanchored {
-            warn!(id = p.id, %reason, "Dropped attestation at batch formation");
-            failures.record(1, reason.clone()).await;
-        }
         // A wallet-code operation whose party's code does not validate it, as
         // the verifier will ask, reverts the whole batch on chain, a resolve
-        // and an attestation alike: dropped here, alone, as an unanchored
-        // attestation is.
+        // and an attestation alike: dropped here, alone.
         let (mut valid, unvalidated) =
             submitter::filter_wallet_code_ops(funding.as_ref(), valid).await;
         for (p, reason) in &unvalidated {
             warn!(id = p.id, %reason, "Dropped wallet-code operation at batch formation");
             failures.record(1, reason.clone()).await;
         }
-        unanchored.extend(unvalidated);
         // What was filtered into an order behind a dropped commit or
         // attestation is filtered again without it, as after a capacity
         // drop: left in the batch, it would fail the Core's rules at planning and
         // cost the whole tick's batch. What applies once the deferred commits
         // are restored moves with them; the rest is dead-lettered.
-        if !unfunded.is_empty() || !unanchored.is_empty() || !unread.is_empty() {
+        if !unfunded.is_empty() || !unvalidated.is_empty() || !unread.is_empty() {
             // Each that follows a deferred operation rides behind what it was
             // filtered behind, and is dead-lettered with it.
             let figaro_sequencer::mempool::Refiltered {

@@ -197,8 +197,6 @@ export type {
     SequencerUsageClaim,
     SequencerUsageClaimKind,
     SequencerSignature,
-    SequencerContentProof,
-    SequencerContentKind,
     SequencerAttestationWitness,
     SequencerStatus,
     SubmitResult,

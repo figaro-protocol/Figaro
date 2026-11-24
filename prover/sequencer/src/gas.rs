@@ -1,9 +1,8 @@
 //! The batch's cost on chain, and the cap it derives.
 //!
 //! What a batch costs the chain is what it PUBLISHES — the net positions
-//! `settleBatch` transfers, the attestation events it re-emits, the spec
-//! bindings it anchors against the registry and the uses it hands the
-//! counter — plus the proof's verification, the call's fixed
+//! `settleBatch` transfers, the attestation events it re-emits and the uses
+//! it hands the counter — plus the proof's verification, the call's fixed
 //! execution and the calldata it carries; not the number of operations it
 //! proves. The relay bounds a batch by this estimate against the live block
 //! gas limit, read at every tick, so the cap follows the chain it runs on
@@ -28,8 +27,6 @@ use figaro_kernel::types::{BatchEvents, BatchInput, KernelOp, NetPosition, Usage
 pub const SETTLE_GAS_PER_POSITION: u64 = 120_000;
 /// Execution gas of one attestation event re-emitted.
 pub const SETTLE_GAS_PER_ATTESTATION: u64 = 6_000;
-/// Execution gas of one spec binding checked against the registry.
-pub const SETTLE_GAS_PER_SPEC_BINDING: u64 = 4_500;
 /// Gas of one use the counter counts — the dearest: its registry and member
 /// stake reads, the counted-seller, period-seller, tally and score writes, the
 /// score's cube root and the `UsageRecorded` event. A key, a seller and a
@@ -174,7 +171,7 @@ pub const DEFAULT_SETTLE_GAS_CAP: u64 = 16_777_216;
 
 /// The calldata a batch's transaction carries besides its positions and its
 /// operation stream, charged as nonzero bytes: the selector, the head words, the proof
-/// (a PLONK proof's 1,536 bytes, the larger form), the public values' 320
+/// (a PLONK proof's 1,536 bytes, the larger form), the public values' 288
 /// bytes, and the lengths and offsets of the events, the usage and the
 /// stream — about 2,600 bytes.
 const SETTLE_FRAMING_CALLDATA_GAS: u64 = 2_600 * CALLDATA_NONZERO_BYTE_GAS;
@@ -230,7 +227,6 @@ const CALLDATA_NONZERO_BYTE_GAS: u64 = 16;
 pub struct SettleItems {
     pub positions: usize,
     pub attestations: usize,
-    pub spec_bindings: usize,
     /// The uses the counter is handed, one per (kind, key, process, seller).
     pub uses: usize,
     /// The operation stream's 32-byte words, rounded up.
@@ -257,7 +253,6 @@ impl SettleItems {
         Self {
             positions: positions.len(),
             attestations: events.attestations.len(),
-            spec_bindings: events.spec_bindings.len(),
             uses: events.uses.len(),
             stream_words: 0,
             stream_commits: 0,
@@ -309,7 +304,6 @@ pub fn settle_gas_estimate(calldata: &[u8], items: SettleItems) -> u64 {
         + SETTLE_FIXED_EXEC_GAS
         + items.positions as u64 * SETTLE_GAS_PER_POSITION
         + items.attestations as u64 * SETTLE_GAS_PER_ATTESTATION
-        + items.spec_bindings as u64 * SETTLE_GAS_PER_SPEC_BINDING
         + items.uses as u64 * SETTLE_GAS_PER_USE
         + stream_exec_gas(items.stream_words as u64)
         + items.stream_commits as u64 * SETTLE_GAS_PER_STREAM_COMMIT
@@ -505,7 +499,6 @@ mod tests {
         let items = SettleItems {
             positions: 2,
             attestations: 1,
-            spec_bindings: 1,
             uses: 1,
             stream_words: 0,
             stream_commits: 0,
@@ -522,7 +515,6 @@ mod tests {
                 + 105_000
                 + 2 * SETTLE_GAS_PER_POSITION
                 + 6_000
-                + 4_500
                 + SETTLE_GAS_PER_USE
                 + 15_000
                 + 500_000

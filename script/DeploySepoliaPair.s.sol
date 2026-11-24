@@ -133,7 +133,7 @@ contract DeploySepoliaPair is Script {
         _usageCounter = address(usageCounter);
         console.log("UsageCounter:           ", _usageCounter);
 
-        FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(gateway_, vkey_, clauses_, _usageCounter);
+        FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(gateway_, vkey_, _usageCounter);
         _batchVerifier = address(batchVerifier);
         require(_batchVerifier == predictedVerifier, "verifier address prediction failed");
         console.log("FigaroBatchVerifier:    ", _batchVerifier);

@@ -1,8 +1,8 @@
 /**
  * The batch-path harness shared by the relay's chain-touching suites
  * (`batch-e2e.test.ts`, `batch-revoke-e2e.test.ts`): the chain probe, the
- * stack deployment (MockERC20, MockSP1Verifier, ClauseRegistry with the
- * witness clause anchored, FigaroCore, MembersRegistry, ProcessRegistry,
+ * stack deployment (MockERC20, MockSP1Verifier, ClauseRegistry with one
+ * clause registered, FigaroCore, MembersRegistry, ProcessRegistry,
  * UsageCounter, FigaroBatchVerifier), and the relay's process management.
  *
  * Requires Anvil at http://127.0.0.1:8545 (or at `ANVIL_URL`) and the release
@@ -71,12 +71,10 @@ export function loadRuntimeBytecode(contractPath: string): Hex {
     return loadArtifact(contractPath).deployedBytecode.object;
 }
 
-// ── The witness clause: figaro-modalities, the bytes its key hashes ─────────
+// ── The suites' clause: figaro-modalities, the bytes its key hashes ─────────
 
-/** The bytes a plaintext attestation's witness carries: the canonical
- *  serialization of `clauses/<name>.json` without its top-level `block`
- *  (`clauseKeyPreimage`) — the bytes the clause key hashes and the guest's
- *  Gate S re-hashes. */
+/** The canonical serialization of `clauses/<name>.json` without its
+ *  top-level `block` (`clauseKeyPreimage`): the bytes the clause key hashes. */
 export function loadSpecJson(name: string): string {
     const repoRoot = path.resolve(import.meta.dirname, "../..");
     return clauseKeyPreimage(JSON.parse(fs.readFileSync(path.join(repoRoot, "clauses", `${name}.json`), "utf-8")));
@@ -112,8 +110,10 @@ export interface BatchStack {
 type Wallet = WalletClient<Transport, Chain, Account>;
 
 /**
- * Deploy the batch-path stack from `deployerWallet` and anchor the witness
- * clause's EXACT spec bytes. The deployer must be dedicated to this call: the
+ * Deploy the batch-path stack from `deployerWallet` and register `clause` on
+ * the ClauseRegistry under the key of its spec bytes. The verifier reads no
+ * registry; the registration is for `UsageCounter`, which counts a use of a
+ * clause only while the clause is registered. The deployer must be dedicated to this call: the
  * counter and the verifier reference each other, so the verifier's address is
  * predicted from the deployer's nonce, and any other transaction from the same
  * account landing in between makes the prediction wrong.
@@ -121,7 +121,7 @@ type Wallet = WalletClient<Transport, Chain, Account>;
 export async function deployBatchStack(
     publicClient: PublicClient,
     deployerWallet: Wallet,
-    witness: { specJson: string; clauseKey: Hex },
+    clause: { specJson: string; clauseKey: Hex },
     /** The counter's period ends, in seconds after the chain's clock at the
      *  counter's deployment, strictly ascending. One period, ending an hour
      *  later, when omitted. */
@@ -156,7 +156,7 @@ export async function deployBatchStack(
     });
     const mockVerifierAddress = verifierReceipt.contractAddress!;
 
-    // ── Deploy ClauseRegistry + anchor the witness clause ───
+    // ── Deploy ClauseRegistry + register the clause ─────────
 
     const CLAUSE_REGISTRY_DEPLOY_ABI = parseAbi([
         "constructor(uint256 _registrationDeposit)",
@@ -172,15 +172,16 @@ export async function deployBatchStack(
     const regReceipt = await publicClient.waitForTransactionReceipt({ hash: regHash });
     const clauseRegistryAddress = regReceipt.contractAddress!;
 
-    // Register the clause under the key of the EXACT bytes the witness proof
-    // will carry: the key is the hash of the canonical spec without `block`.
-    expect(keccak256(stringToHex(witness.specJson))).toBe(witness.clauseKey);
+    // Register the clause under its key, the hash of the canonical spec
+    // without `block`: the counter credits a usage claim on it only while
+    // it is registered.
+    expect(keccak256(stringToHex(clause.specJson))).toBe(clause.clauseKey);
     await deployerWallet
         .writeContract({
             address: clauseRegistryAddress,
             abi: CLAUSE_REGISTRY_DEPLOY_ABI,
             functionName: "registerClause",
-            args: [witness.clauseKey, "ipfs://spec"],
+            args: [clause.clauseKey, "ipfs://spec"],
         })
         .then((h) => publicClient.waitForTransactionReceipt({ hash: h }));
 
@@ -188,7 +189,7 @@ export async function deployBatchStack(
         address: clauseRegistryAddress,
         abi: CLAUSE_REGISTRY_DEPLOY_ABI,
         functionName: "registered",
-        args: [witness.clauseKey],
+        args: [clause.clauseKey],
     });
     expect(registered).toBe(true);
 
@@ -216,7 +217,7 @@ export async function deployBatchStack(
 
     // The counter gates accrual on LIVE registration of each kind's own
     // registry, so it takes the clause, assembly and agreement registries.
-    // The clause under test is already anchored in clauseRegistryAddress
+    // The clause under test is already registered in clauseRegistryAddress
     // above; assemblies and agreements play no part in this fixture, so an
     // empty zero-deposit registry of each satisfies the constructor's
     // nonzero check.
@@ -275,7 +276,7 @@ export async function deployBatchStack(
     // ── Deploy FigaroBatchVerifier ───────────────────────────
 
     const BATCH_VERIFIER_DEPLOY_ABI = parseAbi([
-        "constructor(address _verifier, bytes32 _programVKey, address _clauseRegistry, address _usageCounter)",
+        "constructor(address _verifier, bytes32 _programVKey, address _usageCounter)",
     ]);
 
     const batchVerifierBytecode = loadBytecode(
@@ -287,7 +288,6 @@ export async function deployBatchStack(
         args: [
             mockVerifierAddress,
             embeddedVkey(),
-            clauseRegistryAddress,
             usageCounterAddress,
         ],
     });

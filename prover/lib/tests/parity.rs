@@ -8,13 +8,13 @@ use alloy_primitives::{address, b256, keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
-use figaro_kernel::kernel::{apply_batch, compute_spec_bindings_hash};
+use figaro_kernel::kernel::apply_batch;
 use figaro_kernel::types::*;
 
-// ── Witness-spec helpers ──────────────────────────────────────────
+// ── Clause-key helpers ────────────────────────────────────────────
 //
-// Specs are witness inputs loaded from `clauses/` (the ClauseRegistry
-// seed source) — nothing is embedded in the engine.
+// The fixture's clause key is derived from its spec in `clauses/`, and
+// pinned to the SDK's key; the guest reads no spec.
 
 /// The SDK's `canonicalize`, the one canonical form of the Rust tests
 /// (`prover/script/src/canonical.rs`).
@@ -35,8 +35,8 @@ fn load_pinned_spec_json(clause_id_str: &str) -> String {
     canonicalize(&value)
 }
 
-/// The witness bytes: the canonical form of the spec without its top-level
-/// `block` — the bytes the clause key hashes. `sdk_clause_key` pins the
+/// The canonical form of the spec without its top-level `block` — the
+/// bytes the clause key hashes. `sdk_clause_key` pins the
 /// result to the SDK's key.
 fn load_spec_json(clause_id_str: &str) -> String {
     let mut value: serde_json::Value =
@@ -65,24 +65,6 @@ fn sdk_clause_key(clause_id_str: &str) -> B256 {
         .unwrap_or_else(|| panic!("{clause_id_str} is not in the fixture"))
         .parse()
         .expect("bytes32")
-}
-
-fn parse_spec(spec_json: &str) -> figaro_clause::ClauseSpec {
-    let value: serde_json::Value = serde_json::from_str(spec_json).expect("spec JSON");
-    match figaro_clause::parse_clause_spec(&value) {
-        figaro_clause::ParseClauseSpecResult::Ok(s) => s,
-        figaro_clause::ParseClauseSpecResult::Err(errors) => panic!("spec parse: {errors:?}"),
-    }
-}
-
-/// Canonical ABI encoding of `content` under the witness spec.
-fn encode_content(spec_json: &str, content: &serde_json::Value, stage: u8) -> Vec<u8> {
-    figaro_clause::encode_content_from_spec(
-        &parse_spec(spec_json),
-        content,
-        figaro_clause::EncodeOptions { stage: Some(stage) },
-    )
-    .expect("canonical encoder must succeed")
 }
 
 /// The agreement Merkle leaf for a clause:
@@ -438,24 +420,19 @@ fn empty_snapshot() -> KernelStateSnapshot {
 const CLAUSE_DATA: &str = r#"{"modality":"delivery"}"#;
 
 struct AttestFixture {
-    spec_json: String,
     clause_key: B256,
     root: Commitment,
     process_id: B256,
     root_order_hash: B256,
 }
 
+/// The single-clause agreement over the figaro-modalities clause and
+/// `CLAUSE_DATA`: the order commits the one leaf, so `checkoutHash` is that
+/// leaf.
 fn attest_fixture() -> AttestFixture {
-    attest_fixture_for(load_spec_json("figaro-modalities"), CLAUSE_DATA)
-}
-
-/// The single-clause agreement over any witness spec and committed clause
-/// data: the order commits the one leaf, so `checkoutHash` is that leaf.
-fn attest_fixture_for(spec_json: String, clause_data: &str) -> AttestFixture {
-    // The clause key is keccak256 of the spec bytes the witness carries:
-    // the canonical form of the spec without its `block`.
-    let clause_key = keccak256(spec_json.as_bytes());
-    let leaf = clause_leaf(&clause_key, clause_data);
+    // The clause key: keccak256 of the canonical spec without its `block`.
+    let clause_key = keccak256(load_spec_json("figaro-modalities").as_bytes());
+    let leaf = clause_leaf(&clause_key, CLAUSE_DATA);
 
     let root = Commitment {
         checkout_hash: leaf,
@@ -468,7 +445,6 @@ fn attest_fixture_for(spec_json: String, clause_data: &str) -> AttestFixture {
     let root_order_hash = compute_order_hash(&process_id, &struct_hash);
 
     AttestFixture {
-        spec_json,
         clause_key,
         root,
         process_id,
@@ -476,35 +452,19 @@ fn attest_fixture_for(spec_json: String, clause_data: &str) -> AttestFixture {
     }
 }
 
-/// A RuntimeWitness content proof for the fixture's clause at stage 0.
-fn runtime_witness_proof(f: &AttestFixture) -> (AttestationContentProof, B256) {
-    let content: serde_json::Value = serde_json::from_str(CLAUSE_DATA).unwrap();
-    let content_ref = keccak256(encode_content(&f.spec_json, &content, 0).as_slice());
-    (
-        AttestationContentProof {
-            spec_json: f.spec_json.clone(),
-            content_json: CLAUSE_DATA.to_string(),
-            clause_data: CLAUSE_DATA.to_string(),
-            inclusion_proof: vec![],
-            content_kind: ContentKind::RuntimeWitness,
-        },
-        content_ref,
-    )
+/// The fixture's clause as the coordinator takes it: the committed
+/// clauseData's hash and the inclusion proof (empty for the fixture's
+/// single-clause agreement).
+fn witness(clause_data_hash: B256, inclusion_proof: Vec<B256>) -> AttestationWitness {
+    AttestationWitness {
+        clause_data_hash,
+        inclusion_proof,
+    }
 }
 
-/// A ReAssert content proof: the content IS the committed clauseData.
-fn re_assert_proof(f: &AttestFixture) -> (AttestationContentProof, B256) {
-    let content_ref = keccak256(CLAUSE_DATA.as_bytes());
-    (
-        AttestationContentProof {
-            spec_json: f.spec_json.clone(),
-            content_json: CLAUSE_DATA.to_string(),
-            clause_data: CLAUSE_DATA.to_string(),
-            inclusion_proof: vec![],
-            content_kind: ContentKind::ReAssert,
-        },
-        content_ref,
-    )
+/// The witness of the fixture's one committed leaf.
+fn committed_witness() -> AttestationWitness {
+    witness(keccak256(CLAUSE_DATA.as_bytes()), vec![])
 }
 
 /// Commit the fixture's root order, then run one seller attestation op
@@ -539,42 +499,21 @@ fn run_attest_batch(
     apply_batch(&input)
 }
 
+/// A seller attestation at stage 0 on the fixture's root order carrying
+/// `witness`.
 fn seller_attest_op(
     f: &AttestFixture,
-    proof: AttestationContentProof,
-    content_ref: B256,
-    signer: &SigningKey,
-) -> KernelOp {
-    seller_attest_op_with(f, AttestationWitness::Plaintext(proof), content_ref, signer)
-}
-
-/// A seller attestation on the fixture's root order carrying `witness`
-/// in whichever form the test picks.
-fn seller_attest_op_with(
-    f: &AttestFixture,
-    witness: AttestationWitness,
-    content_ref: B256,
-    signer: &SigningKey,
-) -> KernelOp {
-    seller_attest_at_stage(f, 0, witness, content_ref, signer)
-}
-
-/// A seller attestation on the fixture's root order at `stage`.
-fn seller_attest_at_stage(
-    f: &AttestFixture,
-    stage: u8,
     witness: AttestationWitness,
     content_ref: B256,
     signer: &SigningKey,
 ) -> KernelOp {
     let domain = domain_separator(CHAIN_ID, CORE);
-    let struct_hash =
-        attest_seller_struct_hash(&f.root_order_hash, &f.clause_key, stage, &content_ref);
+    let struct_hash = attest_seller_struct_hash(&f.root_order_hash, &f.clause_key, 0, &content_ref);
     let digest = typed_data_hash(&domain, &struct_hash);
     KernelOp::AttestAsSeller {
         target: f.root.clone(),
         clause_id: f.clause_key,
-        stage,
+        stage: 0,
         content_ref,
         seller_sig: sign_digest(signer, &digest),
         proof: witness,
@@ -583,14 +522,17 @@ fn seller_attest_at_stage(
 
 // ── Attestation tests (current coordinator semantics) ─────────────
 
+/// A seller attestation is accepted on the leaf's inclusion: the event
+/// carries the order, the process, the attester, the clause, the stage and
+/// the content reference as signed.
 #[test]
-fn attest_as_seller_runtime_witness_passes_all_gates() {
+fn a_seller_attestation_is_accepted_on_the_leaf_s_inclusion() {
     let f = attest_fixture();
-    let (proof, content_ref) = runtime_witness_proof(&f);
+    let content_ref = keccak256("evidence the seller keeps");
     let seller1_key = make_signing_key(SELLER1_KEY);
-    let op = seller_attest_op(&f, proof, content_ref, &seller1_key);
+    let op = seller_attest_op(&f, committed_witness(), content_ref, &seller1_key);
 
-    let (pv, _positions, events) = run_attest_batch(&f, op).unwrap();
+    let (_pv, _positions, events) = run_attest_batch(&f, op).unwrap();
 
     assert_eq!(events.attestations.len(), 1);
     let e = &events.attestations[0];
@@ -598,30 +540,18 @@ fn attest_as_seller_runtime_witness_passes_all_gates() {
     assert_eq!(e.process_id, f.process_id);
     assert_eq!(e.attester, SELLER1);
     assert_eq!(e.clause_id, f.clause_key);
+    assert_eq!(e.stage, 0);
     assert_eq!(e.content_ref, content_ref);
-
-    // The spec binding is committed for on-chain verification: the
-    // clause key, which is the spec's hash and which the verifier checks
-    // is ClauseRegistry.registered.
-    assert_eq!(events.spec_bindings.len(), 1);
-    assert_eq!(events.spec_bindings[0].clause_id, f.clause_key);
-    assert_eq!(
-        events.spec_bindings[0].clause_id,
-        keccak256(f.spec_json.as_bytes()),
-        "the clause key is the spec hash"
-    );
-    assert_eq!(
-        pv.spec_bindings_hash,
-        compute_spec_bindings_hash(&events.spec_bindings)
-    );
 }
 
-#[test]
-fn attest_as_buyer_re_assert_passes() {
-    let f = attest_fixture();
-    let (proof, content_ref) = re_assert_proof(&f);
-    let buyer_key = make_signing_key(BUYER_KEY);
-
+/// A buyer attestation on the fixture's root order carrying `witness`,
+/// signed by `signer`.
+fn buyer_attest_op(
+    f: &AttestFixture,
+    witness: AttestationWitness,
+    content_ref: B256,
+    signer: &SigningKey,
+) -> KernelOp {
     let domain = domain_separator(CHAIN_ID, CORE);
     let struct_hash = attest_buyer_struct_hash(
         &f.process_id,
@@ -630,32 +560,40 @@ fn attest_as_buyer_re_assert_passes() {
         0,
         &content_ref,
     );
-    let digest = typed_data_hash(&domain, &struct_hash);
-    let op = KernelOp::AttestAsBuyer {
+    KernelOp::AttestAsBuyer {
         target: f.root.clone(),
         clause_id: f.clause_key,
         stage: 0,
         content_ref,
-        buyer_sig: sign_digest(&buyer_key, &digest),
-        proof: AttestationWitness::Plaintext(proof),
-    };
+        buyer_sig: sign_digest(signer, &typed_data_hash(&domain, &struct_hash)),
+        proof: witness,
+    }
+}
+
+/// The buyer's attestation, likewise.
+#[test]
+fn a_buyer_attestation_is_accepted_on_the_leaf_s_inclusion() {
+    let f = attest_fixture();
+    let content_ref = keccak256("evidence the buyer keeps");
+    let op = buyer_attest_op(
+        &f,
+        committed_witness(),
+        content_ref,
+        &make_signing_key(BUYER_KEY),
+    );
 
     let (_pv, _positions, events) = run_attest_batch(&f, op).unwrap();
     assert_eq!(events.attestations.len(), 1);
     assert_eq!(events.attestations[0].attester, BUYER);
-    assert_eq!(
-        events.attestations[0].content_ref,
-        keccak256(CLAUSE_DATA.as_bytes())
-    );
+    assert_eq!(events.attestations[0].content_ref, content_ref);
 }
 
 #[test]
 fn attest_as_seller_wrong_signer_fails() {
     let f = attest_fixture();
-    let (proof, content_ref) = runtime_witness_proof(&f);
     // SELLER2 signs, but target.seller is SELLER1.
     let seller2_key = make_signing_key(SELLER2_KEY);
-    let op = seller_attest_op(&f, proof, content_ref, &seller2_key);
+    let op = seller_attest_op(&f, committed_witness(), keccak256("evidence"), &seller2_key);
 
     match run_attest_batch(&f, op) {
         Err(KernelError::NotAuthorized) => {}
@@ -666,193 +604,13 @@ fn attest_as_seller_wrong_signer_fails() {
 #[test]
 fn attest_as_buyer_wrong_signer_fails() {
     let f = attest_fixture();
-    let (proof, content_ref) = re_assert_proof(&f);
     let seller1_key = make_signing_key(SELLER1_KEY); // not the buyer
-
-    let domain = domain_separator(CHAIN_ID, CORE);
-    let struct_hash = attest_buyer_struct_hash(
-        &f.process_id,
-        &f.root_order_hash,
-        &f.clause_key,
-        0,
-        &content_ref,
-    );
-    let digest = typed_data_hash(&domain, &struct_hash);
-    let op = KernelOp::AttestAsBuyer {
-        target: f.root.clone(),
-        clause_id: f.clause_key,
-        stage: 0,
-        content_ref,
-        buyer_sig: sign_digest(&seller1_key, &digest),
-        proof: AttestationWitness::Plaintext(proof),
-    };
+    let op = buyer_attest_op(&f, committed_witness(), keccak256("evidence"), &seller1_key);
 
     match run_attest_batch(&f, op) {
         Err(KernelError::NotAuthorized) => {}
         other => panic!("expected NotAuthorized, got {other:?}"),
     }
-}
-
-#[test]
-fn attest_content_hash_mismatch_fails() {
-    let f = attest_fixture();
-    let (proof, _content_ref) = runtime_witness_proof(&f);
-    let bogus_ref = keccak256("not the content");
-    let seller1_key = make_signing_key(SELLER1_KEY);
-    let op = seller_attest_op(&f, proof, bogus_ref, &seller1_key);
-
-    match run_attest_batch(&f, op) {
-        Err(KernelError::ContentHashMismatch) => {}
-        other => panic!("expected ContentHashMismatch, got {other:?}"),
-    }
-}
-
-#[test]
-fn attest_invalid_content_fails() {
-    let f = attest_fixture();
-    let bad_content = r#"{"modality":"teleportation"}"#;
-    let proof = AttestationContentProof {
-        spec_json: f.spec_json.clone(),
-        content_json: bad_content.to_string(),
-        clause_data: CLAUSE_DATA.to_string(),
-        inclusion_proof: vec![],
-        content_kind: ContentKind::RuntimeWitness,
-    };
-    let content_ref = keccak256("whatever");
-    let seller1_key = make_signing_key(SELLER1_KEY);
-    let op = seller_attest_op(&f, proof, content_ref, &seller1_key);
-
-    match run_attest_batch(&f, op) {
-        Err(KernelError::ClauseContentInvalid(_)) => {}
-        other => panic!("expected ClauseContentInvalid, got {other:?}"),
-    }
-}
-
-#[test]
-fn attest_content_holding_a_lone_surrogate_fails() {
-    // serde_json refuses a lone UTF-16 surrogate, where JSON.parse keeps
-    // one. The SDK's leg of this vector ("validateContent — a lone UTF-16
-    // surrogate" in sdk/tests/clauses/validate.test.ts) refuses it too, so
-    // neither path takes content the other refuses.
-    let f = attest_fixture();
-    for content in [
-        r#"{"modality":"\ud800"}"#,
-        r#"{"modality":"a\udfffb"}"#,
-        r#"{"modality":"\udc00\ud800"}"#,
-    ] {
-        let proof = AttestationContentProof {
-            spec_json: f.spec_json.clone(),
-            content_json: content.to_string(),
-            clause_data: CLAUSE_DATA.to_string(),
-            inclusion_proof: vec![],
-            content_kind: ContentKind::RuntimeWitness,
-        };
-        let content_ref = keccak256(content);
-        let seller1_key = make_signing_key(SELLER1_KEY);
-        let op = seller_attest_op(&f, proof, content_ref, &seller1_key);
-
-        match run_attest_batch(&f, op) {
-            Err(KernelError::ContentEncodingFailed(_)) => {}
-            other => panic!("{content}: expected ContentEncodingFailed, got {other:?}"),
-        }
-    }
-}
-
-#[test]
-fn attest_spec_holding_a_lone_surrogate_fails() {
-    // serde_json refuses a lone UTF-16 surrogate in the witness spec's own
-    // JSON (its title, description or a field's label), where JSON.parse
-    // keeps one and the SDK's `canonicalize` writes it back as the escape.
-    // The SDK's leg of this vector ("parseClauseSpec — a lone UTF-16
-    // surrogate in the spec's own JSON" in sdk/tests/clauses/spec.test.ts)
-    // refuses the spec at parse too. The fixture's leaf is built over these
-    // very bytes, so the identity gate would pass: the refusal is the parse.
-    for escape in [r"\ud800", r"a\udfffb", r"\udc00\ud800", r"\ud83d"] {
-        let base = load_spec_json("figaro-modalities");
-        let spec_json = base.replacen(
-            r#""description":""#,
-            &format!(r#""description":"{escape}"#),
-            1,
-        );
-        assert_ne!(spec_json, base, "the description is spliced");
-        let f = attest_fixture_for(spec_json, CLAUSE_DATA);
-        let (proof, content_ref) = re_assert_proof(&f);
-        assert_eq!(keccak256(proof.spec_json.as_bytes()), f.clause_key);
-        let seller1_key = make_signing_key(SELLER1_KEY);
-        let op = seller_attest_op(&f, proof, content_ref, &seller1_key);
-
-        match run_attest_batch(&f, op) {
-            Err(KernelError::ClauseSpecParseFailed(message)) => {
-                assert!(
-                    message.starts_with("spec not valid JSON"),
-                    "{escape}: {message}"
-                );
-                assert!(message.contains("escape"), "{escape}: {message}");
-            }
-            other => panic!("{escape}: expected ClauseSpecParseFailed, got {other:?}"),
-        }
-    }
-}
-
-#[test]
-fn attest_spec_identity_mismatch_fails() {
-    let f = attest_fixture();
-    // Supply the figaro-handoff spec under the figaro-modalities key —
-    // a permissive-spec substitution the identity gate must reject.
-    let wrong_spec = load_spec_json("figaro-handoff");
-    let (mut proof, content_ref) = runtime_witness_proof(&f);
-    proof.spec_json = wrong_spec;
-    let seller1_key = make_signing_key(SELLER1_KEY);
-    let op = seller_attest_op(&f, proof, content_ref, &seller1_key);
-
-    match run_attest_batch(&f, op) {
-        Err(KernelError::SpecIdentityMismatch(_)) => {}
-        other => panic!("expected SpecIdentityMismatch, got {other:?}"),
-    }
-}
-
-#[test]
-fn attest_lookalike_spec_under_the_same_name_fails() {
-    // A spec carrying the same clauseId and version as the registered one,
-    // one byte apart, is another clause: its bytes hash to another key.
-    let f = attest_fixture();
-    let (mut proof, content_ref) = runtime_witness_proof(&f);
-    proof.spec_json.push('\n');
-    let lookalike = parse_spec(&proof.spec_json);
-    let original = parse_spec(&f.spec_json);
-    assert_eq!(lookalike.clause_id, original.clause_id);
-    assert_eq!(lookalike.version, original.version);
-    let seller1_key = make_signing_key(SELLER1_KEY);
-    let op = seller_attest_op(&f, proof, content_ref, &seller1_key);
-
-    match run_attest_batch(&f, op) {
-        Err(KernelError::SpecIdentityMismatch(_)) => {}
-        other => panic!("expected SpecIdentityMismatch, got {other:?}"),
-    }
-}
-
-#[test]
-fn attest_witness_carrying_block_is_refused_and_without_it_is_accepted() {
-    // The clause key covers the spec without its top-level `block`, so the
-    // witness carries exactly those canonical bytes. The file as pinned,
-    // `block` included, hashes to another key and is refused.
-    let f = attest_fixture();
-    let with_block = load_pinned_spec_json("figaro-modalities");
-    assert_ne!(with_block, f.spec_json);
-    let seller1_key = make_signing_key(SELLER1_KEY);
-
-    let (mut carrying, content_ref) = runtime_witness_proof(&f);
-    carrying.spec_json = with_block;
-    let op = seller_attest_op(&f, carrying, content_ref, &seller1_key);
-    match run_attest_batch(&f, op) {
-        Err(KernelError::SpecIdentityMismatch(_)) => {}
-        other => panic!("expected SpecIdentityMismatch, got {other:?}"),
-    }
-
-    let (bare, content_ref) = runtime_witness_proof(&f);
-    assert_eq!(bare.spec_json, f.spec_json);
-    let op = seller_attest_op(&f, bare, content_ref, &seller1_key);
-    run_attest_batch(&f, op).expect("the witness without block passes Gate S");
 }
 
 #[test]
@@ -869,7 +627,7 @@ fn attest_wrong_inclusion_proof_fails() {
     let process_id = typed_data_hash(&domain, &struct_hash);
     let order_hash = compute_order_hash(&process_id, &struct_hash);
 
-    let (proof, content_ref) = runtime_witness_proof(&f);
+    let content_ref = keccak256("evidence");
     let seller1_key = make_signing_key(SELLER1_KEY);
     let att_struct = attest_seller_struct_hash(&order_hash, &f.clause_key, 0, &content_ref);
     let att_digest = typed_data_hash(&domain, &att_struct);
@@ -891,7 +649,7 @@ fn attest_wrong_inclusion_proof_fails() {
                 stage: 0,
                 content_ref,
                 seller_sig: sign_digest(&seller1_key, &att_digest),
-                proof: AttestationWitness::Plaintext(proof),
+                proof: committed_witness(),
             },
         ],
         prev_state: empty_snapshot(),
@@ -905,289 +663,13 @@ fn attest_wrong_inclusion_proof_fails() {
     }
 }
 
-// ── Private sets and the grain cap in the plaintext form ───────────
-//
-// The clause engine applies the spec format's private-set rules and the
-// geohash grain cap, so Gate S refuses a spec that breaks the set rules and
-// Gate C refuses content finer than its grain cap. The private clauses
-// below are the SDK's hand-written vectors (`engineVectors.test.ts`,
-// frozen into `test/fixtures/clause-engine-vectors.json`).
-
-/// The SDK's encode vector labeled `label`.
-fn sdk_encode_vector(label: &str) -> serde_json::Value {
-    let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    p.pop(); // prover/
-    p.pop(); // repo root
-    p.push("test/fixtures/clause-engine-vectors.json");
-    let text = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
-    let fx: serde_json::Value = serde_json::from_str(&text).expect("fixture JSON");
-    fx["encodings"]
-        .as_array()
-        .expect("encodings")
-        .iter()
-        .find(|c| c["label"] == label)
-        .unwrap_or_else(|| panic!("no encode vector {label}"))
-        .clone()
-}
-
-/// A witness spec text over `fields` and, when given, `stages` — the bytes
-/// its clause key hashes.
-fn witness_spec(fields: &serde_json::Value, stages: Option<&serde_json::Value>) -> String {
-    let mut spec = serde_json::json!({
-        "clauseId": "t",
-        "version": 1,
-        "title": "T",
-        "description": "D",
-        "fields": fields,
-    });
-    if let Some(stages) = stages {
-        spec["stages"] = stages.clone();
-    }
-    canonicalize(&spec)
-}
-
-fn hex_to_bytes(hex: &str) -> Vec<u8> {
-    let body = hex.trim_start_matches("0x");
-    (0..body.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&body[i..i + 2], 16).expect("hex"))
-        .collect()
-}
-
-#[test]
-fn a_re_assert_of_a_blinded_private_clause_passes_its_gates() {
-    let vector = sdk_encode_vector("a private set with its blinding value");
-    let spec_json = witness_spec(&vector["fields"], None);
-    // The committed clause data: the canonical JSON of the content, its
-    // blinding value with it.
-    let clause_data = canonicalize(&vector["content"]);
-    let f = attest_fixture_for(spec_json, &clause_data);
-    let content_ref = keccak256(clause_data.as_bytes());
-    let proof = AttestationContentProof {
-        spec_json: f.spec_json.clone(),
-        content_json: clause_data.clone(),
-        clause_data: clause_data.clone(),
-        inclusion_proof: vec![],
-        content_kind: ContentKind::ReAssert,
-    };
-    let op = seller_attest_op(&f, proof, content_ref, &make_signing_key(SELLER1_KEY));
-    let (_pv, _positions, events) =
-        run_attest_batch(&f, op).expect("the blinded private clause passes gates S, C and I");
-    assert_eq!(events.attestations.len(), 1);
-    assert_eq!(events.attestations[0].content_ref, content_ref);
-    assert_eq!(events.spec_bindings.len(), 1);
-    assert_eq!(events.spec_bindings[0].clause_id, f.clause_key);
-
-    // The same clause data without its blinding value is refused at gate C,
-    // by the generic rule: the blinding field is required, and a required
-    // field that is missing is refused. No rule of the blinding field's own
-    // is what refuses it.
-    let mut bare = vector["content"].clone();
-    bare.as_object_mut().expect("content object").remove("b");
-    let bare_data = canonicalize(&bare);
-    let f = attest_fixture_for(witness_spec(&vector["fields"], None), &bare_data);
-    let proof = AttestationContentProof {
-        spec_json: f.spec_json.clone(),
-        content_json: bare_data.clone(),
-        clause_data: bare_data.clone(),
-        inclusion_proof: vec![],
-        content_kind: ContentKind::ReAssert,
-    };
-    let op = seller_attest_op(
-        &f,
-        proof,
-        keccak256(bare_data.as_bytes()),
-        &make_signing_key(SELLER1_KEY),
-    );
-    match run_attest_batch(&f, op) {
-        Err(KernelError::ClauseContentInvalid(reason)) => {
-            assert_eq!(reason, "$.b: required field \"b\" is missing", "{reason}")
-        }
-        other => panic!("expected ClauseContentInvalid, got {other:?}"),
-    }
-}
-
-#[test]
-fn a_runtime_witness_at_a_private_stage_with_its_blinding_value_passes_and_its_content_ref_is_the_sdk_s(
-) {
-    let vector = sdk_encode_vector("a private stage with its blinding value");
-    let stage = vector["stage"].as_u64().expect("stage") as u8;
-    let spec_json = witness_spec(&vector["fields"], Some(&vector["stages"]));
-    let committed = r#"{"note":"x"}"#;
-    let f = attest_fixture_for(spec_json, committed);
-
-    // The SDK's content reference: keccak256 of the bytes its encoder wrote.
-    let sdk_content_ref = keccak256(hex_to_bytes(vector["encoded"].as_str().expect("encoded")));
-    let content_ref = keccak256(encode_content(&f.spec_json, &vector["content"], stage).as_slice());
-    assert_eq!(
-        content_ref, sdk_content_ref,
-        "the guest's content reference is the SDK's"
-    );
-
-    let proof = AttestationContentProof {
-        spec_json: f.spec_json.clone(),
-        content_json: serde_json::to_string(&vector["content"]).expect("serialize"),
-        clause_data: committed.to_string(),
-        inclusion_proof: vec![],
-        content_kind: ContentKind::RuntimeWitness,
-    };
-    let op = seller_attest_at_stage(
-        &f,
-        stage,
-        AttestationWitness::Plaintext(proof),
-        sdk_content_ref,
-        &make_signing_key(SELLER1_KEY),
-    );
-    let (_pv, _positions, events) =
-        run_attest_batch(&f, op).expect("the private stage passes gates S, C and I");
-    assert_eq!(events.attestations.len(), 1);
-    assert_eq!(events.attestations[0].stage, stage);
-    assert_eq!(events.attestations[0].content_ref, sdk_content_ref);
-}
-
-#[test]
-fn a_plaintext_attestation_whose_public_location_is_finer_than_the_cap_is_refused() {
-    let fields = serde_json::json!([{ "name": "origin", "type": "string", "required": true, "format": "geohash" }]);
-    let at_cap = r#"{"origin":"dr5reg"}"#;
-    let f = attest_fixture_for(witness_spec(&fields, None), at_cap);
-    let seller1_key = make_signing_key(SELLER1_KEY);
-
-    // Six characters, the public cap: accepted.
-    let content: serde_json::Value = serde_json::from_str(at_cap).unwrap();
-    let content_ref = keccak256(encode_content(&f.spec_json, &content, 0).as_slice());
-    let proof = AttestationContentProof {
-        spec_json: f.spec_json.clone(),
-        content_json: at_cap.to_string(),
-        clause_data: at_cap.to_string(),
-        inclusion_proof: vec![],
-        content_kind: ContentKind::RuntimeWitness,
-    };
-    run_attest_batch(&f, seller_attest_op(&f, proof, content_ref, &seller1_key))
-        .expect("a public geohash at the cap passes");
-
-    // Seven: refused at gate C, before any byte is derived.
-    let finer = r#"{"origin":"dr5regw"}"#;
-    let proof = AttestationContentProof {
-        spec_json: f.spec_json.clone(),
-        content_json: finer.to_string(),
-        clause_data: at_cap.to_string(),
-        inclusion_proof: vec![],
-        content_kind: ContentKind::RuntimeWitness,
-    };
-    match run_attest_batch(
-        &f,
-        seller_attest_op(&f, proof, keccak256("any"), &seller1_key),
-    ) {
-        Err(KernelError::ClauseContentInvalid(reason)) => {
-            assert!(reason.contains("geohash"), "{reason}")
-        }
-        other => panic!("expected ClauseContentInvalid, got {other:?}"),
-    }
-}
-
-#[test]
-fn a_spec_with_a_private_set_and_no_blinding_field_is_refused() {
-    let fields = serde_json::json!([{ "name": "grade", "type": "enum", "values": ["a", "b"], "required": true, "disposition": "private" }]);
-    let clause_data = r#"{"grade":"a"}"#;
-    let f = attest_fixture_for(witness_spec(&fields, None), clause_data);
-    let proof = AttestationContentProof {
-        spec_json: f.spec_json.clone(),
-        content_json: clause_data.to_string(),
-        clause_data: clause_data.to_string(),
-        inclusion_proof: vec![],
-        content_kind: ContentKind::ReAssert,
-    };
-    let op = seller_attest_op(
-        &f,
-        proof,
-        keccak256(clause_data.as_bytes()),
-        &make_signing_key(SELLER1_KEY),
-    );
-    match run_attest_batch(&f, op) {
-        Err(KernelError::ClauseSpecParseFailed(reason)) => {
-            assert!(reason.contains("blinding"), "{reason}")
-        }
-        other => panic!("expected ClauseSpecParseFailed, got {other:?}"),
-    }
-}
-
-// ── The hash-only form: the coordinator's arguments alone ─────────
-
-/// The fixture's clause as the coordinator takes it: the committed
-/// clauseData's hash and the inclusion proof (empty for the fixture's
-/// single-clause agreement).
-fn hash_only(clause_data_hash: B256, inclusion_proof: Vec<B256>) -> AttestationWitness {
-    AttestationWitness::HashOnly {
-        clause_data_hash,
-        inclusion_proof,
-    }
-}
-
-/// A hash-only seller attestation is accepted on gate I alone: the event
-/// carries the content reference as signed, and no spec binding is
-/// committed, so the spec-bindings hash is the hash of none.
-#[test]
-fn a_hash_only_seller_attestation_is_accepted_and_commits_no_spec_binding() {
-    let f = attest_fixture();
-    let content_ref = keccak256("evidence the seller keeps");
-    let seller1_key = make_signing_key(SELLER1_KEY);
-    let witness = hash_only(keccak256(CLAUSE_DATA.as_bytes()), vec![]);
-    let op = seller_attest_op_with(&f, witness, content_ref, &seller1_key);
-
-    let (pv, _positions, events) = run_attest_batch(&f, op).unwrap();
-
-    assert_eq!(events.attestations.len(), 1);
-    let e = &events.attestations[0];
-    assert_eq!(e.order_hash, f.root_order_hash);
-    assert_eq!(e.process_id, f.process_id);
-    assert_eq!(e.attester, SELLER1);
-    assert_eq!(e.clause_id, f.clause_key);
-    assert_eq!(e.stage, 0);
-    assert_eq!(e.content_ref, content_ref);
-    assert!(
-        events.spec_bindings.is_empty(),
-        "the hash-only form commits no spec binding"
-    );
-    assert_eq!(pv.spec_bindings_hash, compute_spec_bindings_hash(&[]));
-}
-
-/// The buyer's hash-only attestation, likewise.
-#[test]
-fn a_hash_only_buyer_attestation_is_accepted() {
-    let f = attest_fixture();
-    let content_ref = keccak256("evidence the buyer keeps");
-    let buyer_key = make_signing_key(BUYER_KEY);
-    let domain = domain_separator(CHAIN_ID, CORE);
-    let struct_hash = attest_buyer_struct_hash(
-        &f.process_id,
-        &f.root_order_hash,
-        &f.clause_key,
-        0,
-        &content_ref,
-    );
-    let op = KernelOp::AttestAsBuyer {
-        target: f.root.clone(),
-        clause_id: f.clause_key,
-        stage: 0,
-        content_ref,
-        buyer_sig: sign_digest(&buyer_key, &typed_data_hash(&domain, &struct_hash)),
-        proof: hash_only(keccak256(CLAUSE_DATA.as_bytes()), vec![]),
-    };
-
-    let (_pv, _positions, events) = run_attest_batch(&f, op).unwrap();
-    assert_eq!(events.attestations.len(), 1);
-    assert_eq!(events.attestations[0].attester, BUYER);
-    assert_eq!(events.attestations[0].content_ref, content_ref);
-    assert!(events.spec_bindings.is_empty());
-}
-
 /// A clauseData hash the agreement never committed opens no leaf.
 #[test]
-fn a_hash_only_attestation_with_a_wrong_clause_data_hash_is_refused() {
+fn an_attestation_with_a_wrong_clause_data_hash_is_refused() {
     let f = attest_fixture();
     let seller1_key = make_signing_key(SELLER1_KEY);
-    let witness = hash_only(keccak256(r#"{"modality":"pickup"}"#.as_bytes()), vec![]);
-    let op = seller_attest_op_with(&f, witness, keccak256("evidence"), &seller1_key);
+    let witness = witness(keccak256(r#"{"modality":"pickup"}"#.as_bytes()), vec![]);
+    let op = seller_attest_op(&f, witness, keccak256("evidence"), &seller1_key);
 
     match run_attest_batch(&f, op) {
         Err(KernelError::InvalidInclusionProof) => {}
@@ -1198,32 +680,18 @@ fn a_hash_only_attestation_with_a_wrong_clause_data_hash_is_refused() {
 /// A proof that does not open the committed leaf against the signed
 /// checkoutHash is refused.
 #[test]
-fn a_hash_only_attestation_with_a_wrong_inclusion_proof_is_refused() {
+fn an_attestation_with_a_wrong_inclusion_proof_is_refused() {
     let f = attest_fixture();
     let seller1_key = make_signing_key(SELLER1_KEY);
-    let witness = hash_only(
+    let witness = witness(
         keccak256(CLAUSE_DATA.as_bytes()),
         vec![keccak256("a sibling nobody committed")],
     );
-    let op = seller_attest_op_with(&f, witness, keccak256("evidence"), &seller1_key);
+    let op = seller_attest_op(&f, witness, keccak256("evidence"), &seller1_key);
 
     match run_attest_batch(&f, op) {
         Err(KernelError::InvalidInclusionProof) => {}
         other => panic!("expected InvalidInclusionProof, got {other:?}"),
-    }
-}
-
-/// The hash-only form changes nothing about who may attest.
-#[test]
-fn a_hash_only_attestation_signed_by_another_wallet_is_refused() {
-    let f = attest_fixture();
-    let seller2_key = make_signing_key(SELLER2_KEY);
-    let witness = hash_only(keccak256(CLAUSE_DATA.as_bytes()), vec![]);
-    let op = seller_attest_op_with(&f, witness, keccak256("evidence"), &seller2_key);
-
-    match run_attest_batch(&f, op) {
-        Err(KernelError::NotAuthorized) => {}
-        other => panic!("expected NotAuthorized, got {other:?}"),
     }
 }
 
@@ -1239,7 +707,7 @@ fn attest_on_resolved_order_fails() {
     let resolve_hash = resolve_struct_hash(&f.process_id, &f.root.payment);
     let resolve_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &resolve_hash));
 
-    let (proof, content_ref) = runtime_witness_proof(&f);
+    let content_ref = keccak256("evidence");
     let att_struct = attest_seller_struct_hash(&f.root_order_hash, &f.clause_key, 0, &content_ref);
     let att_sig = sign_digest(&seller1_key, &typed_data_hash(&domain, &att_struct));
 
@@ -1265,7 +733,7 @@ fn attest_on_resolved_order_fails() {
                 stage: 0,
                 content_ref,
                 seller_sig: att_sig,
-                proof: AttestationWitness::Plaintext(proof),
+                proof: committed_witness(),
             },
         ],
         prev_state: empty_snapshot(),
@@ -1302,7 +770,7 @@ fn attest_as_seller_against_another_sellers_order_fails() {
         commit_deadline: U256::from(2000u64),
     };
 
-    let (proof, content_ref) = runtime_witness_proof(&f);
+    let content_ref = keccak256("evidence");
     let att_struct = attest_seller_struct_hash(&f.root_order_hash, &f.clause_key, 0, &content_ref);
     let att_sig = sign_digest(&seller2_key, &typed_data_hash(&domain, &att_struct));
 
@@ -1327,7 +795,7 @@ fn attest_as_seller_against_another_sellers_order_fails() {
                 stage: 0,
                 content_ref,
                 seller_sig: att_sig,
-                proof: AttestationWitness::Plaintext(proof),
+                proof: committed_witness(),
             },
         ],
         prev_state: empty_snapshot(),
@@ -1382,8 +850,12 @@ fn an_attestation_on_an_order_nobody_committed_is_an_unknown_order() {
     // The coordinator's `_requireKnownCommitment`: status 0 is no order at
     // all, and must not read as a resolved one.
     let f = attest_fixture();
-    let (proof, content_ref) = runtime_witness_proof(&f);
-    let op = seller_attest_op(&f, proof, content_ref, &make_signing_key(SELLER1_KEY));
+    let op = seller_attest_op(
+        &f,
+        committed_witness(),
+        keccak256("evidence"),
+        &make_signing_key(SELLER1_KEY),
+    );
     let input = BatchInput {
         chain_id: CHAIN_ID,
         verifying_contract: CORE,
@@ -1877,7 +1349,7 @@ fn two_commits_then_wallet_code_resolve(value: U256, authorization: &[u8]) -> Ba
 /// The guest cannot run the wallet's code, so it accepts a wallet-code
 /// resolve on the process, the value and the order list alone, pays it out
 /// as the first form, and publishes the authorization bytes in the
-/// operation stream (public value 9), where `FigaroBatchVerifier` checks
+/// operation stream (public value 8), where `FigaroBatchVerifier` checks
 /// them against the buyer's code at resolution.
 #[test]
 fn a_wallet_code_resolve_is_accepted_and_published_in_the_operation_stream() {
@@ -1949,7 +1421,7 @@ fn wallet_code_attest_op(
     role: AttesterRole,
     authorization: &[u8],
 ) -> (KernelOp, B256) {
-    let (proof, content_ref) = runtime_witness_proof(f);
+    let content_ref = keccak256("evidence the party's code attests");
     (
         KernelOp::AttestByWalletCode {
             role,
@@ -1958,7 +1430,7 @@ fn wallet_code_attest_op(
             stage: 0,
             content_ref,
             authorization: alloy_primitives::Bytes::copy_from_slice(authorization),
-            proof: AttestationWitness::Plaintext(proof),
+            proof: committed_witness(),
         },
         content_ref,
     )
@@ -1996,19 +1468,14 @@ fn each_wallet_code_attestation_is_one_0x05_entry_naming_the_role_s_party() {
             run_attest_batch(&f, ops[1].clone()).expect("the wallet-code form applies");
         assert!(
             events.attestations.is_empty(),
-            "public value 6 carries the signed attestations only"
-        );
-        assert_eq!(
-            events.spec_bindings.len(),
-            1,
-            "the plaintext form's spec binding is still committed"
+            "public value 5 carries the signed attestations only"
         );
 
         let stream = figaro_kernel::operation_stream::encode_operation_stream(&ops, &[]);
         assert_eq!(
             pv.operations_hash,
             keccak256(&stream),
-            "public value 9 binds the entry"
+            "public value 8 binds the entry"
         );
         let (decoded_ops, entries, claims) =
             figaro_kernel::operation_stream::decode_operation_stream(&stream).expect("decodes");
@@ -2048,8 +1515,8 @@ fn each_wallet_code_attestation_is_one_0x05_entry_naming_the_role_s_party() {
 }
 
 /// The wallet-code form runs every gate of the signed form but the
-/// recovery: an order nobody committed, and content the clause does not
-/// admit, are refused as they are under a signature.
+/// recovery: an order nobody committed, and a leaf the signed agreement
+/// does not hold, are refused as they are under a signature.
 #[test]
 fn a_wallet_code_attestation_runs_the_signed_form_s_gates() {
     let f = attest_fixture();
@@ -2071,11 +1538,13 @@ fn a_wallet_code_attestation_runs_the_signed_form_s_gates() {
     }
 
     let (mut op, _) = wallet_code_attest_op(&f, AttesterRole::Buyer, b"guardian-approval");
-    if let KernelOp::AttestByWalletCode { content_ref, .. } = &mut op {
-        *content_ref = keccak256(b"content the witness does not carry");
+    if let KernelOp::AttestByWalletCode { proof, .. } = &mut op {
+        *proof = witness(keccak256(b"a clause the agreement does not hold"), vec![]);
     }
-    assert!(
-        run_attest_batch(&f, op).is_err(),
-        "a content reference the witness does not open is refused"
-    );
+    match run_attest_batch(&f, op) {
+        Err(KernelError::InvalidInclusionProof) => {}
+        other => panic!(
+            "a leaf the agreement does not hold: expected InvalidInclusionProof, got {other:?}"
+        ),
+    }
 }

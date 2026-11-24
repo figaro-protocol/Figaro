@@ -243,10 +243,11 @@ system. Anyone may use the Core alone, the Core with the registries and the
 reward, or all three under a frontend of their own. This frontend de-surfaces
 a withdrawn clause for new compositions because that is how it chose to read
 the registry; another frontend may keep surfacing it and its users may keep
-composing it, so the registry clears nothing on any frontend's account. The
-same permanence is what every committed agreement and the batch verifier read:
-integrity routes through `checkoutHash` and the clause key, never through
-the registry, so a garbage entry can pollute discovery only, and the stake
+composing it, so the registry clears nothing on any frontend's account. No
+committed agreement depends on the registry: integrity routes through
+`checkoutHash` and the clause key, and neither `AttestationCoordinator` nor
+`FigaroBatchVerifier` reads the registry, so a garbage entry can pollute
+discovery only, and the stake
 prices that. There is nothing to squat but bytes: the registry holds no name,
 a reader verifies a fetched spec by recomputing `computeClauseKey` from it,
 two specs with one name are two clauses, and a lookalike shares nothing with
@@ -1128,32 +1129,62 @@ rebuilds its distinct leaves and its root.
 
 ---
 
-## 26. The attestation signature does not cover the witness form — the in-proof content check is not evidence to a reader
+## 26. The batch path validates no content and reads no registry — a batched attestation binds what the coordinator binds
 
-**Pattern**: The attestation typed data a party signs covers `orderHash`,
-`clauseId`, `stage` and `contentRef` only. The witness form the party chose
-for a batched attestation — hash-only, or plaintext to have its content
-checked inside the proof — is neither signed nor legible on chain: a relay
-holding a plaintext operation can submit it hash-only, and the `Attestation`
-event the verifier re-emits is identical for both forms.
+**Pattern**: The proof program and `FigaroBatchVerifier` check a batched
+attestation exactly as `AttestationCoordinator` checks a direct one, and no
+further (`SCALING_STRATEGY.md` § "What a batched attestation carries";
+`validate_attestation_witness`, `prover/lib/src/kernel.rs`). The witness is a
+pair of fingerprints, so neither the guest nor the verifier ever holds a
+clause's spec or content, and the verifier's constructor names no registry.
+An attestation of the reserved provenance leaf passes on inclusion; whether
+that leaf names a registered agreement and process design is asked only when
+a usage claim rebuilds it (`UsageCounter`, `apply_usage_claims`).
 
-**Why it looks wrong**: A party that paid for an in-proof content check would
-expect the chain to show that the check ran, and a reader would expect to
-tell a content-checked attestation from one that was not.
+**Why it looks wrong**: A proof system can run any computation, so a reader
+might expect the batch path to check each attested content against its spec
+inside the proof, and the chain to vouch that the spec is registered.
 
-**Why it is correct**: The evidence a reader relies on — the signer, an open
-order, the leaf's inclusion under the signed `checkoutHash`, and the
-`contentRef` — is bound identically on every path: the coordinator's, the
-batch path's hash-only form, and its plaintext form. The in-proof content
-check assures the attesting party's own submission (its bytes satisfy the
-spec it names) and is not attributable evidence to a reader; a reader checks
-content by fetching the bytes and hashing them to the `contentRef`, as on the
-direct path. Signing the form would add a field to the attestation struct
-that changes nothing a reader can rely on.
+**Why it is correct**:
+1. The direct path validates no content on the chain: the coordinator binds
+   fingerprints. The batch path binds the same ones, so "the same checks
+   apply" holds of attestations on both paths (CLAUDE.md § "The two paths,
+   and what equal means").
+2. A content check inside the proof would be no evidence to any reader. The
+   attestation's signature covers `orderHash`, `clauseId`, `stage` and
+   `contentRef`, and the re-emitted `Attestation` event is the coordinator's;
+   nothing on the chain could show whether a check ran, and a relay could
+   choose either way. Whoever holds disclosed content compares it with the
+   spec named by its clause key, on both paths, and a signer's tool checks it
+   before signing.
+3. The Core does not depend on the registries layer. A builder who uses the
+   Core alone loses nothing, and the verifier makes no call to any registry.
+4. A registry check inside a batch would let one party's attestation, naming
+   a clause key no one registered, revert every other party's batch. A clause
+   key nobody registered is attested through the coordinator and through a
+   batch alike.
+5. The verification key fixes the Core's rules and the coordinator's checks,
+   and no clause format, so the format's rules can change with no new key,
+   just as registering a clause, an agreement or a process design needs none.
 
-**Tests**: `prover/lib/tests/attestation_vectors.rs` (the hash-only event is
-the coordinator's, byte for byte); `prover/lib/tests/parity.rs` (both forms
-emit the same event fields).
+What a party gives up is having its own content checked inside the proof.
+Since the witness is fingerprints, neither a relay nor a proving network ever
+sees a party's content.
+
+**Tests**: `prover/lib/tests/attestation_vectors.rs`
+(`a_batched_attestation_emits_the_coordinator_s_event_bytes`, against
+`test/core/attestation/AttestationVectorsTest.t.sol`);
+`prover/script/tests/guest_program.rs`
+(`guest_program_rejects_a_witness_whose_leaf_the_agreement_does_not_hold`);
+`prover/lib/tests/usage.rs`
+(`a_provenance_attestation_is_accepted_on_inclusion_alone`,
+`a_provenance_attestation_of_an_uncommitted_leaf_is_refused`);
+`test/core/verifier/FigaroBatchVerifierTest.t.sol`
+(`test_permissionless_anUnregisteredClauseKeyIsAttestedThroughABatch`);
+`test/core/verifier/BatchVerifierNeverRegistersTest.t.sol`
+(`test_theVerifierMakesNoCallToAnyRegistryReadOrWrite`);
+`prover/sequencer/tests/sequencer.rs`
+(`an_attestation_in_another_witness_shape_is_refused_without_logging_its_values`).
 
 ## 27. A state-neutral batch's proof can land twice — the root check is the replay guard, and it is inert there
 
@@ -1420,12 +1451,10 @@ public. Without a random value inside the hashed bytes, anyone confirms the
 value by hashing each guess. The value sits inside the set as a declared
 field, so it enters the canonical JSON of stage 0 and the ABI bytes of a
 stage like any field: no hash function, leaf, content reference, CID or
-contract changes, and both engines validate and encode a `bytes32-hex`
-string. Both engines apply the set's rules (`parseClauseSpec`;
-`parse_clause_spec`, `prover/clause/src/spec.rs`), so gate S of a plaintext
-attestation refuses a spec that breaks them, and gate C refuses a private
-set's content without its blinding value. A reserved key that no spec declares would be
-refused as an undeclared field by both validators, dropped by the encoder
+contract changes, and the validator and the encoder take a `bytes32-hex`
+string like any other. The published format states the set's rules, and the
+SDK's parser applies them (`parseClauseSpec`). A reserved key that no spec declares would be
+refused as an undeclared field by the validator, dropped by the encoder
 from a witness's bytes, and refused by a stranger's validator written from
 the published format, so the rule would live outside the spec a tool fetches.
 A public set's content is published, so a random value there hides nothing,
@@ -1437,11 +1466,8 @@ a zero or a repeat.
 
 **Tests**: `sdk/tests/clauses/spec.test.ts` and
 `sdk/tests/clauses/schema-conformance.test.ts` (each rule, in the parser and
-in the published definition); `sdk/tests/clauses/engineVectors.test.ts` and
-`prover/clause/tests/engine_vectors.rs` (each rule, both verdicts, the same in
-both engines); `prover/lib/tests/parity.rs` (a blinded private clause passes
-the plaintext form's gates, and a private set without its blinding field is
-refused at gate S);
+in the published definition); `sdk/tests/clauses/engineVectors.test.ts`
+(each rule, both verdicts);
 `sdk/tests/blinding.test.ts` (two commitments of one private value differ in
 data hash and `checkoutHash`; the holder reproduces the fingerprint through
 `anchorAgreement` and a guess of the value alone does not; a public clause
@@ -1588,13 +1614,11 @@ the status write before the transfers fails both.
 
 **Pattern**: A clause may declare a `"0"` key in `stages`. The content the
 parties sign is then validated over `fields`, at the sign gate
-(`validateCommitmentAgreement`, `sdk/src/projection.ts`) and in the guest's
-gate for a re-asserted clause (`ContentKind::ReAssert` in
-`validate_attestation_content`, `prover/lib/src/kernel.rs`). Content
+(`validateCommitmentAgreement`, `sdk/src/projection.ts`). Content
 attested at stage 0 is encoded and validated over `stages["0"]`
-(`contentFieldsFor`, `sdk/src/clauses/encode.ts`; `encode_content_from_spec`,
-`prover/clause/src/encode.rs`). `AttestationCoordinator` takes any
-`contentRef` at any stage and checks only that the leaf opens against the
+(`contentFieldsFor`, `sdk/src/clauses/encode.ts`). `AttestationCoordinator`,
+and the proof program on the batch path, take any
+`contentRef` at any stage and check only that the leaf opens against the
 signed `checkoutHash`. So a stage-0 attestation of a clause is a
 re-assertion of the signed content only when its `contentRef` is the leaf's
 data hash (`hashClauseData`, `sdk/src/agreement.ts`; for the provenance
@@ -1611,8 +1635,7 @@ would seem simpler.
 **Why it is correct**: The stage is a `uint8` the attesting party picks, and
 nothing on the chain ties stage 0 to the signed bytes; only the leaf's data
 hash does. A `"0"` stage key is the decimal of a `uint8` like any other
-(`stageOfKey`, `sdk/src/clauses/spec.ts`; `parse_stage_key`,
-`prover/clause/src/spec.rs`), so refusing it would make one stage unlike
+(`stageOfKey`, `sdk/src/clauses/spec.ts`), so refusing it would make one stage unlike
 the rest for no rule of the mechanism. The re-assertion's own form already
 names the signed bytes: its `contentRef` is `keccak256(clauseData)`, the
 leaf's data hash, on both paths. A reader that compares the two is right for
@@ -1625,8 +1648,8 @@ clause that declares a stage-0 witness, so its witness owns that stage.
 **Tests**: `frontend/tests/lib/deriveProcessModelFromRuntime.test.ts` (a
 stage-0 attestation whose `contentRef` is not the leaf's data hash leaves
 the clause, and the provenance leaf, to be re-asserted);
-`prover/lib/tests/parity.rs` (a re-assertion passes gate C over `fields`,
-and a witness at a declared stage validates over that stage's set).
+`sdk/tests/clauses/encode.test.ts` (a declared stage's set drives the
+encoding, and an undeclared stage falls back to `fields`).
 
 ---
 
@@ -1635,16 +1658,15 @@ and a witness at a declared stage validates over that stage's set).
 **Pattern**: A string field that declares `formatFromField` takes its format
 from the named sibling's committed value, then from that sibling's default,
 then from its own static `format` (`resolveInputFormat`,
-`sdk/src/clauses/spec.ts`; `resolve_input_format`,
-`prover/clause/src/validate.rs`). The grain cap applies only when the
-resolved format is one of the four standards whose grain both engines read
-(`sdk/src/clauses/grain.ts`, `prover/clause/src/grain.rs`): `geohash` (6
+`sdk/src/clauses/spec.ts`). The grain cap applies only when the
+resolved format is one of the four standards whose grain the validator reads
+(`sdk/src/clauses/grain.ts`): `geohash` (6
 characters for a public value, 12 for a private one), `h3` (resolution 8 and
 15), `s2` (level 13 and 30) and `olc`, the Open Location Code (length 6 and
 15). Under one of the four, a value that is no code of the standard is
 refused too, because no grain can be read from it. When the sibling carries
 any other standard's name, the cap is lifted and the field's `maxLength`
-bounds the value. Both engines apply the same rule. The reference clause
+bounds the value. The reference clause
 `figaro-geolocation` declares its `geocodeStandard` sibling as an `enum` of
 the four, so under it every public endpoint is capped.
 
@@ -1653,7 +1675,7 @@ a free string, the party that fills it can write `"Geohash"`, `"maidenhead"`
 or any other name, and then commit a location finer than the cap. The cap
 reads as a privacy guarantee that one word lifts.
 
-**Why it is correct**: The engines know the grain of four standards, by
+**Why it is correct**: The validator knows the grain of four standards, by
 their format value, and no list of the others (`docs/OPEN_WORLD.md` § 1): a
 closed list of standard names would refuse a standard no one has registered
 yet. So the cap is a rule for a value the spec says is a code of a known
@@ -1668,9 +1690,8 @@ choice. The counterparty reads the committed standard and the value before
 it signs, and a party that will not have a finer location published declines
 to sign it.
 
-**Tests**: `sdk/tests/clauses/engineVectors.test.ts` and
-`prover/clause/tests/engine_vectors.rs` (the same verdicts in both engines:
-each capped standard at its public cap and one grade past it, at its private
+**Tests**: `sdk/tests/clauses/engineVectors.test.ts` (each capped standard at
+its public cap and one grade past it, at its private
 cap and past it, and a value that is no code of it; an `enum` sibling of the
 four capped standards; a sibling naming another standard lifts the cap, an
 `enum` sibling whose default is geohash keeps it, a sibling whose value is no
@@ -1716,11 +1737,11 @@ in one of two types. The seller signs
 the buyer signs
 `AttestBuyer(bytes32 processId,bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)`
 (`prover/lib/src/eip712.rs:94` and `:115`;
-`src/core/verifier/FigaroBatchVerifier.sol:779-782`). The guest recovers the
+`src/core/verifier/FigaroBatchVerifier.sol:710-713`). The guest recovers the
 signer over the role's type (`apply_attestation`,
-`prover/lib/src/kernel.rs:637-652`), and the verifier asks a wallet's code
+`prover/lib/src/kernel.rs:443-458`), and the verifier asks a wallet's code
 about the same digest (`_attestDigest`,
-`src/core/verifier/FigaroBatchVerifier.sol:945`).
+`src/core/verifier/FigaroBatchVerifier.sol:876`).
 
 **Why it looks wrong**: Two parties attest about the same order, yet their
 messages differ by one field. The difference reads as a field the seller's
@@ -1730,10 +1751,10 @@ order of another process.
 **Why it is correct**: The order hash already binds the process.
 `orderHash = keccak256(processId ‖ structHash)` on every path:
 `compute_order_hash` (`prover/lib/src/eip712.rs:157`),
-`_requireKnownCommitment` (`src/core/attestation/AttestationCoordinator.sol:183`)
-and `_attestTarget` (`src/core/verifier/FigaroBatchVerifier.sol:927-928`). The
+`_requireKnownCommitment` (`src/core/attestation/AttestationCoordinator.sol:184`)
+and `_attestTarget` (`src/core/verifier/FigaroBatchVerifier.sol:858-859`). The
 guest (`derive_commitment_ids`, `prover/lib/src/kernel.rs:314`) and the
-verifier (`_attestTarget`, `src/core/verifier/FigaroBatchVerifier.sol:920`)
+verifier (`_attestTarget`, `src/core/verifier/FigaroBatchVerifier.sol:851`)
 both derive the two ids from the one target commitment, so a
 relay cannot pair a signed `orderHash` with any other `processId`, and the
 attestation is refused unless that order is committed and unresolved. An
@@ -1767,7 +1788,7 @@ the verifier's `_attestDigest` to the same type strings.
 
 **Pattern**: `ClauseRegistry` stores a clause key and a `contentURI`, once, by
 whoever registers the key first (§ 7). The key is the hash of the spec without
-its `block` (`computeClauseKey`, `sdk/src/discovery.ts:102`), so a reader's key
+its `block` (`computeClauseKey`, `sdk/src/discovery.ts:101`), so a reader's key
 check (`anchorClauseSpec`, `sdk/src/anchored.ts:65`) accepts any `block`. The
 reference frontend's default fetcher (`defaultClauseSpecFetcher` in
 `frontend/lib/shared/clauseSpecSource.ts`) therefore checks a second hash
@@ -1891,74 +1912,55 @@ the forfeit on each kind.
 
 ## 42. A pattern past a size is refused at parse, and long values are refused rather than run
 
-**Pattern**: a string field's `pattern` has one expanded size, computed alike
-by `portablePatternSize` (`sdk/src/clauses/safeRegex.ts`) and
-`portable_pattern_size` (`prover/clause/src/validate.rs`). A spec whose pattern
-is past `MAX_PATTERN_EXPANSION` (4,096) does not parse, in either engine. A
+**Pattern**: a string field's `pattern` has one expanded size, an integer the
+published format defines (`sdk/src/clauses/clause-spec.schema.json`,
+`pattern`) and the SDK computes (`portablePatternSize`,
+`sdk/src/clauses/safeRegex.ts`). A spec whose pattern is past
+`MAX_PATTERN_EXPANSION` (4,096) does not parse. A
 value whose length in UTF-16 units times its pattern's size is past
 `MAX_PATTERN_WORK` (4,194,304) is refused with its own reason, "string too long
 for pattern", without the pattern run. One content, one call of
-`validateContent` or `validate_content`, adds that work over every value a
+`validateContent`, adds that work over every value a
 pattern is run on. Its values are visited in the spec's field order and by
 array index, depth first. When the next value would take the total past
 `MAX_CONTENT_PATTERN_WORK` (16,777,216), the content is refused once, at `$`,
 with the reason "content too long for its patterns". Every other value is run
 against its pattern, whatever the pattern's shape and the value's length.
 
-**Why it looks wrong**: both engines match in time linear in the value, so a
-limit on what they run looks like the skip it replaced. A value that matches
+**Why it looks wrong**: the SDK matches in time linear in the value, so a
+limit on what it runs looks like a skip. A value that matches
 its pattern can be refused because it is long, and a list of values can be
 refused because it is long. Three numbers decide this, and nothing in the
-mechanism fixes them. The size limit also refuses patterns both engines used
-to accept. Before, a counted quantifier multiplied its item by its count and
-nothing more, and a group, a `|`, `*`, `+` and `?` added nothing. So counted
-items under counts at the old bound parsed: `(?:a{64}){64}`, `(?:\w{64}){64}`,
-`(?:a{1,64}){64}` and `^(?:a{64}){63}a{62}$`. Alternation under counts parsed
-too, such as `(?:(?:ab|cd){64}){16}`, and so did nested quantifiers under
-counts, such as `^(?:(?:a+){64}){63}$`. The guest compiled all of them, and
-none of them parses now.
+mechanism fixes them. The size limit also refuses patterns a narrower count
+would admit: one that multiplies a counted item by its count and adds nothing
+for a group, a `|`, `*`, `+` or `?`. Under such a count, counted
+items under counts at the bound would parse: `(?:a{64}){64}`, `(?:\w{64}){64}`,
+`(?:a{1,64}){64}` and `^(?:a{64}){63}a{62}$`. So would alternation under
+counts, such as `(?:(?:ab|cd){64}){16}`, and nested quantifiers under
+counts, such as `^(?:(?:a+){64}){63}$`. None of them parses.
 
-**Why it is correct**: linear in the value is not cheap. The cost per
-character is the size of the pattern's automaton, and the old count did not
-measure it. An automaton holds a state for each item, a split for each `|`, a
-split and a jump for each `*`, `+` or `?`, and a split for each optional copy
-a counted range writes. The old count left those out, so a pattern under its
-bound could hold several times as many states as it counted. A pattern with
-`*` nested twenty deep under two counts counted 4,034 and cost the guest about
-7 ms a character in a release build. The fuller count is the true one because
-it counts what both automata hold. Under it the SDK's automaton holds at most
-three instructions per unit, and the guest's no more than a small constant
-number of states. The relay runs the same check when it admits an operation,
-and a proof pays it again in cycles. The two engines used to skip such a
-pattern, or a value past 4,096 characters, and count the field as satisfied. A
-skip lets a stranger's clause carry a term the parties sign and nothing checks.
-A refusal keeps every admitted term checked and puts the cost on the party that
-wrote the large pattern or the long values. The per-value budget alone bounds
-one value, not one content: before the total, 1,000 values at the budget's
-edge in one content of about 1 MiB cost the guest 29 seconds. The guest
-compiles every pattern under the size limit within its explicit 8 MiB size
-limit, so no spec parses in one engine and not the other. That margin is a
-property of the `regex` crate the guest builds with, 1.13.1 with
-`regex-automata` 0.4.18 (`prover/Cargo.lock`). That version counts 8 bytes
-for each byte range of a class, and a portable class holds at most 49
-ranges: every other printable character, negated, with the bytes outside
-printable ASCII. So the classes of a pattern at the size limit cost at most
-4,096 units × 49 ranges × 8 bytes, some 1.6 MB, and its states some 134 bytes
-a unit more in every shape measured. The widest class found,
-`` [^ "$&(*,.02468:<>@BDFHJLNPRTVXZ\\\^`bdfhjlnprtvxz|~] `` under counts at the
-limit, needs 1,002,192 bytes, about 244 bytes a unit. The maintainer approved
-this design: one shared measure, a parse limit, and a work budget that
-refuses, per value and per content. An agent set the numbers from
-measurements, natively in a release build on a machine other jobs also
-loaded, so each figure is a range over repeated runs. At the per-value edge
-the costliest pattern found cost the guest 50 to 175 ms, the widest classes
-the most, and the SDK up to about 150 ms. At the content's edge the costliest
-content found cost the guest 0.2 to 0.53 seconds, which is above a quarter of
-a second and below one second, and the SDK about 0.6 seconds. The
-1,000-value content is refused after four values, in that time. The list of
-reasons a refused content carries is not bounded; one reason per value at
-most, so the number of values, which the relay's 1 MiB request body bounds,
-bounds its cost, and the proof program reads only the first reason. The reference
+**Why it is correct**: anyone registers a spec, so the tool that checks a
+content runs a stranger's pattern on a value it may not have chosen, and its
+own work must stay bounded whatever spec it is handed. Linear in the value is
+not cheap. The cost per
+character is the size of the pattern's automaton, and a narrower count does
+not measure it. An automaton holds a state for each item, a split for each
+`|`, a split and a jump for each `*`, `+` or `?`, and a split for each optional
+copy a counted range writes. The fuller count is the true one because it
+counts what an automaton holds. Under it the SDK's automaton holds at most
+three instructions per unit. A skip, which counts a field as satisfied without
+running its pattern, lets a stranger's clause carry a term the parties sign
+and nothing checks. A refusal keeps every admitted term checked and puts the
+cost on the party that wrote the large pattern or the long values. The
+per-value budget alone bounds one value, not one content, so the content's
+total bounds the sum. The published format states the three numbers, so a
+tool in any language that applies the format gives the same verdict as the
+SDK on every spec and every content, and changing a number needs no new
+verification key, since the proof program reads no pattern. At the per-value
+edge the costliest pattern found cost the SDK up to about 150 ms; at the
+content's edge the costliest content found cost the SDK about 0.6 seconds.
+The list of reasons a refused content carries is not bounded; one reason per
+value at most, so the number of values bounds its cost. The reference
 patterns are far under all three numbers: the domain-name pattern counts 13
 and runs on up to 322,638 characters, and a content holds 1,925 32-byte
 hashes. A field that wants short values declares `maxLength`, which is
@@ -1970,22 +1972,11 @@ the per-value budget at its edge and one character past it, the content's
 total at 1,925 and 1,926 hashes, each refusal's reason, and the costliest
 patterns at the edge in bounded time.
 `sdk/tests/clauses/engineVectors.test.ts` fits each costly shape to the limit,
-under the largest count that keeps it and one more, and checks that every one
-the SDK parses builds its automaton. The frozen verdicts in
-`test/fixtures/clause-engine-vectors.json` lock both edges of each limit to
-the guest's (`prover/clause/tests/engine_vectors.rs`), the many-small-values
-shape and a total over two fields included.
-`prover/clause/tests/conformance.rs` holds the same limits, the reasons and
-the costliest patterns at the edge; it compiles the widest classes and the
-other costly shapes in a quarter of `PATTERN_SIZE_LIMIT`, and runs the widest
-classes at both budgets' edges. The SDK refuses a value under a pattern it
-cannot run, with a reason of its own, and builds the automaton when the spec
-parses (`safeRegex.test.ts`). The clause leg of
-`scripts/test-cross-impl-fuzz.sh` draws patterns on both sides of the size
-limit, values at both edges of the per-value budget, and lists at both edges
-of the content's total.
-
----
+under the largest count that keeps it and one more, checks that every one
+the SDK parses builds its automaton, and holds both edges of each limit, the
+many-small-values shape and a total over two fields included. The SDK refuses
+a value under a pattern it cannot run, with a reason of its own, and builds
+the automaton when the spec parses (`safeRegex.test.ts`).
 
 ## 43. A use is one seller of one process — a process of three sellers is three uses of a key
 
@@ -2039,58 +2030,49 @@ seller with two orders in one process is one use.
 
 **Pattern**: a string field's `pattern` is written in printable ASCII
 (0x20–0x7E), and a value checked against a pattern is printable ASCII too.
-Both clause engines hold the rule. A pattern that holds any other character is
-outside the portable core, so the spec does not parse: `portablePatternSize`
-refuses it before it reads a construct (`isPortablePattern`,
-`sdk/src/clauses/safeRegex.ts`), and `portable_pattern_size` refuses it alike in
-the proof program (`prover/clause/src/validate.rs`). A value outside printable
+The published format states the rule, and the SDK holds it. A pattern that
+holds any other character is outside the portable core, so the spec does not
+parse: `portablePatternSize` refuses it before it reads a construct
+(`isPortablePattern`, `sdk/src/clauses/safeRegex.ts`). A value outside printable
 ASCII in a field that declares a pattern is refused with the reason "string
-does not match pattern" (`validateString`, `sdk/src/clauses/validate.ts`;
-`validate_string`, `prover/clause/src/validate.rs`), and `safeRegexTest` and
-`safe_regex_test` answer false on it. A field with no pattern takes any text, in
-any script, bounded by its `maxLength`, which both engines count in UTF-16
-units. The published definition states the rule in the `pattern` description
+does not match pattern" (`validateString`, `sdk/src/clauses/validate.ts`), and
+`safeRegexTest` answers false on it. A field with no pattern takes any text, in
+any script, bounded by its `maxLength`, which the published format counts in
+UTF-16 code units. The published definition states the rule in the `pattern` description
 (`sdk/src/clauses/clause-spec.schema.json`: "A patterned field's value is
 printable ASCII."), and `docs/CLAUSES.md` § "The SDK's validation" states the
 portable core.
 
 **Why it looks wrong**: a designer who writes in a script other than the Latin
 one cannot pattern-check a value written in it: a name in Arabic, a street in
-Greek or a reference in Devanagari digits. The rule reads as a Latin bias, and
-it is fixed in the proof program, whose bytes are its verification key.
+Greek or a reference in Devanagari digits. The rule reads as a Latin bias.
 
-**Why it is correct**: the two engines must give one verdict on every value,
-and they run on two regex libraries, JavaScript's and Rust's `regex` crate.
-Inside printable ASCII the portable core reads alike in both
+**Why it is correct**: a spec is read by whatever tool its reader runs, in
+whatever language, and every tool that applies the published format must give
+one verdict on every value. Regex libraries differ: inside printable ASCII the
+portable core reads alike in JavaScript's and in Rust's `regex` crate
 (`sdk/tests/clauses/engineVectors.test.ts` locks each construct). Outside it
 they part: `\d`, `\w`, `\s`, `\b`, `.` and a negated class classify a
 character differently (the comment above `isPortablePattern` lists them), and
-JavaScript counts a value in UTF-16 code units where Rust reads UTF-8 bytes
-(`utf16_len`, `prover/clause/src/validate.rs`). One verdict per engine on such
-a value would let a party sign a term the SDK accepts and a proof of the same
-attestation refuses, or the reverse. A pattern is for a code: an identifier, a
+one language counts a value in UTF-16 code units where another reads UTF-8
+bytes. Two verdicts on such a value would let a party sign a term its own tool
+accepts and its counterparty's tool, or a reader's, refuses. A pattern is for a code: an identifier, a
 postal code, a reference number, a currency code. Free text needs no pattern;
 its `maxLength` bounds it, and a field with no pattern takes any script. A
 designer who needs a code in another script leaves it unpatterned and bounded
 by length.
 
-The cost is plain. The rule is part of the proof program, so it stays fixed
-for the life of a verification key; a wider rule needs a new key, and a new
-key is a new verifier at a new address (`docs/AUDITOR_HANDOVER.md` § "The guest
-and its verification key"). A value in another script that a pattern could
-have checked is checked by length alone.
+The cost is plain. A value in another script that a pattern could have
+checked is checked by length alone. The rule is the published format's and
+the SDK's; the proof program reads no pattern, so changing the rule needs no
+new verification key.
 
-**Tests**: `sdk/tests/clauses/engineVectors.test.ts` freezes the SDK's verdicts
-into `test/fixtures/clause-engine-vectors.json`: the `core` group's `^é$`
-pattern does not parse; the `dialect` groups run values outside printable
-ASCII (`é`, `🚚`, `٣`, a no-break space, a line separator, control
-characters) against each pattern and refuse them; the encode case "string
-outside ASCII" takes `é🚚` in a field with no pattern.
-`prover/clause/tests/engine_vectors.rs` gives the guest's engine the same
-verdicts. `prover/clause/tests/conformance.rs`
-(`rejects_a_pattern_outside_the_portable_core`,
-`string_length_counts_utf16_code_units`) holds the portable core and the
-length count in the proof program.
+**Tests**: `sdk/tests/clauses/engineVectors.test.ts` states the SDK's verdicts
+beside its cases: the `core` group's `^é$` pattern does not parse; the
+`dialect` groups run values outside printable ASCII (`é`, `🚚`, `٣`, a
+no-break space, a line separator, control characters) against each pattern
+and refuse them; the encode case "string outside ASCII" takes `é🚚` in a field
+with no pattern.
 
 ---
 
@@ -2101,22 +2083,19 @@ length count in the proof program.
 1. An `integer` field's value is a JSON number inside ±(2^53 − 1), however the
    text writes it. Past that range the value is refused with "value … is
    outside the safe integer range" (`validateInteger`,
-   `sdk/src/clauses/validate.ts`, by `Number.isSafeInteger`;
-   `validate_integer` with `as_js_integer`, `prover/clause/src/`). Every integer
+   `sdk/src/clauses/validate.ts`, by `Number.isSafeInteger`). Every integer
    a spec itself declares (its `version`, a bound, a length, an item count) is
    inside the same range, or the spec does not parse. A larger number is a
    `bigint` field's, written as a decimal string inside the uint256 word.
    `docs/CLAUSES.md` § "The SDK's validation" states it.
 2. A field sits under at most 16 enclosing objects or arrays:
-   `MAX_FIELD_DEPTH` (16) in `sdk/src/clauses/spec.ts` and
-   `prover/clause/src/spec.rs`. A spec nested deeper does not parse, with
+   `MAX_FIELD_DEPTH` (16) in `sdk/src/clauses/spec.ts`. A spec nested deeper does not parse, with
    "field nesting exceeds the maximum depth of 16".
 3. An `enum` names at most 256 values, since a value encodes as its `uint8`
    position; a spec with more does not parse (`parseFieldSpecCore`,
-   `sdk/src/clauses/spec.ts`; `prover/clause/src/spec.rs`). A stage key is
+   `sdk/src/clauses/spec.ts`). A stage key is
    the decimal of an integer 0..255, since the attestation's `stage` is a
-   `uint8` (`stageOfKey`, `sdk/src/clauses/spec.ts`; `parse_stage_key`,
-   `prover/clause/src/spec.rs`). The published definition
+   `uint8` (`stageOfKey`, `sdk/src/clauses/spec.ts`). The published definition
    (`sdk/src/clauses/clause-spec.schema.json`) and `docs/CLAUSES.md` § "The
    SDK's validation" and § "Witness stages" state both.
 4. A count or a length in the operation stream is a big-endian 16-bit word, so
@@ -2142,12 +2121,12 @@ reach, and nothing in the mechanism asks for 16, 256 or 65,535 in particular.
 A wallet whose code needs a longer authorization resolves on the direct path
 and not on the batch path.
 
-**Why it is correct**: each bounds work that both engines and the proof must
-do alike. A JSON number past 2^53 − 1 reads as one value in JavaScript and as
-another in Rust, so the two engines would give two verdicts and two
+**Why it is correct**: each makes every tool that applies the format, in any
+language, read a spec and its content alike, or bounds the work the stream's
+readers do. A JSON number past 2^53 − 1 reads as one value in JavaScript and as
+another in Rust, so two readers would give two verdicts and two
 encodings. A nesting bound turns a spec nested thousands deep into a refusal at
-parse, where without it the SDK throws on its stack and the guest crashes
-inside the proof. An `enum` and a stage are `uint8` words in what the parties
+parse, where without it the SDK throws on its stack. An `enum` and a stage are `uint8` words in what the parties
 sign and in the event the coordinator emits. A 16-bit count keeps the stream
 compact and read by one rule on both sides, and its ceiling for an
 authorization is some thirty times the 2,048 bytes the project's relay plans.
@@ -2155,18 +2134,16 @@ The sizes are stated where a builder
 reads them: the integer range, the `enum` bound and the stage range in
 `docs/CLAUSES.md` and the published definition, the authorization plan in the docs-site's
 scaling page. The nesting bound and the stream's 16-bit counts are stated in
-the code that holds them (`spec.ts`, `spec.rs`, `operation_stream.rs` and the
-verifier's stream comment) and in this entry.
+the code that holds them (`spec.ts`, `operation_stream.rs` and the
+verifier's stream comment) and in this entry. The clause format's sizes are
+the published format's and the SDK's; the proof program reads no spec, so
+changing one needs no new verification key.
 
 **Tests**: `sdk/tests/clauses/validate.test.ts` ("keeps integer content
-inside the safe range") and `prover/clause/tests/conformance.rs`
-(`integer_content_stays_inside_the_safe_range`); the vectors of
-`sdk/tests/clauses/engineVectors.test.ts`, frozen in
-`test/fixtures/clause-engine-vectors.json` and given the same verdicts by
-`prover/clause/tests/engine_vectors.rs`: integers at and past 2^53 − 1,
+inside the safe range"); the vectors of
+`sdk/tests/clauses/engineVectors.test.ts`: integers at and past 2^53 − 1,
 "nesting depth 16" and 17, "array nesting depth 16" and 17, "enum of 256
 values" and 257, and each stage-key spelling;
-`prover/clause/tests/conformance.rs` (`rejects_nesting_beyond_max_depth`);
 `sdk/tests/clauses/spec.test.ts` (a spec nested some 5,000 deep is refused
 without a stack overflow); `sdk/tests/clauses/schema-conformance.test.ts`
 (256 and 257 values, the stage keys, in the published definition and the
@@ -2206,7 +2183,7 @@ No test drives a stream count past 65,535.
 | 23 | Reward keyed by (kind, key), three kinds | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause or an agreement would take its reward; the kind keeps a stake in one family from earning another's, and no kind's gate reads another kind's registry |
 | 24 | The assembly root is a merkle tree over registered agreement hashes | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |
 | 25 | Ordered agreements; one agreement may hold two | registry | A repeated key looks like a duplicate leaf | Designs repeat terms; the index makes each leaf distinct and the root commits the multiplicity; usage counts once per seller of a process per (kind, key) |
-| 26 | The attestation signature does not cover the witness form | batch-path/evidence | A relay can submit a plaintext operation hash-only, and the event is the same for both forms, so the in-proof check is not legible | The evidence a reader relies on (signer, open order, inclusion, `contentRef`) is identical on every path; the in-proof check assures the attesting party's own submission, not a reader |
+| 26 | The batch path validates no content and reads no registry | batch-path/evidence | A proof could check each attested content against its spec, and the chain could vouch that the spec is registered | The direct path validates no content either, so the two paths apply the same checks; a check inside the proof is no evidence to a reader; the Core depends on no registry; one unregistered key would revert every party's batch; the key freezes no clause format |
 | 27 | A state-neutral batch's proof can land twice | batch-path/reward-path | A proof submitted twice is the replay shape, and `BatchSettled` repeats | A batch that moves no state has prev root == new root; its second landing moves no token, and the counter's once-ever `sellerCounted` skips every use, so nothing a reader relies on changes; a batch that moved the root cannot land twice |
 | 28 | `FlorinToken.mint` checks the supply cap the minters' caps already bound | token | A check that cannot fire reads as dead code | It states the billion bound in the token, at the one function that creates florins, where a stranger reads it; one storage read, no outcome changes |
 | 29 | Public pieces no code of ours reads | registry/reward-path/token | Surface nothing reads is surface to audit for nothing | Each answers a stranger's question of the chain: who may mint, which keys are reserved, when a key was registered, where a stake went and how much, which sellers counted |
@@ -2217,12 +2194,12 @@ No test drives a stream count past 65,535.
 | 34 | The sign gate refuses an agreement whose design it could not read | sign gate/SDK/frontend | A failed or empty read is absence elsewhere, and an agreement naming no design signs without the check | A signature binds the provenance leaf; only the design shows its clauses, designer values and edge count, and reading "not read" as "nothing to check" lets a party escape them by naming an assembly no registry anchors; the gate is the SDK's, never the Core's |
 | 35 | `resolveProcess` pays an order before it marks it resolved | Core-critical | An external call precedes the status write, against checks-effects-interactions | `nonReentrant` refuses a callback into `commit` or `resolveProcess`; the coordinator only emits and accepts no late evidence the window did not already allow; the counter counts only finished orders once; a revert takes every callback's effect with it |
 | 36 | A stage-0 attestation is not the signed content | evidence/reader | Stage 0 reads as the signing stage, so a reader takes any stage-0 attestation for the signed content | The stage is a `uint8` the attester picks and a `"0"` stage key validates stage-0 content over `stages["0"]`; only `contentRef` equal to the leaf's data hash makes a re-assertion, and the reader compares the two |
-| 37 | The grain cap is as firm as the sibling's allowed values | spec format/data | One word in the sibling lifts a privacy cap | The engine knows one standard's grain and no closed list of the others; a designer makes the cap firm with an `enum` or `pattern` sibling; the filler of the field fills the sibling, and the counterparty reads both before it signs |
+| 37 | The grain cap is as firm as the sibling's allowed values | spec format/data | One word in the sibling lifts a privacy cap | The validator knows four standards' grain and no closed list of the others; a designer makes the cap firm with an `enum` or `pattern` sibling; the filler of the field fills the sibling, and the counterparty reads both before it signs |
 | 38 | `RpgfMinter.claim` checks the period budget consistent counter data already bounds | reward-path | A check that cannot fire reads as dead code | A backstop like § 28: it states the budget in the minter, so a fault in the counter's tally is refused rather than minted from other designers' share |
 | 39 | `AttestBuyer` signs `processId` beside `orderHash`; `AttestSeller` does not | batch-path/evidence | The seller's message looks one field short | `orderHash = keccak256(processId ‖ structHash)` binds the process on every path, and both ids derive from the one target commitment; the buyer's extra field adds nothing to what is bound, and changing a type changes every signature and the verification key |
 | 40 | The reference frontend reads a clause spec only when its bytes hash to the CID in the registered URI | frontend/reader | The key already anchors everything a party signs, and the registry accepts any URI | The key leaves the `block` out, so without the CID the `block` read is the transport's choice; with it, the registrant's; a URI form the frontend cannot recompute is the unchecked transport, so it is refused |
 | 41 | A withdrawn key forfeits its unclaimed periods; the key registries return a stake in one call | registry/reward-path | A period scored under a live stake and lost at a later withdrawal looks like earned rewards taken back; no wait beside the members' cooldown looks like a missing guard | The live-stake check runs at the count and at the claim, so the stake stays held through the period and its claim (`/papers/substrate-broadening-rpgf`); a designer claims first, then withdraws. A key holds no identity and no name, only bytes (§ 7); the stake prices it through the reward, and a wait would hold a second stake on every new version. Accepted residual: a rival can register a key and withdraw it in one transaction for gas, burning it, once per key tried; the one-act pin and register and a private mempool bound it |
-| 42 | A pattern past a size is refused at parse, and long values are refused rather than run | spec format/clause engine | Both engines are linear in the value, so a limit looks like the skip it replaced; a matching value or list can be refused; the fuller count refuses patterns a narrower count would admit | Linear is not cheap: the cost per character is the automaton's size, which the fuller count measures and the old one did not; a skip leaves a signed term unchecked, a refusal keeps every admitted term checked; the limit keeps the two engines' parse verdicts one, and the budgets bound one value's and one content's work in both |
+| 42 | A pattern past a size is refused at parse, and long values are refused rather than run | spec format/clause validation | The SDK is linear in the value, so a limit looks like a skip; a matching value or list can be refused; the fuller count refuses patterns a narrower count would admit | Linear is not cheap: the cost per character is the automaton's size, which the fuller count measures; a skip leaves a signed term unchecked, a refusal keeps every admitted term checked; the budgets bound the checking tool's own work on any spec, and the published format states them so every tool gives one verdict |
 | 43 | A use is one seller of one process | reward-path | A process of three sellers counts three times for one key, which reads as triple counting | One count per process made the tally depend on who recorded first and with which order, and let a recorder close a process against its other sellers for gas; breadth is the distinct staked sellers who carried the key, each still one live stake and its cooldown; `d <= c` keeps the score's reading; one seller with two orders in one process is one use |
-| 44 | A pattern-checked value is printable ASCII | spec format/clause engine | A designer writing in another script cannot pattern-check a value, which reads as a Latin bias fixed in the proof program's key | The two engines run two regex libraries that classify and count characters differently outside ASCII, and must give one verdict; a pattern is for a code, free text is bounded by `maxLength` and takes any script; the cost is that the rule is fixed for the life of a verification key |
-| 45 | Sizes the formats fix | spec format/clause engine/batch path | An integer within ±(2^53 − 1), nesting to 16, 256 `enum` values, stages 0..255 and 16-bit stream counts are each a number a stranger's clause or wallet can reach; a wallet-code authorization past 65,535 bytes lands on the direct path only | Each bounds work both engines and the proof do alike: past 2^53 − 1 the two engines read two numbers, deep nesting would overflow a stack, an `enum` and a stage are `uint8` words, a 16-bit count is read by one rule on both sides; the direct path passes no authorization bytes, since the wallet's code acts in its own call |
+| 44 | A pattern-checked value is printable ASCII | spec format/clause validation | A designer writing in another script cannot pattern-check a value, which reads as a Latin bias | Regex libraries in different languages classify and count characters differently outside ASCII, and every tool that applies the published format must give one verdict; a pattern is for a code, free text is bounded by `maxLength` and takes any script |
+| 45 | Sizes the formats fix | spec format/clause validation/batch path | An integer within ±(2^53 − 1), nesting to 16, 256 `enum` values, stages 0..255 and 16-bit stream counts are each a number a stranger's clause or wallet can reach; a wallet-code authorization past 65,535 bytes lands on the direct path only | Each makes every tool read a spec alike or bounds a reader's work: past 2^53 − 1 two languages read two numbers, deep nesting would overflow a stack, an `enum` and a stage are `uint8` words, a 16-bit count is read by one rule on both sides; the direct path passes no authorization bytes, since the wallet's code acts in its own call |

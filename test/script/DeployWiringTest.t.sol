@@ -221,7 +221,6 @@ contract DeployWiringTest is Test {
         UsageCounter uc = UsageCounter(d.usageCounter());
         assertEq(address(bv.usageCounter()), address(uc), "verifier -> counter");
         assertEq(uc.batchVerifier(), address(bv), "counter -> verifier (the adjacent pair)");
-        assertEq(address(bv.clauseRegistry()), address(d.clauses()), "verifier -> clause registry");
         assertGt(address(bv.verifier()).code.length, 0, "verifier -> a gateway with code");
         assertEq(bv.programVKey(), keccak256(abi.encodePacked("figaro-kernel-dev")), "devnet vkey");
         assertEq(bv.stateRoot(), _genesisRoot(), "derived genesis root");
@@ -303,7 +302,6 @@ contract DeployWiringTest is Test {
         UsageCounter uc = UsageCounter(d.usageCounter());
         assertEq(address(bv.usageCounter()), address(uc), "verifier -> counter");
         assertEq(uc.batchVerifier(), address(bv), "counter -> verifier (the adjacent pair)");
-        assertEq(address(bv.clauseRegistry()), d.clauses(), "verifier -> clause registry");
         assertEq(address(bv.verifier()), in_.gateway, "verifier -> SP1_VERIFIER");
         assertEq(bv.programVKey(), in_.vkey, "verifier -> SP1_PROGRAM_VKEY");
         assertEq(bv.stateRoot(), _genesisRoot(), "derived genesis root");
@@ -412,7 +410,6 @@ contract DeployWiringTest is Test {
         UsageCounter uc = UsageCounter(d.usageCounter());
         assertEq(address(bv.usageCounter()), address(uc), "verifier -> counter");
         assertEq(uc.batchVerifier(), address(bv), "counter -> verifier (the adjacent pair)");
-        assertEq(address(bv.clauseRegistry()), address(clauses), "verifier -> the EXISTING clause registry");
         assertEq(address(bv.verifier()), gateway, "verifier -> SP1_VERIFIER");
         assertEq(bv.programVKey(), vkey, "verifier -> SP1_PROGRAM_VKEY");
         assertEq(bv.stateRoot(), _genesisRoot(), "derived genesis root");
