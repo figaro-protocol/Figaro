@@ -10,6 +10,18 @@ alloy-primitives = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 k256 = { version = "0.13", features = ["ecdsa"] }
 
+[features]
+# Selects the cross-language fuzz's Rust half (`tests/fuzz_stream.rs`), which
+# replays the stream the Foundry half writes. Compiles no code into the
+# crate; `scripts/test-cross-impl-fuzz.sh` runs the target with
+# `--features cross-impl-fuzz --test fuzz_stream`, and `cargo test` without
+# the feature does not select it.
+cross-impl-fuzz = []
+
+[[test]]
+name = "fuzz_stream"
+required-features = ["cross-impl-fuzz"]
+
 [dev-dependencies]
 serde_json = { version = "1", features = ["float_roundtrip"] }
 k256 = { version = "0.13", features = ["ecdsa", "arithmetic"] }

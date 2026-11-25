@@ -10,45 +10,26 @@
 /// resolve signed by a wallet that is not the root buyer, a resolve of a
 /// process already resolved, and a resolve of a process never committed. The
 /// sequence of a correct list is free on both paths.
-use alloy_primitives::{address, keccak256, Address, B256, U256};
-use k256::ecdsa::SigningKey;
+///
+/// Every batch runs through both entries of the rules (`common::run_both`).
+use alloy_primitives::{keccak256, Address, B256, U256};
 
 use figaro_kernel::eip712::*;
-use figaro_kernel::kernel::apply_batch;
+use figaro_kernel::kernel::order_hash_in;
 use figaro_kernel::types::*;
 
-const BUYER_KEY: u64 = 0xB0B;
-const SELLER1_KEY: u64 = 0x5E11;
-const SELLER2_KEY: u64 = 0x5E12;
-const SELLER3_KEY: u64 = 0x5E13;
-
-const BUYER: Address = address!("0376AAc07Ad725E01357B1725B5ceC61aE10473c");
-const TOKEN: Address = address!("5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f");
-const CORE: Address = address!("2e234DAe75C793f67A35089C9d99245E1C58470b");
-const CHAIN_ID: u64 = 31337;
-
-fn key(secret: u64) -> SigningKey {
-    let mut bytes = [0u8; 32];
-    bytes[24..].copy_from_slice(&secret.to_be_bytes());
-    SigningKey::from_bytes((&bytes).into()).unwrap()
-}
+mod common;
+use common::{
+    empty_snapshot, key_address, make_signing_key, run_both, sign_digest, BUYER, BUYER_KEY,
+    CHAIN_ID, CORE, SELLER1_KEY, SELLER2_KEY, SELLER3_KEY, TOKEN,
+};
 
 fn address_of(secret: u64) -> Address {
-    let pubkey = key(secret).verifying_key().to_encoded_point(false);
-    let hash = keccak256(&pubkey.as_bytes()[1..]);
-    Address::from_slice(&hash[12..])
+    key_address(&make_signing_key(secret))
 }
 
 fn sign(secret: u64, digest: &B256) -> Signature {
-    use k256::ecdsa::{signature::hazmat::PrehashSigner, RecoveryId};
-    let (sig, recid): (k256::ecdsa::Signature, RecoveryId) =
-        key(secret).sign_prehash(digest.as_slice()).unwrap();
-    let bytes = sig.to_bytes();
-    Signature {
-        v: recid.to_byte() + 27,
-        r: B256::from_slice(&bytes[..32]),
-        s: B256::from_slice(&bytes[32..]),
-    }
+    sign_digest(&make_signing_key(secret), digest)
 }
 
 fn domain() -> B256 {
@@ -79,7 +60,7 @@ fn resolve_op(process_id: B256, value: U256, list: Vec<Commitment>, signer: u64)
 }
 
 fn order_hash(process_id: &B256, c: &Commitment) -> B256 {
-    compute_order_hash(process_id, &commitment_struct_hash(c))
+    order_hash_in(process_id, c)
 }
 
 /// One process of `n` orders (n is 2 or 3): a root of 100 ether to the first
@@ -150,10 +131,7 @@ fn batch(operations: Vec<KernelOp>) -> BatchInput {
         verifying_contract: CORE,
         block_timestamp: 1000,
         operations,
-        prev_state: KernelStateSnapshot {
-            processes: vec![],
-            order_status: vec![],
-        },
+        prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
     }
@@ -163,7 +141,7 @@ fn batch(operations: Vec<KernelOp>) -> BatchInput {
 fn resolve_list(p: &Process, list: Vec<Commitment>) -> Result<Vec<NetPosition>, KernelError> {
     let mut ops = p.commits.clone();
     ops.push(resolve_op(p.id, p.value(), list, BUYER_KEY));
-    apply_batch(&batch(ops)).map(|(_, positions, _)| positions)
+    run_both(&batch(ops)).map(|(_, positions, _)| positions)
 }
 
 fn expect_not_committed(p: &Process, at: &[usize], repeated: usize) {
@@ -247,7 +225,7 @@ fn a_resolve_list_naming_an_order_of_another_process_is_refused() {
         let mut ops = p.commits.clone();
         ops.extend(other.commits.clone());
         ops.push(resolve_op(p.id, p.value(), list, BUYER_KEY));
-        match apply_batch(&batch(ops)) {
+        match run_both(&batch(ops)) {
             // The order hash binds the process: the other process's order,
             // hashed under this one, names no committed order.
             Err(KernelError::OrderNotCommitted(h)) => {
@@ -286,7 +264,7 @@ fn a_resolve_signed_by_a_wallet_that_is_not_the_root_buyer_is_refused() {
     for signer in [SELLER1_KEY, SELLER2_KEY, 0xBAD] {
         let mut ops = p.commits.clone();
         ops.push(resolve_op(p.id, p.value(), p.orders.clone(), signer));
-        match apply_batch(&batch(ops)) {
+        match run_both(&batch(ops)) {
             Err(KernelError::NotProcessBuyer) => {}
             other => panic!("signer {signer:#x}: expected NotProcessBuyer, got {other:?}"),
         }
@@ -299,7 +277,7 @@ fn a_resolve_of_a_resolved_process_is_refused() {
     let mut ops = p.commits.clone();
     ops.push(resolve_op(p.id, p.value(), p.orders.clone(), BUYER_KEY));
     ops.push(resolve_op(p.id, p.value(), p.orders.clone(), BUYER_KEY));
-    match apply_batch(&batch(ops)) {
+    match run_both(&batch(ops)) {
         Err(KernelError::NoActiveOrders) => {}
         other => panic!("expected NoActiveOrders, got {other:?}"),
     }
@@ -313,7 +291,7 @@ fn a_resolve_of_a_resolved_process_is_refused() {
 fn a_resolve_of_a_process_never_committed_is_refused() {
     let p = process(2, 9);
     let ops = vec![resolve_op(p.id, p.value(), p.orders.clone(), BUYER_KEY)];
-    match apply_batch(&batch(ops)) {
+    match run_both(&batch(ops)) {
         Err(KernelError::UnknownProcess) => {}
         other => panic!("expected UnknownProcess, got {other:?}"),
     }

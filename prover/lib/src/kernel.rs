@@ -103,28 +103,12 @@ fn apply_commit(
         return Err(KernelError::ZeroPayment);
     }
 
-    // ── EIP-712 digest ──
-    let struct_hash = commitment_struct_hash(c);
-    let digest = typed_data_hash(domain, &struct_hash);
+    // ── EIP-712 digest and dual-signature verification ──
+    let (struct_hash, digest) = verify_commit_signatures(domain, c, buyer_sig, seller_sig)?;
 
-    // ── Dual-signature verification ──
-    let recovered_buyer = recover_signer(&digest, buyer_sig)?;
-    if recovered_buyer != c.buyer {
-        return Err(KernelError::InvalidBuyerSignature);
-    }
-
-    let recovered_seller = recover_signer(&digest, seller_sig)?;
-    if recovered_seller != c.seller {
-        return Err(KernelError::InvalidSellerSignature);
-    }
-
-    // ── Process ID derivation ──
+    // ── Process ID and order hash derivation ──
     // Root: processId IS the EIP-712 digest (matches Solidity).
-    let process_id = if c.process_id == B256::ZERO {
-        digest
-    } else {
-        c.process_id
-    };
+    let (order_hash, process_id) = ids_from_struct_hash(c, &struct_hash, || digest);
 
     // ── Root vs sub-order ──
     if c.process_id == B256::ZERO {
@@ -172,29 +156,59 @@ fn apply_commit(
         ps.active_order_count += 1;
     }
 
-    // ── Order hash and nullifier ──
-    let order_hash = compute_order_hash(&process_id, &struct_hash);
+    // ── Order nullifier ──
     if state.order_status_of(&order_hash)? != 0 {
         return Err(KernelError::DuplicateCommitment);
     }
     state.set_order_status(order_hash, 1)?;
 
     // ── Token flows ──
-    // Buyer bond = 2 × payment.
-    let buyer_bond = c
-        .payment
-        .checked_mul(U256::from(2))
-        .ok_or(KernelError::Overflow)?;
-    // Seller bond = 2 × runningTotal.
-    let seller_bond = c
-        .running_total
-        .checked_mul(U256::from(2))
-        .ok_or(KernelError::Overflow)?;
-
+    let (buyer_bond, seller_bond) = commit_bonds(c)?;
     tracker.deposit(c.token, c.buyer, buyer_bond)?;
     tracker.deposit(c.token, c.seller, seller_bond)?;
 
     Ok((process_id, order_hash))
+}
+
+/// The commit's stateless gate, exactly `FigaroCore.commit`'s signature
+/// checks: the buyer's and then the seller's EIP-712 signature over the
+/// commitment's digest under `domain` must recover the commitment's buyer
+/// and seller. Returns the commitment's struct hash and digest.
+///
+/// Public so the relay's mempool pre-check runs the gate the guest runs —
+/// advisory there, enforced in `apply_commit`; one implementation.
+pub fn verify_commit_signatures(
+    domain: &B256,
+    c: &Commitment,
+    buyer_sig: &Signature,
+    seller_sig: &Signature,
+) -> Result<(B256, B256), KernelError> {
+    let struct_hash = commitment_struct_hash(c);
+    let digest = typed_data_hash(domain, &struct_hash);
+    if recover_signer(&digest, buyer_sig)? != c.buyer {
+        return Err(KernelError::InvalidBuyerSignature);
+    }
+    if recover_signer(&digest, seller_sig)? != c.seller {
+        return Err(KernelError::InvalidSellerSignature);
+    }
+    Ok((struct_hash, digest))
+}
+
+/// The two bonds a commit locks, `FigaroCore.commit`'s arithmetic: the
+/// buyer's `2 × payment` and the seller's `2 × runningTotal`, each refused
+/// as `Overflow` past U256 (FigaroCore's checked arithmetic reverts there).
+///
+/// The one home of the bond formula: `apply_commit` deposits these, the
+/// relay's funding check reads the same two amounts, and the Kani harnesses
+/// (`formal/kani`) prove conservation over this function.
+pub fn commit_bonds(c: &Commitment) -> Result<(U256, U256), KernelError> {
+    let two = U256::from(2);
+    let buyer_bond = c.payment.checked_mul(two).ok_or(KernelError::Overflow)?;
+    let seller_bond = c
+        .running_total
+        .checked_mul(two)
+        .ok_or(KernelError::Overflow)?;
+    Ok((buyer_bond, seller_bond))
 }
 
 // ── resolveProcess ────────────────────────────────────────────────
@@ -261,8 +275,7 @@ fn apply_resolve(
         // The verifier reads the buyer whose code it asks from the listed
         // orders: an order committed under this process (status 1 below,
         // its hash covering `buyer`) was committed by the root buyer.
-        let struct_hash = commitment_struct_hash(c);
-        let order_hash = compute_order_hash(process_id, &struct_hash);
+        let order_hash = order_hash_in(process_id, c);
 
         if state.order_status_of(&order_hash)? != 1 {
             return Err(KernelError::OrderNotCommitted(order_hash));
@@ -294,7 +307,8 @@ fn apply_resolve(
 ///
 /// `apply_resolve` is its one caller in the guest and the relay, so a payout's
 /// arithmetic lives here alone; it is public so a test or a stranger's reader
-/// computes the two legs with the guest's own code (`sequencer.rs`'s tests do).
+/// computes the two legs with the guest's own code (the Kani harnesses of
+/// `formal/kani` prove over it).
 pub fn resolution_payouts(c: &Commitment) -> Result<(U256, U256), KernelError> {
     let seller_payout = c
         .running_total
@@ -313,14 +327,33 @@ pub fn resolution_payouts(c: &Commitment) -> Result<(U256, U256), KernelError> {
 /// derivation, no drift).
 pub fn derive_commitment_ids(domain: &B256, c: &Commitment) -> (B256, B256) {
     let struct_hash = commitment_struct_hash(c);
+    ids_from_struct_hash(c, &struct_hash, || typed_data_hash(domain, &struct_hash))
+}
+
+/// The (orderHash, processId) pair of `c` from its struct hash: a root
+/// order's process id is its EIP-712 digest (`root_digest`, computed only
+/// for a root order), a sub-order's the one it names. `apply_commit`, which
+/// has the digest already from the signature check, and
+/// `derive_commitment_ids` share it.
+fn ids_from_struct_hash(
+    c: &Commitment,
+    struct_hash: &B256,
+    root_digest: impl FnOnce() -> B256,
+) -> (B256, B256) {
     let process_id = if c.process_id == B256::ZERO {
-        // Root order: processId is the EIP-712 digest of the commitment.
-        typed_data_hash(domain, &struct_hash)
+        root_digest()
     } else {
         c.process_id
     };
-    let order_hash = compute_order_hash(&process_id, &struct_hash);
-    (order_hash, process_id)
+    (compute_order_hash(&process_id, struct_hash), process_id)
+}
+
+/// The hash of order `c` listed under `process_id`, as a resolve's list
+/// names it: `keccak256(processId ‖ structHash(c))`. Public so the relay's
+/// resolve pre-checks and its assembler read an order's hash from the same
+/// derivation the guest's `apply_resolve` uses.
+pub fn order_hash_in(process_id: &B256, c: &Commitment) -> B256 {
+    compute_order_hash(process_id, &commitment_struct_hash(c))
 }
 
 /// Mirror of `AttestationCoordinator._requireKnownCommitment`: derive the
@@ -406,6 +439,49 @@ pub fn validate_attestation_witness(
 
 // ── attestAsSeller / attestAsBuyer ─────────────────────────────────
 
+/// The EIP-712 digest an attestation's party approves under `domain`: the
+/// `AttestSeller` struct over the target's order hash for the seller's role,
+/// the `AttestBuyer` struct over the target's process id and order hash for
+/// the buyer's. The signed form's signature recovers over it here, and
+/// `FigaroBatchVerifier` asks a wallet-code attestation's party's code about
+/// it (`isValidSignature`) under its own domain; the relay asks that code the
+/// same question with this function.
+pub fn attest_digest(
+    domain: &B256,
+    role: AttesterRole,
+    process_id: &B256,
+    order_hash: &B256,
+    clause_id: &B256,
+    stage: u8,
+    content_ref: &B256,
+) -> B256 {
+    let struct_hash = match role {
+        AttesterRole::Seller => {
+            attest_seller_struct_hash(order_hash, clause_id, stage, content_ref)
+        }
+        AttesterRole::Buyer => {
+            attest_buyer_struct_hash(process_id, order_hash, clause_id, stage, content_ref)
+        }
+    };
+    typed_data_hash(domain, &struct_hash)
+}
+
+/// The signed attestation's stateless signer gate: `signature` over
+/// `digest` (`attest_digest`) must recover `attester`, the role's party of
+/// the target, or the attestation is `NotAuthorized` — the coordinator's
+/// `msg.sender` check. Public so the relay's mempool pre-check runs the gate
+/// the guest runs.
+pub fn verify_attestation_signer(
+    digest: &B256,
+    attester: Address,
+    signature: &Signature,
+) -> Result<(), KernelError> {
+    if recover_signer(digest, signature)? != attester {
+        return Err(KernelError::NotAuthorized);
+    }
+    Ok(())
+}
+
 /// Apply an attestation. Matches the authorization logic of
 /// `AttestationCoordinator.attestAsSeller()` (the attester must be
 /// `target.seller`) and `attestAsBuyer()` (`target.buyer`, the process's
@@ -440,22 +516,16 @@ fn apply_attestation(
     // ── The signed form: recover the signer (replaces msg.sender); it must
     //    be the role's party ──
     if let Some(sig) = signature {
-        let struct_hash = match role {
-            AttesterRole::Seller => {
-                attest_seller_struct_hash(&target_order_hash, clause_id, stage, content_ref)
-            }
-            AttesterRole::Buyer => attest_buyer_struct_hash(
-                &target_process_id,
-                &target_order_hash,
-                clause_id,
-                stage,
-                content_ref,
-            ),
-        };
-        let digest = typed_data_hash(domain, &struct_hash);
-        if recover_signer(&digest, sig)? != attester {
-            return Err(KernelError::NotAuthorized);
-        }
+        let digest = attest_digest(
+            domain,
+            role,
+            &target_process_id,
+            &target_order_hash,
+            clause_id,
+            stage,
+            content_ref,
+        );
+        verify_attestation_signer(&digest, attester, sig)?;
     }
 
     // ── Witness gate: the leaf is one of the signed agreement's ──
@@ -536,18 +606,13 @@ const PROVENANCE_LEAF_LEN: usize = PROVENANCE_AGREEMENT_PREFIX.len()
 /// and `recordProcessDesignUsage`. Reproduction, never parsing: a wrong key on
 /// either side derives a leaf that is simply not in the tree.
 pub fn provenance_leaf_bytes(agreement_hash: &B256, process_design_hash: &B256) -> Vec<u8> {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
+    // `hex::encode` writes lowercase digits without a prefix: the 64 digits
+    // of each word, as `UsageCounter._toLowerHexString` writes them.
     let mut out = Vec::with_capacity(PROVENANCE_LEAF_LEN);
-    let push_word = |out: &mut Vec<u8>, word: &B256| {
-        for byte in word.as_slice() {
-            out.push(HEX[(byte >> 4) as usize]);
-            out.push(HEX[(byte & 0x0f) as usize]);
-        }
-    };
     out.extend_from_slice(PROVENANCE_AGREEMENT_PREFIX);
-    push_word(&mut out, agreement_hash);
+    out.extend_from_slice(alloy_primitives::hex::encode(agreement_hash).as_bytes());
     out.extend_from_slice(PROVENANCE_PROCESS_DESIGN_INFIX);
-    push_word(&mut out, process_design_hash);
+    out.extend_from_slice(alloy_primitives::hex::encode(process_design_hash).as_bytes());
     out.extend_from_slice(PROVENANCE_SUFFIX);
     out
 }
@@ -709,18 +774,11 @@ fn apply_usage_claims(
 
 // ── Batch execution ───────────────────────────────────────────────
 
-/// Execute a full batch of FigaroCore operations and return the
-/// public values for on-chain verification plus net token positions
-/// and side-effect events.
-pub fn apply_batch(
-    input: &BatchInput,
-) -> Result<(PublicValues, Vec<NetPosition>, BatchEvents), KernelError> {
-    let (pv, positions, events, _state) = apply_batch_inner(input)?;
-    Ok((pv, positions, events))
-}
-
-/// Like `apply_batch`, but also returns the post-batch mirror state.
-/// Used by the sequencer to advance its local state mirror.
+/// Execute a full batch of FigaroCore operations on the whole previous
+/// state — the relay's native run — and return the public values for
+/// on-chain verification, the net token positions, the side-effect events
+/// and the post-batch state the relay advances its mirror to. The guest runs
+/// the same rules on a witness (`apply_guest`).
 pub fn apply_batch_with_state(
     input: &BatchInput,
 ) -> Result<(PublicValues, Vec<NetPosition>, BatchEvents, KernelState), KernelError> {
@@ -737,7 +795,7 @@ pub struct OperationEffects {
 
 /// Apply `operations` to `state`, in order, under the Core's rules, with no
 /// root computed before or after. The one home of the rules: the guest
-/// (`apply_guest`) and the relay's native run (`apply_batch`) run their
+/// (`apply_guest`) and the relay's native run (`apply_batch_with_state`) run their
 /// operations through it (`execute`) and then compute the roots, and
 /// the relay's trials run through it on a CLONE of their running state — a
 /// trial that fails leaves the clone to be dropped, a trial that passes

@@ -150,13 +150,31 @@ pub struct FundingGate {
     pub chain_id: u64,
 }
 
+/// The relay's RPC URL, parsed: the one parse of `RPC_URL` and its one
+/// error text.
+pub fn rpc_endpoint(rpc_url: &str) -> Result<alloy::transports::http::reqwest::Url, String> {
+    rpc_url.parse().map_err(|e| format!("invalid RPC_URL: {e}"))
+}
+
+/// A read-only provider of the relay's RPC (`rpc_endpoint`).
+pub fn read_provider(rpc_url: &str) -> Result<impl Provider + Clone, String> {
+    Ok(ProviderBuilder::new().connect_http(rpc_endpoint(rpc_url)?))
+}
+
+/// The latest block's header: the batch's clock and the block's gas limit
+/// are read from it.
+async fn latest_header(rpc_url: &str) -> Result<alloy::rpc::types::Header, String> {
+    let block = read_provider(rpc_url)?
+        .get_block_by_number(alloy::eips::BlockNumberOrTag::Latest)
+        .await
+        .map_err(|e| format!("latest block read failed: {}", without_urls(&e.to_string())))?
+        .ok_or_else(|| "the node returned no latest block".to_string())?;
+    Ok(block.header)
+}
+
 /// The chain id, read from the RPC: the one source the relay takes it from, read once at startup.
 pub async fn read_chain_id(rpc_url: &str) -> Result<u64, String> {
-    let url = rpc_url
-        .parse()
-        .map_err(|e| format!("invalid RPC_URL: {e}"))?;
-    ProviderBuilder::new()
-        .connect_http(url)
+    read_provider(rpc_url)?
         .get_chain_id()
         .await
         .map_err(|e| format!("chain id read failed: {}", without_urls(&e.to_string())))
@@ -177,15 +195,17 @@ pub fn is_unverifiable_drop(reason: &str) -> bool {
 }
 
 /// The two bonds a commit pulls: the buyer's 2 × payment, the seller's
-/// 2 × cumulative value at its link — FigaroCore's arithmetic, saturating
-/// only where FigaroCore would overflow (and refuse) anyway.
-pub fn bonds_of(c: &Commitment) -> (U256, U256) {
-    let two = U256::from(2u64);
-    (
-        c.payment.saturating_mul(two),
-        c.running_total.saturating_mul(two),
-    )
+/// 2 × the running total at its order — the proof program's own arithmetic
+/// (`figaro_kernel::kernel::commit_bonds`). `None` when a bond passes U256:
+/// the proof program refuses that commit (`Overflow`), so no balance covers it and the
+/// relay's funding check reads it as not fundable.
+pub fn bonds_of(c: &Commitment) -> Option<(U256, U256)> {
+    figaro_kernel::kernel::commit_bonds(c).ok()
 }
+
+/// Why a commit whose bond passes U256 is not fundable.
+const BOND_OVERFLOW: &str =
+    "unfundable commitment: a bond passes 2^256, and the Core refuses the commit (Overflow)";
 
 /// Read both parties' funding for one commit. The outer `Err` is a read
 /// failure (the chain could not be asked); the inner `Err` is a verdict:
@@ -194,13 +214,11 @@ pub async fn check_commit_funding(
     gate: &FundingGate,
     c: &Commitment,
 ) -> Result<Result<(), String>, String> {
-    let url = gate
-        .rpc_url
-        .parse()
-        .map_err(|e| format!("invalid RPC_URL: {e}"))?;
-    let provider = ProviderBuilder::new().connect_http(url);
+    let provider = read_provider(&gate.rpc_url)?;
     let token = IERC20Funding::new(c.token, &provider);
-    let (buyer_need, seller_need) = bonds_of(c);
+    let Some((buyer_need, seller_need)) = bonds_of(c) else {
+        return Ok(Err(BOND_OVERFLOW.to_string()));
+    };
     for (label, who, need) in [
         ("buyer", c.buyer, buyer_need),
         ("seller", c.seller, seller_need),
@@ -252,7 +270,12 @@ pub fn allocate_funding(
             valid.push(op);
             continue;
         };
-        let (buyer_need, seller_need) = bonds_of(c);
+        let Some((buyer_need, seller_need)) = bonds_of(c) else {
+            // The party whose own bond overflows: the buyer's is 2 × payment.
+            let party = if c.payment.checked_mul(U256::from(2u64)).is_none() { c.buyer } else { c.seller };
+            dropped.push((op, BOND_OVERFLOW.to_string(), party));
+            continue;
+        };
         // The two bonds of one commit draw on the same wallet when the buyer
         // is the seller.
         let mut need: Vec<(&'static str, Address, U256)> = vec![("buyer", c.buyer, buyer_need)];
@@ -313,8 +336,7 @@ pub async fn filter_funded_commits(
         }
     }
     let mut funds = HashMap::new();
-    if let Ok(url) = gate.rpc_url.parse() {
-        let provider = ProviderBuilder::new().connect_http(url);
+    if let Ok(provider) = read_provider(&gate.rpc_url) {
         for (bond_token, who) in wallets {
             let token = IERC20Funding::new(bond_token, &provider);
             let read = async {
@@ -375,11 +397,7 @@ pub fn wallet_code_question(
     verifier: Address,
     op: &KernelOp,
 ) -> Option<(Address, B256, Bytes)> {
-    use figaro_kernel::eip712::{
-        attest_buyer_struct_hash, attest_seller_struct_hash, domain_separator, resolve_struct_hash,
-        typed_data_hash,
-    };
-    use figaro_kernel::types::AttesterRole;
+    use figaro_kernel::eip712::{domain_separator, resolve_struct_hash, typed_data_hash};
     let domain = domain_separator(chain_id, verifier);
     match op {
         KernelOp::ResolveByWalletCode {
@@ -405,23 +423,16 @@ pub fn wallet_code_question(
         } => {
             let (order_hash, process_id) =
                 figaro_kernel::kernel::derive_commitment_ids(&domain, target);
-            let struct_hash = match role {
-                AttesterRole::Seller => {
-                    attest_seller_struct_hash(&order_hash, clause_id, *stage, content_ref)
-                }
-                AttesterRole::Buyer => attest_buyer_struct_hash(
-                    &process_id,
-                    &order_hash,
-                    clause_id,
-                    *stage,
-                    content_ref,
-                ),
-            };
-            Some((
-                role.party(target),
-                typed_data_hash(&domain, &struct_hash),
-                authorization.clone(),
-            ))
+            let digest = figaro_kernel::kernel::attest_digest(
+                &domain,
+                *role,
+                &process_id,
+                &order_hash,
+                clause_id,
+                *stage,
+                content_ref,
+            );
+            Some((role.party(target), digest, authorization.clone()))
         }
         _ => None,
     }
@@ -463,11 +474,7 @@ pub async fn check_wallet_code(
         return Ok(Ok(()));
     }
     let (party, no_code, refused) = wallet_code_terms(op);
-    let url = gate
-        .rpc_url
-        .parse()
-        .map_err(|e| format!("invalid RPC_URL: {e}"))?;
-    let provider = ProviderBuilder::new().connect_http(url);
+    let provider = read_provider(&gate.rpc_url)?;
     let Some((buyer, digest, authorization)) =
         wallet_code_question(gate.chain_id, gate.verifier, op)
     else {
@@ -667,17 +674,7 @@ fn classify_unordered(
 /// commitment deadline against it and the verifier refuses a timestamp
 /// ahead of its own block, so it is the chain's, never the host's.
 pub async fn read_chain_timestamp(rpc_url: &str) -> Result<u64, String> {
-    let provider = ProviderBuilder::new().connect_http(
-        rpc_url
-            .parse()
-            .map_err(|e| format!("invalid rpc url: {e}"))?,
-    );
-    let block = provider
-        .get_block_by_number(alloy::eips::BlockNumberOrTag::Latest)
-        .await
-        .map_err(|e| format!("latest block read failed: {}", without_urls(&e.to_string())))?
-        .ok_or_else(|| "the node returned no latest block".to_string())?;
-    Ok(block.header.timestamp)
+    Ok(latest_header(rpc_url).await?.timestamp)
 }
 
 // Generate Rust bindings for the FigaroBatchVerifier contract.
@@ -825,7 +822,7 @@ pub async fn read_usage_context(rpc_url: &str, usage_counter: Address) -> Option
     if usage_counter == Address::ZERO {
         return None;
     }
-    let provider = ProviderBuilder::new().connect_http(rpc_url.parse().ok()?);
+    let provider = read_provider(rpc_url).ok()?;
     let contract = IUsageCounter::new(usage_counter, &provider);
     contract.currentPeriod().call().await.ok()
 }
@@ -879,14 +876,9 @@ pub async fn filter_usage_claims(
         return (claims, dropped);
     }
 
-    let provider = match config
-        .rpc_url
-        .parse()
-        .ok()
-        .map(|u| ProviderBuilder::new().connect_http(u))
-    {
-        Some(p) => p,
-        None => return (claims, dropped), // unparsable RPC — leave to the on-chain backstop
+    let provider = match read_provider(&config.rpc_url) {
+        Ok(p) => p,
+        Err(_) => return (claims, dropped), // unparsable RPC — leave to the on-chain backstop
     };
     let clauses = IClauseRegistry::new(config.clause_registry_address, &provider);
     let assemblies = IProcessRegistry::new(config.process_registry_address, &provider);
@@ -1085,12 +1077,9 @@ pub async fn submit_batch(
 
     // alloy 1.x: the recommended fillers (nonce, gas, chain id) are the
     // builder's default; only the wallet is added.
-    let provider = ProviderBuilder::new().wallet(wallet).connect_http(
-        config
-            .rpc_url
-            .parse()
-            .map_err(|e| transient(format!("invalid rpc url: {e}")))?,
-    );
+    let provider = ProviderBuilder::new()
+        .wallet(wallet)
+        .connect_http(rpc_endpoint(&config.rpc_url).map_err(transient)?);
 
     let (positions, events_call, usage_call) = settle_call_args(&result.positions, &result.events);
 
@@ -1255,17 +1244,7 @@ pub fn settle_calldata(
 /// The latest block's gas limit: what a batch's settle must fit, with the
 /// headroom `gas::settle_gas_budget` keeps.
 pub async fn read_block_gas_limit(rpc_url: &str) -> Result<u64, String> {
-    let provider = ProviderBuilder::new().connect_http(
-        rpc_url
-            .parse()
-            .map_err(|e| format!("invalid rpc url: {e}"))?,
-    );
-    let block = provider
-        .get_block_by_number(alloy::eips::BlockNumberOrTag::Latest)
-        .await
-        .map_err(|e| format!("latest block read failed: {}", without_urls(&e.to_string())))?
-        .ok_or_else(|| "the node returned no latest block".to_string())?;
-    Ok(block.header.gas_limit)
+    Ok(latest_header(rpc_url).await?.gas_limit)
 }
 
 /// Read the current on-chain state root.
@@ -1273,11 +1252,7 @@ pub async fn read_state_root(
     rpc_url: &str,
     verifier_address: Address,
 ) -> Result<alloy::primitives::B256, String> {
-    let provider = ProviderBuilder::new().connect_http(
-        rpc_url
-            .parse()
-            .map_err(|e| format!("invalid rpc url: {e}"))?,
-    );
+    let provider = read_provider(rpc_url)?;
 
     let contract = IFigaroBatchVerifier::new(verifier_address, &provider);
     let root = contract
@@ -1297,11 +1272,7 @@ pub async fn read_program_vkey(
     rpc_url: &str,
     verifier_address: Address,
 ) -> Result<alloy::primitives::B256, String> {
-    let provider = ProviderBuilder::new().connect_http(
-        rpc_url
-            .parse()
-            .map_err(|e| format!("invalid rpc url: {e}"))?,
-    );
+    let provider = read_provider(rpc_url)?;
     let contract = IFigaroBatchVerifier::new(verifier_address, &provider);
     contract.programVKey().call().await.map_err(|e| {
         format!(
@@ -1386,13 +1357,47 @@ mod tests {
     }
 
     /// The bonds are FigaroCore's: 2 × payment for the buyer, 2 × cumulative
-    /// value for the seller.
+    /// value for the seller; a bond past 2^256 is no bond at all, and a
+    /// commit carrying one is dropped as unfundable, never funded at a
+    /// saturated figure.
     #[test]
-    fn bonds_are_the_kernels_arithmetic() {
+    fn bonds_are_twice_the_payment_and_twice_the_cumulative_value() {
         let mut c = dummy_claim().order;
         c.payment = U256::from(100u64);
         c.running_total = U256::from(150u64);
-        assert_eq!(bonds_of(&c), (U256::from(200u64), U256::from(300u64)));
+        assert_eq!(bonds_of(&c), Some((U256::from(200u64), U256::from(300u64))));
+
+        c.running_total = U256::from(1u8) << 255;
+        assert_eq!(bonds_of(&c), None, "the seller's bond passes 2^256");
+        let op = PendingOp {
+            id: 7,
+            key: B256::ZERO,
+            op: KernelOp::Commit {
+                commitment: c.clone(),
+                buyer_sig: figaro_kernel::types::Signature {
+                    v: 27,
+                    r: B256::ZERO,
+                    s: B256::ZERO,
+                },
+                seller_sig: figaro_kernel::types::Signature {
+                    v: 27,
+                    r: B256::ZERO,
+                    s: B256::ZERO,
+                },
+            },
+            deferred_since: None,
+            behind: Vec::new(),
+        };
+        let mut funds = HashMap::new();
+        funds.insert((c.token, c.buyer), (U256::MAX, U256::MAX));
+        funds.insert((c.token, c.seller), (U256::MAX, U256::MAX));
+        let (valid, dropped) = allocate_funding(vec![op], &funds);
+        assert!(
+            valid.is_empty(),
+            "a wallet holding U256::MAX funds no bond past it"
+        );
+        assert_eq!(dropped.len(), 1);
+        assert!(dropped[0].1.contains("Overflow"), "{}", dropped[0].1);
     }
 
     /// No verifier configured means no funding reads: a prove-only dry run
@@ -2045,27 +2050,14 @@ mod tests {
     /// The canonical seller attestation in the wallet-code form, its seller
     /// set to `seller`.
     fn wallet_code_attestation(seller: Address) -> KernelOp {
-        let KernelOp::AttestAsSeller {
-            mut target,
-            clause_id,
-            stage,
-            content_ref,
-            proof,
-            ..
-        } = figaro_prove_test::build_canonical_batch_input().operations[1].clone()
-        else {
-            panic!("the canonical batch's second op is the seller's attestation");
-        };
-        target.seller = seller;
-        KernelOp::AttestByWalletCode {
-            role: figaro_kernel::types::AttesterRole::Seller,
-            target,
-            clause_id,
-            stage,
-            content_ref,
-            authorization: Bytes::from_static(b"session-key-approval"),
-            proof,
+        let mut op = figaro_prove_test::wallet_code_attestation_of(
+            figaro_kernel::types::AttesterRole::Seller,
+            b"session-key-approval",
+        );
+        if let KernelOp::AttestByWalletCode { target, .. } = &mut op {
+            target.seller = seller;
         }
+        op
     }
 
     // The door and the formation ask the attesting party's code the
@@ -2332,25 +2324,15 @@ mod tests {
     /// A root commit of its own process, the canonical order's with `salt`,
     /// signed by both parties: commits of distinct salts apply together.
     fn signed_root_commit(salt: u64) -> KernelOp {
-        use figaro_kernel::eip712::domain_separator;
-        use figaro_prove_test::{
-            make_signing_key, sign_commitment, BUYER_KEY, CHAIN_ID, CORE, SELLER1_KEY,
-        };
         let KernelOp::Commit { commitment, .. } =
             figaro_prove_test::build_canonical_batch_input().operations[0].clone()
         else {
             panic!("the canonical batch opens with a commit")
         };
-        let c = Commitment {
+        figaro_prove_test::signed_commit_of(&Commitment {
             salt: U256::from(salt),
             ..commitment
-        };
-        let domain = domain_separator(CHAIN_ID, CORE);
-        KernelOp::Commit {
-            buyer_sig: sign_commitment(&c, &domain, &make_signing_key(BUYER_KEY)),
-            seller_sig: sign_commitment(&c, &domain, &make_signing_key(SELLER1_KEY)),
-            commitment: c,
-        }
+        })
     }
 
     fn salt_of(op: &KernelOp) -> u64 {
@@ -2875,5 +2857,109 @@ mod tests {
             double.calls_to("eth_sendRawTransaction").is_empty(),
             "nothing is sent"
         );
+    }
+}
+
+#[cfg(test)]
+mod abi_drift_tests {
+    //! The relay writes the contracts' interfaces by hand (`sol!` above);
+    //! the repository tracks each contract's compiled ABI under `abi/`
+    //! (`scripts/emit-abi-bundle.sh` writes it from the Foundry build). Every
+    //! function the relay calls and every event it reads is held here to
+    //! the tracked ABI: the selector or topic, and a function's return
+    //! types, so a drift fails in `cargo test`, not on a chain. The two
+    //! standard interfaces (`IERC20Funding`, ERC-20; `IERC1271WalletCode`,
+    //! ERC-1271) are a token's and a wallet's, not this repository's, and
+    //! have no tracked ABI.
+    use super::*;
+    use alloy::json_abi::JsonAbi;
+    use alloy::sol_types::{SolCall, SolEvent, SolType};
+
+    fn tracked(contract: &str) -> JsonAbi {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../abi")
+            .join(format!("{contract}.json"));
+        let text = std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+        serde_json::from_str(&text).unwrap_or_else(|e| panic!("{contract}'s ABI: {e}"))
+    }
+
+    /// The relay's call `C` is `contract`'s function `name`: the same
+    /// selector and the same return types.
+    fn same_call<C: SolCall>(abi: &JsonAbi, contract: &str, name: &str) {
+        let functions = abi
+            .function(name)
+            .unwrap_or_else(|| panic!("{contract} has no function {name}"));
+        let f = functions
+            .iter()
+            .find(|f| f.selector() == C::SELECTOR)
+            .unwrap_or_else(|| {
+                panic!(
+                    "{contract}.{name}: the relay calls {} and the tracked ABI has {:?}",
+                    C::SIGNATURE,
+                    functions.iter().map(|f| f.signature()).collect::<Vec<_>>()
+                )
+            });
+        let outputs = format!(
+            "({})",
+            f.outputs
+                .iter()
+                .map(|p| p.selector_type().into_owned())
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+        assert_eq!(
+            <C::ReturnTuple<'_> as SolType>::SOL_NAME,
+            outputs,
+            "{contract}.{name}: the return types the relay decodes"
+        );
+    }
+
+    /// The relay's event `E` is `contract`'s event `name`: the same topic.
+    fn same_event<E: SolEvent>(abi: &JsonAbi, contract: &str, name: &str) {
+        let events = abi
+            .event(name)
+            .unwrap_or_else(|| panic!("{contract} has no event {name}"));
+        assert!(
+            events.iter().any(|e| e.selector() == E::SIGNATURE_HASH),
+            "{contract}.{name}: the relay reads {} and the tracked ABI has {:?}",
+            E::SIGNATURE,
+            events.iter().map(|e| e.signature()).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn the_relay_s_interfaces_are_the_tracked_abis() {
+        let v = tracked("FigaroBatchVerifier");
+        same_call::<IFigaroBatchVerifier::settleBatchCall>(
+            &v,
+            "FigaroBatchVerifier",
+            "settleBatch",
+        );
+        same_call::<IFigaroBatchVerifier::stateRootCall>(&v, "FigaroBatchVerifier", "stateRoot");
+        same_call::<IFigaroBatchVerifier::programVKeyCall>(
+            &v,
+            "FigaroBatchVerifier",
+            "programVKey",
+        );
+        same_event::<IFigaroBatchVerifier::BatchSettled>(&v, "FigaroBatchVerifier", "BatchSettled");
+        same_event::<IFigaroBatchVerifier::BatchOperations>(
+            &v,
+            "FigaroBatchVerifier",
+            "BatchOperations",
+        );
+
+        let u = tracked("UsageCounter");
+        same_call::<IUsageCounter::currentPeriodCall>(&u, "UsageCounter", "currentPeriod");
+        same_call::<IUsageCounter::sellerCountedCall>(&u, "UsageCounter", "sellerCounted");
+
+        let c = tracked("ClauseRegistry");
+        same_call::<IClauseRegistry::depositOfCall>(&c, "ClauseRegistry", "depositOf");
+        let p = tracked("ProcessRegistry");
+        same_call::<IProcessRegistry::bindingsCall>(&p, "ProcessRegistry", "bindings");
+        let a = tracked("AgreementRegistry");
+        same_call::<IAgreementRegistry::bindingsCall>(&a, "AgreementRegistry", "bindings");
+        let m = tracked("MembersRegistry");
+        same_call::<IMembersRegistry::registeredCall>(&m, "MembersRegistry", "registered");
     }
 }

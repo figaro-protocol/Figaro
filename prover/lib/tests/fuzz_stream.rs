@@ -6,10 +6,11 @@
 //! deliberately malformed ones — runs each on `FigaroCore` or
 //! `AttestationCoordinator`, and writes what the contract did to
 //! `test/fixtures/streams/kernel.jsonl`, one JSON object per line. This
-//! file replays the stream through `apply_batch_with_state`, one operation
-//! per batch over the state the previous batch left — each attestation
-//! carrying the coordinator's own arguments — and
-//! asserts:
+//! file replays the stream through both entries of the rules — the relay's
+//! native run and the guest's `apply_guest` on the witness the relay builds
+//! (`common::run_both_with_state`, which holds the two to one answer) — one
+//! operation per batch over the state the previous batch left, each
+//! attestation carrying the coordinator's own arguments, and asserts:
 //!
 //!   - every operation FigaroCore accepted, the mirror accepts, with the
 //!     same process id and order hash;
@@ -62,9 +63,12 @@
 //! signature over the resolve struct, made here with the caller's key; an
 //! attestation's caller likewise signs the attest struct here.
 //!
-//! The test is `#[ignore]`d because it needs the stream the Foundry half
-//! writes; `scripts/test-cross-impl-fuzz.sh` runs both halves under one seed.
-//! Run alone, a missing stream is a failure, never a skip.
+//! It needs the stream the Foundry half writes, so it is a test target of
+//! its own that `cargo test -p figaro-kernel` does not select: it builds only
+//! with the `cross-impl-fuzz` feature (`prover/lib/Cargo.toml`), and
+//! `scripts/test-cross-impl-fuzz.sh` runs both halves under one seed with
+//! `cargo test -p figaro-kernel --features cross-impl-fuzz --test fuzz_stream`.
+//! Selected without the stream, it fails, never skips.
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
@@ -72,12 +76,18 @@ use alloy_primitives::{keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
-use figaro_kernel::kernel::{apply_batch_with_state, derive_commitment_ids};
+use figaro_kernel::kernel::derive_commitment_ids;
 use figaro_kernel::operation_stream::{
     decode_operation_stream, encode_operation_stream, encode_stream_parts,
 };
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
+
+mod common;
+use common::{
+    addr, b256, count, encode_log, hex_bytes, key_address, make_signing_key, run_both_with_state,
+    s, sign_digest, signature, u256, words,
+};
 
 /// The Foundry half's keyring.
 const KEYS: [u64; 5] = [0xB0B, 0x5E11, 0x5E12, 0x5E13, 0xB0B2];
@@ -85,13 +95,7 @@ const KEYS: [u64; 5] = [0xB0B, 0x5E11, 0x5E12, 0x5E13, 0xB0B2];
 fn stream() -> Vec<serde_json::Value> {
     let path = std::env::var("KERNEL_FUZZ_STREAM")
         .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| {
-            let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-            p.pop(); // prover/
-            p.pop(); // repo root
-            p.push("test/fixtures/streams/kernel.jsonl");
-            p
-        });
+        .unwrap_or_else(|_| common::repo_root().join("test/fixtures/streams/kernel.jsonl"));
     let text = std::fs::read_to_string(&path).unwrap_or_else(|e| {
         panic!(
             "read {}: {e} — run scripts/test-cross-impl-fuzz.sh, which writes the stream first",
@@ -104,101 +108,8 @@ fn stream() -> Vec<serde_json::Value> {
         .collect()
 }
 
-fn s(v: &serde_json::Value) -> &str {
-    v.as_str().expect("string field")
-}
-fn b256(v: &serde_json::Value) -> B256 {
-    B256::from_str(s(v)).expect("bytes32")
-}
-fn addr(v: &serde_json::Value) -> Address {
-    Address::from_str(s(v)).expect("address")
-}
-fn u256(v: &serde_json::Value) -> U256 {
-    U256::from_str_radix(s(v), 10).expect("decimal uint")
-}
-fn count(v: &serde_json::Value) -> usize {
-    s(v).parse().expect("count")
-}
-
-fn signature(v: &serde_json::Value) -> Signature {
-    let hex = s(v).trim_start_matches("0x");
-    let bytes: Vec<u8> = (0..hex.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).expect("hex"))
-        .collect();
-    assert_eq!(bytes.len(), 65, "a stream signature is 65 bytes");
-    Signature {
-        r: B256::from_slice(&bytes[..32]),
-        s: B256::from_slice(&bytes[32..64]),
-        v: bytes[64],
-    }
-}
-
-fn words(v: &serde_json::Value) -> Vec<B256> {
-    v.as_array().expect("array").iter().map(b256).collect()
-}
-
-fn hex_bytes(v: &serde_json::Value) -> Vec<u8> {
-    let hex = s(v).trim_start_matches("0x");
-    (0..hex.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).expect("hex"))
-        .collect()
-}
-
-/// The `Attestation` event as the EVM logs it: the signature and the three
-/// indexed words as topics, the three unindexed words as data.
-fn encode_log(e: &AttestationEventData) -> (Vec<B256>, Vec<u8>) {
-    let signature = keccak256(b"Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
-    let mut attester = [0u8; 32];
-    attester[12..].copy_from_slice(e.attester.as_slice());
-    let mut data = Vec::with_capacity(96);
-    data.extend_from_slice(e.clause_id.as_slice());
-    let mut stage = [0u8; 32];
-    stage[31] = e.stage;
-    data.extend_from_slice(&stage);
-    data.extend_from_slice(e.content_ref.as_slice());
-    (
-        vec![signature, e.order_hash, e.process_id, B256::from(attester)],
-        data,
-    )
-}
-
-fn make_signing_key(secret: u64) -> SigningKey {
-    let mut bytes = [0u8; 32];
-    bytes[24..].copy_from_slice(&secret.to_be_bytes());
-    SigningKey::from_bytes((&bytes).into()).unwrap()
-}
-
-fn key_address(key: &SigningKey) -> Address {
-    let pubkey = key.verifying_key().to_encoded_point(false);
-    Address::from_slice(&keccak256(&pubkey.as_bytes()[1..])[12..])
-}
-
-fn sign_digest(key: &SigningKey, digest: &B256) -> Signature {
-    use k256::ecdsa::{signature::hazmat::PrehashSigner, RecoveryId};
-    let (sig, recid): (k256::ecdsa::Signature, RecoveryId) =
-        key.sign_prehash(digest.as_slice()).unwrap();
-    let bytes = sig.to_bytes();
-    Signature {
-        v: recid.to_byte() + 27,
-        r: B256::from_slice(&bytes[..32]),
-        s: B256::from_slice(&bytes[32..]),
-    }
-}
-
 fn commitment(o: &serde_json::Value) -> Commitment {
-    Commitment {
-        process_id: b256(&o["commitmentProcessId"]),
-        buyer: addr(&o["buyer"]),
-        seller: addr(&o["seller"]),
-        token: addr(&o["token"]),
-        payment: u256(&o["payment"]),
-        running_total: u256(&o["runningTotal"]),
-        checkout_hash: b256(&o["checkoutHash"]),
-        salt: u256(&o["salt"]),
-        commit_deadline: u256(&o["commitDeadline"]),
-    }
+    common::commitment_json(o, "commitmentProcessId")
 }
 
 /// The process id of the empty `0x02` entry the Foundry half writes after
@@ -467,7 +378,6 @@ fn same_error(kernel: &str, mirror: &str) -> bool {
 }
 
 #[test]
-#[ignore = "needs the stream the Foundry half writes; run scripts/test-cross-impl-fuzz.sh"]
 fn the_mirror_answers_every_operation_as_the_kernel_did() {
     let lines = stream();
     let header = lines
@@ -529,9 +439,8 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                 // cumulative value in the mirror's state (zero for a
                 // process the mirror never saw).
                 let running_total = state
-                    .full_processes()
+                    .process(&process_id)
                     .unwrap()
-                    .get(&process_id)
                     .map(|p| p.running_total)
                     .unwrap_or(U256::ZERO);
                 applied_value = running_total;
@@ -650,7 +559,7 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
         } else {
             "ok"
         };
-        match (apply_batch_with_state(&input), outcome) {
+        match (run_both_with_state(&input), outcome) {
             (Ok(_), kernel_error) if verifier != "ok" => {
                 rejected += 1;
                 wallet_code_refused += 1;
@@ -756,7 +665,7 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
     for process in lines.iter().filter(|l| s(&l["type"]) == "process") {
         processes += 1;
         let pid = b256(&process["processId"]);
-        match state.full_processes().unwrap().get(&pid) {
+        match state.process(&pid).unwrap() {
             None => divergences.push(format!("process {pid}: missing from the mirror")),
             Some(ps) => {
                 if ps.running_total != u256(&process["runningTotal"]) {
@@ -769,10 +678,10 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
             }
         }
     }
-    if state.full_processes().unwrap().len() != processes {
+    let held = state.to_snapshot().processes.len();
+    if held != processes {
         divergences.push(format!(
-            "the mirror holds {} processes, the kernel {processes}",
-            state.full_processes().unwrap().len()
+            "the mirror holds {held} processes, the kernel {processes}"
         ));
     }
 

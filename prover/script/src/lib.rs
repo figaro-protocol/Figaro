@@ -22,7 +22,7 @@ use alloy_primitives::{address, keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
 
 pub mod canonical;
-pub use canonical::{canonicalize, canonicalize_json};
+pub use canonical::canonicalize;
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::types::*;
@@ -236,5 +236,44 @@ pub fn build_batch_input_of(processes: usize) -> BatchInput {
         },
         usage_claims,
         usage_period: 0,
+    }
+}
+
+/// `c` as a commit signed by both parties of the canonical batch (the buyer's
+/// and the first seller's keys) under the canonical domain: the relay's tests'
+/// one builder of a signed commit of their own.
+pub fn signed_commit_of(c: &Commitment) -> KernelOp {
+    let domain = domain_separator(CHAIN_ID, CORE);
+    KernelOp::Commit {
+        commitment: c.clone(),
+        buyer_sig: sign_commitment(c, &domain, &make_signing_key(BUYER_KEY)),
+        seller_sig: sign_commitment(c, &domain, &make_signing_key(SELLER1_KEY)),
+    }
+}
+
+/// The canonical seller attestation (`build_canonical_batch_input`'s second
+/// operation) in the wallet-code form under `role`, carrying
+/// `authorization`: the relay's tests' one builder of a wallet-code
+/// attestation.
+pub fn wallet_code_attestation_of(role: AttesterRole, authorization: &[u8]) -> KernelOp {
+    let KernelOp::AttestAsSeller {
+        target,
+        clause_id,
+        stage,
+        content_ref,
+        proof,
+        ..
+    } = build_canonical_batch_input().operations[1].clone()
+    else {
+        panic!("the canonical batch's second operation is the seller's attestation")
+    };
+    KernelOp::AttestByWalletCode {
+        role,
+        target,
+        clause_id,
+        stage,
+        content_ref,
+        authorization: alloy_primitives::Bytes::copy_from_slice(authorization),
+        proof,
     }
 }

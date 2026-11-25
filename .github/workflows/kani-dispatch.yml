@@ -5,13 +5,12 @@ name: Kani (dispatch)
 # crate is its own workspace and lock and reaches prover/lib by path. Started
 # by hand only.
 #
-# The harnesses are the four in formal/kani/src/lib.rs. Each fixes its own
-# bound with #[kani::unwind(34)], and a_process_conserves_its_bonds fixes its
-# process at two orders (`for _ in 0..2`). So no input changes the unwind or
-# the order count: a three-order run needs a harness that does not exist, and
-# writing it is a change to formal/. The header of a_process_conserves_its_bonds
-# says why it stops at two: a third symbolic 256-bit payment drove CBMC past
-# the 8 GB of the machine it first ran on.
+# The harnesses are the six in formal/kani/src/lib.rs. Each fixes its own
+# unwind bound, and no input changes it or the order count.
+# a_process_conserves_its_bonds fixes its process at two orders of full
+# 256-bit payments: a third drove CBMC past the 8 GB of the machine it first
+# ran on. a_three_order_process_conserves_its_bonds takes three orders with
+# each payment below 2^64.
 #
 # Does a standard runner carry it? The two-order harness needs most of 8 GB,
 # and a standard runner has 16 GB, so the four harnesses as written are
@@ -31,8 +30,10 @@ on:
                 options:
                     - all
                     - payouts_are_exact_or_overflow
+                    - bonds_are_exact_or_overflow
                     - one_order_conserves_its_bonds
                     - a_process_conserves_its_bonds
+                    - a_three_order_process_conserves_its_bonds
                     - resolved_running_total_is_the_exact_sum
                 default: all
             runner:
@@ -112,7 +113,7 @@ jobs:
                   args=()
                   if [ "$HARNESS" != "all" ]; then
                       case "$HARNESS" in
-                          payouts_are_exact_or_overflow|one_order_conserves_its_bonds|a_process_conserves_its_bonds|resolved_running_total_is_the_exact_sum) ;;
+                          payouts_are_exact_or_overflow|bonds_are_exact_or_overflow|one_order_conserves_its_bonds|a_process_conserves_its_bonds|a_three_order_process_conserves_its_bonds|resolved_running_total_is_the_exact_sum) ;;
                           *) echo "::error::unknown harness"; exit 1 ;;
                       esac
                       # A substring filter: no harness name contains another.

@@ -70,7 +70,7 @@ for ((round = 0; round < ROUNDS; round++)); do
     fi
 
     (cd prover && KERNEL_FUZZ_STREAM="$STREAM" \
-        cargo test --locked -p figaro-kernel --test fuzz_stream -- --ignored --nocapture)
+        cargo test --locked -p figaro-kernel --features cross-impl-fuzz --test fuzz_stream -- --nocapture)
 
     rm -f "$AGREEMENTS"
     (cd sdk && AGREEMENT_FUZZ_SEED="$seed" npx vitest run tests/merkleParity.test.ts)

@@ -11,9 +11,12 @@
 //! `0x00 ‖ path ‖ value hash` and a node's `0x01 ‖ left ‖ right`, both 65
 //! bytes, so neither can stand for the other without a keccak collision.
 //!
-//! A batch proves the leaves it touches against the previous root with a
-//! witness (`prove`), and one descent over those leaves (`verify_and_update`)
-//! checks the witness against the previous root and computes the new root.
+//! A batch proves the leaves it touches with a witness (`prove`), and one
+//! descent over those leaves (`roots`) checks the witness's shape and
+//! computes both the previous root and the new root. The guest commits the
+//! previous root as public value 0, and `FigaroBatchVerifier.settleBatch`
+//! refuses a batch whose previous root is not the root it holds
+//! (`StateRootMismatch`): the comparison with the stored root is the chain's.
 //! Leaves are inserted or updated, never removed: the Core never deletes an
 //! entry.
 
@@ -145,8 +148,6 @@ pub enum TreeError {
     ProofTooShort,
     /// The descent ended with proof items left.
     ProofNotConsumed,
-    /// The witness does not hash to the previous root.
-    PreviousRootMismatch,
 }
 
 struct Descent<'a> {
@@ -274,21 +275,8 @@ pub fn roots(leaves: &[WitnessedLeaf], proof: &[ProofItem]) -> Result<(B256, B25
     Ok((before.hash(), after.hash()))
 }
 
-/// `roots`, held to a given previous root: the new root.
-pub fn verify_and_update(
-    prev_root: B256,
-    leaves: &[WitnessedLeaf],
-    proof: &[ProofItem],
-) -> Result<B256, TreeError> {
-    let (before, after) = roots(leaves, proof)?;
-    if before != prev_root {
-        return Err(TreeError::PreviousRootMismatch);
-    }
-    Ok(after)
-}
-
 /// The proof for `paths` (strictly increasing) against the full set of
-/// leaves: the items `verify_and_update` consumes, in descent order.
+/// leaves: the items `roots` consumes, in descent order.
 pub fn prove(leaves: &BTreeMap<B256, B256>, paths: &[B256]) -> Vec<ProofItem> {
     let sorted: Vec<(B256, B256)> = leaves.iter().map(|(p, v)| (*p, *v)).collect();
     let mut out = Vec::new();

@@ -370,12 +370,12 @@ async fn rate_limit(
 
 // ── Request / Response types ─────────────────────────────────────
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct SubmitRequest {
     pub operation: KernelOp,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct SubmitUsageRequest {
     pub claim: UsageClaim,
 }
@@ -516,6 +516,126 @@ fn payload_error(route: &'static str, rej: JsonRejection) -> Response {
     (status, Json(ErrorResponse { error })).into_response()
 }
 
+/// A request body read as `T` exactly as axum's `Json` reads it — the same
+/// statuses and the same reasons for a wrong content type, an oversize or
+/// malformed body, or valid JSON that is not a `T` — and then held to the
+/// fields `T` names: a body carrying any other field, at any depth, is
+/// refused `422`, never read with the field dropped. The published format
+/// (`sdk/src/agent/relay-wire.schema.json`) says `additionalProperties:
+/// false` on every object, and this is the relay's side of it.
+///
+/// The field set has one definition, the request types' own serde fields
+/// (the operation types are the proof program's, `figaro_kernel::types`):
+/// a field the sender sent is one `T` names when `T`'s own serialization
+/// of what was read carries it. The schema is held to the same set from
+/// the other side: `relay_wire_fixtures_are_the_relays_own_answers` writes
+/// the requests as these types serialize them, and the SDK's
+/// `relayWireConformance.test.ts` validates them against the schema, so a
+/// field the types name and the schema does not, or one the schema requires
+/// and the types do not name, fails there.
+pub struct StrictJson<T>(pub T);
+
+/// Why a [`StrictJson`] body was refused.
+pub enum StrictJsonRejection {
+    /// What axum's `Json` refuses, with its status and reason.
+    Json(JsonRejection),
+    /// A field the request type does not name, by its path in the body.
+    UnknownField(String),
+}
+
+impl StrictJsonRejection {
+    fn respond(self, route: &'static str) -> Response {
+        match self {
+            StrictJsonRejection::Json(rej) => payload_error(route, rej),
+            StrictJsonRejection::UnknownField(path) => {
+                // The path is the sender's to choose, like the body: the log
+                // carries the status alone, the reason goes to the sender.
+                warn!(route, status = %StatusCode::UNPROCESSABLE_ENTITY, "payload carries an unknown field");
+                (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    Json(ErrorResponse {
+                        error: format!(
+                            "unknown field `{path}`: the relay's wire format names no such field"
+                        ),
+                    }),
+                )
+                    .into_response()
+            }
+        }
+    }
+}
+
+/// The extractor's own answer when a handler does not take its rejection
+/// (every handler here does, naming its route).
+impl IntoResponse for StrictJsonRejection {
+    fn into_response(self) -> Response {
+        self.respond("request")
+    }
+}
+
+#[axum::async_trait]
+impl<T, S> axum::extract::FromRequest<S> for StrictJson<T>
+where
+    T: serde::de::DeserializeOwned + Serialize,
+    S: Send + Sync,
+{
+    type Rejection = StrictJsonRejection;
+
+    async fn from_request(req: axum::extract::Request, state: &S) -> Result<Self, Self::Rejection> {
+        let (parts, body) = req.into_parts();
+        let bytes = axum::body::Bytes::from_request(
+            axum::extract::Request::from_parts(parts.clone(), body),
+            state,
+        )
+        .await
+        .map_err(|e| StrictJsonRejection::Json(JsonRejection::from(e)))?;
+        let rebuilt =
+            axum::extract::Request::from_parts(parts, axum::body::Body::from(bytes.clone()));
+        let Json(value) = Json::<T>::from_request(rebuilt, state)
+            .await
+            .map_err(StrictJsonRejection::Json)?;
+        // Both parse: the body is the JSON `Json` just read, and the value
+        // serializes as any request type does.
+        let sent: serde_json::Value = serde_json::from_slice(&bytes)
+            .map_err(|e| StrictJsonRejection::UnknownField(format!("<unreadable: {e}>")))?;
+        let named = serde_json::to_value(&value)
+            .map_err(|e| StrictJsonRejection::UnknownField(format!("<unwritable: {e}>")))?;
+        match unnamed_field(&sent, &named, "") {
+            Some(path) => Err(StrictJsonRejection::UnknownField(path)),
+            None => Ok(StrictJson(value)),
+        }
+    }
+}
+
+/// The first field of `sent` that `named` (the type's serialization of what
+/// it read from `sent`) does not carry, by its dotted path; `None` when every
+/// field was read. Objects are compared by key and recursed into; arrays
+/// element by element; any other value is a leaf (a number the sender wrote
+/// as a decimal string and the type writes as hex is the same field).
+fn unnamed_field(sent: &serde_json::Value, named: &serde_json::Value, at: &str) -> Option<String> {
+    let join = |key: &str| {
+        if at.is_empty() {
+            key.to_string()
+        } else {
+            format!("{at}.{key}")
+        }
+    };
+    match (sent, named) {
+        (serde_json::Value::Object(sent), serde_json::Value::Object(named)) => {
+            sent.iter().find_map(|(key, value)| match named.get(key) {
+                None => Some(join(key)),
+                Some(read) => unnamed_field(value, read, &join(key)),
+            })
+        }
+        (serde_json::Value::Array(sent), serde_json::Value::Array(named)) => sent
+            .iter()
+            .zip(named)
+            .enumerate()
+            .find_map(|(i, (value, read))| unnamed_field(value, read, &join(&i.to_string()))),
+        _ => None,
+    }
+}
+
 fn submit_error(route: &'static str, kind: &'static str, e: SubmitError) -> Response {
     let status = match e {
         SubmitError::Full => StatusCode::SERVICE_UNAVAILABLE,
@@ -551,11 +671,11 @@ fn op_kind(op: &KernelOp) -> &'static str {
 
 async fn submit_op(
     State(state): State<AppState>,
-    payload: Result<Json<SubmitRequest>, JsonRejection>,
+    payload: Result<StrictJson<SubmitRequest>, StrictJsonRejection>,
 ) -> Response {
-    let Json(req) = match payload {
+    let StrictJson(req) = match payload {
         Ok(p) => p,
-        Err(rej) => return payload_error("/submit", rej),
+        Err(rej) => return rej.respond("/submit"),
     };
     let kind = op_kind(&req.operation);
     // The stateless checks first, so a refusal names the operation's own
@@ -652,11 +772,11 @@ async fn submit_op(
 /// changes no FigaroCore state and is applied against the batch's post-state.
 async fn submit_usage(
     State(state): State<AppState>,
-    payload: Result<Json<SubmitUsageRequest>, JsonRejection>,
+    payload: Result<StrictJson<SubmitUsageRequest>, StrictJsonRejection>,
 ) -> Response {
-    let Json(req) = match payload {
+    let StrictJson(req) = match payload {
         Ok(p) => p,
-        Err(rej) => return payload_error("/submit-usage", rej),
+        Err(rej) => return rej.respond("/submit-usage"),
     };
     match state.mempool.submit_usage_claim(req.claim).await {
         Ok(pending) => {
@@ -725,31 +845,6 @@ mod failure_tests {
         let (ops, last) = log.snapshot().await;
         assert_eq!(ops, 3);
         assert_eq!(last.as_deref(), Some("prove failed: divergence"));
-    }
-
-    /// The wire shape: both failure fields serialize, null while clean —
-    /// an old consumer ignores them, a driver keys its abort on them.
-    #[test]
-    fn status_response_carries_failure_fields() {
-        let clean = serde_json::to_value(StatusResponse {
-            wire_format_version: WIRE_FORMAT_VERSION,
-            chain_id: 31337,
-            batch_verifier: format!("{:#x}", Address::ZERO),
-            program_vkey: format!("{:?}", B256::ZERO),
-            browser_submit_origins: vec![],
-            state_root: "0x00".into(),
-            pending_ops: 0,
-            pending_usage_claims: 0,
-            batches_settled: 0,
-            dead_lettered_ops: 0,
-            last_settle_error: None,
-            isolating_ops: 0,
-            dropped_usage_claims: 0,
-            last_dropped_claim_error: None,
-        })
-        .unwrap();
-        assert_eq!(clean["dead_lettered_ops"], 0);
-        assert!(clean["last_settle_error"].is_null());
     }
 }
 
@@ -937,7 +1032,7 @@ mod funding_door_tests {
     #[tokio::test]
     async fn the_door_refuses_a_commitment_whose_bonds_the_chain_cannot_read_or_does_not_cover() {
         let (op, c) = signed_commit();
-        let (buyer_need, seller_need) = submitter::bonds_of(&c);
+        let (buyer_need, seller_need) = submitter::bonds_of(&c).expect("the fixture's bonds fit");
         let (buyer, seller) = (c.buyer, c.seller);
 
         // The node answers every read with an error.

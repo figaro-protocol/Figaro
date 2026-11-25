@@ -6,14 +6,13 @@
 //! every party's deposit and payout, FigaroCore's balance delta and every
 //! process's final accumulator and active count to
 //! `test/fixtures/kernel-transition-vectors.json`. This file signs the same
-//! commitments with the same keys, applies them through `apply_batch` — one
+//! commitments with the same keys, applies them through both entries of the rules (the relay's native run and the guest's `apply_guest`, `common::run_both_with_state`) — one
 //! batch per scenario: the commits, then a resolve per process when the
 //! scenario resolves — and asserts every figure. The mirror's payout and
 //! bond arithmetic is thereby locked to FigaroCore's, not to a comment.
 use std::collections::BTreeMap;
-use std::str::FromStr;
 
-use alloy_primitives::{keccak256, Address, B256, U256};
+use alloy_primitives::{Address, B256, U256};
 use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
@@ -24,58 +23,16 @@ use figaro_kernel::operation_stream::resolved_running_total;
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
 
-const BUYER_KEY: u64 = 0xB0B;
-const SELLER1_KEY: u64 = 0x5E11;
-const SELLER2_KEY: u64 = 0x5E12;
-const SELLER3_KEY: u64 = 0x5E13;
+mod common;
+use common::{
+    addr, b256, commitment_json, count, empty_snapshot, key_address, make_signing_key,
+    run_both_with_state, s, sign_digest, u256, BUYER_KEY, SELLER1_KEY, SELLER2_KEY, SELLER3_KEY,
+};
+
 const BLOCK_TIMESTAMP: u64 = 1000;
 
 fn fixture() -> serde_json::Value {
-    let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    p.pop(); // prover/
-    p.pop(); // repo root
-    p.push("test/fixtures/kernel-transition-vectors.json");
-    let text = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
-    serde_json::from_str(&text).expect("fixture JSON")
-}
-
-fn s(v: &serde_json::Value) -> &str {
-    v.as_str().expect("string field")
-}
-fn b256(v: &serde_json::Value) -> B256 {
-    B256::from_str(s(v)).expect("bytes32")
-}
-fn addr(v: &serde_json::Value) -> Address {
-    Address::from_str(s(v)).expect("address")
-}
-fn u256(v: &serde_json::Value) -> U256 {
-    U256::from_str_radix(s(v), 10).expect("decimal uint")
-}
-fn count(v: &serde_json::Value) -> usize {
-    s(v).parse().expect("count")
-}
-
-fn make_signing_key(secret: u64) -> SigningKey {
-    let mut bytes = [0u8; 32];
-    bytes[24..].copy_from_slice(&secret.to_be_bytes());
-    SigningKey::from_bytes((&bytes).into()).unwrap()
-}
-
-fn key_address(key: &SigningKey) -> Address {
-    let pubkey = key.verifying_key().to_encoded_point(false);
-    Address::from_slice(&keccak256(&pubkey.as_bytes()[1..])[12..])
-}
-
-fn sign_digest(key: &SigningKey, digest: &B256) -> Signature {
-    use k256::ecdsa::{signature::hazmat::PrehashSigner, RecoveryId};
-    let (sig, recid): (k256::ecdsa::Signature, RecoveryId) =
-        key.sign_prehash(digest.as_slice()).unwrap();
-    let bytes = sig.to_bytes();
-    Signature {
-        v: recid.to_byte() + 27,
-        r: B256::from_slice(&bytes[..32]),
-        s: B256::from_slice(&bytes[32..]),
-    }
+    common::fixture("kernel-transition-vectors.json")
 }
 
 /// The parity keys, addressed by the wallet they derive — a fixture party is
@@ -89,24 +46,7 @@ fn keyring() -> BTreeMap<Address, SigningKey> {
 }
 
 fn commitment(o: &serde_json::Value) -> Commitment {
-    Commitment {
-        process_id: b256(&o["commitmentProcessId"]),
-        buyer: addr(&o["buyer"]),
-        seller: addr(&o["seller"]),
-        token: addr(&o["token"]),
-        payment: u256(&o["payment"]),
-        running_total: u256(&o["runningTotal"]),
-        checkout_hash: b256(&o["checkoutHash"]),
-        salt: u256(&o["salt"]),
-        commit_deadline: u256(&o["commitDeadline"]),
-    }
-}
-
-fn empty_snapshot() -> KernelStateSnapshot {
-    KernelStateSnapshot {
-        processes: vec![],
-        order_status: vec![],
-    }
+    commitment_json(o, "commitmentProcessId")
 }
 
 #[test]
@@ -184,21 +124,10 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
             usage_claims: vec![],
             usage_period: 0,
         };
-        let (pv, positions, _events, state) =
-            apply_batch_with_state(&input).unwrap_or_else(|e| panic!("{name}: {e:?}"));
-
-        // ── The guest's witnessed run reaches the same public values ──
-        // The guest reads only the entries the batch touches, proved against
-        // the previous root; its public values are the native run's.
-        let guest = guest_input(&input).unwrap_or_else(|e| panic!("{name}: the witness: {e:?}"));
-        let (guest_pv, _, _) =
-            apply_guest(&guest).unwrap_or_else(|e| panic!("{name}: the guest: {e:?}"));
-        // Every public value, the positions' hash among them.
-        assert_eq!(
-            guest_pv.abi_encode(),
-            pv.abi_encode(),
-            "{name}: the guest's public values are the native run's"
-        );
+        // Both entries: the guest's witnessed run reaches the native run's
+        // public values, positions and events (`common::run_both_with_state`).
+        let (_pv, positions, _events, state) =
+            run_both_with_state(&input).unwrap_or_else(|e| panic!("{name}: {e:?}"));
 
         // A second batch on the post-state: one process's resolve replayed
         // is refused on both paths alike.
@@ -208,14 +137,10 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
                 prev_state: state.to_snapshot(),
                 ..input.clone()
             };
+            // Refused natively, and by the guest with the same error.
             assert!(
-                apply_batch_with_state(&replay).is_err(),
+                run_both_with_state(&replay).is_err(),
                 "{name}: a resolve replayed is refused"
-            );
-            let replay_guest = guest_input(&replay);
-            assert!(
-                replay_guest.is_err() || apply_guest(&replay_guest.unwrap()).is_err(),
-                "{name}: the guest refuses the replayed resolve too"
             );
         }
 
@@ -298,9 +223,8 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
             let p = &sc[format!("pr{pr}")];
             let pid = b256(&p["processId"]);
             let ps = state
-                .full_processes()
+                .process(&pid)
                 .unwrap()
-                .get(&pid)
                 .unwrap_or_else(|| panic!("{name}: process {pr} missing from the mirror"));
             assert_eq!(
                 ps.running_total,

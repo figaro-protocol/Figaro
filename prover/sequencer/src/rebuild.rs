@@ -12,7 +12,7 @@
 //! (`REBUILD_FROM_CHAIN=1`); no other relay, file or call trace is
 //! read, however the batch's call reached the verifier.
 
-use alloy::providers::{Provider, ProviderBuilder};
+use alloy::providers::Provider;
 use alloy::rpc::types::Filter;
 use alloy::sol_types::SolEvent;
 use alloy_primitives::{Address, B256};
@@ -45,11 +45,7 @@ pub async fn rebuild_from_chain(
     from_block: u64,
     chain_id: u64,
 ) -> Result<Rebuilt, String> {
-    let provider = ProviderBuilder::new().connect_http(
-        rpc_url
-            .parse()
-            .map_err(|e| format!("invalid rpc url: {e}"))?,
-    );
+    let provider = crate::submitter::read_provider(rpc_url)?;
     let contract = IFigaroBatchVerifier::new(verifier, &provider);
     let head = provider.get_block_number().await.map_err(|e| {
         format!(

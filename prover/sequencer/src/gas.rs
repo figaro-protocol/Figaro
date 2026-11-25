@@ -177,14 +177,17 @@ pub const DEFAULT_SETTLE_GAS_CAP: u64 = 16_777_216;
 const SETTLE_FRAMING_CALLDATA_GAS: u64 = 2_600 * CALLDATA_NONZERO_BYTE_GAS;
 
 /// The bytes a resolve's operation stream carries per order: the commitment
-/// the entry carries whole (`operation_stream::COMMITMENT_BYTES`).
-const RESOLVE_STREAM_ORDER_BYTES: u64 = 252;
+/// the entry carries whole, the guest encoder's own width.
+const RESOLVE_STREAM_ORDER_BYTES: u64 = figaro_kernel::operation_stream::COMMITMENT_BYTES as u64;
 /// The bytes a resolve's operation stream carries besides its orders, in
 /// the dearer of its two forms, the wallet-code one at the longest
-/// authorization this relay takes: the entry's tag, process id, length,
-/// authorization and count (the signed form carries a 65-byte signature in
-/// place of the length and the authorization).
-const RESOLVE_STREAM_FIXED_BYTES: u64 = 1 + 32 + 2 + MAX_WALLET_AUTHORIZATION_BYTES as u64 + 2;
+/// authorization this relay takes: the entry's tag, process id, length and
+/// count (the guest encoder's `RESOLVE_BY_WALLET_CODE_FIXED_BYTES`) and the
+/// authorization (the signed form carries a 65-byte signature in place of
+/// the length and the authorization).
+const RESOLVE_STREAM_FIXED_BYTES: u64 =
+    figaro_kernel::operation_stream::RESOLVE_BY_WALLET_CODE_FIXED_BYTES as u64
+        + MAX_WALLET_AUTHORIZATION_BYTES as u64;
 
 /// The gas a resolution of `orders` orders is planned at, in the dearer of
 /// its two forms, so that every process this relay admits resolves by its
@@ -603,6 +606,36 @@ mod tests {
         assert_eq!(MIN_SETTLE_GAS_CAP, 1_298_439);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP), 1);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP - 1), 0);
+    }
+
+    /// The stream bytes a resolve is planned at are the bytes the guest's
+    /// encoder writes for the dearer form: a wallet-code resolve at the
+    /// longest authorization this relay takes, of one order and of three.
+    #[test]
+    fn the_planned_resolve_stream_bytes_are_the_encoders() {
+        use figaro_kernel::operation_stream::encode_operation_stream;
+        let order = figaro_prove_test::build_canonical_batch_input()
+            .operations
+            .into_iter()
+            .find_map(|op| match op {
+                KernelOp::Commit { commitment, .. } => Some(commitment),
+                _ => None,
+            })
+            .expect("the canonical batch commits an order");
+        for orders in [1usize, 3] {
+            let op = KernelOp::ResolveByWalletCode {
+                process_id: alloy_primitives::B256::repeat_byte(7),
+                running_total: alloy_primitives::U256::ZERO,
+                commitments: vec![order.clone(); orders],
+                authorization: vec![0xab; MAX_WALLET_AUTHORIZATION_BYTES].into(),
+            };
+            let bytes = encode_operation_stream(&[op], &[]);
+            assert_eq!(
+                bytes.len() as u64,
+                RESOLVE_STREAM_FIXED_BYTES + orders as u64 * RESOLVE_STREAM_ORDER_BYTES,
+                "{orders} orders"
+            );
+        }
     }
 
     #[test]

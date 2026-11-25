@@ -1,15 +1,25 @@
-/// Parity tests: verify the Rust mirror produces identical outputs
-/// to FigaroCore for the same inputs.
-///
-/// The expected values are extracted from Foundry's EIP-712 parity test
-/// (test/kernel/Eip712ParityTest.t.sol) run with --via-ir -vvvv. FigaroCore
-/// is frozen, so these vectors never move.
-use alloy_primitives::{address, b256, keccak256, Address, B256, U256};
+//! Parity tests: the Rust mirror produces FigaroCore's outputs for the same
+//! inputs, through both entries of the rules (`common::run_both`: the
+//! relay's native run and the proof program's `apply_guest`).
+//!
+//! The two commitments the flows run on are the SDK's frozen vectors
+//! (`test/fixtures/eip712-vectors.json`, written by
+//! `sdk/tests/eip712Parity.test.ts`): the root as frozen, and the sub-order
+//! re-pointed at the root's process. Their hashes are held to the fixture by
+//! `eip712_vectors.rs`, and FigaroCore's by `Eip712ParityTest`.
+use alloy_primitives::{keccak256, B256, U256};
 use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
-use figaro_kernel::kernel::apply_batch;
+use figaro_kernel::kernel::derive_commitment_ids;
 use figaro_kernel::types::*;
+
+mod common;
+use common::{
+    addr, b256, commitment_json, empty_snapshot, fixture, make_signing_key, run_both,
+    sign_commitment, sign_digest, BUYER, BUYER_KEY, CHAIN_ID, CORE, SELLER1, SELLER1_KEY, SELLER2,
+    SELLER2_KEY, TOKEN,
+};
 
 // ── Clause-key helpers ────────────────────────────────────────────
 //
@@ -25,11 +35,9 @@ use canonical::canonicalize;
 /// The spec file as pinned: the SDK's `canonicalize` of the whole document,
 /// `block` included.
 fn load_pinned_spec_json(clause_id_str: &str) -> String {
-    let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    p.pop(); // prover/
-    p.pop(); // repo root
-    p.push("clauses");
-    p.push(format!("{clause_id_str}.json"));
+    let p = common::repo_root()
+        .join("clauses")
+        .join(format!("{clause_id_str}.json"));
     let raw = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
     let value: serde_json::Value = serde_json::from_str(&raw).expect("spec JSON");
     canonicalize(&value)
@@ -54,13 +62,7 @@ fn load_spec_json(clause_id_str: &str) -> String {
 /// The SDK's key for a clause in `clauses/`, from the harvested
 /// `test/fixtures/clause-keys.json`.
 fn sdk_clause_key(clause_id_str: &str) -> B256 {
-    let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    p.pop(); // prover/
-    p.pop(); // repo root
-    p.push("test/fixtures/clause-keys.json");
-    let text = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
-    let keys: serde_json::Value = serde_json::from_str(&text).expect("fixture JSON");
-    keys[clause_id_str]
+    fixture("clause-keys.json")[clause_id_str]
         .as_str()
         .unwrap_or_else(|| panic!("{clause_id_str} is not in the fixture"))
         .parse()
@@ -77,146 +79,66 @@ fn clause_leaf(clause_key: &B256, clause_data: &str) -> B256 {
     keccak256(keccak256(preimage))
 }
 
-// ── Test keys (match Foundry's constants) ─────────────────────────
+// ── The frozen commitments ────────────────────────────────────────
 
-const BUYER_KEY: u64 = 0xB0B;
-const SELLER1_KEY: u64 = 0x5E11;
-const SELLER2_KEY: u64 = 0x5E12;
-
-// Addresses derived by Foundry's vm.addr():
-const BUYER: Address = address!("0376AAc07Ad725E01357B1725B5ceC61aE10473c");
-const SELLER1: Address = address!("Ad29D7a8aD3639F97798c768202F27C1dE81DC55");
-const SELLER2: Address = address!("C22667C5926d1C9af6C0fa8Cedc4ea3e489F6F70");
-
-// Foundry deterministic deployer addresses:
-const TOKEN: Address = address!("5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f");
-const CORE: Address = address!("2e234DAe75C793f67A35089C9d99245E1C58470b");
-const CHAIN_ID: u64 = 31337;
-
-// ── Expected values from Foundry ──────────────────────────────────
-
-const DOMAIN_SEP: B256 = b256!("6325a49af8b05e724de86f3ff9397854cd7733afbdaf519b96ee7b6816891bc4");
-const ROOT_STRUCT_HASH: B256 =
-    b256!("0115085fc5113fad97cd557f126d1fe0269247cc312a2c364415b20d278763bc");
-const ROOT_DIGEST: B256 = b256!("218b062c3f37a305b72333c552ba4b9533f40af565e315b35d7d48e47c3d033c");
-const PROCESS_ID: B256 = b256!("218b062c3f37a305b72333c552ba4b9533f40af565e315b35d7d48e47c3d033c");
-const ROOT_ORDER_HASH: B256 =
-    b256!("67bc40e86ea91a90e3c3945490a042f70c68e01f7e9136a2c3457902387e5178");
-const SUB_STRUCT_HASH: B256 =
-    b256!("03ad150d953fa26be34b210e132d814e3c30f5c887a0ccd5ecdb321fde6e7b8a");
-const SUB_DIGEST: B256 = b256!("daddc0cbc9d3bd9f28a6ac7602b21522c43dcd7859247aac29917d1474e60cfe");
-const SUB_ORDER_HASH: B256 =
-    b256!("e766eb795133192c5181d251fadc1786c3064e058473b36f3b770771643b5b02");
-
-// ── Signing helpers ───────────────────────────────────────────────
-
-fn make_signing_key(secret: u64) -> SigningKey {
-    let mut bytes = [0u8; 32];
-    bytes[24..].copy_from_slice(&secret.to_be_bytes());
-    SigningKey::from_bytes((&bytes).into()).unwrap()
+/// The SDK's frozen commitment vector `label` of `eip712-vectors.json`.
+fn vector_commitment(label: &str) -> Commitment {
+    let fx = fixture("eip712-vectors.json");
+    assert_eq!(fx["chainId"].as_u64(), Some(CHAIN_ID), "the vectors' chain");
+    assert_eq!(addr(&fx["verifyingContract"]), CORE, "the vectors' Core");
+    let v = fx["vectors"]
+        .as_array()
+        .expect("vectors")
+        .iter()
+        .find(|v| v["label"] == label)
+        .unwrap_or_else(|| panic!("no vector {label}"));
+    let c = commitment_json(&v["commitment"], "processId");
+    assert_eq!(
+        commitment_struct_hash(&c),
+        b256(&v["structHash"]),
+        "{label}: read as frozen"
+    );
+    c
 }
 
-fn sign_digest(key: &SigningKey, digest: &B256) -> Signature {
-    use k256::ecdsa::{signature::hazmat::PrehashSigner, RecoveryId};
+/// The root order: the SDK's frozen root vector.
+fn root_commitment() -> Commitment {
+    vector_commitment("root")
+}
 
-    let (sig, recid): (k256::ecdsa::Signature, RecoveryId) =
-        key.sign_prehash(digest.as_slice()).unwrap();
-    let sig_bytes = sig.to_bytes();
+/// The root order's process, derived as the Core derives it.
+fn root_process_id() -> B256 {
+    derive_commitment_ids(&domain_separator(CHAIN_ID, CORE), &root_commitment()).1
+}
 
-    Signature {
-        v: recid.to_byte() + 27, // Ethereum convention
-        r: B256::from_slice(&sig_bytes[..32]),
-        s: B256::from_slice(&sig_bytes[32..]),
+/// The second order: the SDK's frozen sub-order vector, under the root's
+/// process (the vector names a process of its own).
+fn sub_commitment() -> Commitment {
+    Commitment {
+        process_id: root_process_id(),
+        ..vector_commitment("sub")
     }
 }
 
-fn sign_commitment(c: &Commitment, domain: &B256, key: &SigningKey) -> Signature {
-    let struct_hash = commitment_struct_hash(c);
-    let digest = typed_data_hash(domain, &struct_hash);
-    sign_digest(key, &digest)
-}
+// ── The rules crate's signer recovery ──────────────────────────────────
 
-fn verify_address(key: &SigningKey, expected: &Address) {
-    let pubkey = key.verifying_key().to_encoded_point(false);
-    let hash = keccak256(&pubkey.as_bytes()[1..]);
-    let addr = Address::from_slice(&hash[12..]);
-    assert_eq!(&addr, expected, "derived address mismatch");
-}
-
-// ── FigaroCore parity (frozen vectors) ────────────────────────────────
-
+/// Each parity key signs for the wallet Foundry's `vm.addr` derives from it,
+/// as the rules crate's `recover_signer` reads it.
 #[test]
-fn test_address_derivation() {
-    let buyer_key = make_signing_key(BUYER_KEY);
-    let seller1_key = make_signing_key(SELLER1_KEY);
-    let seller2_key = make_signing_key(SELLER2_KEY);
-    verify_address(&buyer_key, &BUYER);
-    verify_address(&seller1_key, &SELLER1);
-    verify_address(&seller2_key, &SELLER2);
-}
-
-#[test]
-fn test_domain_separator() {
-    let ds = domain_separator(CHAIN_ID, CORE);
-    assert_eq!(ds, DOMAIN_SEP, "domain separator mismatch");
-}
-
-#[test]
-fn test_root_struct_hash() {
-    let root = root_commitment();
-    let sh = commitment_struct_hash(&root);
-    assert_eq!(sh, ROOT_STRUCT_HASH, "root struct hash mismatch");
-}
-
-#[test]
-fn test_root_digest() {
-    let root = root_commitment();
-    let sh = commitment_struct_hash(&root);
-    let digest = typed_data_hash(&DOMAIN_SEP, &sh);
-    assert_eq!(digest, ROOT_DIGEST, "root digest mismatch");
-}
-
-#[test]
-fn test_root_order_hash() {
-    let root = root_commitment();
-    let sh = commitment_struct_hash(&root);
-    let oh = compute_order_hash(&PROCESS_ID, &sh);
-    assert_eq!(oh, ROOT_ORDER_HASH, "root order hash mismatch");
-}
-
-#[test]
-fn test_sub_struct_hash() {
-    let sub = sub_commitment();
-    let sh = commitment_struct_hash(&sub);
-    assert_eq!(sh, SUB_STRUCT_HASH, "sub struct hash mismatch");
-}
-
-#[test]
-fn test_sub_digest() {
-    let sub = sub_commitment();
-    let sh = commitment_struct_hash(&sub);
-    let digest = typed_data_hash(&DOMAIN_SEP, &sh);
-    assert_eq!(digest, SUB_DIGEST, "sub digest mismatch");
-}
-
-#[test]
-fn test_sub_order_hash() {
-    let sub = sub_commitment();
-    let sh = commitment_struct_hash(&sub);
-    let oh = compute_order_hash(&PROCESS_ID, &sh);
-    assert_eq!(oh, SUB_ORDER_HASH, "sub order hash mismatch");
-}
-
-#[test]
-fn test_ecdsa_recovery() {
-    let buyer_key = make_signing_key(BUYER_KEY);
-    let root = root_commitment();
-    let domain = domain_separator(CHAIN_ID, CORE);
-    let sig = sign_commitment(&root, &domain, &buyer_key);
-    let struct_hash = commitment_struct_hash(&root);
-    let digest = typed_data_hash(&domain, &struct_hash);
-    let recovered = recover_signer(&digest, &sig).unwrap();
-    assert_eq!(recovered, BUYER, "ECDSA recovery failed for buyer");
+fn a_parity_key_recovers_its_pinned_address() {
+    let digest = keccak256("any digest");
+    for (secret, wallet) in [
+        (BUYER_KEY, BUYER),
+        (SELLER1_KEY, SELLER1),
+        (SELLER2_KEY, SELLER2),
+    ] {
+        let sig = sign_digest(&make_signing_key(secret), &digest);
+        assert_eq!(
+            recover_signer(&digest, &sig).unwrap(),
+            wallet,
+            "key {secret:#x}"
+        );
+    }
 }
 
 // ── Full-batch mirror flows ───────────────────────────────────────
@@ -257,7 +179,7 @@ fn test_full_batch_commit_and_state() {
         usage_period: 0,
     };
 
-    let (pv, positions, _events) = apply_batch(&input).unwrap();
+    let (pv, positions, _events) = run_both(&input).unwrap();
 
     // Verify state root changed.
     assert_ne!(pv.prev_state_root, pv.new_state_root);
@@ -308,7 +230,7 @@ fn test_full_batch_commit_resolve_payouts() {
     // Sign resolve authorization over the process as it stands after both
     // commits: 100 + 50 ether.
     let resolved_value = sub.running_total;
-    let resolve_hash = resolve_struct_hash(&PROCESS_ID, &resolved_value);
+    let resolve_hash = resolve_struct_hash(&root_process_id(), &resolved_value);
     let resolve_digest = typed_data_hash(&domain, &resolve_hash);
     let resolve_sig = sign_digest(&buyer_key, &resolve_digest);
 
@@ -328,7 +250,7 @@ fn test_full_batch_commit_resolve_payouts() {
                 seller_sig: sub_seller_sig,
             },
             KernelOp::Resolve {
-                process_id: PROCESS_ID,
+                process_id: root_process_id(),
                 running_total: resolved_value,
                 commitments: vec![root, sub],
                 buyer_sig: resolve_sig,
@@ -339,7 +261,7 @@ fn test_full_batch_commit_resolve_payouts() {
         usage_period: 0,
     };
 
-    let (_pv, positions, _events) = apply_batch(&input).unwrap();
+    let (_pv, positions, _events) = run_both(&input).unwrap();
 
     let ether = U256::from(1_000_000_000_000_000_000u64);
 
@@ -371,43 +293,6 @@ fn test_full_batch_commit_resolve_payouts() {
     assert_eq!(s1.deposit, U256::from(200u64) * ether, "seller1 deposit");
     assert_eq!(s2.deposit, U256::from(300u64) * ether, "seller2 deposit");
     assert_eq!(b.deposit, U256::from(300u64) * ether, "buyer deposit");
-}
-
-// ── Test commitment constructors ──────────────────────────────────
-
-fn root_commitment() -> Commitment {
-    Commitment {
-        process_id: B256::ZERO,
-        buyer: BUYER,
-        seller: SELLER1,
-        token: TOKEN,
-        payment: U256::from(100_000_000_000_000_000_000u128), // 100 ether
-        running_total: U256::from(100_000_000_000_000_000_000u128),
-        checkout_hash: keccak256("test-agreement"),
-        salt: U256::from(42u64),
-        commit_deadline: U256::from(2000u64),
-    }
-}
-
-fn sub_commitment() -> Commitment {
-    Commitment {
-        process_id: PROCESS_ID,
-        buyer: BUYER,
-        seller: SELLER2,
-        token: TOKEN,
-        payment: U256::from(50_000_000_000_000_000_000u128), // 50 ether
-        running_total: U256::from(150_000_000_000_000_000_000u128), // 150 ether
-        checkout_hash: keccak256("sub-agreement"),
-        salt: U256::from(43u64),
-        commit_deadline: U256::from(2000u64),
-    }
-}
-
-fn empty_snapshot() -> KernelStateSnapshot {
-    KernelStateSnapshot {
-        processes: vec![],
-        order_status: vec![],
-    }
 }
 
 // ── Attestation fixtures ──────────────────────────────────────────
@@ -496,7 +381,7 @@ fn run_attest_batch(
         usage_claims: vec![],
         usage_period: 0,
     };
-    apply_batch(&input)
+    run_both(&input)
 }
 
 /// A seller attestation at stage 0 on the fixture's root order carrying
@@ -657,7 +542,7 @@ fn attest_wrong_inclusion_proof_fails() {
         usage_period: 0,
     };
 
-    match apply_batch(&input) {
+    match run_both(&input) {
         Err(KernelError::InvalidInclusionProof) => {}
         other => panic!("expected InvalidInclusionProof, got {other:?}"),
     }
@@ -741,7 +626,7 @@ fn attest_on_resolved_order_fails() {
         usage_period: 0,
     };
 
-    match apply_batch(&input) {
+    match run_both(&input) {
         Err(KernelError::OrderAlreadyResolved) => {}
         other => panic!("expected OrderAlreadyResolved, got {other:?}"),
     }
@@ -803,7 +688,7 @@ fn attest_as_seller_against_another_sellers_order_fails() {
         usage_period: 0,
     };
 
-    match apply_batch(&input) {
+    match run_both(&input) {
         Err(KernelError::NotAuthorized) => {}
         other => panic!("expected NotAuthorized, got {other:?}"),
     }
@@ -827,7 +712,7 @@ fn commit_at(timestamp: u64) -> Result<(PublicValues, Vec<NetPosition>, BatchEve
         usage_claims: vec![],
         usage_period: 0,
     };
-    apply_batch(&input)
+    run_both(&input)
 }
 
 #[test]
@@ -865,7 +750,7 @@ fn an_attestation_on_an_order_nobody_committed_is_an_unknown_order() {
         usage_claims: vec![],
         usage_period: 0,
     };
-    match apply_batch(&input) {
+    match run_both(&input) {
         Err(KernelError::UnknownOrder) => {}
         other => panic!("expected UnknownOrder, got {other:?}"),
     }
@@ -876,10 +761,13 @@ fn the_state_root_binds_every_map_it_covers() {
     use figaro_kernel::state::KernelState;
     // The verifier chains batches by this root: a map the root does not
     // bind is state a prover may rewrite between batches.
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let (root_order_hash, _) = derive_commitment_ids(&domain, &root_commitment());
+    let (sub_order_hash, _) = derive_commitment_ids(&domain, &sub_commitment());
     let base = {
         let mut s = empty_snapshot();
         s.processes = vec![(
-            PROCESS_ID,
+            root_process_id(),
             ProcessState {
                 root_buyer: BUYER,
                 token: TOKEN,
@@ -887,7 +775,7 @@ fn the_state_root_binds_every_map_it_covers() {
                 active_order_count: 1,
             },
         )];
-        s.order_status = vec![(ROOT_ORDER_HASH, 1)];
+        s.order_status = vec![(root_order_hash, 1)];
         s
     };
     let root_of = |s: &KernelStateSnapshot| KernelState::from_snapshot(s).compute_root();
@@ -912,13 +800,13 @@ fn the_state_root_binds_every_map_it_covers() {
     s.processes[0].1.token = CORE;
     cases.push(("a process's token", s));
     let mut s = base.clone();
-    s.processes[0].0 = SUB_DIGEST;
+    s.processes[0].0 = keccak256("another process");
     cases.push(("a process's id", s));
     let mut s = base.clone();
     s.order_status[0].1 = 2;
     cases.push(("an order's status", s));
     let mut s = base.clone();
-    s.order_status[0].0 = SUB_ORDER_HASH;
+    s.order_status[0].0 = sub_order_hash;
     cases.push(("which order carries the status", s));
 
     let mut roots = std::collections::BTreeSet::new();
@@ -934,7 +822,7 @@ fn the_state_root_binds_every_map_it_covers() {
 
     // Insertion order is not state: the maps are ordered by key.
     let mut two = base.clone();
-    two.order_status.push((SUB_ORDER_HASH, 1));
+    two.order_status.push((sub_order_hash, 1));
     let mut two_reversed = two.clone();
     two_reversed.order_status.reverse();
     assert_eq!(
@@ -946,12 +834,17 @@ fn the_state_root_binds_every_map_it_covers() {
 
 // ── Determinism ───────────────────────────────────────────────────
 
+/// The empty state's root is the one `FigaroBatchVerifier.genesisRoot()`
+/// returns, `bytes32(0)`: a verifier starts on the root the guest's first
+/// batch names as its previous root.
 #[test]
-fn test_empty_state_root_is_deterministic() {
+fn the_empty_state_s_root_is_the_verifier_s_genesis_root() {
     use figaro_kernel::state::KernelState;
-    let a = KernelState::new().compute_root();
-    let b = KernelState::from_snapshot(&empty_snapshot()).compute_root();
-    assert_eq!(a, b, "genesis root must be deterministic");
+    assert_eq!(KernelState::new().compute_root(), B256::ZERO);
+    assert_eq!(
+        KernelState::from_snapshot(&empty_snapshot()).compute_root(),
+        B256::ZERO
+    );
 }
 
 #[test]
@@ -989,7 +882,7 @@ fn a_bond_accumulation_overflow_is_rejected_not_a_panic() {
         usage_claims: vec![],
         usage_period: 0,
     };
-    let result = apply_batch(&input);
+    let result = run_both(&input);
     assert!(
         matches!(result, Err(KernelError::Overflow)),
         "expected a clean Overflow error, got {result:?}",
@@ -1118,7 +1011,7 @@ fn every_vector_agreement_credits_its_agreement_and_its_assembly() {
                     proof_list(&entry["membershipProof"]),
                 ),
             ];
-            let (_, _, events) = apply_batch(&claims_batch(ops, claims))
+            let (_, _, events) = run_both(&claims_batch(ops, claims))
                 .unwrap_or_else(|e| panic!("{} {}: {e}", assembly["label"], entry["id"]));
             let mut got: Vec<(B256, u8)> = events
                 .uses
@@ -1158,7 +1051,7 @@ fn a_vector_membership_proof_from_another_assembly_is_refused() {
         hex32(&one["agreements"][0]["agreementContentHash"]),
         proof_list(&one["agreements"][0]["membershipProof"]),
     );
-    match apply_batch(&claims_batch(ops, vec![claim])).map(|_| ()) {
+    match run_both(&claims_batch(ops, vec![claim])).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
     }
@@ -1173,7 +1066,7 @@ fn a_vector_agreement_claim_with_the_wrong_agreement_hash_is_refused() {
     let (order, ops) = resolved_order_under(hex32(&entry["provenance"]["leaf"]), 1);
     let mut claim = kind2(&order, entry);
     claim.clause_or_process = hex32(&fx["assemblies"][2]["agreements"][0]["agreementHash"]);
-    match apply_batch(&claims_batch(ops, vec![claim])).map(|_| ()) {
+    match run_both(&claims_batch(ops, vec![claim])).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
     }
@@ -1219,7 +1112,7 @@ fn the_vector_terms_leaf_never_passes_as_an_agreement() {
         hex32(&terms["clauseDataHash"]),
         proof,
     );
-    match apply_batch(&claims_batch(ops, vec![claim])).map(|_| ()) {
+    match run_both(&claims_batch(ops, vec![claim])).map(|_| ()) {
         Err(KernelError::ReservedKeyIsNotARegistration(k)) => assert_eq!(k, terms_key),
         other => panic!("expected ReservedKeyIsNotARegistration, got {other:?}"),
     }
@@ -1238,7 +1131,10 @@ fn two_commits_then_resolve(signed_value: U256) -> BatchInput {
     let sub = sub_commitment();
     let resolve_sig = sign_digest(
         &buyer_key,
-        &typed_data_hash(&domain, &resolve_struct_hash(&PROCESS_ID, &signed_value)),
+        &typed_data_hash(
+            &domain,
+            &resolve_struct_hash(&root_process_id(), &signed_value),
+        ),
     );
     BatchInput {
         chain_id: CHAIN_ID,
@@ -1256,7 +1152,7 @@ fn two_commits_then_resolve(signed_value: U256) -> BatchInput {
                 seller_sig: sign_commitment(&sub, &domain, &seller2_key),
             },
             KernelOp::Resolve {
-                process_id: PROCESS_ID,
+                process_id: root_process_id(),
                 running_total: signed_value,
                 commitments: vec![root, sub],
                 buyer_sig: resolve_sig,
@@ -1277,7 +1173,7 @@ fn two_commits_then_resolve(signed_value: U256) -> BatchInput {
 fn a_resolve_signed_before_a_later_commit_is_refused() {
     let signed = root_commitment().running_total;
     let current = sub_commitment().running_total;
-    match apply_batch(&two_commits_then_resolve(signed)) {
+    match run_both(&two_commits_then_resolve(signed)) {
         Err(KernelError::StaleResolveAuthorization {
             signed: s,
             current: c,
@@ -1294,8 +1190,7 @@ fn a_resolve_signed_before_a_later_commit_is_refused() {
 #[test]
 fn a_resolve_signed_over_the_current_running_total_resolves() {
     let current = sub_commitment().running_total;
-    let (_pv, positions, _events) =
-        apply_batch(&two_commits_then_resolve(current)).expect("resolves");
+    let (_pv, positions, _events) = run_both(&two_commits_then_resolve(current)).expect("resolves");
     let s2 = positions.iter().find(|p| p.user == SELLER2).unwrap();
     let ether = U256::from(1_000_000_000_000_000_000u64);
     assert_eq!(
@@ -1314,7 +1209,7 @@ fn a_resolve_whose_signed_value_was_rewritten_is_refused() {
     if let KernelOp::Resolve { running_total, .. } = &mut input.operations[2] {
         *running_total = sub_commitment().running_total;
     }
-    match apply_batch(&input) {
+    match run_both(&input) {
         Err(KernelError::NotProcessBuyer) | Err(KernelError::InvalidSignature) => {}
         other => panic!("expected the signer check to refuse, got {other:?}"),
     }
@@ -1356,7 +1251,7 @@ fn a_wallet_code_resolve_is_accepted_and_published_in_the_operation_stream() {
     let current = sub_commitment().running_total;
     let authorization = b"guardian-approval".to_vec();
     let input = two_commits_then_wallet_code_resolve(current, &authorization);
-    let (pv, positions, _events) = apply_batch(&input).expect("a wallet-code resolve applies");
+    let (pv, positions, _events) = run_both(&input).expect("a wallet-code resolve applies");
     let s2 = positions.iter().find(|p| p.user == SELLER2).unwrap();
     let ether = U256::from(1_000_000_000_000_000_000u64);
     assert_eq!(
@@ -1379,7 +1274,7 @@ fn a_wallet_code_resolve_is_accepted_and_published_in_the_operation_stream() {
             authorization: a,
             ..
         } => {
-            assert_eq!(*process_id, PROCESS_ID);
+            assert_eq!(*process_id, root_process_id());
             assert_eq!(*running_total, current);
             assert_eq!(
                 a.as_ref(),
@@ -1397,7 +1292,7 @@ fn a_wallet_code_resolve_is_accepted_and_published_in_the_operation_stream() {
 #[test]
 fn a_wallet_code_resolve_for_a_passed_value_is_refused() {
     let signed = root_commitment().running_total;
-    match apply_batch(&two_commits_then_wallet_code_resolve(
+    match run_both(&two_commits_then_wallet_code_resolve(
         signed,
         b"guardian-approval",
     )) {
@@ -1530,7 +1425,7 @@ fn a_wallet_code_attestation_runs_the_signed_form_s_gates() {
         usage_claims: vec![],
         usage_period: 0,
     };
-    match apply_batch(&input) {
+    match run_both(&input) {
         Err(KernelError::UnknownOrder) => {}
         other => panic!(
             "an attestation on an order nobody committed: expected UnknownOrder, got {other:?}"

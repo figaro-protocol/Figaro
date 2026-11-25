@@ -1,6 +1,6 @@
 //! The cross-language lock of the operation stream's bytes: this file writes
 //! `test/fixtures/operation-stream-vectors.json` (run with
-//! `cargo test -p figaro-kernel --test operation_stream_vectors -- --ignored write_fixture`)
+//! `FIGARO_WRITE_FIXTURES=1 cargo test -p figaro-kernel --test operation_stream_vectors`)
 //! and, on every run, asserts the committed fixture is what the encoder
 //! produces; `test/core/verifier/OperationStreamVectorsTest.t.sol` feeds
 //! each stream to `FigaroBatchVerifier.settleBatch` and expects the order
@@ -15,13 +15,7 @@ use figaro_kernel::types::{
 };
 use serde_json::{json, Value};
 
-fn fixture_path() -> std::path::PathBuf {
-    let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    p.pop();
-    p.pop();
-    p.push("test/fixtures/operation-stream-vectors.json");
-    p
-}
+mod common;
 
 fn commitment(seed: u8, process_id: B256, cumulative: u64) -> Commitment {
     Commitment {
@@ -278,26 +272,6 @@ fn vectors() -> Value {
 }
 
 #[test]
-#[ignore]
-fn write_fixture() {
-    let v = vectors();
-    std::fs::write(
-        fixture_path(),
-        serde_json::to_string_pretty(&v).unwrap() + "\n",
-    )
-    .unwrap();
-}
-
-#[test]
 fn the_committed_fixture_is_what_the_encoder_produces() {
-    let committed: Value = serde_json::from_str(
-        &std::fs::read_to_string(fixture_path())
-            .expect("the fixture is committed; write it with --ignored write_fixture"),
-    )
-    .unwrap();
-    assert_eq!(
-        committed,
-        vectors(),
-        "the fixture drifted from the encoder: rewrite it with --ignored write_fixture"
-    );
+    common::committed_fixture_is("operation-stream-vectors.json", &vectors());
 }

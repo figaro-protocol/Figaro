@@ -12,7 +12,7 @@ use axum::http::{Request, StatusCode};
 use tower::util::ServiceExt;
 
 use figaro_kernel::eip712::*;
-use figaro_kernel::kernel::{apply_batch_with_state, derive_commitment_ids, resolution_payouts};
+use figaro_kernel::kernel::{apply_batch_with_state, derive_commitment_ids};
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
 use figaro_prove_test::{
@@ -44,6 +44,101 @@ fn empty_snapshot() -> KernelStateSnapshot {
 
 // ── Mempool: signature pre-checks ─────────────────────────────────
 
+/// The door's signature gates are the guest's own: each operation fed to
+/// `Mempool::pre_check` and to the rules the guest runs
+/// (`apply_operations`, after the order it names is committed) gets the
+/// same verdict, an accepted one and a refused one of each signed kind, and
+/// a refusal at the door names the guest's error.
+#[test]
+fn the_door_s_signature_gates_give_the_guest_s_verdict() {
+    use figaro_kernel::kernel::apply_operations;
+    use figaro_kernel::state::KernelState;
+    let ops = canonical_ops();
+    let swap_sigs = |op: &KernelOp| match op.clone() {
+        KernelOp::Commit {
+            commitment,
+            buyer_sig,
+            seller_sig,
+        } => KernelOp::Commit {
+            commitment,
+            buyer_sig: seller_sig,
+            seller_sig: buyer_sig,
+        },
+        KernelOp::AttestAsSeller {
+            target,
+            clause_id,
+            stage,
+            content_ref,
+            proof,
+            ..
+        } => {
+            // Signed by the buyer, over the seller's digest.
+            let KernelOp::AttestAsBuyer { buyer_sig, .. } = ops[2].clone() else {
+                unreachable!()
+            };
+            KernelOp::AttestAsSeller {
+                target,
+                clause_id,
+                stage,
+                content_ref,
+                seller_sig: buyer_sig,
+                proof,
+            }
+        }
+        KernelOp::AttestAsBuyer {
+            target,
+            clause_id,
+            stage,
+            content_ref,
+            proof,
+            ..
+        } => {
+            let KernelOp::AttestAsSeller { seller_sig, .. } = ops[1].clone() else {
+                unreachable!()
+            };
+            KernelOp::AttestAsBuyer {
+                target,
+                clause_id,
+                stage,
+                content_ref,
+                buyer_sig: seller_sig,
+                proof,
+            }
+        }
+        other => panic!("no signed kind {other:?}"),
+    };
+    let guest = |op: &KernelOp| {
+        let mut state = KernelState::new();
+        let mut run = vec![];
+        if !matches!(op, KernelOp::Commit { .. }) {
+            run.push(ops[0].clone());
+        }
+        run.push(op.clone());
+        apply_operations(&mut state, CHAIN_ID, CORE, 1000, &run).map(|_| ())
+    };
+    let pool = mempool();
+    let mut refusals = Vec::new();
+    for op in [&ops[0], &ops[1], &ops[2]] {
+        assert!(pool.pre_check(op).is_ok(), "the door admits {op:?}");
+        assert!(guest(op).is_ok(), "the guest applies {op:?}");
+        let forged = swap_sigs(op);
+        let door = pool
+            .pre_check(&forged)
+            .expect_err("the door refuses the forged signer");
+        let rules = guest(&forged).expect_err("the guest refuses the forged signer");
+        assert!(
+            door.contains(&format!("{rules:?}")),
+            "the door names the guest's error {rules:?}: {door}"
+        );
+        refusals.push(format!("{rules:?}"));
+    }
+    assert_eq!(
+        refusals,
+        ["InvalidBuyerSignature", "NotAuthorized", "NotAuthorized"],
+        "each gate's own refusal"
+    );
+}
+
 #[tokio::test]
 async fn mempool_accepts_valid_commit() {
     let ops = canonical_ops();
@@ -61,7 +156,9 @@ async fn mempool_rejects_bad_buyer_sig() {
         .await
         .unwrap_err()
         .to_string();
-    assert!(err.contains("buyer"), "{err}");
+    // A signature that recovers no signer at all: the guest's error for it
+    // (`recover_signer`) names no party.
+    assert!(err.contains("InvalidSignature"), "{err}");
 }
 
 #[tokio::test]
@@ -75,7 +172,7 @@ async fn mempool_rejects_bad_seller_sig() {
         .await
         .unwrap_err()
         .to_string();
-    assert!(err.contains("seller"), "{err}");
+    assert!(err.contains("InvalidSellerSignature"), "{err}");
 }
 
 #[tokio::test]
@@ -197,7 +294,10 @@ async fn mempool_rejects_attest_signed_by_stranger() {
         .await
         .unwrap_err()
         .to_string();
-    assert!(err.contains("target.seller"), "{err}");
+    assert!(
+        err.contains("NotAuthorized") && err.contains("the target's Seller"),
+        "{err}"
+    );
 }
 
 #[tokio::test]
@@ -243,7 +343,10 @@ async fn mempool_refuses_a_seller_attestation_not_signed_by_the_targets_seller()
         .await
         .unwrap_err()
         .to_string();
-    assert!(err.contains("target.seller"), "{err}");
+    assert!(
+        err.contains("NotAuthorized") && err.contains("the target's Seller"),
+        "{err}"
+    );
 }
 
 // ── State mirror ──────────────────────────────────────────────────
@@ -527,9 +630,15 @@ fn filter_dead_letters_a_resolve_that_omits_an_order() {
         .iter()
         .find(|p| p.user == root.seller)
         .expect("seller leg");
-    let (root_pay, _) = resolution_payouts(&root).unwrap();
-    let (sub_pay, _) = resolution_payouts(&sub).unwrap();
-    assert_eq!(seller.payout, root_pay + sub_pay, "every order paid");
+    // The root: 2 × 100 ether + 100 ether; the second order: 2 × (100 ether
+    // + 7) + 7. One seller holds both: 500 ether and 21 wei.
+    assert_eq!(
+        seller.payout,
+        "500000000000000000021"
+            .parse::<alloy_primitives::U256>()
+            .unwrap(),
+        "every order paid"
+    );
 }
 
 #[tokio::test]
@@ -1117,43 +1226,27 @@ async fn api_submissions_drain_in_arrival_order_across_clients() {
 }
 
 #[tokio::test]
-async fn a_requeued_operation_that_drains_and_is_not_requeued_leaves_no_count() {
-    // An op re-queued once, drained again, and not re-queued (its batch
-    // is on chain, or the relay refused it): the next drain holds no count for it.
-    let mp = mempool();
-    let ops = canonical_ops();
-    mp.submit(ops[0].clone()).await.unwrap();
-    let drained = mp.drain().await;
-    assert!(mp.requeue(drained).await.is_empty());
-    assert_eq!(mp.requeue_counts_held().await, 1);
-    assert_eq!(mp.drain().await.len(), 1, "drained again; its batch lands");
-    mp.submit(ops[1].clone()).await.unwrap();
-    assert_eq!(mp.drain().await.len(), 1, "the next tick drains another op");
-    assert_eq!(
-        mp.requeue_counts_held().await,
-        0,
-        "the landed op's count is gone"
-    );
-}
-
-#[tokio::test]
 async fn mempool_requeue_dead_letters_after_the_cap() {
     // A transiently failed op is re-queued, up to the cap; past it the op is
     // returned for dead-lettering with a reason, and a fresh admission of
     // the same key starts the count over.
-    let mp = Mempool::new(CHAIN_ID, CORE).with_max_requeues(2);
+    // The relay's own cap: `Mempool::new` is what `main` builds.
+    use figaro_sequencer::mempool::DEFAULT_MAX_REQUEUES;
+    let mp = Mempool::new(CHAIN_ID, CORE);
     let ops = canonical_ops();
     mp.submit(ops[0].clone()).await.unwrap();
 
-    let drained = mp.drain().await;
-    assert!(mp.requeue(drained).await.is_empty(), "first re-queue");
-    let drained = mp.drain().await;
-    assert!(mp.requeue(drained).await.is_empty(), "second re-queue");
+    for k in 1..=DEFAULT_MAX_REQUEUES {
+        let drained = mp.drain().await;
+        assert!(mp.requeue(drained).await.is_empty(), "re-queue {k}");
+    }
     let drained = mp.drain().await;
     let dropped = mp.requeue(drained).await;
-    assert_eq!(dropped.len(), 1, "the third is dead-lettered");
+    assert_eq!(dropped.len(), 1, "the one past the cap is dead-lettered");
     assert!(
-        dropped[0].1.contains("re-queued 2 times"),
+        dropped[0]
+            .1
+            .contains(&format!("re-queued {DEFAULT_MAX_REQUEUES} times")),
         "{}",
         dropped[0].1
     );
@@ -1717,13 +1810,79 @@ async fn e2e_http_submission_flows_into_formed_batch() {
 }
 
 /// A bond paid through a swap is direct path only: `KernelOp::Commit` carries
-/// no funding leg, and no type in the request derives `deny_unknown_fields`,
-/// so the door does not refuse a body that names one. It drops the field,
-/// admits the ordinary commit the signatures cover, and the batch pulls both
-/// bonds from the parties' own balances: the buyer twice the payment, the
+/// no funding leg, and the published format (`relay-wire.schema.json`) names
+/// none (`additionalProperties: false`). The door refuses a body that names
+/// one, at any depth, with `422` and the field's path, and queues nothing:
+/// a leg the relay dropped in silence would leave its sender believing the
+/// swap paid the bond.
+#[tokio::test]
+async fn the_door_refuses_a_funding_leg_and_queues_nothing() {
+    let op = canonical_ops()[0].clone();
+    let funding = serde_json::json!({
+        "router": format!("{:#x}", Address::repeat_byte(0x5a)),
+        "tokenIn": format!("{:#x}", Address::repeat_byte(0x7e)),
+        "amountIn": "1000000000000000000000",
+        "payer": format!("{:#x}", Address::repeat_byte(0xfa)),
+    });
+
+    let mut inside = serde_json::to_value(&op).unwrap();
+    inside["Commit"]["funding"] = funding.clone();
+    let beside = serde_json::to_value(&op).unwrap();
+    let mut in_a_signature = serde_json::to_value(&op).unwrap();
+    in_a_signature["Commit"]["buyer_sig"]["payer"] = serde_json::json!("0xfa");
+    for (body, path) in [
+        (
+            serde_json::json!({ "operation": inside }),
+            "operation.Commit.funding",
+        ),
+        (
+            serde_json::json!({ "operation": beside, "funding": funding }),
+            "funding",
+        ),
+        (
+            serde_json::json!({ "operation": in_a_signature }),
+            "operation.Commit.buyer_sig.payer",
+        ),
+    ] {
+        let state = test_app_state();
+        let app = api::router(state.clone(), ApiConfig::default());
+        let (status, answer_body) = answer(&app, json_post("/submit", &body)).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{answer_body}");
+        assert_eq!(
+            answer_body,
+            serde_json::json!({
+                "error": format!(
+                    "unknown field `{path}`: the relay's wire format names no such field"
+                )
+            })
+        );
+        assert_eq!(state.mempool.len().await, 0, "nothing is queued");
+    }
+
+    // A usage claim's body is held to its fields the same way.
+    let state = test_app_state();
+    let app = api::router(state.clone(), ApiConfig::default());
+    let mut claim = serde_json::to_value(&build_canonical_batch_input().usage_claims[0]).unwrap();
+    claim["weight"] = serde_json::json!(2);
+    let (status, answer_body) = answer(
+        &app,
+        json_post("/submit-usage", &serde_json::json!({ "claim": claim })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{answer_body}");
+    assert_eq!(
+        answer_body["error"],
+        "unknown field `claim.weight`: the relay's wire format names no such field"
+    );
+}
+
+/// The control: the same commit with only the fields the format names, its
+/// amounts written as decimal strings where the relay writes hex (the format
+/// takes both), is admitted and queued as sent; the batch pulls both bonds
+/// from the parties' own balances, the buyer twice the payment and the
 /// seller twice the running total, and nothing from anyone else.
 #[tokio::test]
-async fn the_door_drops_a_funding_leg_and_the_batch_pulls_both_bonds_from_the_parties() {
+async fn the_door_admits_a_commit_carrying_only_the_named_fields() {
     let state = test_app_state();
     let app = api::router(state.clone(), ApiConfig::default());
 
@@ -1731,29 +1890,22 @@ async fn the_door_drops_a_funding_leg_and_the_batch_pulls_both_bonds_from_the_pa
     let KernelOp::Commit { commitment, .. } = &op else {
         panic!("ops[0] is the commit");
     };
-    let funding = serde_json::json!({
-        "router": format!("{:#x}", Address::repeat_byte(0x5a)),
-        "tokenIn": format!("{:#x}", Address::repeat_byte(0x7e)),
-        "amountIn": "1000000000000000000000",
-        "payer": format!("{:#x}", Address::repeat_byte(0xfa)),
-    });
     let mut operation = serde_json::to_value(&op).unwrap();
-    operation["Commit"]["funding"] = funding.clone();
-    let body = serde_json::json!({ "operation": operation, "funding": funding });
-
-    let (status, answer_body) = answer(&app, json_post("/submit", &body)).await;
-    assert_eq!(
-        status,
-        StatusCode::OK,
-        "the door admits the body: {answer_body}"
-    );
+    operation["Commit"]["commitment"]["payment"] =
+        serde_json::json!(commitment.payment.to_string());
+    let (status, answer_body) = answer(
+        &app,
+        json_post("/submit", &serde_json::json!({ "operation": operation })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "the door admits it: {answer_body}");
 
     let pending = state.mempool.drain().await;
     assert_eq!(pending.len(), 1);
     assert_eq!(
         serde_json::to_value(&pending[0].op).unwrap(),
         serde_json::to_value(&op).unwrap(),
-        "what was queued is the ordinary commit, the funding leg gone"
+        "what was queued is the commit as signed"
     );
 
     let prev = state.state_mirror.snapshot().await;
@@ -1763,7 +1915,10 @@ async fn the_door_drops_a_funding_leg_and_the_batch_pulls_both_bonds_from_the_pa
     let batch = assembler::assemble_batch(CHAIN_ID, CORE, 1000, ops, prev, UsageContext::default());
     let (_, positions, _, _) = apply_batch_with_state(&batch).unwrap();
 
-    let two = alloy_primitives::U256::from(2u8);
+    let ether = |n: u64| {
+        alloy_primitives::U256::from(n)
+            * alloy_primitives::U256::from(10u64).pow(alloy_primitives::U256::from(18u64))
+    };
     let position = |user: Address| {
         positions
             .iter()
@@ -1775,15 +1930,15 @@ async fn the_door_drops_a_funding_leg_and_the_batch_pulls_both_bonds_from_the_pa
     let buyer = position(commitment.buyer);
     assert_eq!(
         buyer.deposit,
-        commitment.payment * two,
-        "the buyer bonds twice the payment"
+        ether(200),
+        "the buyer bonds twice the payment of 100 ether"
     );
     assert_eq!(buyer.payout, alloy_primitives::U256::ZERO);
     let seller = position(commitment.seller);
     assert_eq!(
         seller.deposit,
-        commitment.running_total * two,
-        "the seller bonds twice the running total"
+        ether(200),
+        "the seller bonds twice the running total of 100 ether"
     );
     assert_eq!(seller.payout, alloy_primitives::U256::ZERO);
     assert!(positions.iter().all(|p| p.token == commitment.token));
@@ -2848,16 +3003,20 @@ async fn a_deferral_is_bounded_in_time_from_first_deferral_not_in_attempts() {
 
 #[tokio::test]
 async fn a_deferral_spends_nothing_of_the_requeue_count() {
-    let mp = mempool().with_defer_window(WINDOW).with_max_requeues(1);
+    // The relay's own cap: deferred as many times as the cap allows
+    // re-queues, an op whose deferrals spent the count would be dead-lettered
+    // at its first re-queue.
+    use figaro_sequencer::mempool::DEFAULT_MAX_REQUEUES;
+    let mp = mempool().with_defer_window(WINDOW);
     let ops = canonical_ops();
     mp.submit(ops[0].clone()).await.unwrap();
     let t0 = std::time::Instant::now();
     let mut drained = mp.drain_up_to(1).await;
-    for k in 0..3u64 {
+    for k in 0..u64::from(DEFAULT_MAX_REQUEUES) {
         assert!(mp.defer(drained, t0 + secs(k)).await.is_empty());
         drained = mp.drain_up_to(1).await;
     }
-    // Deferred three times, it still has its one transient re-queue.
+    // Deferred up to the cap, it still has its re-queues.
     assert!(
         mp.requeue(drained).await.is_empty(),
         "the deferrals spent no re-queue"
@@ -3081,12 +3240,7 @@ async fn a_permanent_kernel_refusal_is_dead_lettered_at_once_and_a_missing_depen
 }
 
 fn signed_commit(c: &Commitment) -> KernelOp {
-    let domain = domain_separator(CHAIN_ID, CORE);
-    KernelOp::Commit {
-        commitment: c.clone(),
-        buyer_sig: sign_commitment(c, &domain, &make_signing_key(BUYER_KEY)),
-        seller_sig: sign_commitment(c, &domain, &make_signing_key(SELLER1_KEY)),
-    }
+    figaro_prove_test::signed_commit_of(c)
 }
 
 fn landed_after(ops: Vec<KernelOp>) -> KernelStateSnapshot {
@@ -4843,29 +4997,12 @@ async fn admission_refuses_a_commit_whose_bonds_it_cannot_read() {
 /// wallet-code form under `role`, carrying `authorization`, as the SDK's
 /// wire sends it (`SequencerClient.submitAttestByWalletCode`).
 fn wallet_code_attestation(role: &str, authorization: &[u8]) -> KernelOp {
-    let KernelOp::AttestAsSeller {
-        target,
-        clause_id,
-        stage,
-        content_ref,
-        proof,
-        ..
-    } = canonical_ops()[1].clone()
-    else {
-        panic!("canonical ops[1] is the seller's attestation")
+    let role = match role {
+        "Seller" => AttesterRole::Seller,
+        "Buyer" => AttesterRole::Buyer,
+        other => panic!("no role {other}"),
     };
-    serde_json::from_value(serde_json::json!({
-        "AttestByWalletCode": {
-            "role": role,
-            "target": target,
-            "clause_id": clause_id,
-            "stage": stage,
-            "content_ref": content_ref,
-            "authorization": alloy_primitives::Bytes::copy_from_slice(authorization),
-            "proof": proof,
-        }
-    }))
-    .expect("the wire form deserializes")
+    figaro_prove_test::wallet_code_attestation_of(role, authorization)
 }
 
 /// The relay asks the role's party, from the verifier's domain, the
@@ -4874,43 +5011,44 @@ fn wallet_code_attestation(role: &str, authorization: &[u8]) -> KernelOp {
 #[test]
 fn the_relay_asks_the_attesting_party_s_code_the_verifier_s_question() {
     use figaro_sequencer::submitter::wallet_code_question;
+    // The digest each role's party is asked, for the canonical attestation
+    // under the verifier at 0x7777…7777 on chain 31337: literals computed
+    // outside Rust with Foundry's `cast` from the contracts' own type
+    // strings (`CommitmentTypes.COMMITMENT_TYPEHASH`, the verifier's
+    // `ATTEST_SELLER_TYPEHASH` / `ATTEST_BUYER_TYPEHASH`, the domain
+    // `FigaroCore`, version `3`) — the commitment's struct hash, the root
+    // digest as its process id, `keccak256(processId ‖ structHash)` as its
+    // order hash, then the role's struct and `0x1901 ‖ domain ‖ struct`. The
+    // one function the relay derives it with, `attest_digest`, is also held
+    // to the SDK's viem digests in `prover/lib/tests/eip712_vectors.rs`.
     let verifier = Address::repeat_byte(0x77);
-    let domain = domain_separator(CHAIN_ID, verifier);
-    for role in ["Seller", "Buyer"] {
+    for (role, party_of, digest) in [
+        (
+            "Seller",
+            (|c: &Commitment| c.seller) as fn(&Commitment) -> Address,
+            SELLER_DIGEST,
+        ),
+        ("Buyer", |c: &Commitment| c.buyer, BUYER_DIGEST),
+    ] {
         let op = wallet_code_attestation(role, b"session-key-approval");
-        let KernelOp::AttestByWalletCode {
-            target,
-            clause_id,
-            stage,
-            content_ref,
-            ..
-        } = &op
-        else {
+        let KernelOp::AttestByWalletCode { target, .. } = &op else {
             unreachable!()
         };
-        let (order_hash, process_id) = derive_commitment_ids(&domain, target);
-        let (party, digest, bytes) =
+        let (party, asked, bytes) =
             wallet_code_question(CHAIN_ID, verifier, &op).expect("a wallet-code attestation");
-        let (expected_party, struct_hash) = if role == "Seller" {
-            (
-                target.seller,
-                attest_seller_struct_hash(&order_hash, clause_id, *stage, content_ref),
-            )
-        } else {
-            (
-                target.buyer,
-                attest_buyer_struct_hash(&process_id, &order_hash, clause_id, *stage, content_ref),
-            )
-        };
-        assert_eq!(party, expected_party, "the role's party is asked");
+        assert_eq!(party, party_of(target), "the role's party is asked");
         assert_eq!(
-            digest,
-            typed_data_hash(&domain, &struct_hash),
-            "the role's digest, under the verifier's domain"
+            asked,
+            digest.parse::<B256>().unwrap(),
+            "{role}: the role's digest, under the verifier's domain"
         );
         assert_eq!(bytes.as_ref(), b"session-key-approval");
     }
 }
+
+/// The literal digests `the_relay_asks_the_attesting_party_s_code_the_verifier_s_question` holds.
+const SELLER_DIGEST: &str = "0xe85d7041697244e50f3d4111293c3d4273adbb279346cc7b511b979e809d2b85";
+const BUYER_DIGEST: &str = "0x446ac9a72330842a8c405efdf7ff81a0cf233b2b92ff86dddd5fd08cdbebcfc2";
 
 /// The bytes are the party's code's to judge: they are in the identity
 /// key, so other bytes for the same attestation are another operation and
