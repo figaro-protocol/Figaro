@@ -11,6 +11,7 @@ import {MembersRegistry} from "src/registries/MembersRegistry.sol";
 import "src/rewards/UsageCounter.sol";
 import "src/core/kernel/FigaroCore.sol";
 import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title The operation stream's cross-language lock, chain side
 /// @notice `test/fixtures/operation-stream-vectors.json` is written by the
@@ -65,22 +66,10 @@ contract OperationStreamVectorsTest is Test {
 
     // ── The ids FigaroCore derives, under the verifier's domain ──────
 
-    function _domainSeparator() internal view returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(verifier)
-            )
-        );
-    }
-
     function _ids(CommitmentTypes.Commitment memory c) internal view returns (bytes32 orderHash, bytes32 processId) {
         bytes32 structHash = c.hashStruct();
         processId = c.processId == bytes32(0)
-            ? keccak256(abi.encodePacked("\x19\x01", _domainSeparator(), structHash))
+            ? SigningTestHelper.typedDataHash(SigningTestHelper.domainOf(address(verifier)), structHash)
             : c.processId;
         orderHash = keccak256(abi.encodePacked(processId, structHash));
     }
@@ -288,7 +277,7 @@ contract OperationStreamVectorsTest is Test {
                     contentRef
                 )
             );
-        return keccak256(abi.encodePacked("\x19\x01", _domainSeparator(), structHash));
+        return SigningTestHelper.typedDataHash(SigningTestHelper.domainOf(address(verifier)), structHash);
     }
 
     /// @dev `ResolveProcess` over the entry's process and the sum of its listed
@@ -301,17 +290,7 @@ contract OperationStreamVectorsTest is Test {
         for (uint256 i = 0; vm.keyExistsJson(json, string.concat(eb, ".commitments[", vm.toString(i), "]")); i++) {
             runningTotal += _uint(json, string.concat(eb, ".commitments[", vm.toString(i), "].payment"));
         }
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                _domainSeparator(),
-                keccak256(
-                    abi.encode(
-                        keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"), processId, runningTotal
-                    )
-                )
-            )
-        );
+        bytes32 digest = _resolveDigest(processId, runningTotal);
         vm.etch(buyer, type(MockERC1271Wallet).runtimeCode);
         MockERC1271Wallet(buyer).approve(digest, vm.parseJsonBytes(json, string.concat(eb, ".authorization")));
     }
@@ -422,12 +401,6 @@ contract OperationStreamVectorsTest is Test {
         c.commitDeadline = uint256(keccak256(abi.encode(h, 8)));
     }
 
-    function _packCommitment(CommitmentTypes.Commitment memory c) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            c.processId, c.buyer, c.seller, c.token, c.payment, c.runningTotal, c.checkoutHash, c.salt, c.commitDeadline
-        );
-    }
-
     /// @dev A 65-byte signature `r ‖ s ‖ v` drawn from `(h, who)`; the walk
     ///      reads none of it.
     function _signature(uint256 h, bytes32 who) internal pure returns (bytes memory) {
@@ -461,7 +434,9 @@ contract OperationStreamVectorsTest is Test {
             uint256 h = _draw(seed, "op", i);
             if (h % 3 == 0) {
                 CommitmentTypes.Commitment memory c = _drawCommitment(h, address(uint160(h >> 96)));
-                s = bytes.concat(s, hex"01", _packCommitment(c), _signature(h, "buyer"), _signature(h, "seller"));
+                s = bytes.concat(
+                    s, hex"01", SigningTestHelper.packCommitment(c), _signature(h, "buyer"), _signature(h, "seller")
+                );
                 if (expect) _expectCommitted(c);
             } else {
                 s = bytes.concat(s, _resolveEntry(h, h % 3 == 2, expect));
@@ -477,7 +452,7 @@ contract OperationStreamVectorsTest is Test {
             uint256 kind = h % 3;
             bytes memory claim = abi.encodePacked(
                 hex"03",
-                _packCommitment(_drawCommitment(h, address(uint160(h >> 96)))),
+                SigningTestHelper.packCommitment(_drawCommitment(h, address(uint160(h >> 96)))),
                 keccak256(abi.encode(h, "key")),
                 uint8(kind),
                 keccak256(abi.encode(h, "first"))
@@ -513,7 +488,7 @@ contract OperationStreamVectorsTest is Test {
                 .approve(_attestDigest(asSeller, orderHash, processId, clauseId, stage, contentRef), authorization);
         }
         return bytes.concat(
-            abi.encodePacked(hex"05", uint8(asSeller ? 0 : 1), _packCommitment(c)),
+            abi.encodePacked(hex"05", uint8(asSeller ? 0 : 1), SigningTestHelper.packCommitment(c)),
             abi.encodePacked(clauseId, stage, contentRef),
             abi.encodePacked(uint16(authorization.length), authorization)
         );
@@ -539,7 +514,7 @@ contract OperationStreamVectorsTest is Test {
         uint256 sum;
         for (uint256 j = 0; j < count; j++) {
             CommitmentTypes.Commitment memory c = _drawCommitment(uint256(keccak256(abi.encode(h, "listed", j))), buyer);
-            listed = bytes.concat(listed, _packCommitment(c));
+            listed = bytes.concat(listed, SigningTestHelper.packCommitment(c));
             sum += c.payment;
             if (expect) _expectResolved(processId, c);
         }
@@ -566,15 +541,10 @@ contract OperationStreamVectorsTest is Test {
     }
 
     function _resolveDigest(bytes32 processId, uint256 runningTotal) internal view returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                _domainSeparator(),
-                keccak256(
-                    abi.encode(
-                        keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"), processId, runningTotal
-                    )
-                )
+        return SigningTestHelper.typedDataHash(
+            SigningTestHelper.domainOf(address(verifier)),
+            keccak256(
+                abi.encode(keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"), processId, runningTotal)
             )
         );
     }
@@ -676,7 +646,7 @@ contract OperationStreamVectorsTest is Test {
         return bytes.concat(
             abi.encodePacked(
                 tag,
-                _packCommitment(_drawCommitment(h, address(uint160(h >> 96)))),
+                SigningTestHelper.packCommitment(_drawCommitment(h, address(uint160(h >> 96)))),
                 keccak256(abi.encode(h, "key")),
                 kind,
                 keccak256(abi.encode(h, "first")),

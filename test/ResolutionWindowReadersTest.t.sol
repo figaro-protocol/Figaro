@@ -9,6 +9,7 @@ import "src/mocks/MockReentrantToken.sol";
 import {UsageCounter} from "src/rewards/UsageCounter.sol";
 import {MembersRegistry} from "src/registries/MembersRegistry.sol";
 import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title ResolutionWindowAgent — the buyer's wallet code, called back by the bond token
 /// @notice Etched at the buyer's address, as code an EIP-7702 delegation
@@ -197,17 +198,14 @@ contract ResolutionWindowReadersTest is Test {
                 salt: i + 1,
                 commitDeadline: block.timestamp + 1 hours
             });
-            bytes32 digest = keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), o[i].hashStruct()));
+            bytes32 digest = SigningTestHelper.typedDataHash(core.DOMAIN_SEPARATOR(), o[i].hashStruct());
             bytes32 processId;
-            (processId, h[i]) = core.commit(o[i], _sig(BUYER_KEY, digest), _sig(sellerKeys[i], digest));
+            (processId, h[i]) = core.commit(
+                o[i], SigningTestHelper.sign(BUYER_KEY, digest), SigningTestHelper.sign(sellerKeys[i], digest)
+            );
             if (i == 0) pid = processId;
             _agent().addOrder(o[i], h[i]);
         }
-    }
-
-    function _sig(uint256 key, bytes32 digest) internal pure returns (bytes memory) {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
-        return abi.encodePacked(r, s, v);
     }
 
     function _arm(uint256 maxCallbacks) internal {

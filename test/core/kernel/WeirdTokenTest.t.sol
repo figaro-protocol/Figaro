@@ -8,6 +8,7 @@ import {MockERC20NoReturn} from "src/mocks/MockERC20NoReturn.sol";
 import {MockERC20Blocklist} from "src/mocks/MockERC20Blocklist.sol";
 import {MockERC20Rebasing} from "src/mocks/MockERC20Rebasing.sol";
 import {MockERC20SixDecimals} from "src/mocks/MockERC20SixDecimals.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title WeirdTokenTest — FigaroCore against the ERC-20 shapes beyond the
 ///        fee-on-transfer rejection
@@ -202,7 +203,11 @@ contract WeirdTokenTest is Test {
             salt: salt,
             commitDeadline: block.timestamp + 1 hours
         });
-        (processId,) = core.commit(c, _sign(c, BUYER_KEY), _sign(c, sellerKey));
+        (processId,) = core.commit(
+            c,
+            SigningTestHelper.signCommitment(address(core), c, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), c, sellerKey)
+        );
     }
 
     function _commitSub(
@@ -225,7 +230,11 @@ contract WeirdTokenTest is Test {
             salt: salt,
             commitDeadline: block.timestamp + 1 hours
         });
-        core.commit(c, _sign(c, BUYER_KEY), _sign(c, sellerKey));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(address(core), c, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), c, sellerKey)
+        );
     }
 
     function _resolve(bytes32 processId, CommitmentTypes.Commitment memory c) internal {
@@ -233,11 +242,5 @@ contract WeirdTokenTest is Test {
         list[0] = c;
         vm.prank(buyer);
         core.resolveProcess(processId, list);
-    }
-
-    function _sign(CommitmentTypes.Commitment memory c, uint256 privateKey) internal view returns (bytes memory) {
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), c.hashStruct()));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
-        return abi.encodePacked(r, s, v);
     }
 }

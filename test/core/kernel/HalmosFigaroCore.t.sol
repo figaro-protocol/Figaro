@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 import "src/mocks/MockPermitToken.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title HalmosFigaroCore — Symbolic verification of FigaroCore invariants
 /// @notice Uses Halmos symbolic execution to prove properties hold for ALL inputs,
@@ -42,30 +43,6 @@ contract HalmosFigaroCore is Test {
 
     // ── Helpers ───────────────────────────────────────────────────
 
-    function _signCommitment(CommitmentTypes.Commitment memory c, uint256 privateKey)
-        internal
-        view
-        returns (bytes memory)
-    {
-        bytes32 structHash = c.hashStruct();
-        bytes32 digest = _typedDataHash(structHash);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
-    function _typedDataHash(bytes32 structHash) internal view returns (bytes32) {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(core)
-            )
-        );
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-    }
-
     function _commitRoot(uint256 payment) internal returns (bytes32 processId) {
         CommitmentTypes.Commitment memory c = CommitmentTypes.Commitment({
             processId: bytes32(0),
@@ -79,8 +56,8 @@ contract HalmosFigaroCore is Test {
             commitDeadline: block.timestamp + 1 hours
         });
 
-        bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
-        bytes memory sellerSig = _signCommitment(c, SELLER_KEY);
+        bytes memory buyerSig = SigningTestHelper.signCommitment(address(core), c, BUYER_KEY);
+        bytes memory sellerSig = SigningTestHelper.signCommitment(address(core), c, SELLER_KEY);
 
         (processId,) = core.commit(c, buyerSig, sellerSig);
     }
@@ -168,8 +145,8 @@ contract HalmosFigaroCore is Test {
             commitDeadline: block.timestamp + 1 hours
         });
 
-        bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
-        bytes memory sellerSig = _signCommitment(c, SELLER_KEY);
+        bytes memory buyerSig = SigningTestHelper.signCommitment(address(core), c, BUYER_KEY);
+        bytes memory sellerSig = SigningTestHelper.signCommitment(address(core), c, SELLER_KEY);
 
         (bytes32 processId,) = core.commit(c, buyerSig, sellerSig);
 
@@ -211,8 +188,8 @@ contract HalmosFigaroCore is Test {
             commitDeadline: block.timestamp + 1 hours
         });
 
-        bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
-        bytes memory sellerSig = _signCommitment(c, SELLER_KEY);
+        bytes memory buyerSig = SigningTestHelper.signCommitment(address(core), c, BUYER_KEY);
+        bytes memory sellerSig = SigningTestHelper.signCommitment(address(core), c, SELLER_KEY);
 
         (bytes32 processId, bytes32 orderHash) = core.commit(c, buyerSig, sellerSig);
 
@@ -250,8 +227,8 @@ contract HalmosFigaroCore is Test {
             commitDeadline: block.timestamp + 1 hours
         });
 
-        bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
-        bytes memory sellerSig = _signCommitment(c, SELLER_KEY);
+        bytes memory buyerSig = SigningTestHelper.signCommitment(address(core), c, BUYER_KEY);
+        bytes memory sellerSig = SigningTestHelper.signCommitment(address(core), c, SELLER_KEY);
 
         (bytes32 processId,) = core.commit(c, buyerSig, sellerSig);
 
@@ -296,8 +273,8 @@ contract HalmosFigaroCore is Test {
             commitDeadline: block.timestamp + 1 hours
         });
 
-        bytes memory buyerSig2 = _signCommitment(c2, BUYER_KEY);
-        bytes memory sellerSig2 = _signCommitment(c2, SELLER_KEY);
+        bytes memory buyerSig2 = SigningTestHelper.signCommitment(address(core), c2, BUYER_KEY);
+        bytes memory sellerSig2 = SigningTestHelper.signCommitment(address(core), c2, SELLER_KEY);
 
         core.commit(c2, buyerSig2, sellerSig2);
 

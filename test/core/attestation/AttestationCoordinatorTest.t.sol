@@ -8,6 +8,7 @@ import "src/core/attestation/AttestationCoordinator.sol";
 import "src/registries/ClauseRegistry.sol";
 import "src/mocks/MockPermitToken.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title AttestationCoordinatorTest
 /// @notice Tests for the rewritten zero-storage attestation coordinator.
@@ -78,30 +79,6 @@ contract AttestationCoordinatorTest is Test {
 
     // ── Helpers ──────────────────────────────────────────────────────
 
-    function _signCommitment(CommitmentTypes.Commitment memory c, uint256 privateKey)
-        internal
-        view
-        returns (bytes memory)
-    {
-        bytes32 structHash = c.hashStruct();
-        bytes32 digest = _typedDataHash(structHash);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
-    function _typedDataHash(bytes32 structHash) internal view returns (bytes32) {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(core)
-            )
-        );
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-    }
-
     function _rootCommitment(uint256 payment, uint256 salt, bytes32 checkoutHash)
         internal
         view
@@ -125,8 +102,8 @@ contract AttestationCoordinatorTest is Test {
         returns (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c)
     {
         c = _rootCommitment(payment, salt, checkoutHash);
-        bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
-        bytes memory sellerSig = _signCommitment(c, SELLER1_KEY);
+        bytes memory buyerSig = SigningTestHelper.signCommitment(address(core), c, BUYER_KEY);
+        bytes memory sellerSig = SigningTestHelper.signCommitment(address(core), c, SELLER1_KEY);
         (processId, orderHash) = core.commit(c, buyerSig, sellerSig);
     }
 
@@ -150,8 +127,8 @@ contract AttestationCoordinatorTest is Test {
             salt: salt,
             commitDeadline: block.timestamp + 1 hours
         });
-        bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
-        bytes memory sellerSig = _signCommitment(c, sellerKey);
+        bytes memory buyerSig = SigningTestHelper.signCommitment(address(core), c, BUYER_KEY);
+        bytes memory sellerSig = SigningTestHelper.signCommitment(address(core), c, sellerKey);
         (, orderHash) = core.commit(c, buyerSig, sellerSig);
     }
 
@@ -231,10 +208,17 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_sellerAttestation_emissionsDisclosure() public {
-        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, EMISSIONS_CLAUSE, "");
+        (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c) =
+            _commitRootSingle(50 ether, 1, EMISSIONS_CLAUSE, "");
 
         bytes memory ipfsCidContent = "QmSomeIpfsCid";
 
+        // All six fields: the order and process the Core assigned, the seller
+        // as attester, the clause, the stage and the content reference.
+        vm.expectEmit(true, true, true, true, address(coordinator));
+        emit AttestationCoordinator.Attestation(
+            orderHash, processId, seller1, EMISSIONS_CLAUSE, 2, keccak256(ipfsCidContent)
+        );
         vm.prank(seller1);
         coordinator.attestAsSeller(c, EMISSIONS_CLAUSE, 2, EMPTY, _emptyProof(), keccak256(ipfsCidContent));
     }
@@ -244,10 +228,16 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_buyerAttestation() public {
-        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
+        (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c) =
+            _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
 
+        // All six fields, the buyer as attester. The content reference differs
+        // from the clause data hash, so an event carrying the wrong one fails.
+        bytes32 evidence = keccak256("the buyer's receipt");
+        vm.expectEmit(true, true, true, true, address(coordinator));
+        emit AttestationCoordinator.Attestation(orderHash, processId, buyer, LIFECYCLE_CLAUSE, 5, evidence);
         vm.prank(buyer);
-        coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 5, EMPTY, _emptyProof(), EMPTY);
+        coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 5, EMPTY, _emptyProof(), evidence);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -505,8 +495,8 @@ contract AttestationCoordinatorTest is Test {
             salt: 2,
             commitDeadline: block.timestamp + 1 hours
         });
-        bytes memory bs = _signCommitment(c2, SELLER1_KEY); // seller1 acts as buyer here
-        bytes memory ss = _signCommitment(c2, SELLER2_KEY);
+        bytes memory bs = SigningTestHelper.signCommitment(address(core), c2, SELLER1_KEY); // seller1 acts as buyer here
+        bytes memory ss = SigningTestHelper.signCommitment(address(core), c2, SELLER2_KEY);
         core.commit(c2, bs, ss);
 
         // `buyer` (from our setUp) is NOT c2.buyer, so the call must revert NotAuthorized.

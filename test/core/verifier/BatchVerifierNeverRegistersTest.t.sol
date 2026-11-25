@@ -17,6 +17,7 @@ import {MembersRegistry} from "src/registries/MembersRegistry.sol";
 import {MockSP1Verifier} from "src/mocks/MockSP1Verifier.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
 import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// A contract that does call a registry's register function: the control that
 /// shows the recording below catches such a call.
@@ -178,19 +179,10 @@ contract BatchVerifierNeverRegistersTest is Test {
     }
 
     function _resolveDigest() internal view returns (bytes32) {
-        bytes32 domain = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(verifier)
-            )
-        );
         bytes32 structHash = keccak256(
             abi.encode(keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"), PROCESS, PAYMENT)
         );
-        return keccak256(abi.encodePacked("\x19\x01", domain, structHash));
+        return SigningTestHelper.typedDataHash(SigningTestHelper.domainOf(address(verifier)), structHash);
     }
 
     /// Run one batch: a deposit leg, the resolution's payout legs, an attestation

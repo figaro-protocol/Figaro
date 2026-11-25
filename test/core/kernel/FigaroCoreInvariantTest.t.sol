@@ -6,6 +6,7 @@ import {CommonBase} from "forge-std/Base.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 import "src/mocks/MockPermitToken.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title FigaroCoreHandler — the sequences FigaroCoreInvariantTest walks
 /// @notice Two buyers and three sellers commit roots and sub-orders and
@@ -39,6 +40,10 @@ contract FigaroCoreHandler is CommonBase, StdCheats, StdUtils {
     uint256 public openBonds;
     uint256 public commits;
     uint256 public resolves;
+    /// @dev Sub-orders committed, by the walk or by `closeOut`.
+    uint256 public subCommits;
+    /// @dev The most processes open at one time.
+    uint256 public maxOpen;
 
     constructor(FigaroCore core_, MockPermitToken token_) {
         core = core_;
@@ -47,8 +52,53 @@ contract FigaroCoreHandler is CommonBase, StdCheats, StdUtils {
 
     // ── Actions ─────────────────────────────────────────────────────
 
+    /// Opens a root when fewer than two processes are open.
     function commitRoot(uint256 buyerSeed, uint256 sellerSeed, uint256 payment) external {
         if (_openCount() >= 2) return;
+        _commitRoot(buyerSeed, sellerSeed, payment);
+    }
+
+    /// Extends an open process; with none open, opens a root instead, so
+    /// every call of the walk commits or resolves and no run is empty.
+    function commitSub(uint256 processSeed, uint256 sellerSeed, uint256 payment) external {
+        (bool found, uint256 at) = _pickOpen(processSeed);
+        if (found) _commitSub(at, sellerSeed, payment);
+        else _commitRoot(processSeed, sellerSeed, payment);
+    }
+
+    /// Resolves an open process; with none open, opens a root instead.
+    function resolve(uint256 processSeed) external {
+        (bool found, uint256 at) = _pickOpen(processSeed);
+        if (found) _resolve(at);
+        else _commitRoot(processSeed, processSeed >> 8, processSeed >> 16);
+    }
+
+    /// The deterministic close of a run, through the real Core: when the walk
+    /// committed no sub-order, one is committed; when it never held two
+    /// processes open at once, roots are opened until it does; then the root
+    /// buyer resolves every open process. Whatever the seed drew, every run
+    /// thereby commits a root and a sub-order, holds two processes open at
+    /// once, and resolves, and the invariants are asserted on the closed state.
+    function closeOut() external {
+        if (subCommits == 0) {
+            (bool found, uint256 at) = _pickOpen(0);
+            if (!found) {
+                _commitRoot(0, 0, 1 ether);
+                at = processes.length - 1;
+            }
+            _commitSub(at, 1, 1 ether);
+        }
+        while (maxOpen < 2) {
+            _commitRoot(maxOpen + 1, maxOpen + 2, 1 ether);
+        }
+        for (uint256 i = 0; i < processes.length; i++) {
+            if (processes[i].open) _resolve(i);
+        }
+    }
+
+    // ── The actions' bodies ─────────────────────────────────────────
+
+    function _commitRoot(uint256 buyerSeed, uint256 sellerSeed, uint256 payment) internal {
         payment = bound(payment, 1, 1_000 ether);
         uint256 buyerKey = buyerKeys[buyerSeed % 2];
         uint256 sellerKey = sellerKeys[sellerSeed % 3];
@@ -68,11 +118,11 @@ contract FigaroCoreHandler is CommonBase, StdCheats, StdUtils {
 
         processes.push(Process({id: processId, buyerKey: buyerKey, cumulative: payment, open: true}));
         ordersOf[processes.length - 1].push(c);
+        uint256 open = _openCount();
+        if (open > maxOpen) maxOpen = open;
     }
 
-    function commitSub(uint256 processSeed, uint256 sellerSeed, uint256 payment) external {
-        (bool found, uint256 at) = _pickOpen(processSeed);
-        if (!found) return;
+    function _commitSub(uint256 at, uint256 sellerSeed, uint256 payment) internal {
         payment = bound(payment, 1, 1_000 ether);
         Process storage p = processes[at];
         uint256 sellerKey = sellerKeys[sellerSeed % 3];
@@ -92,11 +142,10 @@ contract FigaroCoreHandler is CommonBase, StdCheats, StdUtils {
 
         p.cumulative = c.runningTotal;
         ordersOf[at].push(c);
+        subCommits++;
     }
 
-    function resolve(uint256 processSeed) external {
-        (bool found, uint256 at) = _pickOpen(processSeed);
-        if (!found) return;
+    function _resolve(uint256 at) internal {
         Process storage p = processes[at];
         CommitmentTypes.Commitment[] memory list = ordersOf[at];
 
@@ -153,15 +202,11 @@ contract FigaroCoreHandler is CommonBase, StdCheats, StdUtils {
         internal
         returns (bytes32 processId, bytes32 orderHash)
     {
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), c.hashStruct()));
-        (processId, orderHash) = core.commit(c, _sign(buyerKey, digest), _sign(sellerKey, digest));
+        bytes32 digest = SigningTestHelper.typedDataHash(core.DOMAIN_SEPARATOR(), c.hashStruct());
+        (processId, orderHash) =
+            core.commit(c, SigningTestHelper.sign(buyerKey, digest), SigningTestHelper.sign(sellerKey, digest));
         openBonds += 2 * c.payment + 2 * c.runningTotal;
         commits++;
-    }
-
-    function _sign(uint256 key, bytes32 digest) internal pure returns (bytes memory) {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
-        return abi.encodePacked(r, s, v);
     }
 
     function _openCount() internal view returns (uint256 n) {
@@ -225,11 +270,26 @@ contract FigaroCoreInvariantTest is Test {
         targetSelector(FuzzSelector({addr: address(handler), selectors: actions}));
     }
 
-    /// The walk is not empty: over a run, the handler committed at least once
-    /// and resolved at least once.
-    function afterInvariant() public view {
-        assertGt(handler.commits(), 0, "the run committed");
+    /// The walk is not empty, whatever the seed: every action commits or
+    /// resolves (a sub-order or a resolve with no process open opens a root),
+    /// so the walk's first call commits. The run then closes through the real
+    /// Core (`FigaroCoreHandler.closeOut`): it holds a sub-order and two open
+    /// processes by then, and every open process resolves. The invariants are
+    /// asserted once more on the closed state, where FigaroCore holds nothing.
+    function afterInvariant() public {
+        assertGt(handler.commits(), 0, "the walk committed");
+        handler.closeOut();
+
+        invariant_noTokenIsCreatedOrLost();
+        invariant_coreHoldsExactlyTheOpenBonds();
+        invariant_coreCanResolveEveryOpenProcess();
+        invariant_runningTotalIsTheSumOfThePayments();
+
         assertGt(handler.resolves(), 0, "the run resolved");
+        assertGt(handler.subCommits(), 0, "the run committed a sub-order");
+        assertEq(handler.maxOpen(), 2, "the run held two processes open at once");
+        assertEq(handler.openBonds(), 0, "no bond is open once every process resolved");
+        assertEq(token.balanceOf(address(core)), 0, "FigaroCore holds nothing once every process resolved");
     }
 
     function invariant_noTokenIsCreatedOrLost() public view {

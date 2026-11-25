@@ -12,6 +12,7 @@ import {UsageCounter} from "src/rewards/UsageCounter.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
 import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @notice UsageCounter — the accrual that replaces reconstructing usage after
 ///         the fact. Every test here is a property of "count it when it
@@ -131,21 +132,6 @@ contract UsageCounterTest is Test {
 
     // ── Helpers ─────────────────────────────────────────────────────
 
-    function _sign(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(core)
-            )
-        );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, c.hashStruct()));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
     /// @dev A resolved one-order process whose agreement commits `clause or assembly`.
     ///      Returns the commitment so the counter can be handed the signed
     ///      struct exactly as the parties signed it.
@@ -164,7 +150,11 @@ contract UsageCounterTest is Test {
             salt: salt,
             commitDeadline: block.timestamp + 1 hours
         });
-        (bytes32 processId,) = core.commit(c, _sign(c, bKey), _sign(c, sKey));
+        (bytes32 processId,) = core.commit(
+            c,
+            SigningTestHelper.signCommitment(address(core), c, bKey),
+            SigningTestHelper.signCommitment(address(core), c, sKey)
+        );
 
         CommitmentTypes.Commitment[] memory all = new CommitmentTypes.Commitment[](1);
         all[0] = c;
@@ -185,7 +175,11 @@ contract UsageCounterTest is Test {
             salt: salt,
             commitDeadline: block.timestamp + 1 hours
         });
-        core.commit(c, _sign(c, BUYER_KEY), _sign(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(address(core), c, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), c, SELLER1_KEY)
+        );
     }
 
     function _record(CommitmentTypes.Commitment memory c, bytes32 clauseOrProcess) internal {
@@ -221,7 +215,11 @@ contract UsageCounterTest is Test {
             salt: salt,
             commitDeadline: block.timestamp + 1 hours
         });
-        (bytes32 processId,) = core.commit(c, _sign(c, BUYER_KEY), _sign(c, SELLER1_KEY));
+        (bytes32 processId,) = core.commit(
+            c,
+            SigningTestHelper.signCommitment(address(core), c, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), c, SELLER1_KEY)
+        );
 
         CommitmentTypes.Commitment[] memory all = new CommitmentTypes.Commitment[](1);
         all[0] = c;
@@ -433,7 +431,11 @@ contract UsageCounterTest is Test {
             salt: salt,
             commitDeadline: block.timestamp + 1 hours
         });
-        (bytes32 processId,) = core.commit(first, _sign(first, BUYER_KEY), _sign(first, SELLER1_KEY));
+        (bytes32 processId,) = core.commit(
+            first,
+            SigningTestHelper.signCommitment(address(core), first, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), first, SELLER1_KEY)
+        );
         second = CommitmentTypes.Commitment({
             processId: processId,
             buyer: buyer,
@@ -445,7 +447,11 @@ contract UsageCounterTest is Test {
             salt: salt + 1,
             commitDeadline: first.commitDeadline
         });
-        core.commit(second, _sign(second, BUYER_KEY), _sign(second, secondSellerKey));
+        core.commit(
+            second,
+            SigningTestHelper.signCommitment(address(core), second, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), second, secondSellerKey)
+        );
 
         CommitmentTypes.Commitment[] memory all = new CommitmentTypes.Commitment[](2);
         all[0] = first;
@@ -888,7 +894,7 @@ contract UsageCounterTest is Test {
 
     /// @dev The processId FigaroCore assigns a first order.
     function _pid(CommitmentTypes.Commitment memory c) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), c.hashStruct()));
+        return SigningTestHelper.typedDataHash(core.DOMAIN_SEPARATOR(), c.hashStruct());
     }
 
     /// @dev A counter over REAL registries, an assembly at the test assembly's
@@ -1156,34 +1162,83 @@ contract UsageCounterTest is Test {
 
     /// `_score(c, d)` as the contract computes it — the scoring input, spelled out
     /// here rather than exposed as production surface for a test's convenience.
+    /// It reads the counter's own `icbrt`: the tests that compare a stored score
+    /// with it check the wiring of `c` and `d` into the score, not the root.
     function _score(uint64 c, uint64 d) internal view returns (uint256) {
         if (c == 0 || d == 0) return 0;
         return counter.icbrt(uint256(c) * uint256(d) * uint256(d) * 1e18);
     }
 
-    /// Real usage must not saturate: the score has to keep separating clauses and assemblies
-    /// far beyond `c * d^2 = 19`, where the old bound flattened everything to
-    /// 2642245 and turned the pro-rata split into an equal split.
-    function test_scoreDoesNotSaturateAtRealUsage() public view {
-        assertEq(_score(4, 2), 2519842);
-        assertEq(_score(5, 2), 2714417);
-        assertEq(_score(100, 10), 21544346);
-        assertEq(_score(1000, 50), 135720880);
-        assertEq(_score(10000, 1000), 2154434690);
+    /// @dev Records `c` real uses of `key` from `d` staked sellers through the
+    ///      counter's batch route (`applyBatchAccrual`, as the bound verifier),
+    ///      in chunks of at most 1,000 uses per call, and returns the score the
+    ///      counter stored. The batch route is the cheap real route: it runs the
+    ///      same `_count` the direct route runs, without a Core trade per use.
+    function _scoreAfter(bytes32 key, uint64 c, uint64 d, uint256 seed) internal returns (uint256) {
+        UsageCounter.BatchUse[] memory all = _cd(key, KIND_CLAUSE, c, d, seed);
+        for (uint256 from = 0; from < all.length; from += 1000) {
+            uint256 to = from + 1000 < all.length ? from + 1000 : all.length;
+            UsageCounter.BatchUse[] memory chunk = new UsageCounter.BatchUse[](to - from);
+            for (uint256 i = from; i < to; ++i) {
+                chunk[i - from] = all[i];
+            }
+            vm.prank(batchVerifier);
+            counter.applyBatchAccrual(0, PROVENANCE_LEAF, chunk);
+        }
+        (uint64 cc, uint64 dd, uint256 score) = counter.accrualOf(KIND_CLAUSE, key, 0);
+        assertEq(cc, c, "the counter counted every use");
+        assertEq(dd, d, "the counter counted every seller once");
+        assertEq(counter.scoreOf(KIND_CLAUSE, key, 0), score, "scoreOf reads the accrual's score");
+        return score;
     }
 
-    /// Strict separation: a thousandfold difference in real usage must show up in
-    /// the score, or pro rata pays adoption and farming the same.
-    /// Sampled over the FULL field domain — `Accrual.c` / `Accrual.d` are
-    /// uint64, and the saturation bug survived a fuzz that sampled a narrower
-    /// width than the function's own; the ×1000 arm bounds c only for the
-    /// test's multiplication, never the domain.
-    function testFuzz_scoreSeparatesRealUsage(uint64 c, uint64 d) public view {
-        vm.assume(d > 0);
-        c = uint64(bound(c, 1, type(uint64).max - 1));
-        assertGe(_score(c + 1, d), _score(c, d));
-        uint64 cThousandable = uint64(bound(c, 1, (type(uint64).max - 1) / 1000));
-        assertGt(_score(cThousandable * 1000 + 1, d), _score(cThousandable, d));
+    /// Real usage must not saturate: the score has to keep separating clauses and assemblies
+    /// far beyond `c * d^2 = 19`, where the old bound flattened everything to
+    /// 2642245 and turned the pro-rata split into an equal split. Each figure
+    /// is the score the counter stores after that many real uses from that
+    /// many staked sellers; the expected values are the cube roots of
+    /// `c · d² · 1e18`, written out, never computed by the counter.
+    function test_scoreDoesNotSaturateAtRealUsage() public {
+        assertEq(_scoreAfter(keccak256("s-4-2"), 4, 2, 1), 2519842);
+        assertEq(_scoreAfter(keccak256("s-5-2"), 5, 2, 2), 2714417);
+        assertEq(_scoreAfter(keccak256("s-100-10"), 100, 10, 3), 21544346);
+        assertEq(_scoreAfter(keccak256("s-1000-50"), 1000, 50, 4), 135720880);
+        assertEq(_scoreAfter(keccak256("s-10000-1000"), 10000, 1000, 5), 2154434690);
+    }
+
+    /// Strict separation over real uses: one more use, by a seller already
+    /// counted, raises the counter's score; one more use by a new seller
+    /// raises it further. Bounded for the gas a fuzz run can afford: at most
+    /// 32 uses and 32 sellers per run (each use is a real accrual write).
+    function testFuzz_scoreSeparatesRealUsage(uint64 c, uint64 d) public {
+        c = uint64(bound(c, 1, 32));
+        d = uint64(bound(d, 1, c));
+        bytes32 key = keccak256(abi.encode("separation", c, d));
+        uint256 base = _scoreAfter(key, c, d, 6);
+
+        UsageCounter.BatchUse[] memory one = new UsageCounter.BatchUse[](1);
+        one[0] = UsageCounter.BatchUse(key, KIND_CLAUSE, keccak256(abi.encode("one-more", c, d)), _staked(0));
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, one);
+        uint256 moreUse = counter.scoreOf(KIND_CLAUSE, key, 0);
+        assertGt(moreUse, base, "one more use raises the score");
+
+        one[0] = UsageCounter.BatchUse(key, KIND_CLAUSE, keccak256(abi.encode("a-new-seller", c, d)), _staked(d));
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, one);
+        uint256 moreSeller = counter.scoreOf(KIND_CLAUSE, key, 0);
+        assertGt(moreSeller - moreUse, moreUse - base, "a new seller's use raises the score more than a repeat");
+    }
+
+    /// A thousandfold difference in real usage shows in the score, or pro rata
+    /// pays adoption and farming the same: 3 uses against 3,001 uses, three
+    /// sellers each. The smaller is already past `c * d^2 = 19`, where the
+    /// old bound saturated, so a saturating score fails here.
+    function test_aThousandfoldUsageSeparatesTheScore() public {
+        uint256 three = _scoreAfter(keccak256("x3"), 3, 3, 7);
+        uint256 thousand = _scoreAfter(keccak256("x3001"), 3001, 3, 8);
+        assertEq(three, 3_000_000, "the cube root of 27e18");
+        assertGt(thousand, three, "a thousandfold usage scores higher");
     }
 
     function test_totalScoreIsTheSumOfClauseAndAssemblyScores() public {

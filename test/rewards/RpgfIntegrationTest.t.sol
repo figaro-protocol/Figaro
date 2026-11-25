@@ -13,6 +13,7 @@ import {RpgfMinter} from "src/rewards/RpgfMinter.sol";
 import {FlorinToken} from "src/rewards/FlorinToken.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @notice Stands in for the DAO's treasury wallet, a contract wallet: its
 ///         owner sends a list of calls, and the wallet makes them in order in
@@ -175,21 +176,6 @@ contract RpgfIntegrationTest is Test {
         florin.registerMinter(address(minter), 600_000_000 ether);
     }
 
-    function _sign(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(core)
-            )
-        );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, c.hashStruct()));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
     /// @dev One real bonded process, resolved, committing `clause or assembly`.
     function _settle(bytes32 clauseOrProcess, uint256 salt) internal returns (CommitmentTypes.Commitment memory c) {
         c = CommitmentTypes.Commitment({
@@ -203,7 +189,11 @@ contract RpgfIntegrationTest is Test {
             salt: salt,
             commitDeadline: block.timestamp + 1 hours
         });
-        (bytes32 processId,) = core.commit(c, _sign(c, BUYER_KEY), _sign(c, SELLER_KEY));
+        (bytes32 processId,) = core.commit(
+            c,
+            SigningTestHelper.signCommitment(address(core), c, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), c, SELLER_KEY)
+        );
         CommitmentTypes.Commitment[] memory all = new CommitmentTypes.Commitment[](1);
         all[0] = c;
         vm.prank(buyer);
@@ -232,7 +222,11 @@ contract RpgfIntegrationTest is Test {
             salt: salt,
             commitDeadline: block.timestamp + 1 hours
         });
-        (bytes32 processId,) = core.commit(c, _sign(c, BUYER_KEY), _sign(c, SELLER_KEY));
+        (bytes32 processId,) = core.commit(
+            c,
+            SigningTestHelper.signCommitment(address(core), c, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), c, SELLER_KEY)
+        );
         CommitmentTypes.Commitment[] memory all = new CommitmentTypes.Commitment[](1);
         all[0] = c;
         vm.prank(buyer);

@@ -6,6 +6,7 @@ import {FigaroCore} from "src/core/kernel/FigaroCore.sol";
 import {CommitmentTypes} from "src/core/kernel/CommitmentTypes.sol";
 import {FlorinToken} from "src/rewards/FlorinToken.sol";
 import {MockTreasuryMultisig} from "src/mocks/MockTreasuryMultisig.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title TreasuryProcurementTest
 /// @notice The DAO treasury structure, rehearsed end to end: a 2-of-3
@@ -15,12 +16,16 @@ import {MockTreasuryMultisig} from "src/mocks/MockTreasuryMultisig.sol";
 ///         through FigaroCore as an ordinary bonded buyer (the treasury
 ///         itself can never sign — FigaroCore is ECDSA-only); resolution
 ///         returns the bond and the residual sweeps back, so the treasury's
-///         net spend is exactly the payment. Custody negatives: no owner
-///         moves funds alone, no approval replays.
+///         net spend is exactly the payment. The multisig is a mock; its own
+///         custody rules are not this file's subject.
 contract TreasuryProcurementTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
     FigaroCore internal core;
+    /// @dev The Core's domain, read from it once deployed: a signature made
+    ///      after a cheatcode (`vm.prank`, `vm.expectRevert`) reads no contract,
+    ///      so the cheatcode reaches the call under test.
+    bytes32 internal coreDomain;
     FlorinToken internal florin;
     MockTreasuryMultisig internal treasury;
 
@@ -47,6 +52,8 @@ contract TreasuryProcurementTest is Test {
         seller = vm.addr(SELLER_KEY);
 
         core = new FigaroCore();
+
+        coreDomain = core.DOMAIN_SEPARATOR();
         florin = new FlorinToken();
 
         address[] memory owners = new address[](3);
@@ -67,25 +74,6 @@ contract TreasuryProcurementTest is Test {
     }
 
     // ── EIP-712 helpers (the FigaroCore-test idiom) ─────────────────────
-
-    function _signCommitment(CommitmentTypes.Commitment memory c, uint256 privateKey)
-        internal
-        view
-        returns (bytes memory)
-    {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(core)
-            )
-        );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, c.hashStruct()));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
-        return abi.encodePacked(r, s, v);
-    }
 
     function _procurementCommitment() internal view returns (CommitmentTypes.Commitment memory) {
         return CommitmentTypes.Commitment({
@@ -126,7 +114,11 @@ contract TreasuryProcurementTest is Test {
         vm.prank(operator);
         florin.approve(address(core), 2 * PAYMENT);
         CommitmentTypes.Commitment memory c = _procurementCommitment();
-        (bytes32 processId,) = core.commit(c, _signCommitment(c, OPERATOR_KEY), _signCommitment(c, SELLER_KEY));
+        (bytes32 processId,) = core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, OPERATOR_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY)
+        );
         assertEq(florin.balanceOf(operator), 0, "in flight, the EOA holds nothing outside escrow");
 
         // 3. Buyer-dominant resolution: the seller is paid, the buyer bond
@@ -147,31 +139,9 @@ contract TreasuryProcurementTest is Test {
         assertEq(florin.balanceOf(operator), 0, "the EOA ends empty");
     }
 
-    // ── Custody negatives ───────────────────────────────────────────
-
-    function test_RevertWhen_SingleOwnerExecutesAlone() public {
-        bytes memory data = abi.encodeCall(florin.transfer, (operator, 1 ether));
-        uint256 fundingNonce = treasury.nonce();
-        vm.prank(owner1);
-        treasury.propose(address(florin), 0, data);
-        vm.expectRevert(abi.encodeWithSelector(MockTreasuryMultisig.ThresholdNotMet.selector, 1, 2));
-        treasury.execute(address(florin), 0, data, fundingNonce);
-        assertEq(florin.balanceOf(operator), 0, "no owner moves treasury funds alone");
-    }
-
-    function test_RevertWhen_NonOwnerProposes() public {
-        bytes memory data = abi.encodeCall(florin.transfer, (operator, 1 ether));
-        vm.expectRevert(MockTreasuryMultisig.NotOwner.selector);
-        vm.prank(operator);
-        treasury.propose(address(florin), 0, data);
-    }
-
-    function test_RevertWhen_ApprovedTransactionReplayed() public {
-        _fundOperator(1 ether);
-        bytes memory data = abi.encodeCall(florin.transfer, (operator, 1 ether));
-        vm.expectRevert(MockTreasuryMultisig.AlreadyExecuted.selector);
-        treasury.execute(address(florin), 0, data, 0);
-    }
+    // ── The treasury is no party to the Core ────────────────────────
+    // The multisig's own custody rules (threshold, owners, replay) are the
+    // mock's, not a shipped contract's, and are not tested here.
 
     function test_TreasuryCannotBeAKernelParty() public {
         // FigaroCore recovers ECDSA signatures; a contract address can never
@@ -180,8 +150,8 @@ contract TreasuryProcurementTest is Test {
         // valid buyer signature from the treasury.
         CommitmentTypes.Commitment memory c = _procurementCommitment();
         c.buyer = address(treasury);
-        bytes memory anySig = _signCommitment(c, OWNER1_KEY); // an owner signing is NOT the treasury signing
+        bytes memory anySig = SigningTestHelper.signCommitment(coreDomain, c, OWNER1_KEY); // an owner signing is NOT the treasury signing
         vm.expectRevert(FigaroCore.InvalidBuyerSignature.selector);
-        core.commit(c, anySig, _signCommitment(c, SELLER_KEY));
+        core.commit(c, anySig, SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY));
     }
 }

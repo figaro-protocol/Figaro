@@ -13,6 +13,7 @@ import {MembersRegistry} from "src/registries/MembersRegistry.sol";
 import "src/mocks/MockSP1Verifier.sol";
 import "src/mocks/MockERC20.sol";
 import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title The Core and the batch path, replayed from the model's own behaviors
 /// @notice `test/fixtures/tlc-traces.json` is TLC's: `scripts/export-tlc-traces.sh`
@@ -443,9 +444,10 @@ contract CoreBatchEquivalenceTest is Test {
 
     function _commitDirect(uint256 oid, uint256 pid, uint256[] memory row) internal {
         Order storage o = orders[oid];
-        bytes32 digest = _typed(core.DOMAIN_SEPARATOR(), o.d.hashStruct());
-        (bytes32 processId, bytes32 orderHash) =
-            core.commit(o.d, _sign(keys[row[C_BUYER]], digest), _sign(keys[row[C_SELLER]], digest));
+        bytes32 digest = SigningTestHelper.typedDataHash(core.DOMAIN_SEPARATOR(), o.d.hashStruct());
+        (bytes32 processId, bytes32 orderHash) = core.commit(
+            o.d, SigningTestHelper.sign(keys[row[C_BUYER]], digest), SigningTestHelper.sign(keys[row[C_SELLER]], digest)
+        );
         _bind(DIRECT, oid, pid, processId, orderHash);
 
         bytes32[] memory proof = new bytes32[](1);
@@ -464,7 +466,7 @@ contract CoreBatchEquivalenceTest is Test {
     function _commitBatch(uint256 oid, uint256 pid, uint256[] memory row) internal {
         Order storage o = orders[oid];
         bytes32 structHash = o.b.hashStruct();
-        bytes32 digest = _typed(_verifierDomain(), structHash);
+        bytes32 digest = SigningTestHelper.typedDataHash(SigningTestHelper.domainOf(address(verifier)), structHash);
         bytes32 processId = o.b.processId == bytes32(0) ? digest : o.b.processId;
         bytes32 orderHash = keccak256(abi.encodePacked(processId, structHash));
         _bind(BATCH, oid, pid, processId, orderHash);
@@ -472,9 +474,9 @@ contract CoreBatchEquivalenceTest is Test {
         opsStream = bytes.concat(
             opsStream,
             hex"01",
-            _packCommitment(o.b),
-            _sign(keys[row[C_BUYER]], digest),
-            _sign(keys[row[C_SELLER]], digest)
+            SigningTestHelper.packCommitment(o.b),
+            SigningTestHelper.sign(keys[row[C_BUYER]], digest),
+            SigningTestHelper.sign(keys[row[C_SELLER]], digest)
         );
         _deposit(o.b.buyer, 2 * o.b.payment);
         _deposit(o.b.seller, 2 * o.b.runningTotal);
@@ -508,13 +510,17 @@ contract CoreBatchEquivalenceTest is Test {
         bytes memory authorization = abi.encode("wallet-code attestation", oid, asSeller);
         MockERC1271Wallet(attester)
             .approve(
-                _typed(_verifierDomain(), _attestStructHash(asSeller, processId, orderHash, contentRef)), authorization
+                SigningTestHelper.typedDataHash(
+                    SigningTestHelper.domainOf(address(verifier)),
+                    _attestStructHash(asSeller, processId, orderHash, contentRef)
+                ),
+                authorization
             );
         opsStream = bytes.concat(
             opsStream,
             hex"05",
             asSeller ? bytes1(0x00) : bytes1(0x01),
-            _packCommitment(o.b),
+            SigningTestHelper.packCommitment(o.b),
             CLAUSE,
             bytes1(STAGE),
             contentRef,
@@ -604,15 +610,15 @@ contract CoreBatchEquivalenceTest is Test {
         bytes memory listed;
         for (uint256 i = 0; i < oids.length; i++) {
             CommitmentTypes.Commitment storage c = orders[oids[i]].b;
-            listed = bytes.concat(listed, _packCommitment(c));
+            listed = bytes.concat(listed, SigningTestHelper.packCommitment(c));
             uint256 sellerPayout = 2 * c.runningTotal + c.payment;
             uint256 buyerPayout = c.payment;
             if (breakPayout) (sellerPayout, buyerPayout) = (sellerPayout + 1, buyerPayout - 1);
             _payout(c.seller, sellerPayout);
             _payout(c.buyer, buyerPayout);
         }
-        bytes32 digest = _typed(
-            _verifierDomain(),
+        bytes32 digest = SigningTestHelper.typedDataHash(
+            SigningTestHelper.domainOf(address(verifier)),
             keccak256(
                 abi.encode(
                     keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"), processId, row[C_CUMULATIVE]
@@ -628,7 +634,9 @@ contract CoreBatchEquivalenceTest is Test {
             );
             totalWalletCodeResolves++;
         } else {
-            opsStream = bytes.concat(opsStream, hex"02", processId, _sign(keys[row[C_BUYER]], digest), n, listed);
+            opsStream = bytes.concat(
+                opsStream, hex"02", processId, SigningTestHelper.sign(keys[row[C_BUYER]], digest), n, listed
+            );
             totalSignedResolves++;
         }
 
@@ -638,7 +646,14 @@ contract CoreBatchEquivalenceTest is Test {
         for (uint256 i = 0; i < oids.length; i++) {
             Order storage o = orders[oids[i]];
             claimStream = bytes.concat(
-                claimStream, hex"03", _packCommitment(o.b), CLAUSE, hex"00", o.dataHash, hex"0001", o.sibling
+                claimStream,
+                hex"03",
+                SigningTestHelper.packCommitment(o.b),
+                CLAUSE,
+                hex"00",
+                o.dataHash,
+                hex"0001",
+                o.sibling
             );
             bool sellerClaimed;
             for (uint256 j = 0; j < i; j++) {
@@ -905,32 +920,4 @@ contract CoreBatchEquivalenceTest is Test {
     }
 
     // ── Encoding ─────────────────────────────────────────────────────
-
-    /// @dev The stream's 252-byte commitment (`operation_stream.rs`).
-    function _packCommitment(CommitmentTypes.Commitment memory c) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            c.processId, c.buyer, c.seller, c.token, c.payment, c.runningTotal, c.checkoutHash, c.salt, c.commitDeadline
-        );
-    }
-
-    function _sign(uint256 key, bytes32 digest) internal pure returns (bytes memory) {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
-    function _typed(bytes32 domain, bytes32 structHash) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19\x01", domain, structHash));
-    }
-
-    function _verifierDomain() internal view returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(verifier)
-            )
-        );
-    }
 }

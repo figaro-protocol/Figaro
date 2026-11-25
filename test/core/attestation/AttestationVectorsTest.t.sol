@@ -6,6 +6,8 @@ import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 import "src/core/attestation/AttestationCoordinator.sol";
 import "src/mocks/MockPermitToken.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
+import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
 
 /// @title AttestationVectorsTest — the attestation lock between the
 ///        coordinator and the batch path
@@ -78,8 +80,8 @@ contract AttestationVectorsTest is Test {
     }
 
     function test_attestationVectors_matchTheFrozenFixture() public {
-        bytes32 pair = _hashPair(leaves[0], leaves[1]);
-        bytes32 root = _hashPair(pair, leaves[2]);
+        bytes32 pair = AgreementTestHelper.hashPair(leaves[0], leaves[1]);
+        bytes32 root = AgreementTestHelper.hashPair(pair, leaves[2]);
 
         CommitmentTypes.Commitment memory c = CommitmentTypes.Commitment({
             processId: bytes32(0),
@@ -93,7 +95,11 @@ contract AttestationVectorsTest is Test {
             commitDeadline: 2000
         });
         vm.warp(1000);
-        core.commit(c, _sign(c, BUYER_KEY), _sign(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(address(core), c, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), c, SELLER1_KEY)
+        );
 
         string memory top = "top";
         vm.serializeString(top, "chainId", vm.toString(block.chainid));
@@ -163,15 +169,5 @@ contract AttestationVectorsTest is Test {
         vm.serializeBytes32(key, "contentRef", contentRef);
         vm.serializeBytes32(key, "topics", logs[0].topics);
         return vm.serializeBytes(key, "data", logs[0].data);
-    }
-
-    function _hashPair(bytes32 a, bytes32 b) internal pure returns (bytes32) {
-        return a < b ? keccak256(abi.encodePacked(a, b)) : keccak256(abi.encodePacked(b, a));
-    }
-
-    function _sign(CommitmentTypes.Commitment memory c, uint256 privateKey) internal view returns (bytes memory) {
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), c.hashStruct()));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
-        return abi.encodePacked(r, s, v);
     }
 }

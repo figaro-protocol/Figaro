@@ -598,16 +598,18 @@ contract RpgfMinterTest is Test {
         assertLe(minter.minted(0), T0);
     }
 
-    /// The `PeriodBudgetExceeded` backstop is STRUCTURALLY UNREACHABLE while
-    /// the counter's data is consistent (duplicate-free lists + one author of
-    /// record per clause or assembly + closed-period totals keep every pro-rata sum
-    /// within the budget — an audit finding), so no honest-data
-    /// test can reach it and deleting the line would change no other test's
-    /// outcome. It is still the LAST line of defense for the fixed pool if the
-    /// accrual ever misreports: feed the minter a counter whose per-clause-or-assembly
-    /// score exceeds its own period total (share > 1 ⇒ amount > budget) and
-    /// the backstop must refuse to over-mint rather than pay it.
-    function test_budgetBackstopRefusesOverMintOnInconsistentCounterData() public {
+    /// This test holds a BACKSTOP THAT THE REAL `UsageCounter` CANNOT REACH.
+    /// `RpgfMinter`'s `PeriodBudgetExceeded` check is unreachable while the
+    /// counter's data is consistent (duplicate-free lists, one author of
+    /// record per clause or assembly, and closed-period totals keep every
+    /// pro-rata sum within the budget), so no test over the real counter can
+    /// reach it. The branch is reached here only through a stub counter
+    /// (`StubCounter.forceTotal`) that reports a key's score above its own
+    /// period total (share > 1, so amount > budget), data the real counter
+    /// never produces. The subject is the shipped minter's refusal to
+    /// over-mint on such data; the Certora rule `mintedNeverExceedsPeriodBudget`
+    /// (`certora/RpgfMinter.spec`) relies on the same line.
+    function test_backstopTheRealCounterCannotReach_refusesOverMintOnStubbedInconsistentData() public {
         counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
         counter.forceTotal(0, 10); // hostile: total below the clauseOrProcess's own score
         counter.setClosed(0, true);

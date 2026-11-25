@@ -23,5 +23,8 @@ cd "$(dirname "$0")"
 # 7,661 and 3,717 under instrumentation. All five measure gas COST, not
 # correctness — the code paths they exercise are otherwise fully covered by the
 # surrounding test files' non-gas assertions.
+# The fork tests need an RPC and fail without one; the Foundry workflow's fork
+# job runs them, and this run does not select them.
 exec env FOUNDRY_PROFILE=coverage forge coverage \
+  --no-match-path test/composability/WitnessSwapAndCommitCoordinatorForkTest.t.sol \
   --no-match-test "test_Gas_resolveExecutionMarginal|test_Gas_recordUsageStaysAtItsAnchor|test_Gas_settleStreamCommit|test_Gas_settleStreamResolution|test_Gas_settleStreamWord" "$@"

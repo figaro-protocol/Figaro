@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 import "src/mocks/MockPermitToken.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title FigaroCore_EventEmission — Slim events, no derivable data
 /// @notice No buyerBond, sellerBond, or timestamp in events. No OrderParents.
@@ -49,26 +50,6 @@ contract FigaroCore_EventEmission is Test {
 
     // ── Helpers ───────────────────────────────────────────────────
 
-    function _signCommitment(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {
-        bytes32 structHash = c.hashStruct();
-        bytes32 digest = _typedDataHash(structHash);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
-    function _typedDataHash(bytes32 structHash) internal view returns (bytes32) {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(core)
-            )
-        );
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-    }
-
     function _commitRoot(uint256 payment, uint256 salt)
         internal
         returns (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c)
@@ -84,7 +65,11 @@ contract FigaroCore_EventEmission is Test {
             salt: salt,
             commitDeadline: block.timestamp + 1 hours
         });
-        (processId, orderHash) = core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        (processId, orderHash) = core.commit(
+            c,
+            SigningTestHelper.signCommitment(address(core), c, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), c, SELLER1_KEY)
+        );
     }
 
     function _commitSub(
@@ -106,7 +91,11 @@ contract FigaroCore_EventEmission is Test {
             salt: salt,
             commitDeadline: block.timestamp + 1 hours
         });
-        (, orderHash) = core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, sellerKey));
+        (, orderHash) = core.commit(
+            c,
+            SigningTestHelper.signCommitment(address(core), c, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), c, sellerKey)
+        );
     }
 
     /// @dev Decode and assert non-indexed data of the slim OrderCommitted.
@@ -156,8 +145,11 @@ contract FigaroCore_EventEmission is Test {
         });
 
         vm.recordLogs();
-        (bytes32 processId, bytes32 orderHash) =
-            core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        (bytes32 processId, bytes32 orderHash) = core.commit(
+            c,
+            SigningTestHelper.signCommitment(address(core), c, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), c, SELLER1_KEY)
+        );
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         bool found = false;
@@ -301,7 +293,11 @@ contract FigaroCore_EventEmission is Test {
         });
 
         vm.recordLogs();
-        (, bytes32 subHash) = core.commit(sub, _signCommitment(sub, BUYER_KEY), _signCommitment(sub, SELLER2_KEY));
+        (, bytes32 subHash) = core.commit(
+            sub,
+            SigningTestHelper.signCommitment(address(core), sub, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), sub, SELLER2_KEY)
+        );
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         bool found = false;
@@ -339,7 +335,11 @@ contract FigaroCore_EventEmission is Test {
             salt: 2,
             commitDeadline: block.timestamp + 1 hours
         });
-        core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
+        core.commit(
+            subC,
+            SigningTestHelper.signCommitment(address(core), subC, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), subC, SELLER2_KEY)
+        );
 
         CommitmentTypes.Commitment[] memory commitments = new CommitmentTypes.Commitment[](2);
         commitments[0] = rootC;

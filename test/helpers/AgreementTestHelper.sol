@@ -124,11 +124,11 @@ library AgreementTestHelper {
         uint256 nextLen = (layer.length + 1) / 2;
         next = new bytes32[](nextLen);
         for (uint256 i = 0; i < layer.length; i += 2) {
-            next[i / 2] = (i + 1 < layer.length) ? _hashPair(layer[i], layer[i + 1]) : layer[i];
+            next[i / 2] = (i + 1 < layer.length) ? hashPair(layer[i], layer[i + 1]) : layer[i];
         }
     }
 
-    function _hashPair(bytes32 a, bytes32 b) private pure returns (bytes32) {
+    function hashPair(bytes32 a, bytes32 b) internal pure returns (bytes32) {
         return a < b ? keccak256(abi.encodePacked(a, b)) : keccak256(abi.encodePacked(b, a));
     }
 

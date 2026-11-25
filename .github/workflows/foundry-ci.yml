@@ -116,8 +116,10 @@ jobs:
             # and the step stays red.
             - name: Run forge tests
               run: |
-                  forge test --via-ir -vv || {
-                      forge test --via-ir -vvv --rerun
+                  # The fork tests need an RPC and fail without one; the job
+                  # below gives them one, and this job does not select them.
+                  forge test --via-ir -vv --no-match-path test/composability/WitnessSwapAndCommitCoordinatorForkTest.t.sol || {
+                      forge test --via-ir -vvv --rerun --no-match-path test/composability/WitnessSwapAndCommitCoordinatorForkTest.t.sol
                       exit 1
                   }
 

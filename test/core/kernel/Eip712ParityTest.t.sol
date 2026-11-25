@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
+import {MockERC20} from "src/mocks/MockERC20.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title Eip712ParityTest — the SDK↔FigaroCore EIP-712 lock, UNCONDITIONAL
 /// @notice Reads `test/fixtures/eip712-vectors.json` (frozen by the SDK's
@@ -15,13 +17,16 @@ import "src/core/kernel/CommitmentTypes.sol";
 ///         The closure of the cross-language loop:
 ///           - `hashStruct` is FigaroCore's OWN pure struct-hash — asserted
 ///             directly against the SDK's `hashCommitmentStruct` vector.
-///           - the order-hash derivation mirrors `FigaroCore.sol` exactly.
+///           - the process id and order hash are what a real FigaroCore,
+///             deployed at the fixture's chain id and address, RETURNS from
+///             `commit` for the SDK's commitment signed by its parties.
 ///           - the domain separator is checked BOTH ways: the SDK's pinned
 ///             vector matches the EIP-712 formula in Solidity, AND a live
 ///             FigaroCore's `DOMAIN_SEPARATOR()` matches that same formula for
 ///             its own (chainid, address) — so SDK == formula == FigaroCore.
 contract Eip712ParityTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
+    using stdStorage for StdStorage;
 
     string internal json;
     uint64 internal fixtureChainId;
@@ -83,33 +88,93 @@ contract Eip712ParityTest is Test {
         );
     }
 
-    // ── Per-vector: struct hash, digest/processId, order hash ────────
+    // ── Per-vector: the ids a real FigaroCore returns for the SDK's commitment ──
 
-    function _assertVector(string memory base) internal view {
+    /// @dev The keys behind the SDK vector's parties. The fixture carries the
+    ///      addresses only; the keys are the ones those addresses derive from,
+    ///      and `_commitVector` checks each derivation before it signs.
+    uint256 internal constant BUYER_KEY = 0xB0B;
+    uint256 internal constant ROOT_SELLER_KEY = 0x5E11;
+    uint256 internal constant SUB_SELLER_KEY = 0x5E12;
+
+    /// A FigaroCore deployed at the fixture's chain id and address, so its
+    /// domain is the one the SDK signed under, and the vector's token at its
+    /// address. The constructor runs there (`deployCodeTo`), so the Core's
+    /// domain is its own.
+    function _coreAtTheFixture(address tokenAt) internal returns (FigaroCore core, MockERC20 token) {
+        vm.chainId(fixtureChainId);
+        deployCodeTo("FigaroCore.sol:FigaroCore", fixtureVerifyingContract);
+        core = FigaroCore(fixtureVerifyingContract);
+        deployCodeTo("MockERC20.sol:MockERC20", abi.encode("Vector", "VEC"), tokenAt);
+        token = MockERC20(tokenAt);
+        assertEq(
+            core.DOMAIN_SEPARATOR(),
+            vm.parseJsonBytes32(json, ".domainSeparator"),
+            "the Core at the fixture's address reports the SDK's domain"
+        );
+    }
+
+    /// Signs the vector's commitment with its parties' keys, commits it through
+    /// the real Core, and compares what `commit` RETURNS with the SDK's ids.
+    /// Nothing here derives an id: the struct hash is the shipped
+    /// `CommitmentTypes.hashStruct`, and the process id and order hash are the
+    /// Core's own return values.
+    function _commitVector(FigaroCore core, MockERC20 token, string memory base, uint256 sellerKey) internal {
         CommitmentTypes.Commitment memory c = _commitmentAt(string.concat(base, ".commitment"));
+        assertEq(vm.addr(BUYER_KEY), c.buyer, "the buyer key derives the vector's buyer");
+        assertEq(vm.addr(sellerKey), c.seller, "the seller key derives the vector's seller");
 
-        // 1. FigaroCore's OWN pure struct hash reproduces the SDK's.
-        bytes32 structHash = c.hashStruct();
-        assertEq(structHash, vm.parseJsonBytes32(json, string.concat(base, ".structHash")), "structHash");
+        // The shipped struct hash reproduces the SDK's.
+        assertEq(c.hashStruct(), vm.parseJsonBytes32(json, string.concat(base, ".structHash")), "structHash");
 
-        // 2. processId: for a root order it's the EIP-712 digest; for a
-        //    sub-order it's the target processId, verbatim — exactly the
-        //    FigaroCore's `processId = (c.processId == 0) ? digest : c.processId`.
-        bytes32 domainSep = _domainSeparator(fixtureChainId, fixtureVerifyingContract);
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSep, structHash));
-        bytes32 processId = c.processId == bytes32(0) ? digest : c.processId;
+        token.mint(c.buyer, 2 * c.payment);
+        token.mint(c.seller, 2 * c.runningTotal);
+        vm.prank(c.buyer);
+        token.approve(address(core), type(uint256).max);
+        vm.prank(c.seller);
+        token.approve(address(core), type(uint256).max);
+        vm.warp(c.commitDeadline);
+
+        (bytes32 processId, bytes32 orderHash) = core.commit(
+            c,
+            SigningTestHelper.signCommitment(address(core), c, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), c, sellerKey)
+        );
         assertEq(processId, vm.parseJsonBytes32(json, string.concat(base, ".processId")), "processId");
-
-        // 3. Order hash — mirrors FigaroCore.sol keccak256(processId || structHash).
-        bytes32 orderHash = keccak256(abi.encodePacked(processId, structHash));
         assertEq(orderHash, vm.parseJsonBytes32(json, string.concat(base, ".orderHash")), "orderHash");
+        assertEq(core.orderStatus(orderHash), 1, "the Core holds the order as committed");
     }
 
-    function test_rootVector_parity() public view {
-        _assertVector(".vectors[0]");
+    function test_rootVector_parity() public {
+        address tokenAt = vm.parseJsonAddress(json, ".vectors[0].commitment.token");
+        (FigaroCore core, MockERC20 token) = _coreAtTheFixture(tokenAt);
+        _commitVector(core, token, ".vectors[0]", ROOT_SELLER_KEY);
     }
 
-    function test_subVector_parity() public view {
-        _assertVector(".vectors[1]");
+    /// The SDK's sub vector names a process (`0x218b…`) that no root vector
+    /// opens: the SDK picked it as a target, not as a digest. A sub-order
+    /// commits only onto an open process, so the test seeds that one process
+    /// in the Core's `processes` mapping (its root buyer, its token, a running
+    /// total of the sub's total less its payment, one open order) and then
+    /// commits the sub through the real Core. The seeded slots are the
+    /// fixture's premise; the ids are the Core's.
+    function test_subVector_parity() public {
+        string memory base = ".vectors[1]";
+        CommitmentTypes.Commitment memory c = _commitmentAt(string.concat(base, ".commitment"));
+        (FigaroCore core, MockERC20 token) = _coreAtTheFixture(c.token);
+
+        stdstore.target(address(core)).sig(core.processes.selector).with_key(c.processId).depth(0)
+            .checked_write(c.buyer);
+        stdstore.target(address(core)).sig(core.processes.selector).with_key(c.processId).depth(1)
+            .checked_write(c.token);
+        stdstore.target(address(core)).sig(core.processes.selector).with_key(c.processId).depth(2)
+            .checked_write(c.runningTotal - c.payment);
+        stdstore.target(address(core)).sig(core.processes.selector).with_key(c.processId).depth(3)
+            .checked_write(uint256(1));
+
+        _commitVector(core, token, base, SUB_SELLER_KEY);
+        (,, uint256 runningTotal, uint256 active) = core.processes(c.processId);
+        assertEq(runningTotal, c.runningTotal, "the Core extended the process to the sub's total");
+        assertEq(active, 2, "the process holds two orders");
     }
 }

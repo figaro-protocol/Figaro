@@ -7,6 +7,7 @@ import "src/core/kernel/CommitmentTypes.sol";
 import "src/composability/WitnessSwapAndCommitCoordinator.sol";
 import "src/mocks/MockERC20.sol";
 import "src/mocks/MockSwapVenue.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @notice The one Permit2 surface this suite needs beyond the coordinator's
 ///         own interface: the live domain separator.
@@ -14,18 +15,39 @@ interface IPermit2DomainSeparator {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
 
-/// @notice Forks a few blocks behind the head. An RPC endpoint is often
-///         several nodes behind one URL, and the node that answers the fork's
-///         block read may not yet hold the block another node named as the
-///         newest: `setUp` then failed with "block not found". The head is
-///         read once with `eth_blockNumber`, and the fork is made at that
-///         number less `FORK_MARGIN`, a block every node behind the URL
-///         already holds.
-abstract contract ForkBehindHead is Test {
+/// @notice The fixtures both fork suites share. Forks a few blocks behind the
+///         head: an RPC endpoint is often several nodes behind one URL, and
+///         the node that answers the fork's block read may not yet hold the
+///         block another node named as the newest: `setUp` then failed with
+///         "block not found". The head is read once with `eth_blockNumber`,
+///         and the fork is made at that number less `FORK_MARGIN`, a block
+///         every node behind the URL already holds.
+///
+///         A fork suite never skips: with its RPC variable unset, `setUp`
+///         reverts naming the variable, and every test of the suite fails. A
+///         run that cannot supply the variable does not select this file.
+abstract contract WitnessForkBase is Test {
+    using CommitmentTypes for CommitmentTypes.Commitment;
+
     /// @dev About a minute and a half of blocks on Ethereum and on Sepolia.
     uint256 internal constant FORK_MARGIN = 8;
 
-    function _forkBehindHead(string memory rpc) internal {
+    /// @dev Canonical Permit2, same address on every chain it is deployed to.
+    address internal constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
+
+    address internal relayer = address(0xBEEF);
+
+    FigaroCore internal core;
+    WitnessSwapAndCommitCoordinator internal coord;
+
+    /// @dev Forks the chain the RPC URL in `envVar` serves, or reverts naming
+    ///      the variable.
+    function _forkFrom(string memory envVar) internal {
+        string memory rpc = vm.envOr(envVar, string(""));
+        require(
+            bytes(rpc).length != 0,
+            string.concat(envVar, " is not set: this fork suite needs an RPC URL and never skips")
+        );
         // The answer is the quantity's bytes, big-endian.
         bytes memory head = vm.rpc(rpc, "eth_blockNumber", "[]");
         uint256 number;
@@ -34,6 +56,62 @@ abstract contract ForkBehindHead is Test {
         }
         vm.createSelectFork(rpc, number - FORK_MARGIN);
     }
+
+    /// @dev A commitment signed under the domain the deployed Core reports.
+    function _sign(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {
+        return SigningTestHelper.signCommitment(address(core), c, key);
+    }
+
+    /// @dev The witness digest, built with REAL Permit2's live DOMAIN_SEPARATOR —
+    ///      the reconstruction under proof. The leg is the buyer's (role 0) of
+    ///      the commitment whose struct hash is `commitmentHash`.
+    function _permitDigest(
+        address inputToken,
+        uint256 maxInput,
+        uint256 nonce,
+        uint256 deadline,
+        bytes memory swapData,
+        bytes32 commitmentHash
+    ) internal view returns (bytes32) {
+        bytes32 witness = coord.swapWitness(inputToken, maxInput, swapData, commitmentHash, 0);
+        bytes32 typeHash = keccak256(
+            abi.encodePacked(
+                "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,",
+                "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash,bytes32 commitmentHash,uint8 role)TokenPermissions(address token,uint256 amount)"
+            )
+        );
+        bytes32 tokenPermissionsHash =
+            keccak256(abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), inputToken, maxInput));
+        bytes32 structHash =
+            keccak256(abi.encode(typeHash, tokenPermissionsHash, address(coord), nonce, deadline, witness));
+        return SigningTestHelper.typedDataHash(IPermit2DomainSeparator(PERMIT2).DOMAIN_SEPARATOR(), structHash);
+    }
+
+    /// @dev The buyer's funding leg: `swapData` is what the leg carries,
+    ///      `signedSwapData` what the buyer's witness signature covers.
+    function _buyerLeg(
+        uint256 buyerKey,
+        address inputToken,
+        uint256 maxInput,
+        uint256 nonce,
+        bytes memory swapData,
+        bytes memory signedSwapData,
+        bytes32 commitmentHash
+    ) internal view returns (WitnessSwapAndCommitCoordinator.SwapFunding memory) {
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes32 digest = _permitDigest(inputToken, maxInput, nonce, deadline, signedSwapData, commitmentHash);
+        return WitnessSwapAndCommitCoordinator.SwapFunding({
+            enabled: true,
+            inputToken: inputToken,
+            maxInput: maxInput,
+            permitNonce: nonce,
+            permitDeadline: deadline,
+            permitSignature: SigningTestHelper.sign(buyerKey, digest),
+            swapData: swapData
+        });
+    }
+
+    function _disabled() internal pure returns (WitnessSwapAndCommitCoordinator.SwapFunding memory f) {}
 }
 
 /// @title WitnessSwapAndCommitCoordinatorForkTest — the witness digest against REAL Permit2
@@ -44,20 +122,16 @@ abstract contract ForkBehindHead is Test {
 ///         party, must be ACCEPTED by the canonical Permit2 deployment
 ///         (0x…78BA3) pulling real token balances, and a substituted route must
 ///         be REJECTED by real Permit2's own signature check — not by our mock.
-/// @dev Gated on `MAINNET_RPC_URL`; without it every test is SKIPPED (never
-///      silently passed). Run: MAINNET_RPC_URL=<url> forge test --match-contract
+/// @dev Needs `MAINNET_RPC_URL`; without it every test FAILS, naming the
+///      variable (never skipped, never silently passed). Run:
+///      MAINNET_RPC_URL=<url> forge test --match-contract
 ///      WitnessSwapAndCommitCoordinatorForkTest. The router stays a mock — the
 ///      swap venue is an off-protocol auxiliary; the surface under proof is the
 ///      Permit2 witness digest, nothing else.
-contract WitnessSwapAndCommitCoordinatorForkTest is ForkBehindHead {
+contract WitnessSwapAndCommitCoordinatorForkTest is WitnessForkBase {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
-    /// @dev Canonical Permit2, same address on every chain it is deployed to.
-    address internal constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
-
-    FigaroCore internal core;
     MockSwapVenue internal router;
-    WitnessSwapAndCommitCoordinator internal coord;
 
     MockERC20 internal bond;
     MockERC20 internal buyerInput;
@@ -69,17 +143,11 @@ contract WitnessSwapAndCommitCoordinatorForkTest is ForkBehindHead {
     uint256 internal constant NONCE = uint256(keccak256("figaro-witness-fork-nonce"));
     address internal buyer;
     address internal seller;
-    address internal relayer = address(0xBEEF);
 
     uint256 internal constant P = 1000 ether;
 
-    bool internal forked;
-
     function setUp() public {
-        string memory rpc = vm.envOr("MAINNET_RPC_URL", string(""));
-        if (bytes(rpc).length == 0) return; // tests skip themselves below
-        _forkBehindHead(rpc);
-        forked = true;
+        _forkFrom("MAINNET_RPC_URL");
 
         buyer = vm.addr(BUYER_KEY);
         seller = vm.addr(SELLER_KEY);
@@ -105,13 +173,6 @@ contract WitnessSwapAndCommitCoordinatorForkTest is ForkBehindHead {
         vm.label(PERMIT2, "Permit2(canonical)");
     }
 
-    modifier onlyForked() {
-        vm.skip(!forked);
-        _;
-    }
-
-    // ── Helpers (mirror WitnessSwapAndCommitCoordinatorTest, real domain) ──
-
     function _rootCommitment() internal view returns (CommitmentTypes.Commitment memory) {
         return CommitmentTypes.Commitment({
             processId: bytes32(0),
@@ -126,76 +187,31 @@ contract WitnessSwapAndCommitCoordinatorForkTest is ForkBehindHead {
         });
     }
 
-    function _sign(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(core)
-            )
-        );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, c.hashStruct()));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
     function _swapData(uint256 amountIn) internal view returns (bytes memory) {
         return abi.encodeCall(MockSwapVenue.swap, (address(buyerInput), address(bond), amountIn, address(coord)));
     }
 
-    /// @dev The witness digest, built with REAL Permit2's live DOMAIN_SEPARATOR —
-    ///      the reconstruction under proof.
-    function _permitDigest(uint256 maxInput, uint256 deadline, bytes memory swapData) internal view returns (bytes32) {
-        // The buyer's leg (role 0) of the suite's one root commitment.
-        bytes32 witness = coord.swapWitness(address(buyerInput), maxInput, swapData, _rootCommitment().hashStruct(), 0);
-        bytes32 typeHash = keccak256(
-            abi.encodePacked(
-                "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,",
-                "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash,bytes32 commitmentHash,uint8 role)TokenPermissions(address token,uint256 amount)"
-            )
-        );
-        bytes32 tokenPermissionsHash = keccak256(
-            abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), address(buyerInput), maxInput)
-        );
-        bytes32 structHash =
-            keccak256(abi.encode(typeHash, tokenPermissionsHash, address(coord), NONCE, deadline, witness));
-        return keccak256(abi.encodePacked("\x19\x01", IPermit2DomainSeparator(PERMIT2).DOMAIN_SEPARATOR(), structHash));
-    }
-
-    function _buyerLeg(bytes memory swapData, bytes memory signedRouteData)
+    function _leg(bytes memory swapData, bytes memory signedRouteData)
         internal
         view
         returns (WitnessSwapAndCommitCoordinator.SwapFunding memory)
     {
-        uint256 deadline = block.timestamp + 1 hours;
-        bytes32 digest = _permitDigest(2 * P, deadline, signedRouteData);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(BUYER_KEY, digest);
-        return WitnessSwapAndCommitCoordinator.SwapFunding({
-            enabled: true,
-            inputToken: address(buyerInput),
-            maxInput: 2 * P,
-            permitNonce: NONCE,
-            permitDeadline: deadline,
-            permitSignature: abi.encodePacked(r, s, v),
-            swapData: swapData
-        });
+        return _buyerLeg(
+            BUYER_KEY, address(buyerInput), 2 * P, NONCE, swapData, signedRouteData, _rootCommitment().hashStruct()
+        );
     }
-
-    function _disabled() internal pure returns (WitnessSwapAndCommitCoordinator.SwapFunding memory f) {}
 
     // ── The parity proofs ──────────────────────────────────────────
 
     /// @notice Round-trip: a witness signature built by our convention is
     ///         accepted by canonical Permit2, the input token moves, the swap
     ///         funds the buyer, FigaroCore pulls both bonds, the commit lands.
-    function test_Fork_RoundTrip_RealPermit2AcceptsWitness() public onlyForked {
+    function test_Fork_RoundTrip_RealPermit2AcceptsWitness() public {
         CommitmentTypes.Commitment memory c = _rootCommitment();
         bytes memory route = _swapData(2 * P);
 
         vm.prank(relayer);
-        coord.swapAndCommit(c, _sign(c, BUYER_KEY), _sign(c, SELLER_KEY), _buyerLeg(route, route), _disabled());
+        coord.swapAndCommit(c, _sign(c, BUYER_KEY), _sign(c, SELLER_KEY), _leg(route, route), _disabled());
 
         assertEq(bond.balanceOf(address(core)), 4 * P, "escrow holds both bonds");
         assertEq(buyerInput.balanceOf(buyer), 0, "real Permit2 pulled the buyer's input");
@@ -206,14 +222,14 @@ contract WitnessSwapAndCommitCoordinatorForkTest is ForkBehindHead {
     /// @notice The front-run proof against the REAL verifier: a route the party
     ///         did not sign is rejected by canonical Permit2's own signature
     ///         check before any token moves.
-    function test_Fork_RealPermit2RejectsSubstitutedRoute() public onlyForked {
+    function test_Fork_RealPermit2RejectsSubstitutedRoute() public {
         CommitmentTypes.Commitment memory c = _rootCommitment();
         bytes memory signedRoute = _swapData(2 * P);
         bytes memory substitutedRoute = _swapData(P); // relayer's cheaper route
 
         // Build everything BEFORE arming expectRevert — leg construction makes a
         // `swapWitness` staticcall that would otherwise consume the expectation.
-        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _buyerLeg(substitutedRoute, signedRoute);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _leg(substitutedRoute, signedRoute);
         bytes memory bSig = _sign(c, BUYER_KEY);
         bytes memory sSig = _sign(c, SELLER_KEY);
 
@@ -252,14 +268,13 @@ interface ISwapRouter02 {
 ///         allowance-pull composition end to end against the real venue and the
 ///         real WETH/USDC 0.05% pool (liquidity verified before this test was
 ///         written).
-/// @dev Gated on `SEPOLIA_RPC_URL`; without it every test is SKIPPED (never
-///      silently passed). Run: SEPOLIA_RPC_URL=<url> forge test --match-contract
+/// @dev Needs `SEPOLIA_RPC_URL`; without it every test FAILS, naming the
+///      variable (never skipped, never silently passed). Run:
+///      SEPOLIA_RPC_URL=<url> forge test --match-contract
 ///      WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest.
-contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is ForkBehindHead {
+contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is WitnessForkBase {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
-    /// @dev Canonical Permit2 — same address on Sepolia as everywhere.
-    address internal constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
     /// @dev The deployed Sepolia SwapRouter02 the protocol composes
     ///      (deployments/11155111.json, key `swapRouter`).
     address internal constant SWAP_ROUTER_02 = 0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E;
@@ -269,15 +284,11 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is ForkBehindHead {
     IERC20 internal constant USDC = IERC20(0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238);
     uint24 internal constant POOL_FEE = 500;
 
-    FigaroCore internal core;
-    WitnessSwapAndCommitCoordinator internal coord;
-
     uint256 internal constant BUYER_KEY = 0xF1A20B0C;
     uint256 internal constant SELLER_KEY = 0xF1A25E12;
     uint256 internal constant NONCE = uint256(keccak256("figaro-sepolia-venue-fork-nonce"));
     address internal buyer;
     address internal seller;
-    address internal relayer = address(0xBEEF);
 
     /// @dev Payment: 1 USDC (6 decimals) — small against the pool's liquidity.
     uint256 internal constant P = 1e6;
@@ -285,13 +296,8 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is ForkBehindHead {
     ///      the live quote (~9.2e13 wei for 2 USDC out when this was written).
     uint256 internal constant MAX_INPUT = 1e16;
 
-    bool internal forked;
-
     function setUp() public {
-        string memory rpc = vm.envOr("SEPOLIA_RPC_URL", string(""));
-        if (bytes(rpc).length == 0) return; // tests skip themselves below
-        _forkBehindHead(rpc);
-        forked = true;
+        _forkFrom("SEPOLIA_RPC_URL");
 
         buyer = vm.addr(BUYER_KEY);
         seller = vm.addr(SELLER_KEY);
@@ -333,11 +339,6 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is ForkBehindHead {
         vm.label(SWAP_ROUTER_02, "SwapRouter02(Sepolia)");
     }
 
-    modifier onlyForked() {
-        vm.skip(!forked);
-        _;
-    }
-
     function _rootCommitment() internal view returns (CommitmentTypes.Commitment memory) {
         return CommitmentTypes.Commitment({
             processId: bytes32(0),
@@ -350,21 +351,6 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is ForkBehindHead {
             salt: 1,
             commitDeadline: block.timestamp + 1 hours
         });
-    }
-
-    function _sign(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(core)
-            )
-        );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, c.hashStruct()));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
-        return abi.encodePacked(r, s, v);
     }
 
     /// @dev The buyer leg's `swapData`, built the DOCUMENTED way (sdk/README.md
@@ -386,54 +372,19 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is ForkBehindHead {
         );
     }
 
-    /// @dev The witness digest against REAL Permit2's live DOMAIN_SEPARATOR —
-    ///      same reconstruction the mainnet suite proves.
-    function _permitDigest(uint256 maxInput, uint256 deadline, bytes memory swapData) internal view returns (bytes32) {
-        // The buyer's leg (role 0) of the suite's one root commitment.
-        bytes32 witness = coord.swapWitness(address(WETH), maxInput, swapData, _rootCommitment().hashStruct(), 0);
-        bytes32 typeHash = keccak256(
-            abi.encodePacked(
-                "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,",
-                "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash,bytes32 commitmentHash,uint8 role)TokenPermissions(address token,uint256 amount)"
-            )
-        );
-        bytes32 tokenPermissionsHash =
-            keccak256(abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), address(WETH), maxInput));
-        bytes32 structHash =
-            keccak256(abi.encode(typeHash, tokenPermissionsHash, address(coord), NONCE, deadline, witness));
-        return keccak256(abi.encodePacked("\x19\x01", IPermit2DomainSeparator(PERMIT2).DOMAIN_SEPARATOR(), structHash));
-    }
-
-    function _buyerLeg(bytes memory swapData)
-        internal
-        view
-        returns (WitnessSwapAndCommitCoordinator.SwapFunding memory)
-    {
-        uint256 deadline = block.timestamp + 1 hours;
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(BUYER_KEY, _permitDigest(MAX_INPUT, deadline, swapData));
-        return WitnessSwapAndCommitCoordinator.SwapFunding({
-            enabled: true,
-            inputToken: address(WETH),
-            maxInput: MAX_INPUT,
-            permitNonce: NONCE,
-            permitDeadline: deadline,
-            permitSignature: abi.encodePacked(r, s, v),
-            swapData: swapData
-        });
-    }
-
-    function _disabled() internal pure returns (WitnessSwapAndCommitCoordinator.SwapFunding memory f) {}
-
     /// @notice Round-trip against the REAL venue: Permit2 pulls the buyer's
     ///         WETH, the deployed SwapRouter02 pulls it onward by the
     ///         coordinator's allowance and delivers exactly the bond in USDC,
     ///         FigaroCore pulls both bonds, the commit lands, and every
     ///         residual comes back to the buyer.
-    function test_Fork_RealSepoliaSwapRouter02FundsTheBond() public onlyForked {
+    function test_Fork_RealSepoliaSwapRouter02FundsTheBond() public {
         CommitmentTypes.Commitment memory c = _rootCommitment();
+        bytes memory route = _swapData();
+        WitnessSwapAndCommitCoordinator.SwapFunding memory leg =
+            _buyerLeg(BUYER_KEY, address(WETH), MAX_INPUT, NONCE, route, route, c.hashStruct());
 
         vm.prank(relayer);
-        coord.swapAndCommit(c, _sign(c, BUYER_KEY), _sign(c, SELLER_KEY), _buyerLeg(_swapData()), _disabled());
+        coord.swapAndCommit(c, _sign(c, BUYER_KEY), _sign(c, SELLER_KEY), leg, _disabled());
 
         assertEq(USDC.balanceOf(address(core)), 4 * P, "escrow holds both bonds");
         assertEq(USDC.balanceOf(buyer), 0, "swap delivered exactly the bond; FigaroCore pulled it all");

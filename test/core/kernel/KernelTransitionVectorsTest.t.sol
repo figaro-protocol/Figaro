@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 import "src/mocks/MockPermitToken.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title KernelTransitionVectorsTest — the state-transition lock between the
 ///        FigaroCore and its Rust mirror
@@ -207,8 +208,11 @@ contract KernelTransitionVectorsTest is Test {
                 salt: i + 1,
                 commitDeadline: DEADLINE
             });
-            (r.processIds[i], r.orderHashes[i]) =
-                core.commit(r.cs[i], _sign(r.cs[i], BUYER_KEY), _sign(r.cs[i], ord.sellerKey));
+            (r.processIds[i], r.orderHashes[i]) = core.commit(
+                r.cs[i],
+                SigningTestHelper.signCommitment(address(core), r.cs[i], BUYER_KEY),
+                SigningTestHelper.signCommitment(address(core), r.cs[i], ord.sellerKey)
+            );
         }
     }
 
@@ -313,13 +317,5 @@ contract KernelTransitionVectorsTest is Test {
         for (uint256 i = 0; i < parties.length; i++) {
             b[i] = token.balanceOf(parties[i]);
         }
-    }
-
-    /// The domain is read from FigaroCore by external call, never rebuilt
-    /// from block.chainid here (see FigaroCoreTest's chain-id test).
-    function _sign(CommitmentTypes.Commitment memory c, uint256 privateKey) internal view returns (bytes memory) {
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), c.hashStruct()));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
-        return abi.encodePacked(r, s, v);
     }
 }

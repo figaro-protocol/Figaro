@@ -22,12 +22,13 @@ import {RpgfMinter} from "src/rewards/RpgfMinter.sol";
 import {FlorinToken} from "src/rewards/FlorinToken.sol";
 import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
 import {MockDelegatingWallet} from "src/mocks/MockDelegatingWallet.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @dev Unit tests for the batch verifier: nine-word public values,
 ///      net-position reconciliation, the re-emitted attestations, and the
 ///      RPGF usage bridge. Hash packing here mirrors the
 ///      `figaro-kernel` crate's compute_*_hash functions; the byte-exact cross-language
-///      lock is the sequencer batch e2e (a real apply_batch output resolved
+///      lock is the sequencer batch e2e (the proof program's real output resolved
 ///      through this contract).
 contract FigaroBatchVerifierTest is Test {
     FigaroBatchVerifier verifier;
@@ -97,10 +98,6 @@ contract FigaroBatchVerifierTest is Test {
 
     // ── Hash mirrors (Rust compute_*_hash parity packing) ──────────
 
-    function _hashPositions(FigaroBatchVerifier.NetPosition[] memory ps) internal pure returns (bytes32) {
-        return BatchHashes.positions(ps);
-    }
-
     function _hashAttestations(FigaroBatchVerifier.AttestationData[] memory atts) internal pure returns (bytes32) {
         return BatchHashes.attestations(atts);
     }
@@ -164,7 +161,7 @@ contract FigaroBatchVerifierTest is Test {
             newRoot,
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             _hashAttestations(atts),
             _hashUsageEmpty(),
             uint64(block.timestamp),
@@ -214,7 +211,7 @@ contract FigaroBatchVerifierTest is Test {
             newRoot,
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             _hashAttestations(events.attestations),
             _hashUsageEmpty(),
             future,
@@ -251,7 +248,7 @@ contract FigaroBatchVerifierTest is Test {
             newRoot,
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             _hashAttestations(events.attestations),
             _hashUsageEmpty(),
             uint64(block.timestamp),
@@ -300,7 +297,7 @@ contract FigaroBatchVerifierTest is Test {
             newRoot,
             uint64(999),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             _hashAttestations(events.attestations),
             _hashUsageEmpty(),
             uint64(block.timestamp),
@@ -347,9 +344,16 @@ contract FigaroBatchVerifierTest is Test {
         new FigaroBatchVerifier(address(sp1), VKEY, address(0));
 
         // A counter address with no code answers nothing to `batchVerifier()`:
-        // the deploy reverts.
-        vm.expectRevert();
-        new FigaroBatchVerifier(address(sp1), VKEY, address(0xC0FFEE));
+        // the deploy reverts. The revert carries no data: the contract's
+        // `batchVerifier()` call returns nothing to decode, and Solidity's
+        // decoder reverts with empty data, so no named error exists to expect.
+        // The empty reason is asserted, so a named revert (another guard
+        // firing first) fails this line.
+        try new FigaroBatchVerifier(address(sp1), VKEY, address(0xC0FFEE)) returns (FigaroBatchVerifier) {
+            fail("a counter with no code must not be bound");
+        } catch (bytes memory reason) {
+            assertEq(reason.length, 0, "the revert carries no data");
+        }
     }
 
     function test_constructor_setsImmutablesAndGenesis() public view {
@@ -400,7 +404,7 @@ contract FigaroBatchVerifierTest is Test {
             keccak256("net-zero-root"),
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             keccak256(""),
             _hashUsageEmpty(),
             uint64(block.timestamp),
@@ -438,6 +442,87 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(verifier.stateRoot(), GENESIS, "root must not advance on a rejected proof");
         assertEq(verifier.batchCount(), 0, "no batch counted");
         assertEq(token.balanceOf(buyer), buyerBefore, "no value leg on a rejected proof");
+    }
+
+    // ── What the bound verifier is asked: the key, the values and the proof, once ──
+
+    /// @dev A proof that is not empty, so a settle that hands the verifier an
+    ///      empty or another proof is told apart from one that hands it this one.
+    bytes constant PROOF = hex"5ca1ab1e0000000000000000000000000000000000000000000000000000000000c0ffee";
+
+    /// Every settle asks the bound verifier exactly once, with the key the
+    /// verifier was constructed with, the public values it was handed byte for
+    /// byte, and the proof bytes it was handed byte for byte. The mock accepts
+    /// any arguments, so only the recorded call can show what the contract asks.
+    function test_settleBatch_asksTheBoundVerifierOnceWithTheKeyTheValuesAndTheProof() public {
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _canonicalBatch();
+
+        vm.expectCall(address(sp1), abi.encodeCall(ISP1Verifier.verifyProof, (VKEY, pv, PROOF)), 1);
+        verifier.settleBatch(PROOF, pv, positions, events, _emptyUsage(), hex"");
+        assertEq(verifier.stateRoot(), newRoot, "the asked batch lands");
+    }
+
+    /// The same of a second batch on the advanced root: each settle asks once,
+    /// with that batch's own values and proof, never the first batch's.
+    function test_settleBatch_asksTheVerifierOncePerBatchWithThatBatchsValues() public {
+        (
+            bytes memory pv1,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 root1
+        ) = _canonicalBatch();
+        verifier.settleBatch(PROOF, pv1, positions, events, _emptyUsage(), hex"");
+
+        FigaroBatchVerifier.NetPosition[] memory none = new FigaroBatchVerifier.NetPosition[](0);
+        FigaroBatchVerifier.BatchEventData memory noEvents =
+            FigaroBatchVerifier.BatchEventData(new FigaroBatchVerifier.AttestationData[](0));
+        bytes memory pv2 = abi.encode(
+            root1,
+            keccak256("second-root"),
+            uint64(block.chainid),
+            address(verifier),
+            keccak256(""),
+            keccak256(""),
+            _hashUsageEmpty(),
+            uint64(block.timestamp),
+            keccak256(hex"")
+        );
+        bytes memory proof2 = bytes.concat(PROOF, hex"02");
+        vm.expectCall(address(sp1), abi.encodeCall(ISP1Verifier.verifyProof, (VKEY, pv2, proof2)), 1);
+        vm.expectCall(address(sp1), abi.encodeCall(ISP1Verifier.verifyProof, (VKEY, pv1, PROOF)), 0);
+        verifier.settleBatch(proof2, pv2, none, noEvents, _emptyUsage(), hex"");
+        assertEq(verifier.batchCount(), 2, "both batches land");
+    }
+
+    /// A batch whose verifier call reverts lands nothing: the call was made
+    /// with the batch's own arguments, and its revert undoes the settle whole.
+    function test_settleBatch_aVerifierRevertOnTheAskedArgumentsLandsNothing() public {
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+        ) = _canonicalBatch();
+        uint256 buyerBefore = token.balanceOf(buyer);
+        uint256 sellerBefore = token.balanceOf(seller);
+        uint256 verifierBefore = token.balanceOf(address(verifier));
+
+        sp1.setRejectProofs(true);
+        vm.expectCall(address(sp1), abi.encodeCall(ISP1Verifier.verifyProof, (VKEY, pv, PROOF)), 1);
+        vm.recordLogs();
+        vm.expectRevert(MockSP1Verifier.InvalidProof.selector);
+        verifier.settleBatch(PROOF, pv, positions, events, _emptyUsage(), hex"");
+
+        assertEq(vm.getRecordedLogs().length, 0, "no event is left by a refused batch");
+        assertEq(verifier.stateRoot(), GENESIS, "root must not advance");
+        assertEq(verifier.batchCount(), 0, "no batch counted");
+        assertEq(token.balanceOf(buyer), buyerBefore, "no deposit pulled");
+        assertEq(token.balanceOf(seller), sellerBefore, "no payout pushed");
+        assertEq(token.balanceOf(address(verifier)), verifierBefore, "the verifier's balance is untouched");
     }
 
     // ── The public values are nine words, no more and no fewer ─────
@@ -520,7 +605,7 @@ contract FigaroBatchVerifierTest is Test {
             newRoot,
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             _hashAttestations(events.attestations),
             _hashUsageEmpty(),
             clock,
@@ -579,21 +664,12 @@ contract FigaroBatchVerifierTest is Test {
     /// The digest the buyer's code is asked about: `ResolveProcess` over the
     /// process and the listed payments, under the verifier's domain.
     function _walletDigest() internal view returns (bytes32) {
-        bytes32 domain = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(verifier)
-            )
-        );
         bytes32 structHash = keccak256(
             abi.encode(
                 keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"), WALLET_PROCESS, WALLET_PAYMENT
             )
         );
-        return keccak256(abi.encodePacked("\x19\x01", domain, structHash));
+        return SigningTestHelper.typedDataHash(SigningTestHelper.domainOf(address(verifier)), structHash);
     }
 
     /// The resolution's two payout legs: the seller its 2G + P, the buyer P.
@@ -738,23 +814,14 @@ contract FigaroBatchVerifierTest is Test {
         );
     }
 
-    function _verifierDomain() internal view returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(verifier)
-            )
-        );
-    }
-
     /// The target's process id: its own for an extension order, its EIP-712
     /// digest under the verifier's domain for a root order.
     function _attestProcessId(CommitmentTypes.Commitment memory c) internal view returns (bytes32) {
         if (c.processId != bytes32(0)) return c.processId;
-        return keccak256(abi.encodePacked("\x19\x01", _verifierDomain(), CommitmentTypes.hashStruct(c)));
+        return
+            SigningTestHelper.typedDataHash(
+                SigningTestHelper.domainOf(address(verifier)), CommitmentTypes.hashStruct(c)
+            );
     }
 
     /// The target's order hash, as FigaroCore derives it.
@@ -787,7 +854,7 @@ contract FigaroBatchVerifierTest is Test {
                     ATT_CONTENT
                 )
             );
-        return keccak256(abi.encodePacked("\x19\x01", _verifierDomain(), structHash));
+        return SigningTestHelper.typedDataHash(SigningTestHelper.domainOf(address(verifier)), structHash);
     }
 
     /// Land a batch whose stream is `operations` and which moves nothing;
@@ -905,7 +972,9 @@ contract FigaroBatchVerifierTest is Test {
         bytes memory authorization = bytes("session-key-approval");
         vm.etch(seller, type(MockERC1271Wallet).runtimeCode);
         MockERC1271Wallet(seller).approve(_attestDigest(0, c), authorization);
-        bytes32 processId = keccak256(abi.encodePacked("\x19\x01", _verifierDomain(), CommitmentTypes.hashStruct(c)));
+        bytes32 processId = SigningTestHelper.typedDataHash(
+            SigningTestHelper.domainOf(address(verifier)), CommitmentTypes.hashStruct(c)
+        );
         vm.expectEmit(true, true, true, true, address(verifier));
         emit FigaroBatchVerifier.Attestation(
             keccak256(abi.encodePacked(processId, CommitmentTypes.hashStruct(c))),
@@ -1237,7 +1306,7 @@ contract FigaroBatchVerifierTest is Test {
             newRoot,
             uint64(block.chainid),
             impostor,
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             _hashAttestations(events.attestations),
             _hashUsageEmpty(),
             uint64(block.timestamp),
@@ -1266,7 +1335,7 @@ contract FigaroBatchVerifierTest is Test {
             keccak256("fee-root"),
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             keccak256(""),
             _hashUsageEmpty(),
             uint64(block.timestamp),
@@ -1321,7 +1390,7 @@ contract FigaroBatchVerifierTest is Test {
             keccak256("pauper-root"),
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             keccak256(""),
             _hashUsageEmpty(),
             uint64(block.timestamp),
@@ -1352,7 +1421,7 @@ contract FigaroBatchVerifierTest is Test {
             keccak256("wide-root"),
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             keccak256(""),
             _hashUsageEmpty(),
             uint64(block.timestamp),
@@ -1386,7 +1455,7 @@ contract FigaroBatchVerifierTest is Test {
             newRoot,
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             _hashAttestations(events.attestations),
             _hashUsage(usage),
             uint64(block.timestamp),
@@ -1485,7 +1554,7 @@ contract FigaroBatchVerifierTest is Test {
             newRoot,
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             _hashAttestations(events.attestations),
             expected,
             uint64(block.timestamp),
@@ -1852,7 +1921,7 @@ contract FigaroBatchVerifierTest is Test {
             root,
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             _hashAttestations(events.attestations),
             _hashUsage(usage),
             uint64(block.timestamp),
@@ -2319,7 +2388,7 @@ contract FigaroBatchVerifierTest is Test {
             keccak256("next-root"),
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             _hashAttestations(events.attestations),
             _hashUsage(usage),
             uint64(block.timestamp),
@@ -2371,7 +2440,7 @@ contract FigaroBatchVerifierTest is Test {
         bytes32 positionsVector = 0x9bd2d9af56189ba485fc2e232edeafb4bccd8fd1fdc286064ada3f97b522766d;
         bytes32 attestationsVector = 0x8d905f5a099cb2530f0912090a34135967c19e660b79a2ba7275489145a74dfc;
 
-        assertEq(_hashPositions(positions), positionsVector, "positions mirror matches the Rust vector");
+        assertEq(BatchHashes.positions(positions), positionsVector, "positions mirror matches the Rust vector");
         assertEq(_hashAttestations(atts), attestationsVector, "attestations mirror matches the Rust vector");
 
         bytes memory pv = abi.encode(
@@ -2413,7 +2482,7 @@ contract FigaroBatchVerifierTest is Test {
             newRoot,
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             keccak256(""),
             _hashUsageEmpty(),
             uint64(block.timestamp),
@@ -2442,7 +2511,7 @@ contract FigaroBatchVerifierTest is Test {
             newRoot,
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             keccak256(""),
             _hashUsageEmpty(),
             uint64(block.timestamp),

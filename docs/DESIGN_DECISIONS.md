@@ -1733,7 +1733,7 @@ total) is refused rather than minted from other designers' share of the
 period. It costs one storage read per claim and changes no outcome on
 consistent data.
 
-**Tests**: `test_budgetBackstopRefusesOverMintOnInconsistentCounterData`
+**Tests**: `test_backstopTheRealCounterCannotReach_refusesOverMintOnStubbedInconsistentData`
 (`test/rewards/RpgfMinterTest.t.sol`) feeds the minter a counter whose score
 exceeds its period total and requires the revert.
 

@@ -64,8 +64,6 @@ contract EchidnaFuzzer {
     address[3] public sellers;
     uint256[3] private sellerKeys;
 
-    bytes32 private immutable domainSep;
-
     uint256 public immutable initialTokenSupply;
 
     // ── Tracking state ──────────────────────────────────────────
@@ -101,17 +99,6 @@ contract EchidnaFuzzer {
         sellers[0] = hevm.addr(SELLER1_KEY);
         sellers[1] = hevm.addr(SELLER2_KEY);
         sellers[2] = hevm.addr(SELLER3_KEY);
-
-        // EIP-712 domain separator (matches FigaroCore V5: "FigaroCore", "3")
-        domainSep = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(core)
-            )
-        );
 
         // Fund all participants and approve the core
         uint256 perActor = 100_000_000 ether;
@@ -489,9 +476,12 @@ contract EchidnaFuzzer {
     // INTERNALS
     // ═════════════════════════════════════════════════════════════
 
-    /// @dev Compute EIP-712 digest from struct hash.
+    /// @dev Compute EIP-712 digest from struct hash, under the domain the Core
+    ///      itself reports, so a harness whose domain had drifted from the
+    ///      Core's would sign nothing the Core accepts (and
+    ///      `EchidnaHarnessesLiveTest` would fail).
     function _digest(bytes32 structHash) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19\x01", domainSep, structHash));
+        return keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), structHash));
     }
 
     /// @dev Sign a digest with a known private key via HEVM.

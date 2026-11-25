@@ -13,6 +13,7 @@ import "src/mocks/MockReentrantToken.sol";
 import {UsageCounter} from "src/rewards/UsageCounter.sol";
 import {MembersRegistry} from "src/registries/MembersRegistry.sol";
 import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title ReentrancyAdversarialTest — a malicious denomination token tries to
 ///        re-enter FigaroCore and the batch verifier during a token movement.
@@ -49,24 +50,6 @@ contract ReentrancyAdversarialTest is Test {
 
     // ── Signing helpers (FigaroCore EIP-712) ─────────────────────────────
 
-    function _typedDataHash(bytes32 structHash, address verifyingContract) internal view returns (bytes32) {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                verifyingContract
-            )
-        );
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-    }
-
-    function _sign(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, _typedDataHash(c.hashStruct(), address(core)));
-        return abi.encodePacked(r, s, v);
-    }
-
     function _root(uint256 payment) internal view returns (CommitmentTypes.Commitment memory) {
         return CommitmentTypes.Commitment({
             processId: bytes32(0),
@@ -87,8 +70,8 @@ contract ReentrancyAdversarialTest is Test {
 
     function test_commit_reentry_isBlocked_resolutionStillCorrect() public {
         CommitmentTypes.Commitment memory c = _root(50 ether);
-        bytes memory buyerSig = _sign(c, BUYER_KEY);
-        bytes memory sellerSig = _sign(c, SELLER_KEY);
+        bytes memory buyerSig = SigningTestHelper.signCommitment(address(core), c, BUYER_KEY);
+        bytes memory sellerSig = SigningTestHelper.signCommitment(address(core), c, SELLER_KEY);
 
         // Arm the token to re-enter commit() with the SAME (would-be valid)
         // args during the buyer-bond pull. A working guard makes the nested
@@ -120,7 +103,11 @@ contract ReentrancyAdversarialTest is Test {
 
     function test_resolve_reentry_isBlocked_payoutsStillCorrect() public {
         CommitmentTypes.Commitment memory c = _root(50 ether);
-        (bytes32 processId,) = core.commit(c, _sign(c, BUYER_KEY), _sign(c, SELLER_KEY));
+        (bytes32 processId, bytes32 orderHash) = core.commit(
+            c,
+            SigningTestHelper.signCommitment(address(core), c, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), c, SELLER_KEY)
+        );
 
         CommitmentTypes.Commitment[] memory commitments = new CommitmentTypes.Commitment[](1);
         commitments[0] = c;
@@ -146,7 +133,11 @@ contract ReentrancyAdversarialTest is Test {
         // Payouts are exactly once: seller 2×cum + payment = 150, buyer 50.
         assertEq(token.balanceOf(seller) - sellerBefore, 150 ether, "seller paid once");
         assertEq(token.balanceOf(buyer) - buyerBefore, 50 ether, "buyer paid once");
-        assertEq(core.orderStatus(processId), 0, "process resolved");
+        // The order is resolved once: its status is 2 (FigaroCore: 0 unknown,
+        // 1 committed, 2 resolved), and the process has no open order left.
+        assertEq(core.orderStatus(orderHash), 2, "the order reads as resolved");
+        (,,, uint256 activeOrderCount) = core.processes(processId);
+        assertEq(activeOrderCount, 0, "the process has no open order");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -193,7 +184,7 @@ contract ReentrancyAdversarialTest is Test {
             keccak256("next"),
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             keccak256(""), // empty attestations
             keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0))), // no uses
             uint64(block.timestamp),
@@ -221,10 +212,5 @@ contract ReentrancyAdversarialTest is Test {
         assertEq(token.balanceOf(seller) - sellerBefore, 10 ether, "seller paid once");
         assertEq(verifier.stateRoot(), keccak256("next"), "state advanced once");
         assertEq(verifier.batchCount(), 1, "one batch resolved");
-    }
-
-    /// @dev Mirror of FigaroBatchVerifier._hashPositions (104-byte packing).
-    function _hashPositions(FigaroBatchVerifier.NetPosition[] memory ps) internal pure returns (bytes32) {
-        return BatchHashes.positions(ps);
     }
 }
