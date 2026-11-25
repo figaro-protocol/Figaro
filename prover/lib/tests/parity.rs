@@ -136,7 +136,7 @@ fn a_parity_key_recovers_its_pinned_address() {
         assert_eq!(
             recover_signer(&digest, &sig).unwrap(),
             wallet,
-            "key {secret:#x}"
+            "the key pinned for {wallet}"
         );
     }
 }
