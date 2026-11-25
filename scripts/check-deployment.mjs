@@ -54,11 +54,6 @@ import { createPublicClient, getAbiItem, http, parseAbi } from "viem";
 // without its top-level `block`. Built output: run
 // `npm run build` in sdk/ when dist/ is stale.
 import { computeClauseKey } from "../sdk/dist/discovery.js";
-import {
-    AGREEMENT_REGISTRY_ABI, ATTESTATION_COORDINATOR_ABI, BATCH_VERIFIER_ABI, CLAUSE_REGISTRY_ABI, CORE_ABI,
-    FLORIN_TOKEN_ABI, MEMBERS_REGISTRY_ABI, PROCESS_REGISTRY_ABI, RPGF_MINTER_ABI, USAGE_COUNTER_ABI,
-    WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI,
-} from "../sdk/dist/index.js";
 import { checkRegistrars, plannedRegistrations } from "./check-deployment-registrars.mjs";
 import { checkMembers, plannedMembers } from "./check-deployment-members.mjs";
 import { checkReleaseRevision } from "./check-release-revision.mjs";
@@ -105,20 +100,12 @@ const CONTRACTS = {
     witnessSwapAndCommitCoordinator: "WitnessSwapAndCommitCoordinator",
 };
 
-/** The record key → the contract's own ABI, from the SDK. */
-const ABI_OF = {
-    figaroCore: CORE_ABI,
-    attestationCoordinator: ATTESTATION_COORDINATOR_ABI,
-    clauseRegistry: CLAUSE_REGISTRY_ABI,
-    membersRegistry: MEMBERS_REGISTRY_ABI,
-    processRegistry: PROCESS_REGISTRY_ABI,
-    agreementRegistry: AGREEMENT_REGISTRY_ABI,
-    florinToken: FLORIN_TOKEN_ABI,
-    usageCounter: USAGE_COUNTER_ABI,
-    rpgfMinter: RPGF_MINTER_ABI,
-    batchVerifier: BATCH_VERIFIER_ABI,
-    witnessSwapAndCommitCoordinator: WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI,
-};
+/** The record key → the contract's own ABI: the tracked bundle of compiled
+ *  ABIs (`abi/<Contract>.json`), which carries every function and event of
+ *  the contract. The SDK's ABIs are a client's selection and lack getters
+ *  this check reads. */
+const ABI_OF = Object.fromEntries(Object.entries(CONTRACTS).map(([key, contract]) =>
+    [key, JSON.parse(fs.readFileSync(path.join(root, "abi", `${contract}.json`), "utf8"))]));
 /** A view of the contract the record names under `key`, read through that
  *  contract's own ABI: a getter the contract does not declare fails here. */
 const read = (key, functionName, args = []) => {
@@ -435,8 +422,8 @@ async function main() {
     } else {
         const fromBlock = BigInt(record.deploymentBlock ?? 0);
         const MEMBER_EVENTS = [
-            getAbiItem({ abi: MEMBERS_REGISTRY_ABI, name: "MemberRegistered" }),
-            getAbiItem({ abi: MEMBERS_REGISTRY_ABI, name: "MemberProfileUpdated" }),
+            getAbiItem({ abi: ABI_OF.membersRegistry, name: "MemberRegistered" }),
+            getAbiItem({ abi: ABI_OF.membersRegistry, name: "MemberProfileUpdated" }),
         ];
         const gateway = process.env.IPFS_GATEWAY_URL?.replace(/\/$/, "");
         const vault = resolveAddress({ wallet: "daoVault" }, "daoVault");
