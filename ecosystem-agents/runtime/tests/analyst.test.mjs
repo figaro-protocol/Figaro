@@ -6,10 +6,9 @@
  * /prompt endpoint that is ABSENT rather than stubbed when no model is
  * configured.
  *
- * The model-loop leg runs against a stub transport (the loop's own protocol
- * handling, no network) and, when ANTHROPIC_API_KEY + ANTHROPIC_MODEL are both
- * set, against the real API. Absent either, the live leg SKIPS with its reason
- * stated — it is never faked.
+ * The model-loop leg runs here against a stub transport (the loop's own
+ * protocol handling, no network). Its run against the real API is
+ * analyst.live.test.mjs, which `npm test` does not select.
  */
 
 import { test } from "node:test";
@@ -32,75 +31,9 @@ import { parseOrderCommittedLogs } from "@figaro-protocol/sdk";
 import {
     corsOrigins, analystTools, crosscheckRpcUrls, makeAnalystHandler, modelConfig, runPrompt,
 } from "../figaro-analyst.mjs";
-
-// ── A fixture corpus ────────────────────────────────────────────────────────
-// Two orders in one process (a value-added chain), one resolved attestation.
-// Built from the same event shapes fetchCoreEvents returns, so the projections
-// under test are the shipped ones, not re-implementations.
-
-/** A clause key no registry names — the agreement leaf needs a key, never a name. */
-const X_DEMO = `0x${"de".repeat(32)}`;
-const BUYER = "0x1111111111111111111111111111111111111111";
-const SELLER_A = "0x2222222222222222222222222222222222222222";
-const SELLER_B = "0x3333333333333333333333333333333333333333";
-const TOKEN = "0x4444444444444444444444444444444444444444";
-const PROCESS = `0x${"ab".repeat(32)}`;
-const ORDER_A = `0x${"01".repeat(32)}`;
-const ORDER_B = `0x${"02".repeat(32)}`;
-const CLAUSE_KEY = `0x${"cc".repeat(32)}`;
-
-const SUBSTANCE = "0xdeadbeef";
-const CONTENT_REF = keccak256(SUBSTANCE);
-
-function fixtureCorpus({ recovered = true } = {}) {
-    const committed = (orderHash, seller, payment, cumulative, blockNumber) => ({
-        orderHash, processId: PROCESS, buyer: BUYER, seller, token: TOKEN,
-        payment, runningTotal: cumulative, checkoutHash: `0x${"ee".repeat(32)}`,
-        salt: 1n, commitDeadline: 9_999_999_999n, blockNumber,
-    });
-    const core = {
-        orderCommitted: [
-            committed(ORDER_A, SELLER_A, 100n, 100n, 10),
-            committed(ORDER_B, SELLER_B, 50n, 150n, 11),
-        ],
-        orderResolved: [
-            { orderHash: ORDER_A, processId: PROCESS, sellerPayout: 300n, buyerPayout: 100n, blockNumber: 20 },
-            { orderHash: ORDER_B, processId: PROCESS, sellerPayout: 350n, buyerPayout: 50n, blockNumber: 20 },
-        ],
-        processResolved: [{ processId: PROCESS, orderCount: 2, blockNumber: 20 }],
-        orderSeller: [],
-    };
-    const attestation = {
-        orderHash: ORDER_A, processId: PROCESS, attester: SELLER_A, clauseId: CLAUSE_KEY,
-        stage: 1, contentRef: CONTENT_REF, blockNumber: 15, transactionHash: null,
-        universe: "direct",
-    };
-    const specs = { get: () => undefined, list: () => [] };
-    const recoveredRecords = [{ event: attestation, content: recovered ? SUBSTANCE : null }];
-    const resolution = projectResolutionGraph(core);
-    return {
-        chainId: 31337,
-        fromBlock: 0n,
-        syncedToBlock: 99n,
-        core,
-        attestations: [attestation],
-        specs,
-        specsLoaded: 0,
-        specsSkipped: [],
-        recovered: recoveredRecords,
-        framedSubstance: recovered
-            ? new Map([[CONTENT_REF.toLowerCase(), `⟦FIGARO-DATA nonce…⟧\n${SUBSTANCE}\n⟦/FIGARO-DATA nonce…⟧`]])
-            : new Map(),
-        substanceRecovered: recovered ? 1 : 0,
-        held: { byHash: new Map(), rejected: [], committedRoots: 1 },
-        graphs: {
-            process: projectProcessGraph(core),
-            resolution,
-            overlays: extractOverlays(recoveredRecords, specs),
-            valueFlow: projectValueFlow(resolution, [], []),
-        },
-    };
-}
+import {
+    fixtureCorpus, X_DEMO, BUYER, SELLER_A, SELLER_B, PROCESS, ORDER_A, CLAUSE_KEY, CONTENT_REF,
+} from "./analystFixture.mjs";
 
 const emptyCorpus = () => {
     const core = { orderCommitted: [], orderResolved: [], processResolved: [], orderSeller: [] };
@@ -855,19 +788,6 @@ test("the loop surfaces a provider error instead of inventing an answer", async 
         runPrompt("q", analystTools(fixtureCorpus()), { apiUrl: "https://stub", apiKey: "k", model: "no-such-model" }, { fetchImpl: stub }),
         /model API answered 404/,
     );
-});
-
-const LIVE = modelConfig();
-test("LIVE: the model loop answers over the real API", {
-    skip: LIVE.enabled ? false : `no model configured — ${LIVE.reason}`,
-}, async () => {
-    const out = await runPrompt(
-        "How many processes does this corpus hold, and how many are unattributed? Answer in one sentence.",
-        analystTools(fixtureCorpus()), LIVE,
-    );
-    assert.equal(out.truncated, false);
-    assert.ok(out.answer && out.answer.length > 0);
-    assert.ok(out.trace.length > 0, "it reached for a tool rather than answering from nothing");
 });
 
 // ── The funding legs beside the commits ─────────────────────────────────────

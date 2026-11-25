@@ -6,9 +6,10 @@
  * The relay starts with nothing and `REBUILD_FROM_CHAIN=1`, so it rebuilds
  * the state behind the verifier's root from the chain whatever other specs
  * settled. It proves with the prover its environment names (the devnet's
- * verifier accepts the mock prover). A spec that needs it skips when no
- * binary is built, unless `REQUIRE_BATCH_E2E=1`, which the full devnet suite
- * in CI sets: a missing binary is then a failure.
+ * verifier accepts the mock prover). A spec that needs it fails when no
+ * binary is built (`requireRelayBinary`), and never skips. Such a spec is in
+ * the Playwright `devnet-relay` project, which only a run that builds the
+ * binary selects.
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
@@ -18,8 +19,14 @@ import type { Hex } from 'viem';
 import { RPC_URL, readLocalDeploymentConfig } from './devnet-helpers';
 
 export const SEQUENCER_BIN = path.resolve(__dirname, '../../../prover/target/release/sequencer');
-/** Set where the binary is built for this run: a missing binary then fails. */
-export const REQUIRE_RELAY = process.env.REQUIRE_BATCH_E2E === '1';
+
+/** Fails the spec when the release relay binary is not built, naming the
+ *  binary and the command that builds it. */
+export function requireRelayBinary(): void {
+    if (!fs.existsSync(SEQUENCER_BIN)) {
+        throw new Error(`the relay binary is not at ${SEQUENCER_BIN}: build it with \`cargo build --release --locked -p figaro-sequencer --bin sequencer\` in prover/`);
+    }
+}
 
 export interface StartedRelay {
     url: string;

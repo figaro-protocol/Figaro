@@ -26,12 +26,12 @@
  * `OrderResolved` and `ProcessResolved`, FigaroCore's and the coordinator's
  * silence, and both parties' token balances.
  *
- * Skips when no relay binary is built, unless REQUIRE_BATCH_E2E=1 (the full
- * devnet suite in CI): a missing binary is then a failure. Requires Anvil +
+ * Fails when no relay binary is built, naming the binary and its build
+ * command. It is in the Playwright `devnet-relay` project, which the full
+ * devnet scope in CI runs after building the binary. Requires Anvil +
  * ./scripts/devup.sh (deploy + populate) + Kubo + :3100.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import fs from 'node:fs';
 import { createWalletClient, http, keccak256, parseAbi, stringToHex, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
@@ -50,7 +50,7 @@ import {
 } from './devnet-helpers';
 import { attachLocalSigner } from './local-signer';
 import { publishProbeAssembly } from './probeAssembly';
-import { REQUIRE_RELAY, SEQUENCER_BIN, startRelay } from './relayProcess';
+import { requireRelayBinary, startRelay } from './relayProcess';
 import { BATCH_VERIFIER_ABI, CORE_ABI, ERC20_ABI, calculateBonds } from '@figaro-protocol/sdk';
 import { SequencerClient } from '@figaro-protocol/sdk/agent';
 
@@ -70,10 +70,7 @@ test.describe('RELAY TRANSPORT — a trade on the batch path, every act in the U
     test.setTimeout(900_000);
 
     test('the buyer picks the batch path at checkout, the seller accepts, attests, and the buyer resolves, each through a checked relay; the verifier emits every event', async ({ page, baseURL }) => {
-        if (REQUIRE_RELAY && !fs.existsSync(SEQUENCER_BIN)) {
-            throw new Error(`REQUIRE_BATCH_E2E=1 but no sequencer binary is at ${SEQUENCER_BIN}`);
-        }
-        test.skip(!fs.existsSync(SEQUENCER_BIN), `no sequencer binary at ${SEQUENCER_BIN} (cargo build --release -p figaro-sequencer)`);
+        requireRelayBinary();
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
         const config = readLocalDeploymentConfig();

@@ -75,12 +75,12 @@ jobs:
               working-directory: ./sdk
               run: npm run lint
 
-            # The chain-touching tests (integration / batch e2e) are skipIf-gated
-            # behind a live Anvil; the release proves the pure surface only.
+            # `npm test` selects the pure surface only: the chain-touching files
+            # (the round-trip and the batch e2e) are the chain selection's
+            # (sdk/vitest.chain.config.ts), which prover-ci's `sp1` job runs
+            # on the Anvil and relay binary it provides.
             - name: Tests
               working-directory: ./sdk
-              env:
-                  SKIP_ANVIL: "1"
               run: npm test -- --run
 
             - name: Build

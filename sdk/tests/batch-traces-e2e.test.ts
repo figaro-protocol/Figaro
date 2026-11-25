@@ -74,7 +74,8 @@
  *   - the sequencer binary at prover/target/release/sequencer
  *   - the contracts built into out/ (`forge build`)
  *
- * Skip with: SKIP_ANVIL=1 npm test
+ * A missing prerequisite fails the file at collection, with the prerequisite
+ * named. `npm test` does not select this file; `npm run test:chain` does.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -98,7 +99,7 @@ import {
 } from "viem";
 import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -131,15 +132,15 @@ import {
     loadBytecode,
     loadRuntimeBytecode,
     loadSpecJson,
-    sequencerBinaryExists,
-    sequencerBinaryPath,
+    requireAnvilBinary,
+    requireSequencerBinary,
     startSequencer,
     stopSequencer,
     waitForSequencer,
 } from "./batchHarness.js";
 
-const SKIP = process.env.SKIP_ANVIL === "1";
-const REQUIRE = process.env.REQUIRE_BATCH_E2E === "1";
+requireAnvilBinary();
+requireSequencerBinary();
 
 /** This file's own chain and relay. */
 const ANVIL_PORT = 18565;
@@ -256,10 +257,6 @@ interface TraceRun {
     at: Record<Path, number[] | null>;
 }
 
-function anvilBinaryExists(): boolean {
-    return spawnSync("anvil", ["--version"], { encoding: "utf8" }).status === 0;
-}
-
 async function waitForRpc(url: string, timeoutMs: number): Promise<boolean> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
@@ -352,13 +349,12 @@ function errorName(e: unknown): string {
     return err.cause?.data?.errorName ?? err.shortMessage ?? err.message ?? String(e);
 }
 
-describe.skipIf(SKIP)("Batch E2E: the model's traces through the Core and the proof program", () => {
+describe("Batch E2E: the model's traces through the Core and the proof program", () => {
     const transport = http(RPC_URL);
     // Anvil mines each transaction at once: a receipt is polled for every 50 ms, not every 4 s.
     const publicClient = createPublicClient({ chain: foundry, transport, pollingInterval: 50 });
     const deployerWallet = createWalletClient({ chain: foundry, transport, account: deployerAccount });
 
-    let ready = false;
     let anvil: ChildProcess | null = null;
     let relayProcess: ChildProcess | null = null;
     let relay: SequencerClient;
@@ -432,7 +428,6 @@ describe.skipIf(SKIP)("Batch E2E: the model's traces through the Core and the pr
     };
 
     beforeAll(async () => {
-        if (!anvilBinaryExists() || !sequencerBinaryExists()) return;
         fixture = JSON.parse(fs.readFileSync(TRACES_PATH, "utf-8")) as Fixture;
         // A base fee of zero stays zero: a large settleBatch never raises the
         // fee past what a transaction the run sent just before it offered.
@@ -514,7 +509,6 @@ describe.skipIf(SKIP)("Batch E2E: the model's traces through the Core and the pr
         attachLogs(relayProcess);
         relay = new SequencerClient({ url: SEQUENCER_URL });
         await waitForSequencer(SEQUENCER_URL, 10 * 60_000);
-        ready = true;
     }, 20 * 60_000);
 
     afterAll(async () => {
@@ -881,13 +875,6 @@ describe.skipIf(SKIP)("Batch E2E: the model's traces through the Core and the pr
     }
 
     it("every trace is the same on the Core and through the proof program", async () => {
-        if (!ready) {
-            if (REQUIRE) {
-                throw new Error(`REQUIRE_BATCH_E2E=1 but anvil or the sequencer binary (${sequencerBinaryPath()}) is missing`);
-            }
-            console.log("⏭ Skipping: anvil or the sequencer binary is missing");
-            return;
-        }
         const began = Date.now();
         expect(fixture.traceCount).toBe(fixture.traces.length);
         expect(fixture.traceCount).toBeGreaterThan(0);
@@ -1041,7 +1028,6 @@ describe.skipIf(SKIP)("Batch E2E: the model's traces through the Core and the pr
     }, 60 * 60_000);
 
     it("a step the Core refuses is refused by the relay or the proof program, and never lands", async () => {
-        if (!ready) return;
         const parties = await newParties("refusals", 1000n);
         const [b1, b2, s1, s2] = parties;
         const clause = keccak256(stringToHex("traces-e2e clause refusals"));

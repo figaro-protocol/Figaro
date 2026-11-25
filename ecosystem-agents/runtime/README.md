@@ -65,7 +65,7 @@ Every header field is one token: whitespace, control characters, the
 delimiters, `=` and `%` are percent-encoded, so a sender identity a stranger
 chose cannot end the header or start a line of its own.
 
-`node --test tests/*.test.mjs` covers the envelope facts and the property the
+`npm test` covers the envelope facts and the property the
 frame exists for: a forged closing delimiter inside content cannot escape the
 block, and a forged one inside a header field cannot either.
 

@@ -765,7 +765,7 @@ describe("the signer's directory", () => {
         })).toThrow(/one directory/);
     });
 
-    it.skipIf(process.platform === "win32")("creates a missing directory for the owner alone and refuses one others can write", () => {
+    it("creates a missing directory for the owner alone and refuses one others can write", () => {
         const parent = fs.mkdtempSync(path.join(os.tmpdir(), "signer-dir-"));
         const fresh = path.join(parent, "fresh");
         assertPrivateDir(fresh);
@@ -779,7 +779,7 @@ describe("the signer's directory", () => {
         expect(() => assertPrivateDir("/tmp")).toThrow(/writable by other users|belongs to another user/);
     });
 
-    it.skipIf(process.platform === "win32")("refuses a directory another user owns", () => {
+    it("refuses a directory another user owns", () => {
         // `/` belongs to root and is not group- or world-writable.
         expect(() => assertPrivateDir("/")).toThrow(/belongs to another user/);
     });

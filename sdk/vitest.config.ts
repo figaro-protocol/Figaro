@@ -1,35 +1,15 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
+
+import { CHAIN_TEST_FILES } from "./vitest.chain.config.js";
 
 export default defineConfig({
     test: {
         include: ["tests/**/*.test.ts"],
-        // `tests/integration.test.ts` and `tests/batch-e2e.test.ts` are both
-        // SKIP_ANVIL-gated chain-touching suites that share ONE live Anvil
-        // instance (batch-e2e additionally spawns a live sequencer process);
-        // run concurrently they contend for the same chain/sequencer state
-        // and go flaky — green in isolation, red together. Every other test
-        // file is a pure-client unit test with no shared external state, so
-        // only these need serializing against each other: each batch file starts
-        // its own sequencer, and three at once starve a CI runner.
-        //
-        // Default pool stays "threads" (the normal parallel pool) for the
-        // rest of the suite; `poolMatchGlobs` routes just these files
-        // into a separate "forks" pool restricted to a single fork
-        // (`poolOptions.forks.singleFork`), so within that pool only one of
-        // them ever runs at a time while everything else still
-        // parallelizes normally.
-        pool: "threads",
-        poolMatchGlobs: [
-            ["tests/integration.test.ts", "forks"],
-            ["tests/batch-e2e.test.ts", "forks"],
-            ["tests/batch-revoke-e2e.test.ts", "forks"],
-            ["tests/batch-accrual-skip-e2e.test.ts", "forks"],
-            ["tests/batch-traces-e2e.test.ts", "forks"],
-        ],
-        poolOptions: {
-            forks: {
-                singleFork: true,
-            },
-        },
+        // The files that need a live chain (and the batch files a built relay
+        // binary) are the chain selection's, `npm run test:chain`
+        // (vitest.chain.config.ts). `npm test` runs with no chain, so it does
+        // not select them. Every file this config selects is a pure-client
+        // unit test with no shared external state, so they run in parallel.
+        exclude: [...configDefaults.exclude, ...CHAIN_TEST_FILES],
     },
 });

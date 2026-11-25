@@ -35,7 +35,7 @@ import type { SequencerClient } from "../src/agent/sequencer.js";
 /** The chain the suites run against; `ANVIL_URL` points them at another Anvil. */
 export const ANVIL_URL = process.env.ANVIL_URL ?? "http://127.0.0.1:8545";
 
-export async function anvilReachable(): Promise<boolean> {
+async function anvilReachable(): Promise<boolean> {
     try {
         const res = await fetch(ANVIL_URL, {
             method: "POST",
@@ -51,6 +51,30 @@ export async function anvilReachable(): Promise<boolean> {
         return res.ok;
     } catch {
         return false;
+    }
+}
+
+/**
+ * Fails the suite when no chain answers at `ANVIL_URL`. A chain suite never
+ * skips: a run with no chain is a failure that names the chain it looked for.
+ */
+export async function requireAnvil(): Promise<void> {
+    if (!(await anvilReachable())) {
+        throw new Error(
+            `Anvil is not reachable at ${ANVIL_URL}: start one (\`anvil --port 8545\`) or point ANVIL_URL at one`,
+        );
+    }
+}
+
+/**
+ * Fails the suite when no `anvil` binary is on the PATH, for the suites that
+ * start an Anvil of their own.
+ */
+export function requireAnvilBinary(): void {
+    if (spawnSync("anvil", ["--version"], { encoding: "utf8" }).status !== 0) {
+        throw new Error(
+            "the `anvil` binary is not on the PATH: install Foundry (https://getfoundry.sh, then `foundryup`)",
+        );
     }
 }
 
@@ -331,8 +355,18 @@ export function sequencerBinaryPath(): string {
     return path.join(repoRoot, "prover", "target", "release", "sequencer");
 }
 
-export function sequencerBinaryExists(): boolean {
-    return fs.existsSync(sequencerBinaryPath());
+/**
+ * Fails the suite when the release relay binary is not built. A chain suite
+ * never skips: a run with no binary is a failure that names the binary and
+ * the command that builds it.
+ */
+export function requireSequencerBinary(): void {
+    if (!fs.existsSync(sequencerBinaryPath())) {
+        throw new Error(
+            `the relay binary is not at ${sequencerBinaryPath()}: build it with ` +
+                "`cargo build --release --locked -p figaro-sequencer --bin sequencer` in prover/",
+        );
+    }
 }
 
 /// The fingerprint of the guest the binary embeds (`sequencer --vkey`). The
