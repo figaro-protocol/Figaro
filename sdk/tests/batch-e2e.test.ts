@@ -12,7 +12,8 @@
  *   - Sequencer binary built at prover/target/release/sequencer
  *     (cargo build --release -p figaro-sequencer)
  *
- * Skip with: SKIP_ANVIL=1 npm test
+ * A missing prerequisite fails the file at collection, with the prerequisite
+ * named. `npm test` does not select this file; `npm run test:chain` does.
  *
  * Flow:
  *   1. Deploy MockERC20, MockSP1Verifier, ClauseRegistry, FigaroBatchVerifier
@@ -76,12 +77,12 @@ import { proveAndSettle } from "../src/relay/index.js";
 import {
     ANVIL_URL,
     MOCK_ERC20_ABI,
-    anvilReachable,
     attachLogs,
     computeGenesisRoot,
     deployBatchStack,
     loadSpecJson,
-    sequencerBinaryExists,
+    requireAnvil,
+    requireSequencerBinary,
     sequencerBinaryPath,
     startSequencer,
     stopSequencer,
@@ -90,12 +91,11 @@ import {
     type RelayConfig,
 } from "./batchHarness.js";
 
-// ── Skip unless Anvil is reachable ──────────────────────────────────────────
+// ── The chain and the relay binary, or the file fails ───────────────────────
 
-const SKIP = process.env.SKIP_ANVIL === "1";
-// In CI the chain and the binary are both provided, so a missing one is a
-// failure, never a skip (prover-ci's SP1 job sets this).
-const REQUIRE = process.env.REQUIRE_BATCH_E2E === "1";
+await requireAnvil();
+requireSequencerBinary();
+
 const SEQUENCER_PORT = 13001; // Use a non-standard port to avoid conflicts
 
 // ── Anvil pre-funded accounts ───────────────────────────────────────────────
@@ -145,7 +145,7 @@ const ATTEST_SELLER_TYPES = {
 
 // ── Test suite ──────────────────────────────────────────────────────────────
 
-describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
+describe("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     const transport = http(ANVIL_URL);
 
     const publicClient = createPublicClient({ chain: foundry, transport });
@@ -169,8 +169,6 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     let tokenAddress: Address;
     let batchVerifierAddress: Address;
     let usageCounterAddress: Address;
-    let alive = false;
-    let hasBinary = false;
     let sequencerProcess: ChildProcess | null = null;
     /** The relay that takes over from the first and settles batch 2. */
     let secondProcess: ChildProcess | null = null;
@@ -205,12 +203,6 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     );
 
     beforeAll(async () => {
-        alive = await anvilReachable();
-        if (!alive) return;
-
-        hasBinary = sequencerBinaryExists();
-        if (!hasBinary) return;
-
         // ── Deploy the stack; register the clause the usage claim counts ──
 
         const stack = await deployBatchStack(publicClient, deployerWallet, {
@@ -311,31 +303,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         }
     });
 
-    it("skips when Anvil is unreachable", () => {
-        if (!alive) {
-            if (REQUIRE) throw new Error(`REQUIRE_BATCH_E2E=1 but Anvil is not reachable at ${ANVIL_URL}`);
-            console.log("⏭ Skipping: Anvil not reachable");
-            return;
-        }
-        expect(alive).toBe(true);
-    });
-
-    it("skips when sequencer binary is not built", () => {
-        if (!hasBinary) {
-            if (REQUIRE) {
-                throw new Error(`REQUIRE_BATCH_E2E=1 but the sequencer binary is not at ${sequencerBinaryPath()}`);
-            }
-            console.log(
-                `⏭ Skipping: sequencer binary not found at ${sequencerBinaryPath()}`,
-            );
-            return;
-        }
-        expect(hasBinary).toBe(true);
-    });
-
     it("full batch lifecycle: commit + attest land in a batch, then resolve pays out", async () => {
-        if (!alive || !hasBinary) return;
-
         // ── 1. Build commitment ─────────────────────────────────
         // The single-clause agreement: checkoutHash IS the clause
         // leaf, so the attestation's inclusion proof is empty.
@@ -663,10 +631,6 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     it(
         "the pass test: every relay's state deleted, a relay rebuilds from the chain alone and the buyer's resolve pays out",
         async () => {
-            if (!alive || !hasBinary) {
-                return;
-            }
-
             // ── 1. A second order, committed through the relay in step ──
             // The second relay settled batch 2, so it holds the verifier's
             // root; the first relay is out of step and builds nothing.
@@ -826,9 +790,6 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     // from it, so the rebuild from the chain fails and the relay refuses to
     // start; proveAndSettle rejects with that output and lands nothing.
     it("proveAndSettle reports a relay that refuses to start, with the relay's own output", async () => {
-        if (!alive || !hasBinary) {
-            return;
-        }
         const countBefore = (await publicClient.readContract({
             address: batchVerifierAddress, abi: BATCH_VERIFIER_ABI, functionName: "batchCount",
         })) as bigint;

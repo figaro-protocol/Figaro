@@ -26,7 +26,8 @@ name: On-Demand Docker Proofs
 # shape AROUND the runtime (workspace+temp writable, repo read-only, no
 # secret mounts, an internal network with the policy-driven egress proxy as
 # the only way out, the signer socket bind-mounted) and runs the deny cases
-# of tests/sandbox.test.mjs inside it.
+# of tests/sandbox.test.mjs (the macOS OS-profile cases) in their Linux form
+# inside it.
 
 on:
     workflow_dispatch:
@@ -152,15 +153,17 @@ jobs:
                   npm run build --workspace sdk
                   cd ecosystem-agents/runtime && npm ci
 
-            # The platform-independent half of the suite runs on the runner
-            # as-is: the egress-proxy decision tests. The OS-profile cases
-            # self-skip off macOS — the container below is their Linux form.
-            - name: Run the portable half of sandbox.test.mjs
+            # The platform-independent half of the sandbox tests runs on the
+            # runner as-is: the egress-proxy decisions and the rendered
+            # profile (tests/sandboxPortable.test.mjs). The OS-profile cases
+            # (tests/sandbox.test.mjs) need macOS sandbox-exec, so this Linux
+            # job does not select them; the container below is their Linux form.
+            - name: Run the portable half of the sandbox tests
               working-directory: ecosystem-agents/runtime
-              run: node --test tests/sandbox.test.mjs
+              run: node --test tests/sandboxPortable.test.mjs
 
             # The pieces of the container shape. The policy is the minimal
-            # egress-bearing shape the proxy reads (tests/sandbox.test.mjs
+            # egress-bearing shape the proxy reads (tests/sandboxPortable.test.mjs
             # uses the same); 127.0.0.1 on the allowlist resolves PROXY-side,
             # so the sidecar's loopback echo server stands in for an allowed
             # host exactly as in the unit test — the run stays hermetic.

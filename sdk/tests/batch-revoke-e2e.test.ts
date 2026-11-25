@@ -14,8 +14,9 @@
  * are `FailureLog` on GET /status (prover/sequencer/src/api.rs).
  *
  * Requires what `batch-e2e.test.ts` requires (Anvil at :8545, the release
- * sequencer binary); skips the same way. Every wallet is a fresh key funded
- * with gas ETH by `anvil_setBalance`, so this file shares the chain without
+ * sequencer binary) and fails at collection when one is missing. Every
+ * wallet is a fresh key funded with gas ETH by `anvil_setBalance`, so this
+ * file shares the chain without
  * touching any other suite's wallets or nonces, and runs beside
  * `batch-e2e.test.ts` without racing its deployer-nonce prediction.
  *
@@ -66,20 +67,20 @@ import { SequencerClient } from "../src/agent/sequencer.js";
 import {
     ANVIL_URL,
     MOCK_ERC20_ABI,
-    anvilReachable,
     attachLogs,
     deployBatchStack,
     loadSpecJson,
-    sequencerBinaryExists,
-    sequencerBinaryPath,
+    requireAnvil,
+    requireSequencerBinary,
     startSequencer,
     stopSequencer,
     waitForSequencer,
     type RelayConfig,
 } from "./batchHarness.js";
 
-const SKIP = process.env.SKIP_ANVIL === "1";
-const REQUIRE = process.env.REQUIRE_BATCH_E2E === "1";
+await requireAnvil();
+requireSequencerBinary();
+
 // batch-e2e.test.ts holds 13001-13003.
 const SEQUENCER_PORT = 13011;
 const SEQUENCER_URL = `http://127.0.0.1:${SEQUENCER_PORT}`;
@@ -97,7 +98,7 @@ const ASSEMBLING = /Assembling batch.*?ops\W*=\W*(\d+)/;
 // eslint-disable-next-line no-control-regex
 const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 
-describe.skipIf(SKIP)("Batch E2E: a revocation mid-flight dead-letters the revoker alone", () => {
+describe("Batch E2E: a revocation mid-flight dead-letters the revoker alone", () => {
     const transport = http(ANVIL_URL);
     const publicClient = createPublicClient({ chain: foundry, transport });
     const testClient = createTestClient({ chain: foundry, transport, mode: "anvil" });
@@ -111,8 +112,6 @@ describe.skipIf(SKIP)("Batch E2E: a revocation mid-flight dead-letters the revok
     const PAYMENT = 100n * 10n ** 18n;
     const bonds = calculateBonds(PAYMENT, PAYMENT);
 
-    let alive = false;
-    let hasBinary = false;
     let tokenAddress: Address;
     let batchVerifierAddress: Address;
     let relay: RelayConfig;
@@ -120,11 +119,6 @@ describe.skipIf(SKIP)("Batch E2E: a revocation mid-flight dead-letters the revok
     const sequencerClient = new SequencerClient({ url: SEQUENCER_URL });
 
     beforeAll(async () => {
-        alive = await anvilReachable();
-        if (!alive) return;
-        hasBinary = sequencerBinaryExists();
-        if (!hasBinary) return;
-
         for (const who of [
             privateKeyToAccount(relayKey).address,
             deployerAccount.address,
@@ -192,25 +186,7 @@ describe.skipIf(SKIP)("Batch E2E: a revocation mid-flight dead-letters the revok
         }
     });
 
-    it("skips when Anvil is unreachable or the sequencer binary is not built", () => {
-        if (!alive) {
-            if (REQUIRE) throw new Error(`REQUIRE_BATCH_E2E=1 but Anvil is not reachable at ${ANVIL_URL}`);
-            console.log("⏭ Skipping: Anvil not reachable");
-            return;
-        }
-        if (!hasBinary) {
-            if (REQUIRE) {
-                throw new Error(`REQUIRE_BATCH_E2E=1 but the sequencer binary is not at ${sequencerBinaryPath()}`);
-            }
-            console.log(`⏭ Skipping: sequencer binary not found at ${sequencerBinaryPath()}`);
-            return;
-        }
-        expect(alive && hasBinary).toBe(true);
-    });
-
     it("the revoker's commit dead-letters alone; the other lands in the next batch", async () => {
-        if (!alive || !hasBinary) return;
-
         // ── 1. The revocation, signed ahead ─────────────────────
         // Sent the moment the relay forms the batch, so it lands inside the
         // proving window: after the formation funding check, before the send.

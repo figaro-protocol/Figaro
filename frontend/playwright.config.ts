@@ -173,6 +173,8 @@ export default defineConfig({
     //     (`npx playwright test foo.devnet.spec.ts`) runs the FULL authoring
     //     project first — pass `--no-deps` to skip it when the chain is
     //     already anchored.
+    //   `devnet-relay` — the runtime specs that start the relay binary this
+    //     tree builds; selected only where the binary is built.
     //   `mobile` — the lone non-e2e browser project: responsive/viewport
     //     chrome that needs a real browser and jsdom can't render.
     //
@@ -202,7 +204,20 @@ export default defineConfig({
         {
             name: 'devnet',
             testMatch: /\.devnet\.spec\.ts$/,
-            testIgnore: /(members-onboarding|permissionless-clause|clause-coverage|assembly-withdraw|clause-authoring)\.devnet\.spec\.ts$/,
+            testIgnore: /(members-onboarding|permissionless-clause|clause-coverage|assembly-withdraw|clause-authoring|batch-events|relay-transport)\.devnet\.spec\.ts$/,
+            dependencies: ['devnet-authoring'],
+            fullyParallel: false,
+            workers: 1,
+            use: { ...devices['Desktop Chrome'] },
+        },
+        {
+            // The runtime specs that start the relay this tree builds
+            // (prover/target/release/sequencer, tests/e2e/relayProcess.ts).
+            // Each fails when the binary is missing, so only a run that builds
+            // it selects this project: `test:e2e:devnet:relay`, and the full
+            // scope of devnet-e2e-ci.yml after its `relay` job.
+            name: 'devnet-relay',
+            testMatch: /(batch-events|relay-transport)\.devnet\.spec\.ts$/,
             dependencies: ['devnet-authoring'],
             fullyParallel: false,
             workers: 1,

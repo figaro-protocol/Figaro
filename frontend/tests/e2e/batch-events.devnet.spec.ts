@@ -40,18 +40,17 @@
  *              order page; both recipients' balances and its own are read
  *              from the token, out of band
  *
- * Skips when no sequencer binary is built, unless REQUIRE_BATCH_E2E=1 (the
- * name the SDK's batch e2e reads): then a missing binary fails the test, as
- * the full devnet suite in CI sets it. Depends on populate-test-data, as
- * every devnet spec does; needs nothing it seeds.
+ * Fails when no relay binary is built, naming the binary and its build
+ * command. It is in the Playwright `devnet-relay` project, which the full
+ * devnet scope in CI runs after building the binary. Depends on
+ * populate-test-data, as every devnet spec does; needs nothing it seeds.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import fs from 'node:fs';
 import { createWalletClient, hashTypedData, http, keccak256, maxUint256, parseAbi, parseEther, stringToHex, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { LOCAL_ANVIL, RPC_URL, keyOf, localPublicClient, pinJSONToIPFS, primeRegisteredClauseSpecs, readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { REQUIRE_RELAY, SEQUENCER_BIN, startRelay } from './relayProcess';
+import { requireRelayBinary, startRelay } from './relayProcess';
 import {
     BATCH_VERIFIER_ABI,
     CORE_ABI,
@@ -101,10 +100,7 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
     test.setTimeout(900_000);
 
     test('one order through a relay rebuilt from the chain, attested and resolved in batches: the chain names each, and every surface shows it tagged batch', async ({ page }) => {
-        if (REQUIRE_RELAY && !fs.existsSync(SEQUENCER_BIN)) {
-            throw new Error(`REQUIRE_BATCH_E2E=1 but no sequencer binary is at ${SEQUENCER_BIN}`);
-        }
-        test.skip(!fs.existsSync(SEQUENCER_BIN), `no sequencer binary at ${SEQUENCER_BIN} (cargo build --release -p figaro-sequencer)`);
+        requireRelayBinary();
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
         const config = readLocalDeploymentConfig();

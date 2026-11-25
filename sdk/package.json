@@ -51,6 +51,7 @@
         "prepare": "node scripts/prepare.mjs",
         "test": "vitest run",
         "test:watch": "vitest",
+        "test:chain": "vitest run --config vitest.chain.config.ts",
         "lint": "tsc --noEmit",
         "docs": "typedoc"
     },

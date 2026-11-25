@@ -18,7 +18,8 @@
  *   - the sequencer binary at prover/target/release/sequencer
  *   - the contracts built into out/ (`forge build`)
  *
- * Skip with: SKIP_ANVIL=1 npm test
+ * A missing prerequisite fails the file at collection, with the prerequisite
+ * named. `npm test` does not select this file; `npm run test:chain` does.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -37,7 +38,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -64,16 +65,16 @@ import {
     attachLogs,
     deployBatchStack,
     loadSpecJson,
-    sequencerBinaryExists,
-    sequencerBinaryPath,
+    requireAnvilBinary,
+    requireSequencerBinary,
     startSequencer,
     stopSequencer,
     waitForBatchCount,
     waitForSequencer,
 } from "./batchHarness.js";
 
-const SKIP = process.env.SKIP_ANVIL === "1";
-const REQUIRE = process.env.REQUIRE_BATCH_E2E === "1";
+requireAnvilBinary();
+requireSequencerBinary();
 
 /** This file's own chain and relay. */
 const ANVIL_PORT = 18555;
@@ -105,10 +106,6 @@ const RESOLVE_TYPES = {
     ],
 } as const;
 
-function anvilBinaryExists(): boolean {
-    return spawnSync("anvil", ["--version"], { encoding: "utf8" }).status === 0;
-}
-
 async function waitForRpc(url: string, timeoutMs: number): Promise<boolean> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
@@ -128,7 +125,7 @@ async function waitForRpc(url: string, timeoutMs: number): Promise<boolean> {
     return false;
 }
 
-describe.skipIf(SKIP)("Batch E2E: a skipped accrual, then a later batch counts the use", () => {
+describe("Batch E2E: a skipped accrual, then a later batch counts the use", () => {
     const transport = http(RPC_URL);
     const publicClient = createPublicClient({ chain: foundry, transport });
     const testClient = createTestClient({ chain: foundry, transport, mode: "anvil" });
@@ -136,7 +133,6 @@ describe.skipIf(SKIP)("Batch E2E: a skipped accrual, then a later batch counts t
     const buyerWallet = createWalletClient({ chain: foundry, transport, account: buyerAccount });
     const sellerWallet = createWalletClient({ chain: foundry, transport, account: sellerAccount });
 
-    let ready = false;
     let anvil: ChildProcess | null = null;
     let relayProcess: ChildProcess | null = null;
     let relayClient: SequencerClient;
@@ -152,7 +148,6 @@ describe.skipIf(SKIP)("Batch E2E: a skipped accrual, then a later batch counts t
     const bonds = calculateBonds(PAYMENT, PAYMENT);
 
     beforeAll(async () => {
-        if (!anvilBinaryExists() || !sequencerBinaryExists()) return;
         anvil = spawn("anvil", ["--port", String(ANVIL_PORT), "--silent"], { stdio: "ignore" });
         if (!(await waitForRpc(RPC_URL, 30_000))) throw new Error(`anvil did not start on ${RPC_URL}`);
 
@@ -201,7 +196,6 @@ describe.skipIf(SKIP)("Batch E2E: a skipped accrual, then a later batch counts t
         attachLogs(relayProcess);
         relayClient = new SequencerClient({ url: SEQUENCER_URL });
         await waitForSequencer(SEQUENCER_URL, 10 * 60_000);
-        ready = true;
     }, 20 * 60_000);
 
     afterAll(async () => {
@@ -213,13 +207,6 @@ describe.skipIf(SKIP)("Batch E2E: a skipped accrual, then a later batch counts t
     });
 
     it("a use left uncounted by a batch that crossed a period's end is counted by a later batch", async () => {
-        if (!ready) {
-            if (REQUIRE) {
-                throw new Error(`REQUIRE_BATCH_E2E=1 but anvil or the sequencer binary (${sequencerBinaryPath()}) is missing`);
-            }
-            console.log("⏭ Skipping: anvil or the sequencer binary is missing");
-            return;
-        }
 
         // ── Batch 1: the commit ────────────────────────────────────────────
         const domain = buildDomain(31337, batchVerifierAddress);

@@ -1,6 +1,6 @@
 /**
  * Integration test: the SDK ROUND-TRIP against Anvil — the one sanctioned
- * chain-touching Vitest file (skipIf-gated). It proves SDK ARTIFACTS survive
+ * chain-touching Vitest file. It proves SDK ARTIFACTS survive
  * a real chain: a built+signed commitment is accepted by FigaroCore through
  * the SDK's own `commit` write, events fetch and reconstruct, and the
  * reconstructed commitment resolves through the SDK's `resolveProcess`. It
@@ -8,11 +8,12 @@
  * (K-1/2/3/6; SDK-mirror parity lives in the Foundry parity vectors), and
  * `calculateResolution` is unit-tested in bonds.test.ts.
  *
- * Requires Anvil running at http://127.0.0.1:8545 (or at `ANVIL_URL`). With
- * none reachable, or with SKIP_ANVIL=1, the whole suite is SKIPPED and the
- * run reports it skipped, never passed: no CI job starts an Anvil, so in CI
- * this file proves nothing. The writes' arguments are pinned hermetically in
- * autonomous.test.ts.
+ * Requires Anvil running at http://127.0.0.1:8545 (or at `ANVIL_URL`) and the
+ * contracts built into out/ (`forge build`). With no Anvil reachable the file
+ * fails at collection, naming the URL it tried. `npm test` does not select
+ * this file; `npm run test:chain` does, and prover-ci's `sp1` job runs it on
+ * the Anvil it starts for the batch files. The writes' arguments are pinned
+ * hermetically in autonomous.test.ts.
  *
  * Flow:
  *   1. Deploy MockERC20 + FigaroCore
@@ -49,17 +50,15 @@ import {
     type OfferPolicy,
 } from "../src/agent/index.js";
 import type { FigaroAddresses } from "../src/types.js";
-import { ANVIL_URL, anvilReachable } from "./batchHarness.js";
+import { ANVIL_URL, requireAnvil } from "./batchHarness.js";
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { hydrateAuthored, profileBinding } from "./hydrate.js";
 
-// ── Skip, visibly, unless Anvil is reachable ────────────────────────────────
+// ── The chain, or the file fails ────────────────────────────────────────────
 
-const SKIP = process.env.SKIP_ANVIL === "1";
-// Read once at collection, so a dead chain skips the suite rather than letting
-// every test return early and report a pass with no assertion run.
-const ALIVE = !SKIP && (await anvilReachable());
-const SKIP_REASON = SKIP ? "SKIP_ANVIL=1" : `no Anvil reachable at ${ANVIL_URL}`;
+// Read once at collection: a dead chain fails the file before any test is
+// counted.
+await requireAnvil();
 
 // ── Anvil pre-funded accounts ───────────────────────────────────────────────
 
@@ -81,7 +80,7 @@ function loadBytecode(contractPath: string): Hex {
 
 // ── Test suite ──────────────────────────────────────────────────────────────
 
-describe.skipIf(!ALIVE)(ALIVE ? "SDK Integration (Anvil)" : `SDK Integration (Anvil) — skipped: ${SKIP_REASON}`, () => {
+describe("SDK Integration (Anvil)", () => {
     const transport = http(ANVIL_URL);
 
     // cacheTime: 0 — viem's default (chain.blockTime/3, 4000ms for the foundry

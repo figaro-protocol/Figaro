@@ -27,10 +27,11 @@ name: Prover CI
 # `sp1_build::build_program`, which needs `cargo prove` (the SP1 toolchain) to
 # cross-compile the guest ELF to RISC-V. That job installs the toolchain the
 # way `.github/workflows/sequencer-release.yml` does, runs the sequencer and
-# guest test suites, then runs the SDK's four-layer batch e2e (TypeScript
-# signs, the Rust sequencer proves and submits, the Solidity verifier settles
-# on a live Anvil) with its skip turned into a failure. Paying that cost on
-# every PR is what the split avoids.
+# guest test suites, then runs the SDK's chain selection (`npm run test:chain`'s
+# files): the four-layer batch e2e (TypeScript signs, the Rust sequencer
+# proves and submits, the Solidity verifier settles on a live Anvil) and the
+# SDK's round-trip on that Anvil. A missing chain or binary fails each file.
+# Paying that cost on every PR is what the split avoids.
 
 on:
     workflow_dispatch:
@@ -50,17 +51,19 @@ on:
             - "test/fixtures/clause-keys.json"
             - "scripts/test-cross-impl-fuzz.sh"
             - ".github/workflows/prover-ci.yml"
-            # What the `sp1` job's batch e2e step reads: its three spec files,
-            # the harness they share and the config that runs them one at a
-            # time; the SDK it builds and imports; the contracts the harness
+            # What the `sp1` job's chain step reads: its five test files, the
+            # harness they share and the config that selects them; the SDK it
+            # builds and imports; the contracts the harness
             # deploys from out/ (the Core's above, the four registries, the
             # counter and two mocks) and the build settings behind out/; the
             # dependencies `npm ci` installs.
             - "sdk/tests/batch-e2e.test.ts"
             - "sdk/tests/batch-revoke-e2e.test.ts"
             - "sdk/tests/batch-accrual-skip-e2e.test.ts"
+            - "sdk/tests/batch-traces-e2e.test.ts"
+            - "sdk/tests/integration.test.ts"
             - "sdk/tests/batchHarness.ts"
-            - "sdk/vitest.config.ts"
+            - "sdk/vitest.chain.config.ts"
             - "sdk/src/**"
             - "sdk/package.json"
             - "sdk/tsconfig.json"
@@ -331,22 +334,23 @@ jobs:
                   done
                   echo "anvil did not come up"; cat /tmp/anvil.log; exit 1
 
-            # REQUIRE_BATCH_E2E turns the spec's two prerequisite checks from
-            # skips into failures: here the binary and the chain are both
-            # provided, so a skip would be a silent loss of the lock.
-            - name: Batch e2e (SDK → sequencer → verifier)
+            # The chain selection (sdk/vitest.chain.config.ts): the SDK's
+            # round-trip on this Anvil, then the batch e2e (SDK → sequencer →
+            # verifier). Each file fails, never skips, when the chain or the
+            # binary is missing. The round-trip deploys its own token and Core
+            # and the batch files their own stacks, so the order holds no state.
+            - name: SDK chain tests (round-trip, batch e2e)
               working-directory: ./sdk
-              env:
-                  REQUIRE_BATCH_E2E: "1"
               # One vitest process per file: run together in one process, the runner
               # is shut down about three minutes in, while each file passes alone.
               # `set -e` fails the step at the first file that fails.
               run: |
                   set -e
-                  npx vitest run tests/batch-e2e.test.ts
-                  npx vitest run tests/batch-revoke-e2e.test.ts
-                  npx vitest run tests/batch-accrual-skip-e2e.test.ts
-                  npx vitest run tests/batch-traces-e2e.test.ts
+                  npm run test:chain -- tests/integration.test.ts
+                  npm run test:chain -- tests/batch-e2e.test.ts
+                  npm run test:chain -- tests/batch-revoke-e2e.test.ts
+                  npm run test:chain -- tests/batch-accrual-skip-e2e.test.ts
+                  npm run test:chain -- tests/batch-traces-e2e.test.ts
 
             - name: Anvil log on failure
               if: failure()
