@@ -37,6 +37,8 @@ import {
     PROCESS_REGISTRY_ABI,
     AGREEMENT_REGISTRY_ABI,
     MEMBERS_REGISTRY_ABI,
+    DEFAULT_LOG_CHUNK_SIZE,
+    fetchLogsChunked,
 } from "@figaro-protocol/sdk";
 
 // The canonical ABIs, never hand-written fragments: a fabricated ABI never
@@ -120,19 +122,16 @@ if (process.env.ESTATE_SKIP_PINS !== "1") {
             retryDelay: 1500,
         }),
     });
-    const pause = (ms) => new Promise((r) => setTimeout(r, ms));
     const fromBlock = BigInt(record.deploymentBlock);
     const toBlock = await client.getBlockNumber();
-    const CHUNK = 9500n;
+    // The SDK's reader: chunks of DEFAULT_LOG_CHUNK_SIZE, asked again on
+    // pruned history or a rate limit, and a log from any contract but the
+    // one asked about refused.
     const collect = async (address, event, pick) => {
-        const uris = [];
-        for (let from = fromBlock; from <= toBlock; from += CHUNK + 1n) {
-            const to = from + CHUNK > toBlock ? toBlock : from + CHUNK;
-            const logs = await client.getLogs({ address, event, fromBlock: from, toBlock: to });
-            for (const log of logs) uris.push(pick(log));
-            await pause(250);
-        }
-        return uris;
+        const logs = await fetchLogsChunked(client, {
+            address, fromBlock, toBlock, chunkSize: DEFAULT_LOG_CHUNK_SIZE, events: [event],
+        });
+        return logs.map(pick);
     };
     const sources = [
         ["clause", record.clauseRegistry,

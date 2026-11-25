@@ -83,7 +83,7 @@ vi.mock("@/lib/registries/useMemberListings", () => ({ useMemberListings: () => 
 vi.mock("@/lib/rewards/useRpgfRewards", () => ({
     useRpgfRewards: () => ({ available: true, account: WALLET, read: m.rewardsRead, claim: async () => undefined, refresh: () => undefined }),
 }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: m.decimals, ready: m.decimals !== undefined, loading: false }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(() => m.decimals));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: m.balanceRead, refetch: () => undefined }) }));
 
 // /audit and /audit/view
@@ -144,6 +144,7 @@ const EMPTY_CORPUS = {
     venue: null,
     assemblyNames: new Map(),
     attributionByProcess: new Map(),
+    contestedProcesses: new Set(),
 } as unknown as GraphCorpus;
 
 function setReads(c: ReadCase) {

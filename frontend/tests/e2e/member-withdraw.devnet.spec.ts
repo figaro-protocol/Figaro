@@ -25,24 +25,18 @@
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import {
     createPublicClient,
-    defineChain,
     http,
     type Hex,
 } from 'viem';
 import {
     readLocalDeploymentConfig,
     seedRegisteredMember,
+    RPC_URL,
+    LOCAL_ANVIL,
 } from './devnet-helpers';
 import { MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 
 // gotoAsWallet connects the page as the dedicated anvil[3] wallet
 // with the on-chain registration we seed below.

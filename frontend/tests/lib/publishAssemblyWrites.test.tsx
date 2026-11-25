@@ -19,8 +19,8 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { ContractFunctionRevertedError, encodeErrorResult } from "viem";
-import { agreementHashOf, processDesignHashOf, type ProcessDesign, type RegisteredAgreement, type Hex } from "@figaro-protocol/sdk";
+import { PROCESS_REGISTRY_ABI, agreementHashOf, processDesignHashOf, type ProcessDesign, type RegisteredAgreement, type Hex } from "@figaro-protocol/sdk";
+import { revertOf } from "../support/contractRevert";
 import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 
 const PROCESS_REGISTRY = "0x00000000000000000000000000000000000a5501";
@@ -39,9 +39,7 @@ const s = vi.hoisted(() => ({
     write: undefined as unknown as ReturnType<typeof import("vitest").vi.fn>,
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: DESIGNER }),
-    usePublicClient: () => s.client,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => DESIGNER, client: () => s.client }, {
     useWriteContract: () => ({ writeContractAsync: s.write, data: undefined, isPending: false, error: null }),
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false }),
 }));
@@ -204,9 +202,8 @@ describe("usePublishAssembly — the agreements, then the assembly", () => {
     });
 
     it("a registration that would revert sends nothing at all — no agreement registered, no stake placed", async () => {
-        const abi = [{ type: "error", name: "AlreadyRegistered", inputs: [] }] as const;
         s.client.simulateContract.mockImplementationOnce(async () => {
-            throw new ContractFunctionRevertedError({ abi, data: encodeErrorResult({ abi, errorName: "AlreadyRegistered" }), functionName: "registerProcess" });
+            throw revertOf(PROCESS_REGISTRY_ABI, "ProcessAlreadyRegistered", [`0x${"00".repeat(32)}`], "registerProcess");
         });
         const { result } = renderHook(() => usePublishAssembly());
         const e = await caught(() => result.current.publish(snapshot()));

@@ -13,9 +13,9 @@ const h = vi.hoisted(() => ({
     // wagmi hands back the same client across renders.
     client: { tag: "client" },
 }));
-vi.mock("wagmi", () => ({ usePublicClient: () => h.client }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ client: () => h.client }));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: h.balance, refetch: () => {} }) }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 6, ready: true, loading: false }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(6));
 vi.mock("@/lib/composability/swapFunding", () => ({
     resolveSwapFundingContracts: () => ({ coordinator: "0xc0", permit2: "0xa2", router: "0xd0" }),
     quoteFundingInput: async (...args: unknown[]) => {

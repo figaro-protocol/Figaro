@@ -31,10 +31,7 @@ const m = vi.hoisted(() => ({
         readContract: async ({ functionName }: { functionName: string }) => (functionName === "symbol" ? "" : 18),
     },
 }));
-vi.mock("wagmi", () => ({
-    useChainId: () => 31337,
-    usePublicClient: () => ({ chain: { id: 31337 } }),
-    useAccount: () => ({ address: undefined, isConnected: false }),
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({}, {
     useWatchContractEvent: () => undefined,
 }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => m.SPECS }));

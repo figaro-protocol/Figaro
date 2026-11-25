@@ -53,6 +53,7 @@ function corpus(over: Partial<GraphCorpus> = {}): GraphCorpus {
         venue: null,
         assemblyNames: new Map(),
         attributionByProcess: new Map(),
+        contestedProcesses: new Set(),
         designByProcess: new Map(),
         ...over,
     } as GraphCorpus;

@@ -16,7 +16,11 @@ const slugOf = (t: ProcessDesign) => deriveProcessDesignSlug(serializeProcessDes
 
 describe("content-derived assembly slug", () => {
     it("identical compositions → identical slug (the dedup property)", () => {
-        expect(slugOf(composition(1))).toBe(slugOf(composition(1)));
+        // Two compositions built apart, their keys in another order, name one
+        // slug: the one fixed below for this content.
+        const apart = { agreements: [{ clauses: {}, agreementHash: agreementHashOf({ clauses: { [CLAUSE]: { x: 1 } } }), id: "agreement-0" }] } as ProcessDesign;
+        expect(slugOf(composition(1))).toBe("asm-14d38787c5ddbff0");
+        expect(slugOf(apart)).toBe("asm-14d38787c5ddbff0");
     });
 
     it("distinct compositions → distinct slugs (no conflation)", () => {

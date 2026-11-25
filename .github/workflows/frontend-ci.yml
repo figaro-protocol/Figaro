@@ -6,12 +6,36 @@ on:
     branches: [main, develop]
     paths:
       - "frontend/**"
+      # The unit tests read these beside the frontend: the clause specs, the
+      # contracts' ABIs, the SDK's source, the deployment records, the
+      # reference agreements and assemblies, the builder docs, and the devnet
+      # swap venue's source (tests/support/mockSwapVenueAbi.ts).
+      - "clauses/**"
+      - "abi/**"
+      - "sdk/src/**"
+      - "deployments/**"
+      - "agreements/**"
+      - "assemblies/**"
+      - "docs-site/**"
+      - "src/mocks/MockSwapVenue.sol"
       - ".nvmrc"
       - ".github/workflows/frontend-ci.yml"
   pull_request:
     branches: [main, develop]
     paths:
       - "frontend/**"
+      # The unit tests read these beside the frontend: the clause specs, the
+      # contracts' ABIs, the SDK's source, the deployment records, the
+      # reference agreements and assemblies, the builder docs, and the devnet
+      # swap venue's source (tests/support/mockSwapVenueAbi.ts).
+      - "clauses/**"
+      - "abi/**"
+      - "sdk/src/**"
+      - "deployments/**"
+      - "agreements/**"
+      - "assemblies/**"
+      - "docs-site/**"
+      - "src/mocks/MockSwapVenue.sol"
       - ".nvmrc"
 
 permissions:

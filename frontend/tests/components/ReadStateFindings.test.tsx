@@ -32,11 +32,7 @@ const m = vi.hoisted(() => ({
     verdicts: (async () => { throw new Error("fetch failed: RPC unreachable"); }) as () => Promise<unknown>,
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: WALLET, isConnected: true }),
-    usePublicClient: () => m.client,
-    useChainId: () => 31337,
-}));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => WALLET, client: () => m.client }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => undefined, replace: (h: string) => m.replace(h) }) }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));

@@ -20,11 +20,8 @@ const { CORE, VERIFIER, ME, BUYER, chain, callbacks } = vi.hoisted(() => ({
     callbacks: [] as Array<(payload: string, orderId: string) => Promise<void> | void>,
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: ME, isConnected: true }),
-    useChainId: () => 31337,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => ME, client: () => CLIENT }, {
     useWalletClient: () => ({ data: undefined }),
-    usePublicClient: () => CLIENT,
     useWatchContractEvent: () => undefined,
 }));
 const CLIENT = { chain: { id: 31337 } };
@@ -37,10 +34,8 @@ const SERVICES = {
         },
     },
 };
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: CORE, batchVerifier: VERIFIER } }));
 vi.mock("@/lib/core/eventCache", () => ({
     cachedGetLogs: async (_client: unknown, _chainId: number, opts: { address: string; event: unknown }) =>
         chain.logs.filter((l) => l.address.toLowerCase() === opts.address.toLowerCase() && l.topics[0] === selectorOf(opts.event)),
@@ -61,7 +56,7 @@ vi.mock("@/lib/checkout/signedUnsentOrders", () => ({
     useSignedUnsentOrders: () => [],
     forgetSignedUnsent: vi.fn(),
 }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 6, ready: true, loading: false }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(6));
 vi.mock("@/hooks/useTokenApproval", () => ({
     default: () => ({ needsApproval: () => false, approve: vi.fn(), isApprovePending: false, isApproveConfirming: false, isApproveSuccess: false, isApproveError: false }),
 }));

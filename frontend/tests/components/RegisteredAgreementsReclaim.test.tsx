@@ -44,9 +44,7 @@ vi.mock("next/link", async () => {
             React.createElement("a", { href, ...rest }, children),
     };
 });
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: mocks.address, isConnected: !!mocks.address }),
-}));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => mocks.address }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/lib/registries/useAgreementRegistry", () => ({
     usePublishedAgreements: (registeredBy: `0x${string}` | undefined) => {

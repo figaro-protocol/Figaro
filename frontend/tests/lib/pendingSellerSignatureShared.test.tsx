@@ -34,10 +34,8 @@ vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 // The pin gate verifies a counterparty signature before pinning;
 // these tests exercise dismiss/resubscription with fixture
 // sigs, so treat the signature as valid and give the gate a core domain.
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x00000000000000000000000000000000000000c0" } };
-});
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { core: "0x00000000000000000000000000000000000000c0" }));
 vi.mock("@figaro-protocol/sdk", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@figaro-protocol/sdk")>();
     return { ...actual, verifyCommitmentSignature: vi.fn().mockResolvedValue(true) };

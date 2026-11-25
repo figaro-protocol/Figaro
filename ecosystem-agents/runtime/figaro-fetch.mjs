@@ -22,9 +22,10 @@
 import * as fs from "node:fs";
 import { createPublicClient, http } from "viem";
 import {
-    fetchDiscoveryEvents, reconstructDiscovery,
+    addressesFromDeploymentRecord, fetchDiscoveryEvents, isBytes32Hex, reconstructDiscovery,
 } from "@figaro-protocol/sdk";
 import { frame } from "./dataChannel.mjs";
+import { requireEnv } from "./env.mjs";
 import { cidOf, fetchUriText } from "./ipfsRead.mjs";
 import { fetchWitnessContent } from "./witnessContent.mjs";
 import { fetchAnchoredClauseSpec, fetchAnchoredRegisteredAgreement, fetchAnchoredAssembly } from "./anchoredContent.mjs";
@@ -34,14 +35,15 @@ function fail(message) {
     process.exit(1);
 }
 
-function requireEnv(name) {
-    const v = process.env[name];
-    if (!v) fail(`missing env ${name}`);
-    return v;
-}
 
 const [, , mode, ...args] = process.argv;
 if (!mode) fail("usage: figaro-fetch <clause|agreement|assembly|profile|ipfs|witness> <ref>");
+
+/** A content URI's provenance handle: its CID when it names one, else the URI. */
+function provenanceRef(uri) {
+    const cid = cidOf(uri);
+    return cid === null ? { refKind: "uri", ref: uri } : { refKind: "cid", ref: cid };
+}
 
 async function fetchContent(uri) {
     let text;
@@ -55,15 +57,10 @@ async function fetchContent(uri) {
 }
 
 async function discovery() {
-    const record = JSON.parse(fs.readFileSync(requireEnv("DEPLOYMENT_RECORD"), "utf-8"));
-    const client = createPublicClient({ transport: http(requireEnv("RPC_URL")) });
+    const record = JSON.parse(fs.readFileSync(requireEnv("DEPLOYMENT_RECORD", "figaro-fetch"), "utf-8"));
+    const client = createPublicClient({ transport: http(requireEnv("RPC_URL", "figaro-fetch")) });
     const fromBlock = BigInt(process.env.DEPLOYMENT_BLOCK ?? record.deploymentBlock ?? 0);
-    const events = await fetchDiscoveryEvents(client, {
-        clauseRegistry: record.clauseRegistry,
-        membersRegistry: record.membersRegistry,
-        processRegistry: record.processRegistry,
-        agreementRegistry: record.agreementRegistry,
-    }, fromBlock);
+    const events = await fetchDiscoveryEvents(client, addressesFromDeploymentRecord(record), fromBlock);
     return reconstructDiscovery(events);
 }
 
@@ -71,7 +68,7 @@ async function main() {
     if (mode === "ipfs") {
         const cid = args[0] ?? fail("usage: figaro-fetch ipfs <cid>");
         const content = await fetchContent(cid);
-        console.log(frame({ source: "ipfs", refKind: "cid", ref: cidOf(cid), content }));
+        console.log(frame({ source: "ipfs", ...provenanceRef(cid), content }));
         return;
     }
 
@@ -95,7 +92,7 @@ async function main() {
 
     if (mode === "clause") {
         const clauseKey = args[0] ?? fail("usage: figaro-fetch clause <clauseKey>");
-        if (!/^0x[0-9a-fA-F]{64}$/.test(clauseKey)) fail(`a clause is read by its 32-byte key, not by name: ${clauseKey}`);
+        if (!isBytes32Hex(clauseKey)) fail(`a clause is read by its 32-byte key, not by name: ${clauseKey}`);
         const graph = await discovery();
         const clause = graph.getClause(clauseKey);
         if (!clause) fail(`clause ${clauseKey} is not live on the registry`);
@@ -104,14 +101,14 @@ async function main() {
         const hit = await fetchAnchoredClauseSpec(clause);
         if (hit.absent) fail(`clause ${clauseKey}: no anchored spec at ${clause.contentURI} — ${hit.absent} (absence, not the registry's content)`);
         console.log(frame({
-            source: "clause-registry", refKind: "cid", ref: cidOf(clause.contentURI), content: hit.text,
+            source: "clause-registry", ...provenanceRef(clause.contentURI), content: hit.text,
         }));
         return;
     }
 
     if (mode === "agreement") {
         const agreementHash = args[0] ?? fail("usage: figaro-fetch agreement <agreementHash>");
-        if (!/^0x[0-9a-fA-F]{64}$/.test(agreementHash)) fail(`a registered agreement is read by its 32-byte key: ${agreementHash}`);
+        if (!isBytes32Hex(agreementHash)) fail(`a registered agreement is read by its 32-byte key: ${agreementHash}`);
         const graph = await discovery();
         // The binding whatever its stake: a binding is never cleared, so an
         // assembly composed from a withdrawn agreement still reads it.
@@ -121,7 +118,7 @@ async function main() {
         const hit = await fetchAnchoredRegisteredAgreement(agreement);
         if (hit.absent) fail(`agreement ${agreementHash}: no anchored document at ${agreement.contentURI} — ${hit.absent} (absence, not the registry's content)`);
         console.log(frame({
-            source: "agreement-registry", refKind: "cid", ref: cidOf(agreement.contentURI), content: hit.text,
+            source: "agreement-registry", ...provenanceRef(agreement.contentURI), content: hit.text,
         }));
         return;
     }
@@ -135,7 +132,7 @@ async function main() {
         const hit = await fetchAnchoredAssembly(assembly);
         if (hit.absent) fail(`assembly ${processDesignHash}: no anchored assembly at ${assembly.contentURI} — ${hit.absent} (absence, not the registry's content)`);
         console.log(frame({
-            source: "assembly-registry", refKind: "cid", ref: cidOf(assembly.contentURI), content: hit.text,
+            source: "assembly-registry", ...provenanceRef(assembly.contentURI), content: hit.text,
         }));
         return;
     }

@@ -54,19 +54,12 @@ import {
     VENUE_ABI,
     LOCAL_ANVIL,
     RPC_URL,
+    waitForConnected,
 } from './devnet-helpers';
 import { formatToken } from '@/lib/shared/utils';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
 import type { Page } from '@playwright/test';
-
-async function waitForConnected(page: Page) {
-    await page.waitForFunction(
-        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
-        null,
-        { timeout: 30000 },
-    );
-}
 
 const ERC20_ABI = parseAbi([
     'function decimals() view returns (uint8)',

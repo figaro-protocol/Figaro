@@ -106,6 +106,8 @@ vi.mock("@/lib/designer/publishAssembly", () => ({ usePublishAgreement: () => ({
 
 import { NewAssemblyClient } from "@/app/(tools)/assemblies/designer/new/NewAssemblyClient";
 import { EditAssemblyClient } from "@/app/(tools)/assemblies/designer/edit/EditAssemblyClient";
+import NewAssemblyPage from "@/app/(tools)/assemblies/designer/new/page";
+import EditAssemblyPage from "@/app/(tools)/assemblies/designer/edit/page";
 import { DraftsList } from "@/app/(tools)/assemblies/designer/_components/DraftsList";
 import { listNamedDrafts, loadNamedDraft, saveAutosave } from "@/lib/designer/syntheticDesignStore";
 
@@ -573,5 +575,37 @@ describe("DesignerCanvas — on a named draft, the autosave follows what the can
         await mount(<EditAssemblyClient slug={slug} />);
         expect(nameValue()).toBe("Kept draft");
         expect(loadNamedDraft(slug)!.name).toBe("Kept draft");
+    });
+});
+
+// The wallet signs; it is never a login (docs/FRONTEND.md § "Wallet-provider
+// scope per route"). Each route's page, with no wallet connected, shows the
+// design it holds — a fresh one on /new, the saved draft on /edit — and the
+// canvas's own controls, and no prompt to connect stands in for them.
+describe("DesignerCanvas — the pages with no wallet connected", () => {
+    it("/assemblies/designer/new — no wallet, read present: the canvas, its editorial inputs and Save show, and no prompt to connect stands in for them", async () => {
+        h.search = new URLSearchParams("fresh=1");
+        await mount(<NewAssemblyPage />);
+        expect(screen.getByTestId("topology-canvas").getAttribute("data-orders")).toBe("1");
+        expect(screen.getByTestId("designer-name-input")).toBeTruthy();
+        expect(screen.getByTestId("designer-save")).toBeTruthy();
+        expect(screen.queryByText(/connect (a|your) wallet/i)).toBeNull();
+    });
+
+    it("/assemblies/designer/edit — no wallet, read present: the saved draft opens with its name and orders, and no prompt to connect stands in for them", async () => {
+        h.search = new URLSearchParams("fresh=1");
+        const first = await mount(<NewAssemblyClient />);
+        await act(async () => { canvas().onAddSubOrder(canvas().orders[0].orderHash); });
+        typeInto("designer-name-input", "No wallet draft");
+        await act(async () => {});
+        fireEvent.click(screen.getByTestId("designer-save"));
+        const [slug] = listNamedDrafts().map((d) => d.slug);
+        first.unmount();
+
+        h.search = new URLSearchParams(`slug=${slug}`);
+        await mount(<EditAssemblyPage />);
+        expect(screen.getByTestId("topology-canvas").getAttribute("data-orders")).toBe("2");
+        expect((screen.getByTestId("designer-name-input") as HTMLInputElement).value).toBe("No wallet draft");
+        expect(screen.queryByText(/connect (a|your) wallet/i)).toBeNull();
     });
 });

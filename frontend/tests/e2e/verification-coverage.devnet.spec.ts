@@ -28,12 +28,12 @@
  * Requires Anvil + ./scripts/deploy-local.sh + populate-test-data + Kubo + :3100.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
+import { createPublicClient, http, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
+import { readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs, waitForConnected, RPC_URL, LOCAL_ANVIL } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
-import { calculateBonds, computeClauseLeaf } from '@figaro-protocol/sdk';
+import { calculateBonds, computeClauseLeaf, ERC20_ABI } from '@figaro-protocol/sdk';
 import type { Page } from '@playwright/test';
 
 // Clause keys are located by the names their specs carry (`keyOf`), over
@@ -42,27 +42,11 @@ test.beforeAll(async () => {
     await primeRegisteredClauseSpecs();
 });
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 const BUYER = privateKeyToAccount(ANVIL_KEYS[0] as Hex).address; // anvil[0] — the fixture default buyer
 // The wizard seller the devnet-authoring gate registers (anvil[13]), bound
 // to the seed assembly — the same producing pair the payment-token specs use.
 const SELLER = '0x1cbd3b2770909d4e10f157cabc84c7264073c9ec' as Hex;
-
-async function waitForConnected(page: Page) {
-    await page.waitForFunction(
-        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
-        null,
-        { timeout: 30000 },
-    );
-}
 
 test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader, verifier modes B/C (devnet)', () => {
     test.setTimeout(300_000);

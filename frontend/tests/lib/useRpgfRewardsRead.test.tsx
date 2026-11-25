@@ -32,11 +32,8 @@ const w = vi.hoisted(() => {
     };
 });
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: w.address, isConnected: true }),
-    usePublicClient: () => w.client,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => w.address, client: () => w.client }, {
     useWriteContract: () => ({ writeContractAsync: vi.fn() }),
-    useChainId: () => 31337,
 }));
 vi.mock("@/lib/rewards/contracts", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/rewards/contracts")>()),
@@ -52,7 +49,7 @@ vi.mock("@/lib/core/eventCache", () => ({
     },
 }));
 vi.mock("@/lib/shared/viewedWallet", () => ({ useViewedWallet: (connected: unknown) => connected }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18 }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(18));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "pending" }, refetch: () => undefined }) }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
 

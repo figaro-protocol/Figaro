@@ -49,11 +49,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { createPublicClient, http, parseAbi, parseAbiItem } from "viem";
+import { createPublicClient, getAbiItem, http, parseAbi } from "viem";
 // The SDK's own clause key — keccak256 of the canonical bytes of the spec
 // without its top-level `block`. Built output: run
 // `npm run build` in sdk/ when dist/ is stale.
 import { computeClauseKey } from "../sdk/dist/discovery.js";
+import {
+    AGREEMENT_REGISTRY_ABI, ATTESTATION_COORDINATOR_ABI, BATCH_VERIFIER_ABI, CLAUSE_REGISTRY_ABI, CORE_ABI,
+    FLORIN_TOKEN_ABI, MEMBERS_REGISTRY_ABI, PROCESS_REGISTRY_ABI, RPGF_MINTER_ABI, USAGE_COUNTER_ABI,
+    WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI,
+} from "../sdk/dist/index.js";
 import { checkRegistrars, plannedRegistrations } from "./check-deployment-registrars.mjs";
 import { checkMembers, plannedMembers } from "./check-deployment-members.mjs";
 import { checkReleaseRevision } from "./check-release-revision.mjs";
@@ -100,41 +105,30 @@ const CONTRACTS = {
     witnessSwapAndCommitCoordinator: "WitnessSwapAndCommitCoordinator",
 };
 
-const ABI = parseAbi([
-    "function core() view returns (address)",
-    "function members() view returns (address)",
-    "function clauses() view returns (address)",
-    "function processDesigns() view returns (address)",
-    "function agreements() view returns (address)",
-    "function batchVerifier() view returns (address)",
-    "function usageCounter() view returns (address)",
-    "function verifier() view returns (address)",
-    "function verifierHash() view returns (bytes32)",
-    "function routes(bytes4) view returns (address verifier, bool frozen)",
-    "function programVKey() view returns (bytes32)",
-    "function figaroCore() view returns (address)",
-    "function permit2() view returns (address)",
-    "function router() view returns (address)",
-    "function florin() view returns (address)",
-    "function counter() view returns (address)",
-    "function provenanceLeaf() view returns (bytes32)",
-    "function processTermsLeaf() view returns (bytes32)",
-    "function processLeafDomain() view returns (bytes32)",
-    "function minSellers() view returns (uint64)",
-    "function periodCount() view returns (uint256)",
-    "function periodAmount(uint256) view returns (uint256)",
-    "function registrationDeposit() view returns (uint256)",
-    "function withdrawalCooldown() view returns (uint256)",
-    "function deployerMintRenounced() view returns (bool)",
-    "function totalSupply() view returns (uint256)",
-    "function balanceOf(address) view returns (uint256)",
-    "function minters(address) view returns (uint256 cap, uint256 minted)",
-    "function depositOf(bytes32) view returns (address registeredBy, bool withdrawn)",
-    "function registered(bytes32) view returns (bool)",
-    "function bindings(bytes32) view returns (address registeredBy, uint64 registeredAt, bool withdrawn, string contentURI)",
-]);
-const read = (address, functionName, args = []) =>
-    client.readContract({ address, abi: ABI, functionName, args });
+/** The record key → the contract's own ABI, from the SDK. */
+const ABI_OF = {
+    figaroCore: CORE_ABI,
+    attestationCoordinator: ATTESTATION_COORDINATOR_ABI,
+    clauseRegistry: CLAUSE_REGISTRY_ABI,
+    membersRegistry: MEMBERS_REGISTRY_ABI,
+    processRegistry: PROCESS_REGISTRY_ABI,
+    agreementRegistry: AGREEMENT_REGISTRY_ABI,
+    florinToken: FLORIN_TOKEN_ABI,
+    usageCounter: USAGE_COUNTER_ABI,
+    rpgfMinter: RPGF_MINTER_ABI,
+    batchVerifier: BATCH_VERIFIER_ABI,
+    witnessSwapAndCommitCoordinator: WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI,
+};
+/** A view of the contract the record names under `key`, read through that
+ *  contract's own ABI: a getter the contract does not declare fails here. */
+const read = (key, functionName, args = []) => {
+    const abi = ABI_OF[key];
+    if (!abi) throw new Error(`no ABI for the record's ${key}`);
+    return client.readContract({ address: record[key], abi, functionName, args });
+};
+/** The proof gateway is an outside contract (SP1's verifier gateway); the SDK
+ *  carries no ABI for it, so its one getter is stated here. */
+const GATEWAY_ABI = parseAbi(["function routes(bytes4) view returns (address verifier, bool frozen)"]);
 
 /** ClauseRegistry's key for a spec: keccak256 of the canonical bytes of the
  *  spec without its top-level `block` (sdk `computeClauseKey`). */
@@ -301,7 +295,7 @@ async function main() {
                 // data); an RPC failure is a failure of the check, never the divergence.
                 let answered;
                 try {
-                    answered = await read(record[from], getter);
+                    answered = await read(from, getter);
                 } catch (err) {
                     const text = String(err?.shortMessage ?? err?.message ?? err);
                     if (!/returned no data|reverted|execution reverted/i.test(text)) throw err;
@@ -311,70 +305,72 @@ async function main() {
                 else bad(`${from}.${getter}()`, `reads ${answered}, the stated divergence is that the getter is absent`);
                 continue;
             }
-            const got = await read(record[from], getter);
+            const got = await read(from, getter);
             if (same(got, override)) ok(`${from}.${getter}() is the stated divergence ${override}`);
             else bad(`${from}.${getter}()`, `reads ${got}, the stated divergence is ${override}`);
             continue;
         }
         if (!record[from] || !record[to]) { bad(`${from}.${getter}()`, `the record lacks ${record[from] ? to : from}`); continue; }
-        const got = await read(record[from], getter);
+        const got = await read(from, getter);
         if (same(got, record[to])) ok(`${from}.${getter}() is ${to}`);
         else bad(`${from}.${getter}()`, `reads ${got}, the record's ${to} is ${record[to]}`);
     }
 
     const e = expected;
     console.log("\nThe batch verifier");
-    await expectValue("batchVerifier.programVKey()", e.batchVerifier?.programVKey, await read(record.batchVerifier, "programVKey"));
+    await expectValue("batchVerifier.programVKey()", e.batchVerifier?.programVKey, await read("batchVerifier", "programVKey"));
     if (e.batchVerifier?.gateway) {
         // The verifier binds the ROUTED verifier, never the gateway (the constructor refuses a
         // gateway). What must hold: the gateway the expectations name routes this verifier's
         // selector — the first four bytes of its verifierHash() — to exactly the address bound.
-        const bound = await read(record.batchVerifier, "verifier");
-        const selector = (await read(record.batchVerifier, "verifierHash")).slice(0, 10);
-        const [routed, frozen] = await read(e.batchVerifier.gateway, "routes", [selector]);
+        const bound = await read("batchVerifier", "verifier");
+        const selector = (await read("batchVerifier", "verifierHash")).slice(0, 10);
+        const [routed, frozen] = await client.readContract({
+            address: e.batchVerifier.gateway, abi: GATEWAY_ABI, functionName: "routes", args: [selector],
+        });
         if (same(bound, routed)) ok(`batchVerifier.verifier() is the verifier gateway ${e.batchVerifier.gateway} routes for selector ${selector}${frozen ? " (route frozen)" : ""}`);
         else bad("batchVerifier.verifier()", `binds ${bound}, but gateway ${e.batchVerifier.gateway} routes selector ${selector} to ${routed}`);
     } else {
-        await expectValue("batchVerifier.verifier()", e.batchVerifier?.verifier, await read(record.batchVerifier, "verifier"));
+        await expectValue("batchVerifier.verifier()", e.batchVerifier?.verifier, await read("batchVerifier", "verifier"));
     }
 
     console.log("\nThe registries' fixed parameters");
-    await expectValue("membersRegistry.registrationDeposit()", e.registries?.membersRegistrationDeposit, String(await read(record.membersRegistry, "registrationDeposit")));
-    await expectValue("membersRegistry.withdrawalCooldown()", e.registries?.membersWithdrawalCooldown, String(await read(record.membersRegistry, "withdrawalCooldown")));
-    await expectValue("clauseRegistry.registrationDeposit()", e.registries?.clauseRegistrationDeposit, String(await read(record.clauseRegistry, "registrationDeposit")));
-    await expectValue("processRegistry.registrationDeposit()", e.registries?.assemblyRegistrationDeposit, String(await read(record.processRegistry, "registrationDeposit")));
-    await expectValue("agreementRegistry.registrationDeposit()", e.registries?.agreementRegistrationDeposit, String(await read(record.agreementRegistry, "registrationDeposit")));
+    await expectValue("membersRegistry.registrationDeposit()", e.registries?.membersRegistrationDeposit, String(await read("membersRegistry", "registrationDeposit")));
+    await expectValue("membersRegistry.withdrawalCooldown()", e.registries?.membersWithdrawalCooldown, String(await read("membersRegistry", "withdrawalCooldown")));
+    await expectValue("clauseRegistry.registrationDeposit()", e.registries?.clauseRegistrationDeposit, String(await read("clauseRegistry", "registrationDeposit")));
+    await expectValue("processRegistry.registrationDeposit()", e.registries?.assemblyRegistrationDeposit, String(await read("processRegistry", "registrationDeposit")));
+    await expectValue("agreementRegistry.registrationDeposit()", e.registries?.agreementRegistrationDeposit, String(await read("agreementRegistry", "registrationDeposit")));
 
     console.log("\nThe usage counter and the reward minter");
     const u = e.usageCounter ?? {};
-    await expectValue("usageCounter.minSellers()", u.minSellers, String(await read(record.usageCounter, "minSellers")));
-    const periods = await read(record.usageCounter, "periodCount");
+    await expectValue("usageCounter.minSellers()", u.minSellers, String(await read("usageCounter", "minSellers")));
+    const periods = await read("usageCounter", "periodCount");
     await expectValue("usageCounter.periodCount()", u.periodCount, String(periods));
     // The agreement format's reserved provenance leaf: a constant of the
     // counter, keccak256("figaro-agreement-provenance") — never a clause key.
-    await expectValue("usageCounter.provenanceLeaf()", u.provenanceLeaf, await read(record.usageCounter, "provenanceLeaf"));
+    await expectValue("usageCounter.provenanceLeaf()", u.provenanceLeaf, await read("usageCounter", "provenanceLeaf"));
     // The assembly format's reserved terms leaf: a constant of the counter,
     // keccak256("figaro-assembly-terms") — never an agreementHash.
-    await expectValue("usageCounter.processTermsLeaf()", u.processTermsLeaf, await read(record.usageCounter, "processTermsLeaf"));
+    await expectValue("usageCounter.processTermsLeaf()", u.processTermsLeaf, await read("usageCounter", "processTermsLeaf"));
     // The assembly tree's leaf domain: a constant of the counter,
     // keccak256("figaro-assembly-leaf") — a counter without it is in the old leaf shape.
-    await expectValue("usageCounter.processLeafDomain()", u.processLeafDomain, await read(record.usageCounter, "processLeafDomain"));
-    const minterPeriods = await read(record.rpgfMinter, "periodCount");
+    await expectValue("usageCounter.processLeafDomain()", u.processLeafDomain, await read("usageCounter", "processLeafDomain"));
+    const minterPeriods = await read("rpgfMinter", "periodCount");
     let sum = 0n;
-    for (let i = 0n; i < minterPeriods; i++) sum += await read(record.rpgfMinter, "periodAmount", [i]);
+    for (let i = 0n; i < minterPeriods; i++) sum += await read("rpgfMinter", "periodAmount", [i]);
     await expectValue("rpgfMinter's period amounts, summed", e.rpgfMinter?.periodAmountSum, String(sum));
 
     console.log("\nThe florin genesis");
     const f = e.florin ?? {};
-    await expectValue("florin.deployerMintRenounced()", f.deployerMintRenounced, await read(record.florinToken, "deployerMintRenounced"));
-    await expectValue("florin.totalSupply()", f.totalSupply, String(await read(record.florinToken, "totalSupply")));
-    const [rpgfCap] = await read(record.florinToken, "minters", [record.rpgfMinter]);
+    await expectValue("florin.deployerMintRenounced()", f.deployerMintRenounced, await read("florinToken", "deployerMintRenounced"));
+    await expectValue("florin.totalSupply()", f.totalSupply, String(await read("florinToken", "totalSupply")));
+    const [rpgfCap] = await read("florinToken", "minters", [record.rpgfMinter]);
     await expectValue("florin.minters(rpgfMinter).cap", f.rpgfMinterCap, String(rpgfCap));
     for (const [holder, amount] of Object.entries(f.balances ?? {})) {
         const r = resolveAddress({ wallet: holder }, holder);
         if (r.undecided) { bad(`florin.balanceOf(${holder})`, `not decided — wallet "${holder}" has no address`); continue; }
         if (r.error) { bad(`florin.balanceOf(${holder})`, r.error); continue; }
-        await expectValue(`florin.balanceOf(${holder})`, amount, String(await read(record.florinToken, "balanceOf", [r.address])));
+        await expectValue(`florin.balanceOf(${holder})`, amount, String(await read("florinToken", "balanceOf", [r.address])));
     }
 
     console.log("\nThe treasury's Safe");
@@ -412,8 +408,8 @@ async function main() {
             const ref = `${spec.clauseId}@${spec.version}`;
             const owner = plan.byClause?.[spec.clauseId] ?? plan.default;
             const key = clauseKey(spec);
-            if (!(await read(record.clauseRegistry, "registered", [key]))) { bad(`${ref} registered`, `not registered (key ${key})`); continue; }
-            const [registeredBy, withdrawn] = await read(record.clauseRegistry, "depositOf", [key]);
+            if (!(await read("clauseRegistry", "registered", [key]))) { bad(`${ref} registered`, `not registered (key ${key})`); continue; }
+            const [registeredBy, withdrawn] = await read("clauseRegistry", "depositOf", [key]);
             if (registeredBy === "0x0000000000000000000000000000000000000000") { bad(`${ref} registered`, "not registered"); continue; }
             if (withdrawn) { bad(`${ref} registered`, "its deposit is withdrawn"); continue; }
             await expectValue(`${ref} registered by ${owner}`, { wallet: owner }, registeredBy);
@@ -426,7 +422,7 @@ async function main() {
     } else {
         await checkRegistrars({
             planned: plannedRegistrations(plan, record),
-            readBinding: (family, key) => read(family === "agreement" ? record.agreementRegistry : record.processRegistry, "bindings", [key]),
+            readBinding: (family, key) => read(family === "agreement" ? "agreementRegistry" : "processRegistry", "bindings", [key]),
             walletAddress: (name) => resolveAddress({ wallet: name }, name),
             ok,
             bad,
@@ -439,19 +435,16 @@ async function main() {
     } else {
         const fromBlock = BigInt(record.deploymentBlock ?? 0);
         const MEMBER_EVENTS = [
-            parseAbiItem("event MemberRegistered(address indexed member, string metadataURI)"),
-            parseAbiItem("event MemberProfileUpdated(address indexed member, string metadataURI)"),
+            getAbiItem({ abi: MEMBERS_REGISTRY_ABI, name: "MemberRegistered" }),
+            getAbiItem({ abi: MEMBERS_REGISTRY_ABI, name: "MemberProfileUpdated" }),
         ];
         const gateway = process.env.IPFS_GATEWAY_URL?.replace(/\/$/, "");
         const vault = resolveAddress({ wallet: "daoVault" }, "daoVault");
         await checkMembers({
             planned: plannedMembers(plan),
-            // MembersRegistry.registered takes an address; the shared ABI's
-            // `registered` is the clause registry's, over a key.
-            readRegistered: (member) => client.readContract({
-                address: record.membersRegistry, abi: parseAbi(["function registered(address) view returns (bool)"]),
-                functionName: "registered", args: [member],
-            }),
+            // MembersRegistry.registered takes an address, read through the
+            // members registry's own ABI.
+            readRegistered: (member) => read("membersRegistry", "registered", [member]),
             readProfileURI: async (member) => {
                 const logs = (await Promise.all(MEMBER_EVENTS.map((event) => client.getLogs({
                     address: record.membersRegistry, event, args: { member }, fromBlock,

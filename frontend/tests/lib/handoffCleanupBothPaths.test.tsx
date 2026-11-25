@@ -19,17 +19,10 @@ const { CORE, VERIFIER, WALLET, watchMock } = vi.hoisted(() => ({
 }));
 const publicClient = { getBlockNumber: async () => 100n, watchContractEvent: (...a: unknown[]) => watchMock(...a) };
 
-vi.mock("wagmi", () => ({
-    usePublicClient: () => publicClient,
-    useChainId: () => 31337,
-    useAccount: () => ({ address: WALLET }),
-}));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => WALLET, client: () => publicClient }));
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-    getBatchVerifier: () => VERIFIER,
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: CORE, batchVerifier: VERIFIER }, batchVerifier: () => VERIFIER }));
 
 describe("useHandoffCleanup on both paths", () => {
     it("watches OrderResolved at the Core and at the batch verifier, and purges a resolved order", async () => {

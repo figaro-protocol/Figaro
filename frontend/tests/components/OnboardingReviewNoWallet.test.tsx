@@ -16,7 +16,7 @@ import { render, screen } from "@testing-library/react";
 
 const m = vi.hoisted(() => ({ state: {} as Record<string, unknown> }));
 
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: undefined, isConnected: false }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock());
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 const FILLED = {
     profile: { name: "Seller", defaultTokenAddress: "0x0000000000000000000000000000000000000001" },

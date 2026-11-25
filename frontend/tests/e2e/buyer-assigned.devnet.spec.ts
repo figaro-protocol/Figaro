@@ -44,7 +44,7 @@
  * Requires Anvil + ./scripts/deploy-local.sh + populate-test-data + Kubo + :3100.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
+import { createPublicClient, http, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 import {
     confirmAgreementPreviews,
@@ -58,20 +58,15 @@ import {
     waitForConnected,
     anchoredProcessDesignHash,
     isBindingOf,
+    acceptOrderAs,
+    RPC_URL,
+    LOCAL_ANVIL,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
-import { calculateBonds } from '@figaro-protocol/sdk';
+import { calculateBonds, ERC20_ABI } from '@figaro-protocol/sdk';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 const BUYER = ANVIL_ACCOUNTS[4] as Hex; // anvil[4] — a buyer no other spec uses
 const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 6 }).address as Hex; // Ridgeway Hardware
@@ -194,24 +189,9 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         const queryCommitted = () => publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,
         });
-        const acceptAs = async (seller: Hex, label: string) => {
-            const before = (await queryCommitted()).length;
-            await gotoAsWallet(page, seller, '/orders?e2e=devnet');
-            await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
-            await waitForConnected(page);
-            await page.getByTestId('order-your-turn-card').first().waitFor({ state: 'visible', timeout: 30000 });
-            await page.getByTestId('btn-accept-order').first().click();
-            await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
-            await page.getByTestId('preview-confirm').click();
-            await expect.poll(async () => (await queryCommitted()).length, {
-                timeout: 60000, message: `${label}'s accept lands OrderCommitted on-chain`,
-            }).toBe(before + 1);
-            const events = await queryCommitted();
-            const event = events[events.length - 1];
-            const receipt = await publicClient.getTransactionReceipt({ hash: event.transactionHash });
-            expect(receipt.status, `${label}'s commit transaction succeeded`).toBe('success');
-            return event;
-        };
+        // The full accept (`acceptOrderAs`): the commit transaction succeeded and the
+        // order was committed against that seller, both read out of band.
+        const acceptAs = (seller: Hex, label: string) => acceptOrderAs(page, seller, label, queryCommitted);
 
         // Root — the merchant. Creates the process.
         const rootEvent = await acceptAs(MERCHANT, 'merchant');

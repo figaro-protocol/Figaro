@@ -7,8 +7,9 @@ vi.mock("@/lib/composability/contracts", () => ({
     getSwapRouter: () => "0x" + "d0".repeat(20),
 }));
 
-import { decodeFunctionData, parseAbi } from "viem";
+import { decodeFunctionData } from "viem";
 import { hashCommitmentStruct, type Commitment } from "@figaro-protocol/sdk";
+import { mockSwapVenueSwapAbi } from "../support/mockSwapVenueAbi";
 import { quoteFundingLeg, signFundingLeg } from "@/lib/composability/swapFunding";
 import { _resetSwapVenueCache_TESTING_ONLY } from "@/lib/composability/swapVenue";
 
@@ -77,7 +78,7 @@ describe("quoteFundingLeg → signFundingLeg (item 1)", () => {
         bondAmount: 5000n,
         deadline: 9_999_999_999n,
     };
-    const MOCK_SWAP = parseAbi(["function swap(address tokenIn, address tokenOut, uint256 amountIn, address recipient) returns (uint256)"]);
+    const MOCK_SWAP = mockSwapVenueSwapAbi();
 
     it("with no margin chosen, the cap carries the venue's own margin (0 on the devnet venue) and the quote says so", async () => {
         const quote = await quoteFundingLeg({ publicClient, ...leg });
@@ -91,7 +92,7 @@ describe("quoteFundingLeg → signFundingLeg (item 1)", () => {
         expect(quote.maxInput).toBe(5125n); // 5000 + 2.5%
         // The route the witness binds spends the same cap.
         const { args } = decodeFunctionData({ abi: MOCK_SWAP, data: quote.swapData });
-        expect(args[2]).toBe(5125n);
+        expect((args as readonly unknown[])[2]).toBe(5125n);
 
         let signed: { permitted: { amount: bigint }; witness: { swapDataHash?: unknown } } | null = null;
         const signedLeg = await signFundingLeg(quote, BINDING, async (typedData) => {

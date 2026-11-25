@@ -29,21 +29,15 @@ const m = vi.hoisted(() => ({
     absent: { status: "absent" },
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: m.address }),
-    useChainId: () => 31337,
-    usePublicClient: () => m.client,
-}));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => m.address, client: () => m.client }));
 // The path the payload's signature names is read by `usePayloadPath`
 // (pinned in relayTransport.test.ts); here the order is a direct-path one.
 vi.mock("@/lib/checkout/pathChoice", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/checkout/pathChoice")>()),
     usePayloadPath: () => ({ status: "present", value: "direct" }),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: "0x1111111111111111111111111111111111111111", batchVerifier: "" },
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: "0x1111111111111111111111111111111111111111", batchVerifier: "" } }));
 vi.mock("next/navigation", () => ({
     useSearchParams: () => new URLSearchParams(m.search),
     useRouter: () => ({ push: () => undefined, replace: () => undefined }),
@@ -51,7 +45,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
 vi.mock("@/lib/registries/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => ({ read: m.empty }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: "TKN" }) }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 6, ready: true, loading: false }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(6));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: present(10n ** 30n), refetch: () => undefined }) }));
 vi.mock("@/hooks/useTokenApproval", () => ({
     default: () => ({

@@ -20,7 +20,7 @@
  * `--no-deps` once the gate has seeded the chain.
  */
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
-import { createPublicClient, createWalletClient, defineChain, http, parseAbi, parseEther, maxUint256, type Hex } from 'viem';
+import { createPublicClient, createWalletClient, http, parseAbi, parseEther, maxUint256, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { calculateBonds } from '@figaro-protocol/sdk';
 import {
@@ -35,6 +35,9 @@ import {
     primeRegisteredClauseSpecs,
     anchoredProcessDesignHash,
     isBindingOf,
+    waitForConnected,
+    RPC_URL,
+    LOCAL_ANVIL,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
@@ -46,24 +49,6 @@ test.beforeAll(async () => {
     await primeRegisteredClauseSpecs();
 });
 
-/** Wait for ClientInit's devnet auto-connect — the "Connect Wallet" header
- *  button disappears once the injected wallet connects. Without this the
- *  checkout shows "Connect wallet to order" and place-order is a no-op. */
-async function waitForConnected(page: Page) {
-    await page.waitForFunction(
-        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
-        null,
-        { timeout: 30000 },
-    );
-}
-
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 
 const ERC20_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',

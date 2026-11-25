@@ -51,11 +51,8 @@ const A = vi.hoisted(() => ({
     client: {} as Record<string, unknown>,
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: A.designer, isConnected: true }),
-    usePublicClient: () => A.client,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => A.designer, client: () => A.client }, {
     useWriteContract: () => ({ writeContractAsync: vi.fn() }),
-    useChainId: () => 31337,
 }));
 vi.mock("@/lib/core/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
@@ -82,7 +79,7 @@ vi.mock("@/lib/rewards/contracts", async (importOriginal) => {
     };
 });
 vi.mock("@/lib/shared/viewedWallet", () => ({ useViewedWallet: (connected: unknown) => connected }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18 }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(18));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "pending" }, refetch: () => undefined }) }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
 
@@ -227,10 +224,12 @@ const CHAIN: RawLog[] = [
 const LATEST = 30n;
 
 /** `eth_getLogs` over CHAIN, decoded the way viem's `getLogs` decodes:
- *  filtered by address, by the event's topic and by block range. */
-async function getLogs({ address, event, fromBlock, toBlock }: {
-    address: `0x${string}`; event: AbiEvent; fromBlock: bigint; toBlock: bigint;
+ *  filtered by address, by the event's topic and by block range. The event
+ *  comes as viem takes it, `event` or a one-item `events`. */
+async function getLogs({ address, event: one, events, fromBlock, toBlock }: {
+    address: `0x${string}`; event?: AbiEvent; events?: readonly AbiEvent[]; fromBlock: bigint; toBlock: bigint;
 }) {
+    const event = (one ?? events?.[0]) as AbiEvent;
     const topic0 = toEventSelector(event);
     const hits = CHAIN.filter((l) =>
         l.address.toLowerCase() === address.toLowerCase()

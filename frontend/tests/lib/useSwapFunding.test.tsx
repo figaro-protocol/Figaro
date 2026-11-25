@@ -27,11 +27,10 @@ const wagmiState = vi.hoisted(() => ({
     readConfigs: [] as unknown[],
     contracts: null as null | { coordinator: `0x${string}`; permit2: `0x${string}`; router: `0x${string}` },
 }));
-vi.mock("wagmi", () => ({
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ client: () => ({ simulateContract: async () => ({}) }) }, {
     useReadContract: (config: unknown) => { wagmiState.readConfigs.push(config); return wagmiState.allowance; },
     useWriteContract: () => ({ writeContract: wagmiState.writeContract, ...wagmiState.write }),
     useWaitForTransactionReceipt: () => wagmiState.receipt,
-    usePublicClient: () => ({ simulateContract: async () => ({}) }),
 }));
 vi.mock("@/lib/composability/swapFunding", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/composability/swapFunding")>()),

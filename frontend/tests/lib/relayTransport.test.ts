@@ -15,11 +15,8 @@ const ADDR = vi.hoisted(() => ({
     core: "0x1111111111111111111111111111111111111111" as `0x${string}`,
     verifier: "0x2222222222222222222222222222222222222222" as `0x${string}`,
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: ADDR.core, batchVerifier: ADDR.verifier },
-    getBatchVerifier: () => ADDR.verifier,
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: ADDR.core, batchVerifier: ADDR.verifier }, batchVerifier: () => ADDR.verifier }));
 
 import { checkRelay, signedPath } from "@/lib/core/relayTransport";
 import { batchShared, offeredPaths } from "@/lib/checkout/pathChoice";

@@ -37,7 +37,7 @@ import {
     reconstructOrdersFromProcessDesign,
     resolveSubOrderPricing,
     agreementClauses,
-    processDesignFollows,
+    rootAgreementOf,
     publicForm,
     type Agreement,
     type ProcessCheckoutLineItem,
@@ -131,10 +131,10 @@ function refuseMissingMeasures(filled: ClauseFields, specs: SpecSource, report?:
 export function checkoutMeasureRefusals(params: Omit<AssemblyCheckoutParams, "buyer">): string[] {
     const hydrated = params.assembly.hydratedAssembly;
     const assembly = hydrated.assembly;
-    const rootId =
-        assembly.agreements.find((o) => processDesignFollows(o).length === 0)?.id ??
-        assembly.agreements[0]?.id;
-    if (rootId === undefined) return [];
+    // The root is the SDK's (`rootAgreementOf`): a design with none is
+    // refused by the walk itself.
+    let rootId: string;
+    try { rootId = rootAgreementOf(assembly).id; } catch { return []; }
     let planned: PlannedProcessOrder[];
     let boundSellerByNode: Map<string, { seller: `0x${string}` | null; itemId: string | null }>;
     try {
@@ -271,10 +271,9 @@ export async function executeAssemblyCheckout(
         );
     }
 
-    const rootId =
-        assembly.agreements.find((o) => processDesignFollows(o).length === 0)?.id ??
-        assembly.agreements[0]?.id;
-    if (rootId === undefined) throw new Error("This assembly has no root order.");
+    // The root is the SDK's (`rootAgreementOf`); it throws when no entry
+    // follows nothing.
+    const rootId = rootAgreementOf(assembly).id;
 
     // A profile binding designates each sub-order's co-seller (the
     // per-clause cursor); a node the profile leaves unbound takes the buyer's
@@ -515,10 +514,9 @@ export async function planProcessOrders(
     }
     const hydrated = params.assembly.hydratedAssembly;
     const assembly = hydrated.assembly;
-    const rootId =
-        assembly.agreements.find((o) => processDesignFollows(o).length === 0)?.id ??
-        assembly.agreements[0]?.id;
-    if (rootId === undefined) throw new Error("This assembly has no root order.");
+    // The root is the SDK's (`rootAgreementOf`); it throws when no entry
+    // follows nothing.
+    const rootId = rootAgreementOf(assembly).id;
     const boundSellerByNode = new Map(
         planSubOrderSellers(params.assembly).map(({ node, seller, itemId }) => [node.nodeId, { seller, itemId }]),
     );

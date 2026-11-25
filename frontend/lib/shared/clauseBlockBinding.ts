@@ -38,6 +38,7 @@
  * standard: zero, empty, or null — never absent), enforced by test.
  */
 
+import { isAddressHex, isPlainRecord } from "@figaro-protocol/sdk";
 import { parseFieldSpec, type SpecParseError, type FieldSpec } from "@figaro-protocol/sdk/clauses";
 import {
     parseCheckoutDerivations,
@@ -264,9 +265,9 @@ export interface ClauseBlockBinding {
     runtime: ClauseBlockRuntime;
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
-    return value !== null && typeof value === "object" && !Array.isArray(value);
-}
+// A plain object (`isPlainRecord`) and a 20-byte address (`isAddressHex`)
+// are the SDK's shape checks.
+const isObject = isPlainRecord;
 
 function parseFieldNameList(
     raw: unknown,
@@ -310,7 +311,6 @@ function parseCatalogueMeasures(
     return out;
 }
 
-const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const CHAIN_ID = /^[1-9][0-9]*$/;
 
 /** A `checkout.heldValues` map: absent is `{}`; present, every entry names
@@ -341,7 +341,7 @@ function parseHeldValues(
         }
         for (const [chainId, roles] of Object.entries(entry.contracts)) {
             if (!CHAIN_ID.test(chainId) || !isObject(roles)
-                || Object.values(roles).some((a) => typeof a !== "string" || !ADDRESS.test(a))) {
+                || Object.values(roles).some((a) => typeof a !== "string" || !isAddressHex(a))) {
                 errors.push({ path: `${where}.contracts.${chainId}`, message: "must be a decimal chain id mapping role names to 0x-prefixed 20-byte addresses" });
                 return null;
             }

@@ -132,7 +132,7 @@ loses, moves or retypes a field and this table does not move with it.
 | `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 2 | `orderCount` | `uint256` | no reader found: decoded (`sdk/src/events.ts:91`) and never read. It answers a stranger's question: how many orders did this one call pay? A reader checks it against the `OrderResolved` events it holds (`src/core/kernel/FigaroCore.sol:291`, `src/core/verifier/FigaroBatchVerifier.sol:756`) | A count |
 | `FigaroCore`, `FigaroBatchVerifier` | `EIP712DomainChanged` | — | — | — | no reader found: OpenZeppelin's `EIP712` declares the event and nothing in `src/` emits it. It answers the question ERC-5267 asks: did the signing domain change? The domain is fixed at construction, so the answer is never (`src/core/kernel/FigaroCore.sol:27`) | No field |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 0 | `orderHash` | `bytes32 indexed` | Any reader groups attestations by order (`sdk/src/derive/attestation.ts:41`) | A fingerprint |
-| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 1 | `processId` | `bytes32 indexed` | Any reader: attestations by process (`sdk/src/derive/attestation.ts:31`); the data explorer attributes a process to its assembly (`frontend/lib/data/graphCorpus.ts:247`) | A fingerprint |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 1 | `processId` | `bytes32 indexed` | Any reader: attestations by process (`sdk/src/derive/attestation.ts:31`); the data explorer attributes a process to its assembly (`attributeProcessDesigns`, `sdk/src/derive/attribution.ts`) | A fingerprint |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 2 | `attester` | `address indexed` | The data explorer counts distinct attesters per clause (`frontend/lib/data/explorer.ts:344`); a forum's evidence file names the attester (`frontend/lib/data/audit/processLogsExtract.ts:104`) | The wallet's address |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 3 | `clauseId` | `bytes32` | Any reader groups attestations by clause (`sdk/src/derive/overlay.ts:112`); a forum's evidence file (`frontend/lib/data/audit/processLogsExtract.ts:81`) | A fingerprint: the clause key |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 4 | `stage` | `uint8` | Any reader decodes the content by the stage's shape (`sdk/src/derive/overlay.ts:133`); a forum's evidence file (`frontend/lib/data/audit/processLogsExtract.ts:85`) | A small number |
@@ -427,8 +427,10 @@ holds whose leaves hash to that order's `checkoutHash`: `processEdges`
 unknown (`docs/DESIGN_DECISIONS.md` § 32). A commit's position in the
 sequence never stands in for an edge. A reader outside the trade holds no
 agreement, so `/data/explore` names no edge between orders. A process may be
-linked to a registered process design, by its buyer's provenance attestation
-or by a `UsageRecorded` of the design. The page then shows that design's own
+linked to a registered process design: by a `UsageRecorded` of the design,
+which the counter emits after proving the link, or else by a provenance
+attestation of the order's buyer or its seller. Two attestations of one process
+that name two designs leave it unattributed. The page then shows that design's own
 edges between its entries, labeled as the design's, and matches no entry to
 an order. The sign gate (`validateCommitmentAgreement`, `sdk/src/projection.ts`)
 holds two things about them at each party's signature, from the agreement and
@@ -597,9 +599,10 @@ layers themselves a census of what the corpus actually contains — never a menu
 frontend knows in advance.
 
 The corpus links an order to the registered agreement and the assembly it
-instantiated through one attestation: the buyer attests the agreement format's
-reserved provenance leaf (`CLAUSES.md` § "Every clause is a merkle leaf") while
-the process is open. That link is the buyer's declaration. The `Attestation`
+instantiated through one attestation: a party of the order, its buyer or its
+seller, attests the agreement format's reserved provenance leaf (`CLAUSES.md`
+§ "Every clause is a merkle leaf") while the process is open. That link is the
+attesting party's declaration. The `Attestation`
 event carries the clause key, the stage and the content reference; the
 coordinator proves the leaf from the clause data hash and never ties the content
 reference to it (`AttestationCoordinator._verifyInclusion`), so on the direct

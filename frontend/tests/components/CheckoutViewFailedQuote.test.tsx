@@ -37,7 +37,7 @@ const m = vi.hoisted(() => ({
 
 // One stable client: the quote effect keys on its identity.
 const CLIENT = vi.hoisted(() => ({ chain: { id: 31337 } }));
-vi.mock("wagmi", () => ({ useChainId: () => 31337, usePublicClient: () => CLIENT }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ client: () => CLIENT }));
 vi.mock("@/lib/registries/useRegisteredCatalogs", () => ({
     useRegisteredCatalogs: () => ({
         read: {
@@ -90,7 +90,7 @@ vi.mock("@/lib/checkout/dispatchRace", () => ({ useDispatchRace: () => ({ result
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false, allowanceKnown: true }) }));
 vi.mock("@/hooks/useApproveThenAct", () => ({ useApproveThenAct: () => ({ runWithApproval: vi.fn() }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: undefined }) }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18 }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(18));
 vi.mock("@/hooks/useConnectInjected", () => ({ useConnectInjected: () => vi.fn() }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
 vi.mock("@/components/runtime/DispatchRacePanel", () => ({ DispatchRacePanel: () => null }));

@@ -8,7 +8,7 @@ import { render } from "@testing-library/react";
 
 const SELLER = "0x00000000000000000000000000000000000000aa";
 
-vi.mock("wagmi", () => ({ useChainId: () => 31337, usePublicClient: () => ({ chain: { id: 31337 } }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock());
 // The failed read in both shapes: as the old hook reported it (an empty
 // catalog list, not loading) and as the one read primitive's `absent`.
 const CATALOGS = { catalogs: [], isLoading: false, read: { status: "absent" } };
@@ -32,7 +32,7 @@ vi.mock("@/lib/checkout/dispatchRace", () => ({ useDispatchRace: () => ({}), pos
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false }) }));
 vi.mock("@/hooks/useApproveThenAct", () => ({ useApproveThenAct: () => ({ runWithApproval: vi.fn() }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: undefined }) }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18 }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(18));
 // The funding margin reads the funding token's balance; no token is chosen here.
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "pending" }, refetch: () => {} }) }));
 vi.mock("@/hooks/useConnectInjected", () => ({ useConnectInjected: () => vi.fn() }));

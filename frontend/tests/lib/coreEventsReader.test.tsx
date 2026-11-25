@@ -20,16 +20,11 @@ const { BUYER, SELLER, PROCESS, CLIENT, NO_ASSEMBLIES, SPECS, getCoreEventsMock 
     getCoreEventsMock: vi.fn(),
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: BUYER, isConnected: true }),
-    useChainId: () => 31337,
-    usePublicClient: () => CLIENT,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => BUYER, client: () => CLIENT }, {
     useWatchContractEvent: () => undefined,
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: "0x1111111111111111111111111111111111111111", batchVerifier: "0x2222222222222222222222222222222222222222" },
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: "0x1111111111111111111111111111111111111111", batchVerifier: "0x2222222222222222222222222222222222222222" } }));
 // The one reader answers; the low-level per-event readers refuse, so a
 // consumer that bypasses the one reader reads nothing.
 vi.mock("@/lib/core/indexer", async (importOriginal) => {

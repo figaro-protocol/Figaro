@@ -52,8 +52,11 @@
 // itself the heartbeat.
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { createPublicClient, http, formatUnits } from "viem";
+import { createPublicClient, http, formatUnits, getAbiItem } from "viem";
 import { sepolia } from "viem/chains";
+// The SDK by its build output (the monitor workflow installs and builds it).
+import { DEFAULT_LOG_CHUNK_SIZE, ERC20_ABI, calculateBonds, fetchLogsChunked } from "../sdk/dist/index.js";
+import { SequencerClient } from "../sdk/dist/agent/index.js";
 
 const CHAIN_ID = Number(process.env.CHAIN_ID ?? "11155111");
 const RPC_URL = process.env.RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com";
@@ -61,7 +64,7 @@ const WINDOW = BigInt(process.env.WINDOW_BLOCKS ?? "8000");
 const ALERTS_OUT = process.env.ALERTS_OUT ?? "monitor-alerts.json";
 const PACE_MS = Number(process.env.PACE_MS ?? "1000");
 const RELAYS = JSON.parse(process.env.RELAYS || "[]");
-const CHUNK = 9_500n; // the SDK's DEFAULT_LOG_CHUNK_SIZE — under every public node's range cap
+const CHUNK = DEFAULT_LOG_CHUNK_SIZE; // under every public node's range cap
 const ASKS = 3; // times each log chunk is asked; the fullest answer wins
 const BURST = 3;
 
@@ -70,11 +73,6 @@ const abiOf = (name) => {
     const parsed = JSON.parse(readFileSync(`abi/${name}.json`, "utf8"));
     return parsed.abi ?? parsed;
 };
-const erc20Abi = [
-    { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ name: "a", type: "address" }], outputs: [{ type: "uint256" }] },
-    { type: "function", name: "decimals", stateMutability: "view", inputs: [], outputs: [{ type: "uint8" }] },
-    { type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
-];
 
 const chain = CHAIN_ID === sepolia.id ? sepolia : { ...sepolia, id: CHAIN_ID };
 // A keyed node throttles a burst of reads (429). Every request waits its turn
@@ -89,13 +87,17 @@ const pace = async () => {
 };
 const client = createPublicClient({ chain, transport: http(RPC_URL, { onFetchRequest: pace, retryCount: 6, retryDelay: 1000 }) });
 
+// Each chunk is read through the SDK's reader (`fetchLogsChunked`), which
+// asks again on pruned history or a rate limit and refuses a log from any
+// contract but the one asked about; asked ASKS times, the fullest answer kept.
 async function eventsChunked({ address, abi, eventName, fromBlock, toBlock }) {
+    const event = getAbiItem({ abi, name: eventName });
     const out = [];
     for (let from = fromBlock; from <= toBlock; from += CHUNK) {
         const to = from + CHUNK - 1n < toBlock ? from + CHUNK - 1n : toBlock;
         let fullest = [];
         for (let ask = 0; ask < ASKS; ask++) {
-            const got = await client.getContractEvents({ address, abi, eventName, fromBlock: from, toBlock: to });
+            const got = await fetchLogsChunked(client, { address, fromBlock: from, toBlock: to, chunkSize: CHUNK, events: [event] });
             if (got.length > fullest.length) fullest = got;
         }
         out.push(...fullest);
@@ -162,16 +164,15 @@ if (RELAYS.length > 0) {
     for (const { url, maxWaitSeconds } of RELAYS) {
         let status;
         try {
-            const res = await fetch(new URL("/status", url), { signal: AbortSignal.timeout(15_000) });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            status = await res.json();
-            // A count the relay did not report is unknown, never zero: read
-            // as zero, a relay holding work would never raise the stall.
-            for (const field of ["pending_ops", "pending_usage_claims"]) {
-                if (!Number.isSafeInteger(status?.[field]) || status[field] < 0) {
-                    throw new Error(`its \`${field}\` is ${JSON.stringify(status?.[field])}, not a count`);
-                }
-            }
+            // The SDK's client reads `/status` and refuses an answer in another
+            // wire format version or without its queue counts: a count the
+            // relay did not report is unknown, never zero, since read as zero
+            // a relay holding work would never raise the stall.
+            const relay = new SequencerClient({
+                url,
+                fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(15_000) }),
+            });
+            status = await relay.status();
         } catch (e) {
             alert("notice", `relay-unreachable-${url}`,
                 `Monitor: the relay at ${url} did not report its queue`,
@@ -215,16 +216,16 @@ committed.forEach((o, i) => {
     if (statuses[i] === 2) { resolved++; return; }
     if (statuses[i] !== 1) throw new Error(`order ${o.args.orderHash} committed in tx ${o.transactionHash} has FigaroCore status ${statuses[i]}; the node is not on this deployment's chain`);
     open++;
-    const bonds = 2n * o.args.payment + 2n * o.args.runningTotal;
+    const bonds = calculateBonds(o.args.runningTotal, o.args.payment).totalLocked;
     held.set(o.args.token, (held.get(o.args.token) ?? 0n) + bonds);
 });
 const tokens = new Set(committed.map((o) => o.args.token));
 for (const token of tokens) {
     const expected = held.get(token) ?? 0n;
     const [balance, decimals, symbol] = await Promise.all([
-        client.readContract({ address: token, abi: erc20Abi, functionName: "balanceOf", args: [record.figaroCore] }),
-        client.readContract({ address: token, abi: erc20Abi, functionName: "decimals" }).catch(() => 18),
-        client.readContract({ address: token, abi: erc20Abi, functionName: "symbol" }).catch(() => token),
+        client.readContract({ address: token, abi: ERC20_ABI, functionName: "balanceOf", args: [record.figaroCore] }),
+        client.readContract({ address: token, abi: ERC20_ABI, functionName: "decimals" }).catch(() => 18),
+        client.readContract({ address: token, abi: ERC20_ABI, functionName: "symbol" }).catch(() => token),
     ]);
     const line = `${symbol}: holds ${formatUnits(balance, decimals)}, open bonds ${formatUnits(expected, decimals)}`;
     if (balance < expected) {

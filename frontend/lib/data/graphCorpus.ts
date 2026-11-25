@@ -26,47 +26,45 @@
  *   fingerprint alone; a withheld, private, erased or unserved payload
  *   resolves to nothing and its entry stays fingerprint-only.
  *
- *   assembly attribution rides the agreement FORMAT's provenance leaf, never
- *   a clause name. A process is attributed when its buyer attested the
- *   reserved leaf (`PROVENANCE_LEAF_KEY`) and the attestation names a
- *   assembly hash — its recovered bytes decode to one, or its fingerprint
- *   is the `provenanceContentRef` of a loaded assembly's agreement (its
- *   agreement hash and its assembly root). No such attestation, no
- *   attribution: the process is counted as unattributed and said to be.
+ *   process-design attribution is the SDK's (`attributeProcessDesigns`):
+ *   the counter's `UsageRecorded` of the process-design kind first, else a
+ *   party's attestation of the agreement format's provenance leaf
+ *   (`PROVENANCE_LEAF_KEY`), never a clause name. Two attestations naming
+ *   two designs leave the process contested, and a contested process is
+ *   unattributed: neither design stands in. A process neither source names
+ *   is counted as unattributed and said to be.
  *
  *   no edge between two orders is read here. Which order follows which is
  *   each agreement's topology leaf, which no event carries and this reader
  *   does not hold, and FigaroCore fixes no order among sibling orders, so a
  *   commit's position names no edge. Every order's edges are unknown, and the
- *   market shape counts its process as unshaped. A process linked to a
- *   registered process design the page loaded, by its buyer's provenance
- *   attestation or by a `UsageRecorded` of the process design naming it (the
- *   counter emits it for a counted use on either path), carries that design's
- *   own edges between its entries, which name no order.
+ *   market shape counts its process as unshaped. A process attributed to a
+ *   registered process design the page loaded carries that design's own
+ *   edges between its entries, which name no order.
  */
 
 import { useEffect, useMemo, useState } from "react";
 import type { Hex, PublicClient } from "viem";
 import {
-    provenanceContentRef,
     agreementClauses,
     USAGE_COUNTER_ABI,
-    USAGE_KIND_PROCESS,
     readUtilityTokenPin,
     type Address,
     type OrderCommittedEvent,
     type SpecSource,
 } from "@figaro-protocol/sdk";
 import {
+    attributeProcessDesigns,
     extractOverlays,
     marketShape,
     projectProcessGraph,
     projectResolutionGraph,
     projectValueFlow,
-    readFundingLegs,
+    readCommitFundingLegs as readCommitFundingLegsFrom,
     type MarketShape,
     type OverlayGraph,
     type ProcessGraph,
+    type ReceiptLogInput,
     type RecoveredAttestation,
     type ResolutionGraph,
     type SwapLeg,
@@ -84,7 +82,6 @@ import { fetchWitnessContent } from "@/lib/core/witnessContent";
 import { ERC20_ABI } from "@/lib/core/contracts";
 import { getUsageCounter } from "@/lib/rewards/contracts";
 import { getSwapRouter, getWitnessSwapAndCommitCoordinator } from "@/lib/composability/contracts";
-import { isBytes32Hex } from "@/lib/shared/evm";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { activeChain } from "@/lib/shared/chains";
 import { publicClient } from "@/lib/shared/publicClient";
@@ -130,10 +127,15 @@ export interface GraphCorpus {
     venue: string | null;
     /** processDesignHash (lowercased) → registered assembly name. */
     assemblyNames: Map<string, string>;
-    /** processId (lowercased) → the attribution key an attested provenance
-     *  overlay declared for it. A process absent from this map is the honest
-     *  unattributed case, counted in `market.unattributedProcessCount`. */
+    /** processId (lowercased) → the processDesignHash (lowercased) the SDK's
+     *  `attributeProcessDesigns` names for it. A process absent from this map
+     *  is the honest unattributed case, counted in
+     *  `market.unattributedProcessCount`. */
     attributionByProcess: Map<string, string>;
+    /** processIds (lowercased) two attestations name two designs for, and the
+     *  counter names none: absent from `attributionByProcess`, so they are
+     *  unattributed, with no design in their place. */
+    contestedProcesses: Set<string>;
     /** processId (lowercased) → the edges of the loaded registered process
      *  design the process is linked to, between the design's entries. They are
      *  the design's, and name no order of the process. */
@@ -175,10 +177,9 @@ export function readAssemblyUtilityTokenPins(assemblies: readonly CorpusAssembly
 const RECEIPT_READ_BATCH = 8;
 
 /**
- * The funding legs beside the commits: every commit transaction's receipt,
- * read once per transaction hash through the receipt cache, run through the
- * SDK's `readFundingLegs` with the order's own parties and denomination and
- * the deployment's coordinator. The coordinator emits nothing of its own; the
+ * The funding legs beside the commits: the SDK's `readCommitFundingLegs`,
+ * with each commit transaction's receipt read through this app's receipt
+ * cache (`getReceiptLogsOf`). The coordinator emits nothing of its own; the
  * venue's ERC-20 transfers in the receipt are the swap leg. A receipt that
  * cannot be read yields no legs and a logged absence for this pass.
  */
@@ -188,133 +189,67 @@ async function readCommitFundingLegs(
     committedLogs: readonly IndexedLog[],
     orderCommitted: readonly OrderCommittedEvent[],
 ): Promise<VenueEvent<SwapLeg>[]> {
-    const coordinator = getWitnessSwapAndCommitCoordinator();
-    if (!coordinator) return [];
     const logByTx = new Map<string, IndexedLog>();
     for (const log of committedLogs) {
         if (log.transactionHash) logByTx.set(String(log.transactionHash).toLowerCase(), log);
     }
-    const ordersByTx = new Map<string, typeof orderCommitted>();
-    for (const order of orderCommitted) {
-        if (!order.transactionHash) continue;
-        const tx = order.transactionHash.toLowerCase();
-        ordersByTx.set(tx, [...(ordersByTx.get(tx) ?? []), order]);
-    }
-    const legs: VenueEvent<SwapLeg>[] = [];
-    const seen = new Set<string>();
-    const txs = [...ordersByTx.keys()];
-    for (let i = 0; i < txs.length; i += RECEIPT_READ_BATCH) {
-        await Promise.all(txs.slice(i, i + RECEIPT_READ_BATCH).map(async (tx) => {
-            const log = logByTx.get(tx);
-            if (!log) return;
-            let receiptLogs: Awaited<ReturnType<typeof getReceiptLogsOf>>;
-            try {
-                receiptLogs = await getReceiptLogsOf(client, chainId, log);
-            } catch (err) {
-                console.warn(`[graphCorpus] the receipt of ${tx} is unreadable this pass; its funding legs are absent:`, err);
-                return;
-            }
-            if (!receiptLogs) return;
-            for (const order of ordersByTx.get(tx) ?? []) {
-                type ReceiptLogs = Parameters<typeof readFundingLegs>[0];
-                for (const leg of readFundingLegs(receiptLogs as unknown as ReceiptLogs, order, coordinator)) {
-                    const key = `${tx}|${leg.payload.party.toLowerCase()}|${leg.payload.tokenIn.toLowerCase()}`;
-                    if (seen.has(key)) continue;
-                    seen.add(key);
-                    legs.push(leg);
-                }
-            }
-        }));
+    const { legs, unreadReceipts } = await readCommitFundingLegsFrom({
+        client: {
+            async getTransactionReceipt({ hash }) {
+                const log = logByTx.get(hash.toLowerCase());
+                const logs = log ? await getReceiptLogsOf(client, chainId, log) : null;
+                if (!logs) throw new Error(`no receipt for ${hash}`);
+                return { logs: logs as unknown as readonly ReceiptLogInput[] };
+            },
+        },
+        orderCommitted,
+        coordinator: getWitnessSwapAndCommitCoordinator() ?? undefined,
+        concurrency: RECEIPT_READ_BATCH,
+    });
+    if (unreadReceipts > 0) {
+        console.warn(`[graphCorpus] ${unreadReceipts} commit receipt(s) are unreadable this pass; their funding legs are absent`);
     }
     return legs;
 }
 
 /**
- * Assembly attribution from the OVERLAYS, by the agreement format's
- * provenance leaf.
- *
- * The buyer's attestation of the reserved leaf is the on-chain link between a
- * process and the registered assembly that shaped it — a walletless reader
- * attributes a process without holding anyone's agreement body. The graph is
- * the one the SDK marks `provenanceLeaf` (the format constant, never a clause
- * name or a spec field). An entry attributes by its decoded
- * `{ agreementHash, processDesignHash }` when its bytes recovered, else by its
- * fingerprint matching `provenanceContentRef` of an (agreement hash,
- * assembly root) pair the page loaded — an agreement of a loaded
- * assembly; the bytes are reproducible from the two keys, so the match is
- * exact.
+ * The counter's `UsageRecorded` events, the SDK attribution's first source:
+ * a direct call and a proved batch both emit them. A deployment with no
+ * counter, or a read that fails, yields none this pass: those processes keep
+ * whatever attribution their provenance attestations give.
  */
-export function attributionFromOverlays(
-    overlays: readonly OverlayGraph[],
-    assemblies: readonly { processDesignHash: Hex; agreementHashes: readonly Hex[] }[],
-): Map<string, string> {
-    const hashByContentRef = new Map<string, string>();
-    for (const { processDesignHash, agreementHashes } of assemblies) {
-        if (!isBytes32Hex(processDesignHash)) continue;
-        for (const agreementHash of agreementHashes) {
-            if (!isBytes32Hex(agreementHash)) continue;
-            hashByContentRef.set(
-                provenanceContentRef(agreementHash, processDesignHash).toLowerCase(),
-                processDesignHash.toLowerCase(),
-            );
-        }
-    }
-    const byProcess = new Map<string, string>();
-    for (const graph of overlays) {
-        if (!graph.provenanceLeaf) continue;
-        for (const entry of graph.entries) {
-            const value = entry.decoded?.["processDesignHash"];
-            const attributed = isBytes32Hex(value)
-                ? value.toLowerCase()
-                : hashByContentRef.get(entry.contentRef.toLowerCase());
-            if (attributed) byProcess.set(entry.processId.toLowerCase(), attributed);
-        }
-    }
-    return byProcess;
-}
-
-/**
- * The processes `UsageCounter` counted a use of a process design for:
- * processId (lowercased) → processDesignHash (lowercased), from its
- * `UsageRecorded` stream, which a direct call and a proved batch both
- * emit. A deployment with no counter, or a read that fails, links nothing
- * this pass: those processes keep whatever link their provenance gives.
- */
-async function readProcessDesignUseLinks(client: PublicClient, chainId: number): Promise<Map<string, string>> {
-    const links = new Map<string, string>();
+async function readUsageRecords(
+    client: PublicClient,
+    chainId: number,
+): Promise<{ kind: number; clauseOrProcess: Hex; processId: Hex }[]> {
     const counter = getUsageCounter();
-    if (!counter) return links;
+    if (!counter) return [];
     let logs: Awaited<ReturnType<typeof cachedGetContractEvents>>;
     try {
         logs = await cachedGetContractEvents(client, chainId, { address: counter, abi: USAGE_COUNTER_ABI, eventName: "UsageRecorded" });
     } catch (err) {
-        console.warn("[graphCorpus] UsageRecorded is unreadable this pass; no process is linked by its counted use:", err);
-        return links;
+        console.warn("[graphCorpus] UsageRecorded is unreadable this pass; no process is attributed by its counted use:", err);
+        return [];
     }
-    for (const log of logs) {
-        const a = log.args as { kind?: number; clauseOrProcess?: string; processId?: string } | undefined;
-        if (Number(a?.kind) !== USAGE_KIND_PROCESS || !isBytes32Hex(a?.clauseOrProcess) || !isBytes32Hex(a?.processId)) continue;
-        const pid = a.processId.toLowerCase();
-        if (!links.has(pid)) links.set(pid, a.clauseOrProcess.toLowerCase());
-    }
-    return links;
+    return logs.flatMap((log) => {
+        const a = log.args as { kind?: number | bigint; clauseOrProcess?: Hex; processId?: Hex } | undefined;
+        if (a?.kind === undefined || !a.clauseOrProcess || !a.processId) return [];
+        return [{ kind: Number(a.kind), clauseOrProcess: a.clauseOrProcess, processId: a.processId }];
+    });
 }
 
 /**
- * The registered process design a process is linked to, with the design's own
- * edges between its entries: the buyer's provenance attestation first
- * (`attributionFromOverlays`), else a counted use of a process design naming
- * the process. The link holds only when the page loaded that design. The
- * edges are the design's, and no entry is matched to an order.
+ * The registered process design a process is attributed to, with the
+ * design's own edges between its entries. The link holds only when the page
+ * loaded that design. The edges are the design's, and no entry is matched to
+ * an order.
  */
 function designLinkOf(
     processId: Hex,
     attributionByProcess: ReadonlyMap<string, string>,
-    useLinks: ReadonlyMap<string, string>,
     assemblies: readonly Pick<CorpusAssembly, "processDesignHash" | "entries">[],
 ): DesignedEdges | undefined {
-    const pid = processId.toLowerCase();
-    const key = attributionByProcess.get(pid) ?? useLinks.get(pid);
+    const key = attributionByProcess.get(processId.toLowerCase());
     if (key === undefined) return undefined;
     const design = assemblies.find((a) => a.processDesignHash.toLowerCase() === key);
     if (!design) return undefined;
@@ -360,10 +295,10 @@ async function readGraphCorpus(deps?: {
     const chainId = deps?.chainId ?? activeChain.id;
 
     // 1. FETCH — the order events and the attestations, each from both emitters.
-    const [{ events: core, committedLogs }, attestations, useLinks] = await Promise.all([
+    const [{ events: core, committedLogs }, attestations, usageRecords] = await Promise.all([
         getCoreEvents(client, chainId),
         getAllAttestationRecords(client, chainId),
-        readProcessDesignUseLinks(client, chainId),
+        readUsageRecords(client, chainId),
     ]);
     const fundingLegs = await readCommitFundingLegs(client, chainId, committedLogs, core.orderCommitted);
 
@@ -403,13 +338,17 @@ async function readGraphCorpus(deps?: {
     // denominations, read from the venue's own transfers.
     const valueFlow = projectValueFlow(resolution, fundingLegs, pins);
 
-    const byProcess = attributionFromOverlays(overlays, deps?.assemblies ?? []);
+    const attribution = attributeProcessDesigns({ overlays, designs: deps?.assemblies ?? [], usageRecords });
+    const byProcess = new Map<string, string>();
+    for (const [processId, { processDesignHash }] of attribution.byProcess) {
+        byProcess.set(processId, processDesignHash.toLowerCase());
+    }
     // This reader holds no agreement, so every order's edges are unknown and
     // no process takes a shape; the commit order is never read as an edge.
     const market = marketShape(process, (processId: Hex) => byProcess.get(processId.toLowerCase()), () => undefined);
     const designByProcess = new Map<string, DesignedEdges>();
     for (const processId of process.processes.keys()) {
-        const design = designLinkOf(processId, byProcess, useLinks, deps?.assemblies ?? []);
+        const design = designLinkOf(processId, byProcess, deps?.assemblies ?? []);
         if (design) designByProcess.set(processId.toLowerCase(), design);
     }
 
@@ -432,6 +371,7 @@ async function readGraphCorpus(deps?: {
         venue: getSwapRouter(),
         assemblyNames,
         attributionByProcess: byProcess,
+        contestedProcesses: attribution.contested,
         designByProcess,
     };
 }

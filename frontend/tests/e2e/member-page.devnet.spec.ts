@@ -33,22 +33,17 @@
  *     http://localhost:3100 (per CLAUDE.md "Docker-hosted services").
  */
 import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, type Hex } from 'viem';
+import { createPublicClient, http, type Hex } from 'viem';
 import {
     pinJSONToIPFS,
     readLocalDeploymentConfig,
     seedRegisteredMember,
+    RPC_URL,
+    LOCAL_ANVIL,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { PROCESS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 
 /** Discover an anchored assembly slug from chain (never a roster) — the
  *  seeded profile must bind one to satisfy the even surfacing rule. */

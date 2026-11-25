@@ -6,7 +6,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fetchUriBytes, fetchUriText, fetchIpfsBytes, ipfsGateways } from "../ipfsRead.mjs";
+import { cidOf, fetchUriBytes, fetchUriText, fetchIpfsBytes, ipfsGateways } from "../ipfsRead.mjs";
 
 /** Run `fn` with `fetch` answering every request from `answer(url)`. */
 async function withFetch(answer, fn) {
@@ -45,4 +45,24 @@ test("a scheme the reader does not fetch is refused by name", async () => {
 test("no gateway is assumed: an unconfigured host reads no ipfs:// content and says so", async () => {
     assert.deepEqual(ipfsGateways({}), []);
     await assert.rejects(fetchIpfsBytes("bafyexample", { gateways: ipfsGateways({}) }), /no IPFS gateway configured/);
+});
+
+test("an ipfs:// URI that names no CID is refused before any gateway is asked", async () => {
+    await withFetch(() => new Response("never"), async (seen) => {
+        await assert.rejects(fetchUriBytes("ipfs://not a cid/../x", { gateways: ["https://gw.example"] }), /names no CID/);
+        await assert.rejects(fetchUriBytes("hello", { gateways: ["https://gw.example"] }), /names no CID/);
+        assert.deepEqual(seen, []);
+    });
+});
+
+test("the CID parser reads each multibase by its own alphabet and refuses a path below the CID", () => {
+    const v0 = `Qm${"a".repeat(44)}`;
+    assert.equal(cidOf(`ipfs://${v0}`), v0);
+    assert.equal(cidOf(`/ipfs/${v0}`), v0);
+    assert.equal(cidOf("f01551b20" + "ab".repeat(32)), "f01551b20" + "ab".repeat(32));
+    // base 58 carries capitals.
+    assert.equal(cidOf("zb2rhe5P4gXftAwvA4eXQ5HJwsER2owDyS9sKaQRRVQPn93bA"), "zb2rhe5P4gXftAwvA4eXQ5HJwsER2owDyS9sKaQRRVQPn93bA");
+    assert.equal(cidOf(`ipfs://${v0}/file.json`), null);
+    assert.equal(cidOf("https://host.example/x"), null);
+    assert.equal(cidOf("Bafy"), null);
 });

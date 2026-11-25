@@ -164,15 +164,24 @@ export function gammaPoint({ D, T, L, dMin, gWei }) {
     };
 }
 
-/** The period length the deploy script builds the schedule with, in seconds. */
+/** The period length the deploy script builds the schedule with, in seconds:
+ *  stated in the script itself, else in the deploy script it imports from
+ *  its own folder (`./DeployBase.s.sol`), whose contract it extends. */
 export function periodFromDeployScript(file) {
     const src = fs.readFileSync(path.resolve(root, file), "utf8");
     const units = { days: 86_400n, weeks: 604_800n, hours: 3_600n };
     const m =
-        src.match(/uint64\s+(?:internal\s+|public\s+)?constant\s+PERIOD\s*=\s*([0-9_]+)\s*(days|weeks|hours)\s*;/) ??
+        src.match(/uint64\s+(?:(?:internal|private|public)\s+)?constant\s+PERIOD\s*=\s*([0-9_]+)\s*(days|weeks|hours)\s*;/) ??
         src.match(/periods\[i\]\s*=[^;]*\*\s*([0-9_]+)\s*(days|weeks|hours)\s*\)\s*;/);
-    if (!m) throw new Error(`${file} builds no period schedule this script can read`);
-    return BigInt(m[1].replace(/_/g, "")) * units[m[2]];
+    if (m) return BigInt(m[1].replace(/_/g, "")) * units[m[2]];
+    for (const [, base] of src.matchAll(/^import\s+\{[^}]*\}\s+from\s+"(\.\/[^"]+\.s\.sol)"\s*;/gm)) {
+        try {
+            return periodFromDeployScript(path.join(path.dirname(file), base));
+        } catch {
+            // That base states no schedule either; try the next.
+        }
+    }
+    throw new Error(`${file} builds no period schedule this script can read`);
 }
 
 /** The member stake, the wait and the floor from an expectations file. */
@@ -223,14 +232,16 @@ async function main() {
     if (!deployScript) throw new Error(`no deploy script is known for chain ${exp.chainId}`);
     const L = periodFromDeployScript(deployScript);
 
-    const { createPublicClient, http, parseAbi } = await import("viem");
+    const { createPublicClient, http } = await import("viem");
+    // The counter's own ABI, from the SDK's build output.
+    const { USAGE_COUNTER_ABI } = await import("../sdk/dist/index.js");
     const client = createPublicClient({ transport: http(rpc) });
     const chainId = await client.getChainId();
     if (chainId !== Number(exp.chainId)) throw new Error(`the RPC serves chain ${chainId}, the file names ${exp.chainId}`);
 
     let periodSource = `${deployScript} (the UsageCounter schedule)`;
     if (record?.usageCounter) {
-        const abi = parseAbi(["function periodEnd(uint256) view returns (uint64)", "function periodCount() view returns (uint256)"]);
+        const abi = USAGE_COUNTER_ABI;
         const count = await client.readContract({ address: record.usageCounter, abi, functionName: "periodCount" });
         if (count >= 2n) {
             const [e0, e1] = await Promise.all([0n, 1n].map((i) => client.readContract({ address: record.usageCounter, abi, functionName: "periodEnd", args: [i] })));

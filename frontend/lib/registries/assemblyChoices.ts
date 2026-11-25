@@ -15,8 +15,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { activeChain } from "@/lib/shared/chains";
 import { clauseIsProcessLog, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { agreementClauses, processDesignComposedClauseKeys, type HydratedProcessDesign } from "@figaro-protocol/sdk";
-import { processDesignFollows } from "@/lib/shared/assembly";
+import { agreementClauses, processDesignComposedClauseKeys, rootAgreementOf, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 import { chainById } from "@/lib/shared/chains";
 import { scheduleContentRetry } from "@/lib/shared/ipfsService";
 import {
@@ -53,8 +52,12 @@ function chainIdToNetworkTarget(chainId: number): string {
  *  checkout, not designated by the seller's profile. */
 export function requiredCoSellerClauses(hydrated: HydratedProcessDesign): string[] {
     const clauses = new Set<string>();
+    // The root is the SDK's (`rootAgreementOf`): a later entry that follows
+    // nothing is a sub-order, and `planSubOrderSellers` binds it a co-seller.
+    let rootId: string;
+    try { rootId = rootAgreementOf(hydrated.assembly).id; } catch { return []; }
     for (const entry of hydrated.assembly.agreements) {
-        if (processDesignFollows(entry).length === 0) continue; // root has no co-seller
+        if (entry.id === rootId) continue; // the root has no co-seller
         for (const clauseKey of Object.keys(agreementClauses(hydrated, entry))) {
             if (clauseIsProcessLog(clauseKey)) clauses.add(clauseKey);
         }

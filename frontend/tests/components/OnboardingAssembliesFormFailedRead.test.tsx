@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
     cachedGetContractEvents: vi.fn(),
 }));
 
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: ADDRESS, isConnected: true }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => ADDRESS }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/lib/core/eventCache", () => ({
     cachedGetContractEvents: (...a: unknown[]) => mocks.cachedGetContractEvents(...a),

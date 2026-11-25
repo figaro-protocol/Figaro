@@ -918,9 +918,9 @@ design `assemblies/tradelens.json`, realized through
 commits through the corpus (`useGraphCorpus`) and `/data/explore`: the page
 names no edge between orders, counts no depth or width, and shows the linked
 design's own edges between its entries. The direct path's commits at
-`FigaroCore` are linked by the buyer's provenance attestation, and the batch
+`FigaroCore` are linked by a party's provenance attestation, and the batch
 path's commits at `FigaroBatchVerifier` by a `UsageRecorded` of the process
-design. A use of a clause links nothing, and a failed `UsageRecorded` read
+design, which wins wherever it exists. A use of a clause links nothing, and a failed `UsageRecorded` read
 links nothing while the corpus still lands. A batch whose use the counter
 skipped (`BatchAccrualSkipped`) emits no `UsageRecorded`, so its process is
 linked only by its provenance attestation.

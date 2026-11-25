@@ -15,7 +15,7 @@ const ORDER = `0x${"0a".repeat(32)}`;
 const PROCESS = `0x${"ab".repeat(32)}`;
 const ORDERS = { status: "present", value: [{ orderHash: ORDER, processId: PROCESS, checkoutHash: `0x${"cd".repeat(32)}`, buyer: "0x1", seller: "0x2" }] };
 
-vi.mock("wagmi", () => ({ usePublicClient: () => ({ chain: { id: 31337 } }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock());
 vi.mock("@/hooks/useProcessOrders", () => ({ useProcessOrders: () => ORDERS }));
 vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreementReads: () => new Map() }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));

@@ -33,7 +33,7 @@ import { CheckoutSigningNote } from "@/components/runtime/CheckoutSigningNote";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogs } from "@/lib/registries/useRegisteredCatalogs";
-import { processDesignHashOf, planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses, acceptedPaths, type ResolutionUniverse } from "@figaro-protocol/sdk";
+import { processDesignHashOf, planSubOrderSellers, rootAgreementOf, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses, acceptedPaths, type ResolutionUniverse } from "@figaro-protocol/sdk";
 import { CONTRACTS, getBatchVerifier } from "@/lib/core/contracts";
 import { namedPathContract } from "@/lib/core/signedCommitment";
 import { useCheckedRelay } from "@/lib/registries/useCheckedRelay";
@@ -49,7 +49,6 @@ import {
 } from "@/lib/checkout/checkoutDerivations";
 import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/DispatchRacePanel";
-import { processDesignFollows } from "@/lib/shared/assembly";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
 import { OneWalletBothSidesNote } from "@/components/runtime/OneWalletBothSidesNote";
@@ -651,10 +650,12 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Surfaced inline below so the buyer reviews the terms before placing the
     // order; the final per-order sign confirmation is the shared agreement-preview
     // gate (the same one the seller's accept uses).
-    const pickedRoot = pickedAssembly
-        ? (pickedAssembly.hydratedAssembly.assembly.agreements.find((o) => processDesignFollows(o).length === 0)
-            ?? pickedAssembly.hydratedAssembly.assembly.agreements[0])
-        : undefined;
+    // The root is the SDK's (`rootAgreementOf`); a design with none has no
+    // root to review, and the place-order handler refuses it.
+    const pickedRoot = (() => {
+        if (!pickedAssembly) return undefined;
+        try { return rootAgreementOf(pickedAssembly.hydratedAssembly.assembly); } catch { return undefined; }
+    })();
     // A line's amount, or null while its translated price is unknown (no
     // quote, nothing typed) — never 0: the price summary and the commit are
     // both held until every amount stands.

@@ -26,6 +26,7 @@ const EMPTY_CORPUS = {
     venue: null,
     assemblyNames: new Map(),
     attributionByProcess: new Map(),
+    contestedProcesses: new Set(),
 } as unknown as GraphCorpus;
 
 vi.mock("next/navigation", () => ({

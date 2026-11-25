@@ -23,12 +23,8 @@ const { cachedGetLogsMock, COORD, VERIFIER, state } = vi.hoisted(() => ({
 vi.mock("@/lib/core/eventCache", () => ({
     cachedGetLogs: (...args: unknown[]) => cachedGetLogsMock(...args),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: "0x3333333333333333333333333333333333333333", batchVerifier: VERIFIER },
-    getAttestationCoordinator: () => COORD,
-    getBatchVerifier: () => state.verifier,
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: "0x3333333333333333333333333333333333333333", batchVerifier: VERIFIER }, coordinator: () => COORD, batchVerifier: () => state.verifier }));
 vi.mock("@/lib/registries/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [] }));
 
 import { getAttestationsByOrder, getAttestationsByProcess } from "@/lib/core/attestationIndexer";

@@ -16,8 +16,7 @@ const mocks = vi.hoisted(() => ({
     isApproveError: false,
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: mocks.address }),
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => mocks.address }, {
     useReadContract: (options: { functionName?: string }) => {
         if (options.functionName === "balanceOf") {
             return { data: mocks.balance, status: mocks.balance === undefined ? "pending" : "success" };

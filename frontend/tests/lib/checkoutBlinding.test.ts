@@ -13,10 +13,8 @@ import { mergeAssemblyTermFills } from "@/lib/checkout/checkoutDerivations";
 import type { BoundAssembly } from "@/lib/registries/useMemberBoundAssemblies";
 import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" } };
-});
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { core: "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" }));
 
 const BUYER = "0x1111111111111111111111111111111111111111" as const;
 const SELLER = "0x2222222222222222222222222222222222222222" as const;

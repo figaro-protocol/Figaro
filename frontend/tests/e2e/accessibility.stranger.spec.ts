@@ -5,7 +5,11 @@
  * crawl visits, the same census (`exportCensus.ts`), the same walletless
  * browser context. Each route is loaded, hydration awaited, and axe-core run
  * with the WCAG 2.0 and 2.1 A and AA rule tags; any violation on any route
- * fails the sweep, named by route, rule and the first offending node. axe is
+ * fails the sweep, named by route, rule and the first offending node. A route
+ * that answers no page (no response, or a status of 400 or above) or whose
+ * page never hydrates fails it too, named by route and reason: a route not
+ * audited is never read as a route without a violation. An empty census fails
+ * it, since a sweep over no route proves nothing. axe is
  * evaluated through Playwright, never injected as a page script, so the
  * pages' own inline-script policy is untouched by the check.
  *
@@ -30,10 +34,24 @@ interface Violation {
     target: string;
 }
 
-async function auditRoute(page: Page, route: string): Promise<Violation[]> {
+/** A route the sweep could not audit, and why. */
+interface Unaudited {
+    route: string;
+    reason: string;
+}
+
+async function auditRoute(page: Page, route: string, unaudited: Unaudited[]): Promise<Violation[]> {
     const res = await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-    if (!res || res.status() >= 400) return [];
-    await waitForReactHydration(page, 'body').catch(() => {});
+    if (!res || res.status() >= 400) {
+        unaudited.push({ route, reason: res ? `answered ${res.status()}` : 'answered no response' });
+        return [];
+    }
+    try {
+        await waitForReactHydration(page, 'body');
+    } catch (err) {
+        unaudited.push({ route, reason: `did not hydrate: ${err instanceof Error ? err.message.split('\n')[0] : String(err)}` });
+        return [];
+    }
     await page.evaluate(AXE_SOURCE);
     const result: Omit<Violation, 'route'>[] = await page.evaluate(async (tags) => {
         // @ts-expect-error axe is the global the evaluated source defines
@@ -52,17 +70,20 @@ test.describe('ACCESSIBILITY — every exported route against WCAG 2.1 A and AA 
         const distDir = exportDistDir();
         expect(fs.existsSync(distDir), `the export to audit (${distDir})`).toBe(true);
         const routes = exportedRoutes(distDir);
+        expect(routes.length, `the census of ${distDir} names at least one route to audit`).toBeGreaterThan(0);
         const context = await browser.newContext();
         const queue = [...routes];
         const violations: Violation[] = [];
+        const unaudited: Unaudited[] = [];
         await Promise.all(Array.from({ length: TABS }, async () => {
             const page = await context.newPage();
             for (let route = queue.shift(); route !== undefined; route = queue.shift()) {
-                violations.push(...await auditRoute(page, route));
+                violations.push(...await auditRoute(page, route, unaudited));
             }
             await page.close();
         }));
         await context.close();
+        expect(unaudited, `routes the sweep could not audit:\n  ${unaudited.map((u) => `${u.route} ${u.reason}`).join('\n  ')}`).toEqual([]);
 
         const byRule = new Map<string, Violation[]>();
         for (const v of violations) byRule.set(v.rule, [...(byRule.get(v.rule) ?? []), v]);

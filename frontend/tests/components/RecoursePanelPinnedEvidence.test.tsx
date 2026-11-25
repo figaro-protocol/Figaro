@@ -25,7 +25,7 @@ const pinned = vi.hoisted(() => ({ blobs: [] as Blob[] }));
 const held = vi.hoisted(() => ({ byRef: new Map<string, { content: `0x${string}`; values: Record<string, unknown>; received: boolean }>() }));
 const chain = vi.hoisted(() => ({ attestations: [] as unknown[], agreements: new Map<string, unknown>() }));
 
-vi.mock("wagmi", () => ({ usePublicClient: () => ({}), useChainId: () => 31337 }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ client: () => ({}) }));
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({
     useRuntimeServices: () => ({
         evidenceTransport: {

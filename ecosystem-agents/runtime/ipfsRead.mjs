@@ -40,9 +40,22 @@ export function ipfsGateways(env = process.env) {
  */
 const UNRESOLVED = new Set([404, 408, 410, 451, 504, 524]);
 
-/** Strip an `ipfs://` scheme; anything else is already a bare CID. */
+/**
+ * The runtime's one CID parser: the CID an `ipfs://CID`, `/ipfs/CID` or bare
+ * `CID` names, or `null` when it names none. A CID is CIDv0 (`Qm` + 44
+ * base-58 chars) or CIDv1 under a multibase prefix: `b` base 32, `f` base 16
+ * (the witness-content CID the SDK derives from a keccak fingerprint), `k`
+ * base 36, `z` base 58. A path below the CID is refused: the bytes of a file
+ * alone cannot prove a directory's CID. The SDK exports no CID check; the
+ * frontend's parser (`frontend/lib/shared/ipfsService.ts` `parseIpfsUri`)
+ * keeps the same rule, which this runtime cannot import.
+ */
 export function cidOf(uri) {
-    return uri.startsWith("ipfs://") ? uri.slice("ipfs://".length) : uri;
+    if (typeof uri !== "string") return null;
+    const rest = uri.startsWith("ipfs://") ? uri.slice("ipfs://".length)
+        : uri.startsWith("/ipfs/") ? uri.slice("/ipfs/".length)
+        : uri;
+    return /^(?:Qm[1-9A-HJ-NP-Za-km-z]{44}|[bfk][a-z0-9]{6,}|z[1-9A-HJ-NP-Za-km-z]{6,})$/.test(rest) ? rest : null;
 }
 
 /**
@@ -107,7 +120,9 @@ export async function fetchUriBytes(uri, options = {}) {
     if (/^[a-z][a-z0-9+.-]*:\/\//i.test(uri) && !uri.startsWith("ipfs://")) {
         throw new Error(`content ${uri}: the ${uri.split(":")[0]} scheme is not one this reader fetches (ipfs://, https://)`);
     }
-    return fetchIpfsBytes(cidOf(uri), options);
+    const cid = cidOf(uri);
+    if (cid === null) throw new Error(`content ${uri}: names no CID, and no other scheme is one this reader fetches (ipfs://, https://)`);
+    return fetchIpfsBytes(cid, options);
 }
 
 /** The same read, decoded as UTF-8 text. `null` is absence. */

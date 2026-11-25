@@ -27,7 +27,6 @@
 import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import {
     createPublicClient,
-    defineChain,
     http,
     type Hex,
 } from 'viem';
@@ -38,18 +37,13 @@ import {
     pinJSONToIPFS,
     readLocalDeploymentConfig,
     seedRegisteredMember,
+    RPC_URL,
+    LOCAL_ANVIL,
 } from './devnet-helpers';
 import { PROCESS_REGISTRY_ABI, MEMBERS_REGISTRY_ABI, type MemberProfileMetadata } from '@figaro-protocol/sdk';
 import { deriveProcessDesignSlug } from '@/lib/shared/assembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 
 const SELLER_KEY = ANVIL_KEYS[0];
 

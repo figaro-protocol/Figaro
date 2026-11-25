@@ -56,6 +56,7 @@ import {
     primeRegisteredClauseSpecs,
     anchoredProcessDesignHash,
     isBindingOf,
+    waitForConnected,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
@@ -66,14 +67,6 @@ import type { Page } from '@playwright/test';
 test.beforeAll(async () => {
     await primeRegisteredClauseSpecs();
 });
-
-async function waitForConnected(page: Page) {
-    await page.waitForFunction(
-        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
-        null,
-        { timeout: 30000 },
-    );
-}
 
 const ERC20_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',

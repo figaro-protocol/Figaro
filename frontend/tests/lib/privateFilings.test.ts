@@ -13,7 +13,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { keccak256, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
 import { encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import {
     PRIVATE_FILINGS_MAX_BLOB_CHARS,
@@ -41,6 +40,7 @@ import {
 } from "@/lib/core/witnessContent";
 import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { pinSpec } from "./primeClauseSpecs";
+import { recordingChannel } from "../support/recordingChannel";
 
 const SELLER_ACCOUNT = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
 const BUYER_ACCOUNT = privateKeyToAccount("0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a");
@@ -88,15 +88,6 @@ function filingAt(stage: number, reading: string, orderHash: Hex = ORDER): Priva
     return { orderHash, clauseId: PRIVATE.clauseKey, stage, contentRef: keccak256(content), content };
 }
 
-/** A channel stub that keeps what is sent — the transport is not under test. */
-function recordingChannel() {
-    const sent: Array<{ kind: "pubkey" | "blob"; orderId: string; value: string }> = [];
-    const channel = {
-        sendEcdhPubkey: vi.fn(async ({ orderId, pubKeyHex }) => { sent.push({ kind: "pubkey", orderId, value: pubKeyHex }); }),
-        sendWrappedKey: vi.fn(async ({ orderId, wrappedKeyB64 }) => { sent.push({ kind: "blob", orderId, value: wrappedKeyB64 }); }),
-    } as unknown as HandoffChannel;
-    return { channel, sent };
-}
 
 /** The buyer asks; returns its key and the channel. */
 async function buyerAsks() {

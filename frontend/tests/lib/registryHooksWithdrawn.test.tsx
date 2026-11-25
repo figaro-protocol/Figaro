@@ -20,10 +20,7 @@ const KEY_GONE = `0x${"22".repeat(32)}` as Hex;
 
 const mocks = vi.hoisted(() => ({ cachedGetContractEvents: vi.fn() }));
 
-vi.mock("wagmi", () => ({
-    usePublicClient: () => ({ chain: { id: 31337 } }),
-    useChainId: () => 31337,
-    useAccount: () => ({ address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" }),
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" }, {
     useWatchContractEvent: () => undefined,
     useReadContract: () => ({ data: undefined }),
     useWriteContract: () => ({}),

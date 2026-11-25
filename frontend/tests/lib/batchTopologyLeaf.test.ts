@@ -35,10 +35,8 @@ vi.mock("@/lib/core/eventCache", () => ({
     cachedGetLogs: (...args: unknown[]) => cachedGetLogsMock(...args),
     cachedGetReceiptLogs: vi.fn(),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: CORE, batchVerifier: VERIFIER } }));
 
 import { getCoreEvents } from "@/lib/core/indexer";
 import { orderFromSdk, type Order } from "@/lib/core/store";

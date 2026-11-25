@@ -26,6 +26,7 @@
  */
 
 import { keccak256, sha256 } from "viem";
+import { parseIpfsUri } from "@/lib/shared/ipfsService";
 
 /** The outcome of a check: the bytes are the content the URI names, are not,
  *  or the URI names its content in a form this module cannot recompute. */
@@ -120,8 +121,8 @@ interface ParsedCid {
  *  path below it (a path names a file inside a directory, which the bytes of
  *  that file alone cannot prove). */
 function cidOfUri(uri: string): string | null {
-    const bare = uri.startsWith("ipfs://") ? uri.slice("ipfs://".length) : uri.startsWith("/ipfs/") ? uri.slice("/ipfs/".length) : uri;
-    return /^[A-Za-z0-9]+$/.test(bare) ? bare : null;
+    const parsed = parseIpfsUri(uri);
+    return parsed !== null && parsed.path === "" ? parsed.cid : null;
 }
 
 function parseMultihash(bytes: Uint8Array, at: number): { hashCode: number; digest: Uint8Array } | null {

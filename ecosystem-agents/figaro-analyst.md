@@ -326,7 +326,7 @@ directory of agreement documents the wallet holds — its own, or ones a purchas
 and each one is admitted only if its recomputed root IS a committed `checkoutHash` on this
 chain. A document that fails is REJECTED and named in `GET /status` to the bearer of the token, whoever handed it over.
 Admitted documents unlock assembly attribution and real chain shapes in market-shape;
-without them a process is attributed only when its buyer attested the provenance leaf, and
+without them a process is attributed only by the counter's count of a use of its design, or when a party of its order attested the provenance leaf, and
 every other process is reported as unattributed. A chain shape needs every order's edges:
 a process holding an order whose agreement was not admitted, or carries no topology leaf,
 takes no shape and is counted in its group's `unshapedProcessCount`. Its edges are

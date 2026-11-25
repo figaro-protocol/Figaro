@@ -56,25 +56,17 @@
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server (:3100).
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, decodeFunctionData, defineChain, http, parseAbi, type Hex } from 'viem';
+import { createPublicClient, decodeFunctionData, http, type Hex } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
+import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs, waitForConnected, openFreshDesigner, RPC_URL, LOCAL_ANVIL } from './devnet-helpers';
 import { keccak256 } from 'viem';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
-import { calculateBonds, ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
+import { calculateBonds, ATTESTATION_COORDINATOR_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import { clauseIsAssemblyScoped, getClauseSpec } from '@/lib/shared/clauseSpecSource';
 import type { Page } from '@playwright/test';
 
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 
 const BUYER = privateKeyToAccount(ANVIL_KEYS[0] as Hex).address; // anvil[0] — buyer + author
@@ -473,15 +465,6 @@ const RUNGS: ClauseRung[] = [
     },
 ];
 
-/** Wait for ClientInit's devnet auto-connect (the "Connect Wallet" button goes). */
-async function waitForConnected(page: Page) {
-    await page.waitForFunction(
-        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
-        null,
-        { timeout: 30000 },
-    );
-}
-
 test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic pipeline (devnet)', () => {
     test.setTimeout(360_000);
 
@@ -512,15 +495,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             //    through the generic field editors. Editorial name is STABLE:
             //    identity is the composition, and the composition is fixed. ──
             const assemblyName = `Coverage: ${rung.clauseId}`;
-            await page.addInitScript(() => {
-                try {
-                    window.localStorage.removeItem('figaro:designer:autosave:new');
-                    window.localStorage.removeItem('figaro:designer:drafts');
-                } catch { /* noop */ }
-            });
-            await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
-            await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-            await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+            await openFreshDesigner(page);
 
             const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
             await rootNode.waitFor({ state: 'visible', timeout: 10000 });

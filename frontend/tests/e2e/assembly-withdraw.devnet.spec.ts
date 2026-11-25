@@ -43,23 +43,15 @@
  * Requires Anvil + ./scripts/devup.sh (deploy + populate) + Kubo + :3100.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
+import { createPublicClient, http, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
+import { readLocalDeploymentConfig, waitForConnected, RPC_URL, LOCAL_ANVIL } from './devnet-helpers';
 import { publishProbeAssembly } from './probeAssembly';
-import { calculateBonds, PROCESS_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import { calculateBonds, PROCESS_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import { CORE_ABI } from '@/lib/core/contracts';
 import { deriveProcessDesignSlug } from '@/lib/shared/assembly';
 
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 
 // anvil[0] — the fixture's default buyer (serial project: no cross-spec races).

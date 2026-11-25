@@ -27,7 +27,7 @@
  *   - The PUBLIC artifact (`PublicDeviceEvidence`) is what gets pinned and
  *     becomes the evidence URI: the mechanism grain only (the geohash CELL,
  *     blinded fingerprints of the identifiers) plus `rawCaptureHash` —
- *     keccak256 of the raw JSON — so a party can later reveal the raw
+ *     keccak256 of the canonical raw JSON (`canonicalContentHash`) — so a party can later reveal the raw
  *     capture verifiably.
  * Each capture draws its own blinding value (`freshBlindingHex`, the SDK's
  * one entropy source, as a private clause set draws one). It stays in the
@@ -44,7 +44,7 @@
  */
 
 import { concat, keccak256, toHex, type Hex } from "viem";
-import { freshBlindingHex } from "@figaro-protocol/sdk";
+import { canonicalContentHash, freshBlindingHex } from "@figaro-protocol/sdk";
 import { getDeviceLocation } from "@/lib/shared/deviceLocation";
 import { hexEqual, isBytes32Hex, ZERO_BYTES32 } from "@/lib/shared/evm";
 import { encodeGeohash } from "@figaro-protocol/sdk/derive";
@@ -97,8 +97,10 @@ export interface PublicDeviceEvidence {
     /** BLE sighting: the chooser's device id's blinded fingerprint, held to
      *  the same rule as `tagSerialHash`. */
     deviceIdHash?: string;
-    /** keccak256 of the raw capture JSON, retained device-side — the
-     *  dispute-time revelation binds to this. */
+    /** The SDK's canonical content hash (`canonicalContentHash`: keccak256
+     *  of the canonical JSON, keys sorted) of the raw capture, retained
+     *  device-side — the dispute-time revelation binds to this, whatever
+     *  order the revealed capture's keys arrive in. */
     rawCaptureHash: string;
 }
 
@@ -119,7 +121,7 @@ export function toPublicEvidence(raw: DeviceEvidence): PublicDeviceEvidence {
     if (!isBytes32Hex(raw.blinding) || hexEqual(raw.blinding, ZERO_BYTES32)) {
         throw new Error("A device capture carries a fresh 32-byte blinding value before its public artifact is derived.");
     }
-    const rawCaptureHash = keccak256(toHex(JSON.stringify(raw)));
+    const rawCaptureHash = canonicalContentHash(raw);
     return {
         kind: raw.kind,
         capturedAt: raw.capturedAt,

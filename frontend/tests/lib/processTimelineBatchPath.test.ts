@@ -25,12 +25,8 @@ vi.mock("@/lib/core/eventCache", async (importOriginal) => ({
     cachedGetContractEvents: (...a: unknown[]) => cachedMock(...a),
     deploymentBlock: () => 0n,
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-    getAttestationCoordinator: () => COORD,
-    getBatchVerifier: () => VERIFIER,
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: CORE, batchVerifier: VERIFIER }, coordinator: () => COORD, batchVerifier: () => VERIFIER }));
 vi.mock("@/lib/shared/clauseSpecSource", () => ({
     describeAttestation: () => ({ clauseTitle: "Clause", eventLabel: "Stage" }),
 }));

@@ -2,7 +2,8 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { witnessContentCid, witnessContentCidBase32 } from "@figaro-protocol/sdk/derive";
-import { DEFAULT_IPFS_SERVICE, MAX_IPFS_DOCUMENT_BYTES, NO_PUBLISH_TARGET_LINE, NoPublishTargetError, activePublishTarget, contentRetryDelayMs, extractIpfsCid, fetchCappedContent, ipfsTimeoutForBytes, resolveContentUri, resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, MAX_IPFS_DOCUMENT_BYTES, NO_PUBLISH_TARGET_LINE, NoPublishTargetError, activePublishTarget, contentRetryDelayMs, extractIpfsCid, fetchCappedContent, ipfsTimeoutForBytes, parseIpfsUri, resolveContentUri, resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
+import { checkContentAddress } from "@/lib/shared/contentAddress";
 
 /** Every source file a build compiles or configures from: the app's own tree
  *  and the two configs. A test or a seeding script is not a build. */
@@ -255,6 +256,19 @@ describe("ipfsService", () => {
             expect(resolveContentUri("ipfs://not-a-cid")).toBeNull();
         });
 
+        // One parser (`parseIpfsUri`) serves the resolver, the unpin path and
+        // the content-address check, each by what it needs of the path.
+        it("one parser: base 58 keeps its capitals, the unpin path takes no word, the address check takes no path", () => {
+            const z = "zb2rhe5P4gXftAwvA4eXQ5HJwsER2owDyS9sKaQRRVQPn93bA";
+            expect(parseIpfsUri(`ipfs://${z}`)).toEqual({ cid: z, path: "" });
+            expect(resolveContentUri(`ipfs://${z}`)).toBe(`http://127.0.0.1:8080/ipfs/${z}`);
+            expect(parseIpfsUri("/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/a/b.json"))
+                .toEqual({ cid: "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG", path: "/a/b.json" });
+            expect(extractIpfsCid("ipfs://not a cid")).toBeNull();
+            expect(extractIpfsCid("ipfs://")).toBeNull();
+            expect(checkContentAddress("ipfs://QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/a.json", new Uint8Array([1]))).toBe("unverifiable");
+        });
+
         it("returns null for empty and unknown/dangerous schemes (RA-2)", () => {
             expect(resolveContentUri("")).toBeNull();
             expect(resolveContentUri("data:image/png;base64,abc")).toBeNull();
@@ -395,7 +409,7 @@ describe("ipfsService", () => {
         it("extracts the bare CID from every IPFS URI shape", () => {
             expect(extractIpfsCid("ipfs://QmAbc12311111111111111111111111111111111111111")).toBe("QmAbc12311111111111111111111111111111111111111");
             expect(extractIpfsCid("ipfs://QmAbc12311111111111111111111111111111111111111/logo.png")).toBe("QmAbc12311111111111111111111111111111111111111");
-            expect(extractIpfsCid("/ipfs/bafyAbc")).toBe("bafyAbc");
+            expect(extractIpfsCid("/ipfs/bafyabc123")).toBe("bafyabc123");
             expect(extractIpfsCid("QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG")).toBe(
                 "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
             );
@@ -704,6 +718,8 @@ describe("resolveContentUri — a permissionless registry can anchor any string 
         expect(resolveContentUri("ipfs://rpgf-e2e-trade-seller", gw)).toBeNull();
         expect(resolveContentUri("/ipfs/not-a-cid", gw)).toBeNull();
         expect(resolveContentUri("Qm-too-short", gw)).toBeNull();
-        expect(extractIpfsCid("ipfs://rpgf-e2e-trade-seller")).toBe("rpgf-e2e-trade-seller");
+        // The erasure path reads the same parser: a path that names no CID
+        // was never pinned, so there is nothing to unpin.
+        expect(extractIpfsCid("ipfs://rpgf-e2e-trade-seller")).toBeNull();
     });
 });

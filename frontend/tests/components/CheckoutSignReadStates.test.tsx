@@ -60,7 +60,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
 vi.mock("@/lib/registries/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => ({ read: m.catalogs }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: m.symbol }) }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: m.decimals, ready: m.decimals !== undefined, loading: false }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(() => m.decimals));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: present(10n ** 30n), refetch: () => undefined }) }));
 vi.mock("@/hooks/useTokenApproval", () => ({
     default: () => ({

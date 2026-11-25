@@ -8,10 +8,17 @@ export { OrderState };
 // Domain types (exported for use in hooks, components, tests)
 // ---------------------------------------------------------------------------
 
-// The UI projection of the SDK `Order` (@figaro-protocol/sdk): same field names,
-// deliberately looser types (plain strings; optionals for designer drafts)
-// plus UI-derived fields (bonds, topology edges, resolvedAt).
-export interface Order {
+// The UI projection of the SDK `Order` (@figaro-protocol/sdk), derived from
+// it so a field the SDK adds shows up here: the SDK's own fields, less the
+// ones whose type differs, plus UI-derived fields (bonds, topology edges,
+// resolvedAt). Why each differing field differs:
+//   - orderHash, processId, buyer, seller: plain strings, since the designer's
+//     drafts and the page's own route params carry them before any is checked
+//     as hex;
+//   - token, checkoutHash, blockNumber: optional, since a designer draft has
+//     no committed token, no agreement root and no block.
+type SdkOrderLoosened = "orderHash" | "processId" | "buyer" | "seller" | "token" | "checkoutHash" | "blockNumber";
+export type Order = Omit<SdkOrder, SdkOrderLoosened> & {
     /** bytes32 commitment hash (content-addressed from EIP-712 struct). */
     orderHash: string;
     processId: string; // bytes32 from contract
@@ -26,27 +33,15 @@ export interface Order {
      *  whose topology lives in the committed agreement's topology leaf
      *  (`Agreement.follows`, reconstructed off-chain). */
     follows?: string[];
-    runningTotal: bigint;
-    payment: bigint;
-    state: OrderState;
     /** Computed: 2 × runningTotal. Not carried directly on FigaroCore event. */
     sellerBond: bigint;
     /** Computed: 2 × payment. Not carried directly on FigaroCore event. */
     buyerBond: bigint;
-    /** Salt from the commitment (for full reconstruction at resolution). */
-    salt: bigint;
-    /** commitDeadline from the commitment (for full reconstruction at resolution). */
-    commitDeadline: bigint;
     /** Block number when OrderCommitted was mined. */
     blockNumber?: number;
     /** Event-derived: block.timestamp from OrderResolved (seconds). */
     resolvedAt?: number;
-    /** The path whose contract emitted the order's OrderCommitted: "direct"
-     *  (FigaroCore) or "batch" (FigaroBatchVerifier), derived from the
-     *  emitter's address at read time (`useProcessOrders`). Absent where the
-     *  reader did not split the events by emitter, and on designer drafts. */
-    path?: ResolutionUniverse;
-}
+};
 
 /**
  * Project the SDK fold's `Order` (what `reconstruct`/`Topology` build from

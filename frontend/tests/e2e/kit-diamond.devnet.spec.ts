@@ -61,7 +61,7 @@
  * Requires Anvil + ./scripts/deploy-local.sh + populate-test-data + Kubo + :3100.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
+import { createPublicClient, http, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 import {
     assertPinnedInIpfs,
@@ -77,21 +77,17 @@ import {
     anchoredProcessDesignHash,
     isBindingOf,
     composeCommerceOn,
+    acceptOrderAs,
+    openFreshDesigner,
+    RPC_URL,
+    LOCAL_ANVIL,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
-import { calculateBonds } from '@figaro-protocol/sdk';
+import { calculateBonds, ERC20_ABI } from '@figaro-protocol/sdk';
 import type { Page } from '@playwright/test';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 const BUYER = ANVIL_ACCOUNTS[4] as Hex;
 const LEAD = {
@@ -146,15 +142,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         // ── AUTHOR (idempotent): draw the diamond on the real canvas. ──
         let kitSlug = await findDiamondAssembly();
         if (!kitSlug) {
-            await page.addInitScript(() => {
-                try {
-                    window.localStorage.removeItem('figaro:designer:autosave:new');
-                    window.localStorage.removeItem('figaro:designer:drafts');
-                } catch { /* noop */ }
-            });
-            await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
-            await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-            await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+            await openFreshDesigner(page);
 
             const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
             await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
@@ -357,26 +345,9 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         const queryCommitted = () => publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,
         });
-        const acceptAs = async (seller: Hex, label: string) => {
-            const before = (await queryCommitted()).length;
-            await gotoAsWallet(page, seller, '/orders?e2e=devnet');
-            await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
-            await waitForConnected(page);
-            await page.getByTestId('order-your-turn-card').first().waitFor({ state: 'visible', timeout: 30000 });
-            await page.getByTestId('btn-accept-order').first().click();
-            await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
-            await page.getByTestId('preview-confirm').click();
-            await expect.poll(async () => (await queryCommitted()).length, {
-                timeout: 60000, message: `${label}'s accept lands OrderCommitted on-chain`,
-            }).toBe(before + 1);
-            const events = await queryCommitted();
-            const event = events[events.length - 1];
-            const receipt = await publicClient.getTransactionReceipt({ hash: event.transactionHash });
-            expect(receipt.status, `${label}'s commit transaction succeeded`).toBe('success');
-            expect(event.args.seller?.toLowerCase(), `${label}'s order committed against ${label}`)
-                .toBe(seller.toLowerCase());
-            return event;
-        };
+        // The full accept (`acceptOrderAs`): the commit transaction succeeded and the
+        // order was committed against that seller, both read out of band.
+        const acceptAs = (seller: Hex, label: string) => acceptOrderAs(page, seller, label, queryCommitted);
 
         const rootEvent = await acceptAs(LEAD.address, 'lead');
         const processId = rootEvent.args.processId!;

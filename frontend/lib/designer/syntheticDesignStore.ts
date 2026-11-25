@@ -31,14 +31,20 @@ import {
     writeStorage,
 } from "@/lib/shared/storage";
 
-const NEW_DESIGN_AUTOSAVE_KEY = "figaro:designer:autosave:new";
+/** The new design's autosave key. Exported for the browser tests, which start
+ *  a fresh design from no stored work (`openFreshDesigner`,
+ *  `tests/e2e/devnet-helpers.ts`).
+ *  @public The browser tests read it; no app code needs it outside this store. */
+export const NEW_DESIGN_AUTOSAVE_KEY = "figaro:designer:autosave:new";
 const DRAFT_AUTOSAVE_PREFIX = "figaro:designer:autosave:drafts:";
 /** A key this store never writes: a value a browser holds under it is the
  *  new design's autosave, read once by `loadAutosave(null)` and moved to the
  *  new design's key. */
 const UNOWNED_AUTOSAVE_KEY = "figaro:designer:current";
 const DRAFT_PREFIX = "figaro:designer:drafts:";
-const DRAFT_INDEX_KEY = "figaro:designer:drafts";
+/** The named drafts' index key, exported beside `NEW_DESIGN_AUTOSAVE_KEY`.
+ *  @public The browser tests read it; no app code needs it outside this store. */
+export const DRAFT_INDEX_KEY = "figaro:designer:drafts";
 
 // ── Serialization (bigint round-trip) ───────────────────────────────────────
 

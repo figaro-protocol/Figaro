@@ -16,9 +16,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { ContractFunctionRevertedError, encodeErrorResult, keccak256, type Abi } from "viem";
+import { revertOf } from "../support/contractRevert";
+import { testCaseTitles } from "../support/testTitles";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import {
+    AGREEMENT_REGISTRY_ABI,
+    ATTESTATION_COORDINATOR_ABI,
+    CLAUSE_REGISTRY_ABI,
+    CORE_ABI,
+    MEMBERS_REGISTRY_ABI,
+    PROCESS_REGISTRY_ABI,
+    RPGF_MINTER_ABI,
+    USAGE_COUNTER_ABI,
+    WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI,
     DISABLED_SWAP_FUNDING_LEG,
     PROVENANCE_LEAF_KEY,
     USAGE_KIND_CLAUSE,
@@ -62,12 +73,9 @@ const COMMITMENT: Commitment = {
     commitDeadline: 9_999_999_999n,
 };
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: w.address, isConnected: true }),
-    usePublicClient: () => w.client,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => w.address, client: () => w.client }, {
     useWriteContract: () => ({ writeContractAsync: w.write, data: undefined, isPending: false, error: null }),
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false, data: undefined }),
-    useChainId: () => 31337,
     useReadContract: () => ({ data: undefined, isLoading: false, refetch: () => {} }),
 }));
 vi.mock("@/lib/shared/publicClient", () => ({ publicClient: {} }));
@@ -75,10 +83,8 @@ vi.mock("@/lib/composability/contracts", () => ({
     getMultisender: () => "0x00000000000000000000000000000000000d1501",
     getWitnessSwapAndCommitCoordinator: () => "0x00000000000000000000000000000000000c0a01",
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    getAttestationCoordinator: () => "0x00000000000000000000000000000000000a7701",
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { coordinator: () => "0x00000000000000000000000000000000000a7701" }));
 vi.mock("@/lib/rewards/contracts", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/rewards/contracts")>()),
     getRpgfMinter: () => "0x00000000000000000000000000000000000f1001",
@@ -158,11 +164,33 @@ const PROBE_SPEC = { clauseId: "figaro-probe", version: 1, fields: [] };
 const SERVED_AGREEMENT = { clauses: [], provenance: { agreementHash: KEY, processDesignHash: KEY } } as unknown as Agreement;
 const PROVENANCE_RECEIPT = provenanceLeafAttestation(SERVED_AGREEMENT);
 
-/** A decoded custom-error revert, as viem raises it from `simulateContract`. */
-function revert(errorName: string): ContractFunctionRevertedError {
-    const abi = [{ type: "error", name: errorName, inputs: [] }] as const satisfies Abi;
-    const data = encodeErrorResult({ abi, errorName } as never);
-    return new ContractFunctionRevertedError({ abi, data, functionName: "f" });
+/** The contract each write site sends to, by its address, with its own ABI:
+ *  a site's revert is one its contract declares (`revertOf`). */
+const ABI_OF: Record<string, readonly unknown[]> = {
+    [CORE]: CORE_ABI,
+    [CLAUSE_REGISTRY]: CLAUSE_REGISTRY_ABI,
+    [MEMBERS_REGISTRY]: MEMBERS_REGISTRY_ABI,
+    [PROCESS_REGISTRY]: PROCESS_REGISTRY_ABI,
+    [AGREEMENT_REGISTRY]: AGREEMENT_REGISTRY_ABI,
+    [USAGE_COUNTER]: USAGE_COUNTER_ABI,
+    [SWAP_COORDINATOR]: WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI,
+    [ATTESTATION_COORDINATOR]: ATTESTATION_COORDINATOR_ABI,
+    [RPGF_MINTER]: RPGF_MINTER_ABI,
+};
+
+/** A decoded custom-error revert of `contract`, from its own ABI. The
+ *  multisender is an outside contract (Disperse) the SDK carries no ABI for
+ *  and that declares no custom error: its revert is stated here, to hold the
+ *  page to the error's own name for an error no text names. */
+function revert(contract: string, errorName: string, args: readonly unknown[] = []): ContractFunctionRevertedError {
+    if (contract === MULTISENDER) {
+        const abi = [{ type: "error", name: errorName, inputs: [] }] as const satisfies Abi;
+        const data = encodeErrorResult({ abi, errorName } as never);
+        return new ContractFunctionRevertedError({ abi, data, functionName: "f" });
+    }
+    const abi = ABI_OF[contract];
+    if (!abi) throw new Error(`no ABI for the write site's contract ${contract}`);
+    return revertOf(abi, errorName, args);
 }
 
 beforeEach(() => {
@@ -222,6 +250,8 @@ const SITES: Array<{
     prepare: () => Promise<() => Promise<unknown>>;
     writes: () => Written[];
     errorName: string;
+    /** The error's arguments, for an error that declares any. */
+    errorArgs?: readonly unknown[];
     message: string | RegExp;
 }> = [
     {
@@ -250,6 +280,7 @@ const SITES: Array<{
         prepare: async () => { const h = rendered(() => useWithdrawDeposit()); return () => h.current.withdraw(); },
         writes: () => [{ address: MEMBERS_REGISTRY, functionName: "withdraw", args: [] }],
         errorName: "CooldownActive",
+        errorArgs: [1_700_000_000n],
         message: "The stake is still locked: the withdrawal cooldown has not elapsed.",
     },
     {
@@ -307,6 +338,7 @@ const SITES: Array<{
             args: [COMMITMENT, "0x01", "0x02", DISABLED_SWAP_FUNDING_LEG, DISABLED_SWAP_FUNDING_LEG],
         }],
         errorName: "OutputBelowBond",
+        errorArgs: [1n, 2n],
         message: "The swap produced less of the process token than the bond needs.",
     },
     {
@@ -372,8 +404,8 @@ const SITES: Array<{
             functionName: "attestAsBuyer",
             args: [COMMITMENT, PROVENANCE_LEAF_KEY, 0, PROVENANCE_RECEIPT.clauseDataHash, PROVENANCE_RECEIPT.proof, PROVENANCE_RECEIPT.clauseDataHash],
         }],
-        errorName: "NotParty",
-        message: "NotParty",
+        errorName: "NotAuthorized",
+        message: "Only the seller of the order can attest as its seller, and only its buyer as its buyer.",
     },
     {
         site: "createCapabilityExecutors.attestProvenanceLeaf",
@@ -393,8 +425,8 @@ const SITES: Array<{
             functionName: "attestAsBuyer",
             args: [COMMITMENT, PROVENANCE_LEAF_KEY, 0, PROVENANCE_RECEIPT.clauseDataHash, PROVENANCE_RECEIPT.proof, keccak256(provenanceLeafBytes(KEY, KEY))],
         }],
-        errorName: "NotParty",
-        message: "NotParty",
+        errorName: "NotAuthorized",
+        message: "Only the seller of the order can attest as its seller, and only its buyer as its buyer.",
     },
     {
         site: "useRpgfRewards.claim",
@@ -424,7 +456,7 @@ describe("every write site — one simulate → send → verify", () => {
         expect(USAGE_KIND_CLAUSE).toBe(0);
     });
 
-    for (const { site, prepare, writes, errorName, message } of SITES) {
+    for (const { site, prepare, writes, errorName, errorArgs, message } of SITES) {
         it(`${site} simulates, then sends with chainId: activeChain.id, exactly the calls it writes, and waits for each success receipt`, async () => {
             const call = await prepare();
             const caught = await invokeCaught(call);
@@ -445,7 +477,7 @@ describe("every write site — one simulate → send → verify", () => {
 
         it(`${site} reports a simulate-time revert by its error name and sends nothing`, async () => {
             const call = await prepare();
-            simulate().mockRejectedValue(revert(errorName));
+            simulate().mockRejectedValue(revert(writes().at(-1)!.address, errorName, errorArgs));
             const caught = await invokeCaught(call);
             expect(caught).toBeInstanceOf(Error);
             const text = (caught as Error).message;
@@ -528,13 +560,20 @@ describe("the write-site census", () => {
         expect(scanWriteTokens()).toEqual(listed);
     });
 
-    it("every listed site is pinned by a test file that exists and names it", () => {
+    // A site is pinned by a case whose title names it: an `it(…)` / `test(…)`
+    // of the file, read by parsing it (`testCaseTitles`), never the name
+    // anywhere in its text, a comment's included. This file's own cases are
+    // titled from `SITES` at run time; the next case holds them.
+    it("every listed site is pinned by a test file that exists and declares a case naming it", () => {
         for (const [file, entry] of Object.entries(CENSUS)) {
             expect(existsSync(file), file).toBe(true);
             if ("notASite" in entry) continue;
             expect(existsSync(entry.pinnedBy), `${file} → ${entry.pinnedBy}`).toBe(true);
-            const test = readFileSync(entry.pinnedBy, "utf8");
-            for (const site of entry.sites) expect(test.includes(site), `${entry.pinnedBy} names ${site}`).toBe(true);
+            if (entry.pinnedBy === THIS_FILE) continue;
+            const titles = testCaseTitles(entry.pinnedBy);
+            for (const site of entry.sites) {
+                expect(titles.some((title) => title.includes(site)), `${entry.pinnedBy} declares a case naming ${site}`).toBe(true);
+            }
         }
     });
 

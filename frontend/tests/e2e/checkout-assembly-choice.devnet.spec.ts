@@ -24,19 +24,12 @@
  * MOCK token). Requires Anvil + ./scripts/deploy-local.sh + Kubo + the server.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
-import { calculateBonds, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { discoverSeedAssemblies, readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
+import { createPublicClient, http, type Hex } from 'viem';
+import { calculateBonds, MEMBERS_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
+import { discoverSeedAssemblies, readLocalDeploymentConfig, waitForConnected, RPC_URL, LOCAL_ANVIL } from './devnet-helpers';
 import { CORE_ABI } from '@/lib/core/contracts';
 import type { Page } from '@playwright/test';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 
 // anvil[14] — this spec's own member, the seller of its orders; no other spec registers or orders from it.
 const SELLER = {
@@ -49,7 +42,6 @@ const SELLER = {
 // anvil[0] — the fixture's default buyer.
 const BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
 
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 /** Walk the registration wizard as the member's wallet, binding EXACTLY the
  *  given assemblies (clears any prior bindings first — update-mode repair). */

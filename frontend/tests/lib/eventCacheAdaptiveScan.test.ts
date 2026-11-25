@@ -15,7 +15,7 @@ function cappingProvider(cap: bigint, latest: bigint, logBlocks: bigint[], messa
             if (toBlock - fromBlock + 1n > cap) throw new Error(message);
             return logBlocks
                 .filter((b) => b >= fromBlock && b <= toBlock)
-                .map((b) => ({ blockNumber: b, transactionHash: `0x${b.toString(16)}`, logIndex: 0 }));
+                .map((b) => ({ address: ADDRESS, blockNumber: b, transactionHash: `0x${b.toString(16)}`, logIndex: 0 }));
         },
     };
 }
@@ -95,7 +95,7 @@ describe("getLogsAdaptive", () => {
             getLogs: async ({ fromBlock, toBlock }: { fromBlock: bigint; toBlock: bigint }) => {
                 calls.push([fromBlock, toBlock]);
                 if (failures-- > 0) throw rateLimited();
-                return [{ blockNumber: 11_922_700n, transactionHash: "0x01", logIndex: 0 }];
+                return [{ blockNumber: 11_922_700n, transactionHash: "0x01", logIndex: 0, address: ADDRESS }];
             },
         };
         const logs = await getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 11_922_698n }, { retryDelayMs: () => 0 });
@@ -130,7 +130,7 @@ describe("getLogsAdaptive", () => {
             getLogs: async ({ fromBlock, toBlock }: { fromBlock: bigint; toBlock: bigint }) => {
                 calls.push([fromBlock, toBlock]);
                 if (failures-- > 0) throw prunedHistory();
-                return [{ blockNumber: 11_922_700n, transactionHash: "0x01", logIndex: 0 }];
+                return [{ blockNumber: 11_922_700n, transactionHash: "0x01", logIndex: 0, address: ADDRESS }];
             },
         };
         const logs = await getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 11_922_698n }, { retryDelayMs: () => 0 });
@@ -158,7 +158,7 @@ describe("getLogsAdaptive", () => {
                 calls++;
                 const next = answers.shift();
                 if (next) throw next();
-                return [{ blockNumber: 50n, transactionHash: "0x01", logIndex: 0 }];
+                return [{ blockNumber: 50n, transactionHash: "0x01", logIndex: 0, address: ADDRESS }];
             },
         };
         const pauses: number[] = [];
@@ -169,6 +169,26 @@ describe("getLogsAdaptive", () => {
         expect(calls).toBe(12);
         // The 429 is that kind's first ask, so its pause starts at attempt 1.
         expect(pauses).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1]);
+    });
+
+    // The query names one contract. A node that answers with a log of another
+    // contract is refused at once through the SDK's reader, never decoded as
+    // the asked contract's event and never read as a range cap.
+    it("refuses a log from another address, in one ask", async () => {
+        const calls: Array<[bigint, bigint]> = [];
+        const p = {
+            getBlockNumber: async () => 100n,
+            getLogs: async ({ fromBlock, toBlock }: { fromBlock: bigint; toBlock: bigint }) => {
+                calls.push([fromBlock, toBlock]);
+                return [
+                    { address: ADDRESS, blockNumber: 10n, transactionHash: "0x01", logIndex: 0 },
+                    { address: "0x000000000000000000000000000000000000dEaD", blockNumber: 11n, transactionHash: "0x02", logIndex: 0 },
+                ];
+            },
+        };
+        await expect(getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 0n }))
+            .rejects.toThrow(/answered a log query for 0x992f81049444A5275b4F92e69805a2F8c88B6386 with a log from 0x000000000000000000000000000000000000dEaD/);
+        expect(calls).toEqual([[0n, 100n]]);
     });
 
     it("returns nothing when the cursor is already past latest", async () => {

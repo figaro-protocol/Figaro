@@ -17,11 +17,8 @@ const mocks = vi.hoisted(() => ({
     register: vi.fn(),
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" }),
-    usePublicClient: () => ({ chain: { id: 31337 } }),
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" }, {
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false }),
-    useChainId: () => 31337,
     useSignTypedData: () => ({ signTypedDataAsync: vi.fn() }),
 }));
 vi.mock("@/hooks/useWalletProcessIds", () => ({ useWalletProcessIds: () => [] }));
@@ -29,7 +26,7 @@ const ORDERS = { status: "present", value: [ORDER] };
 vi.mock("@/hooks/useProcessOrders", () => ({ useProcessOrders: () => ORDERS }));
 vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => new Map() }));
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false, approve: vi.fn(), refetchAllowance: vi.fn() }) }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18, ready: true }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(18));
 vi.mock("@/lib/core/useFigaroActions", () => ({ useFigaroActions: () => ({ resolveProcess: vi.fn(), hash: undefined, isPending: false }) }));
 vi.mock("@/lib/rewards/useUsageRecorder", () => ({ useUsageRecorder: () => ({}) }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0 }) }));

@@ -26,10 +26,7 @@ const m = vi.hoisted(() => ({
     balanceRead: { status: "absent" } as unknown,
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: m.connected, isConnected: !!m.connected }),
-    useChainId: () => 31337,
-    usePublicClient: () => undefined,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => m.connected, client: () => undefined }, {
     useReadContract: () => ({ data: undefined, isLoading: false }),
     useDisconnect: () => ({ disconnect: () => undefined }),
 }));
@@ -47,7 +44,7 @@ vi.mock("@/lib/rewards/useRpgfRewards", () => ({
         available: true, account: subject, claim: async () => undefined, refresh: () => undefined, read: m.read,
     }),
 }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18, ready: true, loading: false }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(18));
 vi.mock("@/hooks/useTokenBalance", () => ({
     default: (_token: unknown, owner: unknown) => ({ read: owner ? m.balanceRead : { status: "absent" }, refetch: () => undefined }),
 }));

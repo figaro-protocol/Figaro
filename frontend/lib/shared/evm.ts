@@ -77,20 +77,6 @@ export function addressIntegrity(addr: string): AddressIntegrity {
 }
 
 /**
- * Decode a hex string (with or without `0x`) to bytes — the inverse of
- * viem's hex encoding of bytes. Replaces the per-byte `parseInt` loop that was reinvented
- * across handoff (ecdh, xmtpChannel) and core encoding.
- */
-export function hexToBytes(hex: string): Uint8Array {
-    const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
-    const bytes = new Uint8Array(clean.length / 2);
-    for (let i = 0; i < bytes.length; i++) {
-        bytes[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
-    }
-    return bytes;
-}
-
-/**
  * Truncate the UTF-8 encoding of `text` to 32 bytes (64 hex chars) and
  * return the 0x-prefixed form. Used by mock and synthetic-id paths that
  * need a bytes32-shaped key derived from a label. Does NOT zero-pad —

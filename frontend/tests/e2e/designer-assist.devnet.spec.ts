@@ -19,7 +19,7 @@
  */
 import { test, expect } from './devnet-multi-test';
 import type { Hex } from 'viem';
-import { keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
+import { keyOf, primeRegisteredClauseSpecs, openFreshDesigner } from './devnet-helpers';
 
 let PROCESS_CLAUSE: Hex;
 test.beforeAll(async () => {
@@ -34,17 +34,8 @@ test.describe('COMPOSITION-ASSIST — export the draft, import a assembly, compo
 
     test('a composed draft round-trips through the assist panel', async ({ page }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
-        await page.addInitScript(() => {
-            try {
-                window.localStorage.removeItem('figaro:designer:autosave:new');
-                window.localStorage.removeItem('figaro:designer:drafts');
-            } catch { /* noop */ }
-        });
-
         // ── COMPOSE: root + one sub-order; select a clause on the sub. ──
-        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
-        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+        await openFreshDesigner(page);
 
         const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
         await expect(orderNodes).toHaveCount(1, { timeout: 10000 });

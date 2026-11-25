@@ -24,7 +24,7 @@ import { WITHHELD_FROM_PUBLIC_FILE } from "@/lib/data/audit/processLogsExtract";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { buildAuditBundle, type AuditBundle } from "@/lib/data/audit/auditBundle";
 import type {
-    MemberRegisteredEvent,
+    MemberRegistrationRow,
 } from "@/lib/data/audit/membersRegistryExtract";
 import { projectDocuments, projectAllFinancialStatements } from "@/lib/data/audit/documentProjection";
 import { DOCUMENT_LAYOUTS } from "@/lib/data/audit/documentLayouts";
@@ -94,7 +94,7 @@ export async function buildAuditBundleData(
         ? new Map([...loadedAgreements].map(([checkoutHash, agreement]) => [checkoutHash, publicForm(agreement, specSource())]))
         : loadedAgreements;
 
-    let memberRegisteredAll: MemberRegisteredEvent[] = [];
+    let memberRegisteredAll: MemberRegistrationRow[] = [];
     if (publicClient) {
         try {
             // SDK-decoded rows; project to the audit extractor's shape.

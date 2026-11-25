@@ -52,7 +52,7 @@ import {
     USAGE_KIND_CLAUSE,
     type Agreement,
 } from '@figaro-protocol/sdk';
-import { localPublicClient, readLocalDeploymentConfig, LOCAL_ANVIL, RPC_URL, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
+import { localPublicClient, readLocalDeploymentConfig, LOCAL_ANVIL, RPC_URL, keyOf, primeRegisteredClauseSpecs, waitForConnected } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
 import { getClauseSpec, specSource } from '@/lib/shared/clauseSpecSource';
@@ -64,14 +64,6 @@ const ERC20_ABI = parseAbi([
     'function approve(address, uint256) returns (bool)',
     'function mint(address, uint256) returns ()',
 ]);
-
-async function waitForConnected(page: Page) {
-    await page.waitForFunction(
-        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
-        null,
-        { timeout: 30000 },
-    );
-}
 
 // The author of record: populate-clauses registers every clause from anvil[0],
 // so it is the registeredBy the minter would pay — and the wallet whose /rewards

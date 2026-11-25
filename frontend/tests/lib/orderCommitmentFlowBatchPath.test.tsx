@@ -46,10 +46,7 @@ const s = vi.hoisted(() => ({
     heldPath: null as "direct" | "batch" | null,
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc" }),
-    useChainId: () => 31337,
-    usePublicClient: () => ({ chain: { id: 31337 } }),
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc" }, {
     useWalletClient: () => ({ data: null }),
     useSignTypedData: () => ({
         signTypedDataAsync: async (typedData: { domain: { verifyingContract: string }; primaryType: string }) => {

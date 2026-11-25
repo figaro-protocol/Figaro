@@ -26,7 +26,7 @@ const channel = {
     onWrappedKey: (_id: string, cb: Listener) => { h.wrapped.push(cb as (m: unknown) => void); return () => undefined; },
 };
 
-vi.mock("wagmi", () => ({ useChainId: () => 31337, usePublicClient: () => ({}) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ client: () => ({}) }));
 vi.mock("@/lib/data/handoff/channel", () => ({ getHandoffChannel: async () => channel }));
 vi.mock("@/lib/data/handoff/ecdh", () => ({ getOrderEcdhKeypair: () => null }));
 vi.mock("@/lib/data/handoff/handoffAnchorState", () => ({ attestationAnchorMatches: async () => true }));

@@ -42,6 +42,7 @@ import {
     primeRegisteredClauseSpecs,
     readLocalDeploymentConfig,
     waitForConnected,
+    acceptOrderAs,
 } from './devnet-helpers';
 import { CORE_ABI } from '@/lib/core/contracts';
 import {
@@ -141,24 +142,9 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,
         });
         const committedBefore = (await queryCommitted()).length;
-        const acceptAs = async (seller: Hex, label: string) => {
-            const before = (await queryCommitted()).length;
-            await gotoAsWallet(page, seller, '/orders?e2e=devnet');
-            await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
-            await waitForConnected(page);
-            await page.getByTestId('order-your-turn-card').first().waitFor({ state: 'visible', timeout: 30000 });
-            await page.getByTestId('btn-accept-order').first().click();
-            await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
-            await page.getByTestId('preview-confirm').click();
-            await expect.poll(async () => (await queryCommitted()).length, {
-                timeout: 60000, message: `${label}'s accept lands OrderCommitted on-chain`,
-            }).toBe(before + 1);
-            const events = await queryCommitted();
-            const event = events[events.length - 1];
-            expect(event.args.seller?.toLowerCase(), `${label}'s order committed against ${label}`)
-                .toBe(seller.toLowerCase());
-            return event;
-        };
+        // The full accept (`acceptOrderAs`): the commit transaction succeeded and the
+        // order was committed against that seller, both read out of band.
+        const acceptAs = (seller: Hex, label: string) => acceptOrderAs(page, seller, label, queryCommitted);
 
         let expectedCumulative = 0n;
         let buyerBondSoFar = 0n;

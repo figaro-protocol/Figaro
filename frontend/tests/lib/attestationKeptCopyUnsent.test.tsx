@@ -23,20 +23,16 @@ const w = vi.hoisted(() => ({
     receipt: async (): Promise<{ status: string }> => ({ status: "success" }),
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: "0x2222222222222222222222222222222222222222", isConnected: true }),
-    usePublicClient: () => ({
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => "0x2222222222222222222222222222222222222222", client: () => ({
         chain: { id: 31337 },
         simulateContract: () => w.simulate(),
         waitForTransactionReceipt: () => w.receipt(),
-    }),
+    }) }, {
     useWriteContract: () => ({ writeContractAsync: () => w.write(), data: undefined, isPending: false }),
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false }),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    getAttestationCoordinator: () => "0x00000000000000000000000000000000000a7701",
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { coordinator: () => "0x00000000000000000000000000000000000a7701" }));
 vi.mock("@/lib/core/indexer", () => ({
     getAllOrderCommitted: async () => [{ args: { orderHash: `0x${"0d".repeat(32)}`, checkoutHash: `0x${"cc".repeat(32)}` } }],
     getStringArg: (log: { args: Record<string, unknown> }, key: string) => String(log.args[key]),

@@ -49,10 +49,7 @@ const { cachedGetLogsMock, routeTokenPayoutMock, account, attestations, CORE, VE
     BUYER: "0x00000000000000000000000000000000000000b1" as const,
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: account.address, isConnected: account.address !== undefined }),
-    usePublicClient: () => CLIENT,
-    useChainId: () => 31337,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => account.address, client: () => CLIENT }, {
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false }),
     useWatchContractEvent: () => undefined,
     useReadContract: () => ({ data: undefined, isLoading: false }),
@@ -62,10 +59,8 @@ vi.mock("@/lib/core/eventCache", () => ({
     cachedGetLogs: (...args: unknown[]) => cachedGetLogsMock(...args),
     cachedGetReceiptLogs: vi.fn(),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: CORE, batchVerifier: VERIFIER } }));
 vi.mock("@/lib/shared/publicClient", () => ({ publicClient: CLIENT }));
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 
@@ -78,7 +73,7 @@ vi.mock("@/lib/registries/useMemberListings", () => ({ useMemberListings: () => 
 vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => null }));
 
 // The token's metadata, as its contract answers.
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18, ready: true, loading: false }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(18));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: "TKN" }) }));
 
 // The action hooks: nothing is sent in this test.

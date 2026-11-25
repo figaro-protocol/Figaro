@@ -47,12 +47,8 @@ vi.mock("@/lib/core/eventCache", () => ({
     cachedGetContractEvents: (...args: unknown[]) => usageEventsMock(...args),
     cachedGetReceiptLogs: vi.fn(),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-    getAttestationCoordinator: () => COORDINATOR,
-    getBatchVerifier: () => VERIFIER,
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: CORE, batchVerifier: VERIFIER }, coordinator: () => COORDINATOR, batchVerifier: () => VERIFIER }));
 vi.mock("@/lib/rewards/contracts", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/rewards/contracts")>()),
     getUsageCounter: () => COUNTER,
@@ -71,11 +67,7 @@ vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: () => undefined, replace: () => undefined }),
     usePathname: () => "/data/explore",
 }));
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: undefined, isConnected: false, status: "disconnected" }),
-    useChainId: () => 31337,
-    usePublicClient: () => CLIENT,
-}));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ client: () => CLIENT }));
 
 import { useGraphCorpus, type GraphCorpus } from "@/lib/data/graphCorpus";
 import { DataExplorer } from "@/components/data/DataExplorer";
@@ -196,7 +188,9 @@ describe("/data/explore — siblings committed out of the design's order, batch 
 
     it("the corpus links the design from the counted use alone", async () => {
         const corpus = await readCorpus();
-        expect(corpus.attributionByProcess.size).toBe(0);
+        // The counter's record attributes the process (the SDK's
+        // `attributeProcessDesigns`), with no attestation read.
+        expect([...corpus.attributionByProcess]).toEqual([[PROCESS.toLowerCase(), DESIGN.toLowerCase()]]);
         expect(corpus.designByProcess.get(PROCESS.toLowerCase())).toEqual({ processDesignHash: DESIGN, entries: designEntries });
     });
 
@@ -234,5 +228,58 @@ describe("/data/explore — a process with no link", () => {
         await screen.findByTestId(`process-row-${PROCESS.toLowerCase()}`);
         expect(screen.queryByTestId(`process-designed-edges-${PROCESS.toLowerCase()}`)).toBeNull();
         expect(document.body.textContent).not.toMatch(/order \d follows/);
+    });
+});
+
+/**
+ * Attribution is the SDK's `attributeProcessDesigns`. Two attestations of the
+ * provenance leaf that name two loaded designs leave the process contested:
+ * a later one never moves it to another design, and the page shows it as
+ * unattributed with no design in its place. The counter's record wins over
+ * any attestation.
+ */
+describe("/data/explore — attribution: contested and counted", () => {
+    const OTHER = word(0xb55);
+    const otherProvenance = attestationLog({
+        address: COORDINATOR, blockNumber: 7n, orderHash: A, processId: PROCESS, attester: SELLER,
+        clauseId: PROVENANCE_LEAF_KEY, contentRef: provenanceContentRef(AGREEMENT, OTHER),
+    });
+    beforeEach(() => {
+        designLoaded();
+        const current = CHOICES.current as { read: { value: { processDesignHash: string; name: string }[] } };
+        const [design] = current.read.value;
+        current.read.value = [design, { ...design, processDesignHash: OTHER, name: "Other" }];
+        usageEventsMock.mockReset().mockResolvedValue([]);
+        chainAnswers([
+            { at: CORE, event: "OrderCommitted", rows: commits(CORE, (i) => BigInt(2 + i)) },
+            { at: COORDINATOR, event: "Attestation", rows: [provenance, otherProvenance] },
+        ]);
+    });
+
+    it("two attestations naming two designs leave the process contested and unattributed", async () => {
+        const corpus = await readCorpus();
+        expect(corpus.attributionByProcess.has(PROCESS.toLowerCase())).toBe(false);
+        expect([...corpus.contestedProcesses]).toEqual([PROCESS.toLowerCase()]);
+        expect(corpus.market.unattributedProcessCount).toBe(1);
+        expect(corpus.designByProcess.has(PROCESS.toLowerCase())).toBe(false);
+    });
+
+    it("the page lists the contested process as unattributed, with no design line", async () => {
+        params.current = new URLSearchParams("view=market");
+        render(<DataExplorer />);
+        expect((await screen.findByTestId("market-contested")).textContent).toContain("1 of the unattributed process is contested");
+        expect(screen.getByTestId("market-processes-unattributed")).toBeTruthy();
+        expect(screen.getByTestId(`process-row-${PROCESS.toLowerCase()}`)).toBeTruthy();
+        expect(screen.queryByTestId(`process-designed-edges-${PROCESS.toLowerCase()}`)).toBeNull();
+    });
+
+    it("the counter's record wins over the attestations", async () => {
+        usageEventsMock.mockImplementation(async (_c: unknown, _id: number, opts: { address: string; eventName: string }) =>
+            opts.address === COUNTER && opts.eventName === "UsageRecorded"
+                ? [{ args: { kind: USAGE_KIND_PROCESS, clauseOrProcess: OTHER, period: 0, processId: PROCESS } }]
+                : []);
+        const corpus = await readCorpus();
+        expect(corpus.attributionByProcess.get(PROCESS.toLowerCase())).toBe(OTHER.toLowerCase());
+        expect(corpus.contestedProcesses.size).toBe(0);
     });
 });

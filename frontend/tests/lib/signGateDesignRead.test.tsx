@@ -41,24 +41,13 @@ const CURRENCY = `0x${"ab".repeat(20)}` as Hex;
 const PROCESS_REGISTRY = `0x${"a5".repeat(20)}` as Hex;
 const AGREEMENT_REGISTRY = `0x${"a6".repeat(20)}` as Hex;
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: SELLER }),
-    useChainId: () => 31337,
-    usePublicClient: () => chainClient,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => SELLER, client: () => chainClient }, {
     useWalletClient: () => ({ data: null }),
     useSignTypedData: () => ({ signTypedDataAsync: async () => `0x${"11".repeat(65)}` }),
 }));
 
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return {
-        ...actual,
-        CONTRACTS: {
-            ...actual.CONTRACTS,
-            core: "0x00000000000000000000000000000000000000c0",
-        },
-    };
-});
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { core: "0x00000000000000000000000000000000000000c0" }));
 vi.mock("@/lib/registries/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
     return { ...actual, REGISTRY_CONTRACTS: { ...actual.REGISTRY_CONTRACTS, processRegistry: PROCESS_REGISTRY, agreementRegistry: AGREEMENT_REGISTRY, clauseRegistry: `0x${"c1".repeat(20)}` } };
@@ -77,8 +66,9 @@ const head = () => BigInt(100 + registeredClauses.length * 100);
 const chainClient = {
     chain: { id: 31337 },
     getBlockNumber: async () => head(),
-    getLogs: async ({ event, fromBlock }: { event?: { name?: string }; fromBlock?: bigint }) =>
-        event?.name === "ClauseRegistered"
+    // The event comes as viem takes it, `event` or a one-item `events`.
+    getLogs: async ({ event, events, fromBlock }: { event?: { name?: string }; events?: readonly { name?: string }[]; fromBlock?: bigint }) =>
+        (event ?? events?.[0])?.name === "ClauseRegistered"
             ? registeredClauses.map((r, i) => ({
                 args: { clauseKey: r.clauseKey, contentURI: r.contentURI, registeredBy: BUYER },
                 blockNumber: head(), logIndex: i, transactionHash: `0x${"ab".repeat(32)}`, address: `0x${"c1".repeat(20)}`,

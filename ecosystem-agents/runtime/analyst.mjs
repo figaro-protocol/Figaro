@@ -32,19 +32,21 @@ import {
     fetchCoreEvents,
     fetchEndpointLogAgreement,
     fetchDiscoveryEvents,
+    fetchUsageRecords,
+    isBytes32Hex,
     parseProjectionHints,
-    provenanceContentRef,
     reconstructDiscovery,
     readUtilityTokenPin,
 } from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 import {
+    attributeProcessDesigns,
     extractOverlays,
     marketShape,
     projectProcessGraph,
     projectResolutionGraph,
     projectValueFlow,
-    readFundingLegs,
+    readCommitFundingLegs,
     walletRecord,
     witnessContentCid,
 } from "@figaro-protocol/sdk/derive";
@@ -94,8 +96,6 @@ function framedDecoded(entry) {
         content: JSON.stringify(jsonSafe(entry.decoded)),
     });
 }
-
-const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
 
 // ── Spec source (ClauseRegistry → IPFS, at the edge) ────────────────────────
 
@@ -181,51 +181,9 @@ export function loadHeldAgreements(dir, events) {
 }
 
 // ── Funding legs (the commit receipts) ──────────────────────────────────────
-
-/**
- * The funding legs beside the commits: each commit transaction's receipt,
- * read once per transaction hash, run through the SDK's `readFundingLegs` with
- * the order's own parties and denomination and the deployment record's
- * coordinator. The coordinator emits nothing of its own; the venue's ERC-20
- * transfers in the receipt are the swap leg. `cache` (transaction hash →
- * legs) carries the reads across resyncs. A receipt that cannot be read yields
- * no legs for this pass and is counted, never fabricated.
- */
-export async function readCommitFundingLegs({ client, orderCommitted, coordinator, cache = new Map() }) {
-    if (!coordinator) return { legs: [], unreadReceipts: 0 };
-    const ordersByTx = new Map();
-    for (const order of orderCommitted) {
-        if (!order.transactionHash) continue;
-        const tx = order.transactionHash.toLowerCase();
-        ordersByTx.set(tx, [...(ordersByTx.get(tx) ?? []), order]);
-    }
-    let unreadReceipts = 0;
-    const legs = [];
-    for (const [tx, orders] of ordersByTx) {
-        if (!cache.has(tx)) {
-            let receipt;
-            try {
-                receipt = await client.getTransactionReceipt({ hash: tx });
-            } catch {
-                unreadReceipts += 1;
-                continue;
-            }
-            const seen = new Set();
-            const txLegs = [];
-            for (const order of orders) {
-                for (const leg of readFundingLegs(receipt.logs, order, coordinator)) {
-                    const key = `${leg.payload.party.toLowerCase()}|${leg.payload.tokenIn.toLowerCase()}`;
-                    if (seen.has(key)) continue;
-                    seen.add(key);
-                    txLegs.push(leg);
-                }
-            }
-            cache.set(tx, txLegs);
-        }
-        legs.push(...cache.get(tx));
-    }
-    return { legs, unreadReceipts };
-}
+// The SDK's `readCommitFundingLegs` (`@figaro-protocol/sdk/derive`): each
+// commit transaction's receipt read once, its legs kept by transaction hash in
+// the cache the caller keeps across resyncs.
 
 // ── Sync ────────────────────────────────────────────────────────────────────
 
@@ -371,24 +329,21 @@ export async function syncCorpus({
     // Utility-token pins are a designer's registered fact, read from the
     // assemblies the operator could load — never a bundled token list.
     const pins = [];
-    // The provenance-leaf fingerprint of every (registered agreement,
-    // assembly) pair the verified assemblies compose → that assembly's
-    // assembly hash: what attributes a buyer's provenance attestation
-    // whose content was not recovered (`assemblyAttribution`).
-    const provenanceContentRefs = new Map();
+    // Each verified process design with its registered agreements: what
+    // attributes a provenance attestation whose content was not recovered
+    // (`attributeProcessDesigns`, through `assemblyAttribution`).
+    const designs = [];
     for (const assembly of discovery.getAssemblies()) {
         try {
             // Verified against its assembly hash: a assembly a gateway
             // substituted contributes no pin.
             const hit = await fetchAnchoredAssembly(assembly, { gateways });
             if (hit.absent) continue;
+            designs.push({
+                processDesignHash: assembly.processDesignHash,
+                agreementHashes: (hit.assembly.agreements ?? []).map((entry) => entry.agreementHash).filter(isBytes32Hex),
+            });
             for (const entry of hit.assembly.agreements ?? []) {
-                if (BYTES32.test(entry.agreementHash ?? "")) {
-                    provenanceContentRefs.set(
-                        provenanceContentRef(entry.agreementHash, assembly.processDesignHash).toLowerCase(),
-                        assembly.processDesignHash,
-                    );
-                }
                 // Each agreement's registered agreement, read from its
                 // binding whatever its stake and verified against its key: an
                 // agreement a gateway substituted, or one not registered,
@@ -422,6 +377,18 @@ export async function syncCorpus({
         cache: fundingLegsByTx,
     });
     const valueFlow = projectValueFlow(resolution, fundingLegs, pins);
+    // The counter's records of a process design's use: the attribution's
+    // first source. No counter in the record, or a read that fails, is
+    // absence for this pass, counted.
+    let usageRecords = [];
+    let usageRecordsUnread = false;
+    if (addresses.usageCounter) {
+        try {
+            usageRecords = await fetchUsageRecords(client, addresses.usageCounter, syncedToBlock);
+        } catch {
+            usageRecordsUnread = true;
+        }
+    }
 
     return {
         chainId: record.chainId,
@@ -439,7 +406,9 @@ export async function syncCorpus({
         framedSubstance,
         substanceRecovered,
         held,
-        provenanceContentRefs,
+        designs,
+        usageRecords,
+        usageRecordsUnread,
         endpointAgreement,
         fundingLegs,
         unreadReceipts,
@@ -450,46 +419,35 @@ export async function syncCorpus({
 // ── Attribution (caller-supplied, never guessed) ────────────────────────────
 
 /**
- * Assembly attribution from two sources, both the agreement format's
- * provenance leaf (the registered agreement and the assembly hash of the
- * assembly the order instantiated — the format's own field, never a clause):
- *   - the agreements the operator holds (`agreement.provenance`), each
+ * Process-design attribution, by the agreement format's provenance leaf (the
+ * registered agreement and the process design the order instantiated — the
+ * format's own field, never a clause):
+ *   - first, the agreements the operator holds (`agreement.provenance`), each
  *     verified against its committed `checkoutHash`;
- *   - the public provenance-leaf overlay (`OverlayGraph.provenanceLeaf`): a
- *     buyer's attestation of the leaf, merkle-bound on chain to the order's
- *     agreement. Its pair is the decoded content when the content was
- *     recovered, kept only when `provenanceContentRef` of the pair equals the
- *     attested `contentRef`; otherwise the fingerprint is matched against
- *     the pairs of the assemblies the corpus discovered. Only the order's
- *     buyer's attestation attributes.
- * A process neither source keys is `undefined` — counted as unattributed,
- * never binned under a fabricated key.
+ *   - else the SDK's `attributeProcessDesigns`: the counter's
+ *     `UsageRecorded` of the process-design kind, else a party's attestation
+ *     of the leaf, whose pair is its decoded content when that pair hashes
+ *     to the attested `contentRef`, else the pair of a discovered design the
+ *     fingerprint names. Two attestations naming two designs leave the
+ *     process contested and unattributed.
+ * A process no source keys is `undefined` — counted as unattributed, never
+ * binned under a fabricated key.
  */
 function assemblyAttribution(corpus) {
     const byProcess = new Map();
     for (const { agreement, order } of corpus.held.byHash.values()) {
         const key = agreement.provenance?.processDesignHash;
-        // A assembly hash is a bytes32; anything else there is a party's
-        // free text, attributes nothing, and never reaches the wire.
-        if (typeof key === "string" && BYTES32.test(key)) byProcess.set(order.processId.toLowerCase(), key);
+        // A process design hash is a bytes32; anything else there is a
+        // party's free text, attributes nothing, and never reaches the wire.
+        if (isBytes32Hex(key)) byProcess.set(order.processId.toLowerCase(), key);
     }
-    const buyerByOrder = new Map(corpus.core.orderCommitted.map((o) => [o.orderHash.toLowerCase(), o.buyer.toLowerCase()]));
-    const refs = corpus.provenanceContentRefs ?? new Map();
-    for (const graph of corpus.graphs.overlays) {
-        if (!graph.provenanceLeaf) continue;
-        for (const entry of graph.entries) {
-            const processId = entry.processId.toLowerCase();
-            if (byProcess.has(processId)) continue;
-            if (buyerByOrder.get(entry.orderHash.toLowerCase()) !== entry.attester.toLowerCase()) continue;
-            const contentRef = entry.contentRef.toLowerCase();
-            let key = refs.get(contentRef);
-            const pair = entry.decoded;
-            if (pair && BYTES32.test(pair.agreementHash ?? "") && BYTES32.test(pair.processDesignHash ?? "")
-                && provenanceContentRef(pair.agreementHash, pair.processDesignHash).toLowerCase() === contentRef) {
-                key = pair.processDesignHash;
-            }
-            if (typeof key === "string" && BYTES32.test(key)) byProcess.set(processId, key);
-        }
+    const derived = attributeProcessDesigns({
+        overlays: corpus.graphs.overlays,
+        designs: corpus.designs ?? [],
+        usageRecords: corpus.usageRecords ?? [],
+    });
+    for (const [processId, { processDesignHash }] of derived.byProcess) {
+        if (!byProcess.has(processId)) byProcess.set(processId, processDesignHash);
     }
     return (processId) => byProcess.get(processId.toLowerCase());
 }
@@ -569,7 +527,7 @@ export function marketShapeAnswer(corpus) {
     const shape = marketShape(corpus.graphs.process, assemblyAttribution(corpus), parentEdges(corpus));
     return {
         truthBoundary: shape.boundary,
-        attribution: "the provenance leaf — of the agreements held or purchased, and of the buyer's public attestations of it; a process neither keys is unattributed",
+        attribution: "the provenance leaf — of the agreements held or purchased, the usage counter's records of it, and the parties' public attestations of it; a process none keys, or two attestations name two designs for, is unattributed",
         unattributedProcessCount: shape.unattributedProcessCount,
         groups: [...shape.groups.values()].map((g) => jsonSafe(g)),
         valueFlow: jsonSafe(corpus.graphs.valueFlow),

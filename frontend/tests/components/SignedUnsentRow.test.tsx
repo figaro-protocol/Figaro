@@ -10,9 +10,7 @@ import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import type { Listing } from "@/lib/registries/memberListing";
 import type { SignedUnsentOrder } from "@/lib/checkout/signedUnsentOrders";
 
-vi.mock("@/hooks/useTokenDecimals", () => ({
-    default: () => ({ decimals: 6, ready: true, loading: false }),
-}));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(6));
 
 import { SignedUnsentRow } from "@/app/(app)/orders/_components/OrdersList";
 

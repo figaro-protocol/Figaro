@@ -7,8 +7,8 @@
  * stake, written, and held to a `success` receipt.
  */
 import { describe, expect, it, vi } from "vitest";
-import { agreementHashOf, type RegisteredAgreement } from "@figaro-protocol/sdk";
-import { ContractFunctionRevertedError, encodeErrorResult } from "viem";
+import { AGREEMENT_REGISTRY_ABI, agreementHashOf, type RegisteredAgreement } from "@figaro-protocol/sdk";
+import { revertOf } from "../support/contractRevert";
 
 vi.mock("@/lib/registries/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
@@ -81,10 +81,7 @@ describe("registerAgreement", () => {
 
     it("reports a registry revert by its error name, and sends nothing", async () => {
         const { client, writeContractAsync, ipfs } = fakes();
-        const abi = [{ type: "error", name: "AgreementAlreadyRegistered", inputs: [] }] as const;
-        client.simulateContract.mockRejectedValue(new ContractFunctionRevertedError({
-            abi, data: encodeErrorResult({ abi, errorName: "AgreementAlreadyRegistered" }), functionName: "registerAgreement",
-        }));
+        client.simulateContract.mockRejectedValue(revertOf(AGREEMENT_REGISTRY_ABI, "AgreementAlreadyRegistered", [KEY], "registerAgreement"));
         await expect(registerAgreement({
             client: client as never, writeContractAsync, address: DESIGNER, doc: DOC, agreementHash: KEY,
             ipfs, readBinding: async () => null,

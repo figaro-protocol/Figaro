@@ -49,11 +49,8 @@ vi.mock("@/lib/checkout/pathChoice", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/checkout/pathChoice")>()),
     usePayloadPath: () => m.path,
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: "0x1111111111111111111111111111111111111111", batchVerifier: "0x2222222222222222222222222222222222222222" },
-    getBatchVerifier: () => "0x2222222222222222222222222222222222222222",
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: "0x1111111111111111111111111111111111111111", batchVerifier: "0x2222222222222222222222222222222222222222" }, batchVerifier: () => "0x2222222222222222222222222222222222222222" }));
 // No relay is named: the batch path's acts wait on one.
 vi.mock("@/lib/registries/profileFetcher", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/registries/profileFetcher")>()),
@@ -61,7 +58,7 @@ vi.mock("@/lib/registries/profileFetcher", async (importOriginal) => ({
 }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(m.search) }));
 // One client for every render, as wagmi's hook keeps it.
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: m.address }), usePublicClient: () => m.client, useChainId: () => 31337 }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => m.address, client: () => m.client }));
 // The review's reads are the sign action's own (`readSigningInputs`): the
 // clause specs through the registry, then the design. No design is read here.
 vi.mock("@/lib/checkout/orderCommitmentFlow", async (importOriginal) => ({
@@ -106,7 +103,7 @@ vi.mock("@/lib/composability/useFundingMargin", async (importOriginal) => {
     };
 });
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "present", value: 10n ** 30n }, refetch: () => {} }) }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 6, ready: true, loading: false }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(6));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: "TKN" }) }));
 vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => null }));
 vi.mock("@/lib/registries/useMembersRegistry", () => ({ useMemberProfile: () => ({ read: { status: "absent" } }) }));
