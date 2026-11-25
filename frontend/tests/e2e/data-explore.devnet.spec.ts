@@ -113,6 +113,8 @@ import {
     ATTESTATION_COORDINATOR_ABI,
     CLAUSE_REGISTRY_ABI,
     PROVENANCE_LEAF_KEY,
+    USAGE_COUNTER_ABI,
+    USAGE_KIND_PROCESS,
     buildSignedClauseInclusionProof,
     calculateBonds,
     decodeProvenanceContent,
@@ -932,30 +934,54 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 groups: unknown[]; unattributedProcessCount: number;
                 valueFlow: { edges: Array<Record<string, unknown>> };
             };
-            // The analyst holds no agreement, so it attributes only through the
-            // public provenance overlay: a process whose BUYER attested the
-            // provenance leaf, the pair recovered and re-hashing to the attested
-            // contentRef. The same fold, recomputed here from chain + IPFS.
-            const buyerByOrder = new Map(allCommitted.map((e) => [(e.args.orderHash as string).toLowerCase(), (e.args.buyer as string).toLowerCase()]));
+            // The analyst holds no agreement, so it attributes through the two
+            // public sources, recomputed here from chain + IPFS. First the usage
+            // counter's records of the process-design kind: the counter proved
+            // the provenance leaf before it recorded. Then an attestation of the
+            // provenance leaf by either party of the order (the coordinator admits
+            // no one else): the pair is the recovered content when it re-hashes to
+            // the attested contentRef, else the pair of a registered design the
+            // contentRef names. Two attestations that name two designs for one
+            // process leave it unattributed.
+            expect(config.usageCounter, 'the deployment record names the usage counter').toBeTruthy();
+            const usageRecorded = await publicClient.getContractEvents({
+                address: config.usageCounter as Hex, abi: USAGE_COUNTER_ABI, eventName: 'UsageRecorded', fromBlock: 0n,
+            });
             const expectedAttribution = new Map<string, string>();
+            for (const ev of usageRecorded) {
+                if (Number(ev.args.kind) !== USAGE_KIND_PROCESS) continue;
+                expectedAttribution.set((ev.args.processId as string).toLowerCase(), (ev.args.clauseOrProcess as string).toLowerCase());
+            }
+            const designByContentRef = new Map<string, string>();
+            for (const design of await discoverAnchoredAssemblies()) {
+                for (const entry of design.agreements) {
+                    designByContentRef.set(provenanceContentRef(entry.agreementHash as Hex, design.processDesignHash).toLowerCase(), design.processDesignHash.toLowerCase());
+                }
+            }
+            const attestedDesigns = new Map<string, Set<string>>();
             for (const ev of [...directAtt, ...batchAtt]) {
                 if ((ev.args.clauseId as string).toLowerCase() !== PROVENANCE_LEAF_KEY.toLowerCase()) continue;
-                const processId = (ev.args.processId as string).toLowerCase();
-                if (expectedAttribution.has(processId)) continue;
-                if (buyerByOrder.get((ev.args.orderHash as string).toLowerCase()) !== (ev.args.attester as string).toLowerCase()) continue;
-                const bytes = await fetchWitnessBytes(ev.args.contentRef as string);
+                const contentRef = (ev.args.contentRef as string).toLowerCase();
+                const bytes = await fetchWitnessBytes(contentRef);
                 const pair = bytes ? decodeProvenanceContent(bytes as Hex) : null;
-                if (!pair) continue;
-                if (provenanceContentRef(pair.agreementHash, pair.processDesignHash).toLowerCase() !== (ev.args.contentRef as string).toLowerCase()) continue;
-                expectedAttribution.set(processId, pair.processDesignHash.toLowerCase());
+                const design = pair && provenanceContentRef(pair.agreementHash, pair.processDesignHash).toLowerCase() === contentRef
+                    ? pair.processDesignHash.toLowerCase()
+                    : designByContentRef.get(contentRef);
+                if (!design) continue;
+                const processId = (ev.args.processId as string).toLowerCase();
+                attestedDesigns.set(processId, (attestedDesigns.get(processId) ?? new Set<string>()).add(design));
             }
-            expect(expectedAttribution.size, 'the seed test published a buyer-attested provenance leaf').toBeGreaterThan(0);
+            for (const [processId, designs] of attestedDesigns) {
+                if (expectedAttribution.has(processId) || designs.size !== 1) continue;
+                expectedAttribution.set(processId, [...designs][0]);
+            }
+            expect(expectedAttribution.size, 'the seed test published an attested provenance leaf').toBeGreaterThan(0);
             const expectedGroups = new Map<string, number>();
             for (const key of expectedAttribution.values()) expectedGroups.set(key, (expectedGroups.get(key) ?? 0) + 1);
             const wireGroups = new Map((shape.groups as Array<{ key: string; processCount: number }>).map((g) => [g.key.toLowerCase(), g.processCount]));
-            expect(wireGroups, 'each group is an assembly some buyer attested, with that many processes — never a guessed bin').toEqual(expectedGroups);
+            expect(wireGroups, 'each group is a process design the counter recorded or a party attested, with that many processes — never a guessed bin').toEqual(expectedGroups);
             const allProcesses = new Set(allCommitted.map((e) => (e.args.processId as string).toLowerCase()));
-            expect(shape.unattributedProcessCount, 'every process no buyer attested is reported, unattributed')
+            expect(shape.unattributedProcessCount, 'every process no source names is reported, unattributed')
                 .toBe(allProcesses.size - expectedAttribution.size);
 
             // ── The swap legs on the wire: /graphs and market-shape carry the
