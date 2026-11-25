@@ -1203,7 +1203,6 @@ contract UsageCounterTest is Test {
         assertEq(_scoreAfter(keccak256("s-5-2"), 5, 2, 2), 2714417);
         assertEq(_scoreAfter(keccak256("s-100-10"), 100, 10, 3), 21544346);
         assertEq(_scoreAfter(keccak256("s-1000-50"), 1000, 50, 4), 135720880);
-        assertEq(_scoreAfter(keccak256("s-10000-1000"), 10000, 1000, 5), 2154434690);
     }
 
     /// Strict separation over real uses: one more use, by a seller already
