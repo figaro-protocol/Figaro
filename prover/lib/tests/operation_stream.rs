@@ -4,7 +4,8 @@
 //! refusals; the round trip also as a property over generated streams.
 
 use alloy_primitives::{keccak256, Address, B256, U256};
-use figaro_kernel::kernel::apply_batch;
+mod common;
+use common::run_both;
 use figaro_kernel::operation_stream::{
     compute_operations_hash, decode_operation_stream, encode_operation_stream, encode_stream_parts,
     resolved_running_total, wallet_code_attestations, COMMITMENT_BYTES, SIGNATURE_BYTES,
@@ -260,7 +261,7 @@ fn a_batch_of_nothing_commits_the_empty_stream_hash_as_word_eight() {
         usage_claims: vec![],
         usage_period: 0,
     };
-    let (pv, _, _) = apply_batch(&input).expect("an empty batch applies");
+    let (pv, _, _) = run_both(&input).expect("an empty batch applies");
     assert_eq!(pv.operations_hash, keccak256([]));
     let abi = pv.abi_encode();
     assert_eq!(abi.len(), 288);

@@ -10,15 +10,24 @@
 /// Counting once ever, across batches and across the direct path, is the
 /// counter's own `sellerCounted`: the guest keeps no usage state, and a
 /// claim moves no state root.
+///
+/// Every batch runs through both entries of the rules (`common::run_both`:
+/// the relay's native run and the guest's `apply_guest`).
 use alloy_primitives::{address, b256, keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::kernel::{
-    apply_batch_with_state, apply_guest, compute_usage_accrual_hash, derive_commitment_ids,
-    guest_input, PROCESS_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY,
+    apply_guest, compute_usage_accrual_hash, derive_commitment_ids, guest_input,
+    PROCESS_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY,
 };
 use figaro_kernel::types::*;
+
+mod common;
+use common::{
+    empty_snapshot, key_address as address_of, make_signing_key, run_both, run_both_with_state,
+    sign_digest, BUYER_KEY, CHAIN_ID, CORE, SELLER1, SELLER1_KEY, TOKEN,
+};
 
 /// A clause key: `keccak256` of a clause spec without `block`. Only the leaf
 /// math matters here, so the bytes are synthetic.
@@ -26,47 +35,12 @@ fn clause_key(spec_bytes: &[u8]) -> B256 {
     keccak256(spec_bytes)
 }
 
-const BUYER_KEY: u64 = 0xB0B;
+/// A second buyer and a second seller of this file's own (the parity keys'
+/// second seller is `0x5E12`; these differ on purpose, any key serves).
 const BUYER2_KEY: u64 = 0xB0C;
-const SELLER1_KEY: u64 = 0x5E11;
 const SELLER2_KEY: u64 = 0x5E22;
 
-const SELLER1: Address = address!("Ad29D7a8aD3639F97798c768202F27C1dE81DC55");
-const TOKEN: Address = address!("5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f");
-const CORE: Address = address!("2e234DAe75C793f67A35089C9d99245E1C58470b");
-const CHAIN_ID: u64 = 31337;
-
 const PERIOD: u8 = 0;
-
-fn make_signing_key(secret: u64) -> SigningKey {
-    let mut bytes = [0u8; 32];
-    bytes[24..].copy_from_slice(&secret.to_be_bytes());
-    SigningKey::from_bytes((&bytes).into()).unwrap()
-}
-
-fn address_of(key: &SigningKey) -> Address {
-    let pubkey = key.verifying_key().to_encoded_point(false);
-    Address::from_slice(&keccak256(&pubkey.as_bytes()[1..])[12..])
-}
-
-fn sign_digest(key: &SigningKey, digest: &B256) -> Signature {
-    use k256::ecdsa::{signature::hazmat::PrehashSigner, RecoveryId};
-    let (sig, recid): (k256::ecdsa::Signature, RecoveryId) =
-        key.sign_prehash(digest.as_slice()).unwrap();
-    let bytes = sig.to_bytes();
-    Signature {
-        v: recid.to_byte() + 27,
-        r: B256::from_slice(&bytes[..32]),
-        s: B256::from_slice(&bytes[32..]),
-    }
-}
-
-fn empty_snapshot() -> KernelStateSnapshot {
-    KernelStateSnapshot {
-        processes: vec![],
-        order_status: vec![],
-    }
-}
 
 /// The process id the guest derives for a root order, under the batch
 /// domain.
@@ -266,7 +240,7 @@ fn credits_a_process_the_same_batch_resolved() {
         empty_snapshot(),
     );
 
-    let (pv, _, events, _) = apply_batch_with_state(&input).expect("batch applies");
+    let (pv, _, events, _) = run_both_with_state(&input).expect("batch applies");
 
     assert_eq!(
         events.uses,
@@ -305,7 +279,7 @@ fn rejects_a_claim_against_an_unresolved_order() {
         empty_snapshot(),
     );
 
-    match apply_batch_with_state(&input).map(|_| ()) {
+    match run_both_with_state(&input).map(|_| ()) {
         Err(KernelError::UsageOrderNotResolved(_)) => {}
         other => panic!("expected UsageOrderNotResolved, got {other:?}"),
     }
@@ -329,7 +303,7 @@ fn rejects_a_clause_or_assembly_that_is_not_in_the_agreement() {
         empty_snapshot(),
     );
 
-    match apply_batch_with_state(&input).map(|_| ()) {
+    match run_both_with_state(&input).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
     }
@@ -356,14 +330,14 @@ fn a_claim_presented_in_a_later_batch_yields_the_same_use() {
         vec![clause_claim(&order, clause_or_process, clause_data_hash)],
         empty_snapshot(),
     );
-    let (_, _, first_events, post) = apply_batch_with_state(&first).expect("first batch applies");
+    let (_, _, first_events, post) = run_both_with_state(&first).expect("first batch applies");
 
     let again = batch(
         vec![],
         vec![clause_claim(&order, clause_or_process, clause_data_hash)],
         post.to_snapshot(),
     );
-    let (_, _, again_events, _) = apply_batch_with_state(&again).expect("the claim proves again");
+    let (_, _, again_events, _) = run_both_with_state(&again).expect("the claim proves again");
     assert_eq!(
         again_events.uses, first_events.uses,
         "the same (kind, key, process, seller)"
@@ -381,7 +355,7 @@ fn the_guest_refuses_a_claim_whose_order_the_witness_leaves_out() {
     let clause_data_hash = keccak256(b"clause-bytes");
     let (order, ops) = settled_order(&buyer, &seller, &clause_or_process, &clause_data_hash, 1);
     let (_, _, _, post) =
-        apply_batch_with_state(&batch(ops, vec![], empty_snapshot())).expect("the order settles");
+        run_both_with_state(&batch(ops, vec![], empty_snapshot())).expect("the order settles");
     let claim_batch = batch(
         vec![],
         vec![clause_claim(&order, clause_or_process, clause_data_hash)],
@@ -419,7 +393,7 @@ fn a_claim_given_twice_in_one_batch_is_one_use() {
         clause_claim(&order, clause_or_process, clause_data_hash),
     ];
     let (_, _, events, _) =
-        apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
+        run_both_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
     assert_eq!(
         events.uses,
         vec![BatchUse {
@@ -460,7 +434,7 @@ fn two_sellers_of_one_process_are_two_uses() {
         clause_claim(&orders[1], clause_or_process, clause_data_hash),
     ];
     let (_, _, events, _) =
-        apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
+        run_both_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
     assert_eq!(
         events.uses,
         vec![
@@ -508,7 +482,7 @@ fn two_orders_of_one_seller_in_one_process_are_one_use() {
         clause_claim(&orders[1], clause_or_process, clause_data_hash),
     ];
     let (_, _, events, _) =
-        apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
+        run_both_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
     assert_eq!(
         events.uses,
         vec![BatchUse {
@@ -547,7 +521,7 @@ fn many_buyers_through_one_seller_add_depth_not_breadth() {
     ];
 
     let (_, _, events, _) =
-        apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
+        run_both_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
 
     assert_eq!(events.uses.len(), 3, "three distinct resolved processes");
     assert_eq!(
@@ -582,7 +556,7 @@ fn distinct_sellers_raise_breadth() {
     ];
 
     let (_, _, events, _) =
-        apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
+        run_both_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
 
     assert_eq!(events.uses.len(), 2, "two distinct resolved processes");
     assert_eq!(events.uses[0].seller, address_of(&seller1));
@@ -614,7 +588,7 @@ fn credits_an_agreement_through_the_provenance_leaf() {
 
     let process_id = pid(&claim.order);
     let (_, _, events, _) =
-        apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).expect("batch applies");
+        run_both_with_state(&batch(ops, vec![claim], empty_snapshot())).expect("batch applies");
 
     assert_eq!(
         events.uses,
@@ -647,7 +621,7 @@ fn rejects_an_agreement_claim_with_the_wrong_agreement_hash() {
         inclusion_proof: vec![],
     };
 
-    match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
+    match run_both_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
     }
@@ -672,7 +646,7 @@ fn rejects_an_agreement_claim_with_the_wrong_process_design_hash() {
         inclusion_proof: vec![],
     };
 
-    match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
+    match run_both_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
     }
@@ -713,7 +687,7 @@ fn an_agreement_claim_opens_only_under_the_guest_s_provenance_key() {
     };
     let input = batch(ops, vec![claim], empty_snapshot());
 
-    match apply_batch_with_state(&input).map(|_| ()) {
+    match run_both_with_state(&input).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("the relay's run: expected UsageInvalidInclusionProof, got {other:?}"),
     }
@@ -739,17 +713,27 @@ fn the_usage_hash_commits_the_guest_s_provenance_key() {
         empty_snapshot(),
     );
 
-    let (pv, _, events, _) = apply_batch_with_state(&input).expect("batch applies");
+    // Both entries; `run_both` holds the guest's public values to the relay's.
+    let (pv, _, _) = run_both(&input).expect("batch applies");
+    // The hash `FigaroBatchVerifier._hashUsage` derives for this batch, its
+    // preimage written out in the layout `test_usageHash_matchesTheOneUseRustVector`
+    // pins on the Solidity side, with the provenance key as `UsageCounter`
+    // declares it (`keccak256("figaro-agreement-provenance")`, written here
+    // as its literal word).
+    let mut preimage = Vec::new();
+    preimage.push(PERIOD);
+    preimage.extend_from_slice(
+        b256!("26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6").as_slice(),
+    );
+    preimage.extend_from_slice(&1u64.to_be_bytes());
+    preimage.extend_from_slice(clause_or_process.as_slice());
+    preimage.push(0u8); // the clause kind
+    preimage.extend_from_slice(pid(&order).as_slice());
+    preimage.extend_from_slice(SELLER1.as_slice());
     assert_eq!(
         pv.usage_accrual_hash,
-        compute_usage_accrual_hash(PERIOD, &PROVENANCE_LEAF_KEY, &events.uses),
-        "the relay's run commits the format's key"
-    );
-    let (guest_pv, _, _) =
-        apply_guest(&guest_input(&input).expect("the witness builds")).expect("the guest applies");
-    assert_eq!(
-        guest_pv.usage_accrual_hash, pv.usage_accrual_hash,
-        "the guest's run commits the same key"
+        keccak256(&preimage),
+        "the guest commits the format's provenance key"
     );
 }
 
@@ -793,7 +777,7 @@ fn credits_an_assembly_through_the_provenance_leaf_and_its_agreement() {
     let claim = assembly_claim(&order, composition, agreement, entry, membership);
 
     let (_, _, events, _) =
-        apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).expect("batch applies");
+        run_both_with_state(&batch(ops, vec![claim], empty_snapshot())).expect("batch applies");
 
     assert_eq!(events.uses.len(), 1);
     assert_eq!(
@@ -817,7 +801,7 @@ fn rejects_an_assembly_claim_for_an_uncommitted_assembly() {
     let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &clause_data_hash, 1);
     let claim = assembly_claim(&order, claimed, agreement, entry, membership);
 
-    match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
+    match run_both_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
     }
@@ -842,7 +826,7 @@ fn rejects_an_assembly_claim_naming_another_agreement_s_key() {
     assert_eq!(membership0.len(), 1);
     let claim = assembly_claim(&order, composition, other, slot1, vec![leaf0]);
 
-    match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
+    match run_both_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
     }
@@ -870,7 +854,7 @@ fn rejects_an_assembly_claim_whose_membership_proof_is_under_another_root() {
     );
     let claim = assembly_claim(&order, composition, agreement, entry, vec![elsewhere]);
 
-    match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
+    match run_both_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
     }
@@ -895,7 +879,7 @@ fn rejects_an_assembly_claim_with_the_wrong_slot_content() {
         membership,
     );
 
-    match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
+    match run_both_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
     }
@@ -925,7 +909,7 @@ fn one_provenance_leaf_credits_the_agreement_and_the_assembly_apart() {
     ];
 
     let (_, _, events, _) =
-        apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
+        run_both_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
     let mut kinds: Vec<(B256, u8)> = events
         .uses
         .iter()
@@ -1115,7 +1099,7 @@ fn a_clause_and_an_assembly_on_the_same_key_accrue_apart() {
 
     let process_id = pid(&order);
     let (_, _, events, _) =
-        apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
+        run_both_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
 
     assert_eq!(
         events.uses,
@@ -1175,8 +1159,8 @@ fn crediting_usage_leaves_the_state_root_where_the_operations_left_it() {
         empty_snapshot(),
     );
 
-    let (pv_without, _, _, _) = apply_batch_with_state(&without).expect("applies");
-    let (pv_with, _, _, _) = apply_batch_with_state(&with).expect("applies");
+    let (pv_without, _, _, _) = run_both_with_state(&without).expect("applies");
+    let (pv_with, _, _, _) = run_both_with_state(&with).expect("applies");
 
     assert_eq!(pv_without.prev_state_root, pv_with.prev_state_root);
     assert_eq!(
@@ -1257,7 +1241,7 @@ fn a_provenance_attestation_is_accepted_on_inclusion_alone() {
         let (input, process_id) = provenance_attestation(committed, witness, content_ref);
 
         let (_, _, events, _) =
-            apply_batch_with_state(&input).expect("the provenance attestation applies");
+            run_both_with_state(&input).expect("the provenance attestation applies");
         assert_eq!(events.attestations.len(), 1);
         assert_eq!(events.attestations[0].clause_id, provenance_key());
         assert_eq!(events.attestations[0].process_id, process_id);
@@ -1282,7 +1266,7 @@ fn a_provenance_attestation_of_an_uncommitted_leaf_is_refused() {
             inclusion_proof: vec![],
         };
         let (input, _) = provenance_attestation(committed, witness, keccak256(b"evidence"));
-        match apply_batch_with_state(&input).map(|_| ()) {
+        match run_both_with_state(&input).map(|_| ()) {
             Err(KernelError::InvalidInclusionProof) => {}
             other => panic!("expected InvalidInclusionProof, got {other:?}"),
         }
@@ -1297,7 +1281,7 @@ fn terms_key() -> B256 {
 }
 
 fn expect_reserved(input: BatchInput, key: B256) {
-    match apply_batch_with_state(&input).map(|_| ()) {
+    match run_both_with_state(&input).map(|_| ()) {
         Err(KernelError::ReservedKeyIsNotARegistration(k)) => assert_eq!(k, key),
         other => panic!("expected ReservedKeyIsNotARegistration, got {other:?}"),
     }

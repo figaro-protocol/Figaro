@@ -15,7 +15,10 @@ use tokio::sync::Mutex;
 use alloy_primitives::{keccak256, B256};
 
 use figaro_kernel::eip712::*;
-use figaro_kernel::kernel::{derive_commitment_ids, validate_attestation_witness};
+use figaro_kernel::kernel::{
+    attest_digest, derive_commitment_ids, order_hash_in, validate_attestation_witness,
+    verify_attestation_signer, verify_commit_signatures,
+};
 use figaro_kernel::types::*;
 
 /// Default cap on pending operations. The mempool is a PUBLIC,
@@ -277,12 +280,6 @@ impl Mempool {
     /// The deferral's window (see [`DEFAULT_DEFER_WINDOW`]).
     pub fn with_defer_window(mut self, window: Duration) -> Self {
         self.defer_window = window;
-        self
-    }
-
-    /// The re-queue cap (see [`DEFAULT_MAX_REQUEUES`]).
-    pub fn with_max_requeues(mut self, max_requeues: u32) -> Self {
-        self.max_requeues = max_requeues;
         self
     }
 
@@ -699,7 +696,7 @@ impl Mempool {
                 ..
             } => commitments
                 .iter()
-                .map(|c| compute_order_hash(process_id, &commitment_struct_hash(c)))
+                .map(|c| order_hash_in(process_id, c))
                 .collect(),
             KernelOp::AttestAsSeller { target, .. }
             | KernelOp::AttestAsBuyer { target, .. }
@@ -1111,11 +1108,6 @@ impl Mempool {
         Vec::new()
     }
 
-    /// How many keys the re-queue count is held for.
-    pub async fn requeue_counts_held(&self) -> usize {
-        self.inner.lock().await.requeues.len()
-    }
-
     /// Number of operations waiting in the isolation, a set in flight not
     /// counted: what `/status` reports as `isolating_ops`.
     pub async fn isolating_len(&self) -> usize {
@@ -1225,24 +1217,9 @@ impl Mempool {
                 buyer_sig,
                 seller_sig,
             } => {
-                let struct_hash = commitment_struct_hash(commitment);
-                let digest = typed_data_hash(&domain, &struct_hash);
-                let buyer_addr = recover_signer(&digest, buyer_sig)
-                    .map_err(|e| format!("invalid buyer signature: {e}"))?;
-                if buyer_addr != commitment.buyer {
-                    return Err(format!(
-                        "buyer sig mismatch: recovered {buyer_addr}, expected {}",
-                        commitment.buyer
-                    ));
-                }
-                let seller_addr = recover_signer(&digest, seller_sig)
-                    .map_err(|e| format!("invalid seller signature: {e}"))?;
-                if seller_addr != commitment.seller {
-                    return Err(format!(
-                        "seller sig mismatch: recovered {seller_addr}, expected {}",
-                        commitment.seller
-                    ));
-                }
+                // The guest's own gate (`apply_commit` calls it).
+                verify_commit_signatures(&domain, commitment, buyer_sig, seller_sig)
+                    .map_err(|e| format!("commit signature gate rejected: {e}"))?;
                 Ok(())
             }
             KernelOp::Resolve {
@@ -1257,20 +1234,7 @@ impl Mempool {
                     .map_err(|e| format!("invalid resolve signature: {e}"))?;
                 // Note: we can't check rootBuyer match without state — the
                 // proof enforces this. Pre-check only verifies sig is valid.
-                // An order listed twice never applies, whatever the state:
-                // the Core resolves the first listing and reads the second
-                // as not committed (`OrderNotCommitted`). The list rides
-                // unsigned, so this is refused here, never deferred.
-                let mut listed = HashSet::with_capacity(commitments.len());
-                for c in commitments {
-                    let order_hash = compute_order_hash(process_id, &commitment_struct_hash(c));
-                    if !listed.insert(order_hash) {
-                        return Err(format!(
-                            "resolve lists order {order_hash} twice — the Core resolves an order once and refuses the second listing (OrderNotCommitted)"
-                        ));
-                    }
-                }
-                Ok(())
+                refuse_an_order_listed_twice(process_id, commitments)
             }
             KernelOp::ResolveByWalletCode {
                 process_id,
@@ -1290,16 +1254,7 @@ impl Mempool {
                         crate::gas::MAX_WALLET_AUTHORIZATION_BYTES
                     ));
                 }
-                let mut listed = HashSet::with_capacity(commitments.len());
-                for c in commitments {
-                    let order_hash = compute_order_hash(process_id, &commitment_struct_hash(c));
-                    if !listed.insert(order_hash) {
-                        return Err(format!(
-                            "resolve lists order {order_hash} twice — the Core resolves an order once and refuses the second listing (OrderNotCommitted)"
-                        ));
-                    }
-                }
-                Ok(())
+                refuse_an_order_listed_twice(process_id, commitments)
             }
             KernelOp::AttestAsSeller {
                 target,
@@ -1308,23 +1263,16 @@ impl Mempool {
                 content_ref,
                 seller_sig,
                 proof,
-            } => {
-                let (target_order_hash, _target_process_id) =
-                    derive_commitment_ids(&domain, target);
-                let struct_hash =
-                    attest_seller_struct_hash(&target_order_hash, clause_id, *stage, content_ref);
-                let digest = typed_data_hash(&domain, &struct_hash);
-                let recovered = recover_signer(&digest, seller_sig)
-                    .map_err(|e| format!("invalid attest-seller signature: {e}"))?;
-                if recovered != target.seller {
-                    return Err("attest-seller sig does not match target.seller".into());
-                }
-                // The mirror's witness gate (agreement inclusion), the same
-                // code the guest runs.
-                validate_attestation_witness(proof, clause_id, &target.checkout_hash)
-                    .map_err(|e| format!("attestation witness gate rejected: {e}"))?;
-                Ok(())
-            }
+            } => signed_attestation_gates(
+                &domain,
+                AttesterRole::Seller,
+                target,
+                clause_id,
+                *stage,
+                content_ref,
+                seller_sig,
+                proof,
+            ),
             KernelOp::AttestAsBuyer {
                 target,
                 clause_id,
@@ -1332,25 +1280,16 @@ impl Mempool {
                 content_ref,
                 buyer_sig,
                 proof,
-            } => {
-                let (target_order_hash, target_process_id) = derive_commitment_ids(&domain, target);
-                let struct_hash = attest_buyer_struct_hash(
-                    &target_process_id,
-                    &target_order_hash,
-                    clause_id,
-                    *stage,
-                    content_ref,
-                );
-                let digest = typed_data_hash(&domain, &struct_hash);
-                let recovered = recover_signer(&digest, buyer_sig)
-                    .map_err(|e| format!("invalid attest-buyer signature: {e}"))?;
-                if recovered != target.buyer {
-                    return Err("attest-buyer sig does not match target.buyer".into());
-                }
-                validate_attestation_witness(proof, clause_id, &target.checkout_hash)
-                    .map_err(|e| format!("attestation witness gate rejected: {e}"))?;
-                Ok(())
-            }
+            } => signed_attestation_gates(
+                &domain,
+                AttesterRole::Buyer,
+                target,
+                clause_id,
+                *stage,
+                content_ref,
+                buyer_sig,
+                proof,
+            ),
             KernelOp::AttestByWalletCode {
                 target,
                 clause_id,
@@ -1376,6 +1315,60 @@ impl Mempool {
             }
         }
     }
+}
+
+/// An order listed twice never applies, whatever the state: the Core
+/// resolves the first listing and reads the second as not committed
+/// (`OrderNotCommitted`). The list rides unsigned, so this is refused at the
+/// door, never deferred. Each listed order's hash is the guest's
+/// (`order_hash_in`).
+fn refuse_an_order_listed_twice(
+    process_id: &B256,
+    commitments: &[Commitment],
+) -> Result<(), String> {
+    let mut listed = HashSet::with_capacity(commitments.len());
+    for c in commitments {
+        let order_hash = order_hash_in(process_id, c);
+        if !listed.insert(order_hash) {
+            return Err(format!(
+                "resolve lists order {order_hash} twice — the Core resolves an order once and refuses the second listing (OrderNotCommitted)"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// A signed attestation's stateless gates, the guest's own: the signature
+/// over the role's digest (`attest_digest`) recovers the role's party
+/// (`verify_attestation_signer`), and the leaf opens under the target's
+/// signed agreement (`validate_attestation_witness`).
+#[allow(clippy::too_many_arguments)]
+fn signed_attestation_gates(
+    domain: &B256,
+    role: AttesterRole,
+    target: &Commitment,
+    clause_id: &B256,
+    stage: u8,
+    content_ref: &B256,
+    signature: &Signature,
+    proof: &AttestationWitness,
+) -> Result<(), String> {
+    let (order_hash, process_id) = derive_commitment_ids(domain, target);
+    let digest = attest_digest(
+        domain,
+        role,
+        &process_id,
+        &order_hash,
+        clause_id,
+        stage,
+        content_ref,
+    );
+    let party = role.party(target);
+    verify_attestation_signer(&digest, party, signature).map_err(|e| {
+        format!("attestation signer gate rejected: {e}: the signature does not recover the target's {role:?}, {party}")
+    })?;
+    validate_attestation_witness(proof, clause_id, &target.checkout_hash)
+        .map_err(|e| format!("attestation witness gate rejected: {e}"))
 }
 
 /// A commit's dedup key: its order hash ([`Mempool::op_key`]).
@@ -1413,4 +1406,32 @@ fn commit_precedes(domain: &B256, c: &KernelOp, f: &KernelOp, touched: &HashSet<
 /// is the right notion of "same claim".
 fn claim_key(claim: &UsageClaim) -> B256 {
     keccak256(serde_json::to_vec(claim).expect("UsageClaim serializes"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use figaro_prove_test::{build_canonical_batch_input, CHAIN_ID, CORE};
+
+    /// An op re-queued once, drained again, and not re-queued (its batch is
+    /// on chain, or the relay refused it): the next drain holds no count for
+    /// it. A count the map keeps for a landed key is memory a public door
+    /// lets anyone grow; the map is read here, beside it.
+    #[tokio::test]
+    async fn a_requeued_operation_that_drains_and_is_not_requeued_leaves_no_count() {
+        let mp = Mempool::new(CHAIN_ID, CORE);
+        let ops = build_canonical_batch_input().operations;
+        mp.submit(ops[0].clone()).await.unwrap();
+        let drained = mp.drain().await;
+        assert!(mp.requeue(drained).await.is_empty());
+        assert_eq!(mp.inner.lock().await.requeues.len(), 1);
+        assert_eq!(mp.drain().await.len(), 1, "drained again; its batch lands");
+        mp.submit(ops[1].clone()).await.unwrap();
+        assert_eq!(mp.drain().await.len(), 1, "the next tick drains another op");
+        assert_eq!(
+            mp.inner.lock().await.requeues.len(),
+            0,
+            "the landed op's count is gone"
+        );
+    }
 }

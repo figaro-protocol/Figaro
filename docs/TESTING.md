@@ -222,16 +222,17 @@ Seeds: `python3 -I fuzz/prover/seed.py` writes the streams in
 `test/fixtures/operation-stream-vectors.json` into `fuzz/prover/corpus/`. A crash is saved under
 `fuzz/prover/artifacts/`. Success: the run ends on `Done N runs`, with no crash file.
 
-## Kani (`formal/kani/`) — 4 proof harnesses
+## Kani (`formal/kani/`) — 6 proof harnesses
 
 A crate outside `prover/`, its own workspace and lock, depending on `prover/lib` by path.
-It proves the payout arithmetic of the guest's mirror of the Core over every 256-bit input:
+It proves the bond and payout arithmetic of the guest's mirror of the Core:
+`bonds_are_exact_or_overflow` (`kernel::commit_bonds`, each party's bond exactly),
 `payouts_are_exact_or_overflow` and `one_order_conserves_its_bonds` (`kernel::resolution_payouts`),
-`a_process_conserves_its_bonds` (two orders, payouts summed against the bonds), and
-`resolved_running_total_is_the_exact_sum` (`operation_stream::resolved_running_total`). The bond
-computation in `apply_commit` and the netting in `TokenTracker` are private to `kernel.rs`, so no
-harness outside the crate reaches them; the harnesses state the two bond formulas and prove the
-payouts against them. Run with `cd formal/kani && cargo kani`. Success: every harness
+`a_process_conserves_its_bonds` (two orders of 256-bit payments, payouts summed against the bonds),
+`a_three_order_process_conserves_its_bonds` (three orders, each payment below 2^64), and
+`resolved_running_total_is_the_exact_sum` (`operation_stream::resolved_running_total`). The harnesses
+call the bond formula `apply_commit` itself calls. The netting in `TokenTracker` is private to
+`kernel.rs`, so no harness outside the crate reaches it. Run with `cd formal/kani && cargo kani`. Success: every harness
 `VERIFICATION:- SUCCESSFUL`.
 
 ## TLA+ (`formal/`) — 75 invariants across 5 models in 9 configurations, each configuration's type invariant counted (FigaroCore 9 + FlorinToken 9 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 8 + its deferral 10 + its resolve authorization 3 + its attestation authorization 2, `RTypeOK` and `OnlyPartyAttests`, `formal/RelayStateAttest.cfg` + its isolation 3, `ITypeOK`, `HonestNeverDroppedForAnother` and `IsolationBounded`, `formal/RelayStateIsolate.cfg`)
@@ -466,8 +467,8 @@ bit, a short or surplus proof, a removed leaf), a property test that the
 descent reaches the root of the true post-state over random histories, and
 one that mutates honest proofs at random and requires every accepted one to
 reach it; the guest's cycles beside a growing stored state
-(`prover/script/tests/guest_cycles.rs`, ignored by default, run with
-`--ignored`); the three packer vectors (`packers.rs`) and the
+(`prover/script/examples/guest_cycles.rs`, a measurement and no test: `cargo run --release -p
+figaro-prove-test --example guest_cycles`); the three packer vectors (`packers.rs`) and the
 Merkle leg of the agreement-tree lock (`merkle_parity.rs`), both asserted on
 the Solidity side too +
 the witness-gate suite in `parity.rs`: a seller's and a buyer's attestation
@@ -506,7 +507,7 @@ signature as `InvalidSignature`, as `ECDSA.recover` refuses it,
 exercised through the next crate), `figaro-prove-test` (SP1 mock-executor guest tests — the guest's committed
 bytes must equal the host's `PublicValues.abi_encode` byte-for-byte — the exact
 words the on-chain verifier hashes against the proof's digest — and decode back
-field-for-field against host `apply_batch`; in-VM rejection of a witness whose
+field-for-field against the host's run (`apply_batch_with_state`); in-VM rejection of a witness whose
 leaf the agreement does not hold
 (`guest_program_rejects_a_witness_whose_leaf_the_agreement_does_not_hold`);
 the guest on SP1's patched `ecdsa`/`k256` aborts on the high-s twin of the canonical
@@ -767,7 +768,8 @@ deposit and payout, `FigaroCore`'s balance delta, every process's accumulator
 and active count — to `test/fixtures/kernel-transition-vectors.json`
 (`HARVEST_KERNEL_VECTORS=true` regenerates; otherwise the run must reproduce
 the frozen bytes). `prover/lib/tests/transition_vectors.rs` signs the same
-commitments with the same keys, applies them through `apply_batch`, and asserts
+commitments with the same keys, applies them through both entries, the relay's
+`apply_batch_with_state` and the guest's `apply_guest`, and asserts
 every figure — the mirror's bond and payout arithmetic is locked to
 `FigaroCore`'s, not to a comment.
 
@@ -877,7 +879,7 @@ kind. The two generators are written apart; the cross-language lock remains
 **The operation stream's cross-language lock.**
 `prover/lib/tests/operation_stream_vectors.rs` writes
 `test/fixtures/operation-stream-vectors.json` from `encode_operation_stream`
-(`--ignored write_fixture`) and asserts on every run that the committed file
+(`FIGARO_WRITE_FIXTURES=1` on the comparing test) and asserts on every run that the committed file
 is what the encoder produces. Its seven streams carry every entry kind: a
 root commit; commits and a signed resolve; wallet-code resolves with
 authorizations of 17, 0 and 300 bytes; a clause claim and an assembly claim;

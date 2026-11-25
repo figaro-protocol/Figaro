@@ -176,8 +176,8 @@ wallet-code resolve with its authorization bytes — and every usage claim,
 guest checked deadlines against. The canonical
 batch (all four op kinds) executes in 976,999 cycles with the k256 SP1
 precompile on an otherwise empty state, 1,496,718 beside 1,000 stored orders
-and 1,528,258 beside 10,000 (`prover/script/tests/guest_cycles.rs`, run with
-`--ignored`): the witness grows with the logarithm of the state, not with the
+and 1,528,258 beside 10,000 (`prover/script/examples/guest_cycles.rs`, run with
+`cargo run --release -p figaro-prove-test --example guest_cycles`): the witness grows with the logarithm of the state, not with the
 state. A batch of one hundred operations, the size this project's relay cuts
 a batch at by default (`MAX_BATCH_OPS`), executes in 21,345,189 cycles, about
 213,000 an operation: twenty-five processes of a commit, two attestations and

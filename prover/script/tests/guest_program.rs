@@ -14,7 +14,7 @@ use alloy_primitives::{keccak256, B256, U256};
 use figaro_kernel::eip712::{
     commitment_struct_hash, domain_separator, resolve_struct_hash, typed_data_hash,
 };
-use figaro_kernel::kernel::{apply_batch, provenance_leaf_bytes};
+use figaro_kernel::kernel::{apply_batch_with_state, provenance_leaf_bytes};
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::{
     BatchInput, Commitment, KernelOp, KernelStateSnapshot, PublicValues, UsageClaim,
@@ -71,10 +71,11 @@ async fn guest_program_executes_canonical_batch() {
 #[tokio::test]
 async fn guest_output_matches_host_apply_batch_exactly() {
     // The strongest drift gate: the guest's committed PublicValues must
-    // equal the host-side apply_batch on the identical input, field for
+    // equal the relay's native run (`apply_batch_with_state`) on the identical input, field for
     // field — one mirror, two execution environments.
     let input = build_canonical_batch_input();
-    let (host_pv, _positions, host_events) = apply_batch(&input).expect("host apply_batch");
+    let (host_pv, _positions, host_events, _) =
+        apply_batch_with_state(&input).expect("the relay's native run");
 
     let pv_bytes = execute_guest(&input).await;
     // Byte equality against the host encoding first — these are the exact
@@ -365,7 +366,8 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
 #[tokio::test]
 async fn guest_credits_an_agreement_and_an_assembly_as_the_host_does() {
     let input = provenance_batch(true);
-    let (host_pv, _positions, host_events) = apply_batch(&input).expect("host apply_batch");
+    let (host_pv, _positions, host_events, _) =
+        apply_batch_with_state(&input).expect("the relay's native run");
     let mut kinds: Vec<u8> = host_events.uses.iter().map(|u| u.kind).collect();
     kinds.sort();
     assert_eq!(kinds, vec![USAGE_KIND_PROCESS, USAGE_KIND_AGREEMENT]);
@@ -381,7 +383,10 @@ async fn guest_credits_an_agreement_and_an_assembly_as_the_host_does() {
 #[tokio::test]
 async fn guest_refuses_an_assembly_claim_whose_membership_proof_is_under_another_root() {
     let input = provenance_batch(false);
-    assert!(apply_batch(&input).is_err(), "the host refuses it");
+    assert!(
+        apply_batch_with_state(&input).is_err(),
+        "the host refuses it"
+    );
     // The witness of the valid twin batch (the same entries), carrying the
     // claim whose membership proof is under another root.
     let mut guest = figaro_kernel::kernel::guest_input(&provenance_batch(true))

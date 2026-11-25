@@ -64,7 +64,7 @@ pub fn assemble_batch(
 /// Trial-apply pending ops against `prev_state`, partitioning them into
 /// the ops that can be batched and the ops that cannot.
 ///
-/// `apply_batch` is all-or-nothing — one failing op aborts the whole
+/// A batch's run is all-or-nothing — one failing op aborts the whole
 /// proof — so before batching, each op is trial-applied one at a time
 /// against a running state. An op that fails is held and retried after
 /// the others: an op submitted before the op it depends on still gets
@@ -320,12 +320,11 @@ fn referenced_ids(domain: &B256, op: &KernelOp) -> Vec<B256> {
             ..
         } => {
             let mut ids = vec![*process_id];
-            ids.extend(commitments.iter().map(|c| {
-                figaro_kernel::eip712::compute_order_hash(
-                    process_id,
-                    &figaro_kernel::eip712::commitment_struct_hash(c),
-                )
-            }));
+            ids.extend(
+                commitments
+                    .iter()
+                    .map(|c| figaro_kernel::kernel::order_hash_in(process_id, c)),
+            );
             ids
         }
         KernelOp::AttestAsSeller { target, .. } => vec![order(target)],

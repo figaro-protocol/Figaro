@@ -32,6 +32,25 @@ fn env_or(key: &str, default: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| default.to_string())
 }
 
+/// `key` read as a `T`, `default` when unset: the relay's one reader of a
+/// configured value. A value that does not parse stops the relay naming the
+/// variable.
+fn env_parsed<T>(key: &str, default: &str) -> T
+where
+    T: std::str::FromStr,
+    T::Err: std::fmt::Debug,
+{
+    env_or(key, default)
+        .parse()
+        .unwrap_or_else(|e| panic!("invalid {key}: {e:?}"))
+}
+
+/// A contract address from `key`, the zero address (none configured) when
+/// unset.
+fn env_address(key: &str) -> Address {
+    env_parsed(key, "0x0000000000000000000000000000000000000000")
+}
+
 #[tokio::main]
 async fn main() {
     // `sequencer --vkey`: print the fingerprint of the guest this binary
@@ -73,54 +92,19 @@ async fn main() {
             std::process::exit(2);
         }
     };
-    let verifier_addr: Address = env_or(
-        "BATCH_VERIFIER_ADDRESS",
-        "0x0000000000000000000000000000000000000000",
-    )
-    .parse()
-    .expect("invalid BATCH_VERIFIER_ADDRESS");
+    let verifier_addr: Address = env_address("BATCH_VERIFIER_ADDRESS");
     // The RPGF counter the batch accrual is written to. Unset (zero) means
     // this sequencer credits no usage — trade still resolves.
-    let usage_counter_addr: Address = env_or(
-        "USAGE_COUNTER_ADDRESS",
-        "0x0000000000000000000000000000000000000000",
-    )
-    .parse()
-    .expect("invalid USAGE_COUNTER_ADDRESS");
+    let usage_counter_addr: Address = env_address("USAGE_COUNTER_ADDRESS");
     // The four registries the usage-claim pre-filter reads. Unset (zero)
     // with a counter configured, a claim of that registry's kind is dropped
     // at the pre-filter; the counter's own gates plus the verifier's
     // try/catch remain the backstop.
-    let clause_registry_addr: Address = env_or(
-        "CLAUSE_REGISTRY_ADDRESS",
-        "0x0000000000000000000000000000000000000000",
-    )
-    .parse()
-    .expect("invalid CLAUSE_REGISTRY_ADDRESS");
-    let process_registry_addr: Address = env_or(
-        "PROCESS_REGISTRY_ADDRESS",
-        "0x0000000000000000000000000000000000000000",
-    )
-    .parse()
-    .expect("invalid PROCESS_REGISTRY_ADDRESS");
-    let agreement_registry_addr: Address = env_or(
-        "AGREEMENT_REGISTRY_ADDRESS",
-        "0x0000000000000000000000000000000000000000",
-    )
-    .parse()
-    .expect("invalid AGREEMENT_REGISTRY_ADDRESS");
-    let members_registry_addr: Address = env_or(
-        "MEMBERS_REGISTRY_ADDRESS",
-        "0x0000000000000000000000000000000000000000",
-    )
-    .parse()
-    .expect("invalid MEMBERS_REGISTRY_ADDRESS");
-    let verifying_contract: Address = env_or(
-        "FIGARO_CORE_ADDRESS",
-        "0x0000000000000000000000000000000000000000",
-    )
-    .parse()
-    .expect("invalid FIGARO_CORE_ADDRESS");
+    let clause_registry_addr: Address = env_address("CLAUSE_REGISTRY_ADDRESS");
+    let process_registry_addr: Address = env_address("PROCESS_REGISTRY_ADDRESS");
+    let agreement_registry_addr: Address = env_address("AGREEMENT_REGISTRY_ADDRESS");
+    let members_registry_addr: Address = env_address("MEMBERS_REGISTRY_ADDRESS");
+    let verifying_contract: Address = env_address("FIGARO_CORE_ADDRESS");
     let verifying_contract =
         match submitter::verifying_contract_for(verifier_addr, verifying_contract) {
             Ok(address) => address,
@@ -138,17 +122,12 @@ async fn main() {
             }
         };
     let listen_addr = env_or("LISTEN_ADDR", "0.0.0.0:3001");
-    let batch_interval: u64 = env_or("BATCH_INTERVAL_SECS", "10")
-        .parse()
-        .expect("invalid BATCH_INTERVAL_SECS");
-    let max_ops: usize = env_or("MAX_BATCH_OPS", "100")
-        .parse()
-        .expect("invalid MAX_BATCH_OPS");
+    let batch_interval: u64 = env_parsed("BATCH_INTERVAL_SECS", "10");
+    let max_ops: usize = env_parsed("MAX_BATCH_OPS", "100");
     // The chain's cap on one transaction's gas (EIP-7825's 2^24 by default);
     // a chain without it is told so here. The block's limit is read live.
-    let settle_gas_cap: u64 = env_or("SETTLE_GAS_CAP", &gas::DEFAULT_SETTLE_GAS_CAP.to_string())
-        .parse()
-        .expect("invalid SETTLE_GAS_CAP");
+    let settle_gas_cap: u64 =
+        env_parsed("SETTLE_GAS_CAP", &gas::DEFAULT_SETTLE_GAS_CAP.to_string());
     if settle_gas_cap < gas::MIN_SETTLE_GAS_CAP {
         error!(
             %settle_gas_cap,
@@ -158,34 +137,20 @@ async fn main() {
         std::process::exit(2);
     }
     // Public-endpoint bounds: queue caps + per-request body cap.
-    let mempool_max_ops: usize = env_or("MEMPOOL_MAX_OPS", "10000")
-        .parse()
-        .expect("invalid MEMPOOL_MAX_OPS");
-    let mempool_max_usage: usize = env_or("MEMPOOL_MAX_USAGE_CLAIMS", "10000")
-        .parse()
-        .expect("invalid MEMPOOL_MAX_USAGE_CLAIMS");
+    let mempool_max_ops: usize = env_parsed("MEMPOOL_MAX_OPS", "10000");
+    let mempool_max_usage: usize = env_parsed("MEMPOOL_MAX_USAGE_CLAIMS", "10000");
     // How long an operation batch formation deferred waits, from its first
     // deferral, before it is dead-lettered (`mempool::DEFAULT_DEFER_WINDOW`).
-    let defer_window_secs: u64 = env_or(
+    let defer_window_secs: u64 = env_parsed(
         "DEFER_WINDOW_SECS",
         &figaro_sequencer::mempool::DEFAULT_DEFER_WINDOW
             .as_secs()
             .to_string(),
-    )
-    .parse()
-    .expect("invalid DEFER_WINDOW_SECS");
-    let max_body_bytes: usize = env_or("MAX_BODY_BYTES", "1048576")
-        .parse()
-        .expect("invalid MAX_BODY_BYTES");
-    let request_timeout_secs: u64 = env_or("REQUEST_TIMEOUT_SECS", "10")
-        .parse()
-        .expect("invalid REQUEST_TIMEOUT_SECS");
-    let max_in_flight: usize = env_or("MAX_IN_FLIGHT", "256")
-        .parse()
-        .expect("invalid MAX_IN_FLIGHT");
-    let submits_per_minute_per_ip: u32 = env_or("SUBMITS_PER_MINUTE_PER_IP", "60")
-        .parse()
-        .expect("invalid SUBMITS_PER_MINUTE_PER_IP");
+    );
+    let max_body_bytes: usize = env_parsed("MAX_BODY_BYTES", "1048576");
+    let request_timeout_secs: u64 = env_parsed("REQUEST_TIMEOUT_SECS", "10");
+    let max_in_flight: usize = env_parsed("MAX_IN_FLIGHT", "256");
+    let submits_per_minute_per_ip: u32 = env_parsed("SUBMITS_PER_MINUTE_PER_IP", "60");
     // The page origins allowed to submit from a browser; none by default.
     let browser_submit_origins = match api::parse_browser_submit_origins(
         std::env::var("BROWSER_SUBMIT_ORIGINS").ok().as_deref(),
@@ -318,9 +283,7 @@ async fn main() {
             error!("refusing to start: REBUILD_FROM_CHAIN needs BATCH_VERIFIER_ADDRESS");
             std::process::exit(2);
         }
-        let from_block: u64 = env_or("REBUILD_FROM_BLOCK", "0")
-            .parse()
-            .expect("invalid REBUILD_FROM_BLOCK");
+        let from_block: u64 = env_parsed("REBUILD_FROM_BLOCK", "0");
         match figaro_sequencer::rebuild::rebuild_from_chain(
             &rpc_url,
             verifier_addr,
@@ -584,7 +547,7 @@ async fn batch_loop(
         let prev_state = state_mirror.snapshot().await;
 
         // Stateful filter: trial-apply each op against the state mirror
-        // and drop any that would abort the proof. apply_batch is
+        // and drop any that would abort the proof. A batch's run is
         // all-or-nothing, so one poison op must never reach the prover.
         let (valid, poison) = assembler::filter_applicable_ops(
             chain_id,

@@ -1,9 +1,13 @@
 import FigaroKeccak
 
 /-
-FigaroStateTree — the batch path's state tree: when `verify_and_update`
-accepts a witness for a previous root that is the root of a state S, the new
-root it returns is the root of S updated by the batch's writes. Assumes
+FigaroStateTree — the batch path's state tree: when the descent reaches, from
+a witness, a previous root that is the root of a state S, the new root it
+returns is the root of S updated by the batch's writes. The model's
+`verifyAndUpdate` is two steps together: the guest's `roots`
+(`prover/lib/src/state_tree.rs`), and the comparison of the previous root
+with the stored one, which the verifier makes on the chain
+(`FigaroBatchVerifier.settleBatch`, `StateRootMismatch`). Assumes
 `CollisionFree keccak` and `ZeroUnreached keccak` (`FigaroKeccak.lean`; the
 second is needed because the tree writes the zero word for an empty subtree).
 
@@ -25,9 +29,9 @@ THE MODEL, read from `prover/lib/src/state_tree.rs` whole:
   items are `ProofItem` (`:99`): Empty, Leaf, Node, Descend. A Descend at
   depth 256 is refused (`:214`). The code's `prefix` word with bit `d` set
   for the right child (`:226`-`:227`) is the list of the position's bits.
-* `roots` (`:239`) and `verify_and_update` (`:255`): the order check, the
-  removed-leaf check, the descent from depth 0, the refusal of an
-  unconsumed proof (`:248`), and the previous-root check (`:261`).
+* `roots`: the order check, the removed-leaf check, the descent from depth 0
+  and the refusal of an unconsumed proof. The previous-root check is the
+  verifier's, on the chain (`FigaroBatchVerifier.settleBatch`).
 
 TWO PLACES THE MODEL REFUSES WHERE THE CODE WOULD PANIC. With two or more
 witnessed paths at depth 256 (`:218`) and in `summarize` with two or more
@@ -233,7 +237,8 @@ def roots (w : List WL) (proof : List ProofItem) : Except TreeError (Word × Wor
     | .error e => .error e
     | .ok (b, a, rest) => if rest.isEmpty then .ok (b.hash, a.hash) else .error .proofNotConsumed
 
-/-- `verify_and_update` (`state_tree.rs:255`). -/
+/-- `roots`, then the previous-root comparison the verifier makes on the chain
+(`FigaroBatchVerifier.settleBatch`, `StateRootMismatch`). -/
 def verifyAndUpdate (prev : Word) (w : List WL) (proof : List ProofItem) : Except TreeError Word :=
   match roots keccak w proof with
   | .error e => .error e
@@ -929,7 +934,7 @@ theorem walk_sound (hcf : CollisionFree keccak) (hz : ZeroUnreached keccak)
     · cases hw
 termination_by 256 - d
 
-/-- LEMMA 2, THE STATE TREE UPDATE. If `verify_and_update` accepts a
+/-- LEMMA 2, THE STATE TREE UPDATE. If `verifyAndUpdate` accepts a
 witness for `prev`, and `prev` is the root of the state `S`, then the new
 root it returns is the root of `S'`, the state `S` updated by the batch's
 writes. -/

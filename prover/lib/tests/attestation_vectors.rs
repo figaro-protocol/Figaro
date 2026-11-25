@@ -6,91 +6,27 @@
 //! agreement (a seller's on a clause, the buyer's on another at stage 1, the
 //! buyer's on the reserved provenance leaf) and writes each call's arguments
 //! and the log it emitted to `test/fixtures/attestation-vectors.json`. This
-//! file commits the same order through the mirror, submits the same
-//! arguments as batched attestations — the `clauseDataHash`, the inclusion
-//! proof and the `contentRef`, nothing else — and asserts that each event
-//! the guest commits encodes to the coordinator's topics and data.
-use std::str::FromStr;
-
-use alloy_primitives::{keccak256, Address, B256, U256};
-use k256::ecdsa::SigningKey;
+//! file commits the same order, submits the same arguments as batched
+//! attestations — the `clauseDataHash`, the inclusion proof and the
+//! `contentRef`, nothing else — through both entries of the rules (the
+//! relay's native run and the guest's `apply_guest`, `common::run_both`,
+//! which holds the two to the same events and the same public values), and
+//! asserts that each event they produce encodes to the coordinator's topics
+//! and data. The events hash into public value 5, which the guest commits.
+use alloy_primitives::B256;
 
 use figaro_kernel::eip712::*;
-use figaro_kernel::kernel::apply_batch;
 use figaro_kernel::types::*;
 
-const BUYER_KEY: u64 = 0xB0B;
-const SELLER1_KEY: u64 = 0x5E11;
-
-fn fixture() -> serde_json::Value {
-    let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    p.pop(); // prover/
-    p.pop(); // repo root
-    p.push("test/fixtures/attestation-vectors.json");
-    let text = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
-    serde_json::from_str(&text).expect("fixture JSON")
-}
-
-fn s(v: &serde_json::Value) -> &str {
-    v.as_str().expect("string field")
-}
-fn b256(v: &serde_json::Value) -> B256 {
-    B256::from_str(s(v)).expect("bytes32")
-}
-fn addr(v: &serde_json::Value) -> Address {
-    Address::from_str(s(v)).expect("address")
-}
-fn u256(v: &serde_json::Value) -> U256 {
-    U256::from_str_radix(s(v), 10).expect("decimal uint")
-}
-fn words(v: &serde_json::Value) -> Vec<B256> {
-    v.as_array().expect("array").iter().map(b256).collect()
-}
-fn hex_bytes(v: &serde_json::Value) -> Vec<u8> {
-    let hex = s(v).trim_start_matches("0x");
-    (0..hex.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).expect("hex"))
-        .collect()
-}
-
-fn make_signing_key(secret: u64) -> SigningKey {
-    let mut bytes = [0u8; 32];
-    bytes[24..].copy_from_slice(&secret.to_be_bytes());
-    SigningKey::from_bytes((&bytes).into()).unwrap()
-}
-
-fn sign_digest(key: &SigningKey, digest: &B256) -> Signature {
-    use k256::ecdsa::{signature::hazmat::PrehashSigner, RecoveryId};
-    let (sig, recid): (k256::ecdsa::Signature, RecoveryId) =
-        key.sign_prehash(digest.as_slice()).unwrap();
-    let bytes = sig.to_bytes();
-    Signature {
-        v: recid.to_byte() + 27,
-        r: B256::from_slice(&bytes[..32]),
-        s: B256::from_slice(&bytes[32..]),
-    }
-}
-
-/// The `Attestation` event as the EVM logs it: the signature and the three
-/// indexed words as topics, the three unindexed words as data.
-fn encode_log(e: &AttestationEventData) -> (Vec<B256>, Vec<u8>) {
-    let signature = keccak256(b"Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
-    let mut attester = [0u8; 32];
-    attester[12..].copy_from_slice(e.attester.as_slice());
-    let topics = vec![signature, e.order_hash, e.process_id, B256::from(attester)];
-    let mut data = Vec::with_capacity(96);
-    data.extend_from_slice(e.clause_id.as_slice());
-    let mut stage = [0u8; 32];
-    stage[31] = e.stage;
-    data.extend_from_slice(&stage);
-    data.extend_from_slice(e.content_ref.as_slice());
-    (topics, data)
-}
+mod common;
+use common::{
+    addr, b256, empty_snapshot, encode_log, fixture, hex_bytes, make_signing_key, run_both, s,
+    sign_digest, u256, words, BUYER_KEY, SELLER1_KEY,
+};
 
 #[test]
 fn a_batched_attestation_emits_the_coordinator_s_event_bytes() {
-    let fx = fixture();
+    let fx = fixture("attestation-vectors.json");
     let chain_id: u64 = s(&fx["chainId"]).parse().unwrap();
     let core = addr(&fx["verifyingContract"]);
     let domain = domain_separator(chain_id, core);
@@ -166,14 +102,11 @@ fn a_batched_attestation_emits_the_coordinator_s_event_bytes() {
         verifying_contract: core,
         block_timestamp: 1000,
         operations,
-        prev_state: KernelStateSnapshot {
-            processes: vec![],
-            order_status: vec![],
-        },
+        prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
     };
-    let (_pv, _positions, events) = apply_batch(&input).expect("the attestations apply");
+    let (_pv, _positions, events) = run_both(&input).expect("the attestations apply");
 
     assert_eq!(events.attestations.len(), count);
     for (k, e) in events.attestations.iter().enumerate() {

@@ -50,6 +50,9 @@ on:
             - "clauses/**"
             - "test/fixtures/clause-keys.json"
             - "scripts/test-cross-impl-fuzz.sh"
+            - "fuzz/prover/**"
+            - "test/fixtures/operation-stream-vectors.json"
+            - "test/fixtures/public-values-vectors.json"
             - ".github/workflows/prover-ci.yml"
             # What the `sp1` job's chain step reads: its five test files, the
             # harness they share and the config that selects them; the SDK it
@@ -88,6 +91,9 @@ on:
             - "clauses/**"
             - "test/fixtures/clause-keys.json"
             - "scripts/test-cross-impl-fuzz.sh"
+            - "fuzz/prover/**"
+            - "test/fixtures/operation-stream-vectors.json"
+            - "test/fixtures/public-values-vectors.json"
 
 permissions:
     contents: read
@@ -146,7 +152,7 @@ jobs:
             - name: cargo clippy (figaro-kernel)
               working-directory: ./prover
               run: >-
-                  cargo clippy --locked -p figaro-kernel --all-targets
+                  cargo clippy --locked -p figaro-kernel --all-targets --features cross-impl-fuzz
                   -- -D clippy::correctness -D clippy::suspicious
 
             - name: Install Semgrep
@@ -210,6 +216,51 @@ jobs:
               env:
                   FUZZ_ROUNDS: "4"
               run: ./scripts/test-cross-impl-fuzz.sh "${{ github.run_id }}"
+
+    # The decoder of the operation stream over arbitrary bytes: no panic, and
+    # every stream it accepts encodes again to the same bytes
+    # (fuzz/prover/fuzz_targets/operation_stream.rs). libFuzzer needs a nightly
+    # compiler; the date is pinned so two runs build with one compiler. The
+    # corpus starts from the encoder's own vectors. The run is bounded in time,
+    # so it samples; a crash input is uploaded and fails the job.
+    decoder-fuzz:
+        name: cargo fuzz (operation stream decoder)
+        runs-on: ubuntu-24.04
+        timeout-minutes: 30
+        env:
+            FUZZ_NIGHTLY: nightly-2026-11-15
+            CARGO_FUZZ_VERSION: 0.13.2
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  persist-credentials: false
+
+            - name: Install the nightly compiler and cargo-fuzz
+              run: |
+                  rustup toolchain install "$FUZZ_NIGHTLY" --profile minimal
+                  cargo install --locked cargo-fuzz --version "$CARGO_FUZZ_VERSION"
+
+            - name: Seed the corpus from the encoder's vectors
+              run: python3 -I fuzz/prover/seed.py
+
+            - name: cargo fuzz run operation_stream, five minutes
+              run: |
+                  set -uo pipefail
+                  cargo +"$FUZZ_NIGHTLY" fuzz run operation_stream --fuzz-dir fuzz/prover -- -max_total_time=300 > "$RUNNER_TEMP/fuzz.log" 2>&1
+                  code=$?
+                  tail -15 "$RUNNER_TEMP/fuzz.log"
+                  grep -q "Done [0-9]* runs" "$RUNNER_TEMP/fuzz.log" || { echo "::error::the run did not report its end"; exit 1; }
+                  if [ -n "$(ls -A fuzz/prover/artifacts/operation_stream 2>/dev/null)" ]; then echo "::error::the fuzzer saved a crash input"; exit 1; fi
+                  exit "$code"
+
+            - name: Upload a crash input
+              if: failure()
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: decoder-fuzz-artifacts
+                  path: fuzz/prover/artifacts
+                  if-no-files-found: ignore
 
     sp1:
         name: SP1 crates + batch e2e (main only)

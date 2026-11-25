@@ -8,34 +8,16 @@
 //! stands for the direct path's `msg.sender`. The verifier's tests hold its
 //! typehashes to the same strings; the SDK's hash, computed by viem from them,
 //! is the one independent statement of what a wallet signs.
-use std::str::FromStr;
-
-use alloy_primitives::{Address, B256, U256};
+use alloy_primitives::B256;
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::kernel::derive_commitment_ids;
-use figaro_kernel::types::Commitment;
+
+mod common;
+use common::{addr, b256, commitment_json, s, u256};
 
 fn fixture() -> serde_json::Value {
-    let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    p.pop(); // prover/
-    p.pop(); // repo root
-    p.push("test/fixtures/eip712-vectors.json");
-    let text = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
-    serde_json::from_str(&text).expect("fixture JSON")
-}
-
-fn s(v: &serde_json::Value) -> &str {
-    v.as_str().expect("string field")
-}
-fn b256(v: &serde_json::Value) -> B256 {
-    B256::from_str(s(v)).expect("bytes32")
-}
-fn addr(v: &serde_json::Value) -> Address {
-    Address::from_str(s(v)).expect("address")
-}
-fn u256(v: &serde_json::Value) -> U256 {
-    U256::from_str_radix(s(v), 10).expect("decimal uint")
+    common::fixture("eip712-vectors.json")
 }
 
 #[test]
@@ -49,18 +31,7 @@ fn the_guest_reproduces_every_commitment_vector() {
     assert!(!vectors.is_empty());
     for v in vectors {
         let label = s(&v["label"]);
-        let c = &v["commitment"];
-        let commitment = Commitment {
-            process_id: b256(&c["processId"]),
-            buyer: addr(&c["buyer"]),
-            seller: addr(&c["seller"]),
-            token: addr(&c["token"]),
-            payment: u256(&c["payment"]),
-            running_total: u256(&c["runningTotal"]),
-            checkout_hash: b256(&c["checkoutHash"]),
-            salt: u256(&c["salt"]),
-            commit_deadline: u256(&c["commitDeadline"]),
-        };
+        let commitment = commitment_json(&v["commitment"], "processId");
         assert_eq!(
             commitment_struct_hash(&commitment),
             b256(&v["structHash"]),
@@ -124,4 +95,46 @@ fn the_guest_reproduces_every_batch_authorization() {
         3,
         "the fixture carries all three authorizations"
     );
+}
+
+/// `attest_digest`, the one function the guest's signer gate and the
+/// relay's question to a wallet's code both call, is the SDK's
+/// `AttestSeller` / `AttestBuyer` digest under the verifier's domain for
+/// every attestation vector (stages 0, 1 and 255).
+#[test]
+fn attest_digest_is_the_sdk_s_digest_for_both_roles() {
+    use figaro_kernel::kernel::attest_digest;
+    use figaro_kernel::types::AttesterRole;
+    let fx = fixture();
+    let batch = &fx["batch"];
+    let domain = domain_separator(
+        fx["chainId"].as_u64().unwrap(),
+        addr(&batch["verifyingContract"]),
+    );
+    let mut roles = std::collections::BTreeSet::new();
+    for a in batch["authorizations"].as_array().expect("authorizations") {
+        let m = &a["message"];
+        let (role, process_id) = match s(&a["type"]) {
+            // The seller's struct names no process: any word stands for it.
+            "AttestSeller" => (AttesterRole::Seller, B256::repeat_byte(0xee)),
+            "AttestBuyer" => (AttesterRole::Buyer, b256(&m["processId"])),
+            _ => continue,
+        };
+        assert_eq!(
+            attest_digest(
+                &domain,
+                role,
+                &process_id,
+                &b256(&m["orderHash"]),
+                &b256(&m["clauseId"]),
+                m["stage"].as_u64().unwrap() as u8,
+                &b256(&m["contentRef"]),
+            ),
+            b256(&a["digest"]),
+            "{role:?} at stage {}",
+            m["stage"]
+        );
+        roles.insert(format!("{role:?}"));
+    }
+    assert_eq!(roles.len(), 2, "both roles are vectored");
 }

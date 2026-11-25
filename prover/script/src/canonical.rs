@@ -26,12 +26,6 @@ pub fn canonicalize(value: &Value) -> String {
     out
 }
 
-/// The canonical form of a JSON text.
-pub fn canonicalize_json(raw: &str) -> String {
-    let value: Value = serde_json::from_str(raw).expect("JSON text");
-    canonicalize(&value)
-}
-
 /// An ECMAScript array index: the canonical decimal form of an integer
 /// below 2^32 - 1.
 fn array_index(key: &str) -> Option<u32> {

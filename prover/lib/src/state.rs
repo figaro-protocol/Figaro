@@ -138,12 +138,6 @@ impl KernelState {
         Ok(())
     }
 
-    /// The processes of a full state (the relay's, a test's); `None` for the
-    /// guest's witnessed state, whose maps hold only what it was given.
-    pub fn full_processes(&self) -> Option<&BTreeMap<B256, ProcessState>> {
-        self.witnessed.is_none().then_some(&self.processes)
-    }
-
     /// The keys every access so far has touched.
     pub fn touched(&self) -> BTreeSet<(u8, B256)> {
         self.touched

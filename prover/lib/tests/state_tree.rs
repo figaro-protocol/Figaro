@@ -1,12 +1,18 @@
 //! The batch path's state tree (`figaro_kernel::state_tree`): the root of a
-//! set of leaves, the witness that proves a batch's touched leaves against the
-//! previous root, and the one descent that checks it and computes the new root.
-//! The tree's definition and every check below are in
-//! `work/incremental-root/DESIGN.md`.
+//! set of leaves, the witness that proves a batch's touched leaves, and the
+//! one descent, `roots`, that checks the witness and computes the previous
+//! and the new root — the function the guest calls (`apply_guest`). The
+//! guest compares the previous root with nothing: it commits it as public
+//! value 0, and `FigaroBatchVerifier.settleBatch` refuses a batch whose
+//! previous root is not the stored one (`StateRootMismatch`). So every test
+//! below holds what the descent returns, and a test of the guest's run
+//! (`a_misstated_shape_reaches_another_previous_root_and_the_guest_commits_it`)
+//! holds what the guest commits. The tree's definition is the module doc of
+//! `prover/lib/src/state_tree.rs`.
 
 use alloy_primitives::{keccak256, B256};
 use figaro_kernel::state_tree::{
-    leaf_hash, node_hash, prove, root, verify_and_update, ProofItem, TreeError, WitnessedLeaf,
+    leaf_hash, node_hash, prove, root, roots, ProofItem, TreeError, WitnessedLeaf,
 };
 use std::collections::BTreeMap;
 
@@ -80,7 +86,8 @@ fn a_third_leaf_beside_a_pair_leaves_the_pair_below_and_rises_alone() {
 // ── The witness and the one descent ─────────────────────────────────────
 
 /// Run a batch's touched leaves through the witness: build it from the full
-/// previous set, check it, and return the new root.
+/// previous set, check it, hold the previous root it reaches to the root of
+/// the previous set (the root the chain keeps), and return the new root.
 fn step(
     prev: &BTreeMap<B256, B256>,
     writes: &BTreeMap<B256, Option<B256>>,
@@ -95,7 +102,13 @@ fn step(
             after: after.or(prev.get(p).copied()),
         })
         .collect();
-    verify_and_update(root(prev), &leaves, &proof)
+    let (before, after) = roots(&leaves, &proof)?;
+    assert_eq!(
+        before,
+        root(prev),
+        "an honest witness reaches the previous root"
+    );
+    Ok(after)
 }
 
 #[test]
@@ -217,7 +230,7 @@ fn a_present_leaf_read_as_absent_is_refused() {
     leaves[0].before = None;
     leaves[0].after = Some(vh(5));
     assert_eq!(
-        verify_and_update(root(&prev), &leaves, &proof),
+        roots(&leaves, &proof).map(|(_, after)| after),
         Err(TreeError::PresentLeafClaimedAbsent)
     );
 }
@@ -229,7 +242,7 @@ fn a_wrong_previous_value_is_refused() {
     let (mut leaves, proof) = honest(&prev, &[a]);
     leaves[0].before = Some(vh(2));
     assert_eq!(
-        verify_and_update(root(&prev), &leaves, &proof),
+        roots(&leaves, &proof).map(|(_, after)| after),
         Err(TreeError::ValueMismatch)
     );
 }
@@ -241,12 +254,12 @@ fn unsorted_and_duplicate_entries_are_refused() {
     let (leaves, proof) = honest(&prev, &[a, b]);
     let reversed = vec![leaves[1].clone(), leaves[0].clone()];
     assert_eq!(
-        verify_and_update(root(&prev), &reversed, &proof),
+        roots(&reversed, &proof),
         Err(TreeError::EntriesNotStrictlyIncreasing)
     );
     let doubled = vec![leaves[0].clone(), leaves[0].clone()];
     assert_eq!(
-        verify_and_update(root(&prev), &doubled, &proof),
+        roots(&doubled, &proof),
         Err(TreeError::EntriesNotStrictlyIncreasing)
     );
 }
@@ -271,7 +284,7 @@ fn another_leaf_off_the_position_is_refused() {
         ProofItem::Empty,
     ];
     assert_eq!(
-        verify_and_update(B256::ZERO, &leaves, &proof),
+        roots(&leaves, &proof).map(|(_, after)| after),
         Err(TreeError::LeafOffPosition)
     );
 }
@@ -287,7 +300,7 @@ fn a_present_entry_beside_another_leaf_is_refused() {
         after: Some(vh(2)),
     }];
     assert_eq!(
-        verify_and_update(root(&prev), &leaves, &proof),
+        roots(&leaves, &proof).map(|(_, after)| after),
         Err(TreeError::AbsenceProofForPresentEntry)
     );
 }
@@ -303,7 +316,7 @@ fn an_empty_position_for_a_present_entry_is_refused() {
         after: Some(vh(2)),
     }];
     assert_eq!(
-        verify_and_update(root(&prev), &leaves, &proof),
+        roots(&leaves, &proof).map(|(_, after)| after),
         Err(TreeError::AbsenceProofForPresentEntry)
     );
 }
@@ -315,13 +328,13 @@ fn a_surplus_or_a_short_proof_is_refused() {
     let (leaves, mut proof) = honest(&prev, &[a]);
     proof.push(ProofItem::Empty);
     assert_eq!(
-        verify_and_update(root(&prev), &leaves, &proof),
+        roots(&leaves, &proof).map(|(_, after)| after),
         Err(TreeError::ProofNotConsumed)
     );
     let (leaves, mut proof) = honest(&prev, &[a]);
     proof.pop();
     assert_eq!(
-        verify_and_update(root(&prev), &leaves, &proof),
+        roots(&leaves, &proof).map(|(_, after)| after),
         Err(TreeError::ProofTooShort)
     );
 }
@@ -337,15 +350,16 @@ fn a_node_at_a_witnessed_position_is_refused() {
     }];
     let proof = vec![ProofItem::Node(root(&prev))];
     assert_eq!(
-        verify_and_update(root(&prev), &leaves, &proof),
+        roots(&leaves, &proof).map(|(_, after)| after),
         Err(TreeError::NodeAtWitnessedPosition)
     );
 }
 
 #[test]
-fn a_misstated_shape_fails_the_previous_root() {
-    // A lone leaf beside the witnessed side given as a node: the previous
-    // hash is not the previous root.
+fn a_misstated_shape_reaches_another_previous_root() {
+    // A lone leaf beside the witnessed side given as a node: the descent
+    // accepts the shape, and the previous root it returns is not the
+    // previous set's — the root the guest commits and the chain refuses.
     let (a, b) = (path(0x00, 1), path(0x80, 2));
     let prev = BTreeMap::from([(b, vh(2))]);
     let leaves = vec![WitnessedLeaf {
@@ -358,9 +372,12 @@ fn a_misstated_shape_fails_the_previous_root() {
         ProofItem::Empty,
         ProofItem::Node(leaf_hash(&b, &vh(2))),
     ];
+    let (before, _) = roots(&leaves, &proof).expect("the shape is well formed");
+    assert_ne!(before, root(&prev), "the misstated shape is another tree");
     assert_eq!(
-        verify_and_update(root(&prev), &leaves, &proof),
-        Err(TreeError::PreviousRootMismatch)
+        before,
+        node_hash(&B256::ZERO, &leaf_hash(&b, &vh(2))),
+        "the tree the proof states: an empty left side and a node on the right"
     );
 }
 
@@ -371,7 +388,7 @@ fn a_leaf_removed_is_refused() {
     let (mut leaves, proof) = honest(&prev, &[a]);
     leaves[0].after = None;
     assert_eq!(
-        verify_and_update(root(&prev), &leaves, &proof),
+        roots(&leaves, &proof).map(|(_, after)| after),
         Err(TreeError::LeafRemoved)
     );
 }
@@ -384,7 +401,6 @@ fn a_lone_leaf_moved_off_its_path_beside_split_witnesses_is_refused() {
     // with bit 0 = 0, so the descent splits; the prover places x on the
     // unwitnessed side of a split below, off x's own path (x has bit 0 = 1).
     let x = path(0x80, 1);
-    let prev = BTreeMap::from([(x, vh(1))]);
     let (p, q) = (path(0x00, 2), path(0x40, 3));
     let leaves = vec![
         WitnessedLeaf {
@@ -412,7 +428,7 @@ fn a_lone_leaf_moved_off_its_path_beside_split_witnesses_is_refused() {
         ProofItem::Empty,
     ];
     assert_eq!(
-        verify_and_update(root(&prev), &leaves, &proof),
+        roots(&leaves, &proof).map(|(_, after)| after),
         Err(TreeError::LeafOffPosition)
     );
 }
@@ -424,7 +440,6 @@ fn a_descend_over_a_lone_leaf_that_moves_it_aside_is_refused() {
     // p's (bit 0 = 1), where x does not belong.
     let x = path(0x01, 1);
     let p = path(0x00, 2);
-    let prev = BTreeMap::from([(x, vh(1))]);
     let leaves = vec![WitnessedLeaf {
         path: p,
         before: None,
@@ -439,7 +454,7 @@ fn a_descend_over_a_lone_leaf_that_moves_it_aside_is_refused() {
         },
     ];
     assert_eq!(
-        verify_and_update(root(&prev), &leaves, &proof),
+        roots(&leaves, &proof).map(|(_, after)| after),
         Err(TreeError::LeafOffPosition)
     );
 }
@@ -456,7 +471,7 @@ fn a_descend_past_the_last_bit_is_refused() {
     }];
     let proof = vec![ProofItem::Descend; 300];
     assert_eq!(
-        verify_and_update(B256::ZERO, &leaves, &proof),
+        roots(&leaves, &proof).map(|(_, after)| after),
         Err(TreeError::DescendPastLastBit)
     );
 }
@@ -552,12 +567,17 @@ fn a_mutated_proof_is_refused_or_reaches_the_true_root() {
                     proof.insert(i, ProofItem::Empty);
                 }
             }
-            if let Ok(new) = verify_and_update(root(&state), &leaves, &proof) {
-                assert_eq!(
-                    new,
-                    root(&post),
-                    "seed {seed}: an accepted proof must reach the true root"
-                );
+            // The chain lands a batch only on the root it holds: a proof the
+            // descent accepts and whose previous root is the true one must
+            // reach the true new root.
+            if let Ok((before, new)) = roots(&leaves, &proof) {
+                if before == root(&state) {
+                    assert_eq!(
+                        new,
+                        root(&post),
+                        "seed {seed}: an accepted proof must reach the true root"
+                    );
+                }
             }
         }
     }
@@ -565,10 +585,10 @@ fn a_mutated_proof_is_refused_or_reaches_the_true_root() {
 
 #[test]
 fn a_descend_where_no_path_is_witnessed_is_refused() {
-    let (a, b) = (path(0x00, 1), path(0x80, 2));
-    let prev = BTreeMap::from([(b, vh(2))]);
-    // a's side is split by the witnessed path; b's side holds nothing
-    // witnessed, and the proof says to descend there.
+    // The tree holds one leaf at path(0x80, 2). a's side is split by the
+    // witnessed path; the other side holds nothing witnessed, and the proof
+    // says to descend there.
+    let a = path(0x00, 1);
     let leaves = vec![WitnessedLeaf {
         path: a,
         before: None,
@@ -576,7 +596,106 @@ fn a_descend_where_no_path_is_witnessed_is_refused() {
     }];
     let proof = vec![ProofItem::Descend, ProofItem::Empty, ProofItem::Descend];
     assert_eq!(
-        verify_and_update(root(&prev), &leaves, &proof),
+        roots(&leaves, &proof).map(|(_, after)| after),
         Err(TreeError::DescendWithoutWitnessedPath)
+    );
+}
+
+// ── What the guest does with the previous root ──────────────────────────
+
+mod common;
+
+/// The guest compares the previous root with nothing: `apply_guest` commits
+/// the root its witness descends to as public value 0, and the chain holds
+/// that word to the root it keeps (`FigaroBatchVerifier.settleBatch`,
+/// `StateRootMismatch`). A witness of the right entries whose proof states
+/// another shape (a lone leaf beside the batch given as a node) is accepted
+/// by the descent, and the guest commits the other tree's root: never the
+/// stored root, so the batch cannot land.
+#[test]
+fn a_misstated_shape_reaches_another_previous_root_and_the_guest_commits_it() {
+    use alloy_primitives::U256;
+    use figaro_kernel::eip712::domain_separator;
+    use figaro_kernel::kernel::{apply_batch_with_state, apply_guest, guest_input};
+    use figaro_kernel::types::{BatchInput, Commitment, KernelOp, KernelStateSnapshot};
+
+    let domain = domain_separator(common::CHAIN_ID, common::CORE);
+    let commit = |salt: u64| {
+        let c = Commitment {
+            process_id: B256::ZERO,
+            buyer: common::BUYER,
+            seller: common::SELLER1,
+            token: common::TOKEN,
+            payment: U256::from(10u64),
+            running_total: U256::from(10u64),
+            checkout_hash: keccak256(salt.to_be_bytes()),
+            salt: U256::from(salt),
+            commit_deadline: U256::from(2000u64),
+        };
+        KernelOp::Commit {
+            buyer_sig: common::sign_commitment(
+                &c,
+                &domain,
+                &common::make_signing_key(common::BUYER_KEY),
+            ),
+            seller_sig: common::sign_commitment(
+                &c,
+                &domain,
+                &common::make_signing_key(common::SELLER1_KEY),
+            ),
+            commitment: c,
+        }
+    };
+    let batch = |op: KernelOp, prev: KernelStateSnapshot| BatchInput {
+        chain_id: common::CHAIN_ID,
+        verifying_contract: common::CORE,
+        block_timestamp: 1000,
+        operations: vec![op],
+        prev_state: prev,
+        usage_claims: vec![],
+        usage_period: 0,
+    };
+    // A stored state of six leaves (three orders and their processes), so
+    // the next batch's witness names leaves beside its own.
+    let mut stored_state = common::empty_snapshot();
+    for salt in 1..=3 {
+        let (_, _, _, next) =
+            apply_batch_with_state(&batch(commit(salt), stored_state)).expect("the order commits");
+        stored_state = next.to_snapshot();
+    }
+    let stored = figaro_kernel::state::KernelState::from_snapshot(&stored_state).compute_root();
+    let second = batch(commit(4), stored_state);
+
+    let honest = guest_input(&second).expect("the witness builds");
+    let (pv, _, _) = apply_guest(&honest).expect("the honest witness applies");
+    assert_eq!(
+        pv.prev_state_root, stored,
+        "the guest commits the stored root"
+    );
+
+    // Each subtree the proof states, misstated: a lone leaf given as a node,
+    // a node given another hash. The descent refuses a node at a witnessed
+    // position and cannot check one beside the batch; whatever it accepts,
+    // the guest commits another root than the stored.
+    let mut accepted = 0;
+    for i in 0..honest.prev_witness.proof.len() {
+        let misstatement = match &honest.prev_witness.proof[i] {
+            ProofItem::Leaf { path, value_hash } => ProofItem::Node(leaf_hash(path, value_hash)),
+            ProofItem::Node(h) => ProofItem::Node(keccak256(h)),
+            _ => continue,
+        };
+        let mut misstated = honest.clone();
+        misstated.prev_witness.proof[i] = misstatement;
+        if let Ok((pv, _, _)) = apply_guest(&misstated) {
+            accepted += 1;
+            assert_ne!(
+                pv.prev_state_root, stored,
+                "the guest commits the misstated tree's root, which the chain refuses"
+            );
+        }
+    }
+    assert!(
+        accepted > 0,
+        "the proof states a subtree beside the batch's"
     );
 }

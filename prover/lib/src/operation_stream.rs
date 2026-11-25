@@ -81,11 +81,16 @@ use crate::types::{
     USAGE_KIND_AGREEMENT, USAGE_KIND_CLAUSE, USAGE_KIND_PROCESS,
 };
 
-const TAG_COMMIT: u8 = 0x01;
-const TAG_RESOLVE: u8 = 0x02;
-const TAG_USAGE_CLAIM: u8 = 0x03;
-const TAG_RESOLVE_BY_WALLET_CODE: u8 = 0x04;
-const TAG_ATTEST_BY_WALLET_CODE: u8 = 0x05;
+/// The tag of a `Commit` entry.
+pub const TAG_COMMIT: u8 = 0x01;
+/// The tag of a `Resolve` entry.
+pub const TAG_RESOLVE: u8 = 0x02;
+/// The tag of a usage claim's entry.
+pub const TAG_USAGE_CLAIM: u8 = 0x03;
+/// The tag of a `ResolveByWalletCode` entry.
+pub const TAG_RESOLVE_BY_WALLET_CODE: u8 = 0x04;
+/// The tag of an `AttestByWalletCode` entry.
+pub const TAG_ATTEST_BY_WALLET_CODE: u8 = 0x05;
 
 /// One `0x05` entry: a wallet-code attestation as the stream publishes it,
 /// without its witness.
@@ -130,6 +135,11 @@ pub fn wallet_code_attestations(operations: &[KernelOp]) -> Vec<WalletCodeAttest
 pub const COMMITMENT_BYTES: usize = 32 + 20 + 20 + 20 + 32 + 32 + 32 + 32 + 32;
 /// The packed width of one signature.
 pub const SIGNATURE_BYTES: usize = 65;
+/// The bytes of a `0x04` entry besides its authorization and its listed
+/// commitments: the tag, the process id, the authorization's `u16` length
+/// and the orders' `u16` count. The relay's gas plan reads it; a test holds
+/// it to `encode_operation_stream`'s output.
+pub const RESOLVE_BY_WALLET_CODE_FIXED_BYTES: usize = 1 + 32 + 2 + 2;
 
 /// Encode the stream of `operations` (signed attestations skipped, each
 /// wallet-code attestation an entry after the commits and resolves) followed
