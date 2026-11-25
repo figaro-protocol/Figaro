@@ -10,6 +10,8 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {FigaroBatchVerifier} from "src/core/verifier/FigaroBatchVerifier.sol";
 import {MockSP1Verifier} from "src/mocks/MockSP1Verifier.sol";
 import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
+import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
 
 /// @title KernelDifferentialFuzzTest — the seeded operation stream FigaroCore
 ///        and its Rust mirror must agree on
@@ -283,8 +285,9 @@ contract KernelDifferentialFuzzTest is Test {
         vm.serializeBytes32(key, "checkoutHash", d.c.checkoutHash);
         vm.serializeString(key, "salt", vm.toString(d.c.salt));
         vm.serializeString(key, "commitDeadline", vm.toString(d.c.commitDeadline));
-        bytes memory buyerSig = _reform(_sign(d.c, d.buyerSignerKey), d.sigForm);
-        bytes memory sellerSig = _sign(d.c, d.sellerSignerKey);
+        bytes memory buyerSig =
+            _reform(SigningTestHelper.signCommitment(address(core), d.c, d.buyerSignerKey), d.sigForm);
+        bytes memory sellerSig = SigningTestHelper.signCommitment(address(core), d.c, d.sellerSignerKey);
         vm.serializeBytes(key, "buyerSig", buyerSig);
         vm.serializeBytes(key, "sellerSig", sellerSig);
         _snapshot();
@@ -648,7 +651,7 @@ contract KernelDifferentialFuzzTest is Test {
     function _agreementRoot(uint256 salt) internal pure returns (bytes32) {
         bytes32 a = _leaf(salt, 0);
         bytes32 b = _leaf(salt, 1);
-        return a < b ? keccak256(abi.encodePacked(a, b)) : keccak256(abi.encodePacked(b, a));
+        return AgreementTestHelper.hashPair(a, b);
     }
 
     /// An attestation as the stream carries it: the coordinator's arguments
@@ -895,14 +898,6 @@ contract KernelDifferentialFuzzTest is Test {
             return abi.encodePacked(r, bytes32(n - uint256(s)), v == 27 ? uint8(28) : uint8(27));
         }
         return abi.encodePacked(r, s, v - 27);
-    }
-
-    /// The domain is read from FigaroCore by external call, never rebuilt
-    /// from block.chainid here (see FigaroCoreTest's chain-id test).
-    function _sign(CommitmentTypes.Commitment memory c, uint256 privateKey) internal view returns (bytes memory) {
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), c.hashStruct()));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
-        return abi.encodePacked(r, s, v);
     }
 }
 

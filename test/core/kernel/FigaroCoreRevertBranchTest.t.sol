@@ -8,6 +8,7 @@ import "src/core/kernel/CommitmentTypes.sol";
 import "src/mocks/MockPermitToken.sol";
 import "src/mocks/MockERC20FeeOnTransfer.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title FigaroCore_RevertBranch — Negative-path coverage for the
 ///        enforcement-only FigaroCore. No SelfDeal tests (removed from FigaroCore).
@@ -15,6 +16,10 @@ contract FigaroCore_RevertBranch is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
     FigaroCore internal core;
+    /// @dev The Core's domain, read from it once deployed: a signature made
+    ///      after a cheatcode (`vm.prank`, `vm.expectRevert`) reads no contract,
+    ///      so the cheatcode reaches the call under test.
+    bytes32 internal coreDomain;
     MockPermitToken internal token;
 
     uint256 internal constant BUYER_KEY = 0xB0B;
@@ -37,6 +42,7 @@ contract FigaroCore_RevertBranch is Test {
 
         token = new MockPermitToken();
         core = new FigaroCore();
+        coreDomain = core.DOMAIN_SEPARATOR();
 
         address[4] memory participants = [buyer, seller1, seller2, outsider];
         for (uint256 i = 0; i < participants.length; i++) {
@@ -47,30 +53,6 @@ contract FigaroCore_RevertBranch is Test {
     }
 
     // ── Helpers ───────────────────────────────────────────────────
-
-    function _signCommitment(CommitmentTypes.Commitment memory c, uint256 privateKey)
-        internal
-        view
-        returns (bytes memory)
-    {
-        bytes32 structHash = c.hashStruct();
-        bytes32 digest = _typedDataHash(structHash);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
-    function _typedDataHash(bytes32 structHash) internal view returns (bytes32) {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(core)
-            )
-        );
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-    }
 
     function _rootCommitment(uint256 payment, uint256 salt) internal view returns (CommitmentTypes.Commitment memory) {
         return CommitmentTypes.Commitment({
@@ -91,7 +73,11 @@ contract FigaroCore_RevertBranch is Test {
         returns (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c)
     {
         c = _rootCommitment(payment, salt);
-        (processId, orderHash) = core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        (processId, orderHash) = core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -103,7 +89,11 @@ contract FigaroCore_RevertBranch is Test {
         c.commitDeadline = block.timestamp - 1;
 
         vm.expectRevert(FigaroCore.DeadlineExpired.selector);
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
     }
 
     function test_commit_zeroPayment_reverts() public {
@@ -111,21 +101,33 @@ contract FigaroCore_RevertBranch is Test {
         c.runningTotal = 0;
 
         vm.expectRevert(FigaroCore.ZeroPayment.selector);
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
     }
 
     function test_commit_invalidBuyerSig_reverts() public {
         CommitmentTypes.Commitment memory c = _rootCommitment(50 ether, 1);
 
         vm.expectRevert(FigaroCore.InvalidBuyerSignature.selector);
-        core.commit(c, _signCommitment(c, OUTSIDER_KEY), _signCommitment(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, OUTSIDER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
     }
 
     function test_commit_invalidSellerSig_reverts() public {
         CommitmentTypes.Commitment memory c = _rootCommitment(50 ether, 1);
 
         vm.expectRevert(FigaroCore.InvalidSellerSignature.selector);
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, OUTSIDER_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, OUTSIDER_KEY)
+        );
     }
 
     function test_commit_processAlreadyExists_reverts() public {
@@ -133,7 +135,11 @@ contract FigaroCore_RevertBranch is Test {
 
         CommitmentTypes.Commitment memory c = _rootCommitment(50 ether, 1);
         vm.expectRevert(FigaroCore.ProcessAlreadyExists.selector);
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
     }
 
     function test_commit_invalidRootRunningTotal_reverts() public {
@@ -141,7 +147,11 @@ contract FigaroCore_RevertBranch is Test {
         c.runningTotal = 99 ether;
 
         vm.expectRevert(FigaroCore.InvalidRootRunningTotal.selector);
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
     }
 
     function test_commit_sub_unknownProcess_reverts() public {
@@ -158,7 +168,11 @@ contract FigaroCore_RevertBranch is Test {
         });
 
         vm.expectRevert(FigaroCore.UnknownProcess.selector);
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
     }
 
     function test_commit_sub_notProcessBuyer_reverts() public {
@@ -177,7 +191,11 @@ contract FigaroCore_RevertBranch is Test {
         });
 
         vm.expectRevert(FigaroCore.NotProcessBuyer.selector);
-        core.commit(c, _signCommitment(c, OUTSIDER_KEY), _signCommitment(c, SELLER2_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, OUTSIDER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER2_KEY)
+        );
     }
 
     function test_commit_sub_tokenMismatch_reverts() public {
@@ -197,7 +215,11 @@ contract FigaroCore_RevertBranch is Test {
         });
 
         vm.expectRevert(FigaroCore.TokenMismatch.selector);
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER2_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER2_KEY)
+        );
     }
 
     function test_commit_sub_runningTotalMismatch_reverts() public {
@@ -216,7 +238,11 @@ contract FigaroCore_RevertBranch is Test {
         });
 
         vm.expectRevert(abi.encodeWithSelector(FigaroCore.RunningTotalMismatch.selector, 999 ether, 60 ether));
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER2_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER2_KEY)
+        );
     }
 
     function test_commit_sub_deadlineExpired_reverts() public {
@@ -235,7 +261,11 @@ contract FigaroCore_RevertBranch is Test {
         });
 
         vm.expectRevert(FigaroCore.DeadlineExpired.selector);
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER2_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER2_KEY)
+        );
     }
 
     // ── Fee-on-transfer rejection ─────────────────────────────────
@@ -263,7 +293,11 @@ contract FigaroCore_RevertBranch is Test {
         });
 
         vm.expectRevert(FigaroCore.FeeOnTransferDetected.selector);
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -287,7 +321,7 @@ contract FigaroCore_RevertBranch is Test {
         assertEq(afterBal[0], before[0], "the buyer's balance did not move");
         assertEq(afterBal[1], before[1], "the seller's balance did not move");
         assertEq(afterBal[2], before[2], "the Core's balance did not move");
-        bytes32 processId = _typedDataHash(c.hashStruct());
+        bytes32 processId = SigningTestHelper.typedDataHash(core.DOMAIN_SEPARATOR(), c.hashStruct());
         (address rootBuyer,, uint256 runningTotal, uint256 active) = core.processes(processId);
         assertEq(rootBuyer, address(0), "no process was written");
         assertEq(runningTotal, 0, "no running total was written");
@@ -307,7 +341,11 @@ contract FigaroCore_RevertBranch is Test {
         vm.expectRevert(
             abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, buyer, 2 * payment - 1, 2 * payment)
         );
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
         _assertRootCommitLeftNothing(c, before);
     }
 
@@ -324,7 +362,11 @@ contract FigaroCore_RevertBranch is Test {
                 IERC20Errors.ERC20InsufficientAllowance.selector, address(core), 2 * payment - 1, 2 * payment
             )
         );
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
         _assertRootCommitLeftNothing(c, before);
     }
 
@@ -342,7 +384,11 @@ contract FigaroCore_RevertBranch is Test {
                 IERC20Errors.ERC20InsufficientBalance.selector, seller1, 2 * payment - 1, 2 * payment
             )
         );
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
         _assertRootCommitLeftNothing(c, before);
     }
 
@@ -371,7 +417,11 @@ contract FigaroCore_RevertBranch is Test {
                 IERC20Errors.ERC20InsufficientAllowance.selector, address(core), 2 * 30 ether - 1, 2 * 30 ether
             )
         );
-        core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
+        core.commit(
+            subC,
+            SigningTestHelper.signCommitment(coreDomain, subC, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, subC, SELLER2_KEY)
+        );
 
         uint256[3] memory afterBal = _balances(buyer, seller2);
         assertEq(afterBal[0], before[0], "the buyer's balance did not move");
@@ -404,13 +454,21 @@ contract FigaroCore_RevertBranch is Test {
             salt: 2,
             commitDeadline: block.timestamp + 1 hours
         });
-        core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
+        core.commit(
+            subC,
+            SigningTestHelper.signCommitment(coreDomain, subC, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, subC, SELLER2_KEY)
+        );
 
         // The other process: outsider buys from seller2.
         CommitmentTypes.Commitment memory otherC = _rootCommitment(other, 3);
         otherC.buyer = outsider;
         otherC.seller = seller2;
-        core.commit(otherC, _signCommitment(otherC, OUTSIDER_KEY), _signCommitment(otherC, SELLER2_KEY));
+        core.commit(
+            otherC,
+            SigningTestHelper.signCommitment(coreDomain, otherC, OUTSIDER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, otherC, SELLER2_KEY)
+        );
         uint256 otherBonds = 2 * other + 2 * other;
 
         assertEq(
@@ -483,7 +541,11 @@ contract FigaroCore_RevertBranch is Test {
             salt: 2,
             commitDeadline: block.timestamp + 1 hours
         });
-        core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
+        core.commit(
+            subC,
+            SigningTestHelper.signCommitment(coreDomain, subC, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, subC, SELLER2_KEY)
+        );
 
         // Only provide 1 of 2
         CommitmentTypes.Commitment[] memory commitments = new CommitmentTypes.Commitment[](1);
@@ -524,7 +586,11 @@ contract FigaroCore_RevertBranch is Test {
             salt: 2,
             commitDeadline: block.timestamp + 1 hours
         });
-        core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
+        core.commit(
+            subC,
+            SigningTestHelper.signCommitment(coreDomain, subC, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, subC, SELLER2_KEY)
+        );
 
         CommitmentTypes.Commitment[] memory commitments = new CommitmentTypes.Commitment[](2);
         commitments[0] = rootC;
@@ -548,7 +614,11 @@ contract FigaroCore_RevertBranch is Test {
         (,, CommitmentTypes.Commitment memory c) = _commitRoot(10 ether, 1);
 
         vm.expectRevert(FigaroCore.ProcessAlreadyExists.selector);
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
     }
 
     function test_commit_subReplay_preemptedByRunningTotalMismatch() public {
@@ -565,11 +635,19 @@ contract FigaroCore_RevertBranch is Test {
             salt: 2,
             commitDeadline: block.timestamp + 1 hours
         });
-        core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
+        core.commit(
+            subC,
+            SigningTestHelper.signCommitment(coreDomain, subC, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, subC, SELLER2_KEY)
+        );
 
         // Identical struct: the accumulator has moved to 30, so the replay's
         // runningTotal (30) no longer matches 30 + 20 = 50.
         vm.expectRevert(abi.encodeWithSelector(FigaroCore.RunningTotalMismatch.selector, 30 ether, 50 ether));
-        core.commit(subC, _signCommitment(subC, BUYER_KEY), _signCommitment(subC, SELLER2_KEY));
+        core.commit(
+            subC,
+            SigningTestHelper.signCommitment(coreDomain, subC, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, subC, SELLER2_KEY)
+        );
     }
 }

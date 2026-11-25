@@ -6,6 +6,8 @@ import "src/core/verifier/FigaroBatchVerifier.sol";
 import {IUsageCounter} from "src/core/verifier/FigaroBatchVerifier.sol";
 import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
 import {Vm} from "forge-std/Vm.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
+import {BatchHashes} from "test/helpers/BatchHashes.sol";
 
 /// @title Batch gas ceiling anchors — the empirical per-item cost of `settleBatch`
 /// @notice What a batch costs the chain is what it PUBLISHES — the net positions
@@ -150,7 +152,7 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
             next,
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             _hashAttestations(events.attestations),
             _hashUsage(usage),
             uint64(block.timestamp),
@@ -244,7 +246,7 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
             next,
             uint64(block.chainid),
             address(verifier),
-            _hashPositions(positions),
+            BatchHashes.positions(positions),
             _hashAttestations(events.attestations),
             _hashUsage(_emptyUsage()),
             uint64(block.timestamp),
@@ -418,24 +420,13 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     function test_Gas_settleStreamWalletCodeCheck() public {
         _settleCallGas(hex"");
         bytes memory authorization = _signature(999);
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                keccak256(
-                    abi.encode(
-                        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                        keccak256("FigaroCore"),
-                        keccak256("3"),
-                        block.chainid,
-                        address(verifier)
-                    )
-                ),
-                keccak256(
-                    abi.encode(
-                        keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"),
-                        keccak256("process"),
-                        uint256(1 ether)
-                    )
+        bytes32 digest = SigningTestHelper.typedDataHash(
+            SigningTestHelper.domainOf(address(verifier)),
+            keccak256(
+                abi.encode(
+                    keccak256("ResolveProcess(bytes32 processId,uint256 runningTotal)"),
+                    keccak256("process"),
+                    uint256(1 ether)
                 )
             )
         );

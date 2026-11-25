@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 import "src/mocks/MockPermitToken.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title GasCeilingTest — resolveProcess per-order gas regression guard
 /// @notice The canonical per-order resolve cost (`RESOLVE_GAS_PER_ORDER`) is the
@@ -68,25 +69,6 @@ contract GasCeilingTest is Test {
 
     // ── Helpers ───────────────────────────────────────────────────
 
-    function _typedDataHash(bytes32 structHash) internal view returns (bytes32) {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(core)
-            )
-        );
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-    }
-
-    function _sign(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {
-        bytes32 digest = _typedDataHash(c.hashStruct());
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
     /// @dev Build a fresh, disjoint process of `n` orders (distinct sellers +
     ///      salts keyed off `keyBase` so processIds never collide across calls).
     function _buildProcess(uint256 n, uint256 keyBase)
@@ -111,7 +93,11 @@ contract GasCeilingTest is Test {
             salt: keyBase,
             commitDeadline: block.timestamp + 1 hours
         });
-        (processId,) = core.commit(root, _sign(root, BUYER_KEY), _sign(root, keyBase));
+        (processId,) = core.commit(
+            root,
+            SigningTestHelper.signCommitment(address(core), root, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), root, keyBase)
+        );
         commitments[0] = root;
 
         uint256 cumulative = PAYMENT;
@@ -134,7 +120,11 @@ contract GasCeilingTest is Test {
                 salt: sk,
                 commitDeadline: block.timestamp + 1 hours
             });
-            core.commit(sub, _sign(sub, BUYER_KEY), _sign(sub, sk));
+            core.commit(
+                sub,
+                SigningTestHelper.signCommitment(address(core), sub, BUYER_KEY),
+                SigningTestHelper.signCommitment(address(core), sub, sk)
+            );
             commitments[i] = sub;
         }
     }

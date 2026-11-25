@@ -51,8 +51,16 @@ contract MembersRegistryTest is Test {
 
     function test_register_works_with_zero_deposit() public {
         MembersRegistry freeReg = new MembersRegistry(0, COOLDOWN);
+        assertFalse(freeReg.registered(alice), "not a member before registering");
+        // The registry stores no profile: the profile is the URI the
+        // `MemberRegistered` event carries, so the event is what is asserted.
+        vm.expectEmit(true, false, false, true, address(freeReg));
+        emit MembersRegistry.MemberRegistered(alice, "ipfs://x");
         vm.prank(alice);
         freeReg.register("ipfs://x");
+        assertTrue(freeReg.registered(alice), "a zero-stake registration is a live member");
+        assertEq(freeReg.pendingDeposit(alice), 0, "nothing is pending");
+        assertEq(address(freeReg).balance, 0, "no stake was taken");
     }
 
     // ── The registered() gate — what RPGF reads ─────────────────────────

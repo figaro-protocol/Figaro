@@ -11,6 +11,7 @@ import "src/mocks/MockERC20.sol";
 import "src/mocks/MockReentrantToken.sol";
 import "src/mocks/MockSwapVenue.sol";
 import "src/mocks/MockWitnessPermit2.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title WitnessSwapAndCommitCoordinatorTest — the swap route carries a signed witness
 /// @notice Covers WitnessSwapAndCommitCoordinator end to end: every leg
@@ -20,6 +21,10 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
     FigaroCore internal core;
+    /// @dev The Core's domain, read from it once deployed: a signature made
+    ///      after a cheatcode (`vm.prank`, `vm.expectRevert`) reads no contract,
+    ///      so the cheatcode reaches the call under test.
+    bytes32 internal coreDomain;
     MockWitnessPermit2 internal permit2;
     MockSwapVenue internal router;
     WitnessSwapAndCommitCoordinator internal coord;
@@ -44,6 +49,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         seller = vm.addr(SELLER_KEY);
 
         core = new FigaroCore();
+
+        coreDomain = core.DOMAIN_SEPARATOR();
         permit2 = new MockWitnessPermit2();
         router = new MockSwapVenue();
         coord = new WitnessSwapAndCommitCoordinator(address(core), address(permit2), address(router));
@@ -78,21 +85,6 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         });
     }
 
-    function _sign(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(core)
-            )
-        );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, c.hashStruct()));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
     /// @dev Build the swap calldata for a leg routing `amountIn` of `input` to
     ///      `recipient` (normally the coordinator).
     function _swapData(MockERC20 input, uint256 amountIn, address recipient) internal view returns (bytes memory) {
@@ -122,7 +114,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
             keccak256(abi.encode(keccak256("TokenPermissions(address token,uint256 amount)"), inputToken, maxInput));
         bytes32 structHash =
             keccak256(abi.encode(typeHash, tokenPermissionsHash, address(coord), nonce, deadline, witness));
-        return keccak256(abi.encodePacked("\x19\x01", permit2.DOMAIN_SEPARATOR(), structHash));
+        return SigningTestHelper.typedDataHash(permit2.DOMAIN_SEPARATOR(), structHash);
     }
 
     /// @dev A witness-signed swap-funding leg: swaps `amountIn` of `input` to the
@@ -173,8 +165,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         _selfFundBond(seller, 2 * P); // seller self-funds its 2P bond in USDC
 
         CommitmentTypes.Commitment memory c = _rootCommitment(1);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
 
         vm.prank(relayer);
         coord.swapAndCommit(c, bSig, sSig, _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY), _disabled());
@@ -190,8 +182,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         _fundInput(seller, sellerInput, 2 * P);
 
         CommitmentTypes.Commitment memory c = _rootCommitment(2);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
 
         vm.prank(relayer);
         coord.swapAndCommit(c, bSig, sSig, _disabled(), _leg(c, SELLER, sellerInput, 2 * P, SELLER_KEY));
@@ -206,8 +198,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         _fundInput(seller, sellerInput, 2 * P);
 
         CommitmentTypes.Commitment memory c = _rootCommitment(3);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
 
         vm.prank(relayer);
         coord.swapAndCommit(
@@ -225,8 +217,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         _selfFundBond(seller, 2 * P);
 
         CommitmentTypes.Commitment memory c = _rootCommitment(4);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
 
         vm.prank(relayer);
         coord.swapAndCommit(c, bSig, sSig, _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY), _disabled());
@@ -241,8 +233,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         _selfFundBond(seller, 2 * P);
 
         CommitmentTypes.Commitment memory c = _rootCommitment(5);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
 
         // maxInput pulls 3P, but the SIGNED swapData only swaps 2P -> 1P input
         // residual refunded. The route is witness-bound, so the 2P-route
@@ -276,8 +268,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         _selfFundBond(seller, 2 * P);
 
         CommitmentTypes.Commitment memory c = _rootCommitment(11);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
 
         bytes memory swapData = _swapData(buyerInput, 2 * P, address(coord));
         uint256 deadline = block.timestamp + 1 hours;
@@ -306,8 +298,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         _selfFundBond(seller, 2 * P);
 
         CommitmentTypes.Commitment memory c = _rootCommitment(12);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
 
         vm.mockCallRevert(
             address(buyerInput), abi.encodeWithSelector(IERC20.transfer.selector, buyer, 0), "zero-value transfer"
@@ -324,8 +316,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         _selfFundBond(seller, 2 * P);
 
         CommitmentTypes.Commitment memory c = _rootCommitment(6);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
 
         // Build the leg first: `_leg` calls `coord.swapWitness`, and that call
         // would otherwise consume the `expectRevert` armed just below.
@@ -342,8 +334,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         _selfFundBond(seller, 2 * P);
 
         CommitmentTypes.Commitment memory c = _rootCommitment(9);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
 
         // A route the venue cannot execute: the selector matches no function
         // on the router and it has no fallback, so the forwarded call returns
@@ -371,8 +363,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
 
     function test_RevertWhen_NothingToFund() public {
         CommitmentTypes.Commitment memory c = _rootCommitment(7);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
 
         vm.prank(relayer);
         vm.expectRevert(WitnessSwapAndCommitCoordinator.NothingToFund.selector);
@@ -395,8 +387,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         _selfFundBond(seller, 2 * P);
 
         CommitmentTypes.Commitment memory c = _rootCommitment(8);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
 
         // Buyer authorizes (and signs the witness for) the honest route.
         WitnessSwapAndCommitCoordinator.SwapFunding memory honest = _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY);
@@ -453,8 +445,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
     function test_CoordinatorCannotBeBuyer() public {
         CommitmentTypes.Commitment memory c = _rootCommitment(20);
         c.buyer = address(coord);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
 
         vm.expectRevert(FigaroCore.InvalidBuyerSignature.selector);
         core.commit(c, bSig, sSig);
@@ -469,8 +461,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
     function test_CoordinatorCannotBeSeller() public {
         CommitmentTypes.Commitment memory c = _rootCommitment(21);
         c.seller = address(coord);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
 
         vm.expectRevert(FigaroCore.InvalidSellerSignature.selector);
         core.commit(c, bSig, sSig);
@@ -490,7 +482,11 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         CommitmentTypes.Commitment memory c = _rootCommitment(22);
         vm.prank(relayer);
         (bytes32 processId,) = coord.swapAndCommit(
-            c, _sign(c, BUYER_KEY), _sign(c, SELLER_KEY), _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY), _disabled()
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY),
+            _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY),
+            _disabled()
         );
 
         CommitmentTypes.Commitment[] memory cs = new CommitmentTypes.Commitment[](1);
@@ -511,8 +507,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         vm.prank(relayer);
         coord.swapAndCommit(
             c,
-            _sign(c, BUYER_KEY),
-            _sign(c, SELLER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY),
             _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY),
             _leg(c, SELLER, sellerInput, 2 * P, SELLER_KEY)
         );
@@ -534,8 +530,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         _selfFundBond(seller, 2 * P);
 
         CommitmentTypes.Commitment memory c = _rootCommitment(31);
-        bytes memory bSig = _sign(c, BUYER_KEY);
-        bytes memory sSig = _sign(c, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER_KEY);
         WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _leg(c, BUYER, input, 2 * P, BUYER_KEY);
 
         hostile.arm(address(coord), abi.encodeCall(coord.swapAndCommit, (c, bSig, sSig, leg, _disabled())));
@@ -566,8 +562,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         CommitmentTypes.Commitment memory signedFor = _rootCommitment(30); // never commits
         CommitmentTypes.Commitment memory other = _rootCommitment(31);
         WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _leg(signedFor, BUYER, buyerInput, 2 * P, BUYER_KEY);
-        bytes memory bSig = _sign(other, BUYER_KEY);
-        bytes memory sSig = _sign(other, SELLER_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, other, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, other, SELLER_KEY);
         WitnessSwapAndCommitCoordinator.SwapFunding memory disabled = _disabled();
 
         vm.prank(address(0xA77AC4));
@@ -585,7 +581,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         WitnessSwapAndCommitCoordinator.SwapFunding memory asBuyer = _leg(c, BUYER, buyerInput, 2 * P, BUYER_KEY);
         // The same wallet's leg as seller of the same order is accepted.
         WitnessSwapAndCommitCoordinator.SwapFunding memory asSeller = _leg(c, SELLER, buyerInput, 2 * P, BUYER_KEY);
-        bytes memory sig = _sign(c, BUYER_KEY);
+        bytes memory sig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
         WitnessSwapAndCommitCoordinator.SwapFunding memory disabled = _disabled();
 
         vm.prank(relayer);

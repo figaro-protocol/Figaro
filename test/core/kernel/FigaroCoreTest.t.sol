@@ -7,12 +7,17 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 import "src/mocks/MockPermitToken.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title FigaroCoreTest — Core invariant tests for the enforcement-only FigaroCore
 contract FigaroCoreTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
     FigaroCore internal core;
+    /// @dev The Core's domain, read from it once deployed: a signature made
+    ///      after a cheatcode (`vm.prank`, `vm.expectRevert`) reads no contract,
+    ///      so the cheatcode reaches the call under test.
+    bytes32 internal coreDomain;
     MockPermitToken internal token;
 
     uint256 internal constant BUYER_KEY = 0xB0B;
@@ -38,6 +43,7 @@ contract FigaroCoreTest is Test {
 
         token = new MockPermitToken();
         core = new FigaroCore();
+        coreDomain = core.DOMAIN_SEPARATOR();
 
         address[5] memory participants = [buyer, seller1, seller2, seller3, outsider];
         for (uint256 i = 0; i < participants.length; i++) {
@@ -48,30 +54,6 @@ contract FigaroCoreTest is Test {
     }
 
     // ── Helpers ───────────────────────────────────────────────────
-
-    function _signCommitment(CommitmentTypes.Commitment memory c, uint256 privateKey)
-        internal
-        view
-        returns (bytes memory)
-    {
-        bytes32 structHash = c.hashStruct();
-        bytes32 digest = _typedDataHash(structHash);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
-    function _typedDataHash(bytes32 structHash) internal view returns (bytes32) {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("FigaroCore"),
-                keccak256("3"),
-                block.chainid,
-                address(core)
-            )
-        );
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-    }
 
     function _rootCommitment(uint256 payment, uint256 salt) internal view returns (CommitmentTypes.Commitment memory) {
         return CommitmentTypes.Commitment({
@@ -92,8 +74,8 @@ contract FigaroCoreTest is Test {
         returns (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c)
     {
         c = _rootCommitment(payment, salt);
-        bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
-        bytes memory sellerSig = _signCommitment(c, SELLER1_KEY);
+        bytes memory buyerSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sellerSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY);
         (processId, orderHash) = core.commit(c, buyerSig, sellerSig);
     }
 
@@ -124,8 +106,8 @@ contract FigaroCoreTest is Test {
         uint256 salt
     ) internal returns (bytes32 orderHash, CommitmentTypes.Commitment memory c) {
         c = _subCommitment(processId, seller, payment, expectedCum, salt);
-        bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
-        bytes memory sellerSig = _signCommitment(c, sellerKey);
+        bytes memory buyerSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sellerSig = SigningTestHelper.signCommitment(coreDomain, c, sellerKey);
         (, orderHash) = core.commit(c, buyerSig, sellerSig);
     }
 
@@ -172,8 +154,8 @@ contract FigaroCoreTest is Test {
         uint256 liedCumValue = 999 ether;
 
         CommitmentTypes.Commitment memory sub = _subCommitment(processId, seller2, subPayment, liedCumValue, 2);
-        bytes memory bSig = _signCommitment(sub, BUYER_KEY);
-        bytes memory sSig = _signCommitment(sub, SELLER2_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, sub, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, sub, SELLER2_KEY);
 
         uint256 actualCum = rootPayment + subPayment;
         vm.expectRevert(abi.encodeWithSelector(FigaroCore.RunningTotalMismatch.selector, liedCumValue, actualCum));
@@ -301,7 +283,11 @@ contract FigaroCoreTest is Test {
             commitDeadline: block.timestamp + 1 hours
         });
         vm.expectRevert(FigaroCore.TokenMismatch.selector);
-        core.commit(sub, _signCommitment(sub, BUYER_KEY), _signCommitment(sub, SELLER2_KEY));
+        core.commit(
+            sub,
+            SigningTestHelper.signCommitment(coreDomain, sub, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, sub, SELLER2_KEY)
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -331,7 +317,11 @@ contract FigaroCoreTest is Test {
             commitDeadline: block.timestamp + 1 hours
         });
         vm.expectRevert(FigaroCore.TokenMismatch.selector);
-        core.commit(sub, _signCommitment(sub, BUYER_KEY), _signCommitment(sub, SELLER2_KEY));
+        core.commit(
+            sub,
+            SigningTestHelper.signCommitment(coreDomain, sub, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, sub, SELLER2_KEY)
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -373,7 +363,11 @@ contract FigaroCoreTest is Test {
             commitDeadline: block.timestamp + 1 hours
         });
         vm.expectRevert(FigaroCore.InvalidRootRunningTotal.selector);
-        core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -395,7 +389,11 @@ contract FigaroCoreTest is Test {
             commitDeadline: block.timestamp + 1 hours
         });
         vm.expectRevert(FigaroCore.NotProcessBuyer.selector);
-        core.commit(sub, _signCommitment(sub, OUTSIDER_KEY), _signCommitment(sub, SELLER2_KEY));
+        core.commit(
+            sub,
+            SigningTestHelper.signCommitment(coreDomain, sub, OUTSIDER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, sub, SELLER2_KEY)
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -405,14 +403,17 @@ contract FigaroCoreTest is Test {
     function test_orderStatus_transitions() public {
         CommitmentTypes.Commitment memory c = _rootCommitment(50 ether, 1);
         bytes32 structHash = c.hashStruct();
-        bytes32 digest = _typedDataHash(structHash);
+        bytes32 digest = SigningTestHelper.typedDataHash(core.DOMAIN_SEPARATOR(), structHash);
         bytes32 expectedProcessId = digest;
         bytes32 expectedOrderHash = keccak256(abi.encodePacked(expectedProcessId, structHash));
 
         assertEq(core.orderStatus(expectedOrderHash), 0, "before commit: unknown");
 
-        (bytes32 processId, bytes32 orderHash) =
-            core.commit(c, _signCommitment(c, BUYER_KEY), _signCommitment(c, SELLER1_KEY));
+        (bytes32 processId, bytes32 orderHash) = core.commit(
+            c,
+            SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY)
+        );
         assertEq(orderHash, expectedOrderHash, "orderHash matches prediction");
         assertEq(core.orderStatus(orderHash), 1, "after commit: committed");
 
@@ -523,12 +524,14 @@ contract FigaroCoreTest is Test {
         assertTrue(awayDomain != homeDomain, "the domain moves with the chain id");
         CommitmentTypes.Commitment memory accepted = _rootCommitment(50 ether, 1);
         core.commit(
-            accepted, _signUnder(awayDomain, accepted, BUYER_KEY), _signUnder(awayDomain, accepted, SELLER1_KEY)
+            accepted,
+            SigningTestHelper.signCommitment(awayDomain, accepted, BUYER_KEY),
+            SigningTestHelper.signCommitment(awayDomain, accepted, SELLER1_KEY)
         );
 
         CommitmentTypes.Commitment memory replayed = _rootCommitment(50 ether, 2);
-        bytes memory buyerSig = _signUnder(awayDomain, replayed, BUYER_KEY);
-        bytes memory sellerSig = _signUnder(awayDomain, replayed, SELLER1_KEY);
+        bytes memory buyerSig = SigningTestHelper.signCommitment(awayDomain, replayed, BUYER_KEY);
+        bytes memory sellerSig = SigningTestHelper.signCommitment(awayDomain, replayed, SELLER1_KEY);
 
         vm.chainId(home);
         assertEq(core.DOMAIN_SEPARATOR(), homeDomain, "back home");
@@ -537,18 +540,10 @@ contract FigaroCoreTest is Test {
 
         // The same struct, signed for this chain, is a valid order here.
         core.commit(
-            replayed, _signUnder(homeDomain, replayed, BUYER_KEY), _signUnder(homeDomain, replayed, SELLER1_KEY)
+            replayed,
+            SigningTestHelper.signCommitment(homeDomain, replayed, BUYER_KEY),
+            SigningTestHelper.signCommitment(homeDomain, replayed, SELLER1_KEY)
         );
-    }
-
-    function _signUnder(bytes32 domain, CommitmentTypes.Commitment memory c, uint256 privateKey)
-        internal
-        pure
-        returns (bytes memory)
-    {
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domain, c.hashStruct()));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
-        return abi.encodePacked(r, s, v);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -575,8 +570,8 @@ contract FigaroCoreTest is Test {
 
     function test_duplicateCommitment_reverts() public {
         CommitmentTypes.Commitment memory c = _rootCommitment(50 ether, 1);
-        bytes memory bSig = _signCommitment(c, BUYER_KEY);
-        bytes memory sSig = _signCommitment(c, SELLER1_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, c, SELLER1_KEY);
 
         core.commit(c, bSig, sSig);
 
@@ -614,11 +609,19 @@ contract FigaroCoreTest is Test {
         CommitmentTypes.Commitment memory sub2 = _subCommitment(processId, seller3, 30 ether, 80 ether, 3);
 
         // First succeeds
-        core.commit(sub1, _signCommitment(sub1, BUYER_KEY), _signCommitment(sub1, SELLER2_KEY));
+        core.commit(
+            sub1,
+            SigningTestHelper.signCommitment(coreDomain, sub1, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, sub1, SELLER2_KEY)
+        );
 
         // Second fails — accumulator already at 80, actual would be 110
         vm.expectRevert(abi.encodeWithSelector(FigaroCore.RunningTotalMismatch.selector, 80 ether, 110 ether));
-        core.commit(sub2, _signCommitment(sub2, BUYER_KEY), _signCommitment(sub2, SELLER3_KEY));
+        core.commit(
+            sub2,
+            SigningTestHelper.signCommitment(coreDomain, sub2, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, sub2, SELLER3_KEY)
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -649,7 +652,11 @@ contract FigaroCoreTest is Test {
             uint256 who = i % 3;
             if (i == 0) {
                 CommitmentTypes.Commitment memory root = _rootCommitment(payment, 1);
-                (processId,) = core.commit(root, _signCommitment(root, BUYER_KEY), _signCommitment(root, SELLER1_KEY));
+                (processId,) = core.commit(
+                    root,
+                    SigningTestHelper.signCommitment(coreDomain, root, BUYER_KEY),
+                    SigningTestHelper.signCommitment(coreDomain, root, SELLER1_KEY)
+                );
                 commitments[0] = root;
             } else {
                 (, commitments[i]) = _commitSub(processId, sellers[who], payment, cumulative, sellerKeys[who], i + 1);
@@ -689,7 +696,7 @@ contract FigaroCoreTest is Test {
             commitDeadline: block.timestamp + 1 hours
         });
 
-        bytes memory sig = _signCommitment(c, BUYER_KEY);
+        bytes memory sig = SigningTestHelper.signCommitment(coreDomain, c, BUYER_KEY);
         uint256 balBefore = token.balanceOf(buyer);
 
         (bytes32 processId,) = core.commit(c, sig, sig);
@@ -735,8 +742,8 @@ contract FigaroCoreTest is Test {
         // a sub-order paying 5 ether would expect cumulative 15 ether. The
         // gate trips before the cumulative-value check.
         CommitmentTypes.Commitment memory subC = _subCommitment(processId, seller2, 5 ether, 15 ether, 99);
-        bytes memory bSig = _signCommitment(subC, BUYER_KEY);
-        bytes memory sSig = _signCommitment(subC, SELLER2_KEY);
+        bytes memory bSig = SigningTestHelper.signCommitment(coreDomain, subC, BUYER_KEY);
+        bytes memory sSig = SigningTestHelper.signCommitment(coreDomain, subC, SELLER2_KEY);
 
         vm.expectRevert(FigaroCore.ProcessAlreadyResolved.selector);
         core.commit(subC, bSig, sSig);
@@ -970,11 +977,18 @@ contract FigaroCoreTest is Test {
         CommitmentTypes.Commitment memory root = _rootCommitment(10 ether, 1);
         root.checkoutHash = terms;
         bytes32 rootHash;
-        (r.processId, rootHash) =
-            core.commit(root, _signCommitment(root, BUYER_KEY), _signCommitment(root, SELLER1_KEY));
+        (r.processId, rootHash) = core.commit(
+            root,
+            SigningTestHelper.signCommitment(coreDomain, root, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, root, SELLER1_KEY)
+        );
         CommitmentTypes.Commitment memory sub = _subCommitment(r.processId, seller2, 20 ether, 30 ether, 2);
         sub.checkoutHash = terms;
-        (, bytes32 subHash) = core.commit(sub, _signCommitment(sub, BUYER_KEY), _signCommitment(sub, SELLER2_KEY));
+        (, bytes32 subHash) = core.commit(
+            sub,
+            SigningTestHelper.signCommitment(coreDomain, sub, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, sub, SELLER2_KEY)
+        );
 
         uint256[4] memory committed = _balancesOf(w);
         for (uint256 i = 0; i < 3; i++) {
@@ -1085,11 +1099,19 @@ contract FigaroCoreTest is Test {
         (ok, ret) = reader.tryResolve(pid, o);
         assertFalse(ok, "a second resolve is refused");
         assertEq(bytes4(ret), FigaroCore.NotProcessBuyer.selector, "refused as not the buyer");
-        (ok, ret) = reader.tryCommit(o[0], _signCommitment(o[0], BUYER_KEY), _signCommitment(o[0], SELLER1_KEY));
+        (ok, ret) = reader.tryCommit(
+            o[0],
+            SigningTestHelper.signCommitment(coreDomain, o[0], BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, o[0], SELLER1_KEY)
+        );
         assertFalse(ok, "a replayed root commit is refused");
         assertEq(bytes4(ret), FigaroCore.ProcessAlreadyExists.selector, "refused as an existing process");
         CommitmentTypes.Commitment memory late = _subCommitment(pid, seller2, 5 ether, 65 ether, 77);
-        (ok, ret) = reader.tryCommit(late, _signCommitment(late, BUYER_KEY), _signCommitment(late, SELLER2_KEY));
+        (ok, ret) = reader.tryCommit(
+            late,
+            SigningTestHelper.signCommitment(coreDomain, late, BUYER_KEY),
+            SigningTestHelper.signCommitment(coreDomain, late, SELLER2_KEY)
+        );
         assertFalse(ok, "a sub-order on the resolved process is refused");
         assertEq(bytes4(ret), FigaroCore.ProcessAlreadyResolved.selector, "refused as resolved");
         assertEq(token.balanceOf(address(core)), 0, "the Core holds nothing of the process");

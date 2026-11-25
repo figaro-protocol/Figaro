@@ -9,6 +9,7 @@ import {MembersRegistry} from "src/registries/MembersRegistry.sol";
 import {UsageCounter} from "src/rewards/UsageCounter.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
 
 /// @notice An agreement's topology leaf does not open as a clause leaf.
@@ -39,12 +40,9 @@ contract TopologyLeafNeverOpensTest is Test {
     /// @dev The SDK's `TOPOLOGY_LEAF_DOMAIN`. No contract holds it.
     bytes32 internal constant TOPOLOGY_LEAF_DOMAIN = keccak256("figaro-agreement-topology");
 
-    /// @dev The SDK's topology leaf for a root order (`follows: []`), from the
-    ///      vector `one-clause-a-topology-and-a-design` in `test/fixtures/merkle-vectors.json`.
-    bytes32 internal constant SDK_EMPTY_TOPOLOGY_LEAF =
-        0xa17e1e2abf5a5709c413cce584db7e38200a19361ad5e98542a85c44a06b8709;
-
     /// @dev The SDK's `computeTopologyLeaf([FOLLOWED])`, the leaf this file's tree holds.
+    ///      The SDK's fixture holds no one-edge topology vector, so this value
+    ///      is written here; the empty topology leaf is read from the fixture.
     bytes32 internal constant SDK_ONE_EDGE_TOPOLOGY_LEAF =
         0x273816c76df314153c93a9c7a224e643f4a0b87341ab2acae9c19abfb4cfefe5;
 
@@ -72,6 +70,7 @@ contract TopologyLeafNeverOpensTest is Test {
     bytes32[] internal clauseProof;
     CommitmentTypes.Commitment internal order;
     bytes32 internal processId;
+    bytes32 internal orderHash;
 
     /// @dev The topology leaf as the SDK builds it: the canonical JSON
     ///      `{"follows":["0x<64 lowercase hex>",…]}`, its keccak256 as the data
@@ -130,13 +129,25 @@ contract TopologyLeafNeverOpensTest is Test {
             salt: 1,
             commitDeadline: block.timestamp + 1 hours
         });
-        (processId,) = core.commit(order, _sign(order, BUYER_KEY), _sign(order, SELLER_KEY));
+        (processId, orderHash) = core.commit(
+            order,
+            SigningTestHelper.signCommitment(address(core), order, BUYER_KEY),
+            SigningTestHelper.signCommitment(address(core), order, SELLER_KEY)
+        );
     }
 
-    function _sign(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), c.hashStruct()));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
-        return abi.encodePacked(r, s, v);
+    /// @dev The SDK's topology leaf for a root order (`follows: []`), read from
+    ///      the vector `one-clause-a-topology-and-a-design` in
+    ///      `test/fixtures/merkle-vectors.json`.
+    function _sdkEmptyTopologyLeaf() internal view returns (bytes32) {
+        string memory json = vm.readFile(string.concat(vm.projectRoot(), "/test/fixtures/merkle-vectors.json"));
+        assertEq(
+            vm.parseJsonString(json, ".agreements[2].label"),
+            "one-clause-a-topology-and-a-design",
+            "the fixture's third agreement is the topology vector"
+        );
+        assertEq(vm.parseJsonString(json, ".agreements[2].topology.clauseData"), '{"follows":[]}', "no edge");
+        return vm.parseJsonBytes32(json, ".agreements[2].topology.leaf");
     }
 
     function _resolve() internal {
@@ -159,7 +170,7 @@ contract TopologyLeafNeverOpensTest is Test {
     /// equals what the SDK's `computeTopologyLeaf` returns, and the tree holds
     /// it beside the clause leaf.
     function test_theTopologyLeafIsTheSdksAndIsALeafOfTheRoot() public view {
-        assertEq(_topologyLeaf(new bytes32[](0)), SDK_EMPTY_TOPOLOGY_LEAF, "the SDK's empty topology leaf");
+        assertEq(_topologyLeaf(new bytes32[](0)), _sdkEmptyTopologyLeaf(), "the SDK's empty topology leaf");
         assertEq(topologyLeaf, SDK_ONE_EDGE_TOPOLOGY_LEAF, "the SDK's one-edge topology leaf");
         assertEq(topologyProof.length, 1, "the topology leaf's proof is its sibling");
         assertEq(AgreementTestHelper.rootFor(leaves), order.checkoutHash, "the order signs this root");
@@ -168,6 +179,8 @@ contract TopologyLeafNeverOpensTest is Test {
     /// The same order's clause leaf opens in the coordinator: the order is
     /// known and open, and the proof is the tree's.
     function test_theClauseLeafOfTheSameOrderOpensInTheCoordinator() public {
+        vm.expectEmit(true, true, true, true, address(coordinator));
+        emit AttestationCoordinator.Attestation(orderHash, processId, buyer, CLAUSE_KEY, 0, bytes32(0));
         vm.prank(buyer);
         coordinator.attestAsBuyer(order, CLAUSE_KEY, 0, keccak256(CLAUSE_DATA), clauseProof, bytes32(0));
     }

@@ -7,6 +7,7 @@ import "src/core/kernel/CommitmentTypes.sol";
 import "src/core/attestation/AttestationCoordinator.sol";
 import "src/mocks/MockPermitToken.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
+import {SigningTestHelper} from "test/helpers/SigningTestHelper.sol";
 
 /// @title An attestation changes nothing in FigaroCore
 /// @notice Commits a process of three orders over two sellers, each under the
@@ -112,16 +113,12 @@ contract AttestationLeavesCoreUnchangedTest is Test {
             salt: salt,
             commitDeadline: block.timestamp + 1 hours
         });
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), c.hashStruct()));
-        (bytes32 newProcessId, bytes32 orderHash) = core.commit(c, _sig(BUYER_KEY, digest), _sig(sellerKey, digest));
+        bytes32 digest = SigningTestHelper.typedDataHash(core.DOMAIN_SEPARATOR(), c.hashStruct());
+        (bytes32 newProcessId, bytes32 orderHash) =
+            core.commit(c, SigningTestHelper.sign(BUYER_KEY, digest), SigningTestHelper.sign(sellerKey, digest));
         if (pid == bytes32(0)) processId = newProcessId;
         orderHashes[orders.length] = orderHash;
         orders.push(c);
-    }
-
-    function _sig(uint256 key, bytes32 digest) internal pure returns (bytes memory) {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
-        return abi.encodePacked(r, s, v);
     }
 
     function _snapshot() internal view returns (Snapshot memory s) {
