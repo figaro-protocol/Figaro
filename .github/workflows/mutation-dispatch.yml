@@ -32,10 +32,8 @@ name: Mutation (dispatch)
 # limited number of jobs at once (20 on the free plan), so the matrix
 # queues: two rounds of up to six hours.
 #
-# mewt over the contracts is left out. scripts/mewt-run.sh runs
-# `mewt run <target.sol>` and needs a mewt.toml whose [targets] and [test]
-# point at the target, but mewt.toml is in .gitignore and no copy is in the
-# repository, so a checkout carries no mewt configuration to run.
+# mewt over the contracts has its own workflow, mewt-dispatch.yml, which
+# passes mewt's configuration on the command line.
 
 on:
     workflow_dispatch:

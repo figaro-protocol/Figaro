@@ -1,0 +1,200 @@
+name: Solidity Mutation (dispatch)
+
+# Runs mewt (Trail of Bits) over every contract under src/ that holds code,
+# at the commit given as input: one job per contract and per group of
+# mutation types. Started by hand only.
+#
+# What a mutant is tested against. The whole Foundry suite, as the default
+# profile builds it, less two things: the gas-ceiling tests (`test_Gas_`),
+# which a mutant moves without changing what the contract does, and the fork
+# tests, which need an RPC and which the Foundry workflow's own fork job
+# runs. `--fuzz-seed` fixes the fuzzer's seed, so the unmutated suite gives
+# one answer on every run and a mutant is never written down as caught by a
+# chance failure of a fuzz or invariant test.
+#
+# Every mutant gets a verdict (`--comprehensive`): without it mewt leaves a
+# less severe mutant untested when a more severe one on the same line went
+# uncaught, and a job that holds one group of types would never see the
+# other group's verdicts.
+#
+# The configuration. mewt reads mewt.toml from the directory it runs in.
+# That file is in .gitignore (a developer's local copy names one target at a
+# time), so each job passes everything on the command line and writes no
+# file into the checkout.
+#
+# The split. mewt has no shard option. A mutant recompiles what imports the
+# target and runs the suite, about a minute on a standard runner, and the
+# largest contract yields about 335 mutants, which one job of 355 minutes
+# cannot be trusted to finish. The mutation types fall into three groups of
+# about a third each (ER; CR; IF, IT, NR, RCI and RDV), so every contract
+# runs as three jobs: 36 in all, queued under the account's limit on jobs
+# at once.
+#
+# A job fails when a mutant went uncaught or timed out, or when the
+# unmutated suite failed. Its summary lists each uncaught mutant; the
+# artifact holds mewt's database and its results as JSON.
+
+on:
+    workflow_dispatch:
+        inputs:
+            commit:
+                description: "Full 40-character sha the run must be at: start the workflow from the branch or tag whose head it is"
+                required: true
+                type: string
+
+permissions:
+    contents: read
+
+concurrency:
+    group: mewt-${{ inputs.commit }}
+    cancel-in-progress: false
+
+env:
+    MEWT_REV: 53b5d0798b5db725fafe6ca282cbf0d886b0162c
+    TEST_CMD: "forge test --fuzz-seed 0x1 --no-match-test test_Gas_ --no-match-path test/composability/WitnessSwapAndCommitCoordinatorForkTest.t.sol"
+
+jobs:
+    preflight:
+        name: Validate the input
+        runs-on: ubuntu-24.04
+        timeout-minutes: 5
+        outputs:
+            sha: ${{ steps.v.outputs.sha }}
+        steps:
+            - name: Validate the input
+              id: v
+              env:
+                  COMMIT: ${{ inputs.commit }}
+              run: |
+                  set -euo pipefail
+                  [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::commit must be a full 40-character lowercase sha"; exit 1; }
+                  echo "sha=$COMMIT" >> "$GITHUB_OUTPUT"
+
+    mewt:
+        name: mewt ${{ matrix.contract }} (${{ matrix.group }})
+        needs: preflight
+        runs-on: ubuntu-24.04
+        timeout-minutes: 355
+        strategy:
+            fail-fast: false
+            matrix:
+                contract:
+                    - src/core/kernel/FigaroCore.sol
+                    - src/core/kernel/CommitmentTypes.sol
+                    - src/core/attestation/AttestationCoordinator.sol
+                    - src/core/verifier/FigaroBatchVerifier.sol
+                    - src/registries/ClauseRegistry.sol
+                    - src/registries/AgreementRegistry.sol
+                    - src/registries/ProcessRegistry.sol
+                    - src/registries/MembersRegistry.sol
+                    - src/rewards/UsageCounter.sol
+                    - src/rewards/RpgfMinter.sol
+                    - src/rewards/FlorinToken.sol
+                    - src/composability/WitnessSwapAndCommitCoordinator.sol
+                group: ["ER", "CR", "IF,IT,NR,RCI,RDV"]
+        env:
+            COMMIT: ${{ needs.preflight.outputs.sha }}
+            CONTRACT: ${{ matrix.contract }}
+            GROUP: ${{ matrix.group }}
+        steps:
+            - name: Checkout the commit
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  persist-credentials: false
+                  submodules: recursive
+
+            # The checkout is the ref the workflow was started from, never a
+            # commit an input names. The input states which commit the result
+            # is for, and the job refuses another.
+            - name: Check that HEAD is the commit
+              run: |
+                  head=$(git rev-parse HEAD)
+                  [ "$head" = "$COMMIT" ] || { echo "::error::HEAD is $head, not $COMMIT"; exit 1; }
+
+            - name: Check that the contract is in the checkout
+              run: |
+                  [ -f "$CONTRACT" ] || { echo "::error::$CONTRACT is not in this checkout"; exit 1; }
+
+            - name: Install Foundry
+              uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
+              with:
+                  version: v1.5.1
+
+            - name: Install mewt at its pinned revision
+              run: |
+                  cargo install --locked --git https://github.com/trailofbits/mewt --rev "$MEWT_REV" mewt
+                  mewt --version
+
+            # mewt runs the unmutated suite first and stops when it fails.
+            - name: mewt run
+              id: run
+              run: |
+                  set -uo pipefail
+                  out="$RUNNER_TEMP/mewt"
+                  mkdir -p "$out"
+                  mewt run --db "$out/mewt.sqlite" --comprehensive --mutations "$GROUP" \
+                      --test.timeout 900 --test.cmd "$TEST_CMD" "$CONTRACT" > "$out/console.log" 2>&1
+                  code=$?
+                  tail -40 "$out/console.log"
+                  mewt status --db "$out/mewt.sqlite" > "$out/status.txt" 2>&1 || true
+                  mewt results --db "$out/mewt.sqlite" --target "$CONTRACT" --all --format json > "$out/all.json" 2>/dev/null || true
+                  mewt results --db "$out/mewt.sqlite" --target "$CONTRACT" > "$out/uncaught.txt" 2>&1 || true
+                  mewt results --db "$out/mewt.sqlite" --target "$CONTRACT" --format ids > "$out/uncaught.ids" 2>/dev/null || true
+                  mewt results --db "$out/mewt.sqlite" --target "$CONTRACT" --status Timeout --format ids > "$out/timeout.ids" 2>/dev/null || true
+                  echo "code=$code" >> "$GITHUB_OUTPUT"
+                  exit 0
+
+            # mewt writes each mutant into the source file and restores it.
+            # A file left mutated would mean a result read against other code.
+            - name: Check that the checkout is as it was
+              run: |
+                  git status --porcelain -- src test > "$RUNNER_TEMP/mewt/tree.txt"
+                  [ ! -s "$RUNNER_TEMP/mewt/tree.txt" ] || { echo "::error::the run left the checkout changed"; cat "$RUNNER_TEMP/mewt/tree.txt"; exit 1; }
+
+            - name: Job summary
+              if: always()
+              env:
+                  CODE: ${{ steps.run.outputs.code }}
+              run: |
+                  out="$RUNNER_TEMP/mewt"
+                  {
+                      echo "## mewt $CONTRACT, types $GROUP"
+                      echo ""
+                      echo "- Commit: \`$COMMIT\`"
+                      echo "- mewt at \`$MEWT_REV\`, exit ${CODE:-none}"
+                      echo "- Test command: \`$TEST_CMD\`"
+                      echo ""
+                      echo '```'
+                      if [ -f "$out/status.txt" ]; then tail -8 "$out/status.txt"; fi
+                      echo '```'
+                      if grep -q '[0-9]' "$out/uncaught.ids" 2>/dev/null; then
+                          echo ""
+                          echo "Uncaught:"
+                          echo '```'
+                          cat "$out/uncaught.txt"
+                          echo '```'
+                      fi
+                  } >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Upload the results
+              if: always()
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              with:
+                  name: mewt-${{ needs.preflight.outputs.sha }}-${{ strategy.job-index }}
+                  path: ${{ runner.temp }}/mewt
+                  retention-days: 90
+                  if-no-files-found: warn
+
+            - name: Fail on an uncaught or timed-out mutant, or a failed run
+              env:
+                  CODE: ${{ steps.run.outputs.code }}
+              run: |
+                  out="$RUNNER_TEMP/mewt"
+                  [ "${CODE:-1}" = "0" ] || { echo "::error::mewt exited ${CODE:-none}: the unmutated suite failed or the campaign did not end"; exit 4; }
+                  grep -q "Mutation testing campaign completed successfully" "$out/console.log" || { echo "::error::the campaign did not report its end"; exit 4; }
+                  # An empty result prints a blank line, so a line counts only when it holds an id.
+                  timeouts=$(grep -c '[0-9]' "$out/timeout.ids" 2>/dev/null || true)
+                  uncaught=$(grep -c '[0-9]' "$out/uncaught.ids" 2>/dev/null || true)
+                  if [ "${timeouts:-0}" != "0" ]; then echo "::error::$timeouts mutant(s) timed out"; exit 3; fi
+                  if [ "${uncaught:-0}" != "0" ]; then echo "::error::$uncaught mutant(s) uncaught"; exit 2; fi
+                  echo "every mutant caught"
