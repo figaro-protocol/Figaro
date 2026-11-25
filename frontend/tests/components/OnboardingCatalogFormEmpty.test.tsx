@@ -9,7 +9,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const ADDRESS = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as const;
 
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: ADDRESS, isConnected: true }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => ADDRESS }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/components/members/IpfsImageUpload", () => ({ IpfsImageUpload: () => null }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));

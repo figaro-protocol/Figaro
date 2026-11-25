@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractMembersRegistry, type MemberRegisteredEvent } from "@/lib/data/audit/membersRegistryExtract";
+import { extractMembersRegistry, type MemberRegistrationRow } from "@/lib/data/audit/membersRegistryExtract";
 import { OrderState, type Order } from "@/lib/core/store";
 
 const SELLER = "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -20,7 +20,7 @@ describe("extractMembersRegistry — withdrawal-aware fold", () => {
 
     it("registered:true when the seller's latest event is an active registration", () => {
         const order = mkOrder({ orderHash: "0xA", seller: SELLER });
-        const events: MemberRegisteredEvent[] = [
+        const events: MemberRegistrationRow[] = [
             { member: SELLER, metadataURI: "ipfs://profile", blockNumber: 10, withdrawn: false },
         ];
         const doc = extractMembersRegistry(order, events);
@@ -35,7 +35,7 @@ describe("extractMembersRegistry — withdrawal-aware fold", () => {
         // MemberWithdrawalRequested via `getActiveMembers` before this point —
         // a seller who registered and has since withdrawn arrives here with
         // `withdrawn: true` on their row, not as an absent row.
-        const events: MemberRegisteredEvent[] = [
+        const events: MemberRegistrationRow[] = [
             {
                 member: SELLER,
                 metadataURI: "ipfs://profile",
@@ -55,7 +55,7 @@ describe("extractMembersRegistry — withdrawal-aware fold", () => {
 
     it("most recent row wins when a seller re-registered after withdrawing", () => {
         const order = mkOrder({ orderHash: "0xA", seller: SELLER });
-        const events: MemberRegisteredEvent[] = [
+        const events: MemberRegistrationRow[] = [
             { member: SELLER, metadataURI: "ipfs://old", blockNumber: 10, withdrawn: true },
             { member: SELLER, metadataURI: "ipfs://new", blockNumber: 20, withdrawn: false },
         ];
@@ -66,7 +66,7 @@ describe("extractMembersRegistry — withdrawal-aware fold", () => {
 
     it("is case-insensitive on the seller address and ignores other sellers' events", () => {
         const order = mkOrder({ orderHash: "0xA", seller: SELLER });
-        const events: MemberRegisteredEvent[] = [
+        const events: MemberRegistrationRow[] = [
             { member: SELLER.toLowerCase(), metadataURI: "ipfs://profile", blockNumber: 5, withdrawn: false },
             { member: "0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB", metadataURI: "ipfs://other", blockNumber: 99, withdrawn: true },
         ];
@@ -81,7 +81,7 @@ const BUYER = "0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
 describe("extractMembersRegistry — both parties of the order are read", () => {
     it("reads the buyer's registration when asked for the buyer", () => {
         const order = mkOrder({ orderHash: "0xA", seller: SELLER, buyer: BUYER });
-        const events: MemberRegisteredEvent[] = [
+        const events: MemberRegistrationRow[] = [
             { member: SELLER, metadataURI: "ipfs://seller-profile", blockNumber: 10, withdrawn: false },
             { member: BUYER, metadataURI: "ipfs://buyer-profile", blockNumber: 12, withdrawn: false },
         ];
@@ -95,7 +95,7 @@ describe("extractMembersRegistry — both parties of the order are read", () => 
 
     it("the seller's record names the seller and never carries the buyer's profile", () => {
         const order = mkOrder({ orderHash: "0xA", seller: SELLER, buyer: BUYER });
-        const events: MemberRegisteredEvent[] = [
+        const events: MemberRegistrationRow[] = [
             { member: BUYER, metadataURI: "ipfs://buyer-profile", blockNumber: 12, withdrawn: false },
         ];
         const doc = extractMembersRegistry(order, events, "seller");
@@ -115,7 +115,7 @@ describe("extractMembersRegistry — both parties of the order are read", () => 
 
     it("a buyer that registered and then withdrew is flagged, like a seller", () => {
         const order = mkOrder({ orderHash: "0xA", seller: SELLER, buyer: BUYER });
-        const events: MemberRegisteredEvent[] = [
+        const events: MemberRegistrationRow[] = [
             { member: BUYER, metadataURI: "ipfs://buyer-profile", blockNumber: 12, withdrawn: true },
         ];
         const doc = extractMembersRegistry(order, events, "buyer");

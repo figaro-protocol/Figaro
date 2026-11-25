@@ -12,10 +12,8 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { agreementHashOf, type Hex, type HydratedProcessDesign } from "@figaro-protocol/sdk";
 
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" } };
-});
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { core: "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" }));
 
 import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { executeAssemblyCheckout, type AssemblyCheckoutDeps } from "@/lib/checkout/assemblyCheckout";

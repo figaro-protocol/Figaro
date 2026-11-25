@@ -21,25 +21,17 @@
  * once the gate has seeded the chain.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
-import { calculateBonds } from '@figaro-protocol/sdk';
-import { readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
+import { createPublicClient, http, type Hex } from 'viem';
+import { calculateBonds, ERC20_ABI } from '@figaro-protocol/sdk';
+import { readLocalDeploymentConfig, waitForConnected, RPC_URL, LOCAL_ANVIL } from './devnet-helpers';
 import { CORE_ABI } from '@/lib/core/contracts';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 
 // anvil[13] — the wizard-registered seller, bound to the seed assembly.
 const SELLER = '0x1cbd3b2770909d4e10f157cabc84c7264073c9ec' as Hex;
 // anvil[0] — the fixture's default buyer.
 const BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
 
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 test.describe('/sign counter-sign — shared review before commit (devnet)', () => {
     test.setTimeout(180_000);

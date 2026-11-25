@@ -53,7 +53,7 @@
  * payload.
  */
 import { bytesToHex, hexToBytes, keccak256, type Hex } from "viem";
-import { PROVENANCE_LEAF_KEY, anchorAttestationContent, decodeProvenanceContent, type Anchored } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY, anchorAttestationContent, decodeProvenanceContent, isAddressHex, type Anchored } from "@figaro-protocol/sdk";
 import { decodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import { witnessContentCid, witnessContentCidBase32 } from "@figaro-protocol/sdk/derive";
 import {
@@ -215,7 +215,7 @@ function keptKey(holder: WitnessHolder, place: WitnessPlace): string {
 
 /** A holder with a usable address and chain id; null otherwise. */
 function usableHolder(holder: WitnessHolder | null | undefined): WitnessHolder | null {
-    if (!holder || typeof holder.address !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(holder.address)) return null;
+    if (!holder || !isAddressHex(holder.address)) return null;
     return Number.isSafeInteger(holder.chainId) && holder.chainId > 0 ? holder : null;
 }
 

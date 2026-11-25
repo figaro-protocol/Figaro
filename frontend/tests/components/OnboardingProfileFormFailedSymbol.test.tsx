@@ -14,9 +14,7 @@ const TOKEN = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
 // The failed read: wagmi's query errored. Its error is whatever the transport
 // or the node said — an unreachable RPC, a revert — and neither is a verdict.
 const read = vi.hoisted(() => ({ error: new Error("unset") }));
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: ADDRESS, isConnected: true }),
-    useChainId: () => 31337,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => ADDRESS }, {
     useReadContract: () => ({ data: undefined, isLoading: false, isError: true, error: read.error }),
 }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));

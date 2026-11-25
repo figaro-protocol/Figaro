@@ -34,12 +34,8 @@ vi.mock("@/lib/core/eventCache", async (importOriginal) => ({
     cachedGetLogs: (...a: unknown[]) => logsMock("indexer", ...a),
     deploymentBlock: () => 0n,
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-    getAttestationCoordinator: () => COORD,
-    getBatchVerifier: () => VERIFIER,
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: CORE, batchVerifier: VERIFIER }, coordinator: () => COORD, batchVerifier: () => VERIFIER }));
 vi.mock("@/lib/registries/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [], getActiveMembers: async () => [] }));
 vi.mock("@/lib/data/audit/documentProjection", () => ({ projectDocuments: () => [], projectAllFinancialStatements: () => [] }));
 

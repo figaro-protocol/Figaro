@@ -19,11 +19,11 @@ const m = vi.hoisted(() => ({
     rewards: undefined as unknown,
     claim: (async () => undefined) as (periodId: number) => Promise<unknown>,
 }));
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: WALLET }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => WALLET }));
 vi.mock("@/lib/shared/viewedWallet", () => ({ useViewedWallet: (connected: unknown) => connected }));
 vi.mock("@/lib/rewards/useRpgfRewards", () => ({ useRpgfRewards: () => m.rewards }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18, ready: true, loading: false }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(18));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "present", value: 0n }, refetch: () => {} }) }));
 
 import { RewardsView } from "@/app/(app)/rewards/_components/RewardsView";

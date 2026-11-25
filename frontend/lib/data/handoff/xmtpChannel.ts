@@ -7,9 +7,8 @@
  */
 
 import type { HandoffChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage, ChannelMessage } from "@figaro-protocol/sdk/handoff";
-import { keccak256 } from "viem";
+import { hexToBytes, keccak256 } from "viem";
 import { safeJsonParse } from "@/lib/shared/safeJson";
-import { hexToBytes } from "@/lib/shared/evm";
 
 /** Domain-separated message the wallet signs to DERIVE the OPFS database
  *  encryption key. A wallet's ECDSA signature over a fixed message is

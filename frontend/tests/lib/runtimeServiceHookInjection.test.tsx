@@ -26,11 +26,7 @@ const publicClient = {
     watchContractEvent: (...args: unknown[]) => watchContractEventMock(...args),
 };
 
-vi.mock("wagmi", () => ({
-    usePublicClient: () => publicClient,
-    useChainId: () => 31337,
-    useAccount: () => ({ address: WALLET }),
-}));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => WALLET, client: () => publicClient }));
 
 // The surfacing rule's ProcessRegistry cross-check — resolved (empty) so the
 // catalog read proceeds. One stable reference: the hook keys on its identity.

@@ -18,11 +18,10 @@ const wagmiState = vi.hoisted(() => ({
     receipt: { data: undefined as { status: "success" | "reverted" } | undefined, isLoading: false, isSuccess: false, isError: false },
     writeContract: (() => {}) as (args: unknown) => void,
 }));
-vi.mock("wagmi", () => ({
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ client: () => ({ simulateContract: async () => ({}) }) }, {
     useReadContract: () => ({ data: 0n, isFetched: true, isRefetching: false, refetch: vi.fn() }),
     useWriteContract: () => ({ writeContract: wagmiState.writeContract, data: wagmiState.approveHash, isPending: false, isError: false }),
     useWaitForTransactionReceipt: () => wagmiState.receipt,
-    usePublicClient: () => ({ simulateContract: async () => ({}) }),
 }));
 
 type Props = { isApproveSuccess: boolean; isApproveError: boolean };

@@ -21,12 +21,10 @@
  * runtime's I/O half: the gateway read that verifies the bytes hash back.
  */
 
-import { anchorAttestationContent } from "@figaro-protocol/sdk";
+import { anchorAttestationContent, isBytes32Hex } from "@figaro-protocol/sdk";
 import { witnessContentCid } from "@figaro-protocol/sdk/derive";
 import { toHex } from "viem";
 import { fetchIpfsBytes } from "./ipfsRead.mjs";
-
-const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
 
 /**
  * Resolve a fingerprint to its published content bytes, VERIFYING the bytes
@@ -38,7 +36,7 @@ const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
  *          for absence. Throws only when every gateway failed to answer.
  */
 export async function fetchWitnessContent(contentRef, options = {}) {
-    if (!BYTES32_RE.test(contentRef)) return null;
+    if (!isBytes32Hex(contentRef)) return null;
     const cid = witnessContentCid(contentRef);
     const bytes = await fetchIpfsBytes(cid, options);
     if (bytes === null || bytes.byteLength === 0) return null;

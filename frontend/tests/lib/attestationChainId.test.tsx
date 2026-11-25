@@ -15,16 +15,12 @@ const w = vi.hoisted(() => ({
     restores: [] as number[],
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: w.address, isConnected: true }),
-    usePublicClient: () => w.client,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => w.address, client: () => w.client }, {
     useWriteContract: () => ({ writeContractAsync: w.write, data: undefined, isPending: false }),
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false }),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    getAttestationCoordinator: () => "0x00000000000000000000000000000000000a7701",
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { coordinator: () => "0x00000000000000000000000000000000000a7701" }));
 vi.mock("@/lib/core/indexer", () => ({
     getAllOrderCommitted: async (_client: unknown, chainId: number) => {
         w.orderReads.push(chainId);

@@ -34,7 +34,7 @@ import type { Page } from '@playwright/test';
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { createPublicClient, createWalletClient, http, parseAbi, parseEther, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { calculateBonds } from '@figaro-protocol/sdk';
+import { calculateBonds, ERC20_ABI } from '@figaro-protocol/sdk';
 import {
     discoverAnchoredAssemblies,
     latestMemberProfileURI,
@@ -50,7 +50,6 @@ import {
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
 
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 // anvil[0] — the fixture's default buyer.
 const DATA_BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
 // Dedicated wallet of the data-selling member — an index no other spec registers.

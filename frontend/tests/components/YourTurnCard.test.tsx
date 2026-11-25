@@ -42,13 +42,9 @@ vi.mock("@/lib/checkout/pathChoice", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/checkout/pathChoice")>()),
     usePayloadPath: () => wallet.path,
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: "0x1111111111111111111111111111111111111111", batchVerifier: "" },
-}));
-vi.mock("@/hooks/useTokenDecimals", () => ({
-    default: () => ({ decimals: 6, ready: true, loading: false }),
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: "0x1111111111111111111111111111111111111111", batchVerifier: "" } }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(6));
 vi.mock("@/hooks/useTokenApproval", () => ({
     default: () => ({
         needsApproval: () => !approval.covered,

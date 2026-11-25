@@ -26,9 +26,7 @@ vi.mock("next/link", async () => {
     };
 });
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: mocks.address, isConnected: !!mocks.address }),
-}));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => mocks.address }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/lib/registries/useRegisterClause", () => ({
     useRegisteredClausesByWallet: () => mocks.scan,

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import {
     createPublicClient,
@@ -51,9 +51,11 @@ import { deserializeCommitmentPayload } from '@figaro-protocol/sdk/agent';
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 import { encodeGeohash } from '@figaro-protocol/sdk/derive';
 import { deriveProcessDesignSlug } from '@/lib/shared/assembly';
+import { DRAFT_INDEX_KEY, NEW_DESIGN_AUTOSAVE_KEY } from '@/lib/designer/syntheticDesignStore';
 import { clauseLadderField, labelEnumValue, loadClauseSpec, setClauseSpecFetcher, specSource } from '@/lib/shared/clauseSpecSource';
 import { keyOf } from '../lib/primeClauseSpecs';
 import { decodeGetInboxIdsResponse, encodeGetInboxIdsRequest, grpcWebFrame, grpcWebUnaryMessage } from './xmtpGrpcWeb';
+import { gotoAsWallet } from './devnet-multi-test';
 
 /** The ONE way a spec locates a clause by the name a human reads — over the
  *  specs `primeRegisteredClauseSpecs` loaded from the chain. */
@@ -1196,6 +1198,59 @@ export async function waitForConnected(page: Page): Promise<void> {
 }
 
 /**
+ * Open the designer on a new design, with no stored work: the new design's
+ * autosave and the named drafts' index cleared before the page loads (the
+ * store's own keys, `syntheticDesignStore`), then the canvas toolbar and its
+ * saved hint waited for.
+ */
+export async function openFreshDesigner(page: Page): Promise<void> {
+    await page.addInitScript((keys: string[]) => {
+        try {
+            for (const key of keys) window.localStorage.removeItem(key);
+        } catch { /* noop */ }
+    }, [NEW_DESIGN_AUTOSAVE_KEY, DRAFT_INDEX_KEY]);
+    await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+    await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
+    await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+}
+
+/**
+ * The seller `seller` accepts the next order waiting on it, in the UI: its
+ * orders page, the order's accept, the agreement preview confirmed. Then the
+ * CHAIN FACTS, read out of band: `queryCommitted` (the spec's own read of
+ * `OrderCommitted`) gains exactly one event, its commit transaction
+ * succeeded, and the order was committed against that seller. Returns the
+ * event, and notes it on the test.
+ */
+export async function acceptOrderAs<E extends {
+    transactionHash: Hex;
+    args: { seller?: string; orderHash?: string; payment?: bigint; runningTotal?: bigint };
+}>(page: Page, seller: Hex, label: string, queryCommitted: () => Promise<readonly E[]>): Promise<E> {
+    const before = (await queryCommitted()).length;
+    await gotoAsWallet(page, seller, '/orders?e2e=devnet');
+    await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
+    await waitForConnected(page);
+    await page.getByTestId('order-your-turn-card').first().waitFor({ state: 'visible', timeout: 30000 });
+    await page.getByTestId('btn-accept-order').first().click();
+    await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
+    await page.getByTestId('preview-confirm').click();
+    await expect.poll(async () => (await queryCommitted()).length, {
+        timeout: 60000, message: `${label}'s accept lands OrderCommitted on-chain`,
+    }).toBe(before + 1);
+    const events = await queryCommitted();
+    const event = events[events.length - 1];
+    const receipt = await localPublicClient().getTransactionReceipt({ hash: event.transactionHash });
+    expect(receipt.status, `${label}'s commit transaction succeeded`).toBe('success');
+    expect(event.args.seller?.toLowerCase(), `${label}'s order committed against ${label}`)
+        .toBe(seller.toLowerCase());
+    test.info().annotations.push({
+        type: 'OrderCommitted',
+        description: `${label}: order=${event.args.orderHash} payment=${event.args.payment} runningTotal=${event.args.runningTotal} tx=${event.transactionHash}`,
+    });
+    return event;
+}
+
+/**
  * PUBLISH OR ADOPT the reviewed composition and return its content slug. Opens
  * the Review screen for the draft `handle` with the publish intent and reads the
  * composition it would anchor from `designer-assembly-hash`'s title. The
@@ -1317,15 +1372,7 @@ export async function ensureDeliveryAssembly(page: Page): Promise<string> {
     let deliverySlug = await findDeliveryAssembly();
     const DELIVERY_CLAUSES = deliveryClauseKeys();
     if (!deliverySlug) {
-        await page.addInitScript(() => {
-            try {
-                window.localStorage.removeItem('figaro:designer:autosave:new');
-                window.localStorage.removeItem('figaro:designer:drafts');
-            } catch { /* noop */ }
-        });
-        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
-        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+        await openFreshDesigner(page);
 
         const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
         await expect(orderNodes).toHaveCount(1, { timeout: 10000 });

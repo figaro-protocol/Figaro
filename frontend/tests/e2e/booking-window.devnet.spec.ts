@@ -35,6 +35,7 @@ import {
     isBindingOf,
     expectRelayedOrder,
     composeCommerceOn,
+    openFreshDesigner,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import type { Page } from '@playwright/test';
@@ -155,15 +156,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
         //    is the buyer's checkout fill; the clause is SELECTED here). ──
         let slug = await findBookingAssembly();
         if (!slug) {
-            await page.addInitScript(() => {
-                try {
-                    window.localStorage.removeItem('figaro:designer:autosave:new');
-                    window.localStorage.removeItem('figaro:designer:drafts');
-                } catch { /* noop */ }
-            });
-            await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
-            await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-            await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+            await openFreshDesigner(page);
 
             const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
             await expect(orderNodes).toHaveCount(1, { timeout: 10000 });

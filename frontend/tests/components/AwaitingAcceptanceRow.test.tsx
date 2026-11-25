@@ -13,9 +13,7 @@ import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import type { Listing } from "@/lib/registries/memberListing";
 
-vi.mock("@/hooks/useTokenDecimals", () => ({
-    default: () => ({ decimals: 6, ready: true, loading: false }),
-}));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(6));
 
 import { AwaitingAcceptanceRow } from "@/app/(app)/orders/_components/OrdersList";
 

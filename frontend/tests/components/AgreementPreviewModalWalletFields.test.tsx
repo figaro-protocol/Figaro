@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { COMMITMENT_TYPES } from "@figaro-protocol/sdk";
 
-vi.mock("wagmi", () => ({ useConnection: () => ({ chainId: 31337 }), useChainId: () => 31337 }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock());
 vi.mock("@/components/runtime/AgreementReview", () => ({ AgreementReview: () => <div data-testid="review-stub" /> }));
 vi.mock("@/components/ui/ModalChrome", () => ({
     ModalChrome: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

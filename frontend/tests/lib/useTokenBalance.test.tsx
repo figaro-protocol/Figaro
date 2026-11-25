@@ -11,7 +11,7 @@ const query = vi.hoisted(() => ({
     current: { status: "pending", data: undefined } as { status: string; data: unknown },
     lastOptions: null as null | { args?: unknown; query?: { enabled?: boolean } },
 }));
-vi.mock("wagmi", () => ({
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({}, {
     useReadContract: (options: { args?: unknown; query?: { enabled?: boolean } }) => {
         query.lastOptions = options;
         return { ...query.current, refetch: vi.fn() };

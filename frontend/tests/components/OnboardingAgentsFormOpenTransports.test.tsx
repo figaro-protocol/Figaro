@@ -10,7 +10,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 const ADDRESS = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as const;
 const update = vi.fn();
 
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: ADDRESS, isConnected: true }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => ADDRESS }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("next/link", () => ({

@@ -11,6 +11,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { keccak256, toHex, type Hex } from "viem";
+import { canonicalContentHash } from "@figaro-protocol/sdk";
 
 vi.mock("@/lib/shared/deviceLocation", () => ({
     getDeviceLocation: async () => ({ lat: 52.3702, lon: 4.8952, accuracyM: 12 }),
@@ -56,7 +57,7 @@ describe("the public artifact of a device capture", () => {
         for (const raw of [nfcCapture(VALUE_FOR_ORDER_ONE), nfcCapture(VALUE_FOR_ORDER_TWO)]) {
             const pinned = toPublicEvidence(raw);
             expect(blindedIdentifierFingerprint(raw.blinding, raw.tagSerialNumber!)).toBe(pinned.tagSerialHash);
-            expect(keccak256(toHex(JSON.stringify(raw)))).toBe(pinned.rawCaptureHash);
+            expect(canonicalContentHash(raw)).toBe(pinned.rawCaptureHash);
         }
     });
 
@@ -67,11 +68,29 @@ describe("the public artifact of a device capture", () => {
         // Rebuilding the raw capture from the public fields and the guessed
         // serial, without the blinding value, misses the raw capture's hash.
         const { blinding: _withheld, ...unblinded } = nfcCapture(VALUE_FOR_ORDER_ONE);
-        expect(keccak256(toHex(JSON.stringify(unblinded)))).not.toBe(pinned.rawCaptureHash);
+        expect(canonicalContentHash(unblinded)).not.toBe(pinned.rawCaptureHash);
         // The pinned artifact carries neither the serial nor the value.
         const published = JSON.stringify(pinned);
         expect(published).not.toContain(SERIAL);
         expect(published).not.toContain(VALUE_FOR_ORDER_ONE.slice(2));
+    });
+
+    // A revelation is checked against the pinned hash. Two captures equal as
+    // data hash alike whatever order their keys were written in, since the
+    // hash is over the canonical form; a changed value hashes otherwise.
+    it("the raw capture's hash is canonical: key order does not change it, a value does", () => {
+        const raw = nfcCapture(VALUE_FOR_ORDER_ONE);
+        const reordered: DeviceEvidence = {
+            blinding: raw.blinding,
+            tagRecords: [{ text: "locker 12", recordType: "text" }],
+            tagSerialNumber: raw.tagSerialNumber,
+            capturedAt: raw.capturedAt,
+            kind: raw.kind,
+        };
+        expect(JSON.stringify(reordered)).not.toBe(JSON.stringify(raw));
+        expect(toPublicEvidence(reordered).rawCaptureHash).toBe(toPublicEvidence(raw).rawCaptureHash);
+        const changed: DeviceEvidence = { ...raw, tagRecords: [{ recordType: "text", text: "locker 13" }] };
+        expect(toPublicEvidence(changed).rawCaptureHash).not.toBe(toPublicEvidence(raw).rawCaptureHash);
     });
 
     it("a Bluetooth device id is held to the same rule", () => {

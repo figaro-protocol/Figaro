@@ -22,7 +22,7 @@ import { deriveProcessRecourse } from "@/lib/semantic/processRecourse";
 import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 
 const agreementsState = vi.hoisted(() => ({ map: new Map<string, unknown>() }));
-vi.mock("wagmi", () => ({ usePublicClient: () => undefined, useChainId: () => 31337 }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ client: () => undefined }));
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({
     useRuntimeServices: () => ({ evidenceTransport: { pinBlob: async () => "cid", unpin: async () => undefined } }),
 }));

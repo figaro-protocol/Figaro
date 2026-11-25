@@ -56,7 +56,7 @@
  * Requires Anvil + ./scripts/deploy-local.sh + populate-test-data + Kubo + :3100.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, createWalletClient, defineChain, http, parseAbi, parseEther, type Hex } from 'viem';
+import { createPublicClient, createWalletClient, http, parseAbi, parseEther, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 import {
     authorizeFundingToken,
@@ -68,19 +68,16 @@ import {
     keyOf,
     primeRegisteredClauseSpecs,
     isBindingOf,
+    waitForConnected,
+    acceptOrderAs,
+    RPC_URL,
+    LOCAL_ANVIL,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
 import { calculateBonds } from '@figaro-protocol/sdk';
 import type { Page } from '@playwright/test';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 
 const ERC20_ABI = parseAbi([
@@ -118,15 +115,6 @@ test.beforeAll(async () => {
     COURIER_CLAUSE = keyOf('figaro-courier-process');
     SUPPLIER_CLAUSE = keyOf('figaro-merchant-process');
 });
-
-/** Wait for ClientInit's devnet auto-connect (the "Connect Wallet" button goes). */
-async function waitForConnected(page: Page) {
-    await page.waitForFunction(
-        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
-        null,
-        { timeout: 30000 },
-    );
-}
 
 test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve pays every party (devnet)', () => {
     test.setTimeout(420_000);
@@ -336,30 +324,9 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         const queryCommitted = () => publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,
         });
-        const acceptAs = async (seller: Hex, label: string) => {
-            const before = (await queryCommitted()).length;
-            await gotoAsWallet(page, seller, '/orders?e2e=devnet');
-            await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
-            await waitForConnected(page);
-            await page.getByTestId('order-your-turn-card').first().waitFor({ state: 'visible', timeout: 30000 });
-            await page.getByTestId('btn-accept-order').first().click();
-            await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
-            await page.getByTestId('preview-confirm').click();
-            await expect.poll(async () => (await queryCommitted()).length, {
-                timeout: 60000, message: `${label}'s accept lands OrderCommitted on-chain`,
-            }).toBe(before + 1);
-            const events = await queryCommitted();
-            const event = events[events.length - 1];
-            const receipt = await publicClient.getTransactionReceipt({ hash: event.transactionHash });
-            expect(receipt.status, `${label}'s commit transaction succeeded`).toBe('success');
-            expect(event.args.seller?.toLowerCase(), `${label}'s order committed against ${label}`)
-                .toBe(seller.toLowerCase());
-            test.info().annotations.push({
-                type: 'OrderCommitted',
-                description: `${label}: order=${event.args.orderHash} payment=${event.args.payment} runningTotal=${event.args.runningTotal} tx=${event.transactionHash}`,
-            });
-            return event;
-        };
+        // The full accept (`acceptOrderAs`): the commit transaction succeeded and the
+        // order was committed against that seller, both read out of band.
+        const acceptAs = (seller: Hex, label: string) => acceptOrderAs(page, seller, label, queryCommitted);
 
         // Root — the lead. Creates the process at cumulative 1.
         const rootEvent = await acceptAs(LEAD.address, 'lead');

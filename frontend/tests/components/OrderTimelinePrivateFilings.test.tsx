@@ -28,10 +28,7 @@ const m = vi.hoisted(() => ({
     registry: { status: "present", value: [] } as { status: "present"; value: Array<{ clauseKey: string; contentURI: string }> },
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: "0x1111111111111111111111111111111111111111", isConnected: true }),
-    useChainId: () => 31337,
-}));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => "0x1111111111111111111111111111111111111111" }));
 vi.mock("@/lib/registries/useClauseRegistry", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/registries/useClauseRegistry")>()),
     useAllRegisteredClauses: () => ({ read: m.registry }),

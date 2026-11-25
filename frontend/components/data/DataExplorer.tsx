@@ -202,12 +202,21 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
             </p>
             {corpus.market.unattributedProcessCount > 0 ? (
                 <p className="text-xs text-ink-muted leading-relaxed max-w-3xl" data-testid="market-unattributed">
-                    A process is attributed to an assembly when its buyer attested the
-                    provenance its agreement carries &mdash; that attestation is public, and its
-                    fingerprint names the assembly. Where no such attestation is
+                    A process is attributed to an assembly when the usage counter recorded
+                    a use of that assembly for it, or when a party to one of its orders
+                    attested the provenance its agreement carries &mdash; that attestation is
+                    public, and its fingerprint names the assembly. Where neither is
                     recoverable here, the process is counted and left unattributed: the
                     resolution skeleton is public, the body that says <em>which</em> composition
                     produced it stays party-private until someone discloses or sells it.
+                </p>
+            ) : null}
+            {corpus.contestedProcesses.size > 0 ? (
+                <p className="text-xs text-ink-muted leading-relaxed max-w-3xl" data-testid="market-contested">
+                    {corpus.contestedProcesses.size} of the unattributed process
+                    {corpus.contestedProcesses.size === 1 ? " is" : "es are"} contested: attestations
+                    name two assemblies for it, and the counter names none, so no assembly is shown
+                    for it.
                 </p>
             ) : null}
             {/* Unattributed is a POSTURE, not a hiding place: those processes

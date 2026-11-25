@@ -26,27 +26,33 @@
 // chain-gas guard holds them equal.
 //
 //   RPC_URL     the chain (default: the record's rpcUrl); never printed
-//   LOG_CHUNK   blocks per log query (default 10000; public RPCs cap the range)
+//   LOG_CHUNK   blocks per log query (default the SDK's DEFAULT_LOG_CHUNK_SIZE;
+//               public RPCs cap the range)
 //
 // scripts/test-propose-gas-constants.mjs holds the arithmetic.
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createPublicClient, http, parseAbiItem, toEventSelector } from "viem";
+import { createPublicClient, getAbiItem, http, toEventSelector } from "viem";
+// The SDK by its build output: the contracts' own ABIs, never a hand-written
+// event, and its chunked log reader.
+import {
+    ATTESTATION_COORDINATOR_ABI, BATCH_VERIFIER_ABI, CORE_ABI, DEFAULT_LOG_CHUNK_SIZE, USAGE_COUNTER_ABI, fetchLogsChunked,
+} from "../sdk/dist/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const PROCESS_RESOLVED = parseAbiItem("event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount)");
-const ORDER_COMMITTED = parseAbiItem("event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 runningTotal, bytes32 checkoutHash, uint256 salt, uint256 deadline)");
-const BATCH_SETTLED = parseAbiItem("event BatchSettled(uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount)");
+const PROCESS_RESOLVED = getAbiItem({ abi: CORE_ABI, name: "ProcessResolved" });
+const ORDER_COMMITTED = getAbiItem({ abi: CORE_ABI, name: "OrderCommitted" });
+const BATCH_SETTLED = getAbiItem({ abi: BATCH_VERIFIER_ABI, name: "BatchSettled" });
 /** What a settlement published, counted by event in its receipt. */
 const PUBLISHED = {
     OrderCommitted: toEventSelector(ORDER_COMMITTED),
-    OrderResolved: toEventSelector("OrderResolved(bytes32,bytes32,uint256,uint256)"),
+    OrderResolved: toEventSelector(getAbiItem({ abi: CORE_ABI, name: "OrderResolved" })),
     ProcessResolved: toEventSelector(PROCESS_RESOLVED),
-    Attestation: toEventSelector("Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)"),
-    UsageRecorded: toEventSelector("UsageRecorded(uint8,bytes32,uint8,bytes32,address,uint64,uint64,uint256)"),
+    Attestation: toEventSelector(getAbiItem({ abi: ATTESTATION_COORDINATOR_ABI, name: "Attestation" })),
+    UsageRecorded: toEventSelector(getAbiItem({ abi: USAGE_COUNTER_ABI, name: "UsageRecorded" })),
 };
 
 const ceil1000 = (g) => ((BigInt(g) + 999n) / 1000n) * 1000n;
@@ -98,13 +104,10 @@ export function propose({ resolves, commits }) {
     return { proposed, missing, evidence };
 }
 
+/** The SDK's reader: asks again on pruned history or a rate limit, and
+ *  refuses a log from any contract but the one asked about. */
 async function logsInChunks(client, { address, event, fromBlock, toBlock, chunk }) {
-    const out = [];
-    for (let from = fromBlock; from <= toBlock; from += chunk) {
-        const to = from + chunk - 1n > toBlock ? toBlock : from + chunk - 1n;
-        out.push(...await client.getLogs({ address, event, fromBlock: from, toBlock: to }));
-    }
-    return out;
+    return fetchLogsChunked(client, { address, fromBlock, toBlock, chunkSize: chunk, events: [event] });
 }
 
 async function main() {
@@ -122,7 +125,7 @@ async function main() {
     if (chainId !== record.chainId) { console.error(`the RPC is chain ${chainId}, the record chain ${record.chainId}`); process.exit(1); }
     const fromBlock = BigInt(fromArg ?? record.deploymentBlock ?? 0);
     const toBlock = toArg ? BigInt(toArg) : await client.getBlockNumber();
-    const chunk = BigInt(process.env.LOG_CHUNK ?? 10000);
+    const chunk = process.env.LOG_CHUNK ? BigInt(process.env.LOG_CHUNK) : DEFAULT_LOG_CHUNK_SIZE;
     const core = record.figaroCore;
     console.log(`Receipts of chain ${chainId}, blocks ${fromBlock}..${toBlock}, FigaroCore ${core}\n`);
 

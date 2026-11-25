@@ -48,15 +48,24 @@
  * nothing.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, createWalletClient, defineChain, http, keccak256, parseAbi, parseEther, type Hex } from 'viem';
+import { createPublicClient, createWalletClient, http, keccak256, parseEther, type Hex } from 'viem';
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 import {
-    readLocalDeploymentConfig, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs, composeCommerceOn,
-    E2E_HANDOFF_OVER_XMTP, xmtpInboxOnLocalBroker,
+    readLocalDeploymentConfig,
+    publishOrAdoptReviewed,
+    keyOf,
+    primeRegisteredClauseSpecs,
+    composeCommerceOn,
+    E2E_HANDOFF_OVER_XMTP,
+    xmtpInboxOnLocalBroker,
+    waitForConnected,
+    openFreshDesigner,
+    RPC_URL,
+    LOCAL_ANVIL,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
-import { calculateBonds, ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
+import { calculateBonds, ATTESTATION_COORDINATOR_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import { decodeContentFromSpec, encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
 import { getClauseSpec } from '@/lib/shared/clauseSpecSource';
 import type { Page } from '@playwright/test';
@@ -75,15 +84,7 @@ function keptEntryAt(page: Page, holder: string, contentRef: string): Promise<st
     }, { owner: holder.toLowerCase(), suffix: contentRef });
 }
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 let TARGET_CLAUSE: Hex;
 test.beforeAll(async () => {
@@ -112,14 +113,6 @@ const ARTIFACT_BYTES = Buffer.from(
 );
 const ARTIFACT_HASH = keccak256(new Uint8Array(ARTIFACT_BYTES));
 
-async function waitForConnected(page: Page) {
-    await page.waitForFunction(
-        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
-        null,
-        { timeout: 30000 },
-    );
-}
-
 test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to the counterparty (devnet)', () => {
     test.setTimeout(420_000);
 
@@ -146,15 +139,7 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         // ── COMPOSE-OR-ADOPT: author the digital-deliverable assembly on the
         //    real canvas; identity is the composition, so a re-run adopts the
         //    anchored slug the Review screen names. ──
-        await page.addInitScript(() => {
-            try {
-                window.localStorage.removeItem('figaro:designer:autosave:new');
-                window.localStorage.removeItem('figaro:designer:drafts');
-            } catch { /* noop */ }
-        });
-        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
-        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+        await openFreshDesigner(page);
         const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
         await rootNode.waitFor({ state: 'visible', timeout: 10000 });
         await rootNode.click();

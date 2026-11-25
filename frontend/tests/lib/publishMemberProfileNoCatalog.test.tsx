@@ -22,8 +22,7 @@ const w = vi.hoisted(() => {
     };
 });
 
-vi.mock("wagmi", () => ({
-    usePublicClient: () => w.client,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ client: () => w.client }, {
     useWriteContract: () => ({ writeContractAsync: w.write, data: undefined, isPending: false, error: null }),
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false, data: undefined }),
 }));

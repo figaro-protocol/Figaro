@@ -1,5 +1,8 @@
 /**
- * The gRPC-Web codec the e2e helper `xmtpInboxOnLocalBroker` uses, checked
+ * A test of test support, not of app code: the gRPC-Web codec
+ * (`tests/e2e/xmtpGrpcWeb.ts`) the e2e helper `xmtpInboxOnLocalBroker`
+ * (`tests/e2e/devnet-helpers.ts`) uses, which `content-delivery.devnet.spec.ts`
+ * calls to read each party's inbox off the local broker. Checked
  * against bytes written out by hand from the field numbers of xmtpd v1.3.0's
  * `GetInboxIdsRequest` and `GetInboxIdsResponse`.
  */

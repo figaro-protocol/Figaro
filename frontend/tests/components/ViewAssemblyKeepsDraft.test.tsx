@@ -23,11 +23,7 @@ vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
     useSearchParams: () => new URLSearchParams(),
 }));
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: DESIGNER }),
-    useChainId: () => 31337,
-    usePublicClient: () => CLIENT,
-}));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => DESIGNER, client: () => CLIENT }));
 const PUBLISHED = vi.hoisted(() => ({ value: null as unknown }));
 vi.mock("@/lib/registries/useProcessRegistry", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/registries/useProcessRegistry")>()),

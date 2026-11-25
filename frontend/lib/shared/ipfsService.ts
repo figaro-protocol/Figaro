@@ -147,27 +147,34 @@ export function resolveContentUri(uri: string, gatewayUrl: string = activeIpfsGa
     // registries are permissionless, so a wallet can anchor any string as
     // its URI, and a gateway answers such a path with a 400. Absence, never
     // a request.
-    if (uri.startsWith("ipfs://")) {
-        const path = uri.slice("ipfs://".length);
-        return isCidPath(path) ? `${gatewayUrl}/ipfs/${path}` : null;
-    }
-    if (uri.startsWith("/ipfs/")) return isCidPath(uri.slice("/ipfs/".length)) ? `${gatewayUrl}${uri}` : null;
     if (uri.startsWith("http://") || uri.startsWith("https://")) return uri;
-    // Bare CIDv0 (Qm…) / CIDv1 (bafy…) fallback.
-    if (isCidPath(uri)) return `${gatewayUrl}/ipfs/${uri}`;
-    // RA-2: reject unrecognized schemes.
-    return null;
+    // `ipfs://CID[/path]`, `/ipfs/CID[/path]` or a bare CID; RA-2: an
+    // unrecognized scheme, or a path that names no CID, is refused.
+    const parsed = parseIpfsUri(uri);
+    return parsed ? `${gatewayUrl}/ipfs/${parsed.cid}${parsed.path}` : null;
 }
 
 /**
- * Whether an IPFS path begins with a CID: CIDv0 (`Qm` + 44 base-58 chars) or
- * CIDv1 under a multibase prefix — `b` base 32 (`bafy…` dag-pb, `bafk…` raw),
- * `f` base 16 (the witness-content CID the SDK derives from a keccak
- * fingerprint, `f01551b20…`), `z` base 58, `k` base 36. What it refuses is a
- * path that is no encoding at all: a separator or a word.
+ * The frontend's one CID parser: the CID an IPFS URI names and the path below
+ * it (`""` when none), or `null`. It reads `ipfs://CID[/path]`,
+ * `/ipfs/CID[/path]` and a bare `CID[/path]`. A CID is CIDv0 (`Qm` + 44
+ * base-58 chars) or CIDv1 under a multibase prefix — `b` base 32 (`bafy…`
+ * dag-pb, `bafk…` raw), `f` base 16 (the witness-content CID the SDK derives
+ * from a keccak fingerprint, `f01551b20…`), `k` base 36, `z` base 58. What it
+ * refuses is a path that is no encoding at all: a separator or a word.
+ *
+ * Its callers: `resolveContentUri` keeps the path (a gateway serves a file
+ * inside a directory); `extractIpfsCid` keeps the CID alone (an unpin takes
+ * the root); `checkContentAddress` (`contentAddress.ts`) refuses any path,
+ * since the bytes of a file alone cannot prove a directory's CID.
  */
-function isCidPath(path: string): boolean {
-    return /^Qm[1-9A-HJ-NP-Za-km-z]{44}(\/|$)/.test(path) || /^[bfkz][a-z0-9]{6,}(\/|$)/.test(path);
+export function parseIpfsUri(uri: string): { cid: string; path: string } | null {
+    if (!uri) return null;
+    const rest = uri.startsWith("ipfs://") ? uri.slice("ipfs://".length)
+        : uri.startsWith("/ipfs/") ? uri.slice("/ipfs/".length)
+        : uri;
+    const m = /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|[bfk][a-z0-9]{6,}|z[1-9A-HJ-NP-Za-km-z]{6,})(\/.*)?$/s.exec(rest);
+    return m ? { cid: m[1], path: m[2] ?? "" } : null;
 }
 
 /**
@@ -194,11 +201,7 @@ export function resolveMemberDocumentUri(uri: string): string | null {
  * unpinnable, so this is the erasure path's admission check.
  */
 export function extractIpfsCid(uri: string): string | null {
-    if (!uri) return null;
-    if (uri.startsWith("ipfs://")) return uri.slice("ipfs://".length).split("/")[0] || null;
-    if (uri.startsWith("/ipfs/")) return uri.slice("/ipfs/".length).split("/")[0] || null;
-    if (isCidPath(uri)) return uri.split("/")[0];
-    return null;
+    return parseIpfsUri(uri)?.cid ?? null;
 }
 
 // ── Capped document retrieval ────────────────────────────────────────────────

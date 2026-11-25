@@ -55,10 +55,7 @@ const { cachedGetLogsMock, account, contracts, agreements, CORE, VERIFIER, VKEY,
     resolveDirectMock: vi.fn(),
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: account.address, isConnected: account.address !== undefined }),
-    usePublicClient: () => CLIENT,
-    useChainId: () => 31337,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => account.address, client: () => CLIENT }, {
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false }),
     useWatchContractEvent: () => undefined,
     useReadContract: () => ({ data: undefined, isLoading: false }),
@@ -69,12 +66,8 @@ vi.mock("@/lib/core/eventCache", () => ({
     cachedGetLogs: (...args: unknown[]) => cachedGetLogsMock(...args),
     cachedGetReceiptLogs: vi.fn(),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: contracts,
-    getBatchVerifier: () => (contracts.batchVerifier || null),
-    getAttestationCoordinator: () => "0x3333333333333333333333333333333333333333",
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: contracts, batchVerifier: () => (contracts.batchVerifier || null), coordinator: () => "0x3333333333333333333333333333333333333333" }));
 vi.mock("@/lib/shared/publicClient", () => ({ publicClient: CLIENT }));
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 
@@ -102,7 +95,7 @@ vi.mock("@/lib/registries/profileFetcher", () => ({
     },
 }));
 vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => null }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18, ready: true, loading: false }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(18));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: "TKN" }) }));
 
 // The direct path's writes: never reached on the batch path.
@@ -211,7 +204,7 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe("/orders/view on the batch path, with a relay that passes the check", () => {
+describe("/orders/view on the batch path (useRelayActions), with a relay that passes the check", () => {
     it("the buyer resolves: signed for the verifier, sent to the relay, nothing written to the chain", async () => {
         await openOrderAs(BUYER, VERIFIER);
         await screen.findByTestId("order-relay-in-use");

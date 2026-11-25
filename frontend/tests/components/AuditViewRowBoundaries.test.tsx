@@ -28,7 +28,7 @@ const { rows, agreementReads, ordersRead } = vi.hoisted(() => ({
     ordersRead: { current: null as unknown },
 }));
 
-vi.mock("wagmi", () => ({ usePublicClient: () => ({ chain: { id: 31337 } }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock());
 vi.mock("@/hooks/useProcessOrders", () => ({ useProcessOrders: () => ordersRead.current }));
 vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreementReads: () => agreementReads }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));

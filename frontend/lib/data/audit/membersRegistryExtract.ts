@@ -30,7 +30,11 @@ import { hexEqual } from "@/lib/shared/evm";
 /** Which party of an order a registry entry is about. */
 export type OrderParty = "seller" | "buyer";
 
-export interface MemberRegisteredEvent {
+/** One member's registration row as the audit extract reads it: the
+ *  profile URI it registered, and whether the caller's withdrawal-aware fold
+ *  found the member withdrawn. Not the SDK's `MemberRegisteredEvent`, which is
+ *  one decoded `MemberRegistered` or `MemberProfileUpdated` log. */
+export interface MemberRegistrationRow {
     member: string;
     metadataURI: string;
     blockNumber?: number;
@@ -81,7 +85,7 @@ export interface MembersRegistryDocument extends ExtractedDocument {
  */
 export function extractMembersRegistry(
     order: Order,
-    events: readonly MemberRegisteredEvent[],
+    events: readonly MemberRegistrationRow[],
     party: OrderParty = "seller",
 ): MembersRegistryDocument {
     const member = party === "seller" ? order.seller : order.buyer;

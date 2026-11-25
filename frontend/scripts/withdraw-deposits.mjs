@@ -50,7 +50,10 @@
 
 import { createPublicClient, createWalletClient, encodeFunctionData, formatEther, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { CLAUSE_REGISTRY_ABI, PROCESS_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, isBytes32Hex } from '@figaro-protocol/sdk';
+import { getAbiItem } from 'viem';
+import {
+    CLAUSE_REGISTRY_ABI, PROCESS_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, DEFAULT_LOG_CHUNK_SIZE, fetchLogsChunked, isBytes32Hex,
+} from '@figaro-protocol/sdk';
 import {
     VAULT_ABI, ledgerWalletClient, readEnvLocal, registrarAccount, resolveChain, vaultExecute,
 } from './populate-clauses.mjs';
@@ -60,17 +63,15 @@ if (!RPC_URL) throw new Error('RPC_URL is required');
 
 /** Public gateways cap one `eth_getLogs` range (Infura 10k, publicnode ~50k);
  *  a from-deployment scan outgrows a single call within days of a public
- *  deploy. Walk the range in chunks under the cap (mirror of the e2e
- *  `scanContractEvents` — .mjs cannot import frontend TS). */
-const SCAN_CHUNK_BLOCKS = BigInt(process.env.SCAN_CHUNK_BLOCKS ?? 9_000);
-async function scanContractEvents(publicClient, params, fromBlock) {
-    const latest = await publicClient.getBlockNumber();
-    const out = [];
-    for (let from = fromBlock; from <= latest; from += SCAN_CHUNK_BLOCKS) {
-        const to = from + SCAN_CHUNK_BLOCKS - 1n < latest ? from + SCAN_CHUNK_BLOCKS - 1n : latest;
-        out.push(...await publicClient.getContractEvents({ ...params, fromBlock: from, toBlock: to }));
-    }
-    return out;
+ *  deploy. The SDK's reader walks the range in chunks under the cap, asks
+ *  again on pruned history or a rate limit, and refuses a log from any
+ *  contract but the one asked about. */
+const SCAN_CHUNK_BLOCKS = process.env.SCAN_CHUNK_BLOCKS ? BigInt(process.env.SCAN_CHUNK_BLOCKS) : DEFAULT_LOG_CHUNK_SIZE;
+async function scanContractEvents(publicClient, { address, abi, eventName }, fromBlock) {
+    return fetchLogsChunked(publicClient, {
+        address, fromBlock, toBlock: 'latest', chunkSize: SCAN_CHUNK_BLOCKS,
+        events: [getAbiItem({ abi, name: eventName })],
+    });
 }
 
 async function main() {

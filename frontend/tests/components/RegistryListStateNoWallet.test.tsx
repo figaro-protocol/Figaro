@@ -39,7 +39,7 @@ vi.mock("next/link", async () => {
     };
 });
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: m.connected, isConnected: !!m.connected }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => m.connected }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 // The helper's rule: the connected wallet, else the address ?wallet= names.
 // `named` set beside `connected` stands for a list whose address is not the

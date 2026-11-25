@@ -32,7 +32,7 @@ import { extractClauseData, type ClauseDataDocument } from "./clauseDataExtract"
 import {
     extractMembersRegistry,
     type MembersRegistryDocument,
-    type MemberRegisteredEvent,
+    type MemberRegistrationRow,
 } from "./membersRegistryExtract";
 import { buildHashAppendix, type HashAppendixDocument } from "./hashAppendix";
 import type { MissingPart } from "./types";
@@ -58,7 +58,7 @@ export interface AuditBundleInputs {
     /** MemberRegistered events. The extractor keeps the rows of the order's
      *  seller and of its buyer; a party with no row is surfaced as an audit
      *  notice. */
-    memberRegistrationEvents?: readonly MemberRegisteredEvent[];
+    memberRegistrationEvents?: readonly MemberRegistrationRow[];
     /** The private attestation content the file's builder holds (its own,
      *  kept when it attested), checked against each `contentRef`. Absent:
      *  the builder holds none, and each private attestation is named

@@ -20,20 +20,15 @@ const { CORE, VERIFIER, BUYER, SELLER, chain, watchers } = vi.hoisted(() => ({
     watchers: new Set<{ address?: string | string[]; abi: unknown; eventName?: string; onLogs: (logs: unknown[]) => void; enabled?: boolean }>(),
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: BUYER, isConnected: true }),
-    useChainId: () => 31337,
-    usePublicClient: () => CLIENT,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => BUYER, client: () => CLIENT }, {
     useWatchContractEvent: (params: { address?: string | string[]; abi: unknown; eventName?: string; onLogs: (logs: unknown[]) => void; enabled?: boolean }) => {
         watchers.add(params);
     },
 }));
 const CLIENT = { chain: { id: 31337 } };
 
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: CORE, batchVerifier: VERIFIER } }));
 vi.mock("@/lib/core/eventCache", () => ({
     cachedGetLogs: async (_client: unknown, _chainId: number, opts: { address: string; event: unknown }) =>
         chain.logs.filter((l) => l.address.toLowerCase() === opts.address.toLowerCase() && l.topics[0] === selectorOf(opts.event)),

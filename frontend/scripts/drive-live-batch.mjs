@@ -169,7 +169,7 @@ import { fileURLToPath } from 'node:url';
 import {
     createPublicClient, createWalletClient, defineChain, http,
     keccak256, hashTypedData, stringToHex, parseAbi, encodeFunctionData,
-    zeroAddress, maxUint256, parseAbiItem,
+    zeroAddress, maxUint256,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
@@ -178,9 +178,10 @@ import {
     buildCommitment, buildDomain, calculateBonds, computeOrderHash,
     computeCheckoutHash, computeClauseKey, canonicalize, hashResolveProcess,
     fetchUsageClaimContext, buildUsageClaims, USAGE_KIND_CLAUSE,
+    RESOLVE_PROCESS_TYPES, computeCommitmentProcessId, hashClauseData,
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
-import { SequencerClient } from '@figaro-protocol/sdk/agent';
+import { SequencerClient, batchAttestationTypedData } from '@figaro-protocol/sdk/agent';
 import { proveAndSettle } from '@figaro-protocol/sdk/relay';
 import { execSync } from 'node:child_process';
 
@@ -249,9 +250,6 @@ const WALLET_CODE_ABI = parseAbi([
     'function isValidSignature(bytes32 digest, bytes signature) view returns (bytes4)',
 ]);
 const ERC1271_MAGIC = '0x1626ba7e';
-// FigaroBatchVerifier's own event (src/core/verifier/FigaroBatchVerifier.sol);
-// the SDK's BATCH_VERIFIER_ABI does not carry it.
-const BATCH_ACCRUAL_SKIPPED = parseAbiItem('event BatchAccrualSkipped(uint64 indexed batchId, bytes reason)');
 
 // ── Clients ─────────────────────────────────────────────────────────────────
 
@@ -291,7 +289,8 @@ const clauseKey = computeClauseKey(specObject);
 
 const clauseObject = { modality: 'delivery' };
 const clauseData = canonicalize(clauseObject);
-const clauseDataHash = keccak256(stringToHex(clauseData));
+// The clause's merkle leaf hash, as the SDK computes it for the checkoutHash.
+const clauseDataHash = hashClauseData({ clause: clauseKey, data: clauseObject });
 
 const agreement = {
     version: 'a1',
@@ -482,36 +481,13 @@ async function approveDigest(wallet, account, digest, authorization) {
     if (answer !== ERC1271_MAGIC) throw new Error(`${account.address}'s code answers ${answer} for ${digest} after approval`);
 }
 
-function attestTypedData(role, { orderHash, processId, contentRef }) {
-    if (role === 'Seller') {
-        return {
-            domain,
-            types: {
-                AttestSeller: [
-                    { name: 'orderHash', type: 'bytes32' },
-                    { name: 'clauseId', type: 'bytes32' },
-                    { name: 'stage', type: 'uint8' },
-                    { name: 'contentRef', type: 'bytes32' },
-                ],
-            },
-            primaryType: 'AttestSeller',
-            message: { orderHash, clauseId: clauseKey, stage: 0, contentRef },
-        };
-    }
-    return {
-        domain,
-        types: {
-            AttestBuyer: [
-                { name: 'processId', type: 'bytes32' },
-                { name: 'orderHash', type: 'bytes32' },
-                { name: 'clauseId', type: 'bytes32' },
-                { name: 'stage', type: 'uint8' },
-                { name: 'contentRef', type: 'bytes32' },
-            ],
-        },
-        primaryType: 'AttestBuyer',
-        message: { processId, orderHash, clauseId: clauseKey, stage: 0, contentRef },
-    };
+/** The batch-path attestation the party signs or its code validates: the
+ *  SDK's typed data (`batchAttestationTypedData`) over the verifier's domain,
+ *  for the one clause of this order at stage 0. */
+function attestTypedData(role, { contentRef }) {
+    return batchAttestationTypedData(role === 'Seller' ? 'seller' : 'buyer', {
+        target: commitment, clauseId: clauseKey, stage: 0, contentRef, clauseDataHash, proof: [],
+    }, chainId, verifier);
 }
 
 const freshBytes = () => `0x${randomBytes(48).toString('hex')}`;
@@ -585,7 +561,8 @@ const { commitment, typedData } = buildCommitment({
 
 const buyerSig = await buyerWallet.signTypedData(typedData);
 const sellerSig = await sellerWallet.signTypedData(typedData);
-const processId = hashTypedData(typedData); // root order: processId = the signed digest
+// A root order's processId is the signed digest (the SDK's rule).
+const processId = computeCommitmentProcessId(commitment, chainId, verifier);
 const orderHash = computeOrderHash(commitment, chainId, verifier);
 const startBlock = await publicClient.getBlockNumber();
 
@@ -659,7 +636,7 @@ try {
 
     if (FORMS.signed) {
         const { doc, contentRef } = attestedDocument('signed');
-        const sig = await sellerWallet.signTypedData(attestTypedData('Seller', { orderHash, processId, contentRef }));
+        const sig = await sellerWallet.signTypedData(attestTypedData('Seller', { contentRef }));
         signedRecord.attestations.push({ form: 'signed', role: 'Seller', clauseId: clauseKey, stage: 0, contentRef, document: doc, clauseData, sellerSig: sig });
         saveRecord({});
         const r = await sequencer.submitAttestAsSeller({
@@ -673,7 +650,7 @@ try {
     for (const role of FORMS.walletCodeAttest) {
         const [wallet, account] = role === 'Seller' ? [sellerWallet, sellerAccount] : [buyerWallet, buyerAccount];
         const { doc, contentRef } = attestedDocument(`wallet-code-${role.toLowerCase()}`);
-        const digest = hashTypedData(attestTypedData(role, { orderHash, processId, contentRef }));
+        const digest = hashTypedData(attestTypedData(role, { contentRef }));
         const authorization = freshBytes();
         await approveDigest(wallet, account, digest, authorization);
         signedRecord.attestations.push({ form: 'wallet-code', role, clauseId: clauseKey, stage: 0, contentRef, document: doc, clauseData, digest, authorization });
@@ -716,7 +693,7 @@ try {
 
     if (FORMS.refusalCheck) {
         const { doc, contentRef } = attestedDocument('wallet-code-refused');
-        const digest = hashTypedData(attestTypedData('Buyer', { orderHash, processId, contentRef }));
+        const digest = hashTypedData(attestTypedData('Buyer', { contentRef }));
         const authorization = freshBytes();
         await approveDigest(buyerWallet, buyerAccount, digest, authorization);
         // Yes while the buyer holds at most the maximum: the code reads the
@@ -800,12 +777,7 @@ try {
     } else {
         const buyerResolveSig = await buyerWallet.signTypedData({
             domain,
-            types: {
-                ResolveProcess: [
-                    { name: 'processId', type: 'bytes32' },
-                    { name: 'runningTotal', type: 'uint256' },
-                ],
-            },
+            types: RESOLVE_PROCESS_TYPES,
             primaryType: 'ResolveProcess',
             message: { processId, runningTotal },
         });
@@ -873,7 +845,7 @@ try {
     // wait for the counter itself to move. A batch whose accrual the counter
     // refused names it in BatchAccrualSkipped; that is a failure, not a wait.
     const accrualAfter = WALKAWAY ? undefined : await waitUntil('the usage accrual on the counter', async () => {
-        const skipped = await publicClient.getLogs({ address: verifier, event: BATCH_ACCRUAL_SKIPPED, fromBlock: claimBlock });
+        const skipped = await publicClient.getContractEvents({ address: verifier, abi: BATCH_VERIFIER_ABI, eventName: 'BatchAccrualSkipped', fromBlock: claimBlock });
         if (skipped.length > 0) {
             throw new Error(`the counter skipped a batch's accrual since the claim (batch ${skipped[0].args.batchId}, reason ${skipped[0].args.reason}) — while waiting for the usage accrual`);
         }

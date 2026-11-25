@@ -17,7 +17,7 @@ const NOT_HELD_REF = `0x${"e2".repeat(32)}`;
 const ORDERS = { status: "present", value: [{ orderHash: ORDER, processId: PROCESS, checkoutHash: `0x${"cd".repeat(32)}`, buyer: "0x1", seller: "0x2" }] };
 const { rows, agreementReads } = vi.hoisted(() => ({ rows: [] as unknown[], agreementReads: new Map<string, unknown>() }));
 
-vi.mock("wagmi", () => ({ usePublicClient: () => ({ chain: { id: 31337 } }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock());
 vi.mock("@/hooks/useProcessOrders", () => ({ useProcessOrders: () => ORDERS }));
 vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreementReads: () => agreementReads }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));

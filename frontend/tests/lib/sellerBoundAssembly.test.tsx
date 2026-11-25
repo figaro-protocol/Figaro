@@ -42,24 +42,13 @@ const AGREEMENT_REGISTRY = `0x${"a6".repeat(20)}` as Hex;
 // confirm), the caller's pre-broadcast step, the broadcast.
 const callOrder: string[] = [];
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: SELLER }),
-    useChainId: () => 31337,
-    usePublicClient: () => ({}),
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => SELLER, client: () => ({}) }, {
     useWalletClient: () => ({ data: null }),
     useSignTypedData: () => ({ signTypedDataAsync: async () => { callOrder.push("sign"); return `0x${"11".repeat(65)}`; } }),
 }));
 
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return {
-        ...actual,
-        CONTRACTS: {
-            ...actual.CONTRACTS,
-            core: "0x00000000000000000000000000000000000000c0",
-        },
-    };
-});
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { core: "0x00000000000000000000000000000000000000c0" }));
 vi.mock("@/lib/registries/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
     return { ...actual, REGISTRY_CONTRACTS: { ...actual.REGISTRY_CONTRACTS, processRegistry: PROCESS_REGISTRY, agreementRegistry: AGREEMENT_REGISTRY } };

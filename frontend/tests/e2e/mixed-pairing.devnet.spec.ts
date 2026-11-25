@@ -33,7 +33,7 @@
  */
 import { createServer, type Server } from 'node:http';
 import { test, expect, gotoAsWallet, newWalletPage } from './devnet-multi-test';
-import { createPublicClient, createWalletClient, defineChain, http, parseAbi, parseUnits, type Hex } from 'viem';
+import { createPublicClient, createWalletClient, http, parseAbi, parseUnits, type Hex } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import {
     confirmAgreementPreviews,
@@ -49,6 +49,8 @@ import {
     isBindingOf,
     chainProfileReader,
     chainDesignReader,
+    RPC_URL,
+    LOCAL_ANVIL,
 } from './devnet-helpers';
 import { specSource } from '@/lib/shared/clauseSpecSource';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
@@ -62,13 +64,6 @@ import {
     type OfferPolicy,
 } from '@figaro-protocol/sdk/agent';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const ERC20_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',

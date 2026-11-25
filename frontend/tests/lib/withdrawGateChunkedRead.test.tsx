@@ -39,10 +39,8 @@ const { CORE, VERIFIER, LATEST, provider } = vi.hoisted(() => {
 vi.mock("@/lib/shared/publicClient", () => ({
     publicClient: provider,
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: CORE, batchVerifier: VERIFIER } }));
 // An un-witnessed order resolves to no agreement: the SDK gate counts it unverified.
 // No order here was witnessed by this wallet, so no body is read.
 vi.mock("@/lib/core/agreementFetch", () => ({ witnessedAgreementUri: () => null, fetchAgreement: async () => null }));

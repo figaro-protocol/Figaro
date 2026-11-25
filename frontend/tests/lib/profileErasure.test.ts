@@ -23,40 +23,40 @@ describe("unpinSupersededProfileArtifacts", () => {
         const unpin = vi.fn().mockResolvedValue(undefined);
         await unpinSupersededProfileArtifacts({
             ipfs: { unpin },
-            priorProfileUri: "ipfs://QmPriorProfile",
+            priorProfileUri: "ipfs://bafyfixpriorprofile",
             priorProfile: profile({
-                catalogURI: "ipfs://QmOldCatalog",
-                branding: { logoURI: "ipfs://QmLogo" },
+                catalogURI: "ipfs://bafyfixoldcatalog",
+                branding: { logoURI: "ipfs://bafyfixlogo" },
             }),
             nextProfile: profile({
-                catalogURI: "ipfs://QmNewCatalog",
-                branding: { logoURI: "ipfs://QmLogo" }, // unchanged — survives
+                catalogURI: "ipfs://bafyfixnewcatalog",
+                branding: { logoURI: "ipfs://bafyfixlogo" }, // unchanged — survives
             }),
         });
 
         const unpinned = unpin.mock.calls.map((c) => c[0]);
-        expect(unpinned).toContain("QmPriorProfile");
-        expect(unpinned).toContain("QmOldCatalog");
-        expect(unpinned).not.toContain("QmLogo");
-        expect(unpinned).not.toContain("QmNewCatalog");
+        expect(unpinned).toContain("bafyfixpriorprofile");
+        expect(unpinned).toContain("bafyfixoldcatalog");
+        expect(unpinned).not.toContain("bafyfixlogo");
+        expect(unpinned).not.toContain("bafyfixnewcatalog");
     });
 
     it("withdraw (no successor) erases everything the profile referenced", async () => {
         const unpin = vi.fn().mockResolvedValue(undefined);
         await unpinSupersededProfileArtifacts({
             ipfs: { unpin },
-            priorProfileUri: "ipfs://QmPriorProfile",
+            priorProfileUri: "ipfs://bafyfixpriorprofile",
             priorProfile: profile({
-                catalogURI: "ipfs://QmCatalog",
-                branding: { logoURI: "ipfs://QmLogo" },
-                assets: { imageBaseURI: "ipfs://QmImages" },
+                catalogURI: "ipfs://bafyfixcatalog",
+                branding: { logoURI: "ipfs://bafyfixlogo" },
+                assets: { imageBaseURI: "ipfs://bafyfiximages" },
             }),
             nextProfile: null,
         });
 
         const unpinned = unpin.mock.calls.map((c) => c[0]);
         expect(new Set(unpinned)).toEqual(
-            new Set(["QmPriorProfile", "QmCatalog", "QmLogo", "QmImages"]),
+            new Set(["bafyfixpriorprofile", "bafyfixcatalog", "bafyfixlogo", "bafyfiximages"]),
         );
     });
 
@@ -64,7 +64,7 @@ describe("unpinSupersededProfileArtifacts", () => {
         const unpin = vi.fn().mockResolvedValue(undefined);
         await unpinSupersededProfileArtifacts({
             ipfs: { unpin },
-            priorProfileUri: "ipfs://QmPriorProfile",
+            priorProfileUri: "ipfs://bafyfixpriorprofile",
             priorProfile: profile({
                 branding: { logoURI: "https://example.com/logo.png" }, // http — not unpinnable
             }),
@@ -72,21 +72,21 @@ describe("unpinSupersededProfileArtifacts", () => {
         });
 
         expect(unpin).toHaveBeenCalledTimes(1); // only the profile CID
-        expect(unpin).toHaveBeenCalledWith("QmPriorProfile");
+        expect(unpin).toHaveBeenCalledWith("bafyfixpriorprofile");
     });
 
     it("tries every candidate, then rejects with every refusal the service answered", async () => {
         const unpin = vi.fn(async (cid: string) => {
-            if (cid !== "QmCatalog") throw new Error(`The pin service refused to unpin ${cid}: 403 Forbidden.`);
+            if (cid !== "bafyfixcatalog") throw new Error(`The pin service refused to unpin ${cid}: 403 Forbidden.`);
         });
         await expect(
             unpinSupersededProfileArtifacts({
                 ipfs: { unpin },
-                priorProfileUri: "ipfs://QmPriorProfile",
-                priorProfile: profile({ catalogURI: "ipfs://QmCatalog", branding: { logoURI: "ipfs://QmLogo" } }),
+                priorProfileUri: "ipfs://bafyfixpriorprofile",
+                priorProfile: profile({ catalogURI: "ipfs://bafyfixcatalog", branding: { logoURI: "ipfs://bafyfixlogo" } }),
                 nextProfile: null,
             }),
-        ).rejects.toThrow(/refused to unpin QmPriorProfile: 403 Forbidden\. .*refused to unpin QmLogo: 403 Forbidden\./);
-        expect(new Set(unpin.mock.calls.map((c) => c[0]))).toEqual(new Set(["QmPriorProfile", "QmCatalog", "QmLogo"]));
+        ).rejects.toThrow(/refused to unpin bafyfixpriorprofile: 403 Forbidden\. .*refused to unpin bafyfixlogo: 403 Forbidden\./);
+        expect(new Set(unpin.mock.calls.map((c) => c[0]))).toEqual(new Set(["bafyfixpriorprofile", "bafyfixcatalog", "bafyfixlogo"]));
     });
 });

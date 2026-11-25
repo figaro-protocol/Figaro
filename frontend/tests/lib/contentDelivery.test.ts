@@ -16,7 +16,6 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { keccak256, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
 import { computeClauseKey } from "@figaro-protocol/sdk";
 import { decodeContentFromSpec, parseClauseSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
 import { parseBlockBinding } from "@/lib/shared/clauseBlockBinding";
@@ -34,6 +33,7 @@ import {
 } from "@/lib/data/handoff/contentDelivery";
 import { requestAddressDetail } from "@/lib/data/handoff/addressDetail";
 import { decryptCeremonyBlob, sendCeremonyBlob } from "@/lib/data/handoff/ceremony";
+import { recordingChannel } from "../support/recordingChannel";
 
 const SELLER_ACCOUNT = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
 const BUYER_ACCOUNT = privateKeyToAccount("0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a");
@@ -49,20 +49,6 @@ const ARTIFACT = {
     bytes: new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><title>the deliverable</title></svg>'),
 };
 
-/** A channel stub that records sends — transport is not under test; the
- *  crypto and the ceremony scoping are. */
-function recordingChannel() {
-    const sent: Array<{ kind: "pubkey" | "blob"; orderId: string; value: string }> = [];
-    const channel = {
-        sendEcdhPubkey: vi.fn(async ({ orderId, pubKeyHex }) => {
-            sent.push({ kind: "pubkey", orderId, value: pubKeyHex });
-        }),
-        sendWrappedKey: vi.fn(async ({ orderId, wrappedKeyB64 }) => {
-            sent.push({ kind: "blob", orderId, value: wrappedKeyB64 });
-        }),
-    } as unknown as HandoffChannel;
-    return { channel, sent };
-}
 
 beforeEach(() => {
     window.sessionStorage.clear();
@@ -156,8 +142,10 @@ describe("the content-delivery ceremony", () => {
             blobB64: blobB64.slice(0, -4) + "AAAA",
         });
         expect(corrupted).toBeNull();
-        // contentHashOfBytes is deterministic over the same bytes.
-        expect(contentHashOfBytes(ARTIFACT.bytes)).toBe(contentHashOfBytes(new Uint8Array(ARTIFACT.bytes)));
+        // contentHashOfBytes is the keccak-256 of the bytes: the digest of the
+        // artifact above, fixed here.
+        expect(contentHashOfBytes(ARTIFACT.bytes)).toBe("0x443b39c1bf7f73a45b5e6a32b8cf4a803d0c658c9eea9cd86ea0146425a1f7ad");
+        expect(contentHashOfBytes(new Uint8Array(ARTIFACT.bytes))).toBe("0x443b39c1bf7f73a45b5e6a32b8cf4a803d0c658c9eea9cd86ea0146425a1f7ad");
     });
 });
 

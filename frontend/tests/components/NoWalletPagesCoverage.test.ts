@@ -10,7 +10,9 @@
  * - `case`: a test renders the page's view with no wallet connected and its
  *   network read answering with content, and asserts the content shows and no
  *   prompt to connect stands in for it. The entry names the file and the
- *   case's title, and this test checks the file holds that title.
+ *   case's title, and this test checks the file declares a case of that
+ *   title: an `it(…)` or `test(…)` read by parsing the file
+ *   (`tests/support/testTitles.ts`), never the words anywhere in it.
  * - `subject`: the page's subject is the connected wallet itself (an edit of
  *   its own registration); with no wallet it has no subject to read.
  * - `input`: the page reads the network only for what the visitor types or
@@ -21,9 +23,9 @@
  * - `open`: no case renders it here yet; the entry says why.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import path from "node:path";
 import { pageRouteSegments, routeOf } from "../lib/__fixtures__/sourceTree";
+import { testCaseTitles } from "../support/testTitles";
 
 const ROOT = path.resolve(process.cwd());
 
@@ -40,7 +42,7 @@ const NO_WALLET: Record<string, Coverage> = {
     "/members/agents": { kind: "input", why: "a form of the visitor's own endpoints, filled into the anonymous draft; it reads nothing from the network" },
     "/members/assemblies": { kind: "case", file: "tests/components/MemberPagesReadStates.test.tsx", title: "no wallet, read present: %s lists the registry's assemblies" },
     "/members/buyer": { kind: "case", file: "tests/components/MemberPagesReadStates.test.tsx", title: "no wallet, read present: %s lists the registry's assemblies" },
-    "/members/catalog": { kind: "open", why: "what it reads (the item fields the bound assemblies' clauses ask for) follows the draft's bindings; no case fills a draft with a binding here" },
+    "/members/catalog": { kind: "case", file: "tests/components/OnboardingCatalogNoWallet.test.tsx", title: "no wallet, read present: the item fields the bound assembly's clause asks for show, and no prompt to connect stands in for them" },
     "/members/edit/agents": { kind: "subject", why: "edits the connected wallet's own registration; its profile reads walletless at /s/view?seller=" },
     "/members/edit/assemblies": { kind: "subject", why: "edits the connected wallet's own registration; its profile reads walletless at /s/view?seller=" },
     "/members/edit/buyer": { kind: "subject", why: "edits the connected wallet's own registration; its profile reads walletless at /s/view?seller=" },
@@ -58,8 +60,8 @@ const NO_WALLET: Record<string, Coverage> = {
     "/s/view": { kind: "case", file: "tests/components/MemberDetailViewCartFigures.test.tsx", title: "no wallet, read present: the seller's name and catalog show" },
     "/sign": { kind: "case", file: "tests/components/SignPageFlow.test.tsx", title: "no wallet, read present: the linked order's token, payment and terms check show" },
     "/assemblies/designer": { kind: "case", file: "tests/components/RegistryListStateNoWallet.test.tsx", title: "%s, a named address: its rows show, read-only, and no hint to connect stands in for them" },
-    "/assemblies/designer/edit": { kind: "open", why: "the canvas holds a draft from this browser's storage; its one network read is the clause registry, read when the agreement drawer opens, and no case renders the canvas with no wallet" },
-    "/assemblies/designer/new": { kind: "open", why: "as /assemblies/designer/edit: a local draft, and the clause registry read when the drawer opens" },
+    "/assemblies/designer/edit": { kind: "case", file: "tests/components/DesignerCanvasReload.test.tsx", title: "/assemblies/designer/edit — no wallet, read present: the saved draft opens with its name and orders, and no prompt to connect stands in for them" },
+    "/assemblies/designer/new": { kind: "case", file: "tests/components/DesignerCanvasReload.test.tsx", title: "/assemblies/designer/new — no wallet, read present: the canvas, its editorial inputs and Save show, and no prompt to connect stands in for them" },
     "/assemblies/designer/view": { kind: "case", file: "tests/components/ViewAssemblyClientFailedRead.test.tsx", title: "no wallet, read present: the published assembly's name shows" },
     "/clauses/register": { kind: "case", file: "tests/components/RegistryListStateNoWallet.test.tsx", title: "%s, a named address: its rows show, read-only, and no hint to connect stands in for them" },
 };
@@ -74,6 +76,7 @@ describe("every wallet-tier page is held to 'the wallet is never a login', or sa
 
     it.each(Object.entries(NO_WALLET).filter(([, c]) => c.kind === "case"))("%s — its named case exists", (_route, c) => {
         const { file, title } = c as { file: string; title: string };
-        expect(readFileSync(path.join(ROOT, file), "utf8")).toContain(title);
+        const titles = testCaseTitles(path.join(ROOT, file));
+        expect(titles.some((t) => t.includes(title)), `${file} declares a case whose title holds "${title}"`).toBe(true);
     });
 });

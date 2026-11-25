@@ -47,7 +47,7 @@ vi.mock("@/lib/registries/useClauseRegistry", async () => {
     };
 });
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18, ready: true, loading: false }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(18));
 
 import { AgreementDrawer } from "@/app/(tools)/assemblies/designer/_components/AgreementDrawer";
 import { AssemblyTermsPanel } from "@/app/(tools)/assemblies/designer/_components/AssemblyTermsPanel";

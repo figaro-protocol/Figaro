@@ -27,7 +27,7 @@ const m = vi.hoisted(() => ({
     agreements: [] as { id: string }[],
 }));
 
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: undefined }), useChainId: () => 31337, usePublicClient: () => ({ chain: { id: 31337 } }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock());
 const CATALOGS = vi.hoisted(() => ({
     read: {
         status: "present",
@@ -89,7 +89,7 @@ vi.mock("@/lib/checkout/dispatchRace", () => ({ useDispatchRace: () => ({ result
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false, allowanceKnown: true }) }));
 vi.mock("@/hooks/useApproveThenAct", () => ({ useApproveThenAct: () => ({ runWithApproval: vi.fn() }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: "DNM" }) }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18 }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(18));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "present", value: 10n ** 30n }, refetch: () => {} }) }));
 vi.mock("@/hooks/useConnectInjected", () => ({ useConnectInjected: () => vi.fn() }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));

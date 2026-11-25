@@ -17,18 +17,12 @@ const { CLIENT, CORE, VERIFIER, getCoreEventsMock } = vi.hoisted(() => ({
     VERIFIER: "0x00000000000000000000000000000000000000c9" as const,
     getCoreEventsMock: vi.fn(),
 }));
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: "0x00000000000000000000000000000000000000a1", isConnected: true }),
-    useChainId: () => 31337,
-    usePublicClient: () => CLIENT,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => "0x00000000000000000000000000000000000000a1", client: () => CLIENT }, {
     useWalletClient: () => ({ data: undefined }),
     useWatchContractEvent: () => undefined,
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-    getBatchVerifier: () => VERIFIER,
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: CORE, batchVerifier: VERIFIER }, batchVerifier: () => VERIFIER }));
 vi.mock("@/lib/core/indexer", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/core/indexer")>()),
     getCoreEvents: (...a: unknown[]) => getCoreEventsMock(...a),

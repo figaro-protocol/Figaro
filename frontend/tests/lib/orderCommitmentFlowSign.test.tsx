@@ -56,10 +56,7 @@ const s = vi.hoisted(() => ({
     signFails: null as unknown,
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: s.address }),
-    useChainId: () => 31337,
-    usePublicClient: () => s.client,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => s.address, client: () => s.client }, {
     useWalletClient: () => ({ data: null }),
     useSignTypedData: () => ({
         signTypedDataAsync: async (typedData: { primaryType: string; domain: unknown; message: Record<string, unknown> }) => {
@@ -70,10 +67,8 @@ vi.mock("wagmi", () => ({
         },
     }),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x00000000000000000000000000000000000000c0" } };
-});
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { core: "0x00000000000000000000000000000000000000c0" }));
 // The counterparty's signature and the seller's binding are each pinned by
 // their own tests (sellerBoundAssembly, signGateDesignRead); here they pass.
 vi.mock("@figaro-protocol/sdk", async (importOriginal) => ({

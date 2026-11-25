@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
     catalogs: { read: { status: "pending" } as { status: string; value?: unknown } },
 }));
 
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: ADDRESS, isConnected: true }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => ADDRESS }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 const ONBOARDING = {

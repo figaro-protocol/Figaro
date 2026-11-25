@@ -7,7 +7,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { ContractFunctionRevertedError, encodeErrorResult, type Abi } from "viem";
+import { MEMBERS_REGISTRY_ABI } from "@figaro-protocol/sdk";
+import { revertOf } from "../support/contractRevert";
 
 const w = vi.hoisted(() => {
     process.env.NEXT_PUBLIC_MEMBERS_REGISTRY = "0x00000000000000000000000000000000000e3b01";
@@ -19,9 +20,7 @@ const w = vi.hoisted(() => {
     };
 });
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: w.wallet, isConnected: true }),
-    usePublicClient: () => w.client,
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => w.wallet, client: () => w.client }, {
     useWriteContract: () => ({ writeContractAsync: w.write, data: undefined, isPending: false, error: null }),
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false, data: undefined }),
 }));
@@ -39,11 +38,8 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
 
 import { usePublishMemberProfile } from "@/lib/registries/usePublishMemberProfile";
 
-function revert(errorName: string): ContractFunctionRevertedError {
-    const abi = [{ type: "error", name: errorName, inputs: [] }] as const satisfies Abi;
-    const data = encodeErrorResult({ abi, errorName } as never);
-    return new ContractFunctionRevertedError({ abi, data, functionName: "register" });
-}
+/** A MembersRegistry revert, from the registry's own ABI. */
+const revert = (errorName: string) => revertOf(MEMBERS_REGISTRY_ABI, errorName, [], "register");
 
 async function publishCaught(): Promise<unknown> {
     const { result } = renderHook(() => usePublishMemberProfile());

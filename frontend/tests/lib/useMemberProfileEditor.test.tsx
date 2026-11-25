@@ -24,9 +24,7 @@ vi.mock("next/navigation", () => {
     const router = { push: mocks.push, replace: mocks.replace };
     return { useRouter: () => router };
 });
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: ADDRESS, isConnected: true }),
-}));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => ADDRESS }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/lib/registries/useMembersRegistry", async () => {
     const React = await import("react");

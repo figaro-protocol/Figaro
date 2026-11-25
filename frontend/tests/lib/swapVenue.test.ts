@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { decodeFunctionData, encodeAbiParameters, encodeFunctionData, getAddress, parseAbi } from "viem";
-import { SWAP_ROUTER_02_ABI } from "@figaro-protocol/sdk";
+import { QUOTER_V2_ABI, SWAP_ROUTER_02_ABI } from "@figaro-protocol/sdk";
+import { mockSwapVenueSwapAbi } from "../support/mockSwapVenueAbi";
 
 const quoterMock = vi.fn();
 vi.mock("@/lib/composability/contracts", () => ({
@@ -14,7 +15,7 @@ const QUOTER = ("0x" + "e0".repeat(20)) as `0x${string}`;
 const WETH = ("0x" + "11".repeat(20)) as `0x${string}`;
 const USDC = ("0x" + "22".repeat(20)) as `0x${string}`;
 const COORD = getAddress("0x" + "c0".repeat(20));
-const MOCK_ABI = parseAbi(["function swap(address tokenIn, address tokenOut, uint256 amountIn, address recipient) returns (uint256)"]);
+const MOCK_ABI = mockSwapVenueSwapAbi();
 
 /** A publicClient that behaves like SwapRouter02 + QuoterV2: factory() answers,
  *  rateNumerator() reverts, and QuoterV2 prices each fee tier differently. */
@@ -27,7 +28,7 @@ function uniswapClient(quotesByFee: Record<number, bigint | null>) {
         }),
         call: vi.fn(async ({ data }: { data: `0x${string}` }) => {
             const { args } = decodeFunctionData({
-                abi: parseAbi(["function quoteExactOutputSingle((address tokenIn,address tokenOut,uint256 amount,uint24 fee,uint160 sqrtPriceLimitX96) params)"]),
+                abi: QUOTER_V2_ABI,
                 data,
             });
             const fee = Number((args[0] as { fee: number }).fee);

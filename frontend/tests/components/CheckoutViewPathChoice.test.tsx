@@ -29,6 +29,8 @@ const m = vi.hoisted(() => ({
     coPaths: undefined as ("direct" | "batch")[] | undefined,
     relayVerifier: "0x2222222222222222222222222222222222222222",
     useCheckoutSpender: [] as string[],
+    // Each member whose profile the page read for its relay, lowercased.
+    profileReads: [] as string[],
     VERIFIER: "0x2222222222222222222222222222222222222222",
     CORE: "0x1111111111111111111111111111111111111111",
     VKEY: `0x${"5a".repeat(32)}`,
@@ -36,19 +38,15 @@ const m = vi.hoisted(() => ({
     client: { chain: { id: 31337 }, readContract: async () => `0x${"5a".repeat(32)}` },
 }));
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: "0x00000000000000000000000000000000000000bb" }),
-    useChainId: () => 31337,
-    usePublicClient: () => m.client,
-}));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: m.CORE, batchVerifier: m.VERIFIER },
-    getBatchVerifier: () => m.VERIFIER,
-}));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => "0x00000000000000000000000000000000000000bb", client: () => m.client }));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: m.CORE, batchVerifier: m.VERIFIER }, batchVerifier: () => m.VERIFIER }));
 // The seller's profile names its relay among its services.
 vi.mock("@/lib/registries/profileFetcher", () => ({
-    profileReaderForChain: () => async () => ({ name: "Kitchen", services: { relay: "http://relay.test" } }),
+    profileReaderForChain: () => async (member: string) => {
+        m.profileReads.push(member.toLowerCase());
+        return { name: "Kitchen", services: { relay: "http://relay.test" } };
+    },
 }));
 const CATALOGS = vi.hoisted(() => ({
     read: {
@@ -113,7 +111,7 @@ vi.mock("@/lib/checkout/dispatchRace", () => ({ useDispatchRace: () => ({ result
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false, allowanceKnown: true }) }));
 vi.mock("@/hooks/useApproveThenAct", () => ({ useApproveThenAct: () => ({ runWithApproval: vi.fn() }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: "DNM" }) }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 18 }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(18));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "present", value: 10n ** 30n }, refetch: () => {} }) }));
 vi.mock("@/hooks/useConnectInjected", () => ({ useConnectInjected: () => vi.fn() }));
 vi.mock("@/lib/registries/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, version: 0 }) }));
@@ -141,6 +139,7 @@ afterEach(() => {
     m.paths = undefined;
     m.relayVerifier = m.VERIFIER;
     m.useCheckoutSpender = [];
+    m.profileReads = [];
     m.coSeller = null;
     m.coPaths = undefined;
     vi.unstubAllGlobals();
@@ -182,6 +181,11 @@ describe("CheckoutView — the paths are the intersection of every named seller'
         m.coPaths = ["direct", "batch"];
         await renderCheckout();
         await screen.findByTestId("checkout-path-option-batch");
+        expect(screen.getByTestId("checkout-path-option-direct")).toBeTruthy();
+        expect(screen.queryByTestId("checkout-path-none")).toBeNull();
+        // The relays are read from both profiles: the lead's and the co-seller's.
+        expect([...new Set(m.profileReads)].sort()).toEqual([SELLER, CO].map((a) => a.toLowerCase()).sort());
+        expect(statusReads).toBeGreaterThan(0);
     });
 });
 

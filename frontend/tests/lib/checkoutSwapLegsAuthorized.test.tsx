@@ -18,17 +18,12 @@ import { agreementHashOf, hashCommitmentStruct, type Hex, type HydratedProcessDe
 
 const INPUT_TOKEN = "0x00000000000000000000000000000000000000f1" as const;
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: "0x1111111111111111111111111111111111111111" }),
-    useChainId: () => 31337,
-    usePublicClient: () => ({ chain: { id: 31337 } }),
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => "0x1111111111111111111111111111111111111111" }, {
     useWalletClient: () => ({ data: null }),
     useSignTypedData: () => ({ signTypedDataAsync: async () => `0x${"11".repeat(65)}` }),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" } };
-});
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { core: "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" }));
 vi.mock("@/lib/composability/contracts", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/composability/contracts")>()),
     getWitnessSwapAndCommitCoordinator: () => "0x00000000000000000000000000000000000000c0",
@@ -49,7 +44,7 @@ vi.mock("@/lib/composability/swapVenue", async (importOriginal) => ({
         }),
     }),
 }));
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 6 }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(6));
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "present", value: 10n ** 30n } }) }));
 vi.mock("@/lib/core/useFigaroActions", () => ({ useFigaroActions: () => ({ commit: vi.fn() }) }));
 vi.mock("@/lib/composability/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit: vi.fn() }) }));

@@ -12,10 +12,8 @@ import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 const BUYER = "0x00000000000000000000000000000000000000b1";
 const SELLER = "0x00000000000000000000000000000000000000a1";
 
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: BUYER }),
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => BUYER }, {
     useWalletClient: () => ({ data: null }),
-    useChainId: () => 31337,
 }));
 
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({

@@ -60,10 +60,12 @@ import * as fs from "node:fs";
 import * as http from "node:http";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
+import { isAddressHex, isBytes32Hex } from "@figaro-protocol/sdk";
 import { TRUTH_BOUNDARY_GLOSS } from "@figaro-protocol/sdk/derive";
 import {
     corpusStatus, tradeStory, graphInventory, marketShapeAnswer, syncCorpus, walletRecordAnswer,
 } from "./analyst.mjs";
+import { requireEnv } from "./env.mjs";
 import { ipfsGateways } from "./ipfsRead.mjs";
 
 // ── Model configuration — present or absent, never guessed ──────────────────
@@ -371,14 +373,14 @@ export function makeAnalystHandler(getCorpus, config = modelConfig(), {
             }
             if (req.method === "GET" && url.pathname === "/queries/wallet-record") {
                 const wallet = url.searchParams.get("wallet");
-                if (!wallet || !/^0x[0-9a-fA-F]{40}$/.test(wallet)) {
+                if (!isAddressHex(wallet)) {
                     return send(res, 400, { error: "wallet= must be a 0x-prefixed address" });
                 }
                 return send(res, 200, walletRecordAnswer(corpus, wallet));
             }
             if (req.method === "GET" && url.pathname === "/queries/trade-story") {
                 const processId = url.searchParams.get("process");
-                if (!processId || !/^0x[0-9a-fA-F]{64}$/.test(processId)) {
+                if (!isBytes32Hex(processId)) {
                     return send(res, 400, { error: "process= must be a 0x-prefixed bytes32" });
                 }
                 const story = tradeStory(corpus, processId);
@@ -430,11 +432,6 @@ export function makeAnalystHandler(getCorpus, config = modelConfig(), {
 
 // ── Entry point ─────────────────────────────────────────────────────────────
 
-function requireEnv(name) {
-    const v = process.env[name];
-    if (!v) { console.error(`figaro-analyst: missing env ${name}`); process.exit(1); }
-    return v;
-}
 
 /** The EXTRA endpoints to corroborate against, beside RPC_URL. Unset or empty
  *  = no cross-check — one endpoint cannot corroborate, and that is silence. */
@@ -452,8 +449,8 @@ async function main() {
     const resyncSecs = Number(process.env.FIGARO_ANALYST_RESYNC_SECS ?? 0);
 
     const syncOptions = {
-        rpcUrl: requireEnv("RPC_URL"),
-        deploymentRecord: requireEnv("DEPLOYMENT_RECORD"),
+        rpcUrl: requireEnv("RPC_URL", "figaro-analyst"),
+        deploymentRecord: requireEnv("DEPLOYMENT_RECORD", "figaro-analyst"),
         gateways,
         agreementsDir: process.env.FIGARO_AGREEMENTS_DIR,
         recoverSubstance: gateways.length > 0,

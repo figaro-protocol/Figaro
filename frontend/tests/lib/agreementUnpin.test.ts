@@ -28,31 +28,31 @@ function seedTransport(cid: string) {
 
 describe("unpinAgreement", () => {
     it("unpins the pinned CID and forgets the pointer (a later fetch is absent)", async () => {
-        const transport = seedTransport("QmAgreementBody");
+        const transport = seedTransport("bafyfixagreementbody");
         const { checkoutHash } = await publishAgreement(AGREEMENT, { evidenceTransport: transport });
 
         const unpin = vi.fn().mockResolvedValue(undefined);
         await unpinAgreement(checkoutHash, { unpin });
 
-        expect(unpin).toHaveBeenCalledExactlyOnceWith("QmAgreementBody");
+        expect(unpin).toHaveBeenCalledExactlyOnceWith("bafyfixagreementbody");
         // Pointer forgotten: with no URI, fetch can no longer resolve a body.
         expect(await fetchAgreement(checkoutHash, undefined, { evidenceTransport: transport })).toEqual({ status: "absent" });
     });
 
     it("rejects a refused unpin with the service's answer and keeps the pointer, so a retry unpins the same CID", async () => {
-        const transport = seedTransport("QmRefusedBody");
+        const transport = seedTransport("bafyfixrefusedbody");
         const { checkoutHash } = await publishAgreement(AGREEMENT, { evidenceTransport: transport });
 
         const refusal = new Error("403 Forbidden");
         const refused = vi.fn().mockRejectedValue(refusal);
 
         await expect(unpinAgreement(checkoutHash, { unpin: refused })).rejects.toBe(refusal);
-        expect(refused).toHaveBeenCalledExactlyOnceWith("QmRefusedBody");
+        expect(refused).toHaveBeenCalledExactlyOnceWith("bafyfixrefusedbody");
 
         // The retry finds the pointer, unpins the same CID, then forgets it.
         const retry = vi.fn().mockResolvedValue(undefined);
         await unpinAgreement(checkoutHash, { unpin: retry });
-        expect(retry).toHaveBeenCalledExactlyOnceWith("QmRefusedBody");
+        expect(retry).toHaveBeenCalledExactlyOnceWith("bafyfixrefusedbody");
         expect(await fetchAgreement(checkoutHash, undefined, { evidenceTransport: transport })).toEqual({ status: "absent" });
 
         // Forgotten after the successful unpin: a third erase has nothing to unpin.

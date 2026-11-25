@@ -39,14 +39,14 @@
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import {
-    createPublicClient, defineChain, http, parseAbi, type Hex,
+    createPublicClient, http, type Hex,
 } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, waitForConnected, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
+import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, waitForConnected, keyOf, primeRegisteredClauseSpecs, openFreshDesigner, RPC_URL, LOCAL_ANVIL } from './devnet-helpers';
 import { makeProbeSpec, makeProbeWitnessSpec, registerProbeClause } from './probeAssembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/core/contracts';
-import { calculateBonds } from '@figaro-protocol/sdk';
+import { calculateBonds, ERC20_ABI } from '@figaro-protocol/sdk';
 import type { Page } from '@playwright/test';
 
 // Clause keys are located by the names their specs carry (`keyOf`), over
@@ -55,13 +55,6 @@ test.beforeAll(async () => {
     await primeRegisteredClauseSpecs();
 });
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 
 // ── The novel clause — a runtime-attestable lifecycle with one enum ladder, a
@@ -82,7 +75,6 @@ const NOVEL_FIRST_STAGE_LABEL = 'Probe opened';
 // a runtime-attestable lifecycle clause carrying only `block.design.article` —
 // runtime-attestability is DERIVED from its enum ladder, not declared.
 
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 const BUYER = privateKeyToAccount(ANVIL_KEYS[0] as Hex).address; // anvil[0] — buyer + author + registeredBy
 const seller = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 14 }); // anvil[14] — shared only with rate-pricing (both self-establish idempotently)
@@ -128,15 +120,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         // ── DRAWER: author an assembly carrying the novel clause, via the REAL
         //    designer. The clause appears ONLY because the drawer read it from
         //    the live registry → IPFS (event-driven, zero code change). ──
-        await page.addInitScript(() => {
-            try {
-                window.localStorage.removeItem('figaro:designer:autosave:new');
-                window.localStorage.removeItem('figaro:designer:drafts');
-            } catch { /* noop */ }
-        });
-        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
-        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+        await openFreshDesigner(page);
 
         const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
         await rootNode.waitFor({ state: 'visible', timeout: 10000 });

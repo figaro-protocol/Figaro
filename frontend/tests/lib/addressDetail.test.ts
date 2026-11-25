@@ -21,7 +21,8 @@ import {
 } from "@/lib/data/handoff/addressDetail";
 import { keccak256, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { verifyEcdhMessageAuth, type AuthenticatedEcdhMessage, type HandoffChannel } from "@figaro-protocol/sdk/handoff";
+import { verifyEcdhMessageAuth } from "@figaro-protocol/sdk/handoff";
+import { asWireMessage, recordingChannel } from "../support/recordingChannel";
 
 // Deterministic test wallets (anvil #1 / #2) — addresses DERIVED from the
 // keys so the wallet auth in every message is real and verifiable.
@@ -43,36 +44,8 @@ const BLOCK: AddresseeBlock = {
     handling: "Fragile — keep level",
 };
 
-interface SentMessage {
-    kind: "pubkey" | "blob";
-    orderId: string;
-    value: string;
-    senderAddress: string;
-    sig: string;
-}
 
-/** A channel stub that records sends — transport is not under test here
- *  (the mock channel is exercised e2e); the CRYPTO is, auth included. */
-function recordingChannel() {
-    const sent: SentMessage[] = [];
-    const channel = {
-        sendEcdhPubkey: vi.fn(async ({ orderId, pubKeyHex, senderAddress, sig }) => {
-            sent.push({ kind: "pubkey", orderId, value: pubKeyHex, senderAddress, sig });
-        }),
-        sendWrappedKey: vi.fn(async ({ orderId, wrappedKeyB64, senderAddress, sig }) => {
-            sent.push({ kind: "blob", orderId, value: wrappedKeyB64, senderAddress, sig });
-        }),
-    } as unknown as HandoffChannel;
-    return { channel, sent };
-}
 
-/** Rebuild the wire message a recorded send represents (ts is unsigned
- *  metadata — any value verifies). */
-function asWireMessage(m: SentMessage): AuthenticatedEcdhMessage {
-    return m.kind === "pubkey"
-        ? { type: "ECDH_PUBKEY", orderId: m.orderId, pubKeyHex: m.value, senderAddress: m.senderAddress, sig: m.sig, ts: 0 }
-        : { type: "ECDH_WRAPPED_KEY", orderId: m.orderId, wrappedKeyB64: m.value, senderAddress: m.senderAddress, sig: m.sig, ts: 0 };
-}
 
 beforeEach(() => {
     window.sessionStorage.clear();

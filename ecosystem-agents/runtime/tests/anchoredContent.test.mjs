@@ -27,12 +27,17 @@ const ASSEMBLY = {
     agreements: [{ id: "agreement-0", agreementHash: agreementHashOf(COMPOSED), clauses: {}, follows: [] }],
 };
 
-/** A gateway serving `bodies[cid]` at /ipfs/<cid>; anything else 404s. */
+/** The CID-shaped name a fixture document is served under: the reader
+ *  refuses a URI that names no CID (`cidOf`, ipfsRead.mjs). */
+const toCid = (name) => `bafyfix${name.toLowerCase()}`;
+
+/** A gateway serving `bodies[name]` at /ipfs/<toCid(name)>; anything else 404s. */
 async function gateway(bodies) {
+    const byCid = Object.fromEntries(Object.entries(bodies).map(([name, body]) => [toCid(name), body]));
     const server = http.createServer((req, res) => {
         const cid = req.url.replace(/^\/ipfs\//, "");
-        if (!(cid in bodies)) { res.statusCode = 404; return res.end(); }
-        res.end(bodies[cid]);
+        if (!(cid in byCid)) { res.statusCode = 404; return res.end(); }
+        res.end(byCid[cid]);
     });
     await new Promise((r) => server.listen(0, "127.0.0.1", r));
     return { url: `http://127.0.0.1:${server.address().port}`, close: () => new Promise((r) => server.close(r)) };
@@ -41,7 +46,7 @@ async function gateway(bodies) {
 test("a clause spec whose protocol half hashes to its key is read, in any byte form and with any block", async () => {
     const gw = await gateway({ spec: SPEC_TEXT });
     try {
-        const clause = { contentURI: "ipfs://spec", clauseKey: SPEC_KEY };
+        const clause = { contentURI: `ipfs://${toCid("spec")}`, clauseKey: SPEC_KEY };
         const hit = await fetchAnchoredClauseSpec(clause, { gateways: [gw.url] });
         assert.equal(hit.absent, undefined, hit.absent);
         assert.equal(hit.raw.clauseId, "figaro-commerce");
@@ -52,7 +57,7 @@ test("a clause spec whose protocol half hashes to its key is read, in any byte f
     const gw2 = await gateway({ pretty: JSON.stringify(SPEC, null, 2), restyled });
     try {
         for (const cid of ["pretty", "restyled"]) {
-            const hit = await fetchAnchoredClauseSpec({ contentURI: `ipfs://${cid}`, clauseKey: SPEC_KEY }, { gateways: [gw2.url] });
+            const hit = await fetchAnchoredClauseSpec({ contentURI: `ipfs://${toCid(cid)}`, clauseKey: SPEC_KEY }, { gateways: [gw2.url] });
             assert.equal(hit.absent, undefined, hit.absent);
             assert.equal(hit.raw.clauseId, "figaro-commerce");
         }
@@ -64,15 +69,15 @@ test("a clause spec a gateway substituted reads as absence", async () => {
     const forged = canonicalize({ ...SPEC, description: "the gateway's own text" });
     const gw = await gateway({ spec: forged, notjson: "<html>not a spec</html>" });
     try {
-        const clause = { contentURI: "ipfs://spec", clauseKey: SPEC_KEY };
+        const clause = { contentURI: `ipfs://${toCid("spec")}`, clauseKey: SPEC_KEY };
         const hit = await fetchAnchoredClauseSpec(clause, { gateways: [gw.url] });
         assert.match(hit.absent, /not the spec the clause key 0x[0-9a-f]+ names/);
         assert.equal(hit.raw, undefined);
 
         const notJsonText = "<html>not a spec</html>";
-        const notJson = await fetchAnchoredClauseSpec({ contentURI: "ipfs://notjson", clauseKey: keccak256(toBytes(notJsonText)) }, { gateways: [gw.url] });
+        const notJson = await fetchAnchoredClauseSpec({ contentURI: `ipfs://${toCid("notjson")}`, clauseKey: keccak256(toBytes(notJsonText)) }, { gateways: [gw.url] });
         assert.match(notJson.absent, /not the spec the clause key/);
-        const missing = await fetchAnchoredClauseSpec({ ...clause, contentURI: "ipfs://missing" }, { gateways: [gw.url] });
+        const missing = await fetchAnchoredClauseSpec({ ...clause, contentURI: `ipfs://${toCid("missing")}` }, { gateways: [gw.url] });
         assert.equal(missing.absent, "not served");
     } finally { await gw.close(); }
 });
@@ -81,14 +86,14 @@ test("a assembly that hashes to its assembly hash is read; a substituted one is 
     const forged = { agreements: [{ ...ASSEMBLY.agreements[0], follows: ["agreement-9"] }] };
     const gw = await gateway({ t: JSON.stringify(ASSEMBLY), forged: JSON.stringify(forged), notAssembly: "{\"x\":1}" });
     try {
-        const assembly = { contentURI: "ipfs://t", processDesignHash: processDesignHashOf(ASSEMBLY) };
+        const assembly = { contentURI: `ipfs://${toCid("t")}`, processDesignHash: processDesignHashOf(ASSEMBLY) };
         const hit = await fetchAnchoredAssembly(assembly, { gateways: [gw.url] });
         assert.equal(hit.absent, undefined, hit.absent);
         assert.deepEqual(hit.assembly.agreements[0].id, "agreement-0");
 
-        const swapped = await fetchAnchoredAssembly({ ...assembly, contentURI: "ipfs://forged" }, { gateways: [gw.url] });
+        const swapped = await fetchAnchoredAssembly({ ...assembly, contentURI: `ipfs://${toCid("forged")}` }, { gateways: [gw.url] });
         assert.match(swapped.absent, /the registry anchors/);
-        const notAssembly = await fetchAnchoredAssembly({ ...assembly, contentURI: "ipfs://notAssembly" }, { gateways: [gw.url] });
+        const notAssembly = await fetchAnchoredAssembly({ ...assembly, contentURI: `ipfs://${toCid("notAssembly")}` }, { gateways: [gw.url] });
         assert.equal(notAssembly.absent, "not an assembly");
     } finally { await gw.close(); }
 });
@@ -100,18 +105,18 @@ test("a registered agreement whose { clauses } key to its agreement hash is read
         forged: JSON.stringify(forged), notAgreement: "{\"x\":1}",
     });
     try {
-        const agreement = { contentURI: "ipfs://g", agreementHash: agreementHashOf(COMPOSED) };
+        const agreement = { contentURI: `ipfs://${toCid("g")}`, agreementHash: agreementHashOf(COMPOSED) };
         const hit = await fetchAnchoredRegisteredAgreement(agreement, { gateways: [gw.url] });
         assert.equal(hit.absent, undefined, hit.absent);
         assert.deepEqual(hit.composed.clauses, COMPOSED.clauses);
-        const renamed = await fetchAnchoredRegisteredAgreement({ ...agreement, contentURI: "ipfs://renamed" }, { gateways: [gw.url] });
+        const renamed = await fetchAnchoredRegisteredAgreement({ ...agreement, contentURI: `ipfs://${toCid("renamed")}` }, { gateways: [gw.url] });
         assert.equal(renamed.absent, undefined, renamed.absent);
 
-        const swapped = await fetchAnchoredRegisteredAgreement({ ...agreement, contentURI: "ipfs://forged" }, { gateways: [gw.url] });
+        const swapped = await fetchAnchoredRegisteredAgreement({ ...agreement, contentURI: `ipfs://${toCid("forged")}` }, { gateways: [gw.url] });
         assert.match(swapped.absent, /the registry anchors/);
-        const notAgreement = await fetchAnchoredRegisteredAgreement({ ...agreement, contentURI: "ipfs://notAgreement" }, { gateways: [gw.url] });
+        const notAgreement = await fetchAnchoredRegisteredAgreement({ ...agreement, contentURI: `ipfs://${toCid("notAgreement")}` }, { gateways: [gw.url] });
         assert.equal(notAgreement.absent, "not a registered agreement");
-        const missing = await fetchAnchoredRegisteredAgreement({ ...agreement, contentURI: "ipfs://missing" }, { gateways: [gw.url] });
+        const missing = await fetchAnchoredRegisteredAgreement({ ...agreement, contentURI: `ipfs://${toCid("missing")}` }, { gateways: [gw.url] });
         assert.equal(missing.absent, "not served");
     } finally { await gw.close(); }
 });
@@ -125,7 +130,7 @@ test("the parse strips prototype keys from an anchored document", async () => {
     const gw = await gateway({ h: hostileText });
     try {
         const hit = await fetchAnchoredAssembly(
-            { contentURI: "ipfs://h", processDesignHash: processDesignHashOf(hostile) },
+            { contentURI: `ipfs://${toCid("h")}`, processDesignHash: processDesignHashOf(hostile) },
             { gateways: [gw.url] },
         );
         assert.equal(({}).polluted, undefined);

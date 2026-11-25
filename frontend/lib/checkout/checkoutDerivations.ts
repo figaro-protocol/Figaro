@@ -11,13 +11,13 @@ import {
     mechanicallyFilledFieldNames,
     planSubOrderSellers,
     profileValuesFor,
+    rootAgreementOf,
     resolveSubOrderPricing,
     agreementClauses,
     specCatalogueMeasures,
     type SubOrderPricing,
 } from "@figaro-protocol/sdk";
 import { displayNameForAddress } from "@/lib/registries/memberListing";
-import { processDesignFollows } from "@/lib/shared/assembly";
 import {
     clauseCatalogFills,
     clauseDesignFills,
@@ -213,6 +213,8 @@ export function deriveAgreementGroups(args: {
         try { plan = planSubOrderSellers(pickedAssembly); } catch { plan = []; }
     }
     const sellerOf = new Map(plan.map(({ node, seller }) => [node.nodeId, seller]));
+    let rootId: string | undefined;
+    try { rootId = rootAgreementOf(hydrated.assembly).id; } catch { rootId = undefined; }
     // ASSEMBLY TERMS first — the assembly's assembly-scoped clauses (a
     // denomination pin, a dispute forum), reviewed and buyer-filled ONCE;
     // the checkout walk folds them into every agreement, so every party
@@ -242,8 +244,11 @@ export function deriveAgreementGroups(args: {
         // The agreement's clauses: its registered agreement's, with the
         // entry's own fills merged over them.
         const order = { id: entry.id, clauses: agreementClauses(hydrated, entry) };
-        const isRoot = processDesignFollows(entry).length === 0;
-        const assigned = isRoot ? leadAddress : sellerOf.get(String(order.id));
+        // The lead seller takes the root order alone: the SDK's root
+        // (`rootAgreementOf`), the first entry that follows nothing. A later
+        // entry that follows nothing is a sub-order, and its seller is the
+        // one `planSubOrderSellers` binds — the seller the walk commits.
+        const assigned = entry.id === rootId ? leadAddress : sellerOf.get(String(order.id));
         // Fold the assigned seller's PROFILE master data (dimweight's
         // divisor, a declared credential id) onto the preview leaves —
         // the same fold the order build applies, so the buyer reviews

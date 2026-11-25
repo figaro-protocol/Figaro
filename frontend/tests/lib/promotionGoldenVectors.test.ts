@@ -63,8 +63,8 @@ const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
 const SELLER = "0x2546BcD3c84621e976D8185a91A922aE77ECEc30" as const;
 
 // Deterministic secp256k1 private keys (test-only, well below the curve order).
-const PRIV_A = `0x${"11".repeat(32)}`;
-const PRIV_B = `0x${"22".repeat(32)}`;
+const PRIV_A = `0x${"11".repeat(32)}` as const;
+const PRIV_B = `0x${"22".repeat(32)}` as const;
 // A base64url plaintext of the shape the handoff wraps (an AES key).
 const PLAINTEXT_KEY_B64 = "Zml4ZWQtaGFuZG9mZi1rZXktZm9yLXZlY3RvcnM";
 
@@ -166,8 +166,7 @@ beforeAll(async () => {
         // handoff.test.ts fixture note); since Phase 2 the SDK owns the
         // implementation, so a re-harvest derives from it.
         const { secp256k1 } = await import("@noble/curves/secp256k1");
-        const { hexToBytes } = await import("@/lib/shared/evm");
-        const { bytesToHex } = await import("viem");
+        const { bytesToHex, hexToBytes } = await import("viem");
         // The fixture records public keys without the `0x` prefix viem adds.
         const pubA = bytesToHex(secp256k1.getPublicKey(hexToBytes(PRIV_A), true)).slice(2);
         const pubB = bytesToHex(secp256k1.getPublicKey(hexToBytes(PRIV_B), true)).slice(2);

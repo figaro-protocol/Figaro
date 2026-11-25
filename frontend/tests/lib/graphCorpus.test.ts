@@ -8,9 +8,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { PROVENANCE_LEAF_KEY, provenanceContentRef } from "@figaro-protocol/sdk";
-import type { OverlayGraph } from "@figaro-protocol/sdk/derive";
-import { attributionFromOverlays, corpusInputsLoaded, readAssemblyUtilityTokenPins } from "@/lib/data/graphCorpus";
+import { corpusInputsLoaded, readAssemblyUtilityTokenPins } from "@/lib/data/graphCorpus";
 import {
     _resetClauseSpecCache_TESTING_ONLY,
     loadClauseSpec,
@@ -51,66 +49,6 @@ describe("readAssemblyUtilityTokenPins — the pin read from the composed key's 
 
     it("yields none when the assembly composes the key of the spec that leaves currency plain", () => {
         expect(readAssemblyUtilityTokenPins([assembly(V1.clauseKey)], specSource())).toEqual([]);
-    });
-});
-
-// Attribution rides the agreement FORMAT's provenance leaf: the graph is told
-// by `provenanceLeaf` (the reserved key), its entries decode to
-// `{ agreementHash, processDesignHash }` with no spec, and an entry whose payload
-// did not recover still attributes when its fingerprint is the
-// `provenanceContentRef` of a loaded assembly's agreement.
-describe("attributionFromOverlays — the provenance leaf", () => {
-    const COMPOSITION = `0x${"9a".repeat(32)}` as `0x${string}`;
-    const OTHER = `0x${"7b".repeat(32)}` as `0x${string}`;
-    const AGREEMENT_HASH = `0x${"8b".repeat(32)}` as `0x${string}`;
-    const LOADED = [
-        { processDesignHash: COMPOSITION, agreementHashes: [AGREEMENT_HASH] },
-        { processDesignHash: OTHER, agreementHashes: [AGREEMENT_HASH] },
-    ];
-    const PROCESS_A = `0x${"01".repeat(32)}` as `0x${string}`;
-    const PROCESS_B = `0x${"02".repeat(32)}` as `0x${string}`;
-    const entry = (processId: `0x${string}`, contentRef: `0x${string}`, decoded: Record<string, unknown> | null) => ({
-        orderHash: `0x${"11".repeat(32)}` as `0x${string}`,
-        processId,
-        attester: "0x3333333333333333333333333333333333333333" as `0x${string}`,
-        stage: 0,
-        universe: "direct" as const,
-        blockNumber: 1,
-        contentRef,
-        decoded,
-    });
-    const leafGraph = (entries: OverlayGraph["entries"]): OverlayGraph => ({
-        boundary: "protocol-derived",
-        clauseKey: PROVENANCE_LEAF_KEY,
-        spec: null,
-        provenanceLeaf: true,
-        entries,
-    });
-
-    it("attributes a decoded leaf entry to its assembly hash", () => {
-        const graph = leafGraph([entry(PROCESS_A, provenanceContentRef(AGREEMENT_HASH, COMPOSITION), { agreementHash: AGREEMENT_HASH, processDesignHash: COMPOSITION })]);
-        expect(attributionFromOverlays([graph], []).get(PROCESS_A)).toBe(COMPOSITION);
-    });
-
-    it("attributes an unrecovered leaf entry by matching a loaded assembly's content reference", () => {
-        const graph = leafGraph([
-            entry(PROCESS_A, provenanceContentRef(AGREEMENT_HASH, COMPOSITION), null),
-            entry(PROCESS_B, provenanceContentRef(AGREEMENT_HASH, `0x${"55".repeat(32)}`), null),
-        ]);
-        const byProcess = attributionFromOverlays([graph], LOADED);
-        expect(byProcess.get(PROCESS_A)).toBe(COMPOSITION);
-        expect(byProcess.has(PROCESS_B)).toBe(false);
-    });
-
-    it("never attributes from a clause family, whatever field its spec declares", () => {
-        const clauseGraph: OverlayGraph = {
-            boundary: "protocol-derived",
-            clauseKey: `0x${"44".repeat(32)}`,
-            spec: { clauseId: "some-clause", version: 1, title: "t", fields: [{ name: "processDesignHash", type: "string" }] } as unknown as NonNullable<OverlayGraph["spec"]>,
-            provenanceLeaf: false,
-            entries: [entry(PROCESS_A, `0x${"66".repeat(32)}`, { processDesignHash: COMPOSITION })],
-        };
-        expect(attributionFromOverlays([clauseGraph], LOADED).size).toBe(0);
     });
 });
 

@@ -11,7 +11,7 @@ import { ZERO_BYTES32, type Agreement, type Commitment } from "@figaro-protocol/
 import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { pinSpec } from "../lib/primeClauseSpecs";
 
-vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 6, ready: true, loading: false }) }));
+vi.mock("@/hooks/useTokenDecimals", async () => (await import("../support/tokenDecimalsMock")).tokenDecimalsMock(6));
 
 import { AgreementReview } from "@/components/runtime/AgreementReview";
 

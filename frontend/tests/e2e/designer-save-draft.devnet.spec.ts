@@ -25,21 +25,14 @@
  * the canvas to mount, so this lives in the devnet project.
  */
 import { test, expect } from '@playwright/test';
+import { openFreshDesigner } from './devnet-helpers';
 
 test.describe('Designer save-draft (devnet)', () => {
     test('save persists the editorial name + auto-assigned handle to localStorage, and lists it', async ({ page }) => {
         const draftName = `Saved Draft ${Date.now()}`;
         // Start from an empty local store so the saved index holds exactly the
         // draft this test creates (clearing prior state, never seeding).
-        await page.addInitScript(() => {
-            try {
-                window.localStorage.removeItem('figaro:designer:autosave:new');
-                window.localStorage.removeItem('figaro:designer:drafts');
-            } catch { /* noop */ }
-        });
-
-        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
-        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
+        await openFreshDesigner(page);
 
         // The canvas autosaves once hydrated; `designer-saved-hint` renders only
         // after that first autosave fires, so it is the canonical "ready"

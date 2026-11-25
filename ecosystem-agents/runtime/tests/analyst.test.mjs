@@ -18,14 +18,14 @@ import * as http from "node:http";
 import * as os from "node:os";
 import * as path from "node:path";
 import { encodeAbiParameters, encodeEventTopics, keccak256 } from "viem";
-import { CORE_ABI, computeCheckoutHash, fetchCoreEvents, PROVENANCE_LEAF_KEY, provenanceContentRef, provenanceLeafBytes } from "@figaro-protocol/sdk";
+import { CORE_ABI, computeCheckoutHash, fetchCoreEvents, PROVENANCE_LEAF_KEY, USAGE_KIND_PROCESS, provenanceContentRef, provenanceLeafBytes } from "@figaro-protocol/sdk";
 import {
     projectProcessGraph, projectResolutionGraph, extractOverlays, projectValueFlow,
-    witnessContentCid,
+    readCommitFundingLegs, witnessContentCid,
 } from "@figaro-protocol/sdk/derive";
 import {
     corpusStatus, corroborateEndpoints, tradeStory, graphInventory, jsonSafe, loadHeldAgreements,
-    marketShapeAnswer, readCommitFundingLegs, walletRecordAnswer,
+    marketShapeAnswer, walletRecordAnswer,
 } from "../analyst.mjs";
 import { parseOrderCommittedLogs } from "@figaro-protocol/sdk";
 import {
@@ -357,17 +357,17 @@ test("the buyer's attestation of the provenance leaf is named as the agreement's
     assert.match(leaf.decoded, new RegExp(agreementHash));
 });
 
-test("market-shape attributes a process whose buyer attested the provenance leaf — the public overlay, no held agreement", () => {
+test("market-shape attributes a process a party attested the provenance leaf of — the public overlay, no held agreement", () => {
     const composition = `0x${"7e".repeat(32)}`;
     const agreementHash = `0x${"8f".repeat(32)}`;
+    const leafEvent = (attester, design, blockNumber = 21) => ({
+        orderHash: ORDER_A, processId: PROCESS, attester, clauseId: PROVENANCE_LEAF_KEY,
+        stage: 0, contentRef: provenanceContentRef(agreementHash, design), blockNumber, transactionHash: null,
+        universe: "direct",
+    });
     const leafAttestation = (attester, content) => {
         const corpus = fixtureCorpus();
-        const event = {
-            orderHash: ORDER_A, processId: PROCESS, attester, clauseId: PROVENANCE_LEAF_KEY,
-            stage: 0, contentRef: provenanceContentRef(agreementHash, composition), blockNumber: 21, transactionHash: null,
-            universe: "direct",
-        };
-        corpus.graphs.overlays = extractOverlays([...corpus.recovered, { event, content }], corpus.specs);
+        corpus.graphs.overlays = extractOverlays([...corpus.recovered, { event: leafEvent(attester, composition), content }], corpus.specs);
         return corpus;
     };
     // Content recovered: the leaf decodes to both keys, and the pair hashes
@@ -381,15 +381,43 @@ test("market-shape attributes a process whose buyer attested the provenance leaf
     // corpus discovered.
     const fingerprintOnly = leafAttestation(BUYER, null);
     assert.equal(marketShapeAnswer(fingerprintOnly).unattributedProcessCount, 1);
-    fingerprintOnly.provenanceContentRefs = new Map([[provenanceContentRef(agreementHash, composition).toLowerCase(), composition]]);
+    fingerprintOnly.designs = [{ processDesignHash: composition, agreementHashes: [agreementHash] }];
     const matched = marketShapeAnswer(fingerprintOnly);
     assert.equal(matched.groups.length, 1);
     assert.equal(matched.groups[0].key, composition);
-    // Only the buyer's attestation attributes: a seller's attests nothing
-    // about the design the buyer instantiated.
+    // The seller's attestation attributes too: both parties signed the leaf
+    // under the order's checkoutHash, and the coordinator admits either.
     const bySeller = marketShapeAnswer(leafAttestation(SELLER_A, provenanceLeafBytes(agreementHash, composition)));
-    assert.equal(bySeller.groups.length, 0);
-    assert.equal(bySeller.unattributedProcessCount, 1);
+    assert.equal(bySeller.groups.length, 1);
+    assert.equal(bySeller.groups[0].key, composition);
+    assert.equal(bySeller.unattributedProcessCount, 0);
+
+    // A decoded pair that does not hash to the attested contentRef is not taken.
+    const forged = fixtureCorpus();
+    const otherDesign = `0x${"6d".repeat(32)}`;
+    forged.graphs.overlays = extractOverlays(
+        [...forged.recovered, { event: leafEvent(BUYER, composition), content: provenanceLeafBytes(agreementHash, otherDesign) }],
+        forged.specs,
+    );
+    assert.equal(marketShapeAnswer(forged).groups.length, 0);
+    assert.equal(marketShapeAnswer(forged).unattributedProcessCount, 1);
+
+    // Two attestations naming two designs: the process is contested and
+    // unattributed; a later one never moves it to the other design.
+    const contested = fixtureCorpus();
+    contested.graphs.overlays = extractOverlays([
+        ...contested.recovered,
+        { event: leafEvent(BUYER, composition, 21), content: provenanceLeafBytes(agreementHash, composition) },
+        { event: leafEvent(SELLER_A, otherDesign, 22), content: provenanceLeafBytes(agreementHash, otherDesign) },
+    ], contested.specs);
+    assert.equal(marketShapeAnswer(contested).groups.length, 0);
+    assert.equal(marketShapeAnswer(contested).unattributedProcessCount, 1);
+
+    // The counter's record wins over the attestations.
+    contested.usageRecords = [{ kind: USAGE_KIND_PROCESS, clauseOrProcess: otherDesign, processId: PROCESS }];
+    const counted = marketShapeAnswer(contested);
+    assert.equal(counted.groups.length, 1);
+    assert.equal(counted.groups[0].key, otherDesign);
 });
 
 test("an absent process is ABSENCE over a corpus that folds both paths, never 'it did not happen'", () => {

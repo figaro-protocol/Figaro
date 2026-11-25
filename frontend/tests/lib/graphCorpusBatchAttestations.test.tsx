@@ -44,12 +44,8 @@ vi.mock("@/lib/core/eventCache", () => ({
     cachedGetLogs: (...args: unknown[]) => cachedGetLogsMock(...args),
     cachedGetReceiptLogs: vi.fn(),
 }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
-    CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
-    getAttestationCoordinator: () => COORDINATOR,
-    getBatchVerifier: () => VERIFIER,
-}));
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: CORE, batchVerifier: VERIFIER }, coordinator: () => COORDINATOR, batchVerifier: () => VERIFIER }));
 vi.mock("@/lib/composability/contracts", () => ({
     getSwapRouter: () => null,
     getWitnessSwapAndCommitCoordinator: () => null,
@@ -66,11 +62,7 @@ vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: () => undefined, replace: () => undefined }),
     usePathname: () => "/data/explore",
 }));
-vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: undefined, isConnected: false, status: "disconnected" }),
-    useChainId: () => 31337,
-    usePublicClient: () => CLIENT,
-}));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ client: () => CLIENT }));
 
 import { useGraphCorpus, type GraphCorpus } from "@/lib/data/graphCorpus";
 import { overlayRows, processRowsForMarket } from "@/lib/data/explorer";

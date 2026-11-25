@@ -9,7 +9,7 @@ import { useTokenSymbol } from '@/hooks/useTokenSymbol';
 
 const useReadContractMock = vi.fn();
 
-vi.mock('wagmi', () => ({
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({}, {
     useReadContract: (...args: unknown[]) => useReadContractMock(...args),
 }));
 

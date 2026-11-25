@@ -46,7 +46,7 @@
  * populate-test-data, as every devnet spec does; needs nothing it seeds.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createWalletClient, hashTypedData, http, keccak256, maxUint256, parseAbi, parseEther, stringToHex, type Hex } from 'viem';
+import { createWalletClient, http, keccak256, maxUint256, parseAbi, parseEther, stringToHex, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { LOCAL_ANVIL, RPC_URL, keyOf, localPublicClient, pinJSONToIPFS, primeRegisteredClauseSpecs, readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
@@ -60,10 +60,12 @@ import {
     buildOrderAgreement,
     buildSignedClauseInclusionProof,
     calculateBonds,
+    computeCommitmentProcessId,
     computeOrderHash,
     hashClauseData,
+    RESOLVE_PROCESS_TYPES,
 } from '@figaro-protocol/sdk';
-import { SequencerClient } from '@figaro-protocol/sdk/agent';
+import { ATTEST_SELLER_TYPES, SequencerClient } from '@figaro-protocol/sdk/agent';
 import { specSource } from '@/lib/shared/clauseSpecSource';
 import { ZERO_ADDRESS } from '@/lib/shared/evm';
 
@@ -79,22 +81,9 @@ const RELAY_SIGNER_KEY = ANVIL_KEYS[4] as Hex;
 
 const PAYMENT = 1n * 10n ** 18n;
 
-// The batch path's typed data (the verifier's EIP-712 domain): the signature
-// replaces msg.sender, as the direct path's caller does.
-const RESOLVE_TYPES = {
-    ResolveProcess: [
-        { name: 'processId', type: 'bytes32' },
-        { name: 'runningTotal', type: 'uint256' },
-    ],
-} as const;
-const ATTEST_SELLER_TYPES = {
-    AttestSeller: [
-        { name: 'orderHash', type: 'bytes32' },
-        { name: 'clauseId', type: 'bytes32' },
-        { name: 'stage', type: 'uint8' },
-        { name: 'contentRef', type: 'bytes32' },
-    ],
-} as const;
+// The batch path's typed data (the verifier's EIP-712 domain) is the SDK's
+// (`RESOLVE_PROCESS_TYPES`, `ATTEST_SELLER_TYPES`): the signature replaces
+// msg.sender, as the direct path's caller does.
 
 test.describe('BATCH EVENTS — a batch-resolved order renders from chain events alone (devnet)', () => {
     test.setTimeout(900_000);
@@ -156,7 +145,7 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
             const sellerSig = await SELLER.signTypedData(typedData);
             const submitted = await client.submitCommit(commitment, buyerSig, sellerSig);
             expect(typeof submitted.id, 'the relay admits the commit').toBe('number');
-            const processId = hashTypedData(typedData) as Hex;
+            const processId = computeCommitmentProcessId(commitment, 31337, verifier);
             const orderHash = computeOrderHash(commitment, 31337, verifier);
 
             // ── The batch lands: CHAIN FACTS, read out of band. ──
@@ -243,7 +232,7 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
 
             // ── The buyer's resolution, through the relay. ──
             const resolveSig = await BUYER.signTypedData({
-                domain, types: RESOLVE_TYPES, primaryType: 'ResolveProcess',
+                domain, types: RESOLVE_PROCESS_TYPES, primaryType: 'ResolveProcess',
                 message: { processId, runningTotal: PAYMENT },
             });
             const resolved = await client.submitResolve(processId, PAYMENT, [commitment], resolveSig);

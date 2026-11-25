@@ -98,8 +98,10 @@ async function serveRelay(pending) {
     const server = createServer((req, res) => {
         if (req.url !== "/status") { res.writeHead(404).end(); return; }
         res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({
+            wire_format_version: 1, chain_id: 31337, batch_verifier: base.batchVerifier.toLowerCase(),
+            program_vkey: `0x${"00".repeat(32)}`, browser_submit_origins: [],
             state_root: `0x${"00".repeat(32)}`, pending_ops: pending, pending_usage_claims: 0,
-            batches_settled: 0, dead_lettered_ops: 0, last_settle_error: null,
+            batches_settled: 0, dead_lettered_ops: 0, last_settle_error: null, isolating_ops: 0,
             archive: { first_batch: null, last_batch: null, retained_batches: 0, max_batches: 1000 },
         }));
     });

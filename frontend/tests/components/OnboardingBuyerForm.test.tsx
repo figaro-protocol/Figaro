@@ -14,7 +14,7 @@ const SUBSCRIBED = `0x${"ab".repeat(32)}` as const;
 
 const m = vi.hoisted(() => ({ mounted: true, push: (() => {}) as (href: string) => void, onboarding: undefined as unknown }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: (href: string) => m.push(href) }) }));
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: ADDRESS, isConnected: true }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => ADDRESS }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => m.mounted }));
 vi.mock("@/lib/registries/onboardingState", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/registries/onboardingState")>()),

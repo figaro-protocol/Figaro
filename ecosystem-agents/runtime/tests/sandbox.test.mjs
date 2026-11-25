@@ -430,7 +430,7 @@ test("figaro-fetch under the wrapper: a file read nobody granted is refused prom
     // The deployment record sits outside every default grant: readable only by --allow-read.
     const recordDir = fs.realpathSync(fs.mkdtempSync(path.join(os.homedir(), ".sbx-record-")));
     const record = path.join(recordDir, "deployment.json");
-    fs.writeFileSync(record, JSON.stringify({ clauseRegistry: "0x1111111111111111111111111111111111111111", deploymentBlock: 0 }));
+    fs.writeFileSync(record, JSON.stringify({ figaroCore: "0x2222222222222222222222222222222222222222", clauseRegistry: "0x1111111111111111111111111111111111111111", deploymentBlock: 0 }));
     const env = { ...process.env, RPC_URL: rpc.keyedUrl, IPFS_GATEWAY_URL: gatewayOrigin, DEPLOYMENT_RECORD: record };
     for (const name of ["IPFS_FALLBACK_GATEWAY_URL", "DEPLOYMENT_BLOCK"]) delete env[name];
 

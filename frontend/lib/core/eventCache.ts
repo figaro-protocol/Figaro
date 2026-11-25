@@ -15,7 +15,7 @@
  * (Sequence, Envio, etc.) when the time comes.
  */
 
-import { logReadRetry, type LogReadRetryKind } from "@figaro-protocol/sdk";
+import { fetchLogsChunked, logReadRetry } from "@figaro-protocol/sdk";
 import { getAbiItem, type Abi, type Hex, type PublicClient } from "viem";
 import { hexEqual } from "@/lib/shared/evm";
 import { pageRecord } from "@/lib/shared/chains";
@@ -154,17 +154,22 @@ async function idbWrite(key: string, logs: CachedLog[], cursor: bigint): Promise
 
 /**
  * `client.getLogs` over `[fromBlock, latest]`, in ONE call when the provider
- * allows it and in sequential sub-ranges when it does not. On an answer that
- * is the node's state rather than the request's (pruned history, a rate
- * limit) the same sub-range is asked again under the SDK's one rule
- * (`logReadRetry`). Every other refusal halves the current window and the
- * scan continues from where it stopped: a provider's block-range cap is read
- * from what it answers, never from the words of its error, which no two
- * gateways share — so a 50-block cap is walked in reads within 50 blocks. An error
- * that persists down to a one-block range is the node's real answer and
- * propagates unchanged, the last retried answer included. `latest` is
- * resolved once so the sub-ranges chunk against one snapshot. Exported for
- * the cache and its test — the cache is the ONE place logs are read.
+ * allows it and in sequential sub-ranges when it does not. Each sub-range is
+ * read through the SDK's reader (`fetchLogsChunked`, one chunk the size of
+ * the window): it asks the same sub-range again on an answer that is the
+ * node's state rather than the request's (pruned history, a rate limit,
+ * under `logReadRetry`), and it refuses a log from any contract but the one
+ * asked about. The window adaptation is this reader's own, since the SDK's
+ * reader keeps a fixed chunk: every other refusal halves the current window
+ * and the scan continues from where it stopped. A provider's block-range cap
+ * is read from what it answers, never from the words of its error, which no
+ * two gateways share — so a 50-block cap is walked in reads within 50
+ * blocks. An error that persists down to a one-block range is the node's
+ * real answer and propagates unchanged, the last retried answer included. A
+ * retried answer whose budget is spent, and the SDK's refusal of a log from
+ * another address, propagate at once. `latest` is resolved once so the
+ * sub-ranges chunk against one snapshot. Exported for the cache and its test
+ * — the cache is the ONE place logs are read.
  */
 /** The two calls the scan needs — structural, so a viem `PublicClient` and
  *  a test double both fit. */
@@ -177,6 +182,13 @@ export type LogScanClient = {
         toBlock: bigint;
     }): Promise<readonly unknown[]>;
 };
+
+/** The SDK reader's refusal of a log from a contract other than the one asked
+ *  about (`fetchLogsChunked`); the SDK names it in its own words, the one
+ *  error of the reader that is not a node's. */
+function isForeignLogRefusal(err: unknown): boolean {
+    return err instanceof Error && err.message.startsWith("fetchLogsChunked: the node answered a log query for ");
+}
 
 export async function getLogsAdaptive(
     client: LogScanClient,
@@ -191,30 +203,24 @@ export async function getLogsAdaptive(
     const logs: CachedLog[] = [];
     let from = params.fromBlock;
     let window = toBlock - from + 1n;
-    // Asks of the current range, per kind of retried answer (`logReadRetry`).
-    const retryAttempts = new Map<LogReadRetryKind, number>();
     while (from <= toBlock) {
         const to = from + window - 1n < toBlock ? from + window - 1n : toBlock;
         try {
-            const chunk = await client.getLogs({
+            const chunk = await fetchLogsChunked(client as unknown as PublicClient, {
                 address: params.address,
-                event: params.event,
                 fromBlock: from,
                 toBlock: to,
+                chunkSize: to - from + 1n,
+                ...(params.event ? { events: [params.event] } : {}),
+                ...(options.retryDelayMs ? { retryDelayMs: options.retryDelayMs } : {}),
             });
-            logs.push(...(chunk as CachedLog[]));
+            logs.push(...(chunk as unknown as CachedLog[]));
             from = to + 1n;
-            retryAttempts.clear();
         } catch (err) {
-            const retry = logReadRetry(err);
-            if (retry) {
-                const attempt = (retryAttempts.get(retry.kind) ?? 0) + 1;
-                retryAttempts.set(retry.kind, attempt);
-                if (attempt >= retry.attempts) throw err;
-                const delayMs = (options.retryDelayMs ?? retry.delayMs)(attempt);
-                await new Promise((resolve) => setTimeout(resolve, delayMs));
-                continue;
-            }
+            // The SDK's reader spent the retry budget of an answer that is
+            // the node's state, or refused a log from another contract: its
+            // answer, never a range cap.
+            if (logReadRetry(err) || isForeignLogRefusal(err)) throw err;
             if (window <= 1n) throw err;
             window = window / 2n;
         }

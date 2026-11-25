@@ -17,10 +17,7 @@ const mocks = vi.hoisted(() => ({
     published: { status: "present", value: [] } as unknown,
 }));
 
-vi.mock("wagmi", () => ({
-    usePublicClient: () => ({ chain: { id: 31337 } }),
-    useChainId: () => 31337,
-    useAccount: () => ({ address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" }),
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" }, {
     useWatchContractEvent: () => undefined,
     useReadContract: () => ({ data: undefined }),
     useWriteContract: () => ({}),
@@ -39,16 +36,8 @@ vi.mock("@/lib/core/indexer", () => ({
     walletOrders: () => [],
 }));
 vi.mock("@/lib/core/useWatchOrderEvents", () => ({ useWatchOrderEvents: () => undefined }));
-vi.mock("@/lib/core/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
-    return {
-        ...actual,
-        CONTRACTS: {
-            ...actual.CONTRACTS,
-            core: "0x2222222222222222222222222222222222222222",
-        },
-    };
-});
+vi.mock("@/lib/core/contracts", async (importOriginal) =>
+    (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { core: "0x2222222222222222222222222222222222222222" }));
 vi.mock("@/lib/registries/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/registries/contracts")>();
     return { ...actual, REGISTRY_CONTRACTS: { ...actual.REGISTRY_CONTRACTS, membersRegistry: "0x1111111111111111111111111111111111111111" } };

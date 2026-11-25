@@ -10,7 +10,7 @@ import { render, screen } from "@testing-library/react";
 const ADDRESS = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as const;
 const reads = vi.hoisted(() => ({ registration: undefined as unknown }));
 
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: ADDRESS, isConnected: true }) }));
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ address: () => ADDRESS }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("next/link", () => ({
     default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,

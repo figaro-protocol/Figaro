@@ -54,22 +54,14 @@
  * Requires Anvil + ./scripts/devup.sh (deploy + populate) + Kubo + :3100.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
+import { createPublicClient, http, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, publishOrAdoptReviewed, waitForConnected, composeCommerceOn } from './devnet-helpers';
+import { readLocalDeploymentConfig, publishOrAdoptReviewed, waitForConnected, composeCommerceOn, openFreshDesigner, RPC_URL, LOCAL_ANVIL } from './devnet-helpers';
 import { makeProbeSpec } from './probeAssembly';
-import { calculateBonds, computeClauseKey, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import { calculateBonds, computeClauseKey, CLAUSE_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import { CORE_ABI } from '@/lib/core/contracts';
 
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const LOCAL_ANVIL = defineChain({
-    id: 31337,
-    name: 'Localhost',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [RPC_URL] } },
-});
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 
 // anvil[4] — AUTHOR == BUYER (see header for the reuse rationale).
@@ -190,15 +182,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
 
         // ── COMPOSE: author an assembly carrying the new clause on the real
         //    canvas (the drawer surfaces it from the live registry), publish. ──
-        await page.addInitScript(() => {
-            try {
-                window.localStorage.removeItem('figaro:designer:autosave:new');
-                window.localStorage.removeItem('figaro:designer:drafts');
-            } catch { /* noop */ }
-        });
-        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
-        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+        await openFreshDesigner(page);
         const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
         await rootNode.waitFor({ state: 'visible', timeout: 10000 });
         await rootNode.click();

@@ -27,11 +27,10 @@ const wagmiState = vi.hoisted(() => ({
     readConfigs: [] as unknown[],
     receiptConfigs: [] as unknown[],
 }));
-vi.mock("wagmi", () => ({
+vi.mock("wagmi", async () => (await import("../support/wagmiMock")).wagmiMock({ client: () => ({ simulateContract: (config: unknown) => wagmiState.simulateContract(config) }) }, {
     useReadContract: (config: unknown) => { wagmiState.readConfigs.push(config); return wagmiState.allowance; },
     useWriteContract: () => ({ writeContract: wagmiState.writeContract, ...wagmiState.write }),
     useWaitForTransactionReceipt: (config: unknown) => { wagmiState.receiptConfigs.push(config); return wagmiState.receipt; },
-    usePublicClient: () => ({ simulateContract: (config: unknown) => wagmiState.simulateContract(config) }),
 }));
 
 import useTokenApproval from "@/hooks/useTokenApproval";
