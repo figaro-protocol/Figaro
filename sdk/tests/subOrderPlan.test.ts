@@ -55,7 +55,7 @@ const assembly: BoundProcessPlanInput = {
     hydratedAssembly: hydrateAuthored({
         name: "Kit",
         agreements: [
-            { id: "A", clauses: {}, follows: [] },
+            { id: "A", clauses: { [keyOf("figaro-modalities")]: {} }, follows: [] },
             { id: "B", clauses: { [PROX]: {} }, follows: ["A"] },
             { id: "C", clauses: { [EMISSIONS]: {} }, follows: ["A"] },
             { id: "D", clauses: { [PROX]: {} }, follows: ["B", "C"] },
@@ -342,7 +342,7 @@ describe("resolveSubOrderPricing — rate items", () => {
             specs: GEO_SPECS,
         });
         const committed = buildOrderAgreement(ROSSO, SWIFT, clauses, GEO_SPECS);
-        expect(committed.agreement.clauses.find((c) => c.clause === GEO)?.data.geocodeStandard).toBe("geohash");
+        expect(committed.agreement.clauses.find((c) => c.clause === GEO)?.data?.geocodeStandard).toBe("geohash");
         expect(p.issue).toBeUndefined();
         expect(p.billedQuantity).toBe(Math.ceil(geohashCentroidDistanceKm(SF, LA)));
     });

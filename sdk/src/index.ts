@@ -95,6 +95,8 @@ export {
     addressesFromDeploymentRecord,
     isBytes32Hex,
     isAddressHex,
+    isDecimalIntegerString,
+    isPlainRecord,
     type FigaroDeploymentRecord,
 } from "./types.js";
 
@@ -108,6 +110,11 @@ export {
     fetchProcessesResolved,
     fetchAttestationRecords,
     tagAttestationUniverses,
+    decodeLogs,
+    fetchLogsChunked,
+    DEFAULT_LOG_CHUNK_SIZE,
+    type DecodedLog,
+    type LogPosition,
     logReadRetry,
     PRUNED_HISTORY_ATTEMPTS,
     RATE_LIMIT_ATTEMPTS,
@@ -363,6 +370,7 @@ export {
     processDesignHashOf,
     deriveProcessDesignSlug,
     processDesignFollows,
+    rootAgreementOf,
     processDesignComposedClauseKeys,
     agreementHashOf,
     agreementClauseLeaves,

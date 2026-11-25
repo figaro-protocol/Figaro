@@ -15,7 +15,7 @@
  *   const events = parseOrderCommittedLogs(logs);
  */
 
-import { type AbiEvent, type PublicClient, type Log, decodeEventLog } from "viem";
+import { type Abi, type AbiEvent, type PublicClient, type Log, decodeEventLog } from "viem";
 import { CORE_ABI, ATTESTATION_COORDINATOR_ABI, EV_ORDER_COMMITTED, EV_ORDER_RESOLVED } from "./abis.js";
 import type {
     Hex,
@@ -29,73 +29,84 @@ import type {
 
 // ── Log decoders ────────────────────────────────────────────────────────────
 
-export function parseOrderCommittedLogs(logs: Log[]): OrderCommittedEvent[] {
-    const results: OrderCommittedEvent[] = [];
+/** Where a decoded log stands on the chain. */
+export interface LogPosition {
+    blockNumber: number;
+    logIndex: number;
+    transactionHash: Hex | null;
+}
+
+/** One log an ABI decodes: its event's name and arguments, the log, and where
+ *  it stands. */
+export interface DecodedLog {
+    eventName: string;
+    args: Record<string, unknown>;
+    log: Log;
+    at: LogPosition;
+}
+
+/**
+ * THE decoder under every log reader of the SDK: each log `abi` decodes, in
+ * the order given. A log no event of `abi` matches is passed over: an event
+ * of the contract the reader does not read, or another contract's log.
+ */
+export function decodeLogs(logs: readonly Log[], abi: Abi): DecodedLog[] {
+    const out: DecodedLog[] = [];
     for (const log of logs) {
+        let decoded: { eventName: string; args: unknown };
         try {
-            const decoded = decodeEventLog({ abi: CORE_ABI, data: log.data, topics: log.topics });
-            if (decoded.eventName !== "OrderCommitted") continue;
-            const a = decoded.args as Record<string, unknown>;
-            results.push({
-                orderHash: a.orderHash as Hex,
-                processId: a.processId as Hex,
-                buyer: a.buyer as Address,
-                seller: a.seller as Address,
-                token: a.token as Address,
-                payment: a.payment as bigint,
-                runningTotal: a.runningTotal as bigint,
-                checkoutHash: a.checkoutHash as Hex,
-                salt: a.salt as bigint,
-                commitDeadline: a.commitDeadline as bigint,
-                blockNumber: Number(log.blockNumber ?? 0),
-                transactionHash: (log.transactionHash ?? null) as Hex | null,
-            });
+            decoded = decodeEventLog({ abi, data: log.data, topics: log.topics });
         } catch {
-            // Skip non-matching logs
+            continue;
         }
+        out.push({
+            eventName: decoded.eventName,
+            args: (decoded.args ?? {}) as Record<string, unknown>,
+            log,
+            at: {
+                blockNumber: Number(log.blockNumber ?? 0),
+                logIndex: Number(log.logIndex ?? 0),
+                transactionHash: (log.transactionHash ?? null) as Hex | null,
+            },
+        });
     }
-    return results;
+    return out;
+}
+
+export function parseOrderCommittedLogs(logs: Log[]): OrderCommittedEvent[] {
+    return decodeLogs(logs, CORE_ABI).filter((d) => d.eventName === "OrderCommitted").map(({ args: a, at }) => ({
+        orderHash: a.orderHash as Hex,
+        processId: a.processId as Hex,
+        buyer: a.buyer as Address,
+        seller: a.seller as Address,
+        token: a.token as Address,
+        payment: a.payment as bigint,
+        runningTotal: a.runningTotal as bigint,
+        checkoutHash: a.checkoutHash as Hex,
+        salt: a.salt as bigint,
+        commitDeadline: a.commitDeadline as bigint,
+        blockNumber: at.blockNumber,
+        transactionHash: at.transactionHash,
+    }));
 }
 
 export function parseOrderResolvedLogs(logs: Log[]): OrderResolvedEvent[] {
-    const results: OrderResolvedEvent[] = [];
-    for (const log of logs) {
-        try {
-            const decoded = decodeEventLog({ abi: CORE_ABI, data: log.data, topics: log.topics });
-            if (decoded.eventName !== "OrderResolved") continue;
-            const a = decoded.args as Record<string, unknown>;
-            results.push({
-                orderHash: a.orderHash as Hex,
-                processId: a.processId as Hex,
-                sellerPayout: a.sellerPayout as bigint,
-                buyerPayout: a.buyerPayout as bigint,
-                blockNumber: Number(log.blockNumber ?? 0),
-            });
-        } catch {
-            // Skip non-matching logs
-        }
-    }
-    return results;
+    return decodeLogs(logs, CORE_ABI).filter((d) => d.eventName === "OrderResolved").map(({ args: a, at }) => ({
+        orderHash: a.orderHash as Hex,
+        processId: a.processId as Hex,
+        sellerPayout: a.sellerPayout as bigint,
+        buyerPayout: a.buyerPayout as bigint,
+        ...at,
+    }));
 }
 
 export function parseProcessResolvedLogs(logs: Log[]): ProcessResolvedEvent[] {
-    const results: ProcessResolvedEvent[] = [];
-    for (const log of logs) {
-        try {
-            const decoded = decodeEventLog({ abi: CORE_ABI, data: log.data, topics: log.topics });
-            if (decoded.eventName !== "ProcessResolved") continue;
-            const a = decoded.args as Record<string, unknown>;
-            results.push({
-                processId: a.processId as Hex,
-                buyer: a.buyer as Address,
-                orderCount: a.orderCount as bigint,
-                blockNumber: Number(log.blockNumber ?? 0),
-            });
-        } catch {
-            // Skip non-matching logs
-        }
-    }
-    return results;
+    return decodeLogs(logs, CORE_ABI).filter((d) => d.eventName === "ProcessResolved").map(({ args: a, at }) => ({
+        processId: a.processId as Hex,
+        buyer: a.buyer as Address,
+        orderCount: a.orderCount as bigint,
+        ...at,
+    }));
 }
 
 /** The two resolution universes an attestation anchor can come from:
@@ -149,31 +160,16 @@ export async function fetchAttestationRecords(
 }
 
 export function parseAttestationLogs(logs: Log[]): AttestationEvent[] {
-    const results: AttestationEvent[] = [];
-    for (const log of logs) {
-        try {
-            const decoded = decodeEventLog({
-                abi: ATTESTATION_COORDINATOR_ABI,
-                data: log.data,
-                topics: log.topics,
-            });
-            if (decoded.eventName !== "Attestation") continue;
-            const a = decoded.args as Record<string, unknown>;
-            results.push({
-                orderHash: a.orderHash as Hex,
-                processId: a.processId as Hex,
-                attester: a.attester as Address,
-                clauseId: a.clauseId as Hex,
-                stage: Number(a.stage),
-                contentRef: a.contentRef as Hex,
-                blockNumber: Number(log.blockNumber ?? 0),
-                transactionHash: (log.transactionHash ?? null) as Hex | null,
-            });
-        } catch {
-            // Skip non-matching logs
-        }
-    }
-    return results;
+    return decodeLogs(logs, ATTESTATION_COORDINATOR_ABI).filter((d) => d.eventName === "Attestation").map(({ args: a, at }) => ({
+        orderHash: a.orderHash as Hex,
+        processId: a.processId as Hex,
+        attester: a.attester as Address,
+        clauseId: a.clauseId as Hex,
+        stage: Number(a.stage),
+        contentRef: a.contentRef as Hex,
+        blockNumber: at.blockNumber,
+        transactionHash: at.transactionHash,
+    }));
 }
 
 

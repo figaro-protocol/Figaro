@@ -18,7 +18,6 @@
  */
 
 import type { Address, Hex, PublicClient } from "viem";
-import { decodeEventLog } from "viem";
 import { BATCH_VERIFIER_ABI, USAGE_COUNTER_ABI } from "../abis.js";
 import type { Agreement } from "../agreement.js";
 import { PROVENANCE_LEAF_KEY, buildProvenanceInclusionProof, buildSignedClauseInclusionProof, hashClauseData } from "../agreement.js";
@@ -30,7 +29,7 @@ import {
     processDesignHashOf,
     type ProcessDesign,
 } from "../assembly.js";
-import { fetchLogsChunked } from "../events.js";
+import { decodeLogs, fetchLogsChunked } from "../events.js";
 import { computeCommitmentProcessId } from "../commitments.js";
 import { usageClaimsOfOperationStream } from "../operationStream.js";
 import type { SequencerUsageClaim } from "../agent/sequencer.js";
@@ -305,28 +304,20 @@ export async function fetchUsageRecords(
     chunkSize?: bigint,
 ): Promise<UsageRecord[]> {
     const logs = await fetchLogsChunked(client, { address: usageCounter, fromBlock: 0n, toBlock, chunkSize });
-    const records: UsageRecord[] = [];
-    for (const log of logs) {
-        try {
-            const decoded = decodeEventLog({ abi: USAGE_COUNTER_ABI, data: log.data, topics: log.topics });
-            if (decoded.eventName !== "UsageRecorded") continue;
-            const a = decoded.args as Record<string, unknown>;
-            records.push({
-                blockNumber: log.blockNumber ?? 0n,
-                logIndex: log.logIndex ?? 0,
-                kind: asUsageKind(a.kind),
-                clauseOrProcess: a.clauseOrProcess as Hex,
-                period: Number(a.period),
-                processId: a.processId as Hex,
-                seller: a.seller as Address,
-                c: a.c as bigint,
-                d: a.d as bigint,
-                score: a.score as bigint,
-            });
-        } catch {
-            /* the counter emits nothing else */
-        }
-    }
+    const records: UsageRecord[] = decodeLogs(logs, USAGE_COUNTER_ABI)
+        .filter((d) => d.eventName === "UsageRecorded")
+        .map(({ args: a, log, at }) => ({
+            blockNumber: log.blockNumber ?? 0n,
+            logIndex: at.logIndex,
+            kind: asUsageKind(a.kind),
+            clauseOrProcess: a.clauseOrProcess as Hex,
+            period: Number(a.period),
+            processId: a.processId as Hex,
+            seller: a.seller as Address,
+            c: a.c as bigint,
+            d: a.d as bigint,
+            score: a.score as bigint,
+        }));
     return records.sort((a, b) =>
         a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1,
     );
@@ -425,23 +416,15 @@ export async function fetchSkippedBatchUses(
     const skips: Omit<SkippedBatch, "carried">[] = [];
     const operations = new Map<string, { period: number; provenanceLeaf: Hex; operations: Hex }>();
     const pairKey = (tx: Hex, batchId: bigint) => `${tx.toLowerCase()}:${batchId}`;
-    for (const log of logs) {
-        let decoded;
-        try {
-            decoded = decodeEventLog({ abi: BATCH_VERIFIER_ABI, data: log.data, topics: log.topics });
-        } catch {
-            continue; // an event of the verifier's this ABI does not list
-        }
+    for (const { eventName, args: a, log } of decodeLogs(logs, BATCH_VERIFIER_ABI)) {
         if (!log.transactionHash) continue;
-        if (decoded.eventName === "BatchAccrualSkipped") {
-            const { batchId, reason } = decoded.args;
-            skips.push({ batchId, transactionHash: log.transactionHash, blockNumber: log.blockNumber ?? 0n, reason });
-        } else if (decoded.eventName === "BatchOperations") {
-            const a = decoded.args;
-            operations.set(pairKey(log.transactionHash, a.batchId), {
-                period: a.usagePeriod,
-                provenanceLeaf: a.provenanceLeaf,
-                operations: a.operations,
+        if (eventName === "BatchAccrualSkipped") {
+            skips.push({ batchId: a.batchId as bigint, transactionHash: log.transactionHash, blockNumber: log.blockNumber ?? 0n, reason: a.reason as Hex });
+        } else if (eventName === "BatchOperations") {
+            operations.set(pairKey(log.transactionHash, a.batchId as bigint), {
+                period: a.usagePeriod as number,
+                provenanceLeaf: a.provenanceLeaf as Hex,
+                operations: a.operations as Hex,
             });
         }
     }

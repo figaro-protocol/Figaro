@@ -21,6 +21,7 @@ import {
     withClauseBlinding,
     withFreshBlinding,
     validateCommitmentAgreement,
+    ZERO_PROCESS_ID,
     type Agreement,
 } from "../src/index.js";
 import { prepareAttestationContent } from "../src/agent/autonomous.js";
@@ -257,7 +258,7 @@ describe("a blinding value that comes from the design is never kept and never si
         };
         const checkoutHash = computeCheckoutHash(agreement);
         const { commitment } = buildCommitment({
-            buyer: BUYER.address, seller: SELLER.address, token: CURRENCY, payment: 1000n, runningTotal: 1000n,
+            processId: ZERO_PROCESS_ID, buyer: BUYER.address, seller: SELLER.address, token: CURRENCY, payment: 1000n, runningTotal: 1000n,
             checkoutHash, commitDeadline: 1_900_000_000n,
         }, buildDomain(CHAIN, CORE));
         return { agreement, checkoutHash, commitment };
@@ -379,7 +380,7 @@ describe("the sign gate and prepareAttestationContent re-check the set rules on 
         const specs = specSourceWithRegistrations(SPECS, [HAND_BUILT]);
         const { agreement, checkoutHash } = buildOrderAgreement(BUYER.address, SELLER.address, { [HAND_BUILT.clauseKey]: { grade: "b" } }, specs);
         const { commitment } = buildCommitment({
-            buyer: BUYER.address, seller: SELLER.address, token: CURRENCY, payment: 1000n, runningTotal: 1000n,
+            processId: ZERO_PROCESS_ID, buyer: BUYER.address, seller: SELLER.address, token: CURRENCY, payment: 1000n, runningTotal: 1000n,
             checkoutHash, commitDeadline: 1_900_000_000n,
         }, buildDomain(CHAIN, CORE));
         const check = validateCommitmentAgreement(agreement, checkoutHash, specs, commitment, null);

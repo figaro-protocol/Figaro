@@ -5,7 +5,7 @@
  * canonicalization is pinned to it on its side; this suite pins the SDK's and
  * is the fixture's one harvest path (`HARVEST_CLAUSE_KEYS=1`).
  */
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { keccak256, toBytes, type Hex } from "viem";
@@ -15,6 +15,7 @@ import { anchorClauseSpec } from "../src/anchored.js";
 import { clauseKeyPreimage, computeClauseKey } from "../src/discovery.js";
 import { buildOrderAgreement } from "../src/projection.js";
 import { rawSpecOf, specSourceOf, viewOf } from "./specFixtures.js";
+import { writeHarvestedFixture } from "./harvest.js";
 
 const CLAUSES_DIR = path.resolve(__dirname, "../../clauses");
 const FIXTURE = path.resolve(__dirname, "../../test/fixtures/clause-keys.json");
@@ -30,11 +31,13 @@ function harvest(): Record<string, string> {
 describe("clause keys — test/fixtures/clause-keys.json", () => {
     it("every clause's key is keccak256 of the canonical bytes of its spec without `block`, and the fixture holds them", () => {
         const keys = harvest();
-        if (process.env.HARVEST_CLAUSE_KEYS === "1") writeFileSync(FIXTURE, `${JSON.stringify(keys, null, 4)}\n`);
         for (const [name, key] of Object.entries(keys)) {
             const { block: _block, ...protocol } = JSON.parse(readFileSync(path.join(CLAUSES_DIR, `${name}.json`), "utf8"));
             expect(key).toBe(keccak256(toBytes(canonicalize(protocol))));
         }
+        // The harvest switch rewrites the fixture and fails when that moved it;
+        // otherwise the committed fixture is compared with the keys.
+        if (process.env.HARVEST_CLAUSE_KEYS === "1") writeHarvestedFixture(FIXTURE, `${JSON.stringify(keys, null, 4)}\n`);
         expect(JSON.parse(readFileSync(FIXTURE, "utf8"))).toEqual(keys);
     });
 });

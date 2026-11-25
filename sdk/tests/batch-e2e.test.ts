@@ -71,7 +71,8 @@ import {
     readChainTimestamp,
 } from "../src/index.js";
 import { parseClauseSpec, encodeContentFromSpec } from "../src/clauses/index.js";
-import { SequencerClient } from "../src/agent/sequencer.js";
+import { SequencerClient, batchAttestationTypedData } from "../src/agent/sequencer.js";
+import { RESOLVE_PROCESS_TYPES } from "../src/commitments.js";
 import { proveAndSettle } from "../src/relay/index.js";
 
 import {
@@ -125,23 +126,8 @@ const STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}.js
 /** The second relay's state file: written by the relay itself from the state it rebuilds from the chain. */
 const SECOND_STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-second.json`);
 
-// ── Batch-only typed data (EIP-712 signature replaces msg.sender) ───────────
-
-const RESOLVE_TYPES = {
-    ResolveProcess: [
-        { name: "processId", type: "bytes32" },
-        { name: "runningTotal", type: "uint256" },
-    ],
-} as const;
-
-const ATTEST_SELLER_TYPES = {
-    AttestSeller: [
-        { name: "orderHash", type: "bytes32" },
-        { name: "clauseId", type: "bytes32" },
-        { name: "stage", type: "uint8" },
-        { name: "contentRef", type: "bytes32" },
-    ],
-} as const;
+// The batch-only typed data (an EIP-712 signature in place of msg.sender) is
+// the SDK's own: RESOLVE_PROCESS_TYPES and batchAttestationTypedData.
 
 // ── Test suite ──────────────────────────────────────────────────────────────
 
@@ -345,12 +331,16 @@ describe("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         const processId = hashTypedData(typedData) as Hex;
         const orderHash = computeOrderHash(commitment, 31337, batchVerifierAddress);
 
-        const attestSig = await sellerWallet.signTypedData({
-            domain,
-            types: ATTEST_SELLER_TYPES,
-            primaryType: "AttestSeller",
-            message: { orderHash, clauseId: clauseKey, stage: 0, contentRef },
-        });
+        const clauseDataHash = keccak256(stringToHex(CLAUSE_DATA));
+        const attestTyped = batchAttestationTypedData(
+            "seller",
+            { target: commitment, clauseId: clauseKey, stage: 0, contentRef, clauseDataHash, proof: [] },
+            31337,
+            batchVerifierAddress,
+        );
+        // The SDK signs over the order's id under the verifier's domain.
+        expect(attestTyped.message.orderHash).toBe(orderHash);
+        const attestSig = await sellerWallet.signTypedData(attestTyped);
 
         const attestResult = await sequencerClient.submitAttestAsSeller({
             target: commitment,
@@ -358,7 +348,7 @@ describe("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             stage: 0,
             contentRef,
             sellerSig: attestSig,
-            clauseDataHash: keccak256(stringToHex(CLAUSE_DATA)),
+            clauseDataHash,
             inclusionProof: [],
         });
         expect(typeof attestResult.id).toBe("number");
@@ -476,7 +466,7 @@ describe("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         const runningTotal = commitment.runningTotal;
         const buyerResolveSig = await buyerWallet.signTypedData({
             domain,
-            types: RESOLVE_TYPES,
+            types: RESOLVE_PROCESS_TYPES,
             primaryType: "ResolveProcess" as const,
             message: { processId, runningTotal },
         });
@@ -719,7 +709,7 @@ describe("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             const runningTotal = commitment.runningTotal;
             const buyerResolveSig = await buyerWallet.signTypedData({
                 domain,
-                types: RESOLVE_TYPES,
+                types: RESOLVE_PROCESS_TYPES,
                 primaryType: "ResolveProcess" as const,
                 message: { processId, runningTotal },
             });

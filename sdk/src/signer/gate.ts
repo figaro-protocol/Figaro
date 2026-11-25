@@ -25,6 +25,7 @@
 
 import type { Address, Hex } from "viem";
 import { calculateBonds } from "../bonds.js";
+import { isBytes32Hex } from "../types.js";
 import { APPROVE_SELECTOR, parseAmount, type SignerPolicy } from "./policy.js";
 
 /** What a request would add to the wallet's exposure. */
@@ -100,7 +101,6 @@ const ZERO_RISK_PRIMARY_TYPES = new Set([
     "AttestBuyer",
 ]);
 
-const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
 
 /**
  * Decide a `signTypedData` request. Domain binding first (chainId + a
@@ -152,7 +152,7 @@ export function evaluateTypedData(
     } else if (req.primaryType === "ResolveProcess") {
         const processId = typeof req.message.processId === "string" ? req.message.processId.toLowerCase() : "";
         const cumulative = toBigInt(req.message.runningTotal);
-        if (!BYTES32.test(processId)) {
+        if (!isBytes32Hex(processId)) {
             return refuse("ResolveProcess processId is not a bytes32");
         }
         if (cumulative === null) {

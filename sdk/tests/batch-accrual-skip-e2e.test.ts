@@ -59,6 +59,7 @@ import {
     type Agreement,
 } from "../src/index.js";
 import { SequencerClient } from "../src/agent/sequencer.js";
+import { RESOLVE_PROCESS_TYPES } from "../src/commitments.js";
 
 import {
     MOCK_ERC20_ABI,
@@ -98,13 +99,6 @@ const PAYMENT = 100n * 10n ** 18n;
 /** Period 0 ends this long after the counter's deployment, period 1 a day later. */
 const PERIOD_0_AFTER = 2n * 3600n;
 const PERIOD_1_AFTER = PERIOD_0_AFTER + 24n * 3600n;
-
-const RESOLVE_TYPES = {
-    ResolveProcess: [
-        { name: "processId", type: "bytes32" },
-        { name: "runningTotal", type: "uint256" },
-    ],
-} as const;
 
 async function waitForRpc(url: string, timeoutMs: number): Promise<boolean> {
     const deadline = Date.now() + timeoutMs;
@@ -262,7 +256,7 @@ describe("Batch E2E: a skipped accrual, then a later batch counts the use", () =
             [commitment],
             await buyerWallet.signTypedData({
                 domain,
-                types: RESOLVE_TYPES,
+                types: RESOLVE_PROCESS_TYPES,
                 primaryType: "ResolveProcess",
                 message: { processId, runningTotal: commitment.runningTotal },
             }),

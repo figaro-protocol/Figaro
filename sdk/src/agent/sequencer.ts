@@ -20,7 +20,7 @@
  * No operation carries a party's content.
  */
 
-import type { Hex, Address, Commitment, EIP712Domain } from "../types.js";
+import { isAddressHex, isBytes32Hex, type Hex, type Address, type Commitment, type EIP712Domain } from "../types.js";
 import { buildDomain, computeCommitmentProcessId, computeOrderHash } from "../commitments.js";
 import { readCappedBytes } from "../cappedRead.js";
 import { strippingReviver } from "../safeJson.js";
@@ -301,8 +301,8 @@ export function parseSequencerStatus(body: unknown, statusCode = 200): Sequencer
         refuse(`names wire format version ${String(s.wire_format_version)}, and this client speaks ${RELAY_WIRE_FORMAT_VERSION}`);
     }
     if (typeof s.chain_id !== "number" || !Number.isSafeInteger(s.chain_id) || s.chain_id <= 0) refuse("names no chain id");
-    if (typeof s.batch_verifier !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(s.batch_verifier)) refuse("names no batch verifier address");
-    if (typeof s.program_vkey !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(s.program_vkey)) refuse("names no 32-byte program key");
+    if (!isAddressHex(s.batch_verifier)) refuse("names no batch verifier address");
+    if (!isBytes32Hex(s.program_vkey)) refuse("names no 32-byte program key");
     if (!Array.isArray(s.browser_submit_origins) || !s.browser_submit_origins.every((o) => typeof o === "string")) {
         refuse("names no list of browser origins");
     }

@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, it, expect } from "vitest";
-import { keccak256, toBytes, encodeAbiParameters, encodePacked, hashTypedData } from "viem";
+import { keccak256, toBytes, encodeAbiParameters, decodeFunctionResult, encodeFunctionData, encodeFunctionResult } from "viem";
+import { CORE_ABI } from "../src/abis.js";
 import {
     buildDomain,
     generateSalt,
@@ -149,12 +152,12 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
         commitDeadline: 1700000000n,
     };
 
-    it("COMMITMENT_TYPEHASH equals FigaroCore's literal type string", () => {
-        const literal =
-            "Commitment(bytes32 processId,address buyer,address seller,address token," +
-            "uint256 payment,uint256 runningTotal,bytes32 checkoutHash," +
-            "uint256 salt,uint256 commitDeadline)";
-        expect(COMMITMENT_TYPEHASH).toBe(keccak256(toBytes(literal)));
+    it("COMMITMENT_TYPEHASH is the hash of the type string CommitmentTypes.sol declares", () => {
+        // Read from the contract's source, never typed here.
+        const source = readFileSync(path.resolve(__dirname, "../../src/core/kernel/CommitmentTypes.sol"), "utf8");
+        const literal = /COMMITMENT_TYPEHASH\s*=\s*keccak256\(\s*"([^"]+)"/.exec(source)?.[1];
+        expect(literal, "CommitmentTypes.sol declares COMMITMENT_TYPEHASH").toBeDefined();
+        expect(COMMITMENT_TYPEHASH).toBe(keccak256(toBytes(literal!)));
     });
 
     it("hashCommitmentStruct matches an explicit abi.encode (FigaroCore hashStruct)", () => {
@@ -176,17 +179,39 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
         expect(hashCommitmentStruct(root)).toBe(explicit);
     });
 
-    it("computeOrderHash for a root order matches FigaroCore's formula", () => {
-        const processId = hashTypedData({
-            domain: buildDomain(1, CORE_ADDR),
-            types: COMMITMENT_TYPES,
-            primaryType: "Commitment",
-            message: root,
-        });
-        expect(computeCommitmentProcessId(root, 1, CORE_ADDR)).toBe(processId);
-        const structHash = hashCommitmentStruct(root);
-        const expected = keccak256(encodePacked(["bytes32", "bytes32"], [processId, structHash]));
-        expect(computeOrderHash(root, 1, CORE_ADDR)).toBe(expected);
+    // test/fixtures/eip712-vectors.json: the vectors `Eip712ParityTest.t.sol`
+    // asserts FigaroCore reproduces (its DOMAIN_SEPARATOR, hashStruct, the
+    // root's digest-as-processId and the order hash) and the guest too
+    // (prover/lib/tests/eip712_vectors.rs).
+    const vectors = JSON.parse(readFileSync(path.resolve(__dirname, "../../test/fixtures/eip712-vectors.json"), "utf8")) as {
+        chainId: number;
+        verifyingContract: Address;
+        vectors: {
+            label: string;
+            commitment: Record<keyof Commitment, string>;
+            structHash: Hex;
+            processId: Hex;
+            orderHash: Hex;
+        }[];
+    };
+    const asCommitment = (c: Record<keyof Commitment, string>): Commitment => ({
+        processId: c.processId as Hex, buyer: c.buyer as Address, seller: c.seller as Address, token: c.token as Address,
+        payment: BigInt(c.payment), runningTotal: BigInt(c.runningTotal), checkoutHash: c.checkoutHash as Hex,
+        salt: BigInt(c.salt), commitDeadline: BigInt(c.commitDeadline),
+    });
+
+    it.each(vectors.vectors.map((v) => [v.label, v] as const))(
+        "the %s vector: struct hash, process id and order hash are the ones FigaroCore computes",
+        (_label, v) => {
+            const c = asCommitment(v.commitment);
+            expect(hashCommitmentStruct(c)).toBe(v.structHash);
+            expect(computeCommitmentProcessId(c, vectors.chainId, vectors.verifyingContract)).toBe(v.processId);
+            expect(computeOrderHash(c, vectors.chainId, vectors.verifyingContract)).toBe(v.orderHash);
+        },
+    );
+
+    it("the fixture carries a root and a sub-order", () => {
+        expect(vectors.vectors.map((v) => v.commitment.processId === ZERO)).toEqual([true, false]);
     });
 
     it("a sub-order keeps its target processId (no digest)", () => {
@@ -196,8 +221,20 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
 });
 
 describe("buildCommitmentSafe — the sub-order's cumulative value is what FigaroCore checks", () => {
-    const processes = async () => [BUYER, TOKEN, 700n, 2n] as const; // rootBuyer, token, runningTotal, activeOrderCount
-    const client = { readContract: processes } as unknown as Parameters<typeof buildCommitmentSafe>[0];
+    // A node's answer to FigaroCore.processes(PROCESS_ID): the request is
+    // encoded with the Core's ABI (a wrong function or argument throws), and
+    // the answer is the ABI-encoded tuple (rootBuyer, token, runningTotal,
+    // activeOrderCount) decoded as viem decodes it. Any other read throws.
+    const client = {
+        readContract: async (req: { address: Address; abi: typeof CORE_ABI; functionName: string; args: readonly unknown[] }) => {
+            encodeFunctionData({ abi: req.abi, functionName: req.functionName, args: req.args } as never);
+            if (req.address !== CORE_ADDR || req.functionName !== "processes" || req.args[0] !== PROCESS_ID) {
+                throw new Error(`unexpected read ${req.functionName}(${req.args.join(",")}) at ${req.address}`);
+            }
+            const data = encodeFunctionResult({ abi: CORE_ABI, functionName: "processes", result: [BUYER, TOKEN, 700n, 2n] });
+            return decodeFunctionResult({ abi: CORE_ABI, functionName: "processes", data });
+        },
+    } as unknown as Parameters<typeof buildCommitmentSafe>[0];
     const addresses = { core: CORE_ADDR } as Parameters<typeof buildCommitmentSafe>[1];
     const domain = buildDomain(31337, CORE_ADDR);
 

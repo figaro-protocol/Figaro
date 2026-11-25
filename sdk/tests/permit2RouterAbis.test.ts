@@ -13,59 +13,75 @@
  * byte from `route()`: the cross-surface lockstep proof that what an
  * integrator builds from this package is what the shipped venue seam signs.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import type { AbiFunction } from "viem";
+import type { Abi, AbiFunction, AbiParameter } from "viem";
 import { encodeFunctionData, getAddress } from "viem";
 import { PERMIT2_ABI, QUOTER_V2_ABI, SWAP_ROUTER_02_ABI } from "../src/abis.js";
 
-function findFunctions(abi: readonly unknown[], name: string): AbiFunction[] {
-    return (abi as AbiFunction[]).filter((item) => item.type === "function" && item.name === name);
+function findFunctions(abi: Abi, name: string): AbiFunction[] {
+    return abi.filter((item): item is AbiFunction => item.type === "function" && item.name === name);
+}
+
+/** A tuple parameter's components; any other parameter has none. */
+function components(p: AbiParameter | undefined): readonly AbiParameter[] {
+    return p !== undefined && "components" in p ? p.components : [];
+}
+
+/** The coordinator's `IPermit2WitnessTransfer` interface, read from the
+ *  contract source: each struct's `(type, name)` members and the one
+ *  function's parameters, in declaration order. The SDK's PERMIT2_ABI is held
+ *  to this, so the two cannot drift apart. */
+function permit2Interface(): { structs: Record<string, [string, string][]>; params: [string, string][] } {
+    const source = readFileSync(path.resolve(__dirname, "../../src/composability/WitnessSwapAndCommitCoordinator.sol"), "utf8");
+    const start = source.indexOf("interface IPermit2WitnessTransfer");
+    const body = source.slice(start, source.indexOf("\n}", start));
+    const pairs = (text: string) => text.split(/[;,]/).map((m) => m.trim()).filter(Boolean)
+        .map((m) => { const w = m.split(/\s+/).filter((x) => x !== "calldata"); return [w[0]!, w[w.length - 1]!] as [string, string]; });
+    const structs: Record<string, [string, string][]> = {};
+    for (const m of body.matchAll(/struct (\w+) \{([^}]*)\}/g)) structs[m[1]!] = pairs(m[2]!);
+    const fn = /function permitWitnessTransferFrom\(([^)]*)\)/.exec(body);
+    if (!fn) throw new Error("IPermit2WitnessTransfer.permitWitnessTransferFrom not found");
+    return { structs, params: pairs(fn[1]!) };
+}
+
+/** An ABI parameter's Solidity type as a source names it: a tuple by its struct. */
+function solType(p: AbiParameter, structs: Record<string, [string, string][]>): string {
+    if (p.type !== "tuple") return p.type;
+    const names = components(p).map((c) => c.name);
+    const match = Object.entries(structs).find(([, members]) => members.map(([, n]) => n).join() === names.join());
+    return match ? match[0] : "tuple";
 }
 
 describe("PERMIT2_ABI", () => {
     it("carries exactly one function: the witness variant of permitTransferFrom", () => {
-        const functions = (PERMIT2_ABI as AbiFunction[]).filter((item) => item.type === "function");
+        const functions = (PERMIT2_ABI as Abi).filter((item): item is AbiFunction => item.type === "function");
         expect(functions).toHaveLength(1);
         expect(functions[0]!.name).toBe("permitWitnessTransferFrom");
     });
 
-    it("permitWitnessTransferFrom takes the six args the coordinator's IPermit2WitnessTransfer interface declares", () => {
+    it("permitWitnessTransferFrom is the coordinator's IPermit2WitnessTransfer declaration, parameter by parameter and struct by struct", () => {
+        const { structs, params } = permit2Interface();
         const [fn] = findFunctions(PERMIT2_ABI, "permitWitnessTransferFrom");
         expect(fn).toBeDefined();
-        expect(fn!.inputs).toHaveLength(6);
-        expect(fn!.inputs.map((i) => i.name)).toEqual([
-            "permit",
-            "transferDetails",
-            "owner",
-            "witness",
-            "witnessTypeString",
-            "signature",
-        ]);
-        expect(fn!.inputs.map((i) => i.type)).toEqual([
-            "tuple",
-            "tuple",
-            "address",
-            "bytes32",
-            "string",
-            "bytes",
-        ]);
-        // permit = PermitTransferFrom { TokenPermissions permitted; uint256 nonce; uint256 deadline }
-        const permitTuple = fn!.inputs[0] as { components: { name: string; type: string }[] };
-        expect(permitTuple.components.map((c) => c.name)).toEqual(["permitted", "nonce", "deadline"]);
-        const tokenPermissions = permitTuple.components[0] as unknown as {
-            components: { name: string; type: string }[];
+        expect(fn!.inputs.map((i) => [solType(i, structs), i.name])).toEqual(params);
+        // Each tuple's members, nested ones included, are the struct's.
+        const check = (p: AbiParameter) => {
+            if (p.type !== "tuple") return;
+            const struct = structs[solType(p, structs)];
+            expect(struct, `${p.name}: a struct of the interface`).toBeDefined();
+            expect(components(p).map((c) => [solType(c, structs), c.name])).toEqual(struct);
+            components(p).forEach(check);
         };
-        expect(tokenPermissions.components.map((c) => c.name)).toEqual(["token", "amount"]);
-        // transferDetails = SignatureTransferDetails { address to; uint256 requestedAmount }
-        const transferDetailsTuple = fn!.inputs[1] as { components: { name: string; type: string }[] };
-        expect(transferDetailsTuple.components.map((c) => c.name)).toEqual(["to", "requestedAmount"]);
+        fn!.inputs.forEach(check);
         expect(fn!.stateMutability).toBe("nonpayable");
     });
 });
 
 describe("SWAP_ROUTER_02_ABI", () => {
     it("carries exactly the venue shapes the coordinator's route composes: factory (the probe) and exactOutputSingle", () => {
-        const functions = (SWAP_ROUTER_02_ABI as AbiFunction[]).filter((item) => item.type === "function");
+        const functions = (SWAP_ROUTER_02_ABI as Abi).filter((item): item is AbiFunction => item.type === "function");
         expect(functions.map((f) => f.name).sort()).toEqual(["exactOutputSingle", "factory"]);
     });
 
@@ -73,9 +89,9 @@ describe("SWAP_ROUTER_02_ABI", () => {
         const [fn] = findFunctions(SWAP_ROUTER_02_ABI, "exactOutputSingle");
         expect(fn).toBeDefined();
         expect(fn!.inputs).toHaveLength(1);
-        const params = fn!.inputs[0] as { type: string; components: { name: string; type: string }[] };
+        const params = fn!.inputs[0]!;
         expect(params.type).toBe("tuple");
-        expect(params.components.map((c) => [c.name, c.type])).toEqual([
+        expect(components(params).map((c) => [c.name, c.type])).toEqual([
             ["tokenIn", "address"],
             ["tokenOut", "address"],
             ["fee", "uint24"],
@@ -129,7 +145,7 @@ describe("SWAP_ROUTER_02_ABI", () => {
 
 describe("QUOTER_V2_ABI", () => {
     it("carries exactly the two single-hop quote functions the venue seam quotes through", () => {
-        const functions = (QUOTER_V2_ABI as AbiFunction[]).filter((item) => item.type === "function");
+        const functions = (QUOTER_V2_ABI as Abi).filter((item): item is AbiFunction => item.type === "function");
         expect(functions.map((f) => f.name)).toEqual(["quoteExactOutputSingle", "quoteExactInputSingle"]);
     });
 
@@ -137,9 +153,9 @@ describe("QUOTER_V2_ABI", () => {
         const [fn] = findFunctions(QUOTER_V2_ABI, "quoteExactOutputSingle");
         expect(fn).toBeDefined();
         expect(fn!.inputs).toHaveLength(1);
-        const params = fn!.inputs[0] as { type: string; components: { name: string; type: string }[] };
+        const params = fn!.inputs[0]!;
         expect(params.type).toBe("tuple");
-        expect(params.components.map((c) => [c.name, c.type])).toEqual([
+        expect(components(params).map((c) => [c.name, c.type])).toEqual([
             ["tokenIn", "address"],
             ["tokenOut", "address"],
             ["amount", "uint256"],

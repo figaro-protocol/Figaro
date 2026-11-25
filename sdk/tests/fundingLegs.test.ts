@@ -1,34 +1,46 @@
 /**
  * readFundingLegs — the swap legs one commit transaction carries, decided from
- * the receipt's ERC-20 Transfer topology. The fixtures are devnet receipts of
- * real `swapAndCommit` and `commit` transactions (MockWitnessPermit2 +
- * MockSwapVenue, the same Transfer shape Permit2 + a router leave): the
- * receipt's own `OrderCommitted` names the parties and the denomination.
- *
- * The receipts were recorded from a Core that still emitted `OrderCurrency`
- * (the event is since removed from FigaroCore and FigaroBatchVerifier), so
- * their logs include it. The reader under test takes only `OrderCommitted` and
- * `Transfer`, so the fixture holds for the current Core without re-recording.
+ * the receipt's ERC-20 Transfer topology. The receipts in
+ * `fixtures/funding-leg-receipts.json` are generated (`fundingLegReceipts.ts`):
+ * the logs a plain `commit` and two `swapAndCommit` transactions leave, in the
+ * order today's `WitnessSwapAndCommitCoordinator._fund` and `FigaroCore.commit`
+ * emit them, each encoded with the SDK's production ABIs. They are the SDK's
+ * own encoding, never a capture from a chain: the first test below fails
+ * when the committed file differs from the generator, and
+ * `HARVEST_FUNDING_LEG_RECEIPTS=1` rewrites it. The reader against receipts a
+ * chain produced is held by `integration.test.ts` ("readFundingLegs reads a
+ * plain commit's real receipt"), which needs a chain.
  */
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { encodeAbiParameters, encodeEventTopics, type Log } from "viem";
-import { readFundingLegs, type ReceiptLogInput } from "../src/derive/fundingLegs.js";
+import { readCommitFundingLegs, readFundingLegs, type ReceiptLogInput } from "../src/derive/fundingLegs.js";
 import { projectValueFlow } from "../src/derive/composition.js";
 import { projectResolutionGraph } from "../src/derive/graphs.js";
 import { parseOrderCommittedLogs } from "../src/events.js";
 import { ERC20_ABI } from "../src/abis.js";
 import type { Address, Hex } from "../src/types.js";
+import { buildFundingLegReceipts } from "./fundingLegReceipts.js";
+import { writeHarvestedFixture } from "./harvest.js";
+
+const FIXTURE_PATH = path.resolve(__dirname, "fixtures/funding-leg-receipts.json");
+const GENERATED = `${JSON.stringify(buildFundingLegReceipts(), null, 4)}\n`;
+
+describe("fixtures/funding-leg-receipts.json — the generator's output", () => {
+    it("the committed fixture is what the generator encodes from today's ABIs", () => {
+        if (process.env.HARVEST_FUNDING_LEG_RECEIPTS === "1") writeHarvestedFixture(FIXTURE_PATH, GENERATED);
+        expect(existsSync(FIXTURE_PATH), "fixture missing — harvest with HARVEST_FUNDING_LEG_RECEIPTS=1").toBe(true);
+        expect(readFileSync(FIXTURE_PATH, "utf8")).toBe(GENERATED);
+    });
+});
 
 interface FixtureReceipt {
     transactionHash: Hex;
     blockNumber: number;
     logs: ReceiptLogInput[];
 }
-const fixture = JSON.parse(
-    readFileSync(path.resolve(__dirname, "fixtures/funding-leg-receipts.json"), "utf8"),
-) as { coordinator: Address; venue: Address; receipts: Record<string, FixtureReceipt> };
+const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as { coordinator: Address; venue: Address; receipts: Record<string, FixtureReceipt> };
 const COORDINATOR = fixture.coordinator;
 
 function commitOf(receipt: FixtureReceipt) {
@@ -40,7 +52,7 @@ function commitOf(receipt: FixtureReceipt) {
 
 const lower = (a: string) => a.toLowerCase();
 
-describe("readFundingLegs — devnet receipts", () => {
+describe("readFundingLegs — the generated receipts", () => {
     it("a plain commit carries no leg", () => {
         const receipt = fixture.receipts.plainCommit;
         expect(readFundingLegs(receipt.logs, commitOf(receipt), COORDINATOR)).toEqual([]);
@@ -73,6 +85,8 @@ describe("readFundingLegs — devnet receipts", () => {
         expect(lower(leg.payload.party)).toBe(lower(commit.seller));
         expect(lower(leg.payload.tokenOut)).toBe(lower(commit.token));
         expect(leg.payload.amountOut).toBe(commit.runningTotal * 2n);
+        // Three input pulled, one returned unspent: two spent.
+        expect(leg.payload.amountIn).toBe(2_000000000000000000n);
     });
 
     it("the legs feed projectValueFlow as an edge between two denominations", () => {
@@ -167,5 +181,59 @@ describe("readFundingLegs — both parties, and an unspent input", () => {
         const stranger = "0x0000000000000000000000000000000000000999" as Address;
         const { logs } = fundedLeg(stranger, IN_A, 10n, 10n, 20n, 20n);
         expect(readFundingLegs(logs, commitment, HUB)).toEqual([]);
+    });
+});
+
+describe("readCommitFundingLegs — every commit's receipt, read once", () => {
+    const { plainCommit, buyerFunded, sellerFunded } = fixture.receipts;
+    const all = [plainCommit, buyerFunded, sellerFunded];
+    const orders = all.map(commitOf);
+    /** A node answering each receipt by its hash, counting the reads. */
+    const node = (receipts: FixtureReceipt[], reads: string[]) => ({
+        getTransactionReceipt: async ({ hash }: { hash: Hex }) => {
+            reads.push(hash);
+            const hit = receipts.find((r) => r.transactionHash.toLowerCase() === hash.toLowerCase());
+            if (!hit) throw new Error("receipt not found");
+            return hit;
+        },
+    });
+
+    it("yields each funded commit's leg, in commit order, and none for the plain one", async () => {
+        const reads: string[] = [];
+        const { legs, unreadReceipts } = await readCommitFundingLegs({ client: node(all, reads), orderCommitted: orders, coordinator: COORDINATOR });
+        expect(unreadReceipts).toBe(0);
+        expect(legs.map((l) => [lower(l.payload.party), l.transactionHash])).toEqual([
+            [lower(orders[1]!.buyer), buyerFunded.transactionHash],
+            [lower(orders[2]!.seller), sellerFunded.transactionHash],
+        ]);
+        expect(reads).toHaveLength(3);
+    });
+
+    it("reads a transaction's receipt once for its two orders and keeps one leg per party and input token", async () => {
+        const reads: string[] = [];
+        const twice = [orders[1]!, { ...orders[1]! }];
+        const { legs } = await readCommitFundingLegs({ client: node(all, reads), orderCommitted: twice, coordinator: COORDINATOR });
+        expect(legs).toHaveLength(1);
+        expect(reads).toHaveLength(1);
+    });
+
+    it("counts an unreadable receipt, yields nothing for it, and reads it again on the next pass; a cached one is not read again", async () => {
+        const reads: string[] = [];
+        const cache = new Map();
+        const first = await readCommitFundingLegs({ client: node([plainCommit, buyerFunded], reads), orderCommitted: orders, coordinator: COORDINATOR, cache });
+        expect(first.unreadReceipts).toBe(1);
+        expect(first.legs.map((l) => l.transactionHash)).toEqual([buyerFunded.transactionHash]);
+        const second = await readCommitFundingLegs({ client: node(all, reads), orderCommitted: orders, coordinator: COORDINATOR, cache });
+        expect(second.unreadReceipts).toBe(0);
+        expect(second.legs).toHaveLength(2);
+        expect(reads.filter((h) => h === sellerFunded.transactionHash)).toHaveLength(2);
+        expect(reads.filter((h) => h === buyerFunded.transactionHash)).toHaveLength(1);
+    });
+
+    it("reads nothing with no coordinator", async () => {
+        const reads: string[] = [];
+        expect(await readCommitFundingLegs({ client: node(all, reads), orderCommitted: orders, coordinator: undefined }))
+            .toEqual({ legs: [], unreadReceipts: 0 });
+        expect(reads).toHaveLength(0);
     });
 });

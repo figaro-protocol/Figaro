@@ -28,6 +28,7 @@ function makeAttestation(overrides: Partial<AttestationEvent> = {}): Attestation
         stage: 0,
         contentRef: hex32(0),
         blockNumber: 10,
+        transactionHash: null,
         ...overrides,
     };
 }

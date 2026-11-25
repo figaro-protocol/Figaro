@@ -218,7 +218,7 @@ describe("buildQuoteRequest + substitutePricedValue", () => {
         expect(req.quoteRequest?.pricedFields).toEqual(PRICED);
         const commerce = req.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!;
         expect(commerce.data).not.toHaveProperty("payment");
-        expect((commerce.data.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe(CEILING.toString());
+        expect((commerce.data?.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe(CEILING.toString());
         expect((await validateDraft(req, COURIER_A.address, undefined, undefined, null, BOUND)).ok).toBe(true);
     });
 
@@ -278,7 +278,7 @@ describe("quoteDraft (real signatures, no chain)", () => {
         expect(reply?.commitment.runningTotal).toBe(700n);
         const commerce = reply!.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!;
         expect(commerce.data).not.toHaveProperty("payment");
-        expect((commerce.data.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe("700");
+        expect((commerce.data?.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe("700");
         expect((await verifyQuoteReply(reply!, req, CTX)).ok).toBe(true);
     });
 
@@ -322,7 +322,7 @@ describe("verifyQuoteReply — the reconstruction gate", () => {
             ...agreement,
             clauses: agreement.clauses.map((s) =>
                 s.clause === keyOf("figaro-commerce")
-                    ? { ...s, data: { ...s.data, lineItems: [{ ...(s.data.lineItems as Array<Record<string, unknown>>)[0], quantity: 3 }] } }
+                    ? { ...s, data: { ...s.data, lineItems: [{ ...(s.data?.lineItems as Array<Record<string, unknown>>)[0], quantity: 3 }] } }
                     : s),
         };
         const commitment = {
@@ -361,11 +361,13 @@ describe("verifyQuoteReply — the reconstruction gate", () => {
 describe("an agreement that composes no line items is quoted and committed on the commitment's payment", () => {
     // No clause declares `lineItems`: the quoted figure lives in the
     // commitment's payment alone, and nothing inside a clause is priced.
+    // A real composed agreement whose one clause prices nothing: the
+    // buyer's modality, which declares no line items.
     const bare = hydrateAuthored({
-        agreements: [{ id: "agreement-0", clauses: {}, follows: [] }],
+        agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-modalities")]: { modality: "pickup" } }, follows: [] }],
     });
     const BARE = profileBinding(bare);
-    const NO_CLAUSES = specSourceFromFixtures([]);
+    const NO_CLAUSES = specSourceFromFixtures(["figaro-modalities"]);
 
     it("the buyer drafts at its ceiling, the candidate quotes, the buyer verifies and signs the quoted commitment", async () => {
         const unpriced = buildQuoteRequest({
@@ -383,6 +385,8 @@ describe("an agreement that composes no line items is quoted and committed on th
 
         const reply = await quoteDraft(courierAW, req, CTX, NO_CLAUSES, () => 700n, quotePolicy, bare, BARE);
         expect(reply?.commitment.payment).toBe(700n);
+        // A root order: its running total is its own payment.
+        expect(reply?.commitment.runningTotal).toBe(700n);
         expect(reply?.commitment.checkoutHash).toBe(req.commitment.checkoutHash);
         expect((await verifyQuoteReply(reply!, req, CTX)).ok).toBe(true);
 
@@ -557,7 +561,7 @@ describe("the seller's bound assemblies — the race and quote legs refuse a dra
     // A structurally different assembly (its own clause selection), so its
     // assembly hash differs from the one the orders instantiate.
     const elsewhere = hydrateAuthored({
-        agreements: [{ id: "agreement-0", clauses: {}, follows: [] }],
+        agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-modalities")]: {} }, follows: [] }],
     });
     const draftHash = processDesignHashOf(assembly.assembly);
     const NOT_BINDING = profileBinding(elsewhere);

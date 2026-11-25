@@ -22,6 +22,7 @@ import {
     type BuiltProcessDesign,
     type RegisteredAgreement,
 } from "../src/index.js";
+import type { Hex } from "../src/types.js";
 import { validateContent } from "../src/clauses/index.js";
 import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
 
@@ -43,9 +44,9 @@ const OTHER = "0x0000000000000000000000000000000000000002" as const;
 
 /** The assembly-scoped denomination clauses an assembly composes, with the
  *  designer-filled address fields each declares — read from the specs. */
-function denominationPins(assembly: BuiltProcessDesign["assembly"]): { clauseKey: string; fields: string[] }[] {
-    return Object.keys(assembly.assemblyClauses ?? {}).flatMap((clauseKey) => {
-        const spec = SPECS.get(clauseKey as `0x${string}`);
+function denominationPins(assembly: BuiltProcessDesign["assembly"]): { clauseKey: Hex; fields: string[] }[] {
+    return (Object.keys(assembly.assemblyClauses ?? {}) as Hex[]).flatMap((clauseKey) => {
+        const spec = SPECS.get(clauseKey);
         if (!spec || !specIsProcessScoped(spec) || spec.hints?.article !== "denomination") return [];
         const fills = spec.hints?.designFills ?? [];
         return [{ clauseKey, fields: spec.fields.filter((f) => f.type === "string" && f.format === "address-hex" && fills.includes(f.name)).map((f) => f.name) }];
@@ -126,7 +127,8 @@ describe("fillDeployTimeCurrency — the deployment's token, read by the spec's 
         const other = viewOf({ ...raw, title: "another article", block: { ...raw.block, design: { ...raw.block.design, article: "coordination" } } });
         const specs = specSourceWithRegistrations(SPECS, [other]);
         const { assembly } = built("equipment-hire.json");
-        const odd = { ...assembly, assemblyClauses: { ...(assembly.assemblyClauses ?? {}), [other.clauseKey]: {} } };
+        const base: Record<Hex, Record<string, unknown>> = assembly.assemblyClauses ?? {};
+        const odd = { ...assembly, assemblyClauses: { ...base, [other.clauseKey]: {} } as Record<Hex, Record<string, unknown>> };
         const filled = fillDeployTimeCurrency(odd, TOKEN, specs);
         expect(filled.assemblyClauses?.[other.clauseKey]).toEqual({});
     });

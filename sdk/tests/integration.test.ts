@@ -39,6 +39,7 @@ import {
     calculateBonds,
     COMMITMENT_TYPES,
     OrderState,
+    parseOrderCommittedLogs,
 } from "../src/index.js";
 import {
     commit,
@@ -51,6 +52,8 @@ import {
 } from "../src/agent/index.js";
 import type { FigaroAddresses } from "../src/types.js";
 import { ANVIL_URL, requireAnvil } from "./batchHarness.js";
+import { buildFundingLegReceipts } from "./fundingLegReceipts.js";
+import { readFundingLegs } from "../src/derive/fundingLegs.js";
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { hydrateAuthored, profileBinding } from "./hydrate.js";
 
@@ -218,6 +221,16 @@ describe("SDK Integration (Anvil)", () => {
         const { hash: commitHash } = await commit(buyerWallet, publicClient, coreAddress, commitment, buyerSig, sellerSig);
         const commitReceipt = await publicClient.waitForTransactionReceipt({ hash: commitHash });
         expect(commitReceipt.status).toBe("success");
+
+        // readFundingLegs reads a plain commit's real receipt: no leg, the
+        // receipt's own OrderCommitted names the parties, and its logs are
+        // the events, in the order, that the generated fixture
+        // (fundingLegReceipts.ts) writes for a plain commit.
+        const [committed] = parseOrderCommittedLogs(commitReceipt.logs);
+        expect(committed?.transactionHash).toBe(commitHash);
+        expect(readFundingLegs(commitReceipt.logs, committed!, sellerAccount.address)).toEqual([]);
+        const generatedPlain = buildFundingLegReceipts().receipts.plainCommit.logs;
+        expect(commitReceipt.logs.map((l) => l.topics[0])).toEqual(generatedPlain.map((l) => l.topics[0]));
 
         // ── 6. Fetch events and reconstruct state via SDK ───────────────
         const events = await fetchCoreEvents(publicClient, addresses, 0n);

@@ -24,6 +24,12 @@ export function hydrateAuthored(authored: AuthoredAssembly): HydratedProcessDesi
     const agreements: Record<Hex, RegisteredAgreement> = {};
     const entries: ProcessDesignAgreement[] = authored.agreements.map((entry) => {
         const clauses = { ...entry.clauses };
+        // The production composer's refusal (`composeAuthoredAgreement`): an
+        // agreement of no clause hashes to bytes32(0), which
+        // `AgreementRegistry.registerAgreement` refuses.
+        if (Object.keys(clauses).length === 0) {
+            throw new Error(`${entry.id}: composes no clause — its key would be bytes32(0), which the agreement registry refuses`);
+        }
         const agreementHash = agreementHashOf({ clauses });
         agreements[agreementHash.toLowerCase() as Hex] = { clauses };
         return { id: entry.id, agreementHash, clauses: {}, follows: [...(entry.follows ?? [])] };

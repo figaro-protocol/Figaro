@@ -10,7 +10,7 @@
  */
 
 import type { Address, Hex } from "viem";
-import { isAddressHex } from "../types.js";
+import { isAddressHex, isPlainRecord as isRecord } from "../types.js";
 
 /** Value ceilings, all amounts as decimal strings in base units.
  *
@@ -64,9 +64,6 @@ export const APPROVE_SELECTOR: Hex = "0x095ea7b3";
 const SELECTOR_RE = /^0x[0-9a-fA-F]{8}$/;
 const DECIMAL_RE = /^[0-9]+$/;
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-    return typeof v === "object" && v !== null && !Array.isArray(v);
-}
 
 /** Parse a non-negative decimal-string amount, or null. */
 export function parseAmount(v: unknown): bigint | null {

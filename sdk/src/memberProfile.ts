@@ -235,10 +235,10 @@ export interface MemberProfileMetadata {
     catalogURI?: string;
 }
 
-/** Parse the profile-authored clause-values map (clauseKey → field → value).
- *  Shape-checked only — per-clause content validity is the off-chain
- *  validator's job at the points that consume the values. */
-function parseProfileClauseValues(
+/** Parse a clause-values map (clauseKey → field → value): a profile's and a
+ *  catalog item's. Shape-checked only — per-clause content validity is the
+ *  off-chain validator's job at the points that consume the values. */
+export function parseClauseValueMap(
     value: unknown,
     path: string,
 ): Record<string, Record<string, unknown>> | undefined {
@@ -471,7 +471,7 @@ export function parseMemberProfileDocument(
         assets: parseAssetsField(record.assets, `${sourceLabel}.assets`),
         acceptedTokens,
         defaultTokenAddress,
-        profileClauseValues: parseProfileClauseValues(record.profileClauseValues, `${sourceLabel}.profileClauseValues`),
+        profileClauseValues: parseClauseValueMap(record.profileClauseValues, `${sourceLabel}.profileClauseValues`),
         processBindings: parseProcessBindings(record.processBindings, `${sourceLabel}.processBindings`),
         buyerAssemblies: parseBuyerAssemblies(record.buyerAssemblies, `${sourceLabel}.buyerAssemblies`),
         services: parseAgentServicesField(record.services, `${sourceLabel}.services`),

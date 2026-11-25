@@ -735,7 +735,7 @@ export interface CommitmentAgreementIssue {
 
 /** A clause's human label — the loaded spec's own `clauseId`, else the key. */
 function clauseIdOrKey(clause: string, specs: SpecSource): string {
-    return /^0x[0-9a-fA-F]{64}$/.test(clause) ? (specs.get(clause as Hex)?.clauseId ?? clause) : clause;
+    return isBytes32Hex(clause) ? (specs.get(clause)?.clauseId ?? clause) : clause;
 }
 
 /** An address-valued leaf, or undefined when the clause carries none (a

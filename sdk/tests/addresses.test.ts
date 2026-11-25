@@ -6,8 +6,25 @@
  * spread verbatim must NOT silently half-work, and extra record keys
  * (coordinators, routers, governance tokens) must not leak through.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { addressesFromDeploymentRecord } from "../src/index.js";
+import { addressesFromDeploymentRecord, type FigaroDeploymentRecord } from "../src/index.js";
+
+/** The repository's real Sepolia deployment record. */
+const SEPOLIA = JSON.parse(readFileSync(path.resolve(__dirname, "../../deployments/11155111.json"), "utf8")) as Record<string, unknown>;
+
+/** The record's vocabulary -> the SDK's, for every key that names a contract
+ *  the SDK addresses. */
+const VOCABULARY: Record<string, string> = {
+    figaroCore: "core", tokenAddress: "token", attestationCoordinator: "attestationCoordinator",
+    clauseRegistry: "clauseRegistry", membersRegistry: "membersRegistry", processRegistry: "processRegistry",
+    agreementRegistry: "agreementRegistry", batchVerifier: "batchVerifier", usageCounter: "usageCounter",
+    rpgfMinter: "rpgfMinter", permit2: "permit2", swapRouter: "swapRouter",
+    witnessSwapAndCommitCoordinator: "witnessSwapAndCommitCoordinator", multisender: "multisender", daoTreasury: "daoTreasury",
+};
+/** The record's keys that name no address the SDK maps. */
+const NOT_ADDRESSES = ["chainId", "florinToken", "programVKey", "swapQuoter", "deploymentBlock", "rpcUrl"];
 
 const RECORD = {
     chainId: 31337,
@@ -28,6 +45,26 @@ const RECORD = {
     daoTreasury: "0xA683d1B0Ba731A3993397706579DF152671E2d7E",
     multisender: "0xb27F1A1973B0CdFAe53216425DCaa6d039d1b5AD",
 } as const;
+
+describe("addressesFromDeploymentRecord — the real Sepolia record", () => {
+    it("every key of deployments/11155111.json is mapped or named as no SDK address", () => {
+        for (const key of Object.keys(SEPOLIA)) {
+            expect(key in VOCABULARY || NOT_ADDRESSES.includes(key), `deployments/11155111.json: ${key}`).toBe(true);
+        }
+    });
+
+    it("maps each address the record carries, and nothing it lacks", () => {
+        const addresses = addressesFromDeploymentRecord(SEPOLIA as unknown as FigaroDeploymentRecord);
+        const expected = Object.fromEntries(Object.entries(VOCABULARY)
+            .filter(([recordKey]) => SEPOLIA[recordKey] !== undefined)
+            .map(([recordKey, sdkKey]) => [sdkKey, SEPOLIA[recordKey]]));
+        expect(addresses).toEqual(expected);
+        // The record names no deployment-wide token: a process's token is the
+        // parties' choice, signed in each commitment.
+        expect("tokenAddress" in SEPOLIA).toBe(false);
+        expect("token" in addresses).toBe(false);
+    });
+});
 
 describe("addressesFromDeploymentRecord", () => {
     it("maps the published record vocabulary onto FigaroAddresses", () => {

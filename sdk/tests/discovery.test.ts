@@ -18,6 +18,7 @@ const MEMBER_A = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
 const MEMBER_B = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
 const ASM_REGISTERED_BY = "0xcccccccccccccccccccccccccccccccccccccccc" as Address;
 const CLAUSE_REGISTERED_BY = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
+const TX = "0x00000000000000000000000000000000000000000000000000000000000000f1" as Hex;
 const COMP_1 = "0x0000000000000000000000000000000000000000000000000000000000000011" as Hex;
 const COMP_2 = "0x0000000000000000000000000000000000000000000000000000000000000012" as Hex;
 const KEY_1 = "0x00000000000000000000000000000000000000000000000000000000000000a1" as Hex;
@@ -89,8 +90,8 @@ describe("DiscoveryGraph — assemblies", () => {
     it("surfaces registered assemblies and de-surfaces on withdraw", () => {
         const g = reconstructDiscovery(mkEvents({
             assemblyRegistered: [
-                { processDesignHash: COMP_1, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a1", blockNumber: 1, logIndex: 0 },
-                { processDesignHash: COMP_2, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a2", blockNumber: 1, logIndex: 1 },
+                { processDesignHash: COMP_1, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a1", blockNumber: 1, logIndex: 0, transactionHash: TX },
+                { processDesignHash: COMP_2, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a2", blockNumber: 1, logIndex: 1, transactionHash: TX },
             ],
             assemblyWithdrawn: [{ processDesignHash: COMP_1, registeredBy: ASM_REGISTERED_BY, blockNumber: 9, logIndex: 0 }],
         }));
@@ -139,8 +140,8 @@ describe("DiscoveryGraph — members (order-dependent liveness)", () => {
     it("current metadataURI is the most-recent register/update", () => {
         const g = reconstructDiscovery(mkEvents({
             memberRegistered: [
-                { member: MEMBER_A, metadataURI: "ipfs://old", updated: false, blockNumber: 1, logIndex: 0 },
-                { member: MEMBER_A, metadataURI: "ipfs://new", updated: true, blockNumber: 3, logIndex: 0 },
+                { member: MEMBER_A, metadataURI: "ipfs://old", updated: false, blockNumber: 1, logIndex: 0, transactionHash: TX },
+                { member: MEMBER_A, metadataURI: "ipfs://new", updated: true, blockNumber: 3, logIndex: 0, transactionHash: TX },
             ],
         }));
         expect(g.getMember(MEMBER_A)?.metadataURI).toBe("ipfs://new");
@@ -148,7 +149,7 @@ describe("DiscoveryGraph — members (order-dependent liveness)", () => {
 
     it("requesting withdrawal de-surfaces the member", () => {
         const g = reconstructDiscovery(mkEvents({
-            memberRegistered: [{ member: MEMBER_A, metadataURI: "ipfs://x", updated: false, blockNumber: 1, logIndex: 0 }],
+            memberRegistered: [{ member: MEMBER_A, metadataURI: "ipfs://x", updated: false, blockNumber: 1, logIndex: 0, transactionHash: TX }],
             memberWithdrawn: [{ member: MEMBER_A, blockNumber: 4, logIndex: 0 }],
         }));
         expect(g.getMembers()).toHaveLength(0);
@@ -158,8 +159,8 @@ describe("DiscoveryGraph — members (order-dependent liveness)", () => {
     it("re-registration after leaving re-surfaces the member (latest event wins, not raw counts)", () => {
         const g = reconstructDiscovery(mkEvents({
             memberRegistered: [
-                { member: MEMBER_A, metadataURI: "ipfs://first", updated: false, blockNumber: 1, logIndex: 0 },
-                { member: MEMBER_A, metadataURI: "ipfs://second", updated: false, blockNumber: 7, logIndex: 0 },
+                { member: MEMBER_A, metadataURI: "ipfs://first", updated: false, blockNumber: 1, logIndex: 0, transactionHash: TX },
+                { member: MEMBER_A, metadataURI: "ipfs://second", updated: false, blockNumber: 7, logIndex: 0, transactionHash: TX },
             ],
             memberWithdrawn: [{ member: MEMBER_A, blockNumber: 4, logIndex: 0 }],
         }));
@@ -170,7 +171,7 @@ describe("DiscoveryGraph — members (order-dependent liveness)", () => {
 
     it("orders a within-block withdrawal request AFTER a same-block registration by logIndex", () => {
         const g = reconstructDiscovery(mkEvents({
-            memberRegistered: [{ member: MEMBER_B, metadataURI: "ipfs://y", updated: false, blockNumber: 2, logIndex: 0 }],
+            memberRegistered: [{ member: MEMBER_B, metadataURI: "ipfs://y", updated: false, blockNumber: 2, logIndex: 0, transactionHash: TX }],
             memberWithdrawn: [{ member: MEMBER_B, blockNumber: 2, logIndex: 1 }],
         }));
         expect(g.getMember(MEMBER_B)).toBeUndefined();
@@ -179,7 +180,7 @@ describe("DiscoveryGraph — members (order-dependent liveness)", () => {
     it("is idempotent under re-applied overlapping batches", () => {
         const g = new DiscoveryGraph();
         const batch = mkEvents({
-            memberRegistered: [{ member: MEMBER_A, metadataURI: "ipfs://z", updated: false, blockNumber: 1, logIndex: 0 }],
+            memberRegistered: [{ member: MEMBER_A, metadataURI: "ipfs://z", updated: false, blockNumber: 1, logIndex: 0, transactionHash: TX }],
         });
         g.applyEvents(batch);
         g.applyEvents(batch);

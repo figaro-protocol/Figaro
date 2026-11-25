@@ -801,7 +801,7 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <tr>
 <td><code>instantiateRootAgreement</code></td>
 <td><code>/agent</code></td>
-<td>Instantiate a hydrated assembly's ROOT agreement into the signable agreement; same inputs rebuild it identically.</td>
+<td>Instantiate a hydrated assembly's ROOT agreement (<code>rootAgreementOf</code>: the first entry that follows nothing) into the signable agreement; same inputs rebuild it identically. A design in which every entry names a parent is refused.</td>
 </tr>
 <tr>
 <td><code>isAddressHex</code></td>
@@ -906,7 +906,7 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <tr>
 <td><code>planSubOrderSellers</code></td>
 <td>root</td>
-<td>Topologically order an assembly's sub-orders and resolve each one's bound seller.</td>
+<td>Topologically order an assembly's sub-orders and resolve each one's bound seller. The root is <code>rootAgreementOf</code>'s: the first entry that follows nothing; a later entry that follows nothing is a sub-order. A design in which every entry names a parent is refused.</td>
 </tr>
 <tr>
 <td><code>parseAgreementRegistryLogs</code></td>

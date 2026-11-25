@@ -8,7 +8,7 @@
  * consumer performs on registry-fetched spec JSON. (The frontend's cache
  * adapter does exactly this against ClauseRegistry → IPFS.)
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -39,6 +39,7 @@ import {
 import * as sdk from "../src/index.js";
 import { withSpecDefaults } from "../src/projection.js";
 import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceOf, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
+import { writeHarvestedFixture } from "./harvest.js";
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
 const SELLER = "0x2546BcD3c84621e976D8185a91A922aE77ECEc30" as const;
@@ -276,7 +277,7 @@ describe("projection — golden-vector byte-exactness", () => {
                 processDesignHash: assembly.processDesignHash,
                 agreements: Object.fromEntries(Object.entries(built.agreements).map(([k, v]) => [k, canonicalize(v)])),
             };
-            writeFileSync(FIXTURE, JSON.stringify(current, null, 2) + "\n");
+            writeHarvestedFixture(FIXTURE, JSON.stringify(current, null, 2) + "\n");
         });
     }
     const vectors = JSON.parse(readFileSync(FIXTURE, "utf8")) as {
@@ -359,6 +360,8 @@ describe("publicForm — the public/private disposition seam", () => {
         clauseId,
         clauseKey: KEYS[clauseId],
         version: 1,
+        title: clauseId,
+        description: clauseId,
         fields: dispositions.map((d, i) => ({
             name: `f${i}`,
             required: false,
@@ -420,11 +423,11 @@ describe("publicForm — the public/private disposition seam", () => {
         const nestedKey = `0x${"a5".repeat(32)}` as const;
         const itemKey = `0x${"a6".repeat(32)}` as const;
         const nested: ProjectionSpecView = {
-            clauseId: "nested", clauseKey: nestedKey, version: 1,
+            clauseId: "nested", clauseKey: nestedKey, version: 1, title: "nested", description: "nested",
             fields: [{ name: "o", required: true, type: "object", fields: [{ name: "p", required: true, type: "object", fields: [secret] }] }],
         };
         const item: ProjectionSpecView = {
-            clauseId: "item", clauseKey: itemKey, version: 1,
+            clauseId: "item", clauseKey: itemKey, version: 1, title: "item", description: "item",
             fields: [{ name: "a", required: true, type: "array", items: { ...secret, name: "item" } }],
         };
         expect(specHasPrivateField(nested)).toBe(true);
@@ -452,7 +455,10 @@ describe("warnProcessLogFillsTrap — a clause that signs the empty anchor and d
         hints: ProjectionSpecView["hints"],
     ): ProjectionSpecView => ({
         clauseId,
+        clauseKey: `0x${"b1".repeat(32)}`,
         version: 1,
+        title: clauseId,
+        description: clauseId,
         fields: [{ name: "eventType", required: true, type: "string" as const }],
         ...(emptyAnchor && { emptyAnchor: true as const }),
         ...(hints !== undefined && { hints }),

@@ -78,6 +78,7 @@ export class ActionQueue<TApprovalContext = unknown> {
     /** Enqueue multiple actions at once. Returns their IDs. */
     enqueueAll(actions: ProposedAction[]): number[];
     enqueueAll(items: QueueEnqueueItem<TApprovalContext>[]): number[];
+    enqueueAll(entries: Array<ProposedAction | QueueEnqueueItem<TApprovalContext>>): number[];
     enqueueAll(
         entries: Array<ProposedAction | QueueEnqueueItem<TApprovalContext>>,
     ): number[] {

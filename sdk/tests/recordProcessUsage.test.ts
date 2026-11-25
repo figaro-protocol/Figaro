@@ -5,10 +5,13 @@
  * membership proof), and a key is sent once for each seller of the process.
  */
 import { describe, it, expect } from "vitest";
-import { encodePacked, keccak256, type Address, type Hex, type PublicClient, type WalletClient } from "viem";
+import { decodeFunctionData, encodeFunctionData, getAddress, encodePacked, keccak256, type Abi, type AbiFunction, type Address, type Hex, type PublicClient, type WalletClient } from "viem";
 import { recordProcessUsage } from "../src/agent/index.js";
-import { computeClauseKey } from "../src/discovery.js";
-import { PROVENANCE_LEAF_KEY, type Agreement } from "../src/agreement.js";
+import { USAGE_COUNTER_ABI } from "../src/abis.js";
+import {
+    PROVENANCE_LEAF_KEY, buildProvenanceInclusionProof, buildSignedClauseInclusionProof, computeCheckoutHash, hashClauseData,
+    verifyInclusionProof, type Agreement,
+} from "../src/agreement.js";
 import {
     PROCESS_LEAF_DOMAIN, PROCESS_TERMS_LEAF_KEY, buildAgreementInclusionProof, processDesignHashOf, type ProcessDesign } from "../src/assembly.js";
 import type { Commitment } from "../src/types.js";
@@ -25,15 +28,15 @@ const COMPOSITION = processDesignHashOf(ASSEMBLY);
 const SELLER = "0x0000000000000000000000000000000000005e11" as Address;
 const OTHER_SELLER = "0x0000000000000000000000000000000000005e12" as Address;
 
-function order(salt: bigint, seller: Address = SELLER): Commitment {
+function order(salt: bigint, seller: Address = SELLER, checkoutHash: Hex = `0x${"a".repeat(64)}`): Commitment {
     return {
         processId: `0x${"0".repeat(64)}` as Hex,
-        buyer: "0x0000000000000000000000000000000000000b0b" as Address,
+        buyer: getAddress("0x0000000000000000000000000000000000000b0b"),
         seller,
-        token: "0x00000000000000000000000000000000000007ed" as Address,
+        token: getAddress("0x00000000000000000000000000000000000007ed"),
         payment: 100n,
         runningTotal: 100n,
-        checkoutHash: `0x${"a".repeat(64)}` as Hex,
+        checkoutHash,
         salt,
         commitDeadline: 2n,
     };
@@ -51,7 +54,9 @@ function agreement(provenance: Agreement["provenance"] = { agreementHash: AGREEM
     };
 }
 
-interface Sent { functionName: string; key: Hex; args: readonly unknown[] }
+/** One write as the counter would receive it: decoded from the calldata the
+ *  production ABI encodes, each argument under its ABI name. */
+interface Sent { functionName: string; key: Hex; args: Record<string, unknown> }
 
 /** Stub clients: the counter answers its FigaroCore and its provenance leaf,
  *  and nothing else. */
@@ -71,10 +76,18 @@ function clients(opts: { failOn?: Hex } = {}) {
     const walletClient = {
         account: { address: "0x0000000000000000000000000000000000000b0b" as Address },
         chain: null,
-        writeContract: async ({ functionName, args }: { functionName: string; args: readonly unknown[] }) => {
-            const key = args[1] as Hex;
-            if (opts.failOn && key.toLowerCase() === opts.failOn.toLowerCase()) throw new Error("SellerNotStaked");
-            sent.push({ functionName, key, args });
+        writeContract: async (req: { address: Address; abi: typeof USAGE_COUNTER_ABI; functionName: string; args: readonly unknown[] }) => {
+            if (req.address !== COUNTER) throw new Error(`write to ${req.address}, not the counter`);
+            // Encode with the counter's ABI as a node would: an argument the
+            // function's ABI refuses throws here.
+            const data = encodeFunctionData({ abi: req.abi, functionName: req.functionName, args: req.args } as never);
+            const decoded = decodeFunctionData({ abi: USAGE_COUNTER_ABI, data });
+            const fn = (USAGE_COUNTER_ABI as Abi).find((i): i is AbiFunction => i.type === "function" && i.name === decoded.functionName)!;
+            const args = Object.fromEntries(fn.inputs.map((input, i) => [input.name!, (decoded.args ?? [])[i]]));
+            const key = (args.clauseOrProcess ?? args.agreementHash ?? args.processDesignHash) as Hex;
+            const legKey = decoded.functionName === "recordProcessDesignUsage" ? (args.processDesignHash as Hex) : key;
+            if (opts.failOn && legKey.toLowerCase() === opts.failOn.toLowerCase()) throw new Error("SellerNotStaked");
+            sent.push({ functionName: decoded.functionName, key: legKey, args });
             return `0x${"1".repeat(64)}` as Hex;
         },
     } as unknown as WalletClient;
@@ -84,21 +97,47 @@ function clients(opts: { failOn?: Hex } = {}) {
 describe("recordProcessUsage", () => {
     it("sends every clause's leg, and the agreement and assembly legs from the agreement's provenance leaf", async () => {
         const { publicClient, walletClient, sent } = clients();
-        const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [{ commitment: order(1n), agreement: agreement(), assembly: ASSEMBLY }]);
+        const signed = agreement();
+        const root = computeCheckoutHash(signed);
+        const committed = order(1n, SELLER, root);
+        const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [{ commitment: committed, agreement: signed, assembly: ASSEMBLY }]);
 
-        expect(sent.filter((s) => s.functionName === "recordClauseUsage").map((s) => s.key.toLowerCase()).sort())
-            .toEqual([COMMERCE.toLowerCase(), MODALITIES.toLowerCase()].sort());
+        // Every argument of every leg, by its ABI name.
+        const clauseLegs = sent.filter((s) => s.functionName === "recordClauseUsage");
+        expect(clauseLegs.map((s) => s.key.toLowerCase()).sort()).toEqual([COMMERCE.toLowerCase(), MODALITIES.toLowerCase()].sort());
+        for (const leg of clauseLegs) {
+            const entry = signed.clauses.find((c) => c.clause.toLowerCase() === leg.key.toLowerCase())!;
+            const { leaf, proof } = buildSignedClauseInclusionProof(signed, entry.clause);
+            expect(Object.keys(leg.args)).toEqual(["order", "clauseOrProcess", "clauseDataHash", "proof"]);
+            expect(leg.args.order).toEqual(committed);
+            expect(leg.args.clauseDataHash).toBe(hashClauseData(entry));
+            expect(leg.args.proof).toEqual(proof);
+            // The proof the leg sends opens the clause's leaf against the signed root.
+            expect(verifyInclusionProof(root, leaf, leg.args.proof as Hex[])).toBe(true);
+        }
         expect(sent.some((s) => s.key.toLowerCase() === PROVENANCE_LEAF_KEY.toLowerCase()), "the reserved leaf key is never a clause leg").toBe(false);
+
+        const provenance = buildProvenanceInclusionProof(signed);
+        expect(verifyInclusionProof(root, provenance.leaf, provenance.proof)).toBe(true);
         const assembly = sent.filter((s) => s.functionName === "recordProcessDesignUsage");
         expect(assembly.map((s) => s.key)).toEqual([COMPOSITION]);
         const membership = buildAgreementInclusionProof(ASSEMBLY, 0);
-        // (order, processDesignHash, agreementHash, agreementContentHash, leafProof, membershipProof)
-        expect(assembly[0].args[2]).toBe(AGREEMENT_HASH);
-        expect(assembly[0].args[3]).toBe(membership.agreementContentHash);
-        expect(assembly[0].args[5]).toEqual(membership.proof);
+        expect(assembly[0].args).toEqual({
+            order: committed,
+            processDesignHash: COMPOSITION,
+            agreementHash: AGREEMENT_HASH,
+            agreementContentHash: membership.agreementContentHash,
+            leafProof: provenance.proof,
+            membershipProof: membership.proof,
+        });
         const agreementLeg = sent.filter((s) => s.functionName === "recordAgreementUsage");
         expect(agreementLeg.map((s) => s.key)).toEqual([AGREEMENT_HASH]);
-        expect(agreementLeg[0].args[2]).toBe(COMPOSITION);
+        expect(agreementLeg[0].args).toEqual({
+            order: committed,
+            agreementHash: AGREEMENT_HASH,
+            processDesignHash: COMPOSITION,
+            proof: provenance.proof,
+        });
         expect(report).toEqual({ attempted: 2, recorded: 2, assemblyRecorded: true, agreementRecorded: true, failures: [] });
     });
 
@@ -123,7 +162,7 @@ describe("recordProcessUsage", () => {
         ]);
 
         expect(sent).toHaveLength(4);
-        expect(sent.every((s) => (s.args[0] as Commitment).salt === 1n), "every leg goes through the seller's first order").toBe(true);
+        expect(sent.every((s) => (s.args.order as Commitment).salt === 1n), "every leg goes through the seller's first order").toBe(true);
         expect(report.attempted).toBe(2);
         expect(report.recorded).toBe(2);
         expect(report.assemblyRecorded).toBe(true);
@@ -138,7 +177,7 @@ describe("recordProcessUsage", () => {
 
         expect(sent).toHaveLength(8);
         for (const functionName of ["recordClauseUsage", "recordAgreementUsage", "recordProcessDesignUsage"]) {
-            const sellers = sent.filter((s) => s.functionName === functionName).map((s) => (s.args[0] as Commitment).seller);
+            const sellers = sent.filter((s) => s.functionName === functionName).map((s) => (s.args.order as Commitment).seller);
             expect(new Set(sellers), functionName).toEqual(new Set([SELLER, OTHER_SELLER]));
         }
         expect(sent.filter((s) => s.functionName === "recordProcessDesignUsage")).toHaveLength(2);

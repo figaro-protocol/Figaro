@@ -13,12 +13,12 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import Ajv2020 from "ajv/dist/2020";
-import { composeAuthoredAgreement, composeAuthoredProcessDesign } from "../../src/projection";
-import { agreementHashOf, processDesignHashOf, type RegisteredAgreement } from "../../src/assembly";
-import { specSourceFromFixtures } from "../specFixtures";
-import agreementSchema from "../../src/agreement.schema.json";
-import assemblySchema from "../../src/assembly.schema.json";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import { composeAuthoredAgreement, composeAuthoredProcessDesign } from "../../src/projection.js";
+import { agreementHashOf, processDesignHashOf, type RegisteredAgreement } from "../../src/assembly.js";
+import { specSourceFromFixtures } from "../specFixtures.js";
+import agreementSchema from "../../src/agreement.schema.json" with { type: "json" };
+import assemblySchema from "../../src/assembly.schema.json" with { type: "json" };
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 const validAgreement = ajv.compile(agreementSchema);

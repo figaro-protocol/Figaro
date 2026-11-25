@@ -27,6 +27,9 @@
  * (`topology`: the edges, the committed bytes and the leaf) is frozen for a
  * reader rebuilding the root; neither on-chain consumer rebuilds it, since
  * its shape is no clause leaf's and nothing attests or counts it.
+ * `topologyVectors` holds a topology leaf on its own: `one-edge`, the leaf of
+ * an order that follows `keccak256("an order this order follows")`, the
+ * edge `TopologyLeafNeverOpensTest.t.sol` builds its tree over.
  *
  *   1. Regenerate the fixture on `HARVEST_MERKLE_VECTORS=1`.
  *   2. On `AGREEMENT_FUZZ_SEED=<n>`, write GENERATED agreements in the
@@ -53,6 +56,8 @@ import {
 import { agreementArb } from "./propertyArbs.js";
 import { agreementHashOf, processDesignHashOf } from "../src/assembly.js";
 import { ASSEMBLY_THREE, REGISTERED_DESIGN, K } from "./assemblyVectors.js";
+import { writeHarvestedFixture } from "./harvest.js";
+import { keccak256, toBytes, type Hex } from "viem";
 
 const FUZZ_PATH = path.resolve(__dirname, "../../test/fixtures/streams/agreements.json");
 const FIXTURE_PATH = path.resolve(__dirname, "../../test/fixtures/merkle-vectors.json");
@@ -128,10 +133,28 @@ function vectorFor(label: string, agreement: Agreement) {
     };
 }
 
+/** A topology leaf on its own: the edges, the committed bytes and the leaf
+ *  (`computeTopologyLeaf`). */
+function topologyVectorFor(label: string, follows: readonly Hex[]) {
+    return {
+        label,
+        follows,
+        clauseData: Buffer.from(topologyLeafBytes(follows).slice(2), "hex").toString("utf8"),
+        leaf: computeTopologyLeaf(follows),
+    };
+}
+
+/** The one edge `TopologyLeafNeverOpensTest.t.sol` builds its tree over:
+ *  `keccak256("an order this order follows")`. */
+const ONE_EDGE_FOLLOWED = keccak256(toBytes("an order this order follows"));
+
 function build() {
     return {
         agreementCount: 3,
         agreements: [vectorFor("three-clauses", THREE), vectorFor("one-clause", ONE), vectorFor("one-clause-a-topology-and-a-design", WITH_DESIGN)],
+        // The topology leaf of an order that follows one order: a reader of
+        // the fixture rebuilds it from `follows` and `clauseData`.
+        topologyVectors: [topologyVectorFor("one-edge", [ONE_EDGE_FOLLOWED])],
     };
 }
 
@@ -161,11 +184,19 @@ describe("Merkle parity vectors — the three-way lock", () => {
 
     if (process.env.HARVEST_MERKLE_VECTORS === "1") {
         it("regenerates test/fixtures/merkle-vectors.json", () => {
-            mkdirSync(path.dirname(FIXTURE_PATH), { recursive: true });
-            writeFileSync(FIXTURE_PATH, `${JSON.stringify(build(), null, 4)}\n`);
+            writeHarvestedFixture(FIXTURE_PATH, `${JSON.stringify(build(), null, 4)}\n`);
         });
         return;
     }
+
+    it("the one-edge topology leaf is the one TopologyLeafNeverOpensTest.t.sol hard-codes", () => {
+        const sol = readFileSync(path.resolve(__dirname, "../../test/core/attestation/TopologyLeafNeverOpensTest.t.sol"), "utf8");
+        const pinned = /SDK_ONE_EDGE_TOPOLOGY_LEAF\s*=\s*(0x[0-9a-fA-F]{64})/.exec(sol)?.[1];
+        expect(pinned, "the Foundry test pins the one-edge leaf").toBeDefined();
+        expect(computeTopologyLeaf([ONE_EDGE_FOLLOWED])).toBe(pinned);
+        const frozen = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as { topologyVectors: { label: string; leaf: Hex }[] };
+        expect(frozen.topologyVectors.find((v) => v.label === "one-edge")?.leaf).toBe(pinned);
+    });
 
     it("the SDK reproduces the frozen fixture byte-for-byte", () => {
         expect(existsSync(FIXTURE_PATH), "fixture missing — harvest with HARVEST_MERKLE_VECTORS=1").toBe(true);

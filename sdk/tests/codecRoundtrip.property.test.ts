@@ -46,7 +46,7 @@ const fundingLegArb = fc.record({
 const quoteRequestArb = fc.record({
     pricedFields: fc.array(
         fc.record({
-            clause: fc.string({ minLength: 1, maxLength: 24 }),
+            clause: hexOf(32),
             path: fc.string({ minLength: 1, maxLength: 24 }),
         }),
         { maxLength: 3 },

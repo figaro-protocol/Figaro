@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { generateSalt } from "../src/commitments";
+import { generateSalt } from "../src/commitments.js";
 
 describe("generateSalt", () => {
     afterEach(() => {

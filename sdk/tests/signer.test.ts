@@ -738,6 +738,147 @@ describe("daemon signs transactions under the fee bound", () => {
     });
 });
 
+// ── The daemon's own simulation veto, against a node ────────────────────────
+//
+// Every other daemon test injects `simulate`. These run the daemon's real
+// simulation — viem's `eth_call`, then `eth_createAccessList` and
+// `eth_simulateV1` with asset tracing — against an HTTP JSON-RPC node double
+// that answers those methods as a node does. The daemon refuses a transaction
+// whose `eth_call` reverts, and one whose traced denomination balance falls by
+// more than the policy's `perAction` ceiling (`evaluateSimulation`).
+
+/** How the node double's chain answers the one transaction under test. */
+interface NodeScenario {
+    /** `eth_call` reverts with this reason. */
+    revert?: string;
+    /** The wallet's denomination balance before and after the transaction;
+     *  absent, the node serves no `eth_simulateV1` (tracing unsupported). */
+    tokenBalance?: { pre: bigint; post: bigint };
+}
+
+const word = (n: bigint) => `0x${n.toString(16).padStart(64, "0")}`;
+
+/** A JSON-RPC node over HTTP on 127.0.0.1, answering what the daemon's
+ *  simulation sends. Returns the URL and the methods it was asked. */
+async function nodeDouble(scenario: NodeScenario): Promise<{ url: string; methods: string[]; close: () => Promise<void> }> {
+    const http = await import("node:http");
+    const methods: string[] = [];
+    const answer = (method: string, params: unknown[]): { result?: unknown; error?: { code: number; message: string; data?: string } } => {
+        methods.push(method);
+        switch (method) {
+            case "eth_chainId": return { result: "0xaa36a7" };
+            case "eth_call":
+                if (scenario.revert !== undefined) {
+                    // A node's revert: code 3, the reason ABI-encoded as Error(string).
+                    const reason = Buffer.from(scenario.revert, "utf8").toString("hex");
+                    const data = `0x08c379a0${word(32n).slice(2)}${word(BigInt(scenario.revert.length)).slice(2)}${reason.padEnd(64, "0")}`;
+                    return { error: { code: 3, message: `execution reverted: ${scenario.revert}`, data } };
+                }
+                return { result: "0x" };
+            case "eth_createAccessList":
+                // The transaction touches the denomination token's storage.
+                return { result: { accessList: [{ address: TOKEN.toLowerCase(), storageKeys: [word(1n)] }], gasUsed: "0x5208" } };
+            case "eth_simulateV1": {
+                if (scenario.tokenBalance === undefined) return { error: { code: -32601, message: "the method eth_simulateV1 does not exist" } };
+                const { blockStateCalls } = params[0] as { blockStateCalls: { calls: unknown[] }[] };
+                const ok = (returnData: string) => ({ status: "0x1", returnData, gasUsed: "0x5208", logs: [] });
+                const { pre, post } = scenario.tokenBalance;
+                // The eight blocks viem asks for: ETH before, the token before,
+                // the calls, ETH after, the token after, decimals, tokenURI, symbol.
+                const answers: ((i: number) => object)[] = [
+                    () => ok(word(10n ** 18n)),
+                    () => ok(word(pre)),
+                    () => ok("0x"),
+                    () => ok(word(10n ** 18n)),
+                    () => ok(word(post)),
+                    () => ok(word(6n)),
+                    () => ({ status: "0x0", returnData: "0x", gasUsed: "0x5208", logs: [], error: { code: 3, message: "execution reverted" } }),
+                    () => ok(`${word(32n)}${word(4n).slice(2)}${Buffer.from("TOKN").toString("hex").padEnd(64, "0")}`),
+                ];
+                return {
+                    result: blockStateCalls.map((b, i) => ({
+                        number: word(BigInt(i + 2)), hash: word(BigInt(i + 100)), parentHash: word(BigInt(i + 99)),
+                        timestamp: "0x6553f100", gasLimit: "0x1c9c380", gasUsed: "0x5208", baseFeePerGas: "0x1",
+                        miner: `0x${"00".repeat(20)}`, transactions: [],
+                        calls: b.calls.map(() => answers[i]!(i)),
+                    })),
+                };
+            }
+            default: return { error: { code: -32601, message: `unexpected ${method}` } };
+        }
+    };
+    const server = http.createServer((req, res) => {
+        let body = "";
+        req.on("data", (c) => { body += c; });
+        req.on("end", () => {
+            const parsed = JSON.parse(body) as { id: number; method: string; params?: unknown[] } | { id: number; method: string; params?: unknown[] }[];
+            const one = (r: { id: number; method: string; params?: unknown[] }) => ({ jsonrpc: "2.0", id: r.id, ...answer(r.method, r.params ?? []) });
+            res.setHeader("content-type", "application/json");
+            res.end(JSON.stringify(Array.isArray(parsed) ? parsed.map(one) : one(parsed)));
+        });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address() as { port: number };
+    return { url: `http://127.0.0.1:${port}`, methods, close: () => new Promise((resolve) => server.close(() => resolve())) };
+}
+
+describe("daemon simulation veto — the daemon's own simulation against a node", () => {
+    /** Ask the daemon, with no injected simulation, to sign one commit transaction. */
+    async function signUnder(scenario: NodeScenario) {
+        const node = await nodeDouble(scenario);
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "signer-sim-"));
+        const socketPath = path.join(dir, "signer.sock");
+        const d = createSignerDaemon({
+            policy: policy({ ceilings: NATIVE, egress: [node.url], rpcUrl: node.url }),
+            privateKey: KEY, socketPath,
+            auditPath: path.join(dir, "audit.jsonl"),
+            journalPath: path.join(dir, "window.jsonl"),
+        });
+        await d.listen();
+        try {
+            const account = socketSignerAccount({ socketPath, address: WALLET });
+            const outcome = await account.signTransaction({
+                to: CORE, data: `${COMMIT_SELECTOR}00` as Hex, value: 0n,
+                gas: 100_000n, maxFeePerGas: 10n, maxPriorityFeePerGas: 1n,
+                nonce: 0, chainId: 11155111, type: "eip1559",
+            }).then((signed) => ({ signed }), (error: Error) => ({ refused: error.message }));
+            return { outcome, methods: node.methods };
+        } finally {
+            await d.close();
+            await node.close();
+        }
+    }
+
+    it("refuses a transaction whose eth_call reverts, with the node's reason", async () => {
+        const { outcome, methods } = await signUnder({ revert: "SellerNotStaked" });
+        expect(outcome).toEqual({ refused: expect.stringMatching(/simulation reverted: .*SellerNotStaked/) });
+        expect(methods).toContain("eth_call");
+    });
+
+    it("refuses a transaction whose traced outflow of the denomination passes the perAction ceiling", async () => {
+        // perAction is 2,000,000; the balance falls by 3,000,000.
+        const { outcome, methods } = await signUnder({ tokenBalance: { pre: 10_000_000n, post: 7_000_000n } });
+        expect(outcome).toEqual({ refused: expect.stringMatching(/simulated token outflow 3000000 exceeds perAction ceiling 2000000/) });
+        expect(methods).toEqual(expect.arrayContaining(["eth_call", "eth_createAccessList", "eth_simulateV1"]));
+    });
+
+    it("signs a transaction whose traced outflow stays within perAction", async () => {
+        const { outcome } = await signUnder({ tokenBalance: { pre: 10_000_000n, post: 8_000_000n } });
+        expect(outcome).toEqual({ signed: expect.stringMatching(/^0x02/) });
+    });
+
+    it("signs a clean call whose balance does not move", async () => {
+        const { outcome } = await signUnder({ tokenBalance: { pre: 10_000_000n, post: 10_000_000n } });
+        expect(outcome).toEqual({ signed: expect.stringMatching(/^0x02/) });
+    });
+
+    it("signs on a node that serves no eth_simulateV1: the eth_call is the bound that always runs", async () => {
+        const { outcome, methods } = await signUnder({});
+        expect(outcome).toEqual({ signed: expect.stringMatching(/^0x02/) });
+        expect(methods).toContain("eth_simulateV1");
+    });
+});
+
 // ── The signer's directory ──────────────────────────────────────────────────
 
 describe("the signer's directory", () => {

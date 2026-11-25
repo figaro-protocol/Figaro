@@ -9,6 +9,8 @@
  * by the Foundry mainnet-fork suite; this test pins the TS builder to the
  * same convention. The envelope test covers the funding leg's wire format.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
     encodeAbiParameters,
@@ -20,6 +22,7 @@ import {
 } from "viem";
 import {
     DISABLED_SWAP_FUNDING_LEG,
+    SWAP_WITNESS_PERMIT_TYPES,
     buildSwapWitnessTypedData,
     type SwapFundingLeg,
 } from "../src/swapFunding.js";
@@ -31,6 +34,42 @@ import {
 import type { Commitment } from "../src/types.js";
 
 const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3" as const;
+
+/** A string constant of a Solidity source, read from the file itself: the
+ *  first string literal after `<name> =`, so every type string below is the
+ *  contract's, never a copy typed into this test. */
+function solidityString(relative: string, name: string): string {
+    const source = readFileSync(path.resolve(__dirname, "../..", relative), "utf8");
+    const match = new RegExp(`\\b${name}\\s*=\\s*(?:keccak256\\(\\s*)?"([^"]*)"`).exec(source);
+    if (!match) throw new Error(`${relative}: no string constant ${name}`);
+    return match[1]!;
+}
+const COORDINATOR_SOL = "src/composability/WitnessSwapAndCommitCoordinator.sol";
+/** The coordinator's `SwapWitness` type, as it hashes it. */
+const SWAP_WITNESS_TYPE = solidityString(COORDINATOR_SOL, "SWAP_WITNESS_TYPEHASH");
+/** The witness type string the coordinator hands Permit2. */
+const WITNESS_TYPE_STRING = solidityString(COORDINATOR_SOL, "WITNESS_TYPE_STRING");
+/** Permit2's own stub and TokenPermissions type, as the repository's Permit2 stand-in hashes them. */
+const PERMIT_WITNESS_STUB = solidityString("src/mocks/MockWitnessPermit2.sol", "PERMIT_WITNESS_STUB");
+const TOKEN_PERMISSIONS_TYPE = solidityString("src/mocks/MockWitnessPermit2.sol", "TOKEN_PERMISSIONS_TYPEHASH");
+/** FigaroCore's commitment type. */
+const COMMITMENT_TYPE = solidityString("src/core/kernel/CommitmentTypes.sol", "COMMITMENT_TYPEHASH");
+
+/** The EIP-712 `encodeType` of `primary` under `types`: the primary type,
+ *  then each type it references, sorted by name (EIP-712 § "Definition of
+ *  encodeType"). */
+function encodeType(types: Record<string, readonly { name: string; type: string }[]>, primary: string): string {
+    const deps = new Set<string>();
+    const walk = (t: string) => {
+        for (const f of types[t] ?? []) {
+            const base = f.type.replace(/\[\d*\]$/, "");
+            if (types[base] && base !== primary && !deps.has(base)) { deps.add(base); walk(base); }
+        }
+    };
+    walk(primary);
+    const one = (t: string) => `${t}(${types[t]!.map((f) => `${f.type} ${f.name}`).join(",")})`;
+    return [primary, ...[...deps].sort()].map(one).join("");
+}
 const COORDINATOR = "0x1111111111111111111111111111111111111111" as const;
 const ROUTER = "0x2222222222222222222222222222222222222222" as const;
 const INPUT_TOKEN = "0x3333333333333333333333333333333333333333" as const;
@@ -67,7 +106,7 @@ const ARGS = {
 function permit2WitnessDigest(): `0x${string}` {
     // The coordinator's SwapWitness struct hash.
     const swapWitnessTypehash = keccak256(
-        toHex("SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash,bytes32 commitmentHash,uint8 role)"),
+        toHex(SWAP_WITNESS_TYPE),
     );
     // The commitment's EIP-712 struct hash, built by hand from the Solidity
     // type string, and the buyer's role (0).
@@ -75,7 +114,7 @@ function permit2WitnessDigest(): `0x${string}` {
         encodeAbiParameters(
             parseAbiParameters("bytes32, bytes32, address, address, address, uint256, uint256, bytes32, uint256, uint256"),
             [
-                keccak256(toHex("Commitment(bytes32 processId,address buyer,address seller,address token,uint256 payment,uint256 runningTotal,bytes32 checkoutHash,uint256 salt,uint256 commitDeadline)")),
+                keccak256(toHex(COMMITMENT_TYPE)),
                 COMMITMENT.processId, COMMITMENT.buyer, COMMITMENT.seller, COMMITMENT.token,
                 COMMITMENT.payment, COMMITMENT.runningTotal, COMMITMENT.checkoutHash,
                 COMMITMENT.salt, COMMITMENT.commitDeadline,
@@ -96,14 +135,11 @@ function permit2WitnessDigest(): `0x${string}` {
 
     // Permit2's PermitWitnessTransferFrom typehash: stub + caller type string.
     const typeHash = keccak256(
-        toHex(
-            "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline," +
-            "SwapWitness witness)SwapWitness(address router,address inputToken,uint256 maxInput,bytes32 swapDataHash,bytes32 commitmentHash,uint8 role)TokenPermissions(address token,uint256 amount)",
-        ),
+        toHex(PERMIT_WITNESS_STUB + WITNESS_TYPE_STRING),
     );
     const tokenPermissionsHash = keccak256(
         encodeAbiParameters(parseAbiParameters("bytes32, address, uint256"), [
-            keccak256(toHex("TokenPermissions(address token,uint256 amount)")),
+            keccak256(toHex(TOKEN_PERMISSIONS_TYPE)),
             INPUT_TOKEN,
             ARGS.maxInput,
         ]),
@@ -130,6 +166,14 @@ function permit2WitnessDigest(): `0x${string}` {
     );
     return keccak256(encodePacked(["string", "bytes32", "bytes32"], ["\x19\x01", domainSeparator, structHash]));
 }
+
+describe("SWAP_WITNESS_PERMIT_TYPES — the contracts' type strings", () => {
+    it("encodes to Permit2's stub followed by the coordinator's witness type string, and to the coordinator's SwapWitness", () => {
+        expect(encodeType(SWAP_WITNESS_PERMIT_TYPES, "PermitWitnessTransferFrom")).toBe(PERMIT_WITNESS_STUB + WITNESS_TYPE_STRING);
+        expect(encodeType(SWAP_WITNESS_PERMIT_TYPES, "SwapWitness")).toBe(SWAP_WITNESS_TYPE);
+        expect(encodeType(SWAP_WITNESS_PERMIT_TYPES, "TokenPermissions")).toBe(TOKEN_PERMISSIONS_TYPE);
+    });
+});
 
 describe("buildSwapWitnessTypedData — digest parity with Permit2's on-chain hashing", () => {
     it("hashTypedData equals the independently reconstructed Permit2 witness digest", () => {

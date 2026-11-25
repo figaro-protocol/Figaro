@@ -8,13 +8,13 @@ const OH1 = "0x0000000000000000000000000000000000000000000000000000000000000010"
 const BUYER = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
 const SELLER = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
 
-function mkAction(type: string = "resolve-process"): ProposedAction {
-    return {
+function mkAction(): ProposedAction {
+    const action: ResolveProcessAction = {
         type: "resolve-process",
         description: "Resolve test process",
         processId: PID,
         caller: BUYER,
-        orderHashes: [OH1],
+        commitments: [],
         settlements: [{
             orderHash: OH1,
             seller: SELLER,
@@ -22,7 +22,8 @@ function mkAction(type: string = "resolve-process"): ProposedAction {
         }],
         totalBuyerPayout: 100n,
         totalSellerPayout: 300n,
-    } as ResolveProcessAction;
+    };
+    return action;
 }
 
 describe("ActionQueue", () => {

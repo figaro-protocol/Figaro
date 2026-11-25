@@ -21,7 +21,7 @@
  *      EIP-712 encoding changed and the fixture must be re-harvested (and the
  *      Foundry side re-checked) deliberately.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -31,9 +31,12 @@ import {
     type Commitment,
 } from "../src/index.js";
 import { RESOLVE_PROCESS_TYPES, hashResolveProcess } from "../src/commitments.js";
+import { ATTEST_BUYER_TYPES, ATTEST_SELLER_TYPES } from "../src/agent/sequencer.js";
 import { keccak256, encodeAbiParameters, hashStruct, hashTypedData, toBytes, type Hex } from "viem";
+import { writeHarvestedFixture } from "./harvest.js";
 
 const FIXTURE_PATH = path.resolve(__dirname, "../../test/fixtures/eip712-vectors.json");
+const VERIFIER_SOURCE = path.resolve(__dirname, "../../src/core/verifier/FigaroBatchVerifier.sol");
 
 const CHAIN_ID = 31337;
 // Foundry's deterministic deployer for FigaroCore in the parity tests — the
@@ -118,24 +121,12 @@ function vectorFor(label: string, c: Commitment) {
 // `prover/lib/tests/eip712_vectors.rs` asserts the guest's.
 const BATCH_VERIFIER = "0xF62849F9A0B5Bf2913b396098F7c7019b51A820a" as const;
 
-const ATTEST_SELLER_TYPES = {
-    AttestSeller: [
-        { name: "orderHash", type: "bytes32" },
-        { name: "clauseId", type: "bytes32" },
-        { name: "stage", type: "uint8" },
-        { name: "contentRef", type: "bytes32" },
-    ],
-} as const;
-
-const ATTEST_BUYER_TYPES = {
-    AttestBuyer: [
-        { name: "processId", type: "bytes32" },
-        { name: "orderHash", type: "bytes32" },
-        { name: "clauseId", type: "bytes32" },
-        { name: "stage", type: "uint8" },
-        { name: "contentRef", type: "bytes32" },
-    ],
-} as const;
+// The three types are the SDK's own (`RESOLVE_PROCESS_TYPES`,
+// `ATTEST_SELLER_TYPES`, `ATTEST_BUYER_TYPES`): the fixture's struct hashes are
+// computed from them, so a drift of any of the SDK's constants changes the
+// harvested bytes and fails the byte-for-byte test below, and the test
+// "the SDK's batch types are the verifier's" holds them to the contract's
+// type strings.
 
 function batchVectors() {
     const domain = {
@@ -197,8 +188,7 @@ function build() {
 describe("EIP-712 parity vectors — the cross-language lock", () => {
     if (process.env.HARVEST_EIP712_VECTORS === "1") {
         it("regenerates test/fixtures/eip712-vectors.json", () => {
-            mkdirSync(path.dirname(FIXTURE_PATH), { recursive: true });
-            writeFileSync(FIXTURE_PATH, `${JSON.stringify(build(), null, 4)}\n`);
+            writeHarvestedFixture(FIXTURE_PATH, `${JSON.stringify(build(), null, 4)}\n`);
         });
         return;
     }
@@ -219,6 +209,30 @@ describe("EIP-712 parity vectors — the cross-language lock", () => {
                 core: frozen.batch.verifyingContract,
             }),
         ).toBe(v!.digest);
+    });
+
+    it("the SDK's batch types are the verifier's and the fixture's, field by field and in order", () => {
+        const frozen = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as {
+            batch: { authorizations: { type: string; message: Record<string, unknown>; structHash: Hex }[] };
+        };
+        const verifier = readFileSync(VERIFIER_SOURCE, "utf8");
+        const sdkTypes: Record<string, readonly { name: string; type: string }[]> = {
+            ResolveProcess: RESOLVE_PROCESS_TYPES.ResolveProcess,
+            AttestSeller: ATTEST_SELLER_TYPES.AttestSeller,
+            AttestBuyer: ATTEST_BUYER_TYPES.AttestBuyer,
+        };
+        for (const [primaryType, fields] of Object.entries(sdkTypes)) {
+            // The EIP-712 encodeType of the SDK's constant, written out: the
+            // verifier hashes this exact string into its typehash.
+            const typeString = `${primaryType}(${fields.map((f) => `${f.type} ${f.name}`).join(",")})`;
+            expect(verifier, `${primaryType}: the verifier's typehash string`).toContain(`keccak256("${typeString}")`);
+            const vectors = frozen.batch.authorizations.filter((v) => v.type === primaryType);
+            expect(vectors.length, `${primaryType}: the fixture carries its vectors`).toBeGreaterThan(0);
+            for (const v of vectors) {
+                // The fixture's message names the struct's fields in the order the type declares them.
+                expect(Object.keys(v.message), primaryType).toEqual(fields.map((f) => f.name));
+            }
+        }
     });
 
     it("the SDK reproduces the frozen fixture byte-for-byte", () => {
