@@ -659,6 +659,80 @@ contract OperationStreamVectorsTest is Test {
         vm.expectRevert(FigaroBatchVerifier.VerifierNotPinned.selector);
         new FigaroBatchVerifier(address(token), VKEY, address(counter));
     }
+
+    function test_aVerifierWhoseCircuitHashIsZeroIsRefused() public {
+        // It answers VERIFIER_HASH(), so the call succeeds; the zero names no circuit.
+        address zeroHash = address(new ZeroHashVerifier());
+        vm.expectRevert(FigaroBatchVerifier.VerifierNotPinned.selector);
+        new FigaroBatchVerifier(zeroHash, VKEY, address(counter));
+    }
+
+    /// @dev One usage claim of kind 1 (a process design), whole: the order, the
+    ///      key, the kind byte, the agreement's two words with a proof of two
+    ///      words, then the claim's own proof of one word. `tag` and `kind`
+    ///      are the two bytes the walk branches on.
+    function _claimOfKindOneShape(uint8 tag, uint8 kind) internal pure returns (bytes memory) {
+        uint256 h = uint256(keccak256("one-claim"));
+        return bytes.concat(
+            abi.encodePacked(
+                tag,
+                _packCommitment(_drawCommitment(h, address(uint160(h >> 96)))),
+                keccak256(abi.encode(h, "key")),
+                kind,
+                keccak256(abi.encode(h, "first")),
+                keccak256(abi.encode(h, "agreement"))
+            ),
+            _packWords(h, 2),
+            _packWords(h >> 1, 1)
+        );
+    }
+
+    function _lands(bytes memory stream) internal returns (bool ok, bytes4 reason) {
+        bytes memory ret;
+        (ok, ret) = address(verifier).call(_settleCalldata(verifier.stateRoot(), keccak256("one-claim-root"), stream));
+        reason = bytes4(ret);
+    }
+
+    /// An entry whose bytes are a whole usage claim lands under the claim's
+    /// tag, and is refused by name under a tag the format does not define:
+    /// the walk's last branch is the claim's alone, never a catch-all.
+    function test_aWholeUsageClaimUnderAnUnknownTagIsRefused() public {
+        uint256 snapshot = vm.snapshotState();
+        (bool ok,) = _lands(_claimOfKindOneShape(0x03, 1));
+        assertTrue(ok, "the claim lands under its own tag");
+        vm.revertToState(snapshot);
+
+        for (uint256 tag = 6; tag < 256; tag += 83) {
+            (bool landed, bytes4 reason) = _lands(_claimOfKindOneShape(uint8(tag), 1));
+            assertFalse(landed, "an unknown tag never lands");
+            assertEq(reason, FigaroBatchVerifier.MalformedOperationStream.selector, "refused as malformed");
+        }
+        (bool zeroTag, bytes4 zeroReason) = _lands(_claimOfKindOneShape(0x00, 1));
+        assertFalse(zeroTag, "the zero tag never lands");
+        assertEq(zeroReason, FigaroBatchVerifier.MalformedOperationStream.selector, "refused as malformed");
+    }
+
+    /// A claim laid out as kind 1 lands under kind 1, and is refused by name
+    /// under a kind byte beyond the three, whatever follows it.
+    function test_aUsageClaimOfAKindBeyondTheThreeIsRefused() public {
+        uint256 snapshot = vm.snapshotState();
+        (bool ok,) = _lands(_claimOfKindOneShape(0x03, 1));
+        assertTrue(ok, "the claim lands under kind 1");
+        vm.revertToState(snapshot);
+
+        for (uint256 kind = 3; kind < 256; kind += 84) {
+            (bool landed, bytes4 reason) = _lands(_claimOfKindOneShape(0x03, uint8(kind)));
+            assertFalse(landed, "a kind beyond the three never lands");
+            assertEq(reason, FigaroBatchVerifier.MalformedOperationStream.selector, "refused as malformed");
+        }
+    }
+}
+
+/// @dev A contract that answers `VERIFIER_HASH()` with zero: it names no circuit.
+contract ZeroHashVerifier {
+    function VERIFIER_HASH() external pure returns (bytes32) {
+        return bytes32(0);
+    }
 }
 
 /// @dev Any contract that forwards a call: a multisig, a 7702-delegated
