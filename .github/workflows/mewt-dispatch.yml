@@ -31,7 +31,8 @@ name: Solidity Mutation (dispatch)
 # at once.
 #
 # A job fails when a mutant went uncaught or timed out, or when the
-# unmutated suite failed. Its summary lists each uncaught mutant; the
+# unmutated suite failed. The verdict is mewt's own count of outcomes. The
+# summary lists each uncaught mutant; the
 # artifact holds mewt's database and its results as JSON.
 
 on:
@@ -139,8 +140,6 @@ jobs:
                   mewt status --db "$out/mewt.sqlite" > "$out/status.txt" 2>&1 || true
                   mewt results --db "$out/mewt.sqlite" --target "$CONTRACT" --all --format json > "$out/all.json" 2>/dev/null || true
                   mewt results --db "$out/mewt.sqlite" --target "$CONTRACT" > "$out/uncaught.txt" 2>&1 || true
-                  mewt results --db "$out/mewt.sqlite" --target "$CONTRACT" --format ids > "$out/uncaught.ids" 2>/dev/null || true
-                  mewt results --db "$out/mewt.sqlite" --target "$CONTRACT" --status Timeout --format ids > "$out/timeout.ids" 2>/dev/null || true
                   echo "code=$code" >> "$GITHUB_OUTPUT"
                   exit 0
 
@@ -167,9 +166,9 @@ jobs:
                       echo '```'
                       if [ -f "$out/status.txt" ]; then tail -8 "$out/status.txt"; fi
                       echo '```'
-                      if grep -q '[0-9]' "$out/uncaught.ids" 2>/dev/null; then
+                      if ! grep -q ' 0 uncaught, 0 timeout' "$out/status.txt" 2>/dev/null; then
                           echo ""
-                          echo "Uncaught:"
+                          echo "Uncaught or timed out:"
                           echo '```'
                           cat "$out/uncaught.txt"
                           echo '```'
@@ -192,9 +191,14 @@ jobs:
                   out="$RUNNER_TEMP/mewt"
                   [ "${CODE:-1}" = "0" ] || { echo "::error::mewt exited ${CODE:-none}: the unmutated suite failed or the campaign did not end"; exit 4; }
                   grep -q "Mutation testing campaign completed successfully" "$out/console.log" || { echo "::error::the campaign did not report its end"; exit 4; }
-                  # An empty result prints a blank line, so a line counts only when it holds an id.
-                  timeouts=$(grep -c '[0-9]' "$out/timeout.ids" 2>/dev/null || true)
-                  uncaught=$(grep -c '[0-9]' "$out/uncaught.ids" 2>/dev/null || true)
-                  if [ "${timeouts:-0}" != "0" ]; then echo "::error::$timeouts mutant(s) timed out"; exit 3; fi
-                  if [ "${uncaught:-0}" != "0" ]; then echo "::error::$uncaught mutant(s) uncaught"; exit 2; fi
+                  # The verdict is the last line of mewt's own count, in status.txt:
+                  # "Outcomes: N caught, N uncaught, N timeout, N skipped". The
+                  # `ids` format of `mewt results` lists every mutant, caught or
+                  # not, so it gives no verdict.
+                  line=$(grep 'Outcomes:' "$out/status.txt" | tail -1)
+                  [[ "$line" =~ ([0-9]+)\ caught,\ ([0-9]+)\ uncaught,\ ([0-9]+)\ timeout,\ ([0-9]+)\ skipped ]] || { echo "::error::no count of outcomes in mewt's status"; exit 4; }
+                  echo "$line"
+                  if [ "${BASH_REMATCH[4]}" != "0" ]; then echo "::error::${BASH_REMATCH[4]} mutant(s) left untested"; exit 4; fi
+                  if [ "${BASH_REMATCH[3]}" != "0" ]; then echo "::error::${BASH_REMATCH[3]} mutant(s) timed out"; exit 3; fi
+                  if [ "${BASH_REMATCH[2]}" != "0" ]; then echo "::error::${BASH_REMATCH[2]} mutant(s) uncaught"; exit 2; fi
                   echo "every mutant caught"
