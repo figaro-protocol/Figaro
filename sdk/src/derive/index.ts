@@ -104,8 +104,10 @@ export type {
 
 // ── Funding legs (a commit receipt's swap legs) ─────────────────────────────
 
-export { readFundingLegs } from "./fundingLegs.js";
-export type { FundingLeg, ReceiptLogInput } from "./fundingLegs.js";
+export { readFundingLegs, readCommitFundingLegs } from "./fundingLegs.js";
+export type { FundingLeg, ReceiptLogInput, ReceiptReader } from "./fundingLegs.js";
+export { attributeProcessDesigns } from "./attribution.js";
+export type { AttributionInput, ProcessDesignAttribution, ProcessDesignAttributions } from "./attribution.js";
 
 // ── Canonical graph queries ─────────────────────────────────────────────────
 

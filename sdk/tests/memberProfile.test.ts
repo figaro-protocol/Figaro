@@ -11,7 +11,6 @@ import {
 } from "../src/memberProfile.js";
 import { deriveProcessDesignSlug } from "../src/assembly.js";
 import type { Agreement } from "../src/agreement.js";
-import { keyOf } from "./specFixtures.js";
 
 describe("member profile metadata parser", () => {
     const VALID_DOC = {

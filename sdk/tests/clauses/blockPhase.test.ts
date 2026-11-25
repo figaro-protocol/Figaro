@@ -7,7 +7,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseProjectionHints } from "../../src/projection";
+import { parseProjectionHints } from "../../src/projection.js";
 
 const SRC = join(__dirname, "../../src");
 const examplesDir = join(__dirname, "../../../clauses");

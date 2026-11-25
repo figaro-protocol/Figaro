@@ -39,7 +39,10 @@ describe("agreement merkle — property inclusion", () => {
                     minLength: agreement.clauses.length,
                     maxLength: agreement.clauses.length,
                 })
-                .map((clauseEntries) => ({ agreement, shuffled: { ...agreement, clauseEntries } as Agreement })),
+                .map((clauses): { agreement: Agreement; shuffled: Agreement } => ({
+                    agreement,
+                    shuffled: { ...agreement, clauses },
+                })),
         );
         fc.assert(
             fc.property(shuffledPairArb, ({ agreement, shuffled }) => {

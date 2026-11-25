@@ -27,7 +27,7 @@ import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
 import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
-import { agreementClauses, processDesignHashOf, processDesignFollows } from "../assembly.js";
+import { agreementClauses, processDesignHashOf, rootAgreementOf } from "../assembly.js";
 import type { ProcessDesign, HydratedProcessDesign, ProcessDesignAgreement } from "../assembly.js";
 import { reconstructOrdersFromProcessDesign, agreementFromClauses, mergeOverrides, fillWalkProvenance, fillWalkTopology } from "../reconstructOrders.js";
 import { checkSellerBindsProcess, type MemberProfileReader } from "../memberProfile.js";
@@ -38,11 +38,11 @@ import { checkSellerBindsProcess, type MemberProfileReader } from "../memberProf
 
 export type { ProcessDesign, HydratedProcessDesign, ProcessDesignAgreement };
 
-/** An entry is a ROOT if it follows no other entry (its own `follows` is
- *  empty or absent). */
-function isRootEntry(entry: ProcessDesignAgreement): boolean {
-    return processDesignFollows(entry).length === 0;
-}
+// The root entry is `rootAgreementOf`'s (../assembly.ts): the first entry
+// that follows nothing. A design in which every entry names a parent states
+// no order that opens the process; it is refused there, and the
+// instantiation below never signs a topology the design did not state.
+//
 
 export interface InstantiateParams {
     buyer: Address;
@@ -66,8 +66,8 @@ export function instantiateRootAgreement(hydrated: HydratedProcessDesign, params
     // whose every entry follows another has none; signing `[]` for an entry
     // whose design names its predecessors would commit a topology the design
     // never stated, so it is refused.
-    const root = assembly.agreements.find(isRootEntry);
-    if (!root) throw new Error("assembly has no root entry to instantiate: every entry follows another");
+    const root = rootAgreementOf(assembly);
+
     // THE ASSEMBLY-SCOPE FOLD, exactly as the walk performs
     // it: the assembly's assembly-scoped clauses — terms of the composition
     // itself (a denomination pin, a dispute forum) — fold into the root
@@ -122,7 +122,7 @@ export function withAgreementBlinding(
 
 // ── Buyer side: build + sign the offer ────────────────────────────────────────
 
-export interface BuildOfferParams extends InstantiateParams {
+export interface BuildOfferParams extends Omit<InstantiateParams, "buyer">, OfferBuyer {
     /** The discovered assembly, each agreement's registered agreement
      *  hydrated beside its assembly. */
     assembly: HydratedProcessDesign;
@@ -151,7 +151,7 @@ export interface BuildOfferParams extends InstantiateParams {
 export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferParams): Promise<CommitmentPayload> {
     const account = wallet.account;
     if (!account) throw new Error("buildBuyerOffer: wallet has no account");
-    const buyer = account.address;
+    const buyer = signingBuyer(account.address, params.buyer);
     const specs = requireSpecs(params.specs, "buildBuyerOffer");
     const agreement = withAgreementBlinding(instantiateRootAgreement(params.assembly, {
         buyer, seller: params.seller, overrides: params.overrides,
@@ -809,4 +809,19 @@ export async function originateChain(
         hashes.push(hash);
     }
     return { hashes };
+}
+
+/** The buyer of an offer: the wallet's account, which signs. `buyer`, when
+ *  given, must be that account; a different address is refused, never
+ *  silently replaced by the signer's. */
+export interface OfferBuyer {
+    buyer?: Address;
+}
+
+/** The signing account, once a named buyer is checked against it. */
+function signingBuyer(account: Address, named: Address | undefined): Address {
+    if (named !== undefined && named.toLowerCase() !== account.toLowerCase()) {
+        throw new Error(`buildBuyerOffer: params.buyer ${named} is not the signing account ${account}`);
+    }
+    return account;
 }

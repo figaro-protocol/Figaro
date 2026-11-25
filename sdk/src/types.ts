@@ -29,6 +29,25 @@ export function isAddressHex(value: unknown): value is Address {
     return typeof value === "string" && ADDRESS_HEX_RE.test(value);
 }
 
+/** The bigint grammar: a plain decimal integer, optionally negative.
+ *  Deliberately TIGHTER than bare `BigInt()` (which coerces `""`, `"0x10"`,
+ *  and padded whitespace) — the published format's contract is "decimal
+ *  string" (`clause-spec.schema.json`, a field's `type`), so a reader's tool
+ *  in any language applies the same grammar. */
+const DECIMAL_INTEGER_RE = /^-?[0-9]+$/;
+
+/** True for an integer written as a decimal string (`"-12"`, `"0"`); never
+ *  a number, never hex, never a leading plus or a fraction. */
+export function isDecimalIntegerString(value: unknown): value is string {
+    return typeof value === "string" && DECIMAL_INTEGER_RE.test(value);
+}
+
+/** True for a plain object read from JSON: an object that is not `null` and
+ *  not an array (a class instance passes too, as `typeof` reads it). */
+export function isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 // ── Order state ─────────────────────────────────────────────────────────────
 
 export enum OrderState {
@@ -115,6 +134,11 @@ export interface OrderResolvedEvent {
     sellerPayout: bigint;
     buyerPayout: bigint;
     blockNumber: number;
+    /** The log's index in its block, when the source log carries it
+     *  (`parseOrderResolvedLogs` sets it). */
+    logIndex?: number;
+    /** The resolving transaction, when the source log carries it. */
+    transactionHash?: Hex | null;
 }
 
 export interface ProcessResolvedEvent {
@@ -122,6 +146,11 @@ export interface ProcessResolvedEvent {
     buyer: Address;
     orderCount: bigint;
     blockNumber: number;
+    /** The log's index in its block, when the source log carries it
+     *  (`parseProcessResolvedLogs` sets it). */
+    logIndex?: number;
+    /** The resolving transaction, when the source log carries it. */
+    transactionHash?: Hex | null;
 }
 
 export interface AttestationEvent {

@@ -167,3 +167,66 @@ export function readFundingLegs(
     close();
     return legs;
 }
+
+/** The receipt read `readCommitFundingLegs` needs — a viem `PublicClient`
+ *  fits. */
+export interface ReceiptReader {
+    getTransactionReceipt(args: { hash: Hex }): Promise<{ logs: readonly ReceiptLogInput[] }>;
+}
+
+/**
+ * The funding legs of every commit transaction the given `OrderCommitted`
+ * events came from: each transaction's receipt read once, each of its orders
+ * read with `readFundingLegs`, and a leg two orders of one transaction both
+ * yield (one party, one input token) kept once. A receipt that cannot be read
+ * yields no leg and is counted in `unreadReceipts`, never fabricated. `cache`
+ * (transaction hash, lowercased → its legs) carries the reads across calls;
+ * an unread receipt is not cached, so the next call reads it again. Reads run
+ * `concurrency` at a time (default 8). No coordinator, no legs.
+ */
+export async function readCommitFundingLegs(params: {
+    client: ReceiptReader;
+    orderCommitted: readonly { buyer: Address; seller: Address; token: Address; transactionHash: Hex | null }[];
+    coordinator: Address | undefined;
+    cache?: Map<string, VenueEvent<FundingLeg>[]>;
+    concurrency?: number;
+}): Promise<{ legs: VenueEvent<FundingLeg>[]; unreadReceipts: number }> {
+    const { client, orderCommitted, coordinator } = params;
+    if (!coordinator) return { legs: [], unreadReceipts: 0 };
+    const cache = params.cache ?? new Map<string, VenueEvent<FundingLeg>[]>();
+    const concurrency = Math.max(1, params.concurrency ?? 8);
+    const ordersByTx = new Map<string, (typeof orderCommitted)[number][]>();
+    for (const order of orderCommitted) {
+        if (!order.transactionHash) continue;
+        const tx = order.transactionHash.toLowerCase();
+        ordersByTx.set(tx, [...(ordersByTx.get(tx) ?? []), order]);
+    }
+    const txs = [...ordersByTx.keys()];
+    let unreadReceipts = 0;
+    for (let i = 0; i < txs.length; i += concurrency) {
+        await Promise.all(txs.slice(i, i + concurrency).map(async (tx) => {
+            if (cache.has(tx)) return;
+            let logs: readonly ReceiptLogInput[];
+            try {
+                logs = (await client.getTransactionReceipt({ hash: tx as Hex })).logs;
+            } catch {
+                unreadReceipts += 1;
+                return;
+            }
+            const seen = new Set<string>();
+            const txLegs: VenueEvent<FundingLeg>[] = [];
+            for (const order of ordersByTx.get(tx) ?? []) {
+                for (const leg of readFundingLegs(logs, order, coordinator)) {
+                    const legKey = `${key(leg.payload.party)}|${key(leg.payload.tokenIn)}`;
+                    if (seen.has(legKey)) continue;
+                    seen.add(legKey);
+                    txLegs.push(leg);
+                }
+            }
+            cache.set(tx, txLegs);
+        }));
+    }
+    // In the order the transactions were first committed.
+    const legs = txs.flatMap((tx) => cache.get(tx) ?? []);
+    return { legs, unreadReceipts };
+}

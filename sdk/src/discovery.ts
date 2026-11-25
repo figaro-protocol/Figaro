@@ -26,14 +26,14 @@
  * pinned document from IPFS is the consumer's job — the SDK is viem-only.
  */
 
-import { type PublicClient, type Log, decodeEventLog } from "viem";
+import { type PublicClient, type Log } from "viem";
 import {
     CLAUSE_REGISTRY_ABI,
     MEMBERS_REGISTRY_ABI,
     PROCESS_REGISTRY_ABI,
     AGREEMENT_REGISTRY_ABI,
 } from "./abis.js";
-import { fetchLogsChunked } from "./events.js";
+import { decodeLogs, fetchLogsChunked } from "./events.js";
 import type {
     Hex,
     Address,
@@ -110,36 +110,23 @@ export interface ClauseRegistryEvents {
 }
 
 export function parseClauseRegistryLogs(logs: Log[]): ClauseRegistryEvents {
-    const registered: ClauseRegisteredEvent[] = [];
-    const withdrawn: ClauseWithdrawnEvent[] = [];
-    for (const log of logs) {
-        try {
-            const decoded = decodeEventLog({ abi: CLAUSE_REGISTRY_ABI, data: log.data, topics: log.topics });
-            const a = decoded.args as Record<string, unknown>;
-            // Both clause events index the clause key first: read it from the
-            // topic, so the decode does not depend on the argument's name.
-            if (decoded.eventName === "ClauseRegistered") {
-                registered.push({
-                    clauseKey: log.topics[1] as Hex,
-                    contentURI: a.contentURI as string,
-                    registeredBy: a.registeredBy as Address,
-                    blockNumber: Number(log.blockNumber ?? 0),
-                    logIndex: Number(log.logIndex ?? 0),
-                    transactionHash: (log.transactionHash ?? null) as Hex | null,
-                });
-            } else if (decoded.eventName === "DepositWithdrawn") {
-                withdrawn.push({
-                    clauseKey: log.topics[1] as Hex,
-                    registeredBy: a.registeredBy as Address,
-                    blockNumber: Number(log.blockNumber ?? 0),
-                    logIndex: Number(log.logIndex ?? 0),
-                });
-            }
-        } catch {
-            // Skip non-matching logs
-        }
-    }
-    return { registered, withdrawn };
+    const decoded = decodeLogs(logs, CLAUSE_REGISTRY_ABI);
+    // Both clause events index the clause key first: read it from the
+    // topic, so the decode does not depend on the argument's name.
+    return {
+        registered: decoded.filter((d) => d.eventName === "ClauseRegistered").map((d) => ({
+            clauseKey: d.log.topics[1] as Hex,
+            contentURI: d.args.contentURI as string,
+            registeredBy: d.args.registeredBy as Address,
+            ...d.at,
+        })),
+        withdrawn: decoded.filter((d) => d.eventName === "DepositWithdrawn").map((d) => ({
+            clauseKey: d.log.topics[1] as Hex,
+            registeredBy: d.args.registeredBy as Address,
+            blockNumber: d.at.blockNumber,
+            logIndex: d.at.logIndex,
+        })),
+    };
 }
 
 export interface MembersRegistryEvents {
@@ -148,37 +135,24 @@ export interface MembersRegistryEvents {
 }
 
 export function parseMembersRegistryLogs(logs: Log[]): MembersRegistryEvents {
-    const registered: MemberRegisteredEvent[] = [];
-    const withdrawn: MemberWithdrawalRequestedEvent[] = [];
-    for (const log of logs) {
-        try {
-            const decoded = decodeEventLog({ abi: MEMBERS_REGISTRY_ABI, data: log.data, topics: log.topics });
-            const a = decoded.args as Record<string, unknown>;
-            if (decoded.eventName === "MemberRegistered" || decoded.eventName === "MemberProfileUpdated") {
-                registered.push({
-                    member: a.member as Address,
-                    metadataURI: a.metadataURI as string,
-                    updated: decoded.eventName === "MemberProfileUpdated",
-                    blockNumber: Number(log.blockNumber ?? 0),
-                    logIndex: Number(log.logIndex ?? 0),
-                    transactionHash: (log.transactionHash ?? null) as Hex | null,
-                });
-            } else if (decoded.eventName === "MemberWithdrawalRequested") {
-                // De-surfacing is at REQUEST, not at claim: the member leaves the
-                // surface the moment they ask to, while the deposit stays locked
-                // for the cooldown. Folding `MemberWithdrawn` instead would keep
-                // a departed member visible for the whole cooldown.
-                withdrawn.push({
-                    member: a.member as Address,
-                    blockNumber: Number(log.blockNumber ?? 0),
-                    logIndex: Number(log.logIndex ?? 0),
-                });
-            }
-        } catch {
-            // Skip non-matching logs
-        }
-    }
-    return { registered, withdrawn };
+    const decoded = decodeLogs(logs, MEMBERS_REGISTRY_ABI);
+    // De-surfacing is at REQUEST, not at claim: the member leaves the
+    // surface the moment they ask to, while the deposit stays locked for the
+    // cooldown. Folding `MemberWithdrawn` instead would keep a departed
+    // member visible for the whole cooldown.
+    return {
+        registered: decoded.filter((d) => d.eventName === "MemberRegistered" || d.eventName === "MemberProfileUpdated").map((d) => ({
+            member: d.args.member as Address,
+            metadataURI: d.args.metadataURI as string,
+            updated: d.eventName === "MemberProfileUpdated",
+            ...d.at,
+        })),
+        withdrawn: decoded.filter((d) => d.eventName === "MemberWithdrawalRequested").map((d) => ({
+            member: d.args.member as Address,
+            blockNumber: d.at.blockNumber,
+            logIndex: d.at.logIndex,
+        })),
+    };
 }
 
 export interface ProcessRegistryEvents {
@@ -187,34 +161,21 @@ export interface ProcessRegistryEvents {
 }
 
 export function parseProcessRegistryLogs(logs: Log[]): ProcessRegistryEvents {
-    const registered: ProcessRegisteredEvent[] = [];
-    const withdrawn: ProcessWithdrawnEvent[] = [];
-    for (const log of logs) {
-        try {
-            const decoded = decodeEventLog({ abi: PROCESS_REGISTRY_ABI, data: log.data, topics: log.topics });
-            const a = decoded.args as Record<string, unknown>;
-            if (decoded.eventName === "ProcessRegistered") {
-                registered.push({
-                    processDesignHash: a.processDesignHash as Hex,
-                    registeredBy: a.registeredBy as Address,
-                    contentURI: a.contentURI as string,
-                    blockNumber: Number(log.blockNumber ?? 0),
-                    logIndex: Number(log.logIndex ?? 0),
-                    transactionHash: (log.transactionHash ?? null) as Hex | null,
-                });
-            } else if (decoded.eventName === "DepositWithdrawn") {
-                withdrawn.push({
-                    processDesignHash: a.processDesignHash as Hex,
-                    registeredBy: a.registeredBy as Address,
-                    blockNumber: Number(log.blockNumber ?? 0),
-                    logIndex: Number(log.logIndex ?? 0),
-                });
-            }
-        } catch {
-            // Skip non-matching logs
-        }
-    }
-    return { registered, withdrawn };
+    const decoded = decodeLogs(logs, PROCESS_REGISTRY_ABI);
+    return {
+        registered: decoded.filter((d) => d.eventName === "ProcessRegistered").map((d) => ({
+            processDesignHash: d.args.processDesignHash as Hex,
+            registeredBy: d.args.registeredBy as Address,
+            contentURI: d.args.contentURI as string,
+            ...d.at,
+        })),
+        withdrawn: decoded.filter((d) => d.eventName === "DepositWithdrawn").map((d) => ({
+            processDesignHash: d.args.processDesignHash as Hex,
+            registeredBy: d.args.registeredBy as Address,
+            blockNumber: d.at.blockNumber,
+            logIndex: d.at.logIndex,
+        })),
+    };
 }
 
 export interface AgreementRegistryEvents {
@@ -223,34 +184,21 @@ export interface AgreementRegistryEvents {
 }
 
 export function parseAgreementRegistryLogs(logs: Log[]): AgreementRegistryEvents {
-    const registered: AgreementRegisteredEvent[] = [];
-    const withdrawn: AgreementWithdrawnEvent[] = [];
-    for (const log of logs) {
-        try {
-            const decoded = decodeEventLog({ abi: AGREEMENT_REGISTRY_ABI, data: log.data, topics: log.topics });
-            const a = decoded.args as Record<string, unknown>;
-            if (decoded.eventName === "AgreementRegistered") {
-                registered.push({
-                    agreementHash: a.agreementHash as Hex,
-                    registeredBy: a.registeredBy as Address,
-                    contentURI: a.contentURI as string,
-                    blockNumber: Number(log.blockNumber ?? 0),
-                    logIndex: Number(log.logIndex ?? 0),
-                    transactionHash: (log.transactionHash ?? null) as Hex | null,
-                });
-            } else if (decoded.eventName === "DepositWithdrawn") {
-                withdrawn.push({
-                    agreementHash: a.agreementHash as Hex,
-                    registeredBy: a.registeredBy as Address,
-                    blockNumber: Number(log.blockNumber ?? 0),
-                    logIndex: Number(log.logIndex ?? 0),
-                });
-            }
-        } catch {
-            // Skip non-matching logs
-        }
-    }
-    return { registered, withdrawn };
+    const decoded = decodeLogs(logs, AGREEMENT_REGISTRY_ABI);
+    return {
+        registered: decoded.filter((d) => d.eventName === "AgreementRegistered").map((d) => ({
+            agreementHash: d.args.agreementHash as Hex,
+            registeredBy: d.args.registeredBy as Address,
+            contentURI: d.args.contentURI as string,
+            ...d.at,
+        })),
+        withdrawn: decoded.filter((d) => d.eventName === "DepositWithdrawn").map((d) => ({
+            agreementHash: d.args.agreementHash as Hex,
+            registeredBy: d.args.registeredBy as Address,
+            blockNumber: d.at.blockNumber,
+            logIndex: d.at.logIndex,
+        })),
+    };
 }
 
 // ── Bulk fetch ───────────────────────────────────────────────────────────────

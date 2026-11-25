@@ -16,7 +16,6 @@
 
 import {
     asAddress,
-    asClauseKey,
     asBoolean,
     asEnum,
     asOptionalNumber,
@@ -24,6 +23,7 @@ import {
     asRecord,
     asString,
 } from "./documentParse.js";
+import { parseClauseValueMap } from "./memberProfile.js";
 
 /**
  * The member's preferred unit system for the catalog editor + display.
@@ -177,28 +177,8 @@ function parseItem(value: unknown, path: string): CatalogItemMetadata {
         pricingPolicy: parseOptionalPricingPolicy(record.pricingPolicy, `${path}.pricingPolicy`),
         rateUnit: asOptionalString(record.rateUnit, `${path}.rateUnit`),
         rateQuantitySource: asOptionalString(record.rateQuantitySource, `${path}.rateQuantitySource`),
-        clauseValues: parseClauseValues(record.clauseValues, `${path}.clauseValues`),
+        clauseValues: parseClauseValueMap(record.clauseValues, `${path}.clauseValues`),
     };
-}
-
-/**
- * Parse the catalog-sourced clause-value map — a `Record<clauseKey, Record<field, unknown>>`.
- * Structural only: the outer shape is a record of records; the inner field
- * values are validated against each clause's registered spec (off-chain) at
- * authoring / read time, not here (this parser has no spec cache). Field
- * values pass through as `unknown`.
- */
-function parseClauseValues(
-    value: unknown,
-    path: string,
-): CatalogItemMetadata["clauseValues"] {
-    if (value === undefined) return undefined;
-    const record = asRecord(value, path);
-    const out: Record<string, Record<string, unknown>> = {};
-    for (const [clauseKey, data] of Object.entries(record)) {
-        out[asClauseKey(clauseKey, `${path} key ${clauseKey}`)] = asRecord(data, `${path}.${clauseKey}`);
-    }
-    return out;
 }
 
 function parseItems(value: unknown, path: string): CatalogItemMetadata[] {

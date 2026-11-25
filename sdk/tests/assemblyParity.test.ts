@@ -14,7 +14,7 @@
  *   1. Regenerate the fixture on `HARVEST_ASSEMBLY_VECTORS=1`.
  *   2. Otherwise, assert the SDK still reproduces the frozen bytes.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { keccak256, toHex, type Hex } from "viem";
 import { describe, expect, it } from "vitest";
@@ -44,6 +44,7 @@ import {
 import {
     ASSEMBLY_ONE, ASSEMBLY_THREE, ASSEMBLY_TWO, REGISTERED_DESIGN, REGISTERED_ONE, REGISTERED_THREE,
 } from "./assemblyVectors.js";
+import { writeHarvestedFixture } from "./harvest.js";
 
 const FIXTURE_PATH = path.resolve(__dirname, "../../test/fixtures/assembly-vectors.json");
 
@@ -135,8 +136,7 @@ function build() {
 describe("Assembly parity vectors — the composition tree's lock", () => {
     if (process.env.HARVEST_ASSEMBLY_VECTORS === "1") {
         it("regenerates test/fixtures/assembly-vectors.json", () => {
-            mkdirSync(path.dirname(FIXTURE_PATH), { recursive: true });
-            writeFileSync(FIXTURE_PATH, `${JSON.stringify(build(), null, 4)}\n`);
+            writeHarvestedFixture(FIXTURE_PATH, `${JSON.stringify(build(), null, 4)}\n`);
         });
         return;
     }

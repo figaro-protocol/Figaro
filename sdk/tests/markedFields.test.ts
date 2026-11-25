@@ -2,7 +2,7 @@
 // readers below hold a mark to the spec's own fields: a mark that names a
 // field the spec does not declare, or one field twice, marks nothing.
 import { describe, expect, it } from "vitest";
-import { readDataSources, specDataSources, specEndpoints, specMarkedFields, type ProjectionSpecView } from "../src/index";
+import { readDataSources, specDataSources, specEndpoints, specMarkedFields, type ProjectionSpecView } from "../src/index.js";
 import { keyOf, specSourceFromFixtures, specSourceOf } from "./specFixtures.js";
 
 const view = (fields: ProjectionSpecView["fields"], hints?: ProjectionSpecView["hints"]): ProjectionSpecView => ({

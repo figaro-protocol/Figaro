@@ -720,12 +720,12 @@ const CONTENT_CASES: { label: string; fields: Field[]; content: unknown }[] = [
         content,
     })),
     // Two fields share the sibling's name: the first of them gives the default.
-    ...[
-        ["the first with no default", [{ name: "std", type: "string", required: false }, { name: "std", type: "string", required: false, default: "geohash" }]],
-        ["the first whose default is geohash", [{ name: "std", type: "string", required: false, default: "geohash" }, { name: "std", type: "string", required: false }]],
-    ].map(([which, siblings]) => ({
+    ...([
+        { which: "the first with no default", siblings: [{ name: "std", type: "string", required: false }, { name: "std", type: "string", required: false, default: "geohash" }] },
+        { which: "the first whose default is geohash", siblings: [{ name: "std", type: "string", required: false, default: "geohash" }, { name: "std", type: "string", required: false }] },
+    ] satisfies { which: string; siblings: Field[] }[]).map(({ which, siblings }) => ({
         label: `formatFromField, two siblings of one name, ${which}`,
-        fields: [...(siblings as object[]), { name: "loc", type: "string", required: true, formatFromField: "std" }],
+        fields: [...siblings, { name: "loc", type: "string", required: true, formatFromField: "std" }],
         content: { loc: "dr5regw" },
     })),
     // A field named as a property every object inherits is absent when the content leaves it out.

@@ -1,4 +1,6 @@
-import { keccak256, toHex } from "viem";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { keccak256, toHex, type Hex } from "viem";
 import { describe, it, expect } from "vitest";
 import {
     computeClauseLeaf,
@@ -16,7 +18,6 @@ const K = (label: string): `0x${string}` => keccak256(toHex(label));
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as `0x${string}`;
 const SELLER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as `0x${string}`;
-const CURRENCY = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
 
 const COMMERCE: AgreementClause = {
     clause: K("figaro-commerce"),
@@ -55,8 +56,17 @@ describe("computeClauseLeaf", () => {
         expect(computeClauseLeaf(COMMERCE)).toMatch(/^0x[0-9a-f]{64}$/);
     });
 
-    it("is deterministic for the same clause", () => {
-        expect(computeClauseLeaf(COMMERCE)).toBe(computeClauseLeaf(COMMERCE));
+    it("is the leaf FigaroCore's consumers rebuild from the clause key and bytes (test/fixtures/merkle-vectors.json)", () => {
+        // MerkleParityTest.t.sol and prover/lib/tests/merkle_parity.rs rebuild
+        // each of these leaves from `clauseKey` and `clauseData` alone.
+        const vectors = JSON.parse(readFileSync(path.resolve(__dirname, "../../test/fixtures/merkle-vectors.json"), "utf8")) as {
+            agreements: { clauses: { clauseKey: Hex; clauseData: string; leaf: Hex }[] }[];
+        };
+        const clauses = vectors.agreements.flatMap((a) => a.clauses);
+        expect(clauses.length).toBeGreaterThan(0);
+        for (const c of clauses) {
+            expect(computeClauseLeaf({ clause: c.clauseKey, data: JSON.parse(c.clauseData) as Record<string, unknown> })).toBe(c.leaf);
+        }
     });
 
     it("changes when clause data changes", () => {

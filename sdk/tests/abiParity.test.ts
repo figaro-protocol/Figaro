@@ -17,7 +17,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import type { Abi, AbiParameter } from "viem";
+import type { Abi, AbiEvent, AbiParameter } from "viem";
 import {
     CORE_ABI, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI,
     PROCESS_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, FLORIN_TOKEN_ABI, USAGE_COUNTER_ABI, RPGF_MINTER_ABI, BATCH_VERIFIER_ABI, WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI,
@@ -101,11 +101,11 @@ describe("the SDK's ABIs are the contracts' ABIs", () => {
 
     it("a drifted fragment is caught", () => {
         // The check reads what it claims to: an indexed flag moved is a miss.
-        const committed = CORE_ABI.find((i) => i.type === "event" && i.name === "OrderCommitted")!;
-        const moved = {
+        const committed = (CORE_ABI as Abi).find((i): i is AbiEvent => i.type === "event" && i.name === "OrderCommitted")!;
+        const moved: AbiEvent = {
             ...committed,
-            inputs: (committed as { inputs: AbiParameter[] }).inputs.map((p, i) => (i === 3 ? { ...p, indexed: true } : p)),
-        } as Abi[number];
+            inputs: committed.inputs.map((p, i) => (i === 3 ? { ...p, indexed: true } : p)),
+        };
         const theirs = new Set(compiled("FigaroCore").map(shape));
         expect(theirs.has(shape(committed))).toBe(true);
         expect(theirs.has(shape(moved))).toBe(false);

@@ -16,8 +16,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import Ajv2020 from "ajv/dist/2020";
-import schema from "../src/agent/relay-wire.schema.json";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import schema from "../src/agent/relay-wire.schema.json" with { type: "json" };
 import {
     RELAY_WIRE_FORMAT_VERSION,
     SequencerClient,

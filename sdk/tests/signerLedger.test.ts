@@ -79,13 +79,15 @@ function mockLedger(opts: { key?: Hex; signWith?: Hex; status?: number } = {}) {
 
 function typedCommitment() {
     const domain = buildDomain(11155111, CORE);
-    return buildCommitment({
+    const { typedData } = buildCommitment({
         processId: ("0x" + "00".repeat(32)) as Hex,
         buyer: WALLET, seller: privateKeyToAccount(OTHER_KEY).address, token: TOKEN,
         payment: 500_000n, runningTotal: 500_000n,
         checkoutHash: ("0x" + "11".repeat(32)) as Hex,
         salt: 7n, commitDeadline: 9_999_999_999n,
-    }, domain).typedData;
+    }, domain);
+    // The custody takes viem's general typed-data shape, whose message is a record.
+    return { ...typedData, message: { ...typedData.message } };
 }
 
 describe("ledger custody", () => {
@@ -111,7 +113,7 @@ describe("ledger custody", () => {
         const body = toHex(apdu.slice(5 + 21));
         expect(body).toBe(concat([
             domainSeparator({ domain: typedData.domain }),
-            hashStruct({ data: typedData.message as never, primaryType: typedData.primaryType, types: typedData.types as never }),
+            hashStruct({ data: typedData.message, primaryType: typedData.primaryType, types: typedData.types }),
         ]));
     });
 

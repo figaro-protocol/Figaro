@@ -25,8 +25,9 @@
  * `MerkleProof.verify`.
  */
 
-import { keccak256, toHex, concat, numberToHex, type Hex } from "viem";
+import { keccak256, toHex, concat, numberToHex, hexToBytes, type Hex } from "viem";
 import { ZERO_BYTES32 } from "./commitments.js";
+import { isBytes32Hex } from "./types.js";
 
 // ── Core types ──────────────────────────────────────────────────────────────
 
@@ -114,7 +115,7 @@ export const PROVENANCE_LEAF_LABEL = "figaro-agreement-provenance";
  *  from a spec. */
 export const PROVENANCE_LEAF_KEY: Hex = keccak256(toHex(PROVENANCE_LEAF_LABEL));
 
-const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
+// Every 32-byte value the format reads below is checked by `isBytes32Hex` (./types.ts).
 
 /** The provenance leaf's committed bytes — canonical JSON of the two keys,
  *  `{"agreementHash":"0x<64 lowercase hex>","processDesignHash":"0x<64 lowercase hex>"}` —
@@ -122,10 +123,10 @@ const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
  *  (`UsageCounter.recordAgreementUsage` / `recordProcessDesignUsage`) and the
  *  guest reproduces for a batch claim. */
 export function provenanceLeafBytes(agreementHash: Hex, processDesignHash: Hex): Hex {
-    if (!BYTES32_RE.test(agreementHash)) {
+    if (!isBytes32Hex(agreementHash)) {
         throw new Error(`provenance agreementHash is not a 32-byte hex hash: ${agreementHash}`);
     }
-    if (!BYTES32_RE.test(processDesignHash)) {
+    if (!isBytes32Hex(processDesignHash)) {
         throw new Error(`provenance processDesignHash is not a 32-byte hex hash: ${processDesignHash}`);
     }
     return toHex(new TextEncoder().encode(canonicalize({
@@ -154,10 +155,9 @@ export function decodeProvenanceContent(content: Hex): AgreementProvenance | nul
     if (!/^0x([0-9a-fA-F]{2})*$/.test(content)) return null;
     let text: string;
     try {
-        const hex = content.slice(2);
-        const bytes = new Uint8Array(hex.length / 2);
-        for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-        text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+        // The content is whole bytes of hex (checked above); a value that
+        // is no UTF-8 is refused by the decoder.
+        text = new TextDecoder("utf-8", { fatal: true }).decode(hexToBytes(content));
     } catch {
         return null;
     }
@@ -194,7 +194,7 @@ export function topologyLeafBytes(follows: readonly Hex[]): Hex {
     if (!Array.isArray(follows)) throw new Error("topology follows is not a list of order hashes");
     const seen = new Set<string>();
     const edges = follows.map((edge) => {
-        if (typeof edge !== "string" || !BYTES32_RE.test(edge)) {
+        if (!isBytes32Hex(edge)) {
             throw new Error(`topology edge is not a 32-byte order hash: ${String(edge)}`);
         }
         const lower = edge.toLowerCase();
@@ -310,7 +310,7 @@ export function hashClauseData(clauseEntry: AgreementClause): Hex {
         // takes it. A longer one would let a withheld entry rebuild a leaf
         // whose inner preimage is longer than a clause leaf's, such as the
         // topology leaf (`computeTopologyLeaf`).
-        if (typeof clauseEntry.dataHash !== "string" || !BYTES32_RE.test(clauseEntry.dataHash)) {
+        if (!isBytes32Hex(clauseEntry.dataHash)) {
             throw new Error(`Clause ${clauseEntry.clause} dataHash is not a 32-byte hex hash: ${String(clauseEntry.dataHash)}`);
         }
         return clauseEntry.dataHash;
@@ -340,7 +340,7 @@ export function withholdClauseContent(clauseEntry: AgreementClause): AgreementCl
  * reconstruction during inclusion-proof verification.
  */
 export function computeClauseLeaf(clauseEntry: AgreementClause): Hex {
-    if (!/^0x[0-9a-fA-F]{64}$/.test(clauseEntry.clause)) {
+    if (!isBytes32Hex(clauseEntry.clause)) {
         throw new Error(`Clause key is not 32 bytes: ${clauseEntry.clause}`);
     }
     return keccak256(keccak256(concat([clauseEntry.clause, hashClauseData(clauseEntry)])));

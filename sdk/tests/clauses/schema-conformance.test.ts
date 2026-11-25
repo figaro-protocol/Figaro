@@ -9,15 +9,27 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import Ajv2020 from "ajv/dist/2020";
-import { parseClauseSpec } from "../../src/clauses/spec";
-import schema from "../../src/clauses/clause-spec.schema.json";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import { parseClauseSpec } from "../../src/clauses/spec.js";
+import { parseProjectionHints } from "../../src/projection.js";
+import schema from "../../src/clauses/clause-spec.schema.json" with { type: "json" };
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 const validateAgainstSchema = ajv.compile(schema);
 
 const examplesDir = join(__dirname, "../../../clauses");
 const exampleFiles = readdirSync(examplesDir).filter((f) => f.endsWith(".json"));
+
+/** Each part of `block` and the attributes the published schema declares for
+ *  it, read from `$defs.block`: `design` → `$defs.blockDesign`, and so on. */
+const BLOCK_PARTS: Record<string, string[]> = (() => {
+    type Def = { properties: Record<string, { $ref?: string }> };
+    const defs = schema.$defs as unknown as Record<string, Def>;
+    return Object.fromEntries(Object.entries(defs.block!.properties).map(([part, { $ref }]) => {
+        const def = defs[$ref!.replace("#/$defs/", "")]!;
+        return [part, Object.keys(def.properties)];
+    }));
+})();
 
 describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
     it("the canonical clause set is present (floor guard, not a census — `ls clauses/` derives the count)", () => {
@@ -190,30 +202,42 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         for (const key of ["clauseId", "version", "title", "description", "fields", "stages", "block"]) {
             expect(key in spec, `${file}: top-level ${key} must be expressed`).toBe(true);
         }
-        for (const key of ["design", "checkout", "runtime"]) {
-            expect(key in spec.block, `${file}: block.${key} must be expressed`).toBe(true);
-        }
-        for (const key of ["article", "scope", "nestsUnder", "fills", "composes"]) {
-            expect(key in spec.block.design, `${file}: block.design.${key} must be expressed`).toBe(true);
-        }
-        for (const key of ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "timeWindow", "endpoints", "registerLink", "dataSources", "heldValues", "compositionFields"]) {
-            expect(key in spec.block.checkout, `${file}: block.checkout.${key} must be expressed`).toBe(true);
-        }
-        for (const key of ["interaction", "modality", "jurisdiction", "documentPart", "ladder", "contentDigest"]) {
-            expect(key in spec.block.runtime, `${file}: block.runtime.${key} must be expressed`).toBe(true);
+        // The standard attributes are the published schema's: each part of
+        // `block` and each attribute that part declares.
+        for (const [part, keys] of Object.entries(BLOCK_PARTS)) {
+            expect(part in spec.block, `${file}: block.${part} must be expressed`).toBe(true);
+            for (const key of keys) {
+                expect(key in spec.block[part], `${file}: block.${part}.${key} must be expressed`).toBe(true);
+            }
         }
     });
 
-    // Each part of `block` declares, in the schema, the attributes the
-    // reference parser (`ClauseBlockBinding`, frontend/lib/shared/clauseBlockBinding.ts)
-    // reads under that part, and no other. The lists are the parser's.
-    it.each([
-        ["blockDesign", ["article", "scope", "nestsUnder", "fills", "composes"]],
-        ["blockCheckout", ["catalogueFills", "profileFills", "catalogueMeasures", "pricedLines", "derives", "timeWindow", "endpoints", "registerLink", "dataSources", "heldValues", "compositionFields"]],
-        ["blockRuntime", ["interaction", "modality", "jurisdiction", "documentPart", "ladder", "contentDigest"]],
-    ] as const)("the schema's %s declares the parser's attributes for that part", (def, keys) => {
-        const props = (schema.$defs as Record<string, { properties: Record<string, unknown> }>)[def].properties;
-        expect(Object.keys(props).sort()).toEqual([...keys].sort());
+    // Every attribute the SDK's own reading of `block` (`parseProjectionHints`)
+    // reads is one the published schema declares, in the part it reads it
+    // from. The reads are recorded as they happen, over every spec of the
+    // corpus, so the list is the parser's behavior, never a list typed here.
+    it("parseProjectionHints reads only attributes the schema declares, each in its own part", () => {
+        const read: Record<string, Set<string>> = {};
+        const recording = (part: string, value: unknown): unknown => {
+            if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+            read[part] ??= new Set();
+            return new Proxy(value as Record<string, unknown>, {
+                get(target, key) {
+                    if (typeof key === "string") read[part]!.add(key);
+                    return Reflect.get(target, key);
+                },
+            });
+        };
+        for (const file of exampleFiles) {
+            const spec = JSON.parse(readFileSync(join(examplesDir, file), "utf8"));
+            const block = Object.fromEntries(Object.entries(spec.block as Record<string, unknown>).map(([part, v]) => [part, recording(part, v)]));
+            parseProjectionHints({ ...spec, block });
+        }
+        expect(Object.keys(read).length, "the corpus exercises the parser").toBeGreaterThan(0);
+        for (const [part, keys] of Object.entries(read)) {
+            expect(Object.keys(BLOCK_PARTS), `block.${part}`).toContain(part);
+            for (const key of keys) expect(BLOCK_PARTS[part], `block.${part}.${key}`).toContain(key);
+        }
     });
 
     const withCheckout = (checkout: unknown) => ({

@@ -125,6 +125,7 @@ export type {
     ProcessDesignAgreement,
     InstantiateParams,
     BuildOfferParams,
+    OfferBuyer,
     OfferCheck,
     OfferPolicy,
     SellerSignCtx,

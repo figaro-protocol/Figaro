@@ -41,7 +41,7 @@ import {
     safeRegexTest,
 } from "./safeRegex.js";
 import { GEOHASH_FORMAT, capOfDisposition, grainCapOf, grainOf } from "./grain.js";
-import { isBytes32Hex, isAddressHex } from "../types.js";
+import { isBytes32Hex, isAddressHex, isDecimalIntegerString, isPlainRecord as isObject } from "../types.js";
 
 export interface ValidationError {
     /** JSON-pointer-style path to the problem. */
@@ -60,16 +60,16 @@ export interface ValidateOptions {
 
 const BYTES_HEX_RE = /^0x([0-9a-fA-F]{2})*$/;
 const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
-/** The bigint grammar: a plain decimal integer, optionally negative.
- *  Deliberately TIGHTER than bare `BigInt()` (which coerces `""`, `"0x10"`,
- *  and padded whitespace) — the published format's contract is "decimal
- *  string" (`clause-spec.schema.json`, a field's `type`), so a reader's tool
- *  in any language applies the same grammar. */
-const DECIMAL_BIGINT_RE = /^-?[0-9]+$/;
 
-function isObject(value: unknown): value is Record<string, unknown> {
-    return value !== null && typeof value === "object" && !Array.isArray(value);
-}
+// The other value grammars this file applies each have one home, ../types.ts:
+//   - isDecimalIntegerString, the bigint grammar: a plain decimal integer,
+//     optionally negative, tighter than bare `BigInt()` (which coerces `""`,
+//     `"0x10"` and padded whitespace);
+//   - isBytes32Hex and isAddressHex, the two hex widths;
+//   - isPlainRecord (read here as `isObject`): a JSON object, never null and
+//     never an array.
+// A reader's tool in any language applies the same grammars, so a value gets
+// one verdict whichever tool reads it.
 
 /**
  * The pattern work one content has spent: the sum, over every value a
@@ -190,7 +190,7 @@ function validateBigint(value: unknown, spec: BigintFieldSpec, path: string, err
         errors.push({ path, message: `expected bigint as decimal string, got ${typeof value}` });
         return;
     }
-    if (!DECIMAL_BIGINT_RE.test(value)) {
+    if (!isDecimalIntegerString(value)) {
         errors.push({ path, message: `value "${value}" does not parse as BigInt` });
         return;
     }

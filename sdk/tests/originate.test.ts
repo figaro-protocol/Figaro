@@ -72,7 +72,7 @@ describe("instantiateRootAgreement", () => {
     it("picks the root agreement (no non-empty follows) from a multi-agreement assembly", () => {
         const multi = hydrateAuthored({
             agreements: [
-                { id: "agreement-1", clauses: {}, follows: ["0xabc"] },
+                { id: "agreement-1", clauses: { [keyOf("figaro-modalities")]: {} }, follows: ["0xabc"] },
                 { id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {} }, follows: [] },
             ],
         });
@@ -84,11 +84,11 @@ describe("instantiateRootAgreement", () => {
         const rootless = hydrateAuthored({
             agreements: [
                 { id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {} }, follows: ["agreement-1"] },
-                { id: "agreement-1", clauses: {}, follows: ["agreement-0"] },
+                { id: "agreement-1", clauses: { [keyOf("figaro-modalities")]: {} }, follows: ["agreement-0"] },
             ],
         });
         expect(() => instantiateRootAgreement(rootless, { buyer: BUYER.address, seller: SELLER.address }))
-            .toThrow(/no root entry/);
+            .toThrow(/no root agreement/);
     });
 
 });
@@ -186,9 +186,16 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
     it("rejects an offer whose agreement was mutated after the buyer signed", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
         // Tamper: change the agreement so it no longer hashes to the committed checkoutHash.
-        offer.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!.data.lineItems = [];
+        offer.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!.data!.lineItems = [];
         expect((await validateOffer(offer, SELLER.address, undefined, undefined, null, BOUND)).ok).toBe(false);
         await expect(counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, SPECS, undefined, undefined, assembly, BOUND)).rejects.toThrow(/agreement does not hash/i);
+    });
+
+    it("buildBuyerOffer refuses a params.buyer that is not the signing account", async () => {
+        await expect(buildBuyerOffer(buyerW, { ...offerParams(), buyer: SELLER.address }))
+            .rejects.toThrow(/is not the signing account/);
+        const named = await buildBuyerOffer(buyerW, { ...offerParams(), buyer: BUYER.address });
+        expect(named.commitment.buyer).toBe(BUYER.address);
     });
 
     it("rejects an offer that names a different seller", async () => {
@@ -309,7 +316,7 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
         ]));
         // The root's topology is the format's own leaf, an empty list.
         expect(a.follows).toEqual([]);
-        expect(a.clauses.find((s) => s.clause === keyOf("figaro-utility-token"))?.data.currency).toBe(PIN);
+        expect(a.clauses.find((s) => s.clause === keyOf("figaro-utility-token"))?.data?.currency).toBe(PIN);
     });
 
     it("the instantiated agreement carries the assembly's own assembly hash as agreement.provenance", () => {
@@ -435,7 +442,7 @@ describe("the seller's bound assemblies — the offer leg refuses an order under
     // A structurally different assembly (its own clause selection), so its
     // assembly hash differs from the one the orders instantiate.
     const elsewhere = hydrateAuthored({
-        agreements: [{ id: "agreement-0", clauses: {}, follows: [] }],
+        agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-modalities")]: {} }, follows: [] }],
     });
     const offeredHash = processDesignHashOf(assembly.assembly);
     const CTX = { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW };
@@ -490,6 +497,7 @@ describe("the seller's bound assemblies — the offer leg refuses an order under
         expect(reads).toEqual([SELLER.address]);
         const bare = makeSellerOfferHandler(sellerW, pub, addresses, { accept: () => true, policy, approveBond: false, specs: SPECS, readDesign: async () => assembly });
         await expect(bare(offer)).rejects.toThrow(/no member-profile reader/);
+        // @ts-expect-error -- a JavaScript caller can omit the required specs; the handler refuses at runtime.
         const specless = makeSellerOfferHandler(sellerW, pub, addresses, { accept: () => true, policy, approveBond: false, readProfile: BOUND });
         await expect(specless(offer)).rejects.toThrow(/refusing to sign without the clause specs/);
         const notBinding = makeSellerOfferHandler(sellerW, pub, addresses, {

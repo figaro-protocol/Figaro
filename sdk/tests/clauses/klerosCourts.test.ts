@@ -4,8 +4,12 @@
  * the KlerosLiquid arbitrator and its PolicyRegistry; the fixture's `holds`
  * and `sources` say how). A court value names a Kleros court by its policy
  * name, never by a court number, so the clause stays the same on every chain
- * and the number is read on the chain where a dispute is raised. A court Kleros
- * adds, renames or renumbers fails here until the clause is checked against it.
+ * and the number is read on the chain where a dispute is raised.
+ *
+ * What this test holds: the clause against the capture. The fixture is a
+ * one-time read of the chains, and nothing in the repository refreshes it,
+ * so a court Kleros adds, renames or renumbers after the capture is not seen
+ * here until the fixture is read again by hand.
  */
 import { describe, expect, it } from "vitest";
 import { parseClauseSpec, type EnumFieldSpec, type IntegerFieldSpec } from "../../src/clauses/spec.js";

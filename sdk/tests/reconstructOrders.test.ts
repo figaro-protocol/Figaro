@@ -54,8 +54,8 @@ describe("planProcessOrders — pure structure", () => {
     it("throws on a cyclic topology", () => {
         const cyclic = hydrateAuthored({
             agreements: [
-                { id: "a", clauses: {}, follows: ["b"] },
-                { id: "b", clauses: {}, follows: ["a"] },
+                { id: "a", clauses: { [keyOf("figaro-modalities")]: {} }, follows: ["b"] },
+                { id: "b", clauses: { [keyOf("figaro-modalities")]: {} }, follows: ["a"] },
             ],
         });
         expect(() => planProcessOrders(cyclic)).toThrow(/cycle/);
@@ -140,7 +140,7 @@ describe("reconstructOrdersFromProcessDesign — realization", () => {
     it("rejects a assembly whose commit order starts with a parented node", async () => {
         const dangling = hydrateAuthored({
             agreements: [
-                { id: "only", clauses: {}, follows: ["ghost"] },
+                { id: "only", clauses: { [keyOf("figaro-modalities")]: {} }, follows: ["ghost"] },
             ],
         });
         await expect(
@@ -149,6 +149,7 @@ describe("reconstructOrdersFromProcessDesign — realization", () => {
                 currency: CURRENCY,
                 chainId: 31337,
                 core: CORE,
+                deadline: 1_900_000_000n,
                 nodes: () => ({ seller: SELLER_A, payment: 1n }),
             }),
         ).rejects.toThrow(/parent "ghost" was not built/);

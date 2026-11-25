@@ -382,6 +382,7 @@ describe("portablePatternMatches agrees with JavaScript's RegExp", () => {
 
     it("on values drawn to match each pattern", () => {
         let drawn = 0;
+        let compared = 0;
         for (const pattern of patterns) {
             // fast-check's generator reads no empty branch (`a|`, `()`): those
             // patterns are covered by the random values above.
@@ -394,12 +395,19 @@ describe("portablePatternMatches agrees with JavaScript's RegExp", () => {
             drawn++;
             fc.assert(
                 fc.property(matching, (v) => {
+                    // Outside printable ASCII the two engines are not compared
+                    // (the portable engine's alphabet); those draws are counted out.
                     if (![...v].every((c) => c >= " " && c <= "~")) return;
+                    compared++;
                     expect(portablePatternMatches(pattern, v), `${pattern} on ${JSON.stringify(v)}`).toBe(new RegExp(pattern).test(v));
                 }),
                 { numRuns: 200, seed: 2 },
             );
         }
         expect(drawn).toBeGreaterThan(protocolPatterns().length);
+        // More than half the draws are compared (4,234 of 4,400 at seed 2): a
+        // generator that drifted to values outside
+        // printable ASCII would otherwise pass here while comparing nothing.
+        expect(compared, `compared ${compared} of ${drawn * 200} draws`).toBeGreaterThan(drawn * 100);
     });
 });

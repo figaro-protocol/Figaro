@@ -19,11 +19,12 @@
 
 import { keccak256, toHex, concat } from "viem";
 import type { Hex } from "./types.js";
-import { isBytes32Hex } from "./types.js";
+import { isBytes32Hex, isPlainRecord } from "./types.js";
 import {
     buildLeafInclusionProof,
     buildMerkleRoot,
     canonicalize,
+    canonicalContentHash,
     computeClauseLeaf,
     PROVENANCE_LEAF_KEY,
     sortLeaves,
@@ -90,7 +91,7 @@ export function buildRegisteredClauseInclusionProof(
     const entry = Object.entries(doc.clauses).find(([k]) => k.toLowerCase() === clauseKey.toLowerCase());
     if (!entry) throw new Error(`clause ${clauseKey} is not composed in this agreement`);
     const [key, fills] = entry;
-    const fillsHash = keccak256(toHex(canonicalize(fills)));
+    const fillsHash = canonicalContentHash(fills);
     const { leaf, proof } = buildLeafInclusionProof(agreementClauseLeaves(doc), composedClauseLeaf(key as Hex, fills));
     return { leaf, proof, fillsHash };
 }
@@ -199,6 +200,32 @@ export function agreementClauses(hydrated: HydratedProcessDesign, entry: Process
 export function processDesignFollows(entry: Pick<ProcessDesignAgreement, "follows">): string[] {
     const ids = entry.follows;
     return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
+}
+
+/**
+ * The root agreement of a process design: the entry whose order opens the
+ * process. It is the first entry, in the design's own order, that follows
+ * nothing: its `follows` is empty or absent. Every other entry's order is a
+ * sub-order, and the commit order fixes the running total each seller bonds
+ * against.
+ *
+ * A design may hold several entries that follow nothing: two sellers whose
+ * work does not depend on each other. The first is the root, and the others
+ * commit after it as sub-orders that follow no order. FigaroCore reads no
+ * topology: to it a process is its root commit and the commits after it.
+ *
+ * Throws when no entry follows nothing (an empty design, a cycle, an entry
+ * that follows itself, a design whose every entry names a parent): the
+ * design states no order that opens the process.
+ */
+export function rootAgreementOf<E extends Pick<ProcessDesignAgreement, "id" | "follows">>(
+    design: { agreements: readonly E[] },
+): E {
+    const root = design.agreements.find((entry) => processDesignFollows(entry).length === 0);
+    if (root === undefined) {
+        throw new Error("the process design has no root agreement: every entry follows another");
+    }
+    return root;
 }
 
 /** Every clause a hydrated assembly composes — the assembly-scoped clauses
@@ -446,8 +473,4 @@ export function resolveAuthoredClauseKeys<T extends object>(doc: T, specs: Autho
         });
     }
     return out as T;
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
 }

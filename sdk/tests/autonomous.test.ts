@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { keccak256, type WalletClient, type PublicClient } from "viem";
+import { encodeFunctionData, keccak256, type Abi, type WalletClient, type PublicClient } from "viem";
 import { executeAction, commit, resolveProcess, attestAsBuyer, prepareAttestationContent } from "../src/agent/autonomous.js";
 import { CORE_ABI, ATTESTATION_COORDINATOR_ABI } from "../src/abis.js";
 import { parseClauseSpec, encodeContentFromSpec } from "../src/clauses/index.js";
@@ -14,6 +14,7 @@ const SELLER = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
 const TOKEN = "0xcccccccccccccccccccccccccccccccccccccccc" as Address;
 const AGREEMENT = "0x00000000000000000000000000000000000000000000000000000000000a9ee1" as Hex;
 const CHAIN = 31337;
+const PROCESS = "0x0000000000000000000000000000000000000000000000000000000000000009" as Hex;
 
 const addresses: FigaroAddresses = { core: CORE };
 // executeAction throws BEFORE touching either client on every input-missing path.
@@ -27,25 +28,34 @@ interface WriteRequest {
     chain: unknown;
     account: unknown;
     address: Address;
-    abi: unknown;
+    abi: Abi;
     functionName: string;
     args: readonly unknown[];
+    /** The calldata the request encodes to under its own ABI. */
+    data: Hex;
 }
 
 /** A wallet that records every write and answers with `TX`; `account` is
- *  what the SDK reads as `walletClient.account`. */
+ *  what the SDK reads as `walletClient.account`. Each write is ABI-encoded
+ *  as a node would encode it, so an argument the function's ABI refuses (a
+ *  short bytes32, a missing field of a tuple) throws here as it would in a
+ *  real `writeContract`. */
 function recordingWallet(account: { address: Address } | undefined): { wallet: WalletClient; calls: WriteRequest[] } {
     const calls: WriteRequest[] = [];
     const wallet = {
         chain: null,
         account,
-        writeContract: async (req: WriteRequest) => {
-            calls.push(req);
+        writeContract: async (req: Omit<WriteRequest, "data">) => {
+            const data = encodeFunctionData({ abi: req.abi, functionName: req.functionName, args: req.args });
+            calls.push({ ...req, data });
             return TX;
         },
     } as unknown as WalletClient;
     return { wallet, calls };
 }
+
+/** A clause id the coordinator's ABI accepts: 32 bytes. */
+const CLAUSE_ID = `0x${"dd".repeat(32)}` as Hex;
 
 function mkOrder(overrides: Partial<Order> = {}): Order {
     return {
@@ -97,42 +107,41 @@ describe("restoreSignedProcessId", () => {
 
 describe("executeAction — honest input gates (never fabricate)", () => {
     it("throws on resolve-process with no commitments", async () => {
-        const action = { type: "resolve-process", processId: "0x09" as Hex, caller: BUYER, commitments: [], settlements: [], totalBuyerPayout: 0n, totalSellerPayout: 0n } as ResolveProcessAction;
+        const action: ResolveProcessAction = { type: "resolve-process", description: "", processId: PROCESS, caller: BUYER, commitments: [], settlements: [], totalBuyerPayout: 0n, totalSellerPayout: 0n };
         await expect(executeAction(wallet, pub, addresses, action)).rejects.toThrow(/no commitments/i);
     });
 
     it("throws on initiate-process without a counterparty signature", async () => {
-        const action = { type: "initiate-process", processId: ZERO_PROCESS_ID, buyer: BUYER, processDesignHash: "0xab" as Hex, contentURI: "ipfs://x", registeredBy: SELLER } as InitiateProcessAction;
+        const action: InitiateProcessAction = { type: "initiate-process", description: "", processId: ZERO_PROCESS_ID, buyer: BUYER, processDesignHash: `0x${"ab".repeat(32)}` as Hex, contentURI: "ipfs://x", registeredBy: SELLER };
         await expect(executeAction(wallet, pub, addresses, action)).rejects.toThrow(/two-party handshake|counterparty/i);
     });
 
     it("throws on attest-as-seller without the merkle payload", async () => {
-        const action = { type: "attest-as-seller", processId: "0x09" as Hex, attester: SELLER, orderHashes: [] } as AttestAction;
+        const action: AttestAction = { type: "attest-as-seller", description: "", processId: PROCESS, attester: SELLER, orderHashes: [] };
         await expect(executeAction(wallet, pub, addresses, action)).rejects.toThrow(/inputs\.attestation/i);
     });
 
     it("files attest-as-seller against the target order alone, the seller's own order", async () => {
-        const action = { type: "attest-as-seller", processId: "0x09" as Hex, attester: SELLER, orderHashes: [] } as AttestAction;
+        const action: AttestAction = { type: "attest-as-seller", description: "", processId: PROCESS, attester: SELLER, orderHashes: [] };
         const target = orderToCommitment(mkOrder());
-        const attestation = { target, clauseId: "0xdd" as Hex, stage: 1, clauseDataHash: `0x${"00".repeat(32)}` as Hex, proof: [], contentRef: `0x${"00".repeat(32)}` as Hex };
+        const attestation = { target, clauseId: CLAUSE_ID, stage: 1, clauseDataHash: `0x${"00".repeat(32)}` as Hex, proof: [], contentRef: `0x${"00".repeat(32)}` as Hex };
         const { wallet: sellerWallet, calls } = recordingWallet({ address: SELLER });
         const withCoordinator: FigaroAddresses = { core: CORE, attestationCoordinator: COORDINATOR };
         await executeAction(sellerWallet, pub, withCoordinator, action, { attestation });
         expect(calls).toHaveLength(1);
         expect(calls[0].functionName).toBe("attestAsSeller");
-        expect(calls[0].args).toEqual([target, "0xdd", 1, attestation.clauseDataHash, [], attestation.contentRef]);
+        expect(calls[0].args).toEqual([target, CLAUSE_ID, 1, attestation.clauseDataHash, [], attestation.contentRef]);
     });
 
     it("throws on attest when the coordinator address is unconfigured", async () => {
-        const action = { type: "attest-as-buyer", processId: "0x09" as Hex, attester: BUYER, orderHashes: [] } as AttestAction;
-        const attestation = { target: orderToCommitment(mkOrder()), clauseId: "0xdd" as Hex, stage: 1, clauseDataHash: `0x${"00".repeat(32)}` as Hex, proof: [], contentRef: `0x${"00".repeat(32)}` as Hex };
+        const action: AttestAction = { type: "attest-as-buyer", description: "", processId: PROCESS, attester: BUYER, orderHashes: [] };
+        const attestation = { target: orderToCommitment(mkOrder()), clauseId: CLAUSE_ID, stage: 1, clauseDataHash: `0x${"00".repeat(32)}` as Hex, proof: [], contentRef: `0x${"00".repeat(32)}` as Hex };
         await expect(executeAction(wallet, pub, addresses, action, { attestation })).rejects.toThrow(/attestationCoordinator/i);
     });
 });
 
 const BUYER_SIG = `0x${"b1".repeat(65)}` as Hex;
 const SELLER_SIG = `0x${"5e".repeat(65)}` as Hex;
-const PROCESS = "0x0000000000000000000000000000000000000000000000000000000000000009" as Hex;
 
 /** The resolve-cap reads `assertOrderFitsResolveCap` makes for a sub-order:
  *  the chain's gas limit and FigaroCore's `processes(id)` tuple, whose last
@@ -218,13 +227,13 @@ describe("attestAsBuyer — the buyer's AttestationCoordinator write", () => {
         const clauseDataHash = `0x${"cd".repeat(32)}` as Hex;
         const contentRef = `0x${"ce".repeat(32)}` as Hex;
         const proof = [`0x${"01".repeat(32)}` as Hex];
-        const result = await attestAsBuyer(buyerWallet, COORDINATOR, target, "0xdd", 2, clauseDataHash, proof, contentRef);
+        const result = await attestAsBuyer(buyerWallet, COORDINATOR, target, CLAUSE_ID, 2, clauseDataHash, proof, contentRef);
         expect(result).toEqual({ hash: TX });
         expect(calls).toHaveLength(1);
         expect(calls[0].address).toBe(COORDINATOR);
         expect(calls[0].abi).toBe(ATTESTATION_COORDINATOR_ABI);
         expect(calls[0].functionName).toBe("attestAsBuyer");
-        expect(calls[0].args).toEqual([target, "0xdd", 2, clauseDataHash, proof, contentRef]);
+        expect(calls[0].args).toEqual([target, CLAUSE_ID, 2, clauseDataHash, proof, contentRef]);
     });
 });
 
@@ -234,7 +243,7 @@ describe("executeAction — the success paths reach the writes", () => {
         const derived = computeCommitmentProcessId(root, CHAIN, CORE);
         // The proposer reconstructs commitments from events, which carry the DERIVED id.
         const asEvent: Commitment = { ...root, processId: derived };
-        const action = { type: "resolve-process", description: "", processId: derived, caller: BUYER, commitments: [asEvent], settlements: [], totalBuyerPayout: 0n, totalSellerPayout: 0n } as ResolveProcessAction;
+        const action: ResolveProcessAction = { type: "resolve-process", description: "", processId: derived, caller: BUYER, commitments: [asEvent], settlements: [], totalBuyerPayout: 0n, totalSellerPayout: 0n };
         const { wallet: buyerWallet, calls } = recordingWallet({ address: BUYER });
         const chainPub = { getChainId: async () => CHAIN } as unknown as PublicClient;
         await executeAction(buyerWallet, chainPub, addresses, action);
@@ -244,7 +253,7 @@ describe("executeAction — the success paths reach the writes", () => {
     });
 
     it("initiate-process writes commit with the given commitment and both signatures", async () => {
-        const action = { type: "initiate-process", processId: ZERO_PROCESS_ID, buyer: BUYER, processDesignHash: "0xab" as Hex, contentURI: "ipfs://x", registeredBy: SELLER } as InitiateProcessAction;
+        const action: InitiateProcessAction = { type: "initiate-process", description: "", processId: ZERO_PROCESS_ID, buyer: BUYER, processDesignHash: `0x${"ab".repeat(32)}` as Hex, contentURI: "ipfs://x", registeredBy: SELLER };
         const root = orderToCommitment(mkOrder({ processId: ZERO_PROCESS_ID }));
         const { wallet: buyerWallet, calls } = recordingWallet({ address: BUYER });
         await executeAction(buyerWallet, pub, addresses, action, { commitment: root, buyerSig: BUYER_SIG, sellerSig: SELLER_SIG });
@@ -254,15 +263,15 @@ describe("executeAction — the success paths reach the writes", () => {
     });
 
     it("attest-as-buyer writes attestAsBuyer to the configured coordinator", async () => {
-        const action = { type: "attest-as-buyer", description: "", processId: "0x09" as Hex, attester: BUYER, orderHashes: [] } as AttestAction;
+        const action: AttestAction = { type: "attest-as-buyer", description: "", processId: PROCESS, attester: BUYER, orderHashes: [] };
         const target = orderToCommitment(mkOrder());
-        const attestation = { target, clauseId: "0xdd" as Hex, stage: 1, clauseDataHash: `0x${"cd".repeat(32)}` as Hex, proof: [], contentRef: `0x${"ce".repeat(32)}` as Hex };
+        const attestation = { target, clauseId: CLAUSE_ID, stage: 1, clauseDataHash: `0x${"cd".repeat(32)}` as Hex, proof: [], contentRef: `0x${"ce".repeat(32)}` as Hex };
         const { wallet: buyerWallet, calls } = recordingWallet({ address: BUYER });
         await executeAction(buyerWallet, pub, { core: CORE, attestationCoordinator: COORDINATOR }, action, { attestation });
         expect(calls).toHaveLength(1);
         expect(calls[0].address).toBe(COORDINATOR);
         expect(calls[0].functionName).toBe("attestAsBuyer");
-        expect(calls[0].args).toEqual([target, "0xdd", 1, attestation.clauseDataHash, [], attestation.contentRef]);
+        expect(calls[0].args).toEqual([target, CLAUSE_ID, 1, attestation.clauseDataHash, [], attestation.contentRef]);
     });
 });
 

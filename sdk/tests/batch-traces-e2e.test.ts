@@ -122,8 +122,8 @@ import {
     type Agreement,
     type Commitment,
 } from "../src/index.js";
-import { SequencerClient, type SequencerUsageClaim } from "../src/agent/sequencer.js";
-import { computeCommitmentProcessId } from "../src/commitments.js";
+import { SequencerClient, batchAttestationTypedData, type SequencerUsageClaim } from "../src/agent/sequencer.js";
+import { computeCommitmentProcessId, RESOLVE_PROCESS_TYPES } from "../src/commitments.js";
 
 import {
     MOCK_ERC20_ABI,
@@ -173,29 +173,6 @@ const C_WALLETS = 6;
 const C_CONTRACT = 10;
 const ROLE = ["b1", "b2", "s1", "s2"] as const;
 
-const ATTEST_SELLER_TYPES = {
-    AttestSeller: [
-        { name: "orderHash", type: "bytes32" },
-        { name: "clauseId", type: "bytes32" },
-        { name: "stage", type: "uint8" },
-        { name: "contentRef", type: "bytes32" },
-    ],
-} as const;
-const ATTEST_BUYER_TYPES = {
-    AttestBuyer: [
-        { name: "processId", type: "bytes32" },
-        { name: "orderHash", type: "bytes32" },
-        { name: "clauseId", type: "bytes32" },
-        { name: "stage", type: "uint8" },
-        { name: "contentRef", type: "bytes32" },
-    ],
-} as const;
-const RESOLVE_TYPES = {
-    ResolveProcess: [
-        { name: "processId", type: "bytes32" },
-        { name: "runningTotal", type: "uint256" },
-    ],
-} as const;
 
 const WALLET_CODE_ABI = parseAbi(["function approve(bytes32 digest, bytes signature) external"]);
 const CLAUSE_REGISTRY_ABI = parseAbi(["function registerClause(bytes32 clauseKey, string contentURI) external payable"]);
@@ -647,18 +624,18 @@ describe("Batch E2E: the model's traces through the Core and the proof program",
         }
         expectEntry(run.t, "op", concat(["0x01", packCommitment(order.b), bBuyerSig, bSellerSig]));
         const orderHashB = computeOrderHash(order.b, CHAIN_ID, verifier);
-        const domain = buildDomain(CHAIN_ID, verifier);
+        const at = { target: order.b, clauseId: run.clause, stage: STAGE, contentRef: order.contentRef, clauseDataHash, proof: order.proof };
+        const sellerTyped = batchAttestationTypedData("seller", at, CHAIN_ID, verifier);
+        const buyerTyped = batchAttestationTypedData("buyer", at, CHAIN_ID, verifier);
+        // The SDK's typed data names the order and the process the trace tracks.
+        expect(sellerTyped.message.orderHash).toBe(orderHashB);
+        expect(buyerTyped.message.processId).toBe(run.processId.batch.get(pid)!);
         await relay.submitAttestAsSeller({
             target: order.b,
             clauseId: run.clause,
             stage: STAGE,
             contentRef: order.contentRef,
-            sellerSig: await seller.account.signTypedData({
-                domain,
-                types: ATTEST_SELLER_TYPES,
-                primaryType: "AttestSeller",
-                message: { orderHash: orderHashB, clauseId: run.clause, stage: STAGE, contentRef: order.contentRef },
-            }),
+            sellerSig: await seller.account.signTypedData(sellerTyped),
             clauseDataHash,
             inclusionProof: order.proof,
         });
@@ -667,18 +644,7 @@ describe("Batch E2E: the model's traces through the Core and the proof program",
             clauseId: run.clause,
             stage: STAGE,
             contentRef: order.contentRef,
-            buyerSig: await buyer.account.signTypedData({
-                domain,
-                types: ATTEST_BUYER_TYPES,
-                primaryType: "AttestBuyer",
-                message: {
-                    processId: run.processId.batch.get(pid)!,
-                    orderHash: orderHashB,
-                    clauseId: run.clause,
-                    stage: STAGE,
-                    contentRef: order.contentRef,
-                },
-            }),
+            buyerSig: await buyer.account.signTypedData(buyerTyped),
             clauseDataHash,
             inclusionProof: order.proof,
         });
@@ -731,7 +697,7 @@ describe("Batch E2E: the model's traces through the Core and the proof program",
         } else {
             const sig = await buyer.account.signTypedData({
                 domain: buildDomain(CHAIN_ID, verifier),
-                types: RESOLVE_TYPES,
+                types: RESOLVE_PROCESS_TYPES,
                 primaryType: "ResolveProcess",
                 message: { processId: processIdB, runningTotal },
             });
@@ -1064,7 +1030,7 @@ describe("Batch E2E: the model's traces through the Core and the proof program",
         const resolveSig = (signer: Party, processId: Hex, runningTotal: bigint) =>
             signer.account.signTypedData({
                 domain: buildDomain(CHAIN_ID, verifier),
-                types: RESOLVE_TYPES,
+                types: RESOLVE_PROCESS_TYPES,
                 primaryType: "ResolveProcess",
                 message: { processId, runningTotal },
             });

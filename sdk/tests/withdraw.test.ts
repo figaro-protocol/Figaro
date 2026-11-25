@@ -24,7 +24,6 @@ const CURRENCY = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as Address;
 const PROC_A = ("0x" + "a".repeat(64)) as Hex;
 const PROC_B = ("0x" + "b".repeat(64)) as Hex;
 const ORDER_1 = ("0x" + "11".repeat(32)) as Hex;
-const ORDER_2 = ("0x" + "22".repeat(32)) as Hex;
 const CHECKOUT_HASH = ("0x" + "99".repeat(32)) as Hex;
 
 function committed(overrides: Partial<OrderCommittedEvent> = {}): OrderCommittedEvent {

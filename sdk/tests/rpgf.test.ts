@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { concatHex, encodeAbiParameters, encodeEventTopics, encodePacked, getAddress, keccak256, type Address, type Hex, type Log, type PublicClient } from "viem";
 import {
@@ -21,7 +23,7 @@ import {
     fetchUsageRecords,
     fetchSkippedBatchUses,
 } from "../src/rpgf/index.js";
-import { BATCH_VERIFIER_ABI } from "../src/abis.js";
+import { BATCH_VERIFIER_ABI, USAGE_COUNTER_ABI } from "../src/abis.js";
 import {
     PROVENANCE_LEAF_KEY,
     computeCheckoutHash,
@@ -61,26 +63,22 @@ describe("icbrt", () => {
         expect(icbrt(big * big * big - 1n)).toBe(big - 1n);
     });
 
-    it("agrees with UsageCounter.icbrt at its uint256 search ceiling", () => {
-        // The Solidity side clamps its search ceiling at floor(cbrt(2^256-1)) —
-        // the largest x whose cube fits a uint256. At and around that bound the
-        // two must agree. (A prior revision clamped at floor(cbrt(2^64-1)) =
-        // 2642245, which saturated every score above c * d^2 >= 19; these cases
-        // are the regression.)
-        const bound = 48740834812604276470692694n;
-        expect(icbrt(bound * bound * bound)).toBe(bound);
-        expect(icbrt(bound * bound * bound - 1n)).toBe(bound - 1n);
-        const oldWrongBound = 2642245n;
-        expect(icbrt(oldWrongBound ** 3n + 1n)).toBe(oldWrongBound);
-        expect(icbrt(20n * RPGF_SCORE_SCALE)).toBe(2714417n); // c=5, d=2
-        expect(icbrt(10000n * RPGF_SCORE_SCALE)).toBe(21544346n); // c=100, d=10
-        // The counter's own inputs are c * d^2 * 1e18 — exact for a perfect cube.
-        expect(icbrt(8n * RPGF_SCORE_SCALE)).toBe(2n * 10n ** 6n);
+    it("agrees with UsageCounter.icbrt on the values the Solidity suite pins", () => {
+        // test/rewards/UsageCounterTest.t.sol `test_icbrtMatchesCubes`:
+        // icbrt(type(uint256).max) == 48740834812604276470692694. (A prior
+        // revision clamped its search at floor(cbrt(2^64-1)) = 2642245, which
+        // saturated every score above c * d^2 >= 19; this is the regression.)
+        expect(icbrt(2n ** 256n - 1n)).toBe(48740834812604276470692694n);
+        expect(icbrt(10n ** 18n)).toBe(10n ** 6n);
+        // `test_scoreDoesNotSaturateAtRealUsage`: _score(c, d) = icbrt(c * d^2 * 1e18).
+        expect(icbrt(20n * RPGF_SCORE_SCALE)).toBe(2714417n); // _score(5, 2)
+        expect(icbrt(10000n * RPGF_SCORE_SCALE)).toBe(21544346n); // _score(100, 10)
     });
 });
 
-// The floor a test passes as the deployment's UsageCounter.minSellers().
-const FLOOR = 3n;
+// The floor a test passes as the deployment's UsageCounter.minSellers(): the
+// SDK's reference value, held below to the value the mainnet deploy passes.
+const FLOOR = RPGF_MIN_SELLERS;
 
 describe("usageScore", () => {
     it("is zero without both a process and a seller", () => {
@@ -95,9 +93,19 @@ describe("usageScore", () => {
         expect(moreSellers).toBeGreaterThan(moreProcesses);
     });
 
-    it("is uniform — equal (c, d) gives equal score for any clause or assembly (no weight)", () => {
-        expect(usageScore(5n, 3n, FLOOR)).toBe(usageScore(5n, 3n, FLOOR));
-        expect(usageScore(1n, 1n, 1n)).toBe(10n ** 6n); // icbrt(1e18), floor disabled
+    it("is the counter's score on every (c, d) the Solidity suite pins, with the floor off", () => {
+        // test/rewards/UsageCounterTest.t.sol: `test_scoreDoesNotSaturateAtRealUsage`
+        // pins _score(4, 2), _score(5, 2), _score(100, 10), _score(1000, 50) and
+        // _score(10000, 1000); the clause-usage test pins the score of (1, 1) at 1e6.
+        const pinned: [bigint, bigint, bigint][] = [
+            [1n, 1n, 1_000_000n],
+            [4n, 2n, 2_519_842n],
+            [5n, 2n, 2_714_417n],
+            [100n, 10n, 21_544_346n],
+            [1000n, 50n, 135_720_880n],
+            [10000n, 1000n, 2_154_434_690n],
+        ];
+        for (const [c, d, score] of pinned) expect(usageScore(c, d, 1n), `(${c}, ${d})`).toBe(score);
     });
 
     it("takes the floor from the caller (the chain's UsageCounter.minSellers), never a bundled default", () => {
@@ -108,12 +116,16 @@ describe("usageScore", () => {
 
     it("floors below minSellers — the minimum-support floor", () => {
         // Below the floor nothing scores; at it the FULL score springs —
-        // deferred, never lost. The formula's reference floor is 3.
-        expect(RPGF_MIN_SELLERS).toBe(3n);
-        expect(usageScore(10n, 2n, FLOOR)).toBe(0n);
-        expect(usageScore(10n, 3n, FLOOR)).toBe(icbrt(90n * RPGF_SCORE_SCALE));
-        // A deployment with the floor disabled mirrors via the parameter.
-        expect(usageScore(10n, 2n, 1n)).toBeGreaterThan(0n);
+        // deferred, never lost. The SDK's reference floor is the one the
+        // deploy scripts' one base hands the counter (script/DeployBase.s.sol).
+        const deploy = readFileSync(path.resolve(__dirname, "../../script/DeployBase.s.sol"), "utf8");
+        const deployed = /uint64 internal constant MIN_SELLERS = (\d+);/.exec(deploy);
+        expect(deployed, "the deploy scripts' base states the floor it passes to UsageCounter").not.toBeNull();
+        expect(RPGF_MIN_SELLERS).toBe(BigInt(deployed![1]!));
+        // UsageCounterTest pins _score(4, 2) = 2519842: under a floor of 3
+        // the two sellers score nothing; under a floor of 2 they score it whole.
+        expect(usageScore(4n, 2n, 3n)).toBe(0n);
+        expect(usageScore(4n, 2n, 2n)).toBe(2_519_842n);
     });
 });
 
@@ -305,9 +317,11 @@ describe("computeUsageAccruals", () => {
         // must land on the same number from the counting rules alone.
         const s1 = sellerOf("seller1");
         const s2 = sellerOf("seller2");
+        // The scores the counter emits for (1, 1) and (2, 2):
+        // icbrt(1e18) = 1e6 and icbrt(8e18) = 2e6, both exact cubes.
         const emitted = [
-            record(CLAUSE_A, "ph-0", s1, { c: 1n, d: 1n, score: usageScore(1n, 1n, 1n) }),
-            record(CLAUSE_A, "ph-1", s2, { c: 2n, d: 2n, score: usageScore(2n, 2n, 1n) }),
+            record(CLAUSE_A, "ph-0", s1, { c: 1n, d: 1n, score: 1_000_000n }),
+            record(CLAUSE_A, "ph-1", s2, { c: 2n, d: 2n, score: 2_000_000n }),
         ];
         const accrual = computeUsageAccruals(emitted, 1n).get(0)!.byClauseOrProcess.get(id(CLAUSE_A))!;
         const last = emitted[emitted.length - 1];
@@ -719,8 +733,8 @@ describe("buildUsageClaims", () => {
 describe("fetchUsageRecords — chunked getLogs", () => {
     const USAGE_COUNTER = "0x000000000000000000000000000000000000f00d" as Address;
 
-    /** A stub client whose `getLogs` always answers empty — only the chunking
-     *  of the calls themselves is under test; decoding is covered elsewhere. */
+    /** A stub client whose `getLogs` answers empty: the chunking of the
+     *  calls is under test here; the decoding is the next test's. */
     function mockClient(): PublicClient {
         const getLogs = vi.fn(async () => [] as Log[]);
         return { getLogs } as unknown as PublicClient;
@@ -733,6 +747,33 @@ describe("fetchUsageRecords — chunked getLogs", () => {
         expect(client.getLogs).toHaveBeenNthCalledWith(1, { address: USAGE_COUNTER, fromBlock: 0n, toBlock: 9n });
         expect(client.getLogs).toHaveBeenNthCalledWith(2, { address: USAGE_COUNTER, fromBlock: 10n, toBlock: 19n });
         expect(client.getLogs).toHaveBeenNthCalledWith(3, { address: USAGE_COUNTER, fromBlock: 20n, toBlock: 25n });
+    });
+
+    it("decodes the counter's UsageRecorded logs, encoded with the production ABI, in chain order", async () => {
+        const event = (args: { kind: number; key: Hex; period: number; processId: Hex; seller: Address; c: bigint; d: bigint; score: bigint }, blockNumber: bigint, logIndex: number): Log => ({
+            address: USAGE_COUNTER,
+            topics: encodeEventTopics({
+                abi: USAGE_COUNTER_ABI, eventName: "UsageRecorded",
+                args: { clauseOrProcess: args.key, period: args.period, processId: args.processId },
+            }) as [Hex, ...Hex[]],
+            data: encodeAbiParameters(
+                [{ type: "uint8" }, { type: "address" }, { type: "uint64" }, { type: "uint64" }, { type: "uint256" }],
+                [args.kind, args.seller, args.c, args.d, args.score],
+            ),
+            blockNumber, logIndex, blockHash: null, transactionHash: null, transactionIndex: null, removed: false,
+        });
+        const seller = getAddress("0x00000000000000000000000000000000000005e1");
+        const processId = `0x${"9a".repeat(32)}` as Hex;
+        const later = event({ kind: 1, key: ASSEMBLY, period: 1, processId, seller, c: 4n, d: 2n, score: 2_519_842n }, 7n, 0);
+        const earlier = event({ kind: 0, key: CLAUSE_A, period: 0, processId, seller, c: 1n, d: 1n, score: 1_000_000n }, 5n, 3);
+        // A log of another event from the counter's address is passed over.
+        const other: Log = { ...earlier, topics: [`0x${"ee".repeat(32)}`] };
+        const client = { getLogs: vi.fn(async () => [later, other, earlier]) } as unknown as PublicClient;
+        const records = await fetchUsageRecords(client, USAGE_COUNTER, 10n);
+        expect(records).toEqual([
+            { blockNumber: 5n, logIndex: 3, kind: 0, clauseOrProcess: CLAUSE_A, period: 0, processId, seller, c: 1n, d: 1n, score: 1_000_000n },
+            { blockNumber: 7n, logIndex: 0, kind: 1, clauseOrProcess: ASSEMBLY, period: 1, processId, seller, c: 4n, d: 2n, score: 2_519_842n },
+        ]);
     });
 
     it("fetchUsageRecords defaults to DEFAULT_LOG_CHUNK_SIZE, issuing one call on a devnet-sized range", async () => {

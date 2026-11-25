@@ -34,9 +34,9 @@ import {
     type ProjectionSpecView,
     type SpecSource,
 } from "./projection.js";
-import { agreementClauses, processDesignFollows, type HydratedProcessDesign, type ProcessDesignAgreement } from "./assembly.js";
+import { agreementClauses, rootAgreementOf, type HydratedProcessDesign, type ProcessDesignAgreement } from "./assembly.js";
 import { planProcessOrders, type PlannedProcessOrder } from "./reconstructOrders.js";
-import { isAddressHex, type Hex } from "./types.js";
+import { isAddressHex, isDecimalIntegerString, type Hex } from "./types.js";
 import type { CoSellerBinding } from "./memberProfile.js";
 import type { CatalogItemMetadata } from "./memberCatalog.js";
 
@@ -156,7 +156,7 @@ export interface PricedLine {
 /** An integer value as a bigint: a safe integer number, or a decimal string. */
 function integerOf(value: unknown): bigint | undefined {
     if (typeof value === "number" && Number.isSafeInteger(value)) return BigInt(value);
-    if (typeof value === "string" && /^-?\d+$/.test(value)) return BigInt(value);
+    if (isDecimalIntegerString(value)) return BigInt(value);
     return undefined;
 }
 
@@ -590,9 +590,7 @@ export function planSubOrderSellers(
     bound: BoundProcessPlanInput,
 ): Array<{ node: PlannedProcessOrder; seller: `0x${string}` | null; itemId: string | null }> {
     const { assembly } = bound.hydratedAssembly;
-    const rootId =
-        assembly.agreements.find((o) => processDesignFollows(o).length === 0)?.id ??
-        assembly.agreements[0]?.id;
+    const rootId = rootAgreementOf(assembly).id;
     // Commit order (throws on a cyclic topology — the guard the checkout
     // relies on), then the sub-orders are everything but the root.
     const ordered = planProcessOrders(bound.hydratedAssembly).filter((node) => node.nodeId !== rootId);

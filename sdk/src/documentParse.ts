@@ -14,15 +14,15 @@
  */
 
 import { isAddress } from "viem";
-import { isBytes32Hex } from "./types.js";
+import { isBytes32Hex, isPlainRecord } from "./types.js";
 
 export type UnknownRecord = Record<string, unknown>;
 
 export function asRecord(value: unknown, path: string): UnknownRecord {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
+    if (!isPlainRecord(value)) {
         throw new Error(`${path} must be an object.`);
     }
-    return value as UnknownRecord;
+    return value;
 }
 
 export function asString(value: unknown, path: string): string {

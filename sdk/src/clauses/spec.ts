@@ -12,6 +12,7 @@
  */
 
 import { isPortablePattern, isRunnablePattern } from "./safeRegex.js";
+import { isDecimalIntegerString, isPlainRecord as isObject } from "../types.js";
 
 export type FieldType =
     | "string"
@@ -277,17 +278,6 @@ const VALID_FIELD_TYPES: ReadonlySet<string> = new Set([
     "string", "integer", "bigint", "boolean", "enum", "array", "object",
 ]);
 
-/** The bigint grammar: a plain decimal integer, optionally negative.
- *  Deliberately TIGHTER than bare `BigInt()` (which coerces `""`, `"0x10"`,
- *  and padded whitespace) — the published format's contract is "decimal
- *  string" (`clause-spec.schema.json`, a field's `type`), so a reader's tool
- *  in any language applies the same grammar. */
-const DECIMAL_BIGINT_RE = /^-?[0-9]+$/;
-
-function isObject(value: unknown): value is Record<string, unknown> {
-    return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
 /** Validate a `default` against its parsed field spec. Object fields can't
  *  carry defaults; enum/array-enum defaults must be member values (and not
  *  the sentinel); numeric defaults respect min/max. */
@@ -300,7 +290,7 @@ function defaultMatchesField(spec: FieldSpec, value: unknown): boolean {
                 && (spec.min === undefined || value >= spec.min)
                 && (spec.max === undefined || value <= spec.max);
         case "bigint":
-            return typeof value === "string" && DECIMAL_BIGINT_RE.test(value);
+            return isDecimalIntegerString(value);
         case "boolean":
             return typeof value === "boolean";
         case "enum":
@@ -575,7 +565,7 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
                     errors.push({ path: `${path}.${key}`, message: `${key} must be a decimal string for bigint` });
                     return false;
                 }
-                if (!DECIMAL_BIGINT_RE.test(v)) {
+                if (!isDecimalIntegerString(v)) {
                     errors.push({ path: `${path}.${key}`, message: `${key} must parse as a BigInt` });
                     return false;
                 }

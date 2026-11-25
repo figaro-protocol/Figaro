@@ -164,7 +164,17 @@ describe("processEdges — the reference process design's realized agreements", 
         expect(orders.length).toBeGreaterThan(2);
         const byOrder = new Map(orders.map((o) => [o.orderHash, o.agreement]));
         const got = processEdges(projectProcessGraph(committedEvents(orders)), (order) => byOrder.get(order.orderHash)).get(orders[0].processId)!;
-        expect(new Map(got.follows)).toEqual(new Map(orders.map((o) => [o.orderHash, [...(o.agreement.follows ?? [])]])));
+        // The edges the written design declares (assemblies/tradelens.json:
+        // each agreement's `follows`, by agreement id), carried to the order
+        // each agreement became — never the realized agreements' own leaves.
+        const authored = JSON.parse(readFileSync(path.join(ROOT, "assemblies", "tradelens.json"), "utf8")) as {
+            agreements: { id: string; follows?: string[] }[];
+        };
+        const orderOf = new Map(orders.map((o) => [o.nodeId, o.orderHash]));
+        expect(orderOf.size).toBe(authored.agreements.length);
+        expect(new Map(got.follows)).toEqual(new Map(authored.agreements.map((a) => [
+            orderOf.get(a.id)!, (a.follows ?? []).map((parent) => orderOf.get(parent)!),
+        ])));
     });
 
     it("commitOrder reads the commits by the running total, whatever order the map holds them in", async () => {

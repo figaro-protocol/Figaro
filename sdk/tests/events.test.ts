@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import { encodeAbiParameters, encodeEventTopics, parseAbiParameters, type Log, type PublicClient } from "viem";
+import { encodeAbiParameters, encodeEventTopics, getAddress, parseAbiParameters, type Log, type PublicClient } from "viem";
 import { CORE_ABI, ATTESTATION_COORDINATOR_ABI } from "../src/abis.js";
 import {
     fetchLogsChunked, DEFAULT_LOG_CHUNK_SIZE, fetchCoreEvents, PRUNED_HISTORY_ATTEMPTS, RATE_LIMIT_ATTEMPTS, logReadRetry,
     parseAttestationLogs, tagAttestationUniverses, fetchAttestationRecords,
+    decodeLogs, parseOrderResolvedLogs, parseProcessResolvedLogs,
 } from "../src/events.js";
 import { fetchDiscoveryEvents } from "../src/discovery.js";
 import { FigaroContext } from "../src/agent/context.js";
@@ -168,6 +169,30 @@ function twoContractClient(allLogs: Log[]): PublicClient {
     const getBlockNumber = vi.fn(async () => 50n);
     return { getLogs, getBlockNumber } as unknown as PublicClient;
 }
+
+describe("the resolution parsers carry each log's position", () => {
+    it("parseOrderResolvedLogs and parseProcessResolvedLogs keep the log index and the transaction", () => {
+        const order = { ...resolved(CORE, 1, 8n, 2), transactionHash: id(0xa1) } as Log;
+        const proc = { ...processResolved(CORE, 1, 8n, 3), transactionHash: id(0xa1) } as Log;
+        expect(parseOrderResolvedLogs([order, proc])).toEqual([
+            { orderHash: id(1), processId: id(1), sellerPayout: 10n, buyerPayout: 20n, blockNumber: 8, logIndex: 2, transactionHash: id(0xa1) },
+        ]);
+        expect(parseProcessResolvedLogs([order, proc])).toEqual([
+            { processId: id(1), buyer: getAddress(BUYER), orderCount: 1n, blockNumber: 8, logIndex: 3, transactionHash: id(0xa1) },
+        ]);
+    });
+
+    it("decodeLogs passes over a log its ABI does not decode, and keeps the order given", () => {
+        const foreign = { ...resolved(CORE, 1, 1n, 0), topics: [id(0xee)] } as unknown as Log;
+        const decoded = decodeLogs([resolved(CORE, 2, 4n, 1), foreign, committed(CORE, 3, 2n, 5)], CORE_ABI);
+        expect(decoded.map((d) => [d.eventName, d.at.blockNumber, d.at.logIndex])).toEqual([
+            ["OrderResolved", 4, 1],
+            ["OrderCommitted", 2, 5],
+        ]);
+        expect(decoded[1]!.at.transactionHash).toBe(id(0xf3));
+        expect(decoded[0]!.at.transactionHash).toBeNull();
+    });
+});
 
 describe("fetchCoreEvents folds both resolution paths", () => {
     const LOGS = [

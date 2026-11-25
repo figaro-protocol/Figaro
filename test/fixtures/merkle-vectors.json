@@ -78,5 +78,15 @@
                 }
             ]
         }
+    ],
+    "topologyVectors": [
+        {
+            "label": "one-edge",
+            "follows": [
+                "0x1cbaf93c4832beb69ef7c4dc173417afae25a9e80f9b8319fad194ed670045ab"
+            ],
+            "clauseData": "{\"follows\":[\"0x1cbaf93c4832beb69ef7c4dc173417afae25a9e80f9b8319fad194ed670045ab\"]}",
+            "leaf": "0x273816c76df314153c93a9c7a224e643f4a0b87341ab2acae9c19abfb4cfefe5"
+        }
     ]
 }

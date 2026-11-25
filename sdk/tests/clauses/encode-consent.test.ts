@@ -186,12 +186,18 @@ describe("figaro-consent — encode/decode round-trip", () => {
         expect(docs[0].documentTitle).toBe("プライバシーポリシー");
     });
 
-    it("encodes deterministically", () => {
+    it("encodes the same content whatever order its keys were written in", () => {
         const content: ConsentContent = {
             documents: [
                 { documentHash: SAMPLE_HASH, documentVersion: "1.0.0", documentTitle: "Privacy Policy" },
             ],
         };
-        expect(encodeConsent(content)).toBe(encodeConsent(content));
+        const reordered: ConsentContent = {
+            documents: [
+                { documentTitle: "Privacy Policy", documentVersion: "1.0.0", documentHash: SAMPLE_HASH },
+            ],
+        };
+        expect(encodeConsent(reordered)).toBe(encodeConsent(content));
+        expect(encodeConsent({ documents: [{ ...content.documents[0]!, documentVersion: "1.0.1" }] })).not.toBe(encodeConsent(content));
     });
 });

@@ -417,7 +417,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `HttpChannel` | `/agent` | Coordination channel over plain HTTP; `204` is the seller declining, not an error. |
 | `InProcessChannel` | `/agent` | In-process channel — both parties run real sign/validate logic; only the wire is elided. |
 | `hydrateProcessDesign` | root | A assembly with each agreement's registration read through your fetcher and checked against its key; null (absence) if any agreement fails. |
-| `instantiateRootAgreement` | `/agent` | Instantiate a hydrated assembly's ROOT agreement into the signable agreement; same inputs rebuild it identically. |
+| `instantiateRootAgreement` | `/agent` | Instantiate a hydrated assembly's ROOT agreement (`rootAgreementOf`: the first entry that follows nothing) into the signable agreement; same inputs rebuild it identically. A design in which every entry names a parent is refused. |
 | `isAddressHex` | root | Is this value a 20-byte hex string? The one home for the address-shape regex. |
 | `isBytes32Hex` | root | Is this value a 32-byte hex string? The one home for the bytes32-shape regex. |
 | `isProcessRoot` | root | Whether a committed order is its process's root, from its `OrderCommitted` fields: `runningTotal == payment`. Reads no agreement, so an absent or unread topology leaf never decides it. |
@@ -438,7 +438,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `parseProjectionHints` | root | Read a spec's `block` projection hints — design fills, checkout fills, article. |
 | `specIsProcessLog` | root | Whether a spec's `block.design.article` is `"attestations"`, a process log a frontend presents as a lifecycle; presentation only, never what the clause signs. |
 | `specPricedLines` | root | A clause spec's priced-lines mark (`block.checkout.pricedLines`), only when the spec's own fields bear it out: the marked field an array of objects with `quantity` an integer and `unitPrice` a bigint. Undefined for a clause with no mark or a mark the fields contradict. |
-| `planSubOrderSellers` | root | Topologically order an assembly's sub-orders and resolve each one's bound seller. |
+| `planSubOrderSellers` | root | Topologically order an assembly's sub-orders and resolve each one's bound seller. The root is `rootAgreementOf`'s: the first entry that follows nothing; a later entry that follows nothing is a sub-order. A design in which every entry names a parent is refused. |
 | `parseAgreementRegistryLogs` | root | Decode `AgreementRegistry` logs into registrations and stake withdrawals, keyed by `agreementHash`. |
 | `planProcessOrders` | root | A hydrated assembly's agreements in commit order, each with its clause bag (keyed by clause key). |
 | `processEdges` | `/derive` | Each process's orders in commit order, and each order's signed edges where the caller holds its agreement and it hashes to the order's `checkoutHash`; every other order's edges are unknown. No commit position stands in for an edge. |
