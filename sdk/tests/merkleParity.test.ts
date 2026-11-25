@@ -189,13 +189,15 @@ describe("Merkle parity vectors — the three-way lock", () => {
         return;
     }
 
-    it("the one-edge topology leaf is the one TopologyLeafNeverOpensTest.t.sol hard-codes", () => {
+    it("the frozen one-edge topology vector is the SDK's leaf of its own edge, and the Foundry test reads it", () => {
+        const frozen = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as { topologyVectors: { label: string; follows: Hex[]; leaf: Hex }[] };
+        const oneEdge = frozen.topologyVectors.find((v) => v.label === "one-edge");
+        expect(oneEdge, "the fixture holds the one-edge vector").toBeDefined();
+        expect(oneEdge!.follows).toEqual([ONE_EDGE_FOLLOWED]);
+        expect(computeTopologyLeaf(oneEdge!.follows)).toBe(oneEdge!.leaf);
+        // TopologyLeafNeverOpensTest.t.sol holds its own Solidity leaf to this vector.
         const sol = readFileSync(path.resolve(__dirname, "../../test/core/attestation/TopologyLeafNeverOpensTest.t.sol"), "utf8");
-        const pinned = /SDK_ONE_EDGE_TOPOLOGY_LEAF\s*=\s*(0x[0-9a-fA-F]{64})/.exec(sol)?.[1];
-        expect(pinned, "the Foundry test pins the one-edge leaf").toBeDefined();
-        expect(computeTopologyLeaf([ONE_EDGE_FOLLOWED])).toBe(pinned);
-        const frozen = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as { topologyVectors: { label: string; leaf: Hex }[] };
-        expect(frozen.topologyVectors.find((v) => v.label === "one-edge")?.leaf).toBe(pinned);
+        expect(sol).toContain('".topologyVectors[0].leaf"');
     });
 
     it("the SDK reproduces the frozen fixture byte-for-byte", () => {
