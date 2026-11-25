@@ -64,11 +64,12 @@ export const GAS_PLAN_NAMES = [
     "CALLDATA_NONZERO_BYTE_GAS",
 ];
 
-/** The deploy script that builds each chain's UsageCounter schedule. */
+/** The deploy script that builds each chain's UsageCounter schedule: every
+ *  chain's script takes it from the one base they share. */
 export const DEPLOY_SCRIPTS = {
-    1: "script/DeployMainnet.s.sol",
-    11155111: "script/DeploySepolia.s.sol",
-    31337: "script/Deploy.s.sol",
+    1: "script/DeployBase.s.sol",
+    11155111: "script/DeployBase.s.sol",
+    31337: "script/DeployBase.s.sol",
 };
 
 /** `const NAME: u64 = 120_000;` (with or without `pub`) in a Rust source, by name. */
@@ -168,7 +169,7 @@ export function periodFromDeployScript(file) {
     const src = fs.readFileSync(path.resolve(root, file), "utf8");
     const units = { days: 86_400n, weeks: 604_800n, hours: 3_600n };
     const m =
-        src.match(/uint64\s+constant\s+PERIOD\s*=\s*([0-9_]+)\s*(days|weeks|hours)\s*;/) ??
+        src.match(/uint64\s+(?:internal\s+|public\s+)?constant\s+PERIOD\s*=\s*([0-9_]+)\s*(days|weeks|hours)\s*;/) ??
         src.match(/periods\[i\]\s*=[^;]*\*\s*([0-9_]+)\s*(days|weeks|hours)\s*\)\s*;/);
     if (!m) throw new Error(`${file} builds no period schedule this script can read`);
     return BigInt(m[1].replace(/_/g, "")) * units[m[2]];
