@@ -73,8 +73,10 @@ them (`test_aRegisteredAgreementsDesignerIsPaidForItsUse`).
 no return value, six decimals, an issuer blocklist, a rebase — and
 `FigaroBatchVerifierTest` the no-return and blocklist shapes on the batch
 path (`DESIGN_DECISIONS.md` #9 owns what each shape means). `DeployWiringTest`
-runs both deploy scripts as they would broadcast and reads every immutable
-and genesis parameter back from the deployed contracts.
+runs every deploy script as it would broadcast (devnet, mainnet, Sepolia, the Sepolia pair, the swap
+coordinator and the token mints) and reads every immutable and genesis parameter back from the deployed
+contracts: each period's amount and end against one schedule stated in the test, the address each
+deployer nonce yields, and each contract's code against a redeploy with the stated arguments.
 `ReentrancyAdversarialTest` hands the protocol a `MockReentrantToken` that
 re-enters mid-transfer and asserts the `nonReentrant` guard fires (nested call
 reverts) while the outer resolution completes exactly once — across

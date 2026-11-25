@@ -164,7 +164,7 @@ implemented by `FlorinToken`.
 
 ## Deployment flow
 
-### Mainnet — `script/DeployMainnet.s.sol`
+### Mainnet — `script/DeployMainnet.s.sol`, through `script/DeployBase.s.sol`
 
 The deploy script registers the designer-rewards minter, mints the founder +
 supporters + DAO genesis allocation, then seals minting. `FOUNDER_ALLOC = 70M`,

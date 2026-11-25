@@ -4,26 +4,14 @@ pragma solidity ^0.8.24;
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
 
-import "../src/core/kernel/FigaroCore.sol";
-import "../src/core/attestation/AttestationCoordinator.sol";
-import "../src/registries/ClauseRegistry.sol";
-import "../src/registries/MembersRegistry.sol";
-import "../src/rewards/FlorinToken.sol";
+import {DeployBase} from "./DeployBase.s.sol";
 import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockERC20.sol";
 import "../src/mocks/MockWitnessPermit2.sol";
 import "../src/mocks/MockSwapVenue.sol";
 import "../src/mocks/MockTreasuryMultisig.sol";
-import {RpgfMinter} from "../src/rewards/RpgfMinter.sol";
-import {UsageCounter} from "../src/rewards/UsageCounter.sol";
 import "../src/mocks/MockSP1Verifier.sol";
-import "../src/core/verifier/FigaroBatchVerifier.sol";
-// Named import: the coordinator declares its own local-minimal `IFigaroCore`
-// (the coordinator exemplar), which would collide with AttestationCoordinator's.
-import {WitnessSwapAndCommitCoordinator} from "../src/composability/WitnessSwapAndCommitCoordinator.sol";
 import {MockDisperse} from "../src/mocks/MockDisperse.sol";
-import "../src/registries/ProcessRegistry.sol";
-import "../src/registries/AgreementRegistry.sol";
 
 /// @title Deploy — Full protocol stack to local Anvil
 /// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,
@@ -34,15 +22,25 @@ import "../src/registries/AgreementRegistry.sol";
 ///         tokens to Anvil accounts.
 ///
 ///         Devnet florin allocation: 100M → deployer's wallet (stands in for
-///         founder + supporters on devnet; the mainnet split into FOUNDER_WALLET
-///         70M and SUPPORTERS_WALLET 30M is in script/DeployMainnet.s.sol),
-///         plus UsageCounter + the RpgfMinter registered at 600M before
-///         renounce. Nothing is posted, bonded, or challenged: the counter
-///         records verified usage as it happens and the minter pays pro rata
-///         from a period that has closed. Devnet runs the same nine annual
-///         periods as every public network; a test that needs a closed period
-///         advances the chain's clock past the open period's end.
-contract Deploy is Script {
+///         founder + supporters on devnet; the public networks split it into
+///         FOUNDER_WALLET 70M and SUPPORTERS_WALLET 30M), plus UsageCounter +
+///         the RpgfMinter registered at 600M before renounce. Nothing is posted,
+///         bonded, or challenged: the counter records verified usage as it
+///         happens and the minter pays pro rata from a period that has closed.
+///         Devnet runs the same nine annual periods as every public network; a
+///         test that needs a closed period advances the chain's clock past the
+///         open period's end.
+///
+///         The deployment is `DeployBase` (script/DeployBase.s.sol), the one
+///         every chain runs: the registries, the counter↔verifier pair, the
+///         schedule, the minter and the florin's genesis. The devnet's
+///         differences from the public networks, each stated where it is made:
+///         mock tokens, a mock Permit2 and swap venue, a mock SP1 verifier and
+///         the dev key, 0.001 ETH stakes and no member cooldown, the schedule
+///         anchored at the deploy block, founder + supporters lumped on the
+///         deployer, a mock treasury multisig, and test-token mints.
+///         deploy-local.sh parses the "deployed at:" lines this script prints.
+contract Deploy is DeployBase {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         // Hoisted once: run() compiles at the legacy-codegen stack limit, and
@@ -52,30 +50,26 @@ contract Deploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // ── Mock tokens ─────────────────────────────────────────────
-        // Assigned to contract-state vars (not run()-local), matching the
-        // established _batchVerifier/_usageCounter pattern below: under
-        // coverage instrumentation (FOUNDRY_PROFILE=coverage, --ir-minimum),
-        // every deployed address here stays live from its declaration
-        // through the NEXT_PUBLIC_ summary at the end of run(), which
-        // overflows the Yul stack allocator at minimum optimization. Storage
-        // reads/writes are addressed by slot, not stack residency, so moving
-        // the long-lived results off the stack relieves the pressure with no
-        // change to deployment order, addresses, or logged output — this is
-        // script-local EVM state (discarded after the script runs), never
-        // broadcast.
+        // Assigned to contract-state vars (not run()-local), as every address
+        // below is: under coverage instrumentation (FOUNDRY_PROFILE=coverage,
+        // --ir-minimum), every deployed address here stays live from its
+        // declaration through the NEXT_PUBLIC_ summary at the end of run(),
+        // which overflows the Yul stack allocator at minimum optimization.
+        // Storage reads/writes are addressed by slot, not stack residency, so
+        // keeping the long-lived results off the stack relieves the pressure
+        // with no change to deployment order, addresses, or logged output —
+        // this is script-local EVM state (discarded after the script runs),
+        // never broadcast.
         _token = new MockERC20("Mock Token", "MOCK");
         console.log("MockERC20 deployed at:", address(_token));
 
         _permitToken = new MockPermitToken();
         console.log("MockPermitToken deployed at:", address(_permitToken));
 
-        // ── Core ────────────────────────────────────────────────────
-        _core = new FigaroCore();
-        console.log("FigaroCore deployed at:", address(_core));
-
-        // ── AttestationCoordinator ──────────────────────────────────
-        _attestation = new AttestationCoordinator(address(_core));
-        console.log("AttestationCoordinator deployed at:", address(_attestation));
+        // ── Core + AttestationCoordinator ───────────────────────────
+        _deployCore();
+        console.log("FigaroCore deployed at:", _core);
+        console.log("AttestationCoordinator deployed at:", _attestation);
 
         // ── WitnessSwapAndCommitCoordinator ─────────────────────────
         // Off-protocol multi-token bond funding. Devnet composes it with a
@@ -91,20 +85,21 @@ contract Deploy is Script {
         _router = new MockSwapVenue();
         console.log("MockSwapVenue deployed at:", address(_router));
 
-        _swapCoordinator = new WitnessSwapAndCommitCoordinator(address(_core), address(_permit2), address(_router));
-        console.log("WitnessSwapAndCommitCoordinator deployed at:", address(_swapCoordinator));
+        // Devnet: the venue is a mock, so the SwapRouter02 probe the public
+        // networks run does not apply.
+        _deploySwapCoordinator(_core, address(_permit2), address(_router));
+        console.log("WitnessSwapAndCommitCoordinator deployed at:", _swapCoordinator);
 
         // Router liquidity in both devnet tokens, so either can be swap output.
         _token.mint(address(_router), 10_000_000 ether);
         _permitToken.mint(address(_router), 10_000_000 ether);
 
-        // ── ClauseRegistry ──────────────────────────────────────────
-        // Deposit = staked intent (K4): registering costs 0.001 ETH,
-        // reclaimable via withdrawDeposit — which de-surfaces the clause.
-        // No time lock; pollution is priced by deposit × time-surfaced.
-        _clauses = new ClauseRegistry(0.001 ether);
-        console.log("ClauseRegistry deployed at:", address(_clauses));
-
+        // ── The four registries ─────────────────────────────────────
+        // Deposit = staked intent (K4): registering is reclaimable via
+        // withdrawDeposit — which de-surfaces the entry. No time lock;
+        // pollution is priced by deposit × time-surfaced. Each family has its
+        // own anchor per the separation-of-concerns doctrine.
+        //
         // Clauses are NOT registered here. They are pinned to IPFS + anchored
         // on ClauseRegistry by frontend/scripts/populate-clauses.mjs — the single
         // clause-population path for prod/testnet/mainnet, so each on-chain
@@ -117,49 +112,19 @@ contract Deploy is Script {
         // job (honest authors) and a read-time concern (downstream forums
         // reject garbage). Any registered clause is attestable with no
         // per-clause on-chain code — open-world by construction.
-
-        // ── ProcessRegistry ────────────────────────────────────────
-        // Permissionless first-write-wins anchor for designer-built
-        // assemblies. Parallel to ClauseRegistry and MembersRegistry —
-        // each registry family has its own anchor per the
-        // separation-of-concerns doctrine. The registry takes no on-chain
-        // claims about agreement content (agreements live off-chain on
-        // IPFS); per-clause validation runs at the per-clause layer
-        // at attestation time.
         //
-        // Spam protection via reclaimable deposit — same pattern
-        // MembersRegistry uses but adapted: withdraw returns the ETH and
-        // de-surfaces the assembly, but the composition binding stays
-        // permanently because buyers and sellers rely on content stability.
-        // No time lock (K4): pollution costs deposit × time-surfaced.
-        //
-        // Devnet value: 0.001 ETH deposit so test wallets can register
-        // without faucet drama. Mainnet picks its own value via
-        // DeployMainnet.s.sol — record the reasoning there.
-        _assemblies = new ProcessRegistry(0.001 ether);
-        console.log("ProcessRegistry deployed at:", address(_assemblies));
-
-        // ── AgreementRegistry ───────────────────────────────────────
-        // Permissionless first-write-wins anchor for registered agreements:
-        // the clauses composed for one order, a reusable unit any
-        // assembly binds. Its own family beside ClauseRegistry and
-        // ProcessRegistry, with the same reclaimable stake and the same
-        // devnet value.
-        _agreements = new AgreementRegistry(0.001 ether);
-        console.log("AgreementRegistry deployed at:", address(_agreements));
-
-        // ── MembersRegistry ────────────────────────────────────────
-        // Deposit chosen for devnet ergonomics: 0.001 ETH so test wallets
-        // can register without faucet drama.
+        // Devnet: 0.001 ETH stakes so test wallets can register without faucet
+        // drama (the public networks: 0.05 ETH, sized in DeployPublicStack).
         // COOLDOWN 0 ON DEVNET, deliberately: a requested withdrawal is
         // claimable in the same block, so e2e runs that register → leave →
         // re-register do not have to warp a chain they share with the
         // frontend. The cooldown's BEHAVIOR is covered in Foundry against a
         // non-zero parameter (MembersRegistryTest), not here.
-        // Mainnet picks both values via DeployMainnet.s.sol — record the
-        // reasoning there.
-        _members = new MembersRegistry(0.001 ether, 0);
-        console.log("MembersRegistry deployed at:", address(_members));
+        _deployRegistries(0.001 ether, 0.001 ether, 0);
+        console.log("ClauseRegistry deployed at:", _clauses);
+        console.log("ProcessRegistry deployed at:", _assemblies);
+        console.log("AgreementRegistry deployed at:", _agreements);
+        console.log("MembersRegistry deployed at:", _members);
 
         // ── Multisender (composition target; mock on devnet) ────────
         // Batch dispersal — one payment, many recipients, one transaction;
@@ -178,25 +143,20 @@ contract Deploy is Script {
 
         // ── Batch-resolution proof path (mock verifier on devnet) ──
         // MockSP1Verifier accepts any proof; the real deployment wires
-        // Succinct's SP1 verifier gateway + the program vkey from
+        // the SP1 verifier Succinct's gateway routes + the program vkey from
         // `SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test --release`
-        // (DeployMainnet.s.sol). The genesis root is the contract's own
-        // (`genesisRoot()`, zero: the guest's state tree over no entries).
-        // Note: FigaroBatchVerifier is NOT a florin minter and never will be.
-        _deployUsageAndVerifier(address(_core), address(_members), deployer);
+        // (DeployPublicStack).
+        _deployUsageAndVerifier(deployer);
 
         // ── florin token + RPGF minter ─────────────────────────────────
-        _florin = new FlorinToken();
-        console.log("FlorinToken deployed at:", address(_florin));
-
         // The RPGF minter must exist AT GENESIS: FlorinToken.registerMinter only
         // works before renounceDeployerMint, and renounce is irreversible — so
         // the 600M distribution registers here, before any other genesis step.
-        // Nothing is posted, bonded, or challenged: UsageCounter records verified
-        // usage as it happens and the minter pays pro rata from a closed period.
-        _deployRpgfMinter(_florin);
+        _deployFlorinAndMinter();
+        console.log("FlorinToken deployed at:", _florin);
+        console.log("RpgfMinter deployed at:", _rpgfMinter);
 
-        _deployTreasuryGenesis(_florin, deployer);
+        _deployTreasuryGenesis(deployer);
 
         // ── Mint test tokens to Anvil accounts ──────────────────────
         // anvil[0..19] — all 20 accounts minted EXPLICITLY. The deployer is
@@ -238,68 +198,65 @@ contract Deploy is Script {
 
         console.log("---");
         console.log("Deployment complete. Addresses:");
-        console.log("  NEXT_PUBLIC_FIGARO_CORE=", address(_core));
+        console.log("  NEXT_PUBLIC_FIGARO_CORE=", _core);
         console.log("  NEXT_PUBLIC_TOKEN_ADDRESS=", address(_token));
         console.log("  NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS=", address(_permitToken));
-        console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=", address(_attestation));
-        console.log("  NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR=", address(_swapCoordinator));
+        console.log("  NEXT_PUBLIC_ATTESTATION_COORDINATOR=", _attestation);
+        console.log("  NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR=", _swapCoordinator);
         console.log("  NEXT_PUBLIC_PERMIT2=", address(_permit2));
         console.log("  NEXT_PUBLIC_SWAP_ROUTER=", address(_router));
-        console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=", address(_clauses));
-        console.log("  NEXT_PUBLIC_MEMBERS_REGISTRY=", address(_members));
-        console.log("  NEXT_PUBLIC_PROCESS_REGISTRY=", address(_assemblies));
-        console.log("  NEXT_PUBLIC_AGREEMENT_REGISTRY=", address(_agreements));
-        console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=", address(_florin));
+        console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=", _clauses);
+        console.log("  NEXT_PUBLIC_MEMBERS_REGISTRY=", _members);
+        console.log("  NEXT_PUBLIC_PROCESS_REGISTRY=", _assemblies);
+        console.log("  NEXT_PUBLIC_AGREEMENT_REGISTRY=", _agreements);
+        console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=", _florin);
         console.log("  NEXT_PUBLIC_BATCH_VERIFIER=", _batchVerifier);
     }
 
+    // The devnet's own contracts; the shared addresses are DeployBase's.
     MockERC20 internal _token;
     MockPermitToken internal _permitToken;
-    FigaroCore internal _core;
-    AttestationCoordinator internal _attestation;
     MockWitnessPermit2 internal _permit2;
     MockSwapVenue internal _router;
-    WitnessSwapAndCommitCoordinator internal _swapCoordinator;
-    ClauseRegistry internal _clauses;
-    ProcessRegistry internal _assemblies;
-    AgreementRegistry internal _agreements;
-    MembersRegistry internal _members;
-    FlorinToken internal _florin;
-    address internal _batchVerifier;
-    address internal _usageCounter;
 
     /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
+    ///      The counter↔verifier pair is `DeployBase._deployPair`, the one
+    ///      every chain runs. Devnet differences: a mock SP1 verifier, the dev
+    ///      key when no relay is built, and the schedule anchored at the deploy
+    ///      block's time (no RPGF_GENESIS).
     ///
-    ///      The counter and the verifier REFERENCE EACH OTHER — the verifier
-    ///      writes the batch-path accrual, and the counter accepts that write
-    ///      from no other address — so one of the two must be predicted. They
-    ///      deploy as an ADJACENT PAIR with the prediction asserted: a wrong
-    ///      guess fails the deploy instead of silently producing a counter no
-    ///      verifier can write to, which would look healthy right up until the
-    ///      first batch resolved.
-    function _deployUsageAndVerifier(address core, address members, address deployer) internal {
+    ///      ONE SCHEDULE EVERYWHERE — the devnet's periods are the year of
+    ///      every public network. The claim path gates on `periodClosed`, and
+    ///      the rewards spec closes a period the way a chain does: it advances
+    ///      the chain's clock just past the open period's end
+    ///      (evm_increaseTime), never by waiting. The jump's length is
+    ///      harmless — every deadline a spec signs is derived from chain time
+    ///      at signing, the specs run one at a time and sign after any earlier
+    ///      jump, and the genesis population seeds nothing time-bound. A short
+    ///      devnet schedule tested nothing and cost the devnet its life:
+    ///      RESOLVE-TIME USAGE RECORDING (the resolve capability records every
+    ///      committed clause or assembly) needs the accrual OPEN, and with the
+    ///      last period ended every recording reverted AccrualClosed on a
+    ///      chain that was otherwise whole. With annual periods a devnet closes
+    ///      for accrual only after nine runs of the rewards spec; the devnet
+    ///      preflight reads `currentPeriod()` and devup redeploys a closed chain.
+    function _deployUsageAndVerifier(address deployer) internal {
         MockSP1Verifier mockSp1 = new MockSP1Verifier();
         console.log("MockSP1Verifier deployed at:", address(mockSp1));
 
-        // The next two CREATEs from this deployer, in order: the counter,
-        // then the verifier.
-        address predictedVerifier = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
-
-        _deployUsageCounter(core, members, predictedVerifier);
-
-        // The genesis root is the contract's own (`genesisRoot()`, zero).
         // The guest fingerprint the verifier pins: the sequencer this tree
         // built reports its own (`sequencer --vkey`, exported by the deploy
         // wrapper when the binary is present), so a relay can start against
         // this verifier — a relay refuses a verifier that pins a key its
         // guest does not carry; with no binary built, a dev constant.
-        FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
+        _deployPair(
+            deployer,
             address(mockSp1),
             vm.envOr("SP1_PROGRAM_VKEY", keccak256(abi.encodePacked("figaro-kernel-dev"))),
-            _usageCounter
+            uint64(block.timestamp)
         );
-        _batchVerifier = address(batchVerifier);
-        require(_batchVerifier == predictedVerifier, "verifier address prediction failed");
+        console.log("UsageCounter deployed at:", _usageCounter);
+        console.log("  NEXT_PUBLIC_USAGE_COUNTER=", _usageCounter);
         console.log("FigaroBatchVerifier deployed at:", _batchVerifier);
     }
 
@@ -313,7 +270,7 @@ contract Deploy is Script {
     ///      The DAO buys through a per-procurement funded operator-EOA — the
     ///      treasury itself never signs commitments (FigaroCore is
     ///      ECDSA-only).
-    function _deployTreasuryGenesis(FlorinToken florin, address deployer) internal {
+    function _deployTreasuryGenesis(address deployer) internal {
         address[] memory treasuryOwners = new address[](3);
         treasuryOwners[0] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266; // anvil[0]
         treasuryOwners[1] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8; // anvil[1]
@@ -321,107 +278,13 @@ contract Deploy is Script {
         MockTreasuryMultisig daoTreasury = new MockTreasuryMultisig(treasuryOwners, 2);
         console.log("MockTreasuryMultisig deployed at:", address(daoTreasury));
 
-        florin.registerMinter(deployer, 400_000_000 ether);
-        florin.mint(deployer, 100_000_000 ether); // 70M founder + 30M supporters, lumped on devnet
-        florin.mint(address(daoTreasury), 300_000_000 ether);
-
-        florin.renounceDeployerMint();
+        // Devnet: founder + supporters lumped on the deployer.
+        address[] memory to = new address[](2);
+        uint256[] memory amounts = new uint256[](2);
+        (to[0], amounts[0]) = (deployer, FOUNDER_ALLOC + SUPPORTERS_ALLOC);
+        (to[1], amounts[1]) = (address(daoTreasury), DAO_ALLOC);
+        _mintGenesisAndRenounce(deployer, to, amounts);
         console.log("Deployer mint renounced");
         console.log("  NEXT_PUBLIC_DAO_TREASURY=", address(daoTreasury));
-    }
-
-    /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
-    ///      Logs its own address lines — deploy-local.sh parses the
-    ///      "deployed at:" lines, and the NEXT_PUBLIC_ summary prints here
-    ///      rather than in run().
-    ///
-    ///      Deployed ahead of the RPGF minter and beside the batch verifier,
-    ///      because the two reference each other — see
-    ///      `_deployUsageAndVerifier`.
-    function _deployUsageCounter(address core, address members, address batchVerifier_) internal {
-        // Accrual periods and per-period RPGF budgets are ONE schedule (the
-        // minter validates its budget array against `periodCount()` at
-        // deploy). The reference shape is NINE ANNUAL
-        // periods whose budgets group into three rising tranches; devnet
-        // rehearses the same nine-period structure.
-        //
-        // ONE SCHEDULE EVERYWHERE — the devnet's periods are the year of
-        // every public network (DeploySepolia.s.sol, DeployMainnet.s.sol).
-        // The claim path gates on `periodClosed`, and the rewards spec closes
-        // a period the way a chain does: it advances the chain's clock just
-        // past the open period's end (evm_increaseTime), never by waiting.
-        // The jump's length is harmless — every deadline a spec signs is
-        // derived from chain time at signing, the specs run one at a time
-        // and sign after any earlier jump, and the genesis population seeds
-        // nothing time-bound. A short devnet schedule tested nothing and cost
-        // the devnet its life: RESOLVE-TIME USAGE RECORDING (the resolve
-        // capability records every committed clause or assembly) needs the
-        // accrual OPEN, and with the last period ended every recording
-        // reverted AccrualClosed on a chain that was otherwise whole. With
-        // annual periods a devnet closes for accrual only after nine runs of
-        // the rewards spec; the devnet preflight reads `currentPeriod()` and
-        // devup redeploys a closed chain.
-        uint64[] memory periods = new uint64[](9);
-        for (uint256 i = 0; i < 9; ++i) {
-            periods[i] = uint64(block.timestamp + (i + 1) * 365 days);
-        }
-
-        UsageCounter counter = new UsageCounter(
-            core,
-            members, // seller-side live-stake gate: usage counts only for live-staked sellers
-            address(_clauses), // registration-side gate: a clause earns only while its stake is live
-            address(_assemblies), // registration-side gate: an assembly earns only while its stake is live
-            address(_agreements), // registration-side gate: an agreement earns only while its stake is live
-            batchVerifier_, // proof-gated writer of the batch-path accrual
-            3, // minimum-support floor: mainnet value, rehearsed on devnet
-            periods
-        );
-        _usageCounter = address(counter);
-        console.log("UsageCounter deployed at:", address(counter));
-        console.log("  NEXT_PUBLIC_USAGE_COUNTER=", address(counter));
-    }
-
-    /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
-    function _deployRpgfMinter(FlorinToken florin) internal {
-        // The per-period budgets must sum to the registered minter cap. The
-        // FlorinToken cap is the outer backstop (a claim over it reverts
-        // MinterCapExceeded), but an over-committed schedule would turn late-
-        // period claims into a first-come race; assert the two agree at deploy
-        // (the ONLY place the minter is deployed).
-        uint256[] memory rpgfAmounts = _rpgfAmounts();
-        uint256 rpgfSum;
-        for (uint256 i = 0; i < rpgfAmounts.length; ++i) {
-            rpgfSum += rpgfAmounts[i];
-        }
-        require(rpgfSum == 600_000_000 ether, "RPGF period budgets must sum to the minter cap");
-        RpgfMinter rpgfMinter = new RpgfMinter(
-            address(florin),
-            _usageCounter,
-            address(_members),
-            address(_clauses),
-            address(_assemblies),
-            address(_agreements),
-            rpgfAmounts
-        );
-        console.log("RpgfMinter deployed at:", address(rpgfMinter));
-        florin.registerMinter(address(rpgfMinter), 600_000_000 ether);
-    }
-
-    /// @dev The 600M split into nine annual slices: three
-    ///      RISING tranches — 15% over years 1–2, 30% over years 3–5, 55% over
-    ///      years 6–9 — each split equally across its years. Rising, so the
-    ///      largest share pays on the most-measured evidence; the cold-start
-    ///      years carry the smallest budgets. 45+45+60·3+82.5·4 = 600M.
-    function _rpgfAmounts() internal pure returns (uint256[] memory a) {
-        a = new uint256[](9);
-        a[0] = 45_000_000 ether;
-        a[1] = 45_000_000 ether;
-        a[2] = 60_000_000 ether;
-        a[3] = 60_000_000 ether;
-        a[4] = 60_000_000 ether;
-        a[5] = 82_500_000 ether;
-        a[6] = 82_500_000 ether;
-        a[7] = 82_500_000 ether;
-        a[8] = 82_500_000 ether;
     }
 }

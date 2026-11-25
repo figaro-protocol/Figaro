@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Script.sol";
 import "forge-std/console.sol";
-
-import {UsageCounter} from "../src/rewards/UsageCounter.sol";
-import "../src/core/verifier/FigaroBatchVerifier.sol";
+import {DeployBase} from "./DeployBase.s.sol";
 
 /// @title DeploySepoliaPair — pair-only redeploy of the counter↔verifier pair
 ///
@@ -14,8 +11,8 @@ import "../src/core/verifier/FigaroBatchVerifier.sol";
 ///         Sepolia. The Core, the four registries and their stakes are
 ///         untouched; their addresses come from the deployment record, exported
 ///         as EXISTING_* by scripts/deploy-sepolia.sh's PAIR_ONLY mode. The pair
-///         is parameterized exactly as script/DeploySepolia.s.sol's pair section,
-///         on the LIVE deployment's own schedule (RPGF_GENESIS is the live
+///         is `DeployBase._deployPair`, the one every full deployment runs, on
+///         the LIVE deployment's own schedule (RPGF_GENESIS is the live
 ///         counter's periodEnd[0] minus one period, never invented).
 ///
 ///         The one pair-redeploy residual: the live RpgfMinter stays bound to
@@ -40,13 +37,7 @@ import "../src/core/verifier/FigaroBatchVerifier.sol";
 ///   EXISTING_CLAUSE_REGISTRY    — the record's clauseRegistry
 ///   EXISTING_PROCESS_REGISTRY  — the record's processRegistry
 ///   EXISTING_AGREEMENT_REGISTRY — the record's agreementRegistry
-contract DeploySepoliaPair is Script {
-    /// @dev The REAL accrual period — DeploySepolia.s.sol's value.
-    uint64 constant PERIOD = 365 days;
-
-    address internal _usageCounter;
-    address internal _batchVerifier;
-
+contract DeploySepoliaPair is DeployBase {
     function run() external {
         runWith(
             vm.envUint("PRIVATE_KEY"),
@@ -87,55 +78,19 @@ contract DeploySepoliaPair is Script {
         require(agreements_.code.length != 0, "EXISTING_AGREEMENT_REGISTRY has no code on this chain");
         require(gateway_ != address(0), "SP1_VERIFIER_GATEWAY not set");
         require(vkey_ != bytes32(0), "SP1_PROGRAM_VKEY not set");
-        require(
-            uint256(genesis_) + PERIOD > block.timestamp,
-            "RPGF_GENESIS must place the first annual period end in the future"
-        );
+        _requireFirstPeriodEndsInFuture(genesis_);
+
+        // The pair reads the live stack from the base's state.
+        _core = core_;
+        _members = members_;
+        _clauses = clauses_;
+        _assemblies = assemblies_;
+        _agreements = agreements_;
 
         vm.startBroadcast(privateKey);
-        _deployPair(privateKey, core_, members_, clauses_, assemblies_, agreements_, gateway_, vkey_, genesis_);
-        vm.stopBroadcast();
-    }
-
-    /// @dev Counter/verifier adjacent pair with address prediction, exactly as
-    ///      DeploySepolia.s.sol — the counter binds the verifier's predicted
-    ///      address, the verifier binds the counter's real one, and the
-    ///      prediction is required to have held.
-    function _deployPair(
-        uint256 privateKey,
-        address core_,
-        address members_,
-        address clauses_,
-        address assemblies_,
-        address agreements_,
-        address gateway_,
-        bytes32 vkey_,
-        uint64 genesis_
-    ) internal {
-        address deployer = vm.addr(privateKey);
-        address predictedVerifier = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
-
-        uint64[] memory periods = new uint64[](9);
-        for (uint256 i = 0; i < 9; ++i) {
-            periods[i] = genesis_ + uint64((i + 1)) * PERIOD;
-        }
-
-        UsageCounter usageCounter = new UsageCounter(
-            core_,
-            members_,
-            clauses_,
-            assemblies_,
-            agreements_,
-            predictedVerifier,
-            3, // minimum-support floor
-            periods
-        );
-        _usageCounter = address(usageCounter);
+        _deployPair(vm.addr(privateKey), gateway_, vkey_, genesis_);
         console.log("UsageCounter:           ", _usageCounter);
-
-        FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(gateway_, vkey_, _usageCounter);
-        _batchVerifier = address(batchVerifier);
-        require(_batchVerifier == predictedVerifier, "verifier address prediction failed");
         console.log("FigaroBatchVerifier:    ", _batchVerifier);
+        vm.stopBroadcast();
     }
 }

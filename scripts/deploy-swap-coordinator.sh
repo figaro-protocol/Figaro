@@ -21,11 +21,13 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+# CANONICAL_PERMIT2: the one copy the deploy wrappers read.
+source "$ROOT/scripts/deploy-common.sh"
 
 : "${PRIVATE_KEY:?PRIVATE_KEY not set}"
 : "${RPC_URL:?RPC_URL not set}"
 : "${SWAP_ROUTER:?SWAP_ROUTER not set (Uniswap SwapRouter02 on the target chain, from the Uniswap deployment docs)}"
-export PERMIT2="${PERMIT2:-0x000000000022D473030F116dDEE9F6B43aC78BA3}"
+export PERMIT2="${PERMIT2:-$CANONICAL_PERMIT2}"
 # Uniswap QuoterV2 on the target chain — the frontend's Uniswap venue quotes
 # through it (the coordinator never touches it). Optional here; recorded when given.
 SWAP_QUOTER="${SWAP_QUOTER:-}"
