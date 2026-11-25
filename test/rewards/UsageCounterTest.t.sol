@@ -1382,6 +1382,29 @@ contract UsageCounterTest is Test {
         }
     }
 
+    /// A use of a kind beyond the three is skipped even at bytes where an
+    /// agreement's stake is live: the last gate reads the agreement registry
+    /// for the agreement kind alone, and an unknown kind falls to no registry.
+    function test_batchAccrualSkipsAKindBeyondTheThreeWhereAnAgreementIsLive() public {
+        (UsageCounter real,,, AgreementRegistry agreements_) = _realCounter();
+        bytes32 k = _asmRoot();
+        vm.prank(address(0xA6));
+        agreements_.registerAgreement(k, "ipfs://the-bytes-as-an-agreement");
+
+        UsageCounter.BatchUse[] memory uses = _join(_cd(k, KIND_AGREEMENT, 2, 2, 1), _cd(k, 3, 4, 2, 2));
+        vm.prank(batchVerifier);
+        real.applyBatchAccrual(0, PROVENANCE_LEAF, uses);
+
+        (uint64 agreementC, uint64 agreementD,) = real.accrualOf(KIND_AGREEMENT, k, 0);
+        (uint64 unknownC, uint64 unknownD, uint256 unknownScore) = real.accrualOf(3, k, 0);
+        assertEq(agreementC, 2, "the agreement's gate is open at these bytes");
+        assertEq(agreementD, 2);
+        assertEq(unknownC, 0, "a kind beyond the three is skipped at a live agreement's key");
+        assertEq(unknownD, 0);
+        assertEq(unknownScore, 0);
+        assertEq(real.totalScoreIn(0), _score(2, 2), "the period holds the agreement's score alone");
+    }
+
     /// @dev `c` uses of `key` under `kind`, one per fresh batch-path process
     ///      (`seed` keeps two batches' processes apart), carried by `d`
     ///      distinct staked sellers.
