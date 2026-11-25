@@ -1879,7 +1879,7 @@ registration costly cannot be recovered while the registration still earns. A
 check at the count alone would let a designer withdraw as soon as its last use
 counted and still claim. The capital behind the paid replication lever (§ 18)
 would then be held only through the farming, not through the period and its
-claim. `script/DeployMainnet.s.sol` sizes the stake on that whole span. The
+claim. `script/DeployBase.s.sol`, which the mainnet and Sepolia scripts share, sizes the stake on that whole span. The
 forfeited share stays in the period's total and is never minted, so the pool
 under-pays and never over-pays. The order that keeps a period is claim first,
 then withdraw, and that order costs the designer nothing.

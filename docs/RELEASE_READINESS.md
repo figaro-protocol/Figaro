@@ -227,7 +227,7 @@ read from a search summary, never the firm's own page):
 
 ### Task 3 (residue): state each deployment's γ-curve point
 
-The registry parameters are hardcoded in `script/DeployMainnet.s.sol` (reasoning
+The registry parameters are hardcoded in `script/DeployBase.s.sol`, which every chain's deploy script shares (reasoning
 inline; derivation in `/papers/substrate-broadening-rpgf` §7). Before each public
 broadcast: re-measure `g` — the marginal cost of one fabricated resolved process,
 batch path — on the target chain, and state the deployment's point on the γ curve
@@ -388,7 +388,7 @@ live, the same on every chain. The ones the chain can answer are stated ahead in
 `scripts/check-deployment.mjs` (run with `--artifacts` from a
 `forge build --via-ir` at the release commit): it must report nothing that does not
 hold before the deployment record is published. The registry stakes and the members' waiting
-time are decided: `script/DeployMainnet.s.sol` deploys 0.05 ETH for each of the four
+time are decided: `script/DeployBase.s.sol`, which the mainnet and Sepolia scripts share, deploys 0.05 ETH for each of the four
 registries and 28 days, the values Sepolia runs. A deployment record's remaining `null`s are values
 that exist only at the deploy: the wallets' addresses and the key built from the
 release guest. `jq '[paths(. == null)]' deployments/<chainId>.expected.json`
