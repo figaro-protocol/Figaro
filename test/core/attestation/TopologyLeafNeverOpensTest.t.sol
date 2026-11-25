@@ -40,15 +40,9 @@ contract TopologyLeafNeverOpensTest is Test {
     /// @dev The SDK's `TOPOLOGY_LEAF_DOMAIN`. No contract holds it.
     bytes32 internal constant TOPOLOGY_LEAF_DOMAIN = keccak256("figaro-agreement-topology");
 
-    /// @dev The SDK's `computeTopologyLeaf([FOLLOWED])`, the leaf this file's tree holds.
-    ///      The SDK's fixture holds no one-edge topology vector, so this value
-    ///      is written here; the empty topology leaf is read from the fixture.
-    bytes32 internal constant SDK_ONE_EDGE_TOPOLOGY_LEAF =
-        0x273816c76df314153c93a9c7a224e643f4a0b87341ab2acae9c19abfb4cfefe5;
-
     bytes32 internal constant CLAUSE_KEY = keccak256('{"clauseId":"a-clause","version":1}');
     bytes internal constant CLAUSE_DATA = hex"c0ffee";
-    /// @dev `0x1cbaf93c…45ab`, the edge the SDK-side value above was computed for.
+    /// @dev `0x1cbaf93c…45ab`, the edge the SDK's one-edge vector follows.
     bytes32 internal constant FOLLOWED = keccak256("an order this order follows");
 
     uint256 internal constant BUYER_KEY = 0xB0;
@@ -150,6 +144,18 @@ contract TopologyLeafNeverOpensTest is Test {
         return vm.parseJsonBytes32(json, ".agreements[2].topology.leaf");
     }
 
+    /// @dev The SDK's `computeTopologyLeaf([FOLLOWED])`, the leaf this file's
+    ///      tree holds: the one-edge vector the SDK writes into
+    ///      `test/fixtures/merkle-vectors.json`, checked to follow this file's edge.
+    function _sdkOneEdgeTopologyLeaf() internal view returns (bytes32) {
+        string memory json = vm.readFile(string.concat(vm.projectRoot(), "/test/fixtures/merkle-vectors.json"));
+        assertEq(vm.parseJsonString(json, ".topologyVectors[0].label"), "one-edge", "the fixture's one-edge vector");
+        bytes32[] memory follows = vm.parseJsonBytes32Array(json, ".topologyVectors[0].follows");
+        assertEq(follows.length, 1, "one edge");
+        assertEq(follows[0], FOLLOWED, "the vector follows this file's edge");
+        return vm.parseJsonBytes32(json, ".topologyVectors[0].leaf");
+    }
+
     function _resolve() internal {
         CommitmentTypes.Commitment[] memory all = new CommitmentTypes.Commitment[](1);
         all[0] = order;
@@ -171,7 +177,7 @@ contract TopologyLeafNeverOpensTest is Test {
     /// it beside the clause leaf.
     function test_theTopologyLeafIsTheSdksAndIsALeafOfTheRoot() public view {
         assertEq(_topologyLeaf(new bytes32[](0)), _sdkEmptyTopologyLeaf(), "the SDK's empty topology leaf");
-        assertEq(topologyLeaf, SDK_ONE_EDGE_TOPOLOGY_LEAF, "the SDK's one-edge topology leaf");
+        assertEq(topologyLeaf, _sdkOneEdgeTopologyLeaf(), "the SDK's one-edge topology leaf");
         assertEq(topologyProof.length, 1, "the topology leaf's proof is its sibling");
         assertEq(AgreementTestHelper.rootFor(leaves), order.checkoutHash, "the order signs this root");
     }
