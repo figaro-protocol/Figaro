@@ -16,39 +16,22 @@
  * assembly-scoped discovery.
  */
 
-import { MemberEditGate } from "@/components/members/MemberEditGate";
-import { useMemberProfileEditor } from "@/lib/registries/useMemberProfileEditor";
+import { MemberEditStep } from "@/components/members/MemberEditGate";
 import type { ProcessBindingRecord } from "@/lib/registries/memberProfileMetadata";
 import { OnboardingAssembliesForm } from "@/components/members/OnboardingAssembliesForm";
 
 export function MemberEditAssemblies() {
-    const editor = useMemberProfileEditor({
-        seed: (existingProfile, update) => {
-            update({
-                assemblies: existingProfile.processBindings ?? [],
-            });
-        },
-    });
-
-    if (editor.gate) {
-        return <MemberEditGate gate={editor.gate} />;
-    }
-
-    async function handleSave(bindings: ProcessBindingRecord[]): Promise<void> {
-        // Saving with an empty array is allowed — un-checking every assembly clears the
-        // bindings array on the profile (the member stays registered, with no
-        // assembly-scoped discovery). The hook's merge keeps the field present-but-empty.
-        await editor.updater.save({ processBindings: bindings });
-    }
-
     return (
-        <OnboardingAssembliesForm
-            onSave={handleSave}
-            submitLabel="Save changes"
-            backHref="/members/manage"
-            backLabel="← Cancel"
-            submitInFlight={editor.saveInFlight}
-            externalError={editor.externalError}
-        />
+        <MemberEditStep seed={(existingProfile, update) => update({ assemblies: existingProfile.processBindings ?? [] })}>
+            {(editor, chrome) => (
+                <OnboardingAssembliesForm
+                    {...chrome}
+                    // Saving with an empty array is allowed — un-checking every assembly clears the
+                    // bindings array on the profile (the member stays registered, with no
+                    // assembly-scoped discovery). The hook's merge keeps the field present-but-empty.
+                    onSave={(bindings: ProcessBindingRecord[]) => editor.updater.save({ processBindings: bindings })}
+                />
+            )}
+        </MemberEditStep>
     );
 }

@@ -15,6 +15,7 @@ interface RuntimeServicesProviderProps {
 
 /** Inject services into the hooks below it (test-only: production reads the
  *  context default). @internal */
+// lint-allow-duplicate-symbol: the provider that supplies a RuntimeServices value to the tree
 export function RuntimeServicesProvider({
     services = DEFAULT_RUNTIME_SERVICES,
     children,
@@ -26,6 +27,7 @@ export function RuntimeServicesProvider({
     );
 }
 
+// lint-allow-duplicate-symbol: the hook that reads the RuntimeServices value its provider supplies
 export function useRuntimeServices(): RuntimeServices {
     return useContext(RuntimeServicesContext);
 }

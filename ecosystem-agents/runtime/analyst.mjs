@@ -33,6 +33,7 @@ import {
     fetchEndpointLogAgreement,
     fetchDiscoveryEvents,
     fetchUsageRecords,
+    forEachConcurrently,
     isBytes32Hex,
     parseProjectionHints,
     reconstructDiscovery,
@@ -245,21 +246,19 @@ export async function recoverWitnessContents(attestations, {
     const framedSubstance = new Map();
     let substanceRecovered = 0;
     if (!recoverSubstance) return { recovered, framedSubstance, substanceRecovered };
-    for (let start = 0; start < recovered.length; start += concurrency) {
-        await Promise.all(recovered.slice(start, start + concurrency).map(async (entry) => {
-            try {
-                const hit = await fetchContent(entry.event.contentRef, { gateways });
-                if (!hit) return;
-                entry.content = hit.content;
-                substanceRecovered += 1;
-                framedSubstance.set(entry.event.contentRef.toLowerCase(), frame({
-                    source: "attestation-content", refKind: "cid", ref: hit.cid, content: hit.content,
-                }));
-            } catch {
-                // A gateway outage is absence for this pass.
-            }
-        }));
-    }
+    await forEachConcurrently(recovered, concurrency, async (entry) => {
+        try {
+            const hit = await fetchContent(entry.event.contentRef, { gateways });
+            if (!hit) return;
+            entry.content = hit.content;
+            substanceRecovered += 1;
+            framedSubstance.set(entry.event.contentRef.toLowerCase(), frame({
+                source: "attestation-content", refKind: "cid", ref: hit.cid, content: hit.content,
+            }));
+        } catch {
+            // A gateway outage is absence for this pass.
+        }
+    });
     return { recovered, framedSubstance, substanceRecovered };
 }
 

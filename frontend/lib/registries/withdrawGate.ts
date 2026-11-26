@@ -88,6 +88,7 @@ async function resolveInFlightAgreements(): Promise<InFlightAgreement[]> {
  * in-flight trades block (`gate.canWithdraw === (gate.inFlightCount === 0)`);
  * `gate.unverifiedCount > 0` is a caveat via `withdrawUnverifiedCaveat`.
  */
+// lint-allow-duplicate-symbol: the hook that derives the SDK's WithdrawGate from the chain and IPFS
 export function useWithdrawGate(clauseOrProcess: WithdrawClauseOrAssembly | null): {
     gate: NetworkRead<WithdrawGate>;
 } {

@@ -17,11 +17,12 @@
  * serializable.
  */
 
-import { erc20Abi, formatUnits, getAbiItem, type Abi, type PublicClient } from "viem";
+import { formatUnits, type Abi, type PublicClient } from "viem";
 import { CORE_ABI, CONTRACTS, getAttestationCoordinator, getBatchVerifier } from "@/lib/core/contracts";
 import { ATTESTATION_COORDINATOR_ABI } from "@figaro-protocol/sdk";
 import type { ResolutionUniverse } from "@figaro-protocol/sdk";
-import { cachedGetContractEvents, deploymentBlock, getLogsAdaptive, type LogScanClient } from "@/lib/core/eventCache";
+import { abiEvent, cachedGetContractEvents, deploymentBlock, getLogsAdaptive, type LogScanClient } from "@/lib/core/eventCache";
+import { readProcessDecimals } from "./tokenDecimals";
 import { activeChain } from "@/lib/shared/chains";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 import { hexEqual } from "@/lib/shared/evm";
@@ -155,8 +156,7 @@ export async function buildProcessTimeline(
         : ownDeployment ? getAttestationCoordinator() : null;
     const scanEvents = (params: { address: `0x${string}`; abi: Abi | readonly unknown[]; eventName: string }) => {
         if (sharedCache) return cachedGetContractEvents(client, chainId, params);
-        const event = getAbiItem({ abi: params.abi as Abi, name: params.eventName });
-        if (!event) throw new Error(`buildProcessTimeline: ${params.eventName} is not in the given ABI`);
+        const event = abiEvent(params.abi, params.eventName, "buildProcessTimeline");
         return getLogsAdaptive(client as unknown as LogScanClient, {
             address: params.address,
             event: event as Parameters<typeof getLogsAdaptive>[1]["event"],
@@ -214,15 +214,15 @@ export async function buildProcessTimeline(
     let processDecimals: number | undefined;
     const missing: MissingPart[] = [];
     if (processCurrency) {
-        try {
-            processDecimals = Number(await client.readContract({ address: processCurrency, abi: erc20Abi, functionName: "decimals" }));
-        } catch {
-            processDecimals = undefined;
-            missing.push({
-                part: "Amounts in the timeline and its summary, in the token's units",
-                reason: `the decimals of the token ${processCurrency} could not be read, so no amount is shown`,
-            });
-        }
+        // An unreadable token is a missing part, and the timeline then shows
+        // no amount.
+        processDecimals = await readProcessDecimals(
+            client,
+            processCurrency,
+            missing,
+            "Amounts in the timeline and its summary, in the token's units",
+            "so no amount is shown",
+        );
     } else if (committedLogs.length > 0) {
         missing.push({
             part: "Amounts in the timeline and its summary, in the token's units",

@@ -345,6 +345,7 @@ export function readHeldWitness(holder: WitnessHolder | null | undefined, place:
 /** `readHeldWitness` bound to one holder: the reader the evidence file and
  *  the audit page share (`HeldWitnessReader`), so the two name the same
  *  pieces missing. */
+// lint-allow-duplicate-symbol: the function that builds a HeldWitnessReader for one holder, beside the reader's own type
 export function heldWitnessReader(holder: WitnessHolder | null | undefined): (place: WitnessPlace) => ReturnType<typeof readHeldWitness> {
     return (place) => readHeldWitness(holder, place);
 }
@@ -456,3 +457,15 @@ export function forgetHeldWitnessContent(holder: WitnessHolder | null | undefine
     for (const key of keys) removeStorage(key);
     return keys.length;
 }
+
+/** The content a party holds for one attestation, checked against its
+ *  `contentRef` by the reader that supplies it; null where it holds none.
+ *  `heldWitnessReader` builds one for a holder; the evidence file and the
+ *  audit page take any reader of this shape. */
+// lint-allow-duplicate-symbol: the type of the reader heldWitnessReader builds, beside that function
+export type HeldWitnessReader = (place: {
+    orderHash: string;
+    clauseId: string;
+    stage: number;
+    contentRef: string;
+}) => { content: `0x${string}`; values: Record<string, unknown> | null; received?: boolean } | null;

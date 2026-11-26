@@ -1,8 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useCallback, useEffect, useState } from "react";
 import { isAddress } from "viem";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -11,10 +9,9 @@ import { Select } from "@/components/ui/Select";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import type { ResolutionUniverse } from "@figaro-protocol/sdk";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { useMounted } from "@/hooks/useMounted";
 import { useRegisteredCatalogs } from "@/lib/registries/useRegisteredCatalogs";
 import { findListingByAddress } from "@/lib/registries/memberListing";
-import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/registries/onboardingState";
+import { onboardingPrevHref } from "@/lib/registries/onboardingState";
 import type {
     ProcessBindingRecord,
     CoSellerBinding,
@@ -22,12 +19,11 @@ import type {
 import {
     type AssemblyChoice,
     requiredCoSellerClauses,
-    useAssemblyChoices,
 } from "@/lib/registries/assemblyChoices";
 import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
 import { PinnedTokenNote } from "@/components/members/PinnedTokenNote";
 import { ProfileClauseValues } from "@/components/members/ProfileClauseValues";
-import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps, toggledSet, useSubjectHydration } from "@/components/members/OnboardingStepChrome";
+import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps, toggledSet, useListedAssemblyChoices, useOnboardingStepState } from "@/components/members/OnboardingStepChrome";
 
 /**
  * The assemblies step of the onboarding wizard. The member picks which published
@@ -119,20 +115,12 @@ export function OnboardingAssembliesForm({
     submitInFlight = false,
     externalError = null,
 }: OnboardingAssembliesFormProps = {}) {
-    const router = useRouter();
-    const mounted = useMounted();
-    const { address, isConnected } = useAccount();
-    const { state, loaded, subject, update } = useOnboardingState(address);
+    const { mounted, address, state, loaded, update, hydrated, markHydrated, advance } = useOnboardingStepState("assemblies");
 
     // The published assemblies as a read: no choices and no autosave until
     // it is present — a failed read never stands for "nothing to bind" and
     // never writes `assemblies: []` over the draft.
-    const { read: choicesRead } = useAssemblyChoices();
-    const choicesLoaded = choicesRead.status === "present";
-    const choices: AssemblyChoice[] = useMemo(
-        () => (choicesRead.status === "present" ? choicesRead.value : []),
-        [choicesRead],
-    );
+    const { choicesLoaded, choices } = useListedAssemblyChoices();
 
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [coSellersByAssembly, setCoSellersByAssembly] = useState<
@@ -142,7 +130,6 @@ export function OnboardingAssembliesForm({
     // so an untouched declaration is written back unchanged; an assembly with
     // no entry declares none (the direct path alone).
     const [pathsByAssembly, setPathsByAssembly] = useState<Map<string, ResolutionUniverse[]>>(new Map());
-    const { hydrated, markHydrated } = useSubjectHydration(subject);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
     // Hydrate during render, once: the draft is React state already read
@@ -205,7 +192,7 @@ export function OnboardingAssembliesForm({
         setSubmitError(null);
         finishStep(
             onSave && (() => onSave(buildBindings(address ?? DRAFT_SUBJECT, selected, coSellersByAssembly, pathsByAssembly))),
-            () => router.push(onboardingNextHref("assemblies")),
+            advance,
         );
     }
 

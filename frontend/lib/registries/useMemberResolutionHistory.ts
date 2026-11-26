@@ -8,18 +8,18 @@
 
 import { useEffect, useState } from "react";
 import { usePublicClient, useChainId } from "wagmi";
-import { getSellerResolutionHistory, type MemberResolutionHistory } from "@/lib/registries/memberResolutionHistory";
+import { getSellerResolutionHistory, type MemberResolutionIndicators } from "@/lib/registries/memberResolutionHistory";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 export interface UseSellerResolutionHistoryResult {
-    resolutionHistory: MemberResolutionHistory | null;
+    resolutionHistory: MemberResolutionIndicators | null;
     isLoading: boolean;
 }
 
 export function useMemberResolutionHistory(seller: string | undefined): UseSellerResolutionHistoryResult {
     const client = usePublicClient();
     const chainId = useChainId();
-    const [resolutionHistory, setResolutionHistory] = useState<MemberResolutionHistory | null>(null);
+    const [resolutionHistory, setResolutionHistory] = useState<MemberResolutionIndicators | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     // The synchronous resets run during render, on the render the inputs

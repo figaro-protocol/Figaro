@@ -32,9 +32,10 @@
  * bound to (msg.sender, ipfs URI).
  */
 
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
+import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import type { Abi } from "viem";
-import { simulateWrite, simulateWriteVerify } from "@/lib/shared/contractWrite";
+import { requirePresent, simulateWrite, simulateWriteVerify } from "@/lib/shared/contractWrite";
+import { useTrackedWrite } from "@/lib/shared/useTrackedWrite";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { AGREEMENT_REGISTRY_ABI, canonicalize, composeOrderAgreement, serializeProcessDesign, type RegisteredAgreement } from "@figaro-protocol/sdk";
@@ -54,6 +55,8 @@ import {
     assemblyRegisterRevertMessage,
     type PublishOutcome,
 } from "@/lib/registries/useProcessRegistry";
+
+const AGREEMENT_REGISTRY_UNSET = "AgreementRegistry address not configured (NEXT_PUBLIC_AGREEMENT_REGISTRY).";
 
 /** The client a registration needs: the stake read, the simulation and the receipt. */
 type RegistrationClient = Parameters<typeof simulateWriteVerify>[0]["client"] & {
@@ -89,10 +92,7 @@ export async function registerAgreement(args: {
     const { client, writeContractAsync, address, doc, agreementHash } = args;
     const ipfs = args.ipfs ?? DEFAULT_IPFS_SERVICE;
     const readBinding = args.readBinding ?? readAgreementBinding;
-    const agreementRegistry = getAgreementRegistry();
-    if (!agreementRegistry) {
-        throw new Error("AgreementRegistry address not configured (NEXT_PUBLIC_AGREEMENT_REGISTRY).");
-    }
+    const agreementRegistry = requirePresent(getAgreementRegistry(), AGREEMENT_REGISTRY_UNSET);
     if (await readBinding(agreementHash, client as never)) {
         return { agreementHash, hash: null, ipfsURI: null };
     }
@@ -128,17 +128,17 @@ export async function registerAgreement(args: {
  * The registered key is what the agreement then binds, and what any other
  * assembly's drawer offers from the live registry.
  */
-export function usePublishAgreement() {
-    const client = usePublicClient();
-    const { address } = useAccount();
+export function useRegisterDesignedAgreement() {
+    const publicClient = usePublicClient();
+    const { address: connected } = useAccount();
     const { writeContractAsync, isPending } = useWriteContract();
 
-    async function publishAgreement(args: {
+    async function registerDesignedAgreement(args: {
         clauses: Readonly<Record<`0x${string}`, Record<string, unknown>>>;
         name?: string;
     }): Promise<RegisteredAgreementOutcome> {
-        if (!client) throw new Error("No public client available to read the registration stake.");
-        if (!address) throw new Error("Connect a wallet before registering an agreement.");
+        const client = requirePresent(publicClient, "No public client available to read the registration stake.");
+        const address = requirePresent(connected, "Connect a wallet before registering an agreement.");
         if (Object.keys(args.clauses).length === 0) {
             throw new Error("Compose at least one clause on this order before registering its agreement.");
         }
@@ -147,15 +147,13 @@ export function usePublishAgreement() {
         return registerAgreement({ client: client as never, writeContractAsync, address, doc, agreementHash });
     }
 
-    return { publishAgreement, isPending };
+    return { registerDesignedAgreement, isPending };
 }
 
 export function usePublishAssembly() {
-    const client = usePublicClient();
-    const { address } = useAccount();
-    const { writeContractAsync, data: hash, isPending, error: writeError } =
-        useWriteContract();
-    const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+    const publicClient = usePublicClient();
+    const { address: connected } = useAccount();
+    const { writeContractAsync, status } = useTrackedWrite();
 
     /** Build the assembly from the snapshot, register each newly composed
      *  agreement, pin the assembly to IPFS, fetch the registry's stake amount,
@@ -175,18 +173,9 @@ export function usePublishAssembly() {
         snapshot: DesignSnapshot,
         reviewedProcessDesignHash?: `0x${string}`,
     ): Promise<PublishOutcome> {
-        const registry = getProcessRegistry();
-        if (!registry) {
-            throw new Error(
-                "ProcessRegistry address not configured (NEXT_PUBLIC_PROCESS_REGISTRY).",
-            );
-        }
-        if (!client) {
-            throw new Error("No public client available to read the registration stake.");
-        }
-        if (!address) {
-            throw new Error("Connect a wallet before publishing.");
-        }
+        const registry = requirePresent(getProcessRegistry(), "ProcessRegistry address not configured (NEXT_PUBLIC_PROCESS_REGISTRY).");
+        const client = requirePresent(publicClient, "No public client available to read the registration stake.");
+        const address = requirePresent(connected, "Connect a wallet before publishing.");
         // Hard cap = the resolve ceiling: every order must resolve in one atomic
         // resolveProcess within a block. Same ceiling the designer canvas gates
         // node addition on, so an assembly designed there never trips this — the
@@ -255,10 +244,7 @@ export function usePublishAssembly() {
         const toRegister: { agreementHash: `0x${string}`; uri: string; call: Parameters<typeof simulateWrite>[1] }[] = [];
         const newKeys = Object.keys(built.agreements) as `0x${string}`[];
         if (newKeys.length > 0) {
-            const agreementRegistry = getAgreementRegistry();
-            if (!agreementRegistry) {
-                throw new Error("AgreementRegistry address not configured (NEXT_PUBLIC_AGREEMENT_REGISTRY).");
-            }
+            const agreementRegistry = requirePresent(getAgreementRegistry(), AGREEMENT_REGISTRY_UNSET);
             const agreementDeposit = await client.readContract({
                 address: agreementRegistry,
                 abi: AGREEMENT_REGISTRY_ABI,
@@ -312,12 +298,5 @@ export function usePublishAssembly() {
         return { hash: txHash, ipfsURI: ipfs.uri, slug, agreements };
     }
 
-    return {
-        publish,
-        hash,
-        isPending,
-        isConfirming,
-        isSuccess,
-        error: writeError,
-    };
+    return { publish, ...status };
 }

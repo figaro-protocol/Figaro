@@ -322,7 +322,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
   shown, bind/unbind; a withdrawn one stays hydratable for the assemblies already
   composed from it but is not offered), or the clause tabs compose a new
   agreement for that agreement, and "Register this agreement on its own" pins,
-  stakes and registers that agreement now (`usePublishAgreement` →
+  stakes and registers that agreement now (`useRegisterDesignedAgreement` →
   `registerAgreement`, the same path an assembly's publish takes per
   agreement) with no assembly published, then binds the agreement to the
   registered key. `DesignSnapshot.registeredByOrderId` holds the

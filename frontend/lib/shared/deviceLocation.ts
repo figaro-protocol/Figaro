@@ -8,6 +8,8 @@
  * address → coordinates; a service lookup, not a device read).
  */
 
+import { encodeGeohash } from "@figaro-protocol/sdk/derive";
+
 /** What the device reported — position plus its accuracy radius. */
 export interface DeviceLocation {
     lat: number;
@@ -31,4 +33,15 @@ export function getDeviceLocation(): Promise<DeviceLocation | null> {
             { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
         );
     });
+}
+
+/** What a geohash assist tells the party when the device gave no position. */
+export const DEVICE_LOCATION_UNREAD = "Couldn't read device location. Permission denied or unavailable.";
+
+/** The device's position as a geohash of `precision` characters, or null when
+ *  the device gave no position (see `getDeviceLocation`). The page sees only
+ *  the geohash, never the coordinates. */
+export async function readDeviceGeohash(precision: number): Promise<string | null> {
+    const position = await getDeviceLocation();
+    return position ? encodeGeohash(position.lat, position.lon, precision) : null;
 }

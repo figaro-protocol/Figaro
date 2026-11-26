@@ -35,6 +35,7 @@ import { useAllRegisteredClauses } from "./useClauseRegistry";
 import { getClauseSpec, getClauseSpecLoadError, loadClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
+import { presentValue } from "@/lib/shared/networkRead";
 
 export interface ClauseSpecsState {
     /** True once the registry has been read AND every registered clause's spec
@@ -55,9 +56,10 @@ export interface ClauseSpecsState {
     version: number;
 }
 
+// lint-allow-duplicate-symbol: the hook that loads the registered clauses' specs (the SDK's ClauseSpec documents) into the cache
 export function useClauseSpecs(): ClauseSpecsState {
     const { read } = useAllRegisteredClauses();
-    const events = read.status === "present" ? read.value : null;
+    const events = presentValue(read);
     const failed = read.status === "absent";
     const [version, setVersion] = useState(0);
     const [errors, setErrors] = useState<string[]>([]);

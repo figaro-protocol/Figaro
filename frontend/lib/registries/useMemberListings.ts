@@ -16,8 +16,6 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePublicClient, useChainId } from "wagmi";
 import {
     profileToListing,
     type Listing,
@@ -26,9 +24,8 @@ import { getActiveMembers } from "@/lib/registries/membersRegistryIndexer";
 import { fetchMemberProfile } from "@/lib/registries/profileFetcher";
 import type { PublicClient } from "viem";
 import { REGISTRY_CONTRACTS } from "@/lib/registries/contracts";
-import { usePublishedAssemblies } from "@/lib/registries/useProcessRegistry";
-import { ABSENT, PENDING, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib/shared/networkRead";
-import { useDepsChanged } from "@/lib/shared/useDepsChanged";
+import { usePublishedCheckedRead } from "@/lib/registries/usePublishedCheckedRead";
+import type { NetworkRead } from "@/lib/shared/networkRead";
 
 function isRegistryConfigured(): boolean {
     return !!REGISTRY_CONTRACTS.membersRegistry
@@ -67,30 +64,14 @@ async function listFromRegistry(
 }
 
 export function useMemberListings(): { read: NetworkRead<Listing[]> } {
-    const [read, setRead] = useState<NetworkRead<Listing[]>>(PENDING);
-    const client = usePublicClient();
-    const chainId = useChainId();
-    // The ProcessRegistry read the profile bindings are cross-checked
-    // against. Pending is pending and absent is absent: the unchecked member
-    // list is never rendered, and a failed assembly read never rejects every
-    // binding into "nothing is registered".
-    const { read: publishedAssemblies } = usePublishedAssemblies(undefined);
-
-    // The reads that end without a fetch are set during render, on the
-    // render the inputs change (`useDepsChanged`); the effect fetches only.
-    // The reset reads only whether a client is there, so it is keyed on that.
-    const inputsChanged = useDepsChanged([!!client, chainId, publishedAssemblies]);
-    if (inputsChanged) {
-        if (!client || !isRegistryConfigured()) setRead(ABSENT);
-        else if (publishedAssemblies.status !== "present") setRead(publishedAssemblies);
-    }
-
-    useEffect(() => {
-        if (!client || !isRegistryConfigured() || publishedAssemblies.status !== "present") return;
-        const publishedHashes = new Set(publishedAssemblies.value.map((a) => a.processDesignHash.toLowerCase()));
-
-        return applyUntilCleanup(readNetwork("useMemberListings", () => listFromRegistry(client, chainId, publishedHashes)), setRead);
-    }, [client, chainId, publishedAssemblies]);
-
+    // The profile bindings are cross-checked against the ProcessRegistry
+    // read: a failed assembly read never rejects every binding into
+    // "nothing is registered".
+    const read = usePublishedCheckedRead(
+        "useMemberListings",
+        isRegistryConfigured(),
+        listFromRegistry,
+        [],
+    );
     return { read };
 }

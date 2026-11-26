@@ -91,3 +91,11 @@ export async function simulateWriteVerify(config: ContractCall & {
     await verifyTxSuccess(client, txHash, failureMessage);
     return txHash;
 }
+
+/** What a write needs before it reads or sends (a registry's configured
+ *  address, a public client, the connected wallet): `value` when present,
+ *  else a throw carrying `message`, the caller's words for what is missing. */
+export function requirePresent<T>(value: T | null | undefined, message: string): T {
+    if (value === null || value === undefined) throw new Error(message);
+    return value;
+}

@@ -21,7 +21,7 @@ import { scheduleContentRetry } from "@/lib/shared/ipfsService";
 import {
     usePublishedAssemblies,
     fetchHydratedAssembly, getAssemblyLoadError } from "@/lib/registries/useProcessRegistry";
-import { mapRead, type NetworkRead } from "@/lib/shared/networkRead";
+import { mapRead, presentValue, type NetworkRead } from "@/lib/shared/networkRead";
 
 /**
  * The `networkTargets` value of an on-chain-registered assembly: the name of
@@ -135,7 +135,7 @@ export function useAssemblyChoices(
     opts?: { includeWithdrawn?: boolean },
 ): { read: NetworkRead<AssemblyChoice[]>; refetch: () => void } {
     const { read: eventsRead, refetch } = usePublishedAssemblies(registeredBy, opts);
-    const events = eventsRead.status === "present" ? eventsRead.value : null;
+    const events = presentValue(eventsRead);
     // `activeChain` is the page's deployment's chain; the read uses the standalone public
     // client bound to it. Wagmi's `useChainId` would reflect the connected
     // wallet's chain, which is irrelevant for a read against a fixed chain

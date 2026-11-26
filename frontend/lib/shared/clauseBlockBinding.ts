@@ -39,7 +39,7 @@
  */
 
 import { isAddressHex, isPlainRecord } from "@figaro-protocol/sdk";
-import { parseFieldSpec, type SpecParseError, type FieldSpec } from "@figaro-protocol/sdk/clauses";
+import { parseEachFieldSpec, type SpecParseError, type FieldSpec } from "@figaro-protocol/sdk/clauses";
 import {
     parseCheckoutDerivations,
     parseEndpointsMark,
@@ -531,12 +531,8 @@ export function parseBlockBinding(
             }
             // Reuse the SDK's field-spec parser: composition input fields are
             // the SAME shape as a clause's content fields, so one parser drives both.
-            const parsed: FieldSpec[] = [];
-            for (let i = 0; i < raw.checkout.compositionFields.length; i++) {
-                const f = parseFieldSpec(raw.checkout.compositionFields[i], `${path}.checkout.compositionFields[${i}]`, errors);
-                if (f === null) return null;
-                parsed.push(f);
-            }
+            const parsed = parseEachFieldSpec(raw.checkout.compositionFields, `${path}.checkout.compositionFields`, errors);
+            if (parsed.length !== raw.checkout.compositionFields.length) return null;
             compositionFields = parsed;
         }
     }

@@ -34,7 +34,7 @@ import {
     type HydratedProcessDesign,
 } from "@figaro-protocol/sdk";
 import { getRegisteredAgreement } from "@/lib/registries/useAgreementRegistry";
-import { clauseDesignFills, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
+import { clauseDesignFills, entriesWithLoadedSpec, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { isFilledValue } from "@/lib/checkout/checkoutDerivations";
 import { deriveProcessDesignSlug, type ProcessDesign } from "@/lib/shared/assembly";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -313,9 +313,7 @@ export function unfilledAssemblyTerms(
     assemblyClauses: Readonly<Record<string, Record<string, unknown>>>,
 ): MissingAssemblyTerm[] {
     const missing: MissingAssemblyTerm[] = [];
-    for (const [clauseKey, values] of Object.entries(assemblyClauses)) {
-        const spec = getClauseSpec(clauseKey);
-        if (!spec) continue;
+    for (const { clauseKey, value: values, spec } of entriesWithLoadedSpec(assemblyClauses)) {
         const fills = clauseDesignFills(clauseKey);
         for (const field of spec.fields) {
             if (!field.required || !fills.includes(field.name)) continue;

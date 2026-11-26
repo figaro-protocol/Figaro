@@ -37,7 +37,7 @@ interface ResolutionHistoryAttestations {
  * it is the raw resolution/coordination history the public graph exposes
  * (DATA_LAYER.md §"Reputation derivation").
  */
-export interface MemberResolutionHistory {
+export interface MemberResolutionIndicators {
     operatingSinceBlock: bigint | null;
     operatingSinceTimestamp: bigint | null;
     completedProcesses: number;
@@ -71,7 +71,7 @@ export async function getSellerResolutionHistory(
     client: PublicClient,
     chainId: number,
     seller: string,
-): Promise<MemberResolutionHistory> {
+): Promise<MemberResolutionIndicators> {
     const [sellerOrders, buyerOrders, resolved, registrations, attestations, batchAttestations] =
         await Promise.all([
             getOrderCommittedBySeller(client, chainId, seller),

@@ -21,6 +21,7 @@ import { keccak256, toHex, concat } from "viem";
 import type { Hex } from "./types.js";
 import { isBytes32Hex, isPlainRecord } from "./types.js";
 import {
+    distinctClauseKeys,
     buildLeafInclusionProof,
     buildMerkleRoot,
     canonicalize,
@@ -61,11 +62,7 @@ function composedClauseLeaf(clauseKey: Hex, fills: Record<string, unknown>): Hex
 /** Every leaf of a registered agreement's tree, sorted as the tree is built:
  *  one per composed clause. */
 export function agreementClauseLeaves(doc: RegisteredAgreement): Hex[] {
-    const keys = Object.keys(doc.clauses).map((k) => k.toLowerCase());
-    const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
-    if (dupes.length > 0) {
-        throw new Error(`Duplicate clause keys in agreement: ${[...new Set(dupes)].join(", ")}`);
-    }
+    distinctClauseKeys(Object.keys(doc.clauses));
     return sortLeaves(Object.entries(doc.clauses).map(([clauseKey, fills]) => composedClauseLeaf(clauseKey as Hex, fills)));
 }
 

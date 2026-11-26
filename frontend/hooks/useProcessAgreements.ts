@@ -152,3 +152,14 @@ export function useProcessAgreements(checkoutHashes: string[]): Map<string, Agre
     // eslint-disable-next-line react-hooks/exhaustive-deps
     return useMemo(() => new Map(store.cache), [store, version]);
 }
+
+/** The checkoutHashes `orders` carry, in order, the empty ones left out. */
+function orderCheckoutHashes(orders: readonly { checkoutHash?: string | null }[]): string[] {
+    return orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h));
+}
+
+/** `useProcessAgreements` over the checkoutHashes of `orders`. */
+export function useAgreementsOfOrders(orders: readonly { checkoutHash?: string | null }[]): Map<string, Agreement> {
+    const checkoutHashes = useMemo(() => orderCheckoutHashes(orders), [orders]);
+    return useProcessAgreements(checkoutHashes);
+}

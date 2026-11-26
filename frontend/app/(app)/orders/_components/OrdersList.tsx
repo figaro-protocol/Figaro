@@ -38,7 +38,7 @@ import { Card } from "@/components/ui/Card";
 import { WalletGate } from "@/components/runtime/WalletGate";
 import { OneWalletBothSidesNote } from "@/components/runtime/OneWalletBothSidesNote";
 import { awaitsOwnSellerSignature } from "@/lib/checkout/signState";
-import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
+import { useWalletProcessRows, type WalletCommitmentRow } from "@/lib/core/walletProcessQueries";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
 import { forgetSignedUnsent, useSignedUnsentOrders, type SignedUnsentOrder } from "@/lib/checkout/signedUnsentOrders";
@@ -309,7 +309,7 @@ export function AwaitingAcceptanceRow({ payload, address, listings, onDismiss }:
 }
 
 // ── On-chain process row (the wallet is buyer or seller on it) ──
-function OrderRow({ row, listings }: { row: ProcessRow; listings: ReadonlyArray<Listing> }) {
+function OrderRow({ row, listings }: { row: WalletCommitmentRow; listings: ReadonlyArray<Listing> }) {
     const { decimals } = useTokenDecimals(row.currency as `0x${string}` | undefined);
     return (
         <Link
@@ -365,10 +365,10 @@ export function OrdersList() {
     // Merge buyer + seller rows — the wallet sees every order it's on, deduped
     // by the committed order hash, newest first.
     // A failed read on either side is absent: no rows, no empty state.
-    const ordersRead = useMemo<NetworkRead<ProcessRow[]>>(() => {
+    const ordersRead = useMemo<NetworkRead<WalletCommitmentRow[]>>(() => {
         if (buyer.read.status === "absent" || seller.read.status === "absent") return ABSENT;
         if (buyer.read.status === "pending" || seller.read.status === "pending") return PENDING;
-        const byHash = new Map<string, ProcessRow>();
+        const byHash = new Map<string, WalletCommitmentRow>();
         for (const r of [...buyer.read.value, ...seller.read.value]) {
             const key = r.rootOrderHash.toLowerCase();
             if (!byHash.has(key)) byHash.set(key, r);

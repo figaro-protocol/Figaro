@@ -34,6 +34,7 @@ export {
     fieldSetRuleErrors,
     parseClauseSpec,
     parseFieldSpec,
+    parseEachFieldSpec,
     resolveInputFormat,
     stageKey,
     stageOfKey,

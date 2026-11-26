@@ -14,7 +14,7 @@ import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { CLAUSE_REGISTRY_ABI } from "@/lib/registries/contracts";
 import type { publicClient } from "@/lib/shared/publicClient";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
-import { simulateWriteVerify } from "@/lib/shared/contractWrite";
+import { requirePresent, simulateWriteVerify } from "@/lib/shared/contractWrite";
 import {
     clauseRegisterRevertMessage,
     getClauseRegistry,
@@ -66,12 +66,9 @@ export function useRegisterClause() {
     const { writeContractAsync, isPending } = useWriteContract();
 
     async function register(rawSpec: Record<string, unknown>): Promise<RegisterClauseOutcome> {
-        const registry = getClauseRegistry();
-        if (!registry) {
-            throw new Error("ClauseRegistry address not configured (NEXT_PUBLIC_CLAUSE_REGISTRY).");
-        }
-        if (!client) throw new Error("No public client available to read the registration stake.");
-        if (!address) throw new Error("Connect a wallet before registering a clause.");
+        const registry = requirePresent(getClauseRegistry(), "ClauseRegistry address not configured (NEXT_PUBLIC_CLAUSE_REGISTRY).");
+        const reader = requirePresent(client, "No public client available to read the registration stake.");
+        const account = requirePresent(address, "Connect a wallet before registering a clause.");
 
         const clauseId = rawSpec.clauseId as string;
         const version = Number(rawSpec.version);
@@ -91,21 +88,21 @@ export function useRegisterClause() {
         // incentive input. The only classification a clause carries is
         // `block.design.article`, a reader grouping that stays off-chain
         // entirely.
-        const deposit = await client.readContract({
+        const deposit = await reader.readContract({
             address: registry,
             abi: CLAUSE_REGISTRY_ABI,
             functionName: "registrationDeposit",
         });
 
         const txHash = await simulateWriteVerify({
-            client,
+            client: reader,
             writeContractAsync,
             address: registry,
             abi: CLAUSE_REGISTRY_ABI as Abi,
             functionName: "registerClause",
             args: [clauseKey, uri],
             value: deposit,
-            account: address,
+            account,
             revertMessage: (errorName, args) => clauseRegisterRevertMessage(errorName, args, `${clauseId}@${version}`),
             failureMessage: "The clause was not registered.",
         });

@@ -35,7 +35,7 @@ vi.mock("@/app/(tools)/assemblies/designer/_components/AgreementDrawer", () => (
 vi.mock("@/app/(tools)/assemblies/designer/_components/AssemblyTermsPanel", () => ({ AssemblyTermsPanel: () => null }));
 vi.mock("@/app/(tools)/assemblies/designer/_components/CompositionAssist", () => ({ CompositionAssist: () => null }));
 vi.mock("@/app/(tools)/assemblies/designer/_components/AssemblyIdentity", () => ({ AssemblyIdentity: () => null }));
-vi.mock("@/lib/designer/publishAssembly", () => ({ usePublishAgreement: () => ({ publishAgreement: vi.fn(), isPending: false }) }));
+vi.mock("@/lib/designer/publishAssembly", () => ({ useRegisterDesignedAgreement: () => ({ registerDesignedAgreement: vi.fn(), isPending: false }) }));
 
 import { DesignerCanvas } from "@/app/(tools)/assemblies/designer/_components/DesignerCanvas";
 

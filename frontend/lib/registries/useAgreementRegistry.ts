@@ -98,6 +98,7 @@ const useAgreementRegistryScan = createRegistryEventScan<PublishedAgreement>({
  *  withdrawn stakes (withdraw = de-surface: the drawer offers only LIVE
  *  agreements for a new composition); a wallet-scoped read, or
  *  `includeWithdrawn`, keeps them flagged. */
+// lint-allow-duplicate-symbol: the hook that reads the PublishedAgreement rows from the AgreementRegistry's events
 export function usePublishedAgreements(
     registeredBy: `0x${string}` | undefined,
     opts?: { includeWithdrawn?: boolean },

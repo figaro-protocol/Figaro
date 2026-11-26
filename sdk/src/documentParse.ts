@@ -25,6 +25,14 @@ export function asRecord(value: unknown, path: string): UnknownRecord {
     return value;
 }
 
+/** An array whose every element `parseEntry` parses, element `i` at `path[i]`. */
+export function asArrayOf<T>(value: unknown, path: string, parseEntry: (entry: unknown, entryPath: string) => T): T[] {
+    if (!Array.isArray(value)) {
+        throw new Error(`${path} must be an array.`);
+    }
+    return value.map((entry, index) => parseEntry(entry, `${path}[${index}]`));
+}
+
 export function asString(value: unknown, path: string): string {
     if (typeof value !== "string") {
         throw new Error(`${path} must be a string.`);

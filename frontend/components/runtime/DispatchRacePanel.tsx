@@ -44,6 +44,7 @@ interface Props {
     attemptInFlight?: boolean;
 }
 
+// lint-allow-duplicate-symbol: the panel that renders the race state useDispatchRace holds
 export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals, attemptInFlight = false }: Props) {
     const { step, error, candidates, repliedCount, result, quoting } = race;
     const [windowSeconds, setWindowSeconds] = useState("120");

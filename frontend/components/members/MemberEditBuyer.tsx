@@ -12,41 +12,26 @@
  * FULL policy list.
  */
 
-import { MemberEditGate } from "@/components/members/MemberEditGate";
-import { useMemberProfileEditor } from "@/lib/registries/useMemberProfileEditor";
+import { MemberEditStep } from "@/components/members/MemberEditGate";
+import type { UseMemberProfileEditorResult } from "@/lib/registries/useMemberProfileEditor";
 import type {
     BuyerProcessSubscription,
 } from "@/lib/registries/memberProfileMetadata";
 import { OnboardingBuyerForm } from "@/components/members/OnboardingBuyerForm";
 
+async function saveSubscriptions(editor: UseMemberProfileEditorResult, subscriptions: BuyerProcessSubscription[]): Promise<void> {
+    // Absence is the field's no-declaration state: an emptied list CLEARS the field
+    // instead of pinning `[]`, so a member who never declared round-trips unchanged.
+    if (subscriptions.length > 0) await editor.updater.save({ buyerAssemblies: subscriptions });
+    else await editor.updater.save({}, { clear: ["buyerAssemblies"] });
+}
+
 export function MemberEditBuyer() {
-    const editor = useMemberProfileEditor({
-        seed: (existingProfile, update) => {
-            update({
-                buyerAssemblies: existingProfile.buyerAssemblies ?? [],
-            });
-        },
-    });
-
-    if (editor.gate) {
-        return <MemberEditGate gate={editor.gate} />;
-    }
-
-    async function handleSave(subscriptions: BuyerProcessSubscription[]): Promise<void> {
-        // Absence is the field's no-declaration state: an emptied list CLEARS the field
-        // instead of pinning `[]`, so a member who never declared round-trips unchanged.
-        if (subscriptions.length > 0) await editor.updater.save({ buyerAssemblies: subscriptions });
-        else await editor.updater.save({}, { clear: ["buyerAssemblies"] });
-    }
-
     return (
-        <OnboardingBuyerForm
-            onSave={handleSave}
-            submitLabel="Save changes"
-            backHref="/members/manage"
-            backLabel="← Cancel"
-            submitInFlight={editor.saveInFlight}
-            externalError={editor.externalError}
-        />
+        <MemberEditStep seed={(existingProfile, update) => update({ buyerAssemblies: existingProfile.buyerAssemblies ?? [] })}>
+            {(editor, chrome) => (
+                <OnboardingBuyerForm {...chrome} onSave={(subscriptions) => saveSubscriptions(editor, subscriptions)} />
+            )}
+        </MemberEditStep>
     );
 }

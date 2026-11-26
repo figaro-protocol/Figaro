@@ -467,8 +467,7 @@ export async function counterSignOffer(
 ): Promise<CommitmentPayload | null> {
     // The gate: no specs, a malformed or tampered offer, or one under an
     // assembly the seller has not bound, THROWS.
-    const gateSpecs = requireSpecs(specs, "counterSignOffer");
-    await gateSeller(wallet, "counterSignOffer", "the offer", (seller) => validateOffer(offer, seller, undefined, gateSpecs, design, readProfile));
+    await gateSellerLeg(wallet, "counterSignOffer", "the offer", offer, validateOffer, specs, design, readProfile);
 
     const domain = buildDomain(ctx.chainId, ctx.core);
     const buyerSigValid = await verifyTypedData({
@@ -480,6 +479,33 @@ export async function counterSignOffer(
 
     // Both floors (economic, refuse-all): either one declining declines.
     return countersignUnderFloors(wallet, offer, ctx, policy, accept, "counterSignOffer");
+}
+
+/** The term check a seller leg runs on its inbound payload (`validateOffer`, `validateDraft`). */
+type PayloadTermCheck = (
+    payload: CommitmentPayload,
+    expectedSeller: Address,
+    policy: OfferPolicy | undefined,
+    specs: SpecSource,
+    design: HydratedProcessDesign | null,
+    readProfile: MemberProfileReader | undefined,
+) => Promise<OfferCheck>;
+
+/** The gate every seller leg opens with: the spec floor (`requireSpecs`), then `gateSeller`
+ *  over `check` run on `payload` with no policy (each leg applies its economic floor after).
+ *  THROWS naming the leg (`who`) and what it refused (`what`). Returns the seller. */
+export async function gateSellerLeg(
+    wallet: WalletClient,
+    who: string,
+    what: string,
+    payload: CommitmentPayload,
+    check: PayloadTermCheck,
+    specs: SpecSource,
+    design: HydratedProcessDesign | null,
+    readProfile: MemberProfileReader | undefined,
+): Promise<Address> {
+    const gateSpecs = requireSpecs(specs, who);
+    return gateSeller(wallet, who, what, (seller) => check(payload, seller, undefined, gateSpecs, design, readProfile));
 }
 
 /**

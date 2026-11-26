@@ -47,7 +47,7 @@ export interface ProcessSummary {
     orders: OrderStub[];
 }
 
-export interface ProcessRow {
+export interface WalletCommitmentRow {
     processId: string;
     rootOrderHash: string;
     counterparty: string;
@@ -65,7 +65,7 @@ export interface ProcessRow {
  * `NetworkRead`: `absent` when the order read failed, never `[]`.
  */
 export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): {
-    read: NetworkRead<ProcessRow[]>;
+    read: NetworkRead<WalletCommitmentRow[]>;
 } {
     // The rows of an address. The connected wallet's by default; any address
     // when a reader names one — every order is public, and reading needs no wallet.
@@ -73,7 +73,7 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
     const address = subject ?? connected;
     const publicClient = usePublicClient();
     const chainId = useChainId();
-    const [read, setRead] = useState<NetworkRead<ProcessRow[]>>(PENDING);
+    const [read, setRead] = useState<NetworkRead<WalletCommitmentRow[]>>(PENDING);
     const [tick, setTick] = useState(0);
 
     // No subject or client yet reads as pending, set during render on the
@@ -92,7 +92,7 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
             const graph = projectProcessGraph(events);
             const record = walletRecord(graph, address as Address);
 
-            const toRow = (order: Order, counterpartyOf: (o: Order) => string): ProcessRow => ({
+            const toRow = (order: Order, counterpartyOf: (o: Order) => string): WalletCommitmentRow => ({
                 processId: order.processId,
                 rootOrderHash: order.orderHash,
                 counterparty: counterpartyOf(order),
@@ -109,7 +109,7 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
             // SELLER rows are per-order: a seller holds only its own
             // order(s), and a sub-order seller in someone else's process
             // must still see what it is fulfilling — no root filter.
-            const built: ProcessRow[] = role === "buyer"
+            const built: WalletCommitmentRow[] = role === "buyer"
                 ? record.processesAsRootBuyer.flatMap((process) => {
                     const root = [...process.orders.values()].find(isProcessRoot);
                     return root ? [toRow(root, (o) => o.seller)] : [];

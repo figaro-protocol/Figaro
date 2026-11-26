@@ -524,13 +524,13 @@ export function readDataSources(
     clauseEntries: readonly { clause: Hex; data?: Record<string, unknown> }[],
     specs: SpecSource,
 ): { clause: Hex; sources: Hex[] }[] {
-    return clauseEntries.flatMap(({ clause, data }) => {
-        const spec = specs.get(clause);
-        const field = spec ? specDataSources(spec) : undefined;
-        const raw = field ? data?.[field] : undefined;
-        if (!Array.isArray(raw)) return [];
-        return [{ clause, sources: raw.filter((v): v is Hex => typeof v === "string" && isBytes32Hex(v)) }];
-    });
+    // A value that is not a bytes32 hex string is skipped, never read as an id.
+    return markedArrays(clauseEntries, specs, specDataSources, (field) => field).map(({ clause, values }) => ({
+        clause,
+        sources: values.filter(
+            (v): v is Hex => typeof v === "string" && isBytes32Hex(v),
+        ),
+    }));
 }
 
 /** The DERIVED fields of a clause (`block.checkout.derives`): each declared
@@ -1765,4 +1765,23 @@ export function serializeProcessDesign(assembly: ProcessDesign): {
     const json = canonicalize(assembly);
     const processDesignHash = processDesignHashOf(assembly);
     return { json, processDesignHash };
+}
+
+/** For each clause entry whose spec carries a mark (`markOf`), the array the
+ *  mark's field (`fieldOf`) holds in the entry's data, with the mark. A clause
+ *  whose spec is not loaded, carries no mark, or whose marked value is not an
+ *  array contributes nothing. */
+export function markedArrays<M>(
+    clauseEntries: readonly { clause: Hex; data?: Record<string, unknown> }[],
+    specs: SpecSource,
+    markOf: (spec: ProjectionSpecView) => M | undefined,
+    fieldOf: (mark: M) => string,
+): { clause: Hex; mark: M; values: unknown[] }[] {
+    return clauseEntries.flatMap(({ clause, data }) => {
+        const spec = specs.get(clause);
+        const mark = spec ? markOf(spec) : undefined;
+        const values = mark ? data?.[fieldOf(mark)] : undefined;
+        if (!mark || !Array.isArray(values)) return [];
+        return [{ clause, mark, values }];
+    });
 }

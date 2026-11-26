@@ -24,6 +24,7 @@
 import { decodeEventLog } from "viem";
 import type { Hex, Address } from "../types.js";
 import { ERC20_ABI } from "../abis.js";
+import { forEachConcurrently } from "../boundedConcurrency.js";
 import type { VenueEvent, SwapLeg } from "./composition.js";
 
 /** A swap leg with the party whose bond it funded. Assignable to `SwapLeg`,
@@ -203,29 +204,27 @@ export async function readCommitFundingLegs(params: {
     }
     const txs = [...ordersByTx.keys()];
     let unreadReceipts = 0;
-    for (let i = 0; i < txs.length; i += concurrency) {
-        await Promise.all(txs.slice(i, i + concurrency).map(async (tx) => {
-            if (cache.has(tx)) return;
-            let logs: readonly ReceiptLogInput[];
-            try {
-                logs = (await client.getTransactionReceipt({ hash: tx as Hex })).logs;
-            } catch {
-                unreadReceipts += 1;
-                return;
+    await forEachConcurrently(txs, concurrency, async (tx) => {
+        if (cache.has(tx)) return;
+        let logs: readonly ReceiptLogInput[];
+        try {
+            logs = (await client.getTransactionReceipt({ hash: tx as Hex })).logs;
+        } catch {
+            unreadReceipts += 1;
+            return;
+        }
+        const seen = new Set<string>();
+        const txLegs: VenueEvent<FundingLeg>[] = [];
+        for (const order of ordersByTx.get(tx) ?? []) {
+            for (const leg of readFundingLegs(logs, order, coordinator)) {
+                const legKey = `${key(leg.payload.party)}|${key(leg.payload.tokenIn)}`;
+                if (seen.has(legKey)) continue;
+                seen.add(legKey);
+                txLegs.push(leg);
             }
-            const seen = new Set<string>();
-            const txLegs: VenueEvent<FundingLeg>[] = [];
-            for (const order of ordersByTx.get(tx) ?? []) {
-                for (const leg of readFundingLegs(logs, order, coordinator)) {
-                    const legKey = `${key(leg.payload.party)}|${key(leg.payload.tokenIn)}`;
-                    if (seen.has(legKey)) continue;
-                    seen.add(legKey);
-                    txLegs.push(leg);
-                }
-            }
-            cache.set(tx, txLegs);
-        }));
-    }
+        }
+        cache.set(tx, txLegs);
+    });
     // In the order the transactions were first committed.
     const legs = txs.flatMap((tx) => cache.get(tx) ?? []);
     return { legs, unreadReceipts };

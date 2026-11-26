@@ -133,9 +133,9 @@ loses, moves or retypes a field and this table does not move with it.
 | `FigaroCore`, `FigaroBatchVerifier` | `EIP712DomainChanged` | — | — | — | no reader found: OpenZeppelin's `EIP712` declares the event and nothing in `src/` emits it. It answers the question ERC-5267 asks: did the signing domain change? The domain is fixed at construction, so the answer is never (`src/core/kernel/FigaroCore.sol:27`) | No field |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 0 | `orderHash` | `bytes32 indexed` | Any reader groups attestations by order (`sdk/src/derive/attestation.ts:41`) | A fingerprint |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 1 | `processId` | `bytes32 indexed` | Any reader: attestations by process (`sdk/src/derive/attestation.ts:31`); the data explorer attributes a process to its assembly (`attributeProcessDesigns`, `sdk/src/derive/attribution.ts`) | A fingerprint |
-| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 2 | `attester` | `address indexed` | The data explorer counts distinct attesters per clause (`frontend/lib/data/explorer.ts:344`); a forum's evidence file names the attester (`frontend/lib/data/audit/processLogsExtract.ts:104`) | The wallet's address |
-| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 3 | `clauseId` | `bytes32` | Any reader groups attestations by clause (`sdk/src/derive/overlay.ts:112`); a forum's evidence file (`frontend/lib/data/audit/processLogsExtract.ts:81`) | A fingerprint: the clause key |
-| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 4 | `stage` | `uint8` | Any reader decodes the content by the stage's shape (`sdk/src/derive/overlay.ts:133`); a forum's evidence file (`frontend/lib/data/audit/processLogsExtract.ts:85`) | A small number |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 2 | `attester` | `address indexed` | The data explorer counts distinct attesters per clause (`frontend/lib/data/explorer.ts:344`); a forum's evidence file names the attester (`frontend/lib/data/audit/processLogsExtract.ts:137`) | The wallet's address |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 3 | `clauseId` | `bytes32` | Any reader groups attestations by clause (`sdk/src/derive/overlay.ts:112`); a forum's evidence file (`frontend/lib/data/audit/processLogsExtract.ts:99`) | A fingerprint: the clause key |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 4 | `stage` | `uint8` | Any reader decodes the content by the stage's shape (`sdk/src/derive/overlay.ts:133`); a forum's evidence file (`frontend/lib/data/audit/processLogsExtract.ts:113`) | A small number |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 5 | `contentRef` | `bytes32` | Any reader fetches the content by it (`frontend/lib/data/graphCorpus.ts:304`) and checks the bytes against it (`sdk/src/anchored.ts:191`) | A fingerprint: `keccak256` of the content; a private set's content carries its blinding value, a public set's carries none |
 | `FigaroBatchVerifier` | `BatchOperations` | 0 | `batchId` | `uint64 indexed` | A relay rebuilding the batch path's state from the chain pairs the log with its `BatchSettled` (`prover/sequencer/src/rebuild.rs:91`); the SDK's reader of the uses a batch left uncounted pairs it with the `BatchAccrualSkipped` of the same transaction and batch id (`sdk/src/rpgf/index.ts:437`) | A counter |
 | `FigaroBatchVerifier` | `BatchOperations` | 1 | `blockTimestamp` | `uint64` | The same relay replays the batch at that clock (`prover/sequencer/src/rebuild.rs:105`) | A time in seconds |
@@ -466,9 +466,9 @@ it.
 The check knows a design entry only by the registered agreement it binds: an
 order's provenance names an `agreementHash`, never an entry, so the entries an
 order may instantiate are those that bind its agreement
-(`sdk/src/projection.ts:968`), and a followed order sits at the place an entry
+(`sdk/src/projection.ts:1078`), and a followed order sits at the place an entry
 names when its agreement is the one that entry binds
-(`sdk/src/projection.ts:990`). Two parentless entries that bind the same
+(`sdk/src/projection.ts:1100`). Two parentless entries that bind the same
 agreement are therefore one entry to the check: an order that should follow
 the first passes when it follows an order of the second, and the counter-signer
 cannot tell which of the two the followed order fills. A designer who wants

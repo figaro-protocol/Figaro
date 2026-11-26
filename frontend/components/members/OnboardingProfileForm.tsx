@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAccount, useChainId } from "wagmi";
+import { useChainId } from "wagmi";
 import { useConnectInjected } from "@/hooks/useConnectInjected";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
@@ -14,9 +13,7 @@ import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { addressIntegrity, isValidAddress } from "@/lib/shared/evm";
 import { IpfsImageUpload } from "@/components/members/IpfsImageUpload";
 import type { ProfileClauseValuesMap } from "@/components/members/ProfileClauseValues";
-import { OnboardingLoadingCard, OnboardingStepFooter, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
-import { useMounted } from "@/hooks/useMounted";
-import { onboardingNextHref, useOnboardingState } from "@/lib/registries/onboardingState";
+import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps, useOnboardingStepState } from "@/components/members/OnboardingStepChrome";
 import { sellerPageHref } from "@/lib/registries/memberListing";
 import type {
     OnboardingProfileDraft,
@@ -25,7 +22,7 @@ import type { AcceptedTokenMetadata } from "@/lib/registries/acceptedTokenMetada
 import { encodeGeohash } from "@figaro-protocol/sdk/derive";
 import { clampPublicGeohash, PUBLIC_GEOHASH_MAX_PRECISION } from "@figaro-protocol/sdk/clauses";
 import { geocodeAddress, type GeocodeFailureReason } from "@/lib/registries/geocode";
-import { getDeviceLocation } from "@/lib/shared/deviceLocation";
+import { DEVICE_LOCATION_UNREAD, readDeviceGeohash } from "@/lib/shared/deviceLocation";
 import { getCommonTokens, type CommonToken } from "@/components/members/commonTokens";
 import { hexEqual } from "@/lib/shared/evm";
 
@@ -186,18 +183,12 @@ export function OnboardingProfileForm({
     submitInFlight = false,
     externalError = null,
 }: OnboardingProfileFormProps = {}) {
-    const router = useRouter();
-    const mounted = useMounted();
+    const { mounted, state, loaded, update, hydrated, markHydrated, advance } = useOnboardingStepState("profile");
     const chainId = useChainId();
-    const { address, isConnected } = useAccount();
     const connectInjected = useConnectInjected();
-    const { state, loaded, subject, update } = useOnboardingState(address);
 
     const [form, setForm] = useState<FormState>(EMPTY_FORM);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    // Hydrated for which subject: the wallet, or the anonymous draft before one connects.
-    const [hydratedFor, setHydratedFor] = useState<string | null>(null);
-    const hydrated = hydratedFor === subject;
     const [locating, setLocating] = useState<"device" | "address" | null>(null);
     const [locateError, setLocateError] = useState<string | null>(null);
 
@@ -219,7 +210,7 @@ export function OnboardingProfileForm({
     // It runs during render, once: the draft is React state already read.
     if (!hydrated && loaded) {
         setForm(fromDraft(state.profile));
-        setHydratedFor(subject);
+        markHydrated();
     }
 
     // Persist on every form change so a refresh / navigation doesn't lose work.
@@ -258,12 +249,11 @@ export function OnboardingProfileForm({
         setLocating("device");
         setLocateError(null);
         try {
-            const position = await getDeviceLocation();
-            if (!position) {
-                setLocateError("Couldn't read device location. Permission denied or unavailable.");
+            const hash = await readDeviceGeohash(form.geohashPrecision);
+            if (!hash) {
+                setLocateError(DEVICE_LOCATION_UNREAD);
                 return;
             }
-            const hash = encodeGeohash(position.lat, position.lon, form.geohashPrecision);
             setField("geohash", hash);
         } finally {
             setLocating(null);
@@ -372,16 +362,9 @@ export function OnboardingProfileForm({
         }
         setErrors(next);
         if (Object.keys(next).length === 0) {
-            if (onSave) {
-                // Edit mode: caller handles success/failure (re-pin + updateProfile).
-                // We don't navigate; the caller decides when and where to redirect.
-                onSave(toDraft(form)).catch(() => {
-                    // The caller should have surfaced the error via externalError;
-                    // we swallow here so React's unhandled-rejection logger stays quiet.
-                });
-            } else {
-                router.push(onboardingNextHref("profile"));
-            }
+            // Edit mode: the caller handles success and failure (re-pin + updateProfile)
+            // and decides when and where to redirect.
+            finishStep(onSave && (() => onSave(toDraft(form))), advance);
             return;
         }
         // Focus the first invalid field so the user sees the error

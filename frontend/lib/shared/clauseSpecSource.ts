@@ -730,3 +730,14 @@ export function groupClausesByArticle(): readonly ClauseArticleGroup[] {
     // Insertion order = load order; the Map preserves it. No sort, no enum.
     return Array.from(byArticle.entries()).map(([article, clauses]) => ({ article, label: article, clauses }));
 }
+
+/** Each entry of a map keyed by clause key, with the clause's cached spec. An
+ *  entry whose spec is not loaded is left out: resolved-empty, never failed. */
+export function entriesWithLoadedSpec<V>(
+    byClauseKey: Readonly<Record<string, V>>,
+): Array<{ clauseKey: string; value: V; spec: ClauseSpecWithBlock }> {
+    return Object.entries(byClauseKey).flatMap(([clauseKey, value]) => {
+        const spec = getClauseSpec(clauseKey);
+        return spec ? [{ clauseKey, value, spec }] : [];
+    });
+}

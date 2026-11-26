@@ -35,7 +35,7 @@ import { buildCommitment, buildDomain, hashCommitmentStruct, readChainTimestamp,
 import { computeCheckoutHash, type Agreement, type AgreementProvenance } from "../agreement.js";
 import type { Hex, Address } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, PricedField, QuoteRequestTerms } from "./coordination.js";
-import { checkDeadlineCap, checkOfferPolicy, checkPayloadTerms, checkSellerSignature, countersignUnderFloors, gateSeller, instantiateRootAgreement, readOfferDesign, requireSpecs, withAgreementBlinding, signCommitmentAs, verifyRaceReply, type OfferCheck, type OfferPolicy, type SellerSignCtx } from "./originate.js";
+import { checkDeadlineCap, checkOfferPolicy, checkPayloadTerms, checkSellerSignature, countersignUnderFloors, gateSellerLeg, instantiateRootAgreement, readOfferDesign, requireSpecs, withAgreementBlinding, signCommitmentAs, verifyRaceReply, type OfferCheck, type OfferPolicy, type SellerSignCtx } from "./originate.js";
 
 // One owner for the reply check: the offer loops and the race both use it.
 export { verifyRaceReply };
@@ -112,8 +112,7 @@ export async function counterSignDraft(
     design: HydratedProcessDesign | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
-    const gateSpecs = requireSpecs(specs, "counterSignDraft");
-    await gateSeller(wallet, "counterSignDraft", "the draft", (seller) => validateDraft(draft, seller, undefined, gateSpecs, design, readProfile));
+    await gateSellerLeg(wallet, "counterSignDraft", "the draft", draft, validateDraft, specs, design, readProfile);
     if (draft.quoteRequest) {
         throw new Error("counterSignDraft: payload is a quote request — the candidate prices it via quoteDraft, never countersigns the ceiling");
     }
@@ -319,8 +318,7 @@ export async function quoteDraft(
     design: HydratedProcessDesign | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
-    const gateSpecs = requireSpecs(specs, "quoteDraft");
-    await gateSeller(wallet, "quoteDraft", "the quote request", (seller) => validateDraft(draft, seller, undefined, gateSpecs, design, readProfile));
+    await gateSellerLeg(wallet, "quoteDraft", "the quote request", draft, validateDraft, specs, design, readProfile);
     const terms = draft.quoteRequest;
     if (!terms) {
         throw new Error("quoteDraft: payload carries no quote request — a race draft countersigns via counterSignDraft");
@@ -336,7 +334,7 @@ export async function quoteDraft(
     if (q === null || q < 1n || q > draft.commitment.payment) return null;
 
     const { commitment: quoted, agreement } = buildCounterDraft(draft, terms, q);
-    assertAgreementSignable(agreement, quoted.checkoutHash, gateSpecs, quoted, design, "This quote");
+    assertAgreementSignable(agreement, quoted.checkoutHash, specs, quoted, design, "This quote");
     const sellerSig = await signCommitmentAs(wallet, ctx, quoted, "quoteDraft");
     return { commitment: quoted, agreement, sellerSig };
 }

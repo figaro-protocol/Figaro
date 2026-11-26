@@ -1,7 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
 import Link from "@/components/shared/Link";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { useMounted } from "@/hooks/useMounted";
+import { onboardingNextHref, useOnboardingState, type OnboardingStep } from "@/lib/registries/onboardingState";
+import { useAssemblyChoices, type AssemblyChoice } from "@/lib/registries/assemblyChoices";
 
 /**
  * The chrome every wizard-step form in `components/members/Onboarding*Form.tsx`
@@ -90,8 +95,36 @@ export function toggledSet<K>(set: ReadonlySet<K>, key: K): Set<K> {
  * anonymous draft before one connects): `markHydrated()` flips `hydrated` for the
  * current subject, and a new subject starts unhydrated.
  */
-export function useSubjectHydration(subject: string) {
+function useSubjectHydration(subject: string) {
     const [hydratedFor, setHydratedFor] = useState<string | null>(null);
     const markHydrated = useCallback(() => setHydratedFor(subject), [subject]);
     return { hydrated: hydratedFor === subject, markHydrated };
+}
+
+/**
+ * What every wizard-step form reads before it renders: whether it has mounted
+ * (the draft lives in this browser's storage), the connected wallet, the
+ * wallet's draft and its per-subject hydration, and `advance`, which routes to
+ * the step after `step`.
+ */
+export function useOnboardingStepState(step: OnboardingStep["id"]) {
+    const router = useRouter();
+    const mounted = useMounted();
+    const { address } = useAccount();
+    const { state, loaded, subject, update } = useOnboardingState(address);
+    const { hydrated, markHydrated } = useSubjectHydration(subject);
+    const advance = useCallback(() => router.push(onboardingNextHref(step)), [router, step]);
+    return { mounted, address, state, loaded, subject, update, hydrated, markHydrated, advance };
+}
+
+/**
+ * The published assemblies a wizard step lists as rows. Until the read is
+ * present the step lists no row (`choices` is empty) and `choicesLoaded` is
+ * false, so a step that writes from the list waits for it; a failed read lists
+ * nothing and never stands for "nothing to bind".
+ */
+export function useListedAssemblyChoices(): { choicesLoaded: boolean; choices: AssemblyChoice[] } {
+    const { read } = useAssemblyChoices();
+    const choices = useMemo(() => (read.status === "present" ? read.value : []), [read]);
+    return { choicesLoaded: read.status === "present", choices };
 }

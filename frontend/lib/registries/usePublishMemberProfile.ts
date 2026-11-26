@@ -36,9 +36,10 @@
  * same undefined-when-submit-fires reason.
  */
 
-import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
+import { usePublicClient } from "wagmi";
 import type { Abi } from "viem";
-import { simulateWriteVerify } from "@/lib/shared/contractWrite";
+import { requirePresent, simulateWriteVerify } from "@/lib/shared/contractWrite";
+import { useTrackedWrite } from "@/lib/shared/useTrackedWrite";
 import { membersRegistryRevertMessage, readRegistrationDeposit } from "@/lib/registries/useMembersRegistry";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import {
@@ -75,21 +76,12 @@ export interface PublishMemberOutcome {
 }
 
 export function usePublishMemberProfile() {
-    const client = usePublicClient();
-    const { writeContractAsync, data: hash, isPending, error: writeError } =
-        useWriteContract();
-    const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+    const publicClient = usePublicClient();
+    const { writeContractAsync, status } = useTrackedWrite();
 
     async function publish(input: PublishMemberInput): Promise<PublishMemberOutcome> {
-        const registry = getMembersRegistry();
-        if (!registry) {
-            throw new Error(
-                "MembersRegistry address not configured (NEXT_PUBLIC_MEMBERS_REGISTRY).",
-            );
-        }
-        if (!client) {
-            throw new Error("No public client available to read the registration stake.");
-        }
+        const registry = requirePresent(getMembersRegistry(), "MembersRegistry address not configured (NEXT_PUBLIC_MEMBERS_REGISTRY).");
+        const client = requirePresent(publicClient, "No public client available to read the registration stake.");
         // (a) Pin the catalog document from the items in hand — none for a
         //     member that lists no item.
         let catalogURI: string | undefined;
@@ -167,12 +159,5 @@ export function usePublishMemberProfile() {
         return { hash: txHash, profileURI, catalogURI };
     }
 
-    return {
-        publish,
-        hash,
-        isPending,
-        isConfirming,
-        isSuccess,
-        error: writeError,
-    };
+    return { publish, ...status };
 }

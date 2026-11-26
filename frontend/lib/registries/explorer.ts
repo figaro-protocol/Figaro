@@ -194,7 +194,7 @@ export const STORED_DOCUMENT_NOTE: Record<StoredDocumentAnchor, string> = {
 };
 
 /** A pinned document read back and checked against the chain's own digest. */
-export interface StoredDocument {
+export interface StoredDocumentVerdict {
     /** Which digest was checked, and therefore which note applies. */
     anchor: StoredDocumentAnchor;
     /** The digest the registration event carries. */
@@ -264,7 +264,7 @@ function textDifferences(text: string): StoredDocumentDifference[] {
  * rather than told the loader did it. `fetched` is the served bytes, or
  * their exact text.
  */
-export function storedDocument(fetched: Uint8Array | string, anchored: string, anchor: StoredDocumentAnchor): StoredDocument {
+export function verifyStoredDocument(fetched: Uint8Array | string, anchored: string, anchor: StoredDocumentAnchor): StoredDocumentVerdict {
     const text = typeof fetched === "string" ? fetched : new TextDecoder().decode(fetched);
     const parsed = safeJsonParse<Record<string, unknown>>(text);
     if (parsed === null) {

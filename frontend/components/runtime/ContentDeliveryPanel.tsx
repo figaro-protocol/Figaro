@@ -44,6 +44,7 @@ import {
 import { useCeremonyPanel } from "@/lib/data/handoff/useCeremonyChannel";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useWitnessHolder } from "@/lib/core/useWitnessHolder";
+import { saveBlob } from "@/lib/shared/download";
 import { Button } from "@/components/ui/Button";
 import { CeremonyPanelFrame, CeremonyRequestButton } from "@/components/runtime/CeremonyPanelFrame";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
@@ -123,12 +124,7 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller, path
 
     const handleDownload = useCallback(() => {
         if (!received) return;
-        const url = URL.createObjectURL(new Blob([received.bytes as BlobPart], { type: received.mediaType }));
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = received.name;
-        a.click();
-        URL.revokeObjectURL(url);
+        saveBlob(new Blob([received.bytes as BlobPart], { type: received.mediaType }), received.name);
     }, [received]);
 
     if (!role) return null;

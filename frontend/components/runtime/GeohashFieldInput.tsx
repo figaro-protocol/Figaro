@@ -18,10 +18,9 @@
  * component knows no clause and no field name.
  */
 import { useState } from "react";
-import { getDeviceLocation } from "@/lib/shared/deviceLocation";
+import { DEVICE_LOCATION_UNREAD, readDeviceGeohash } from "@/lib/shared/deviceLocation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { encodeGeohash } from "@figaro-protocol/sdk/derive";
 import { safeRegexTest, capGeohashGrain, geohashCapturePrecision } from "@figaro-protocol/sdk/clauses";
 import type { FieldFormatInputProps } from "@/components/runtime/fieldFormatInputs";
 
@@ -38,12 +37,12 @@ export function GeohashFieldInput({ value, onChange, testId, pattern, dispositio
         setLocating(true);
         setError(null);
         try {
-            const position = await getDeviceLocation();
-            if (!position) {
-                setError("Couldn't read device location. Permission denied or unavailable.");
+            const hash = await readDeviceGeohash(geohashCapturePrecision(disposition));
+            if (!hash) {
+                setError(DEVICE_LOCATION_UNREAD);
                 return;
             }
-            onChange(encodeGeohash(position.lat, position.lon, geohashCapturePrecision(disposition)));
+            onChange(hash);
         } finally {
             setLocating(false);
         }

@@ -14,17 +14,15 @@
  */
 "use client";
 
-import { useState, useEffect } from "react";
-import { usePublicClient, useChainId } from "wagmi";
+import { useEffect } from "react";
 import type { MemberCatalog } from "@/lib/registries/types";
 import {
     DEFAULT_DISCOVERY_SERVICE,
     type DiscoveryService,
 } from "@/lib/registries/discoveryService";
-import { usePublishedAssemblies } from "@/lib/registries/useProcessRegistry";
+import { usePublishedCheckedRead } from "@/lib/registries/usePublishedCheckedRead";
 import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
-import { ABSENT, PENDING, mapRead, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
-import { useDepsChanged } from "@/lib/shared/useDepsChanged";
+import type { NetworkRead } from "@/lib/shared/networkRead";
 
 export interface UseRegisteredCatalogsOptions {
     service?: DiscoveryService;
@@ -34,41 +32,17 @@ export function useRegisteredCatalogs(
     options: UseRegisteredCatalogsOptions = {},
 ): { read: NetworkRead<MemberCatalog[]> } {
     const service = options.service ?? DEFAULT_DISCOVERY_SERVICE;
-    const [read, setRead] = useState<NetworkRead<MemberCatalog[]>>(PENDING);
     // Re-read generation — bumped when the tab regains focus so a long-open
     // discovery surface refreshes from the chain instead of going stale.
     const { generation, refetch: bump } = useRefetchGeneration();
-    const client = usePublicClient();
-    const chainId = useChainId();
-    // The ProcessRegistry read the surfacing rule cross-checks against —
-    // the SAME gate useMemberListings applies (rule applied evenly). Pending
-    // is pending and absent is absent: the unchecked member list is never
-    // rendered, and a failed assembly read never rejects every member.
-    const { read: publishedAssemblies } = usePublishedAssemblies(undefined);
-
-    // The reads that end without a fetch are set during render, on the
-    // render the inputs change (`useDepsChanged`); the effect fetches only.
-    // The reset reads only whether a client is there, so it is keyed on that.
-    const inputsChanged = useDepsChanged([!!client, chainId, service, publishedAssemblies, generation]);
-    if (inputsChanged) {
-        if (!client || !service.isRegistryConfigured()) setRead(ABSENT);
-        else if (publishedAssemblies.status !== "present") setRead(publishedAssemblies);
-    }
-
-    useEffect(() => {
-        if (!client || !service.isRegistryConfigured() || publishedAssemblies.status !== "present") return;
-        const publishedHashes = new Set(publishedAssemblies.value.map((a) => a.processDesignHash.toLowerCase()));
-
-        let canceled = false;
-        void readNetwork("useRegisteredCatalogs", () => service.listCatalogs(client, chainId, publishedHashes))
-            .then((result) => {
-                if (!canceled) setRead(mapRead(result, (r) => r.catalogs));
-            });
-
-        return () => {
-            canceled = true;
-        };
-    }, [client, chainId, service, publishedAssemblies, generation]);
+    // The surfacing rule cross-checks against the ProcessRegistry read — the
+    // SAME gate useMemberListings applies (rule applied evenly).
+    const read = usePublishedCheckedRead(
+        "useRegisteredCatalogs",
+        service.isRegistryConfigured(),
+        async (client, chainId, publishedHashes) => (await service.listCatalogs(client, chainId, publishedHashes)).catalogs,
+        [service, generation],
+    );
 
     // A long-open tab's catalog goes stale as members register/de-surface.
     // Refresh on focus (returning to the tab) and on tab re-visibility.

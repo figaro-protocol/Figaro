@@ -27,7 +27,8 @@ import type { Agreement } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/core/attestationIndexer";
 import { extractContract, type ContractDocument } from "./contractExtract";
-import { extractProcessLogs, type HeldWitnessReader, type ProcessLogsDocument, type WITHHELD_FROM_PUBLIC_FILE } from "./processLogsExtract";
+import { extractProcessLogs, type ProcessLogsDocument, type WITHHELD_FROM_PUBLIC_FILE } from "./processLogsExtract";
+import type { HeldWitnessReader } from "@/lib/core/witnessContent";
 import { extractClauseData, type ClauseDataDocument } from "./clauseDataExtract";
 import {
     extractMembersRegistry,

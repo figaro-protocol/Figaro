@@ -433,6 +433,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `parseAttestationLogs` | root | Decode `Attestation` logs — filter by contract ADDRESS; the topic hash is shared with the batch path. |
 | `parseClauseSpec` | `/clauses` | Parse and validate an unknown value as a `ClauseSpec` (the spec's own structure, not its content). |
 | `parseFieldSpec` | `/clauses` | Parse ONE field spec — for fields declared outside a clause's content `fields`. |
+| `parseEachFieldSpec` | `/clauses` | Parse a list of field specs, element `i` at `path[i]`; returns the well-formed ones and reports every malformed one. |
 | `parseMemberCatalogDocument` | root | Strict parse of a pinned catalog document; throws on malformed input. |
 | `parseMemberProfileDocument` | root | Strict parse of a pinned profile document; throws on malformed input. |
 | `parseProjectionHints` | root | Read a spec's `block` projection hints — design fills, checkout fills, article. |

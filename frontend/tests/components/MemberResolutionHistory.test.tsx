@@ -17,7 +17,7 @@ vi.mock("@/lib/core/contracts", async (importOriginal) =>
     (await import("../support/contractsMock")).contractsMock(await importOriginal<typeof import("@/lib/core/contracts")>(), { contracts: { core: CORE, batchVerifier: VERIFIER }, coordinator: () => undefined, batchVerifier: () => VERIFIER }));
 
 import { MemberResolutionHistory } from "@/components/runtime/MemberResolutionHistory";
-import { getSellerResolutionHistory, type MemberResolutionHistory as ResolutionHistory } from "@/lib/registries/memberResolutionHistory";
+import { getSellerResolutionHistory, type MemberResolutionIndicators as ResolutionHistory } from "@/lib/registries/memberResolutionHistory";
 
 const WITH_HISTORY: ResolutionHistory = {
     operatingSinceBlock: 100n,

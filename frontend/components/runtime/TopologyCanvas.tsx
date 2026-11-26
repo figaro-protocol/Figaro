@@ -9,7 +9,7 @@
  * (`designerMode`); a future live process view would render it read-only.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     ReactFlow,
     Node,
@@ -28,7 +28,7 @@ import type { Address } from "viem";
 import { Order, OrderState } from "@/lib/core/store";
 import { hexEqual } from "@/lib/shared/evm";
 import { Card } from "@/components/ui/Card";
-import { useProcessAgreements } from "@/hooks/useProcessAgreements";
+import { useAgreementsOfOrders } from "@/hooks/useProcessAgreements";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import { deriveOrderDepths } from "@/lib/shared/orderTopology";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -159,11 +159,7 @@ export function TopologyCanvas({
 }: TopologyCanvasProps) {
     // IPFS-first agreement hydration (the shared singleton) — the canvas never
     // reads localStorage synchronously; nodes rebuild as hydration completes.
-    const checkoutHashes = useMemo(
-        () => orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
-        [orders],
-    );
-    const agreements = useProcessAgreements(checkoutHashes);
+    const agreements = useAgreementsOfOrders(orders);
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 

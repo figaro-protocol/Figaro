@@ -11,7 +11,7 @@
  * rating — the honest absence of a resolution history is itself the signal.
  */
 
-import type { MemberResolutionHistory as ResolutionHistory } from "@/lib/registries/memberResolutionHistory";
+import type { MemberResolutionIndicators as ResolutionHistory } from "@/lib/registries/memberResolutionHistory";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { tokenFigure } from "@/lib/shared/utils";
@@ -37,6 +37,7 @@ function Stat({ label, value, testId }: { label: string; value: string; testId: 
     );
 }
 
+// lint-allow-duplicate-symbol: the component that renders what useMemberResolutionHistory reads
 export function MemberResolutionHistory({ record, isLoading }: Props) {
     if (isLoading) {
         return (

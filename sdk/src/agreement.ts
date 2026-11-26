@@ -390,11 +390,7 @@ export function computeCheckoutHash(agreement: Agreement): Hex {
  *  plus the reserved provenance leaf when the agreement names the design it
  *  instantiates, plus the topology leaf when it carries `follows`. */
 export function agreementLeaves(agreement: Agreement): Hex[] {
-    const keys = agreement.clauses.map((s) => s.clause.toLowerCase());
-    const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
-    if (dupes.length > 0) {
-        throw new Error(`Duplicate clause keys in agreement: ${[...new Set(dupes)].join(", ")}`);
-    }
+    const keys = distinctClauseKeys(agreement.clauses.map((s) => s.clause));
     // The format's own leaves are built from `provenance` and `follows`,
     // never from a clause entry: an entry under either reserved key could
     // stand in for them and hide the design or the order links an agreement
@@ -409,6 +405,17 @@ export function agreementLeaves(agreement: Agreement): Hex[] {
     }
     if (agreement.follows !== undefined) leaves.push(computeTopologyLeaf(agreement.follows));
     return sortLeaves(leaves);
+}
+
+/** An agreement's clause keys, lowercased; throws when two of them are one
+ *  key: a tree holds one leaf per clause. */
+export function distinctClauseKeys(clauseKeys: readonly string[]): string[] {
+    const keys = clauseKeys.map((k) => k.toLowerCase());
+    const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
+    if (dupes.length > 0) {
+        throw new Error(`Duplicate clause keys in agreement: ${[...new Set(dupes)].join(", ")}`);
+    }
+    return keys;
 }
 
 /**

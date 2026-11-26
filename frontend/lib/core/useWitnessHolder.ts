@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import { useAccount, useChainId } from "wagmi";
 import type { WitnessHolder } from "@/lib/core/witnessContent";
 
+// lint-allow-duplicate-symbol: the hook that returns the connected wallet's WitnessHolder
 export function useWitnessHolder(): WitnessHolder | null {
     const { address } = useAccount();
     const chainId = useChainId();

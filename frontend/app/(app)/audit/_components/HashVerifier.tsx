@@ -35,7 +35,7 @@ import {
     type AgreementClause,
 } from "@figaro-protocol/sdk";
 import { useWalletOrders } from "@/hooks/useProcessOrders";
-import { useProcessAgreements } from "@/hooks/useProcessAgreements";
+import { useAgreementsOfOrders } from "@/hooks/useProcessAgreements";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
 import { Input } from "@/components/ui/Input";
@@ -265,11 +265,7 @@ function SearchMode() {
     // nothing and says no "no match" (see below).
     const ordersRead = useWalletOrders();
     const orders = useMemo(() => (ordersRead.status === "present" ? ordersRead.value : []), [ordersRead]);
-    const checkoutHashes = useMemo(
-        () => orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
-        [orders],
-    );
-    const agreements = useProcessAgreements(checkoutHashes);
+    const agreements = useAgreementsOfOrders(orders);
 
     const hits = useMemo<HashHit[]>(() => {
         const target = hash.trim().toLowerCase();

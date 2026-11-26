@@ -654,15 +654,25 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
                 errors.push({ path: `${path}.fields`, message: "object requires a fields array" });
                 return null;
             }
-            const fields: FieldSpec[] = [];
-            for (let i = 0; i < raw.fields.length; i++) {
-                const child = parseFieldSpec(raw.fields[i], `${path}.fields[${i}]`, errors, depth + 1);
-                if (child !== null) fields.push(child);
-            }
+            const fields = parseEachFieldSpec(raw.fields, `${path}.fields`, errors, depth + 1);
             return { ...base, type: "object", fields };
         }
     }
     return null;
+}
+
+/** Parse each field spec of a list declared at `path` (element `i` at
+ *  `path[i]`), by `parseFieldSpec`'s rules. Every element is parsed, so every
+ *  malformed one pushes its `SpecParseError`s on `errors`; the result holds
+ *  the well-formed ones in order, and is shorter than `raw` exactly when one
+ *  was malformed. */
+export function parseEachFieldSpec(raw: readonly unknown[], path: string, errors: SpecParseError[], depth = 0): FieldSpec[] {
+    const fields: FieldSpec[] = [];
+    for (let i = 0; i < raw.length; i++) {
+        const child = parseFieldSpec(raw[i], `${path}[${i}]`, errors, depth);
+        if (child !== null) fields.push(child);
+    }
+    return fields;
 }
 
 /** Does `value` hold a UTF-16 surrogate that is not half of a pair? */
@@ -766,13 +776,7 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
     if (!Array.isArray(fields)) {
         errors.push({ path: "$.fields", message: "fields must be an array" });
     }
-    const parsedFields: FieldSpec[] = [];
-    if (Array.isArray(fields)) {
-        for (let i = 0; i < fields.length; i++) {
-            const child = parseFieldSpec(fields[i], `$.fields[${i}]`, errors);
-            if (child !== null) parsedFields.push(child);
-        }
-    }
+    const parsedFields: FieldSpec[] = Array.isArray(fields) ? parseEachFieldSpec(fields, "$.fields", errors) : [];
     // A clause commits a clause's content fields as ONE merkle leaf, and the
     // leaf model withholds a WHOLE clause, never a single field (agreement.ts).
     // So a clause whose content fields MIX public and private dispositions cannot
@@ -797,11 +801,7 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
                     errors.push({ path: `$.stages.${key}`, message: "stage entry must be a fields array" });
                     continue;
                 }
-                const stageFields: FieldSpec[] = [];
-                for (let i = 0; i < value.length; i++) {
-                    const child = parseFieldSpec(value[i], `$.stages.${key}[${i}]`, errors);
-                    if (child !== null) stageFields.push(child);
-                }
+                const stageFields = parseEachFieldSpec(value, `$.stages.${key}`, errors);
                 fieldSetRulesHold(stageFields, `$.stages.${key}`, errors);
                 parsedStages[key] = stageFields;
             }

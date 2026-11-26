@@ -275,9 +275,15 @@ export async function cachedGetContractEvents(
     chainId: number,
     params: { address: `0x${string}`; abi: Abi | readonly unknown[]; eventName: string },
 ): Promise<CachedLog[]> {
-    const event = getAbiItem({ abi: params.abi as Abi, name: params.eventName });
-    if (!event) throw new Error(`cachedGetContractEvents: ${params.eventName} is not in the given ABI`);
+    const event = abiEvent(params.abi, params.eventName, "cachedGetContractEvents");
     return cachedGetLogs(client, chainId, { address: params.address, event, eventName: params.eventName });
+}
+
+/** The ABI item named `eventName`; throws, naming `reader`, when the ABI has none. */
+export function abiEvent(abi: Abi | readonly unknown[], eventName: string, reader: string) {
+    const event = getAbiItem({ abi: abi as Abi, name: eventName });
+    if (!event) throw new Error(`${reader}: ${eventName} is not in the given ABI`);
+    return event;
 }
 
 async function _fetchAndCache(

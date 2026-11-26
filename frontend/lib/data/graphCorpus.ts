@@ -87,7 +87,7 @@ import { activeChain } from "@/lib/shared/chains";
 import { publicClient } from "@/lib/shared/publicClient";
 import { useAssemblyChoices } from "@/lib/registries/assemblyChoices";
 import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
-import { ABSENT, PENDING, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib/shared/networkRead";
+import { ABSENT, PENDING, readNetwork, applyUntilCleanup, presentValue, type NetworkRead } from "@/lib/shared/networkRead";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 import type { DesignedEdges } from "@/lib/data/explorer";
 
@@ -414,7 +414,7 @@ export function corpusInputsLoaded(
 export function useGraphCorpus(): NetworkRead<GraphCorpus> {
     const { version: specVersion, loaded: specsLoaded, failed: specsFailed } = useClauseSpecs();
     const { read: choicesRead } = useAssemblyChoices();
-    const choices = choicesRead.status === "present" ? choicesRead.value : null;
+    const choices = presentValue(choicesRead);
     const assembliesFailed = choicesRead.status === "absent";
     const [corpus, setCorpus] = useState<NetworkRead<GraphCorpus>>(PENDING);
 
