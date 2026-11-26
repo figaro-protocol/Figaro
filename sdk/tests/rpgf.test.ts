@@ -229,6 +229,52 @@ describe("computeUsageAccruals", () => {
         expect(entry.d <= entry.c).toBe(true);
     });
 
+    it("counts a process as ONE use of its process design, and every seller of it in the breadth", () => {
+        const accruals = computeUsageAccruals([
+            record(ASSEMBLY, "pd-1", sellerOf("seller1")),
+            record(ASSEMBLY, "pd-1", sellerOf("seller2")),
+            record(ASSEMBLY, "pd-1", sellerOf("seller3")),
+        ], 1n);
+        expect(accruals.get(0)!.byClauseOrProcess.get(id(ASSEMBLY))!).toMatchObject({
+            c: 1n, d: 3n, score: usageScore(1n, 3n, 1n),
+        });
+    });
+
+    it("counts a second process of the process design as a second use; a seller already seen adds no breadth", () => {
+        const s1 = sellerOf("seller1");
+        const accruals = computeUsageAccruals([
+            record(ASSEMBLY, "pd-2", s1),
+            record(ASSEMBLY, "pd-2", sellerOf("seller2")),
+            record(ASSEMBLY, "pd-3", s1),
+            record(ASSEMBLY, "pd-3", sellerOf("seller4")),
+        ], 1n);
+        expect(accruals.get(0)!.byClauseOrProcess.get(id(ASSEMBLY))!).toMatchObject({ c: 2n, d: 3n });
+    });
+
+    it("keeps a process design's use in the period its process was first recorded in; a later seller is breadth there only", () => {
+        const accruals = computeUsageAccruals([
+            record(ASSEMBLY, "pd-4", sellerOf("seller1")),
+            record(ASSEMBLY, "pd-4", sellerOf("seller2"), { period: 1, blockNumber: 200n }),
+        ], 1n);
+        expect(accruals.get(0)!.byClauseOrProcess.get(id(ASSEMBLY))!).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)!.byClauseOrProcess.get(id(ASSEMBLY))!).toMatchObject({ c: 0n, d: 1n, score: 0n });
+    });
+
+    it("a replayed process-design record adds nothing, and the stranded breadth counts once a new process lands", () => {
+        const s1 = sellerOf("seller1");
+        const s2 = sellerOf("seller2");
+        const accruals = computeUsageAccruals([
+            record(ASSEMBLY, "pd-5", s1),
+            record(ASSEMBLY, "pd-5", s1),
+            record(ASSEMBLY, "pd-5", s2, { period: 1, blockNumber: 200n }),
+            record(ASSEMBLY, "pd-6", s1, { period: 1, blockNumber: 201n }),
+        ], 1n);
+        expect(accruals.get(0)!.byClauseOrProcess.get(id(ASSEMBLY))!).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)!.byClauseOrProcess.get(id(ASSEMBLY))!).toMatchObject({
+            c: 1n, d: 2n, score: usageScore(1n, 2n, 1n),
+        });
+    });
+
     it("counts a second order of the same seller in the same process not at all", () => {
         // Two records of one (process, seller) are what two orders of one
         // seller in one process give: the counter refuses the second.

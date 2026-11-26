@@ -1759,6 +1759,228 @@ contract UsageCounterTest is Test {
         assertEq(d1, 1);
     }
 
+    // ── A process design is used once by a process ──────────────────
+
+    /// @dev A resolved process of three orders under the test process design:
+    ///      `seller1` and `seller2` each run agreement 0 (`AGR_KEY`) and
+    ///      `seller3` runs agreement 1 (`AGR2_KEY`). Every order's agreement
+    ///      holds the cargo clause and its own provenance leaf. Returns the
+    ///      orders and each one's provenance proof.
+    function _settledThreeSellerProcessOfTheDesign(uint256 salt)
+        internal
+        returns (CommitmentTypes.Commitment[] memory orders, bytes32[][] memory proofs)
+    {
+        address[3] memory sellers = [seller1, seller2, seller3];
+        uint256[3] memory keys = [SELLER1_KEY, SELLER2_KEY, SELLER3_KEY];
+        orders = new CommitmentTypes.Commitment[](3);
+        proofs = new bytes32[][](3);
+        bytes32 processId = bytes32(0);
+        for (uint256 i = 0; i < 3; ++i) {
+            bytes32[] memory leaves = new bytes32[](2);
+            leaves[0] = AgreementTestHelper.leafFor(CARGO_KEY, CLAUSE_DATA);
+            leaves[1] = AgreementTestHelper.leafFor(
+                PROVENANCE_LEAF, AgreementTestHelper.provenanceLeaf(_boundAgreement(i == 2 ? 1 : 0), _asmRoot())
+            );
+            proofs[i] = AgreementTestHelper.proofFor(leaves, 1);
+            orders[i] = CommitmentTypes.Commitment({
+                processId: processId,
+                buyer: buyer,
+                seller: sellers[i],
+                token: address(token),
+                payment: 100 ether,
+                runningTotal: 100 ether * (i + 1),
+                checkoutHash: AgreementTestHelper.rootFor(leaves),
+                salt: salt + i,
+                commitDeadline: block.timestamp + 1 hours
+            });
+            (bytes32 pid,) = core.commit(
+                orders[i],
+                SigningTestHelper.signCommitment(address(core), orders[i], BUYER_KEY),
+                SigningTestHelper.signCommitment(address(core), orders[i], keys[i])
+            );
+            processId = pid;
+        }
+        vm.prank(buyer);
+        core.resolveProcess(processId, orders);
+    }
+
+    /// One buyer buys one process, so a process is ONE use of its process
+    /// design however many sellers it has, and every seller of it is counted
+    /// in the breadth. The agreements and the clauses keep one use for each
+    /// seller: two sellers under agreement 0 are two uses of it, one seller
+    /// under agreement 1 is one, and the clause all three carry has three.
+    function test_aProcessIsOneUseOfItsProcessDesign_andEverySellerIsBreadth() public {
+        (CommitmentTypes.Commitment[] memory o, bytes32[][] memory p) = _settledThreeSellerProcessOfTheDesign(5100);
+        bytes32 root = _asmRoot();
+
+        for (uint256 i = 0; i < 3; ++i) {
+            uint256 entry = i == 2 ? 1 : 0;
+            _recordAssembly(counter, o[i], entry, p[i]);
+            counter.recordAgreementUsage(o[i], _boundAgreement(entry), root, p[i]);
+            counter.recordClauseUsage(
+                o[i], CARGO_KEY, keccak256(CLAUSE_DATA), AgreementTestHelper.proofFor(_twoLeaves(o[i], entry), 0)
+            );
+        }
+
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(KIND_PROCESS, root, 0);
+        assertEq(c, 1, "one process is one use of its process design");
+        assertEq(d, 3, "every seller of the process is counted in the breadth");
+        assertEq(score, _score(1, 3));
+
+        (uint64 aC, uint64 aD,) = counter.accrualOf(KIND_AGREEMENT, AGR_KEY, 0);
+        assertEq(aC, 2, "two sellers under agreement 0 are two uses of it");
+        assertEq(aD, 2);
+        (uint64 bC, uint64 bD,) = counter.accrualOf(KIND_AGREEMENT, AGR2_KEY, 0);
+        assertEq(bC, 1, "one seller under agreement 1 is one use of it");
+        assertEq(bD, 1);
+        (uint64 kC, uint64 kD,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(kC, 3, "the clause has one use for each seller that carried it");
+        assertEq(kD, 3);
+
+        // A seller already counted is refused, as before.
+        vm.expectRevert(UsageCounter.AlreadyCounted.selector);
+        _recordAssembly(counter, o[1], 0, p[1]);
+    }
+
+    /// @dev The two leaves of an order built by `_settledThreeSellerProcessOfTheDesign`.
+    function _twoLeaves(CommitmentTypes.Commitment memory, uint256 entry)
+        internal
+        pure
+        returns (bytes32[] memory leaves)
+    {
+        leaves = new bytes32[](2);
+        leaves[0] = AgreementTestHelper.leafFor(CARGO_KEY, CLAUSE_DATA);
+        leaves[1] = AgreementTestHelper.leafFor(
+            PROVENANCE_LEAF, AgreementTestHelper.provenanceLeaf(_boundAgreement(entry), _asmRoot())
+        );
+    }
+
+    /// The process design's tally does not depend on which seller's order is
+    /// recorded first: every sequence ends in one use and three sellers.
+    function test_aProcessDesignsTallyIsTheSameInEverySequenceOfItsSellers() public {
+        (CommitmentTypes.Commitment[] memory o, bytes32[][] memory p) = _settledThreeSellerProcessOfTheDesign(5200);
+        bytes32 root = _asmRoot();
+        uint8[3][6] memory sequences = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
+        uint256 start = vm.snapshotState();
+        for (uint256 s = 0; s < 6; ++s) {
+            vm.revertToState(start);
+            for (uint256 k = 0; k < 3; ++k) {
+                uint256 i = sequences[s][k];
+                _recordAssembly(counter, o[i], i == 2 ? 1 : 0, p[i]);
+            }
+            (uint64 c, uint64 d, uint256 score) = counter.accrualOf(KIND_PROCESS, root, 0);
+            assertEq(c, 1, "one use, whichever order came first");
+            assertEq(d, 3, "three sellers, whichever order came first");
+            assertEq(score, _score(1, 3));
+            assertEq(counter.totalScoreIn(0), score);
+        }
+    }
+
+    /// A second process of the same process design is a second use, and a
+    /// seller already in the period's breadth adds nothing to it.
+    function test_aSecondProcessIsASecondUseOfTheProcessDesign() public {
+        bytes32 root = _asmRoot();
+        (CommitmentTypes.Commitment[] memory o, bytes32[][] memory p) = _settledThreeSellerProcessOfTheDesign(5300);
+        for (uint256 i = 0; i < 3; ++i) {
+            _recordAssembly(counter, o[i], i == 2 ? 1 : 0, p[i]);
+        }
+        (CommitmentTypes.Commitment memory again, bytes32[] memory proof) = _settledUnderAgreement(AGR_KEY, root, 5310);
+        _recordAssembly(counter, again, 0, proof);
+
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(KIND_PROCESS, root, 0);
+        assertEq(c, 2, "two processes are two uses");
+        assertEq(d, 3, "seller1 was already in the breadth");
+        assertEq(score, _score(2, 3));
+    }
+
+    /// On the batch route too: three sellers of one process are one use of
+    /// the process design and three sellers, and the same batch handed over
+    /// again adds nothing.
+    function test_batchAccrual_aProcessIsOneUseOfItsProcessDesign() public {
+        bytes32 root = _asmRoot();
+        bytes32 process = keccak256("one-process-three-sellers-of-a-design");
+        UsageCounter.BatchUse[] memory u = new UsageCounter.BatchUse[](3);
+        u[0] = UsageCounter.BatchUse(root, KIND_PROCESS, process, seller1);
+        u[1] = UsageCounter.BatchUse(root, KIND_PROCESS, process, seller2);
+        u[2] = UsageCounter.BatchUse(root, KIND_PROCESS, process, seller3);
+        vm.startPrank(batchVerifier);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(KIND_PROCESS, root, 0);
+        assertEq(c, 1, "three sellers of one process are one use of the process design");
+        assertEq(d, 3);
+        assertEq(score, _score(1, 3));
+
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
+        vm.stopPrank();
+        (uint64 c2, uint64 d2, uint256 score2) = counter.accrualOf(KIND_PROCESS, root, 0);
+        assertEq(c2, 1, "handed over again, nothing is added");
+        assertEq(d2, 3);
+        assertEq(score2, score);
+        assertEq(counter.totalScoreIn(0), score);
+    }
+
+    /// The use of a process design lands in the period its process is first
+    /// recorded in. A seller of that process first presented in a later
+    /// period adds to that period's breadth and adds no use.
+    function test_aLaterSellerOfACountedProcessAddsBreadthAndNoUse() public {
+        (CommitmentTypes.Commitment[] memory o, bytes32[][] memory p) = _settledThreeSellerProcessOfTheDesign(5400);
+        bytes32 root = _asmRoot();
+        _recordAssembly(counter, o[0], 0, p[0]);
+
+        vm.warp(P0_END + 1);
+        _recordAssembly(counter, o[1], 0, p[1]);
+
+        (uint64 c0, uint64 d0,) = counter.accrualOf(KIND_PROCESS, root, 0);
+        (uint64 c1, uint64 d1, uint256 score1) = counter.accrualOf(KIND_PROCESS, root, 1);
+        assertEq(c0, 1, "the use stays in the period the process was first recorded in");
+        assertEq(d0, 1);
+        assertEq(c1, 0, "the process is not a use again in a later period");
+        assertEq(d1, 1, "its later seller is breadth in the period open at its record");
+        assertEq(score1, 0, "and a period with no use of the key scores nothing for it");
+        assertEq(counter.totalScoreIn(0), _score(1, 1), "the first period's total is its one score");
+        assertEq(counter.totalScoreIn(1), 0, "the later period's total holds no score");
+
+        // Another process of the process design, counted in the later period,
+        // is a use there, and the breadth already standing counts with it.
+        (CommitmentTypes.Commitment memory again, bytes32[] memory proof) = _settledUnderAgreement(AGR_KEY, root, 5410);
+        _recordAssembly(counter, again, 0, proof);
+        (c1, d1, score1) = counter.accrualOf(KIND_PROCESS, root, 1);
+        assertEq(c1, 1, "the new process is one use in the later period");
+        assertEq(d1, 2, "seller1 joins the breadth seller2 already gave the period");
+        assertEq(score1, _score(1, 2));
+        assertEq(counter.totalScoreIn(1), score1);
+    }
+
+    /// In a batch, a first seller skipped for want of a live stake does not
+    /// take the process's one use with it: the next seller of the process
+    /// adds the use, and the skipped seller adds only breadth once it stakes
+    /// again.
+    function test_batchAccrual_aSkippedFirstSellerLeavesTheUseToTheNext() public {
+        bytes32 root = _asmRoot();
+        bytes32 process = keccak256("a-process-whose-first-seller-is-unstaked");
+        vm.prank(seller1);
+        members.requestWithdrawal();
+
+        UsageCounter.BatchUse[] memory u = new UsageCounter.BatchUse[](2);
+        u[0] = UsageCounter.BatchUse(root, KIND_PROCESS, process, seller1);
+        u[1] = UsageCounter.BatchUse(root, KIND_PROCESS, process, seller2);
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
+        (uint64 c, uint64 d,) = counter.accrualOf(KIND_PROCESS, root, 0);
+        assertEq(c, 1, "the staked seller adds the process's one use");
+        assertEq(d, 1);
+        assertFalse(counter.sellerCounted(KIND_PROCESS, root, process, seller1));
+        assertTrue(counter.processCounted(root, process));
+
+        vm.prank(seller1);
+        members.register("ipfs://seller1-again");
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
+        (c, d,) = counter.accrualOf(KIND_PROCESS, root, 0);
+        assertEq(c, 1, "the process is not a use again");
+        assertEq(d, 2, "the seller staked again adds its breadth");
+    }
+
     /// LIVENESS: trade must keep resolving after the reward stops. An empty
     /// batch returns before `currentPeriod()` is consulted — otherwise every
     /// batch would revert `AccrualClosed` forever once the last period ended,

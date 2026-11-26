@@ -255,30 +255,32 @@ Counts how much real trade a clause, a registered agreement or an assembly carri
 
 ```solidity
 function recordClauseUsage(CommitmentTypes.Commitment calldata order, bytes32 clauseOrProcess,
-    bytes32 clauseDataHash, bytes32[] calldata proof) external;                     // :470  (kind 0, clause)
+    bytes32 clauseDataHash, bytes32[] calldata proof) external;                     // :499  (kind 0, clause)
 function recordAgreementUsage(CommitmentTypes.Commitment calldata order, bytes32 agreementHash,
-    bytes32 processDesignHash, bytes32[] calldata proof) external;                 // :513  (kind 2, agreement)
+    bytes32 processDesignHash, bytes32[] calldata proof) external;                 // :542  (kind 2, agreement)
 function recordProcessDesignUsage(CommitmentTypes.Commitment calldata order, bytes32 processDesignHash,
     bytes32 agreementHash, bytes32 agreementContentHash,
-    bytes32[] calldata leafProof, bytes32[] calldata membershipProof) external;  // :551  (kind 1, assembly)
+    bytes32[] calldata leafProof, bytes32[] calldata membershipProof) external;  // :580  (kind 1, assembly)
 function applyBatchAccrual(uint8 period, bytes32 claimedProvenanceLeaf,
-    BatchUse[] calldata uses) external;                                          // :671  (batchVerifier only)
-// struct BatchUse { bytes32 clauseOrProcess; uint8 kind; bytes32 processId; address seller; }  // :629
-function provenanceLeaf() external view returns (bytes32);                       // :189  (constant)
-function processTermsLeaf() external view returns (bytes32);                    // :199  (constant)
-function processLeafDomain() external view returns (bytes32);                   // :208  (constant, the assembly tree's leaf domain)
-function agreements() external view returns (address);                           // :130  (the AgreementRegistry the kind-2 gate reads)
-function KIND_CLAUSE() external view returns (uint8);                            // :164  (constant 0)
-function KIND_PROCESS() external view returns (uint8);                          // :167  (constant 1)
-function KIND_AGREEMENT() external view returns (uint8);                         // :170  (constant 2)
-function scoreOf(uint8 kind, bytes32 clauseOrProcess, uint8 period) external view returns (uint256);  // :447
+    BatchUse[] calldata uses) external;                                          // :700  (batchVerifier only)
+// struct BatchUse { bytes32 clauseOrProcess; uint8 kind; bytes32 processId; address seller; }  // :658
+function provenanceLeaf() external view returns (bytes32);                       // :190  (constant)
+function processTermsLeaf() external view returns (bytes32);                    // :200  (constant)
+function processLeafDomain() external view returns (bytes32);                   // :209  (constant, the assembly tree's leaf domain)
+function agreements() external view returns (address);                           // :131  (the AgreementRegistry the kind-2 gate reads)
+function KIND_CLAUSE() external view returns (uint8);                            // :165  (constant 0)
+function KIND_PROCESS() external view returns (uint8);                          // :168  (constant 1)
+function KIND_AGREEMENT() external view returns (uint8);                         // :171  (constant 2)
+function scoreOf(uint8 kind, bytes32 clauseOrProcess, uint8 period) external view returns (uint256);  // :476
 function accrualOf(uint8 kind, bytes32 clauseOrProcess, uint8 period)
-    external view returns (uint64 c, uint64 d, uint256 score);                   // :260  (the one tally, both routes)
+    external view returns (uint64 c, uint64 d, uint256 score);                   // :268  (the one tally, both routes)
 function sellerCounted(uint8 kind, bytes32 clauseOrProcess, bytes32 processId, address seller)
-    external view returns (bool);                                                // :296  (this seller of this process already counted, ever)
-function currentPeriod() external view returns (uint8);                          // :430
-function periodClosed(uint8 period) external view returns (bool);                // :440
-function periodCount() external view returns (uint256);                          // :425
+    external view returns (bool);                                                // :306  (this seller of this process already counted, ever)
+function processCounted(bytes32 processDesignHash, bytes32 processId)
+    external view returns (bool);                                                // :322  (this process is already a use of this assembly)
+function currentPeriod() external view returns (uint8);                          // :459
+function periodClosed(uint8 period) external view returns (bool);                // :469
+function periodCount() external view returns (uint256);                          // :454
 ```
 
 Every accrual, count and score is keyed by `(kind, key)`: kind `0` is a clause key, kind `1` an assembly `processDesignHash`, kind `2` a registered agreement's `agreementHash`. A registry takes any bytes32 but its reserved keys and nothing in a key's bytes names its family, so each kind's gate reads its own registry only — `recordClauseUsage` checks `ClauseRegistry`, `recordAgreementUsage` checks `AgreementRegistry`, `recordProcessDesignUsage` checks `ProcessRegistry`, and a batch use is gated by the registry its `kind` names. A wallet that registers an assembly's `processDesignHash` as a clause key or an agreement hash earns nothing of that assembly's accrual.

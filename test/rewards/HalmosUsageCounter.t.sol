@@ -239,6 +239,43 @@ contract HalmosUsageCounter is Test {
         return _snapshot(counter, clauseOrProcess, period);
     }
 
+    // ── 1b. A process is one use of its process design ───────────────
+
+    /// Two distinct sellers of ONE process, recorded under one key in one
+    /// period. Under the process-design kind the process is one use and both
+    /// sellers are breadth: `c == 1`, `d == 2`, and the process is flagged in
+    /// `processCounted`. Under the clause kind and the agreement kind the
+    /// same two records are two uses, and neither kind ever writes
+    /// `processCounted`. The key, the process and the sellers are symbolic.
+    function check_aProcessIsOneUseOfItsProcessDesign(bytes32 key, bytes32 processId, address seller1, address seller2)
+        public
+    {
+        vm.assume(seller1 != seller2);
+        vm.assume(key != PROVENANCE_LEAF && key != PROCESS_TERMS_LEAF);
+        UsageCounterHarness counter = _deploy();
+        uint8 kindProcess = counter.KIND_PROCESS();
+        uint8 kindAgreement = counter.KIND_AGREEMENT();
+
+        counter.accrueAs(kindProcess, key, 0, processId, seller1);
+        counter.accrueAs(kindProcess, key, 0, processId, seller2);
+        (uint64 c, uint64 d,) = counter.accrualOf(kindProcess, key, 0);
+        assertEq(c, 1, "one process is one use of its process design");
+        assertEq(d, 2, "each of its sellers is counted in the breadth");
+        assertTrue(counter.processCounted(key, processId), "the process is flagged as a use");
+
+        counter.accrueAs(kindAgreement, key, 0, processId, seller1);
+        counter.accrueAs(kindAgreement, key, 0, processId, seller2);
+        (uint64 aC, uint64 aD,) = counter.accrualOf(kindAgreement, key, 0);
+        assertEq(aC, 2, "an agreement has one use for each seller");
+        assertEq(aD, 2);
+
+        counter.accrueAs(KIND_CLAUSE, key, 0, processId, seller1);
+        counter.accrueAs(KIND_CLAUSE, key, 0, processId, seller2);
+        (uint64 kC, uint64 kD,) = counter.accrualOf(KIND_CLAUSE, key, 0);
+        assertEq(kC, 2, "a clause has one use for each seller");
+        assertEq(kD, 2);
+    }
+
     // ── 2. A use counts the same on either route ─────────────────────
 
     /// Two uses of one key — each brought by the direct path or a batch, as

@@ -56,12 +56,20 @@ A clause's, a registered agreement's or an assembly's score in a period is its
     score = icbrt(c · d² · 1e18)
 
 where `c` is the count of uses and `d` the number of distinct live-staked
-sellers who carried it. A use is one seller of one resolved process: a process
-of three sellers that carry the key gives three uses, and a second order of the
-same seller in the same process adds nothing (`UsageCounter.sellerCounted`).
-So `d <= c`. The tally is one and route-blind: a use is
+sellers who carried it. A designer is rewarded by how much its contribution is
+used, and what one use is follows what was bought. A buyer buys one process, so
+a resolved process is one use of its process design, whatever the number of its
+sellers (`UsageCounter.processCounted`). Each seller's order runs one agreement,
+so a clause and an agreement have one use for each seller of the process that
+carries them: a process of three sellers, two under agreement A and one under
+agreement B, is one use of the process design, two of A, one of B, two of each
+clause of A and one of each clause of B. A second order of the same seller in
+the same process adds nothing (`UsageCounter.sellerCounted`). Every seller of a
+process enters `d` under each key its order carries, the process design
+included, so for a clause and an agreement `d <= c`, and for a process design
+`d` may exceed `c`. The tally is one and route-blind: a use is
 a use whichever way its process reached the chain, through `FigaroCore` or in a
-proved batch, so `c` counts each seller of each process once and `d` each seller once across
+proved batch, so each use and each seller is counted once across
 both routes, and the score never depends on the route. Distinct sellers are weighted above raw
 volume, and below a minimum-support floor of distinct staked sellers the score
 is zero — counting continues, and the full score springs when the floor is met.
@@ -135,7 +143,7 @@ Both sides of a counted usage must have something at stake, in the base chain's
 own currency, at the moment it counts:
 
 - **Seller side** — a use counts only for a seller whose members
-  registry stake is live; each seller of a process is its own use. `UsageCounter` gates every use on it, on either
+  registry stake is live; each seller of a process is recorded by itself. `UsageCounter` gates every use on it, on either
   route: a direct call reverts and a batch skips that one use, which may be
   presented again. A seller enters a period's breadth once, whichever route
   carried their trade.
