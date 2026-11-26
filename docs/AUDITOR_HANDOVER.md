@@ -25,7 +25,7 @@ the patterns that look like vulnerabilities and are intended: read it first.
 Lines of code are counted with comments, NatSpec and blank lines removed;
 physical lines count every line of the file. The Rust files carry
 `#[cfg(test)]` modules, out of scope like every test, and the Rust figures
-leave them out. Both rows are the tree's at every commit.
+leave them out. Both rows are the tree's at `927013e75`; no check holds them at a later commit.
 
 ### The baseline commit
 

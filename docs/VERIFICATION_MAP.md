@@ -1132,7 +1132,7 @@ The CI results are read with `gh run list --workflow <file> --branch main --limi
 
 At `927013e75`, every check of § 14 ran and passed but these:
 
-1. The maintainers' whole-tree guard battery, which runs before every commit and is not part of the public tree, fails on one guard at `927013e75`, where two reference entries of `/papers/coercion-variable` give a web address and no access date.
+1. The maintainers' whole-tree guard battery, which runs before every commit and is not part of the public tree, fails on one guard over the tree of `927013e75` with this section's documents, where two reference entries of `/papers/coercion-variable` give a web address and no access date.
 2. The mutation runs ran at `927013e75`, and each workflow ended red: `mewt` left ten mutants uncaught and `cargo-mutants` nine missed. § 14 reads each as equivalent or on a line no call reaches.
 3. The mutation checks of the Certora specs, at their own commits (§ 10).
 4. The batch gas anchors against Sepolia receipts, at `1ce96ade`. The verifier and the three designer registries of `927013e75` wait for the redeploy.
