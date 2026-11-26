@@ -386,8 +386,11 @@ Three permissionless functions and one proof-gated writer:
   path.
 
 Per clause, agreement or assembly per period it keeps ONE tally,
-route-blind (`accrualOf`): `c` (uses, a use being one seller of one resolved
-process), `d` (distinct live-staked sellers, so `d <= c`), and `score = icbrt(c·d²·1e18)`
+route-blind (`accrualOf`): `c` (uses), `d` (distinct live-staked sellers), and
+`score = icbrt(c·d²·1e18)`. For a clause and an agreement a use is one seller of
+one resolved process, so `d <= c`. For a process design a use is one resolved
+process, whatever the number of its sellers (`processCounted`), and each of its
+sellers still enters `d`, so `d` may exceed `c`. The score is that figure
 when `d ≥ minSellers`, else zero. Uniform: no tag, category, or weight. The
 formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
 - **Seller-side stake gate:** a use counts only if the order's
@@ -432,6 +435,10 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   order of one seller in one process adds no use. A seller of a process first
   presented in a later period is a use in that period; each period counts
   only usage new to it.
+- **The process-design kind stops `c` at one per process:**
+  `processCounted(processDesignHash, processId)` is set by the first seller
+  counted; later sellers of that process raise `d` alone
+  (`DESIGN_DECISIONS.md` § 43).
 - `icbrt` binary-searches the floor cube root with its ceiling at
   `floor(cbrt(2^256−1))`, so the cube cannot overflow.
 - Decentralized and permissionless: no admin, no pause. The measured gas anchor for

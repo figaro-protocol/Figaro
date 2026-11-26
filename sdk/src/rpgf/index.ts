@@ -185,8 +185,11 @@ function emptyEntry(kind: UsageKind, clauseOrProcess: Hex): ClauseOrProcessAccru
 
 /** Replay the counter's counting rules over a record stream: idempotence per
  *  ((kind, key), process, seller) — GLOBAL, so each seller of a process is
- *  one use, counted once ever, and a later period is never paid for an
- *  earlier period's trade — then the
+ *  recorded once ever, and a later period is never paid for an
+ *  earlier period's trade. Under a clause or an agreement each recorded
+ *  seller is one use; under a process design a process is ONE use whatever
+ *  the number of its sellers (`UsageCounter.processCounted`), counted in the
+ *  period its first seller is recorded in. Then the
  *  distinct-STAKED-SELLER count PER PERIOD (breadth counts
  *  only what a stake has priced; pairs were free to mint on the buyer side)
  *  and the uniform floored score. Records are replayed in (blockNumber,
@@ -203,6 +206,7 @@ export function computeUsageAccruals(
     const periods = new Map<number, UsagePeriodAccrual>();
     const countedUses = new Map<string, Set<string>>(); // (kind, key) → processId|seller (GLOBAL)
     const sellersSeen = new Map<string, Set<string>>(); // (kind, key)|period → sellers
+    const countedProcesses = new Map<string, Set<string>>(); // process design → processId (GLOBAL)
 
     for (const record of sorted) {
         const clauseOrProcess = record.clauseOrProcess.toLowerCase() as Hex;
@@ -221,9 +225,20 @@ export function computeUsageAccruals(
         sellers.add(seller);
         sellersSeen.set(scopeKey, sellers);
 
+        // A process is one use of its process design; a clause and an
+        // agreement have one use for each seller of the process.
+        let newUse = true;
+        if (record.kind === USAGE_KIND_PROCESS) {
+            const processes = countedProcesses.get(id) ?? new Set<string>();
+            const processId = record.processId.toLowerCase();
+            newUse = !processes.has(processId);
+            processes.add(processId);
+            countedProcesses.set(id, processes);
+        }
+
         const period = periods.get(record.period) ?? { byClauseOrProcess: new Map<string, ClauseOrProcessAccrual>(), totalScore: 0n };
         const entry = period.byClauseOrProcess.get(id) ?? emptyEntry(record.kind, clauseOrProcess);
-        entry.c += 1n;
+        if (newUse) entry.c += 1n;
         if (firstSeller) entry.d += 1n;
         const updated = usageScore(entry.c, entry.d, minSellers);
         period.totalScore = period.totalScore + updated - entry.score;

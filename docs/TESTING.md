@@ -38,7 +38,13 @@ not by this paragraph. Current: `FigaroCoreTest`, `FigaroCore_RevertBranch`,
 `UsageCounterTest` covers the reward-accrual counter: the RESOLVED-order gate, merkle
 inclusion against the signed `checkoutHash`, per-(kind, key, process, seller) GLOBAL idempotence (a
 use is one seller of one process and counts once ever — presenting it again in any period reverts,
-a later period counts only trade new to it, each seller of a process is its own use, and a
+a later period counts only trade new to it, each seller of a process is its own use of a clause
+or an agreement, a process is one use of its process design while every seller of it enters the
+breadth (`test_aProcessIsOneUseOfItsProcessDesign_andEverySellerIsBreadth`,
+`test_aProcessDesignsTallyIsTheSameInEverySequenceOfItsSellers`,
+`test_aSecondProcessIsASecondUseOfTheProcessDesign`,
+`test_batchAccrual_aProcessIsOneUseOfItsProcessDesign`,
+`test_aLaterSellerOfACountedProcessAddsBreadthAndNoUse`), and a
 second order of the same seller in the process adds nothing:
 `test_aTwoSellerProcessEndsInOneTallyWhicheverOrderIsRecordedFirst`,
 `test_twoOrdersOfOneSellerInOneProcessAreOneUse`,
@@ -163,13 +169,13 @@ drives the deployed Sepolia SwapRouter02 (`deployments/11155111.json`
 built the documented way (the SDK's `SWAP_ROUTER_02_ABI` shape), proving the
 allowance-pull composition end to end.
 
-## Halmos (`test/`) — 4 harness files, 41 properties
+## Halmos (`test/`) — 4 harness files, 42 properties
 
 | Harness | Properties | Key invariants |
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
 | `HalmosMembersRegistry.t.sol` | 7 | The stake mechanics the designer-reward Sybil bound assumes: solvency, no stake recycling, de-surfacing at request, the counter reads that gate |
-| `HalmosUsageCounter.t.sol` | 9 | The accrual arithmetic above the stake gate: direct-path monotonicity, `check_aUseCountsTheSameOnEitherRoute`, `check_scoreOfIsTheOneTally`, period bucketing ×2, isolation across keys, `check_theKindsNeverShareAKey`, `check_aKindNeverDisturbsAnotherKindsAccrual`, `check_anUnknownKindIsSkipped`. Each one's statement and the three mutant counters it was checked against: `VERIFICATION_MAP.md` § "9) Halmos symbolic testing — current posture". |
+| `HalmosUsageCounter.t.sol` | 10 | The accrual arithmetic above the stake gate: direct-path monotonicity, `check_aProcessIsOneUseOfItsProcessDesign`, `check_aUseCountsTheSameOnEitherRoute`, `check_scoreOfIsTheOneTally`, period bucketing ×2, isolation across keys, `check_theKindsNeverShareAKey`, `check_aKindNeverDisturbsAnotherKindsAccrual`, `check_anUnknownKindIsSkipped`. Each one's statement and the three mutant counters it was checked against: `VERIFICATION_MAP.md` § "9) Halmos symbolic testing — current posture". |
 | `HalmosClauseAgreementAndAssemblyRegistries.t.sol` | 18 (6 per contract) | `HalmosClauseRegistry` + `HalmosProcessRegistry` + `HalmosAgreementRegistry` — the stake machines `RpgfMinter._isAuthor` reads, one per kind: solvency under arbitrary interleavings by two registering wallets, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked: solvency + first-write-wins on the clause and assembly contracts, 4/4 counterexamples. |
 
 Run with `scripts/test-halmos.sh` (seven passes). **Halmos does not model

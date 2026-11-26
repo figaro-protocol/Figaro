@@ -49,9 +49,10 @@ import { PENDING, readNetwork, applyUntilCleanup, type NetworkRead } from "@/lib
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
 
 /** One clause, agreement or assembly the connected wallet is designer of record for, with
- *  the accrual it carried in a given period. `c` = the uses, one for each
- *  seller of each resolved process that carried the key, `d` = distinct
- *  staked sellers (`d <= c`), `score` = the uniform breadth
+ *  the accrual it carried in a given period. `c` = the uses: for a clause or
+ *  an agreement, one for each seller of each resolved process that carried
+ *  the key; for an assembly, one for each resolved process run from it. `d` =
+ *  distinct staked sellers, `score` = the uniform breadth
  *  measure (`icbrt(c·d²·1e18)`) the payout divides by. */
 export interface RpgfClauseOrAssemblyAccrual {
     /** Clause key, agreement hash or assembly processDesignHash. */
@@ -64,8 +65,10 @@ export interface RpgfClauseOrAssemblyAccrual {
      *  else the truncated key. */
     label: string;
     family: "clause" | "agreement" | "assembly";
-    /** The uses (`accrualOf`): one for each seller of each resolved process
-     *  that carried the key, whichever way each process reached the chain. */
+    /** The uses (`accrualOf`): for a clause or an agreement, one for each
+     *  seller of each resolved process that carried the key; for an assembly,
+     *  one for each resolved process run from it. Whichever way each process
+     *  reached the chain. */
     c: bigint;
     /** Distinct staked sellers in this period. */
     d: bigint;

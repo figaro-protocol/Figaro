@@ -2,8 +2,8 @@
 # test-halmos.sh — Reproducible Halmos symbolic proofs for Figaro.
 #
 # Halmos symbolically executes the harnesses against the Z3 SMT solver and
-# proves 41 properties hold for ALL possible inputs: 7 HalmosFigaroCore +
-# 7 HalmosMembersRegistry + 9 HalmosUsageCounter + 6 HalmosClauseRegistry +
+# proves 42 properties hold for ALL possible inputs: 7 HalmosFigaroCore +
+# 7 HalmosMembersRegistry + 10 HalmosUsageCounter + 6 HalmosClauseRegistry +
 # 6 HalmosProcessRegistry + 6 HalmosAgreementRegistry.
 #
 #   HalmosFigaroCore (7 properties):
@@ -39,7 +39,7 @@
 #   HALMOS_SOLVER_TIMEOUT_MS=900000 ./scripts/test-halmos.sh   # raise per-assertion timeout (ms)
 #
 # Exit codes:
-#   0  — all 41 properties proved
+#   0  — all 42 properties proved
 #   >0 — at least one property failed or the environment is misconfigured
 
 set -e
@@ -207,4 +207,4 @@ run_halmos \
     "$@"
 
 echo ""
-echo "✅ All 41 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 9 UsageCounter + 6 ClauseRegistry + 6 ProcessRegistry + 6 AgreementRegistry)."
+echo "✅ All 42 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 10 UsageCounter + 6 ClauseRegistry + 6 ProcessRegistry + 6 AgreementRegistry)."

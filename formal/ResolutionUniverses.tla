@@ -117,6 +117,7 @@ CONSTANTS
   Buyers,                    \* non-empty finite set of buyer addresses
   Sellers,                   \* non-empty finite set of seller addresses
   Artifacts,                 \* (kind, key) pairs: clause keys / assembly processDesignHashes / agreementHashes
+  ProcessDesigns,            \* the artifacts of the process-design kind (UsageCounter.KIND_PROCESS)
   InitialBalance,            \* starting token balance per participant
   MaxPayment,                \* 1..MaxPayment are valid payments
   MaxProcesses,              \* upper bound on process identities
@@ -139,6 +140,7 @@ TotalSupply   == Cardinality(Participants) * InitialBalance
 
 ASSUME Buyers # {} /\ Sellers # {}
 ASSUME Artifacts # {}
+ASSUME ProcessDesigns \subseteq Artifacts
 ASSUME InitialBalance > 0 /\ MaxPayment > 0
 ASSUME MaxProcesses > 0 /\ MaxSubOrders >= 0
 ASSUME NumPeriods > 0 /\ MinSellers > 0
@@ -168,9 +170,23 @@ ZeroAcc  == [ c |-> 0, d |-> 0, score |-> 0 ]
 \* function of the stored counts above it. See § "WHAT IS ABSTRACTED".
 Score(c, d) == IF c = 0 \/ d < MinSellers THEN 0 ELSE c * d * d
 
-\* A use is one seller of one process: what the counter's `sellerCounted`
-\* keys under an artifact, read from an order's record.
+\* One seller of one process: what the counter's `sellerCounted` keys under
+\* an artifact, read from an order's record. It is one use of a clause or an
+\* agreement; for a process design the process is the use (UsesAdded).
 UseOf(rec) == << rec.pid, rec.seller >>
+
+\* The processes a set of recorded (process, seller) pairs names.
+ProcsOf(S) == { u[1] : u \in S }
+
+\* How many uses a set of newly recorded pairs adds to an artifact's c
+\* (UsageCounter._count). A clause and an agreement have one use for each
+\* seller of a process. A process design has one use for each process,
+\* whatever the number of its sellers (`processCounted`): a pair whose process
+\* is already recorded under the artifact adds none.
+UsesAdded(a, new, already) ==
+  IF a \in ProcessDesigns
+  THEN Cardinality(ProcsOf(new) \ ProcsOf(already))
+  ELSE Cardinality(new)
 
 
 \* ── Variables ────────────────────────────────────────────────
@@ -453,8 +469,9 @@ GClaimUsage(a, o) ==
 \* Step 7's failure NEVER unwinds step 5 (DESIGN_DECISIONS.md §19).
 \* Step 7 counts each use exactly as RecordUsage counts a direct one: a
 \* seller of a process already counted under the artifact is skipped, and a
-\* use that is counted adds one to c and, when its seller is new to the
-\* period's set, one to d. The batch's uses name distinct (artifact, process,
+\* use that is counted adds to c what UsesAdded gives (one for a clause or
+\* an agreement; for a process design one only when its process is new to
+\* the artifact) and, when its seller is new to the period's set, one to d. The batch's uses name distinct (artifact, process,
 \* seller) triples, so the order the counter walks them in changes nothing.
 SettleBatch ==
   LET netSum  == SumFn(Participants, penNet)
@@ -468,7 +485,7 @@ SettleBatch ==
                     ELSE {}]
       newP    == [a \in Artifacts |-> { UseOf(gRec[e.ord]) : e \in cnt[a] }]
       newS    == [a \in Artifacts |-> { gRec[e.ord].seller : e \in cnt[a] }]
-      nc      == [a \in Artifacts |-> accrual[a][pp].c + Cardinality(newP[a])]
+      nc      == [a \in Artifacts |-> accrual[a][pp].c + UsesAdded(a, newP[a], counted[a])]
       nd      == [a \in Artifacts |-> accrual[a][pp].d
                                       + Cardinality(newS[a] \ seen[a][pp])]
       delta   == SumFn(Artifacts,
@@ -519,7 +536,7 @@ RecordUsage(a, o) ==
   /\ UseOf(kRec[o]) \notin counted[a]         \* reverts AlreadyCounted
   /\ LET s     == kRec[o].seller
          first == s \notin seen[a][period]
-         c1    == accrual[a][period].c + 1
+         c1    == accrual[a][period].c + UsesAdded(a, { UseOf(kRec[o]) }, counted[a])
          d1    == accrual[a][period].d + ( IF first THEN 1 ELSE 0 )
          sc    == Score(c1, d1)
      IN /\ counted' = [counted EXCEPT ![a] = @ \union { UseOf(kRec[o]) }]
@@ -640,22 +657,29 @@ TotalScoreIntegrity ==
   \A q \in Periods:
     totalScore[q] = SumFn(Artifacts, [a \in Artifacts |-> ScoreOf(a, q)])
 
-\* c counts each use ONCE, a seller of a process, whichever route brought
-\* it: the periods' c add up to exactly the counter's one counted set.
+\* c counts each use ONCE, whichever route brought it. For a clause and an
+\* agreement a use is a seller of a process: the periods' c add up to exactly
+\* the counter's one counted set. For a process design a use is a process:
+\* the periods' c add up to exactly the processes that set names.
 CountIsDistinctUses ==
   \A a \in Artifacts:
-    SumFn(Periods, [q \in Periods |-> accrual[a][q].c]) = Cardinality(counted[a])
+    SumFn(Periods, [q \in Periods |-> accrual[a][q].c])
+      = IF a \in ProcessDesigns
+        THEN Cardinality(ProcsOf(counted[a]))
+        ELSE Cardinality(counted[a])
 
 \* d counts each seller ONCE per period, whichever route carried them: it is
 \* exactly the size of the period's one seller set.
 SellersCountedOnce ==
   \A a \in Artifacts, q \in Periods: accrual[a][q].d = Cardinality(seen[a][q])
 
-\* The breadth never exceeds the uses: a seller enters a period's seller set
-\* only with a use counted in that period, so d <= c for every artifact and
-\* every period.
+\* For a clause and an agreement the breadth never exceeds the uses: a
+\* seller enters a period's seller set only with a use counted in that
+\* period, so d <= c in every period. A process design is outside this: each
+\* seller of a process enters the seller set while the process is one use.
 BreadthWithinUses ==
-  \A a \in Artifacts, q \in Periods: accrual[a][q].d <= accrual[a][q].c
+  \A a \in Artifacts \ ProcessDesigns, q \in Periods:
+    accrual[a][q].d <= accrual[a][q].c
 
 \* The minimum-support floor is applied to the one tally.
 FloorApplied ==

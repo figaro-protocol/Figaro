@@ -1959,15 +1959,19 @@ many-small-values shape and a total over two fields included. The SDK refuses
 a value under a pattern it cannot run, with a reason of its own, and builds
 the automaton when the spec parses (`safeRegex.test.ts`).
 
-## 43. A use is one seller of one process — a process of three sellers is three uses of a key
+## 43. A use of a clause or an agreement is one seller of one process; a use of a process design is one process
 
 **Pattern**: `UsageCounter` counts a use once per (kind, key, process, seller):
 the set `sellerCounted(kind, key, processId, seller)` holds every use counted,
 on both routes. A direct call that repeats a counted pair reverts
 `AlreadyCounted`, and `applyBatchAccrual` skips it. Each admitted use adds one
 to `c`, and adds one to `d` when its seller is not yet in the period's
-`sellerSeen`. A process whose three sellers carry a key gives that key three
-uses; a second order of the same seller in the same process adds nothing. The
+`sellerSeen`. A process whose three sellers carry a clause or an agreement
+gives that key three uses; a second order of the same seller in the same
+process adds nothing. The process-design kind differs in the count of uses
+alone: the first seller presented for a process adds the one use
+(`processCounted(processDesignHash, processId)`), and every later seller of
+that process is counted as a seller, enters `d`, and adds nothing to `c`. The
 proof program gives one use per (kind, key, process, seller) in a batch
 (`apply_usage_claims`, `prover/lib/src/kernel.rs`).
 
@@ -1988,13 +1992,37 @@ defined as the distinct live-staked sellers who carried the key, and a seller
 of a multi-seller process carried it as surely as the only seller of another
 process. Every unit of breadth still costs one live member stake and its
 withdrawal cooldown (§ 16): a process of three sellers buys no breadth that
-three stakes did not pay for. `d <= c` holds, because a seller enters `d` only
-with a use that also enters `c`, so the score `icbrt(c · d² · 1e18)` keeps its
-reading as distinct sellers weighted above the cube root of repeat depth.
+three stakes did not pay for. For a clause and an agreement `d <= c` holds,
+because a seller enters `d` only with a use that also enters `c`, so the score
+`icbrt(c · d² · 1e18)` keeps its reading as distinct sellers weighted above the
+cube root of repeat depth.
+
+A process design is counted by what was bought. One buyer buys one process, so
+a resolved process is one use of its process design, and a designer's reward
+follows the number of uses. Counting it once for each seller gave a process
+design three uses for one process of three sellers, beside two and one for the
+agreements those sellers ran. The count per process does not bring back the
+dependence on the recorder: the seller stays in the key of `sellerCounted`, so
+no order closes the process against another, every seller enters the breadth,
+and the one use is added by whichever seller is presented first. Any sequence
+ends in one use and the process's sellers. For this kind `d` may exceed `c`,
+and where a period holds only later sellers of an earlier period's processes
+its `c` is zero and so is the score there. So a process whose sellers are
+presented on both sides of a period boundary scores less for its process
+design than one presented whole in one period: the later sellers' breadth
+counts only once another process of that process design is counted in the
+later period. Whoever presents the first seller chooses the period, for the
+price of gas, as it did before for each seller's own use; presenting every
+order of a process right after its resolution, as the SDK and the app do,
+keeps a process in one period. `processCounted` is public so that any reader,
+with no index of events, can ask the chain whether a process is already a use
+of a process design before it presents an order.
 
 The edges, stated plainly. Three staked sellers reach the floor of § 16 in one
 process of three orders, as they would in three processes. A seller of a
-process first presented in a later period is a use in that later period; a
+process first presented in a later period is a use of a clause or an agreement
+in that later period, and breadth alone for a process design whose process was
+counted earlier; a
 seller already counted never counts again, in any period, on either route. One
 seller with two orders in one process is one use.
 
@@ -2181,6 +2209,6 @@ No test drives a stream count past 65,535.
 | 40 | The reference frontend reads a clause spec only when its bytes hash to the CID in the registered URI | frontend/reader | The key already anchors everything a party signs, and the registry accepts any URI | The key leaves the `block` out, so without the CID the `block` read is the transport's choice; with it, the registrant's; a URI form the frontend cannot recompute is the unchecked transport, so it is refused |
 | 41 | A withdrawn key forfeits its unclaimed periods; the key registries return a stake in one call | registry/reward-path | A period scored under a live stake and lost at a later withdrawal looks like earned rewards taken back; no wait beside the members' cooldown looks like a missing guard | The live-stake check runs at the count and at the claim, so the stake stays held through the period and its claim (`/papers/substrate-broadening-rpgf`); a designer claims first, then withdraws. A key holds no identity and no name, only bytes (§ 7); the stake prices it through the reward, and a wait would hold a second stake on every new version. Accepted residual: a rival can register a key and withdraw it in one transaction for gas, burning it, once per key tried; the one-act pin and register and a private mempool bound it |
 | 42 | A pattern past a size is refused at parse, and long values are refused rather than run | spec format/clause validation | The SDK is linear in the value, so a limit looks like a skip; a matching value or list can be refused; the fuller count refuses patterns a narrower count would admit | Linear is not cheap: the cost per character is the automaton's size, which the fuller count measures; a skip leaves a signed term unchecked, a refusal keeps every admitted term checked; the budgets bound the checking tool's own work on any spec, and the published format states them so every tool gives one verdict |
-| 43 | A use is one seller of one process | reward-path | A process of three sellers counts three times for one key, which reads as triple counting | One count per process made the tally depend on who recorded first and with which order, and let a recorder close a process against its other sellers for gas; breadth is the distinct staked sellers who carried the key, each still one live stake and its cooldown; `d <= c` keeps the score's reading; one seller with two orders in one process is one use |
+| 43 | A use of a clause or an agreement is one seller of one process; a use of a process design is one process | reward-path | A process of three sellers counts three times for a clause or an agreement, which reads as triple counting, and once for its process design, which reads as two rules | One count per process made the tally depend on who recorded first and with which order, and let a recorder close a process against its other sellers for gas; breadth is the distinct staked sellers who carried the key, each still one live stake and its cooldown; `d <= c` keeps the score's reading for a clause and an agreement; one buyer buys one process, so the process design gains one use and every seller's breadth, in any sequence; one seller with two orders in one process is one use |
 | 44 | A pattern-checked value is printable ASCII | spec format/clause validation | A designer writing in another script cannot pattern-check a value, which reads as a Latin bias | Regex libraries in different languages classify and count characters differently outside ASCII, and every tool that applies the published format must give one verdict; a pattern is for a code, free text is bounded by `maxLength` and takes any script |
 | 45 | Sizes the formats fix | spec format/clause validation/batch path | An integer within ±(2^53 − 1), nesting to 16, 256 `enum` values, stages 0..255 and 16-bit stream counts are each a number a stranger's clause or wallet can reach; a wallet-code authorization past 65,535 bytes lands on the direct path only | Each makes every tool read a spec alike or bounds a reader's work: past 2^53 − 1 two languages read two numbers, deep nesting would overflow a stack, an `enum` and a stage are `uint8` words, a 16-bit count is read by one rule on both sides; the direct path passes no authorization bytes, since the wallet's code acts in its own call |

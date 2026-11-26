@@ -83,9 +83,10 @@ interface IAgreementStake {
 ///         no snapshots, no checkpoint arrays, no history walk. Periods are
 ///         generic here: this contract knows nothing about tranches, rewards, or
 ///         who pays. A consumer maps its own schedule onto them. Each period
-///         counts only usage NEW to it: a process counts once ever for each
-///         of its sellers (see `sellerCounted`), so a later period cannot be
-///         paid for an earlier period's trade.
+///         counts only usage NEW to it: a seller of a process is counted once
+///         ever under a key (see `sellerCounted`), and a process once ever
+///         under its process design (see `processCounted`), so a later period
+///         cannot be paid for an earlier period's trade.
 ///
 /// @dev    NO OWNER, NO ADMIN, NO PAUSE. Recording is permissionless and
 ///         idempotent per (kind, key, process, seller) — ONCE EVER, in whichever
@@ -234,11 +235,17 @@ contract UsageCounter {
     // ── Accrual ─────────────────────────────────────────────────────
 
     struct Accrual {
-        /// @dev The uses of this clause, agreement or assembly: one for each
-        ///      seller of each resolved process that carried it. A process of
-        ///      one seller is one use; a process of three sellers is three.
+        /// @dev The uses of this key. A clause and an agreement have one use
+        ///      for each seller of each resolved process that carried them: a
+        ///      process of three sellers under one agreement is three uses of
+        ///      it. A process design has one use for each resolved process
+        ///      run from it, whatever the number of its sellers, since one
+        ///      buyer bought one process (`processCounted`).
         uint64 c;
-        /// @dev Distinct live-staked sellers across those uses, so `d <= c`.
+        /// @dev Distinct live-staked sellers counted under this key in the
+        ///      period. For a clause and an agreement `d <= c`. For a process
+        ///      design every seller of a process is counted here while the
+        ///      process is one use, so `d` may exceed `c`.
         uint64 d;
         /// @dev `icbrt(c * d^2 * 1e18)` — cached so `totalScore` can be
         ///      maintained in O(1) as a delta on every record.
@@ -251,8 +258,9 @@ contract UsageCounter {
     ///         `FigaroCore` resolved it, or a proved batch through
     ///         `FigaroBatchVerifier` — through the same `_count`, the same
     ///         `sellerCounted` and the same per-period `sellerSeen`, so `c`
-    ///         counts each seller of each process once and `d` counts each
-    ///         staked seller once across both routes. The key is the `ClauseRegistry`
+    ///         counts each seller of each process once for a clause and an
+    ///         agreement, and each process once for a process design, and `d`
+    ///         counts each staked seller once, across both routes. The key is the `ClauseRegistry`
     ///         clause key under `KIND_CLAUSE`, the `ProcessRegistry`
     ///         processDesignHash under `KIND_PROCESS`, or the `AgreementRegistry`
     ///         agreementHash under `KIND_AGREEMENT` — the same identity each
@@ -265,10 +273,12 @@ contract UsageCounter {
     mapping(uint8 => uint256) public totalScoreIn;
 
     /// @notice kind → clause, agreement or assembly → processId → seller →
-    ///         already counted. A use is one seller of one resolved process,
-    ///         and it counts ONCE EVER toward a clause, agreement or assembly,
-    ///         in whichever period it is first recorded, whichever route
-    ///         brought it. A batch-resolved process's id is derived under the
+    ///         already counted. A counted pair is one seller of one resolved
+    ///         process, and it counts ONCE EVER under a clause, agreement or
+    ///         assembly, in whichever period it is first presented, whichever
+    ///         route brought it. Under a clause or an agreement the pair is
+    ///         one use; under an assembly the process is the one use
+    ///         (`processCounted`) and the pair is its seller. A batch-resolved process's id is derived under the
     ///         verifier's EIP-712 domain and a direct one's under
     ///         `FigaroCore`'s, so the two routes never present the same id.
     /// @dev    Why the seller is in the key. A process may have several
@@ -295,6 +305,22 @@ contract UsageCounter {
     ///         fixed per-period budget schedule assumes.
     mapping(uint8 => mapping(bytes32 => mapping(bytes32 => mapping(address => bool)))) public sellerCounted;
 
+    /// @notice processDesignHash → processId → this process is already a use
+    ///         of this process design. Read and written under `KIND_PROCESS`
+    ///         alone. One buyer buys one process, so a process is ONE use of
+    ///         its process design, counted in the period open when its first
+    ///         seller is presented, whichever seller that is and whichever
+    ///         route brought it.
+    /// @dev    Every seller of the process is still counted once as a seller
+    ///         (`sellerCounted`) and still feeds the breadth of the period
+    ///         open when it is presented (`sellerSeen`); only the count of
+    ///         uses stops at one. So the tally of a process is the same
+    ///         whoever presents its orders and in whatever sequence: one
+    ///         use, and its sellers.
+    ///         A clause and an agreement never read this set: each keeps one
+    ///         use for each seller of the process.
+    mapping(bytes32 => mapping(bytes32 => bool)) public processCounted;
+
     /// @notice kind → clause, agreement or assembly → period → seller → has this seller already contributed
     ///         to `d` in this period. Its only job is the distinct-staked-seller
     ///         count.
@@ -317,8 +343,11 @@ contract UsageCounter {
 
     // ── Events ──────────────────────────────────────────────────────
 
-    /// @notice One use counted, on either route — the direct calls and a
-    ///         proved batch emit the same event, so an indexer folds one stream.
+    /// @notice One seller of one process counted under a key, on either
+    ///         route — the direct calls and a proved batch emit the same
+    ///         event, so an indexer folds one stream. `c` rises with it under
+    ///         a clause or an agreement; under an assembly `c` rises only
+    ///         when the process is not yet a use of it (`processCounted`).
     /// @param kind      `KIND_CLAUSE`, `KIND_PROCESS` or `KIND_AGREEMENT`.
     /// @param clauseOrProcess  Clause key, an processDesignHash or an agreementHash.
     /// @param period    The accrual period the usage landed in.
@@ -625,7 +654,7 @@ contract UsageCounter {
     ///         that used a clause, agreement or assembly, and the seller of
     ///         the order the guest proved it through. The guest gives each
     ///         (kind, key, process, seller) once per batch; this contract counts it
-    ///         exactly as a direct call counts a use, through `_count`.
+    ///         exactly as a direct call counts one, through `_count`.
     struct BatchUse {
         bytes32 clauseOrProcess;
         /// @dev `KIND_CLAUSE`, `KIND_PROCESS` or `KIND_AGREEMENT` — the family
@@ -771,9 +800,11 @@ contract UsageCounter {
     }
 
     /// @dev The counting itself, the one path both routes take once their
-    ///      gates have passed. Every admitted use, a seller of a process,
-    ///      feeds `c`; the first from each staked seller in the period also
-    ///      feeds `d`.
+    ///      gates have passed. Every admitted call names one seller of one
+    ///      process. Under a clause or an agreement it feeds `c`; under a
+    ///      process design it feeds `c` only when its process is not yet a
+    ///      use of that process design (`processCounted`). The first from
+    ///      each staked seller in the period also feeds `d`.
     function _count(uint8 kind, bytes32 clauseOrProcess, uint8 period, bytes32 processId, address seller) internal {
         // Breadth is counted PER PERIOD: a seller who carries the clause, agreement or assembly
         // again in a later period is new breadth for that period's tally.
@@ -782,9 +813,17 @@ contract UsageCounter {
         sellerCounted[kind][clauseOrProcess][processId][seller] = true;
         if (firstSeller) sellerSeen[kind][clauseOrProcess][period][seller] = true;
 
+        // A process is one use of its process design, whatever the number
+        // of its sellers; a clause and an agreement have one use per seller.
+        bool newUse = true;
+        if (kind == KIND_PROCESS) {
+            newUse = !processCounted[clauseOrProcess][processId];
+            if (newUse) processCounted[clauseOrProcess][processId] = true;
+        }
+
         Accrual storage a = accrualOf[kind][clauseOrProcess][period];
         unchecked {
-            a.c += 1;
+            if (newUse) a.c += 1;
             if (firstSeller) a.d += 1;
         }
 
