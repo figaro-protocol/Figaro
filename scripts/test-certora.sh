@@ -96,12 +96,17 @@ else
     SPECS=(FigaroCore FigaroCoreSums AttestationCoordinator TokenOpsVerification FlorinToken BatchVerifierTokenOps BatchVerifierStateRoot RpgfMinter RpgfMinterAuthor SwapCoordinatorTokenOps)
 fi
 
+# Every named spec has its configuration before any is dispatched: a spec that
+# cannot run is a failure, never a skip.
+for spec in "${SPECS[@]}"; do
+    if [ ! -f "certora/${spec}.conf" ]; then
+        echo "❌ $spec — certora/${spec}.conf not found"
+        exit 1
+    fi
+done
+
 for spec in "${SPECS[@]}"; do
     conf="certora/${spec}.conf"
-    if [ ! -f "$conf" ]; then
-        echo "⚠️  skipping $spec — $conf not found"
-        continue
-    fi
     echo "▶ Dispatching $spec ($conf)"
     certoraRun "$conf" --disable_local_typechecking ${CERTORA_WAIT:+--wait_for_results all}
     echo ""

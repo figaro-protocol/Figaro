@@ -658,14 +658,15 @@ Foundry-covered companions:
 - `AttestationLeavesCoreUnchangedTest` (`test/core/attestation/AttestationLeavesCoreUnchangedTest.t.sol`) — the two parametric rules above on concrete fuzzed runs: after any buyer or seller attestation, `FigaroCore.orderStatus` of each order, `FigaroCore.processes` of the process and every token balance equal their values before it; and the coordinator reads and writes no storage of its own (`testFuzz_anAttestationTouchesNoCoordinatorStorage`), so the `Attestation` event is the whole of what the call leaves
 - `testFuzz_contentRefIsKeccakOfContent` — emitted `contentRef` equals `keccak256(content)` for arbitrary bytes
 
-**FlorinToken (7 sub-rules from 6 declared) — `rule_sanity: none` (vacuity heuristic not meaningful for these state-invariant claims)**
+**FlorinToken (7 declared rules and the envfree check) — `rule_sanity: basic`, as the other nine specs**
 
 | CVL rule | Maps to | Type |
 |---|---|---|
 | `totalSupplyWithinMaxSupply` | E-6 | Inductive preservation rule |
 | `totalRegisteredCapWithinMaxSupply` | E-6 | Inductive preservation rule |
 | `totalRegisteredCapMonotonic` | E-6 | Parametric (never decreases) |
-| `deployerMintRenouncedIsOneWayLatch` | — | One-way latch preservation |
+| `deployerMintRenouncedIsOneWayLatch` | — | One-way latch preservation, over every function but `registerMinter`, which reverts once the deployer has renounced and would hold the rule with nothing to read |
+| `registerMinterRevertsOnceRenounced` | — | Once the deployer has renounced, `registerMinter` reverts |
 | `minterCapImmutable` | E-6 | Per-minter immutability |
 | `minterMintedWithinCap` | E-6 | Inductive (unconditional `minted <= cap`, strictly strong enough to exclude symbolic unreachable pre-states) |
 
