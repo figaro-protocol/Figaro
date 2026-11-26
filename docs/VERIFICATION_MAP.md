@@ -218,9 +218,9 @@ One row per operation and path. The Core rows are read from `FigaroCore.sol`, `A
 - The state root: the run supplies each batch's new root; the state behind it, and its rebuild from the chain, are held by E-13's row above, not here.
 - The model's reach: TLC's traces carry only valid commits and resolutions over one token, two buyers, two sellers and two processes of up to three orders; refusals are compared by `KernelDifferentialFuzzTest` with `fuzz_stream.rs`, never by this run, and attestations and usage claims ride on the model's steps (both parties attest on each new order, each resolution claims the clause of every order of its process, one use for each seller) rather than being steps of the model.
 - Event order is compared as one ordered sequence per path, under one normalization for what cannot be equal by construction (the header of `CoreBatchEquivalenceTest`). Ids are derived under each contract's own domain, so each is read as the model's index. A batch is one transaction: the verifier emits a wallet-code attestation's `Attestation` while it asks the party's code, before any token moves (`FigaroBatchVerifier.sol:444`), then the signed attestations (`_emitAttestations` `FigaroBatchVerifier.sol:450`), then the stream's order events, then the counter's `UsageRecorded` (`_applyAccrual` `FigaroBatchVerifier.sol:507`). So the Core's events of the steps one batch carries are put in that order, each group in the Core's own order, and any other difference fails the run. Within one commit both paths emit `OrderCommitted`, then `OrderSeller` (`FigaroCore.sol:204-205`, `FigaroBatchVerifier.sol:979-991`). A log index still orders differently on the two paths across those groups. The normalization sets the groups' places, so the run does not check them: within one batch a wallet-code `Attestation` is logged before its own order's `OrderCommitted`, and a reader matches the two by their ids. Each Core attestation is filed under the role its call carried, never under the role its attester's address suggests, so a party on both sides of an order is filed rightly.
-- A commit funded by a payout of the same round: on `FigaroCore` a resolution and a later commit are separate transactions, so a payout from the first can fund the bonds of the second. The relay's door reads a commit's bonds from the landed chain alone and refuses such a commit (`unfunded commitment`), and `settleBatch` makes every pull before any payout (`_executePositions`), so a payout of a batch cannot fund a pull of the same batch. The order lands in a later batch, once the payout has landed. This is the batch path's own rule; a run of every model trace through the relay and the proof program beside `FigaroCore` found it.
+- A commit whose bonds come from a payout of the same round: the Core accepts it, since there the resolution and the commit are two transactions; the batch path takes it only in a later batch than the payout (`unfunded commitment` at the relay's door). That rule and its reason are in `docs/SCALING_STRATEGY.md` § "Batch DoS via approval revocation". A run of every model trace through the relay and the proof program beside `FigaroCore` found it.
 - The positions' order: the guest lists a batch's net positions ascending by (token, user) (`kernel.rs:45-69`), and the verifier moves them in two passes over that list, every pull before any payout (`_executePositions` `FigaroBatchVerifier.sol:653`), so a payout listed before the pull it needs lands. A batch that carries a commit and the resolution of its process, against an empty verifier, with the seller's address below the buyer's, lands with every wallet and the verifier's holding the model's, as `FigaroCore` lands the same steps (`test_aBatchThatPaysBeforeItPullsLandsAsTheCoreDoes`, which replays the traces with commits and resolutions mixed in one batch until three such batches have landed); the four-part run keeps a batch to commits or to resolutions.
-- Attestation by wallet code: the run lands both forms, each party's attestation on each order drawn as a signed attestation or as the `0x05` entry its wallet's code validates, and on the Core as the party's own call; `FigaroBatchVerifierTest` (`test_settleBatch_walletCodeAttestation_*`), the differential fuzz's reader and `formal/RelayState.tla` `OnlyPartyAttests` hold its refusals. Its one residual: any answer of the party's code but the magic value reverts the batch by name, a call that ran out of gas included, so code that refuses in the transaction what it validated for the relay reverts any batch carrying its attestation, which the relay then dead-letters alone; code whose cost only rises between the estimate and inclusion is met by the `settleBatch` call's gas headroom (`gas::settle_gas_limit`, `a_settle_whose_code_cost_rises_after_the_estimate_lands`) (`DESIGN_DECISIONS.md` § 21).
+- Attestation by wallet code: the run lands both forms, each party's attestation on each order drawn as a signed attestation or as the `0x05` entry its wallet's code validates, and on the Core as the party's own call; `FigaroBatchVerifierTest` (`test_settleBatch_walletCodeAttestation_*`), the differential fuzz's reader and `formal/RelayState.tla` `OnlyPartyAttests` hold its refusals. Its one residual, that code refusing in the transaction what it told the relay it accepts sinks every batch carrying its attestation, and why the verifier reverts rather than skips, are in `DESIGN_DECISIONS.md` § 21; the gas headroom that meets code whose cost rises after the estimate is tested by `a_settle_whose_code_cost_rises_after_the_estimate_lands` (`gas::settle_gas_limit`).
 
 ---
 
@@ -249,13 +249,12 @@ This section tracks features that are not protocol invariants but are significan
 
 ## 7) TLA+ formal models — current posture
 
-Five models: `FigaroCore.tla` (detailed below), `FlorinToken.tla` (its 9
-invariants are the E-6 rows; among them `Inv_RegisteredCapsWithinMaxSupply`,
-the contract's own rule that `totalRegisteredCap` is the sum of the registered
-caps and is at most `MAX_SUPPLY`. Mutation-checked: a registration checked
-against the supply in place of `totalRegisteredCap` fails it), `WitnessSwapAndCommitCoordinator.tla`,
-`ResolutionUniverses.tla` and `RelayState.tla` (all three detailed below;
-harness inventory + state counts: `TESTING.md` § TLA+).
+Five models, each detailed below: `FigaroCore.tla`, `FlorinToken.tla`,
+`WitnessSwapAndCommitCoordinator.tla`, `ResolutionUniverses.tla` and
+`RelayState.tla`. This section owns what each model holds, its mutation
+checks and its witnesses. The passes of `scripts/test-tla.sh` and their run
+times are in `TESTING.md` § TLA+; the last recorded state counts of every pass
+are in § 14 below.
 
 ### Model file: `formal/FigaroCore.tla`
 
@@ -304,6 +303,21 @@ machine-checked). N lives in the graph tier above the primitive.
 | `DeterrentEscrowMagnitudes` | A-8 (the deposits are 2× on both sides) | ✅ Verified |
 | `SettledNetPositions` | A-9 (exactly `payment` moves; bonds return whole) | ✅ Verified |
 
+### Model file: `formal/FlorinToken.tla`
+
+Its 9 invariants are the E-6 rows: `Inv_MaxSupply`,
+`Inv_DeployerCannotMintAfterRenounce`, `Inv_MinterCap`,
+`Inv_CapBelowMaxSupply`, `Inv_SupplyEqualsSumMinted`, `Inv_NonNegative`,
+`Inv_NoMintToZero`, `Inv_BalancesSumToSupply` and
+`Inv_RegisteredCapsWithinMaxSupply`, the contract's own rule that
+`totalRegisteredCap` is the sum of the registered caps and is at most
+`MAX_SUPPLY`. The model starts with no minter, as the constructor does,
+refuses a registration that would carry `totalRegisteredCap` past
+`MAX_SUPPLY`, as `registerMinter` does, and moves balances by the inherited
+ERC-20 transfer. Mutation-checked: a registration checked against the supply
+in place of the registered caps fails `Inv_RegisteredCapsWithinMaxSupply` in
+three states (two registrations, caps 1 and 5, at `MAX_SUPPLY = 5`).
+
 ### Model file: `formal/WitnessSwapAndCommitCoordinator.tla`
 
 The swap-funded on-ramp at EVM-step granularity (explicit revert frames, so
@@ -348,14 +362,22 @@ document gives no state counts for that pass.
 `AssumeAccrualGatesAligned` is not contract-enforced — a batch whose period
 passed in flight has its uses uncounted until a later batch proves them again,
 under-pay only.
+The model's `Artifacts` are one abstract keyspace; it does not model the
+reward's kind, so the separation of clause and assembly accruals by (kind,
+key) is held by Foundry, Halmos (`check_theKindsNeverShareAKey`, `check_aKindNeverDisturbsAnotherKindsAccrual`, `check_anUnknownKindIsSkipped`), Certora (`RpgfMinterAuthor.spec`) and the
+proof program's `usage.rs`, never by TLC.
 
 ### Model file: `formal/RelayState.tla`
 
 The off-chain relay's state lifecycle. The verifier holds a root and the state
 behind it is off chain; a bond committed on the batch path is refunded only by
 a batch built on that state, and `settleBatch` takes any caller, so a submitter that
-is no relay can land a batch on a copy of the state and publish nothing. 8
-invariants and 2 action properties:
+is no relay can land a batch on a copy of the state and publish nothing. The
+model (`prover/sequencer/src/state.rs`, `main.rs`) has 2 relays and 3
+batches, a crash at any step, a kept-file write that fails, a batch the chain
+refuses, anyone resending a public proof, a start on the state rebuilt from
+the chain, and such a foreign submitter. 8 invariants and 2 action properties;
+beside those in the table, `HistoryHasNoRepeat` and `TypeOK`:
 
 | Property | Code | Formal |
 |---|---|---|
@@ -375,8 +397,19 @@ and `ForeignSubmitters` FALSE, each of the three lifecycle switches FALSE
 states long.
 
 The same module's second spec, `DeferSpec` (`formal/RelayStateDeferral.cfg`),
-models the deferral of an operation dropped at batch formation — 10
-invariants, 445,431 states / 116,190 distinct, depth 19:
+models the deferral of an operation dropped at batch formation
+(`prover/sequencer/src/main.rs`, `mempool.rs`) — 10 invariants, 445,431
+states / 116,190 distinct, depth 19. The model has five operations: a commit
+and one built on its order, honest, of one process; two operations that never
+apply, which anyone may submit free, each once at any tick, one naming that
+process and the other a second; and a resolve listing one order twice. It
+has a drain cap of 3, a window of 2 ticks in 4, a re-queue cap of 1, funding
+reads that fail or show a shortfall, transient send failures, and a copy
+resubmitted while a tick runs. A drain group, one process's deferred
+operations, decides only what is drained together; each operation expires on
+its own window and takes what was filtered behind it. `Spec` holds the
+deferral's variables at their initial values, so the lifecycle's figures are
+unchanged by it:
 
 | Property | Code | Formal |
 |---|---|---|
@@ -402,7 +435,10 @@ property beside it — `DeferBoundedInTime` → `DeferralBoundedInTime`,
 8 and 2 states long.
 
 The module's third spec, `ResolveSpec` (`formal/RelayStateResolve.cfg`),
-models the buyer's resolve authorization on the batch path (E-14, E-16) —
+models the buyer's resolve authorization on the batch path (E-14, E-16;
+`prover/lib/src/kernel.rs` `apply_resolve`, `eip712.rs` `resolve_struct_hash`,
+the wallet-code form `KernelOp::ResolveByWalletCode`; `Spec` and `DeferSpec`
+hold its variables at their initial values) —
 three orders, payments 1–2, an authorization over the value the process
 holds or any it has not reached, applied by anyone holding it under any later
 state, in either form: the buyer's signature, made while the wallet holds its
@@ -461,12 +497,13 @@ batch refused naming nobody whole — fails `HonestNeverDroppedForAnother` in 2
 states: one offender among the four, the batch refused, every operation
 dead-lettered. At four operations the budget of 3 covers every split, so the
 pass never reaches the unattributed dead-letter. The reachability witness
-`IsolationCapWitness` (`formal/RelayStateIsolateCap.cfg`, the slack 0, a budget
-of 2) is violated in 6 states: the budget runs out and dead-letters an honest operation
+`IsolationCapWitness` (`formal/RelayStateIsolateCap.cfg`, the slack `ISlack` 0, a budget
+of 2; `scripts/test-tla.sh` fails unless TLC reports the violation) is violated in 6 states: the budget runs out and dead-letters an honest operation
 beside an offender, the residual the handover's limitation 3 states. The
 model has no time (no deadline, no deferral window), no queue refilling
 during the isolation, and splits into any two halves where the relay halves
-its order.
+its order. The other specs hold its variables at their initial values, with
+no offender.
 
 ---
 
@@ -525,12 +562,12 @@ actual compiled bytecode satisfies the invariants.
 **HalmosUsageCounter (9 properties)** — the accrual arithmetic on top of
 the E-5 stake gate (which is NOT re-proved here): direct-path accrual monotonicity;
 two uses leave the same state whichever route brought each (the tally, the
-counted (process, seller) pairs, the seller set, the period total); `scoreOf == accrualOf.score`;
+counted (process, seller) pairs, the seller set, the period total), a repeated process or seller included; `scoreOf == accrualOf.score`;
 period bucketing (every timestamp lands in exactly its window; a wrong-period claim
 is rejected and the other period's slot is untouched); isolation across keys;
 the kinds never share an accrual (a use counted under any one of the three kinds, on either route,
 leaves every other kind's accrual at the same key empty, and leaves an existing one exactly as it
-was); a batch use of an unknown kind is skipped, writing nothing under any kind.
+was); a batch use of an unknown kind is skipped, writing nothing under any kind and leaving the period total where it was.
 Mutation-checked against three counters: one whose batch path counts a process already counted fails `check_aUseCountsTheSameOnEitherRoute`; one whose batch path counts every use under the clause kind fails `check_aKindNeverDisturbsAnotherKindsAccrual`; one whose `scoreOf` reads more than the tally fails `check_scoreOfIsTheOneTally`. Enters via a test-only
 `UsageCounterHarness` exposing `_accrue` (public entry points require ECDSA + merkle
 proofs unreachable to the solver — the same doctrine as the ECDSA workaround in
@@ -570,7 +607,7 @@ pipx install halmos      # Halmos CLI (Python 3.12+)
 The wrapper (`scripts/test-halmos.sh`) checks for both prerequisites, runs the suite
 in seven passes: the 6 fast FigaroCore properties batched in one `halmos` process,
 `check_resolutionPayouts` in a second, fresh process, then the 7
-`HalmosMembersRegistry`, 7 `HalmosUsageCounter`, 6 `ClauseRegistry`, 6
+`HalmosMembersRegistry`, 9 `HalmosUsageCounter`, 6 `ClauseRegistry`, 6
 `ProcessRegistry` and 6 `AgreementRegistry` properties in their own passes. Per-assertion
 timeout defaults to 10 minutes; override with `HALMOS_SOLVER_TIMEOUT_MS`.
 

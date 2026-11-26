@@ -364,20 +364,12 @@ bounded by the batches proved since the last one landed.
 
 ## Funding
 
-A commit's two bonds — the buyer's 2 × payment, the seller's 2 × cumulative
-value — are read as balance and allowance to the batch verifier twice: when
-the operation arrives (`/submit` answers `402` with the party and the
-shortfall) and again at batch formation, against the latest block, right
-before proving. At batch formation each wallet's balance and allowance are
-read once and allocated across the batch's commits in order — the verifier
-pulls a wallet's bonds from one balance and one allowance — so a commit is
-kept only if its wallet still covers it after the commits kept before it
-(both bonds of a commit where the buyer is the seller count together). A
-commit that does not fund is dropped there, counted on `/status` as
-dead-lettered with its reason, and re-submittable once funded; it is never
-proved. A commit whose balance or allowance could not be read is not
-dropped: it is deferred with what was filtered into its order behind it, and
-read again when it is next drained (see Mempool bounds).
+This relay checks that each commit's wallets cover its bonds, at `/submit`
+(a `402` names the party and the shortfall) and again just before proving; a
+commit that fails the second check shows on `/status` as dead-lettered with
+its reason, and one whose read failed waits as a deferral (see Mempool
+bounds). The rule, and why a payout cannot fund a bond in the same batch, are
+in `docs/SCALING_STRATEGY.md` § "Batch DoS via approval revocation".
 
 ## Before proving
 
@@ -406,35 +398,12 @@ of losing the batch:
   resolves alone (re-submittable, each buyer counted in the adversarial
   signal) and re-queues the rest; a batch with no wallet-code operation is
   isolated (see Mempool bounds). The gas and the length are this
-  relay's plan, never the protocol's: the verifier bounds neither. Code
-  whose cost rises between the node's estimate and inclusion would starve
-  under a limit set at the estimate and revert the batch, so the
-  `settleBatch` call is sent with `SETTLE_GAS_HEADROOM_PCT`
-  (25 percent) over the estimate, capped at the batch's own ceiling
-  (`gas::settle_gas_limit`, `gas::settle_ceiling`); gas a transaction does
-  not use is not charged. The ceiling is the batch's plan with one more
-  planned transfer per net position, and a quarter over that, never past
-  the tick's budget; `submitter::submit_batch` reads the plan from the
-  batch it sends (`submitter::planned_settle_gas`). A node's estimate above
-  that ceiling is refused before anything is sent, as a deterministic
-  refusal that names nobody. A party's code can answer this relay's check
-  within `WALLET_CODE_EXECUTION_GAS` and burn far more in the node's
-  estimate. A limit set at such an estimate would make the relay pay past
-  its plan for every batch the code rides in. Above the most the node takes for one
-  transaction, the node would refuse the send with an error that is not a
-  revert; the relay would read it as transient and re-prove the batch until
-  the re-queue cap dead-lettered every operation beside the wallet's. The
-  refusal goes where every refusal that names nobody goes: the batch's
-  wallet-code operations are dead-lettered alone and the rest re-queued, and
-  a batch with no wallet-code operation (one whose token transfer costs more
-  than planned) is isolated (see Mempool bounds). The verifier forwards a
-  party's code, and a token's transfer, all the gas left, so code that burns
-  it and then answers yes lands the batch at more than it was planned at,
-  and nothing names that party. Held to its own ceiling, such a batch costs
-  the relay at most that ceiling: about two and a half times its plan when
-  every planned gas unit is a position's, and a quarter over its plan when
-  it has none. A batch in a token whose transfer costs up to twice what a
-  position is planned at still lands, and keeps the send's whole headroom.
+  relay's plan, never the protocol's: the verifier bounds neither. The
+  `settleBatch` send carries `SETTLE_GAS_HEADROOM_PCT` over the node's
+  estimate and never passes the batch's own ceiling; an estimate above
+  that ceiling sends nothing and is handled like any refusal that names
+  nobody. Why, and what a batch can then cost this relay, is in
+  `docs/SCALING_STRATEGY.md` § "What a batch may cost the relay".
 
 Without `BATCH_VERIFIER_ADDRESS` (the prove-only dry run)
 no funding is read; the chain id is read at startup in every mode. A read failure at the door refuses the submission (`503`,
@@ -462,7 +431,7 @@ lands, unless its deadline or deferral window passes while the queue waits.
 an operation that enters it from a fresh refused batch more than
 `MAX_ISOLATION_ROUNDS` (3) times is dead-lettered with that reason. A split
 budget of ⌈log2 n⌉ +
-`ISOLATION_SPLIT_SLACK` (8) splits bounds the extra `settleBatch` calls at the batch and
+`ISOLATION_SPLIT_SLACK` (8, enough for two offenders in a batch of 100) splits bounds the extra `settleBatch` calls at the batch and
 two per split; past it a set refused again is dead-lettered unattributed,
 its reason starting `ISOLATION CAP`. Every drop surfaces on `/status`
 (`dead_lettered_ops`, `last_settle_error`). Idempotency spans the pending

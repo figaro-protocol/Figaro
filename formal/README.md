@@ -1,20 +1,21 @@
 # Formal Verification — TLA+ models
 
-Five TLC-checked models, nine configurations, all run by `../scripts/test-tla.sh` (the harness
-inventory and state counts are owned by `docs/TESTING.md` § TLA+; the
-invariant → protocol-property mapping by `docs/VERIFICATION_MAP.md` §7):
+Five TLC-checked models, nine configurations, all run by `../scripts/test-tla.sh`. The
+passes and their run times are listed in `docs/TESTING.md` § TLA+; what each model holds, its
+mutation checks and its witnesses in `docs/VERIFICATION_MAP.md` § "7) TLA+ formal models — current
+posture"; the last recorded state counts in its § "14) Component status matrix".
 
 | Model | Scope | Invariants |
 |---|---|---|
 | `FigaroCore.tla` + `MC.tla`/`MC.cfg` | `FigaroCore`'s economic mechanism (detailed below) | 9 |
-| `FlorinToken.tla` + `.cfg` | Token supply cap + minter registry: no minter at the start, the registered caps summing to at most the cap; mutation-checked (a registration checked against the supply fails `Inv_RegisteredCapsWithinMaxSupply`) | 9 |
-| `WitnessSwapAndCommitCoordinator.tla` + `.cfg` | Swap-funded on-ramp: zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact `FigaroCore` deposits | 10 |
-| `ResolutionUniverses.tla` + `.cfg` | CROSS-CONTRACT: FigaroCore + FigaroBatchVerifier + UsageCounter + the guest's mirror under arbitrary interleavings — no cross-universe double payout, per-pool deposits, one route-blind tally (`CountIsDistinctProcesses`, `SellersCountedOnce`, `FloorApplied`, `AccrualNeverOverPays`), `FigaroCore`'s blindness to the batch path (`KernelBlindToBatch`). Carries two named assumption constants (`AssumeDomainSeparation`, `AssumeAccrualGatesAligned`); flipping either to FALSE is the experiment and is EXPECTED to fail. Mutation-checked: four mutated actions (one per tally invariant) each fail, four reachability witnesses each reached; the shipped `.cfg` (`MinSellers = 1`) holds (45,000,639 states, 12,828,199 distinct) | 21 |
-| `RelayState.tla` + `.cfg` | OFF-CHAIN: the relay's state lifecycle (`prover/sequencer`) under crashes, kept-file write failures, refused batches, permissionless resends and a start from the chain — `Recoverable`: whenever the verifier's root is past genesis, some relay has the state behind it on disk, or the chain carries every batch that landed so a stranger rebuilds it (`OpsOnChain`, the verifier as built: `settleBatch` refuses a batch whose operation stream does not hash to public value 9; FALSE restores a verifier that does not check the stream and fails `Recoverable` through a foreign submitter that lands a batch and publishes nothing). Four relay switches each restore one defect when FALSE (checked with `OpsOnChain` and `ForeignSubmitters` FALSE): three (`HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`) must fail `Recoverable`, `RebatchDropsRevoker` `SendsExcludeKnownRevoked` | 7 + 2 action properties |
-| `RelayState.tla` + `RelayStateDeferral.cfg` (`DeferSpec`) | OFF-CHAIN: the deferral of an operation dropped at batch formation — each operation bounded in time from its own first deferral, drained only into the room the queue leaves in groups that are each one process's operations, what was filtered behind an operation dead-lettered with it and with nothing else of its process, apart from the re-queue's count, a copy resubmitted meanwhile dropped, a resolve listing an order twice refused at admission. Nine switches (`DeferBoundedInTime`, `DeferOwnCounter`, `DeferDrainsOnlyFreeSlots`, `DeferMovesDependents`, `DeferDropsCopy`, `DeferGroupsByProcess`, `DeferOwnWindow`, `DeferDependentEdge`, `AdmitRefusesDoubleListing`), each FALSE failing the invariant it names | 10 |
-| `RelayState.tla` + `RelayStateResolve.cfg` (`ResolveSpec`) | OFF-CHAIN: the buyer's resolve authorization on the batch path — signed over the value the process holds or any it has not reached, applied by anyone holding it under any later state, in either form: the buyer's ECDSA signature, or bytes the buyer's wallet code validates (ERC-1271), the code installed with the key and answering after its loss. `ResolvePaysSignedPrefix`: every applied resolve pays exactly the prefix of the process's commits whose cumulative value the buyer signed. `OnlyBuyerWalletResolves`: every applied resolve was authorized by the buyer's key or its wallet's code. Two switches, `ResolveBoundToState` (the authorization binds a cumulative value) and `VerifierChecksWalletCode` (the verifier asks the buyer's code about the second form): TRUE holds (3,293,884 states / 809,956 distinct, depth 19); `ResolveBoundToState` FALSE fails `ResolvePaysSignedPrefix` in 4 states, `VerifierChecksWalletCode` FALSE fails `OnlyBuyerWalletResolves` in 3 | 3 |
-| `RelayState.tla` + `RelayStateAttest.cfg` (`AttestSpec`) | OFF-CHAIN: an attestation on the batch path by one party of the order, the role selecting the party and the digest, in either form: the party's ECDSA signature, or bytes the party's wallet code validates (ERC-1271), the code installed with the key and answering after its loss, anyone free to submit bytes in that form; the verifier emits the second form on the code's yes and reverts the batch otherwise, emitting nothing of it. `OnlyPartyAttests`: every attestation the batch path emits was authorized by the party's key or its wallet's code. One switch, `VerifierChecksAttestationCode` (the verifier asks the party's code about the second form): TRUE holds (86 states / 24 distinct); FALSE fails `OnlyPartyAttests` in 2 states | 2 |
-| `RelayState.tla` + `RelayStateIsolate.cfg` (`IsolateSpec`) | OFF-CHAIN: a batch the chain refuses while no re-read names a party and no operation is a wallet-code one — any of four operations an offender that reverts any `settleBatch` call it rides in, naming nobody, or lets it land; the refused set split into halves, each tried alone ahead of the queue, under a split budget of ⌈log2 n⌉ plus a constant, past which a set refused again is dead-lettered unattributed. `HonestNeverDroppedForAnother`: no operation outside the offenders is dead-lettered; `IsolationBounded`: the `settleBatch` calls sent are at most the batch and two per split. One switch, `WholeBatchOnUnnamedRevert`, whose TRUE restores the old relay's whole-batch dead-letter: FALSE holds (2,938 states / 1,718 distinct); TRUE fails `HonestNeverDroppedForAnother` in 2 states. `RelayStateIsolateCap.cfg` (`ISlack` 0) is a reachability witness: `IsolationCapWitness` is violated in 6 states, an honest operation dead-lettered past the budget | 3 |
+| `FlorinToken.tla` + `.cfg` | The florin's supply cap and its minter registry | 9 |
+| `WitnessSwapAndCommitCoordinator.tla` + `.cfg` | The swap-funded commit, step by step through the EVM | 10 |
+| `ResolutionUniverses.tla` + `.cfg` | Both paths and the usage counter together, interleaved | 22 |
+| `RelayState.tla` + `.cfg` | Off chain: whether the state behind the verifier's root survives the relay | 8 + 2 action properties |
+| `RelayState.tla` + `RelayStateDeferral.cfg` (`DeferSpec`) | Off chain: how the relay defers an operation dropped at batch formation | 10 |
+| `RelayState.tla` + `RelayStateResolve.cfg` (`ResolveSpec`) | Off chain: the buyer's resolve authorization on the batch path, both forms | 3 |
+| `RelayState.tla` + `RelayStateAttest.cfg` (`AttestSpec`) | Off chain: a party's attestation on the batch path, both forms | 2 |
+| `RelayState.tla` + `RelayStateIsolate.cfg` (`IsolateSpec`) | Off chain: splitting a batch the chain refuses when nobody is named; `RelayStateIsolateCap.cfg` is its reachability witness | 3 |
 
 The remainder of this file documents the `FigaroCore` model in depth.
 Exhaustively verifies the economic mechanism (bond math, token conservation,
@@ -80,31 +81,12 @@ no network beyond the pinned toolchain.
 
 ## The data lemmas (Lean)
 
-Two lemmas about the data, in the same `lake build`. Each is a model of the code it names, with
-keccak a parameter, and each assumes what `lean/FigaroKeccak.lean` states once.
-
-- `lean/FigaroMerkle.lean`, `merkle_binding`: if `verify(proof, root, leaf)` holds and
-  `root = buildMerkleRoot(leaves)`, with the leaves nonempty and every leaf a digest of an input
-  that is not 64 bytes long, then `leaf ∈ leaves`. `clause_binding` specializes it: a clause opens
-  against an agreement's `checkoutHash` only if its key and data hash are one of the agreement's
-  clauses. It models `sdk/src/agreement.ts` (`hashPair`, `buildMerkleRoot`), OpenZeppelin's
-  `MerkleProof.verify`, `CommitmentTypes.clauseLeaf` and `prover/lib/src/merkle.rs`. The tree
-  separates leaves from nodes by length: a leaf is double-hashed, so its outer input is 32 bytes and
-  a node's is 64. The assumption is `CollisionFree keccak`.
-- `lean/FigaroStateTree.lean`, `state_tree_update`: when `verifyAndUpdate` accepts a witness for a
-  previous root that is the root of a state S, its new root is the root of S updated by the batch's
-  writes. It models `prover/lib/src/state_tree.rs` whole: the `0x00` and `0x01` prefixes, the lone
-  leaf that rises, the empty root zero, the descent over Empty, Leaf, Node and Descend, the refusal
-  of a Descend at depth 256 and of an unconsumed proof. The assumptions are `CollisionFree keccak`
-  and `ZeroUnreached keccak`; the second is needed because an empty subtree's hash is the zero word.
-
-Each has an `_or_collision` form with no assumption: the conclusion, or an exhibited keccak
-collision (or a keccak preimage of zero). Two places differ from the code, both stated in the file:
-the model splits by filtering on the bit where the code splits a sorted slice, and it refuses where
-the code would read bit 256 and panic, which strictly increasing paths never reach. The shared
-vectors (`test/fixtures/merkle-vectors.json`, `prover/lib/tests/state_tree.rs`) tie the models to
-the code. Four mutations each fail the build: a single-hashed clause leaf, the state tree without its
-prefixes, without the rise, and without the depth check.
+The same `lake build` checks two lemmas about the data, each a model of the code it names with
+keccak a parameter, under the assumption `lean/FigaroKeccak.lean` states once:
+`lean/FigaroMerkle.lean` (`merkle_binding`, the agreement and assembly trees) and
+`lean/FigaroStateTree.lean` (`state_tree_update`, the batch path's state tree). What each proves,
+what it models, where it differs from the code and its mutation checks are in `docs/TESTING.md`
+§ "Lean 4 (`formal/lean/`) — the equilibrium, machine-checked".
 
 ## Files
 
