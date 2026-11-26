@@ -52,9 +52,9 @@ jobs:
                   persist-credentials: false
 
             - name: Check that HEAD is the commit
-              run: |
-                  head=$(git rev-parse HEAD)
-                  [ "$head" = "$COMMIT" ] || { echo "::error::HEAD is $head, not $COMMIT"; exit 1; }
+              uses: ./.github/actions/check-head
+              with:
+                  commit: ${{ env.COMMIT }}
 
             - name: Room on the runner
               run: df -h / | tail -1

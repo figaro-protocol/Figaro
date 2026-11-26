@@ -64,19 +64,8 @@ jobs:
 
             # The same pin the sequencer release builds with — one source of
             # truth for the host toolchain (prover/rust-toolchain.toml).
-            - name: Read pinned Rust toolchain
-              run: |
-                  RUST_TOOLCHAIN=$(awk -F'"' '/^channel/{print $2}' prover/rust-toolchain.toml)
-                  if [ -z "$RUST_TOOLCHAIN" ]; then
-                      echo "could not read channel from prover/rust-toolchain.toml"
-                      exit 1
-                  fi
-                  echo "RUST_TOOLCHAIN=$RUST_TOOLCHAIN" >> "$GITHUB_ENV"
-
-            - name: Install Rust ${{ env.RUST_TOOLCHAIN }}
-              run: |
-                  rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-                  rustup default "$RUST_TOOLCHAIN"
+            - name: Pinned Rust toolchain
+              uses: ./.github/actions/rust-toolchain
 
             # cargo-audit is built from source once per version and cached; a
             # cache hit makes this leg a lockfile read.

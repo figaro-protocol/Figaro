@@ -69,53 +69,22 @@ jobs:
             # run code no branch of this repository holds. The input states
             # which commit the result is for, and the job refuses another.
             - name: Check that HEAD is the commit
-              run: |
-                  head=$(git rev-parse HEAD)
-                  [ "$head" = "$COMMIT" ] || { echo "::error::HEAD is $head, not $COMMIT"; exit 1; }
+              uses: ./.github/actions/check-head
+              with:
+                  commit: ${{ env.COMMIT }}
 
             # The same reads prover-ci.yml's sp1 job makes.
-            - name: Read pinned Rust toolchain
-              run: |
-                  RUST_TOOLCHAIN=$(awk -F'"' '/^channel/{print $2}' prover/rust-toolchain.toml)
-                  if [ -z "$RUST_TOOLCHAIN" ]; then
-                      echo "could not read channel from prover/rust-toolchain.toml"
-                      exit 1
-                  fi
-                  echo "RUST_TOOLCHAIN=$RUST_TOOLCHAIN" >> "$GITHUB_ENV"
+            - name: Pinned Rust toolchain
+              uses: ./.github/actions/rust-toolchain
 
-            - name: Install Rust
-              run: |
-                  rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-                  rustup default "$RUST_TOOLCHAIN"
-                  rustc --version
-
-            - name: Read pinned SP1 version
-              run: |
-                  SP1_VERSION=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' prover/Cargo.lock)
-                  if [ "$SP1_VERSION" = "v" ]; then
-                      echo "could not read the sp1-sdk version from prover/Cargo.lock"
-                      exit 1
-                  fi
-                  echo "SP1_VERSION=$SP1_VERSION" >> "$GITHUB_ENV"
-
-            # The installer at the locked release's tag, as prover-ci.yml
-            # fetches it. The token is the run's own, for GitHub's API rate
-            # limit; it is not a stored secret.
-            - name: Install SP1
-              env:
-                  GITHUB_TOKEN: ${{ github.token }}
-              run: |
-                  mkdir -p "$HOME/.sp1/bin"
-                  curl -sSfL "https://raw.githubusercontent.com/succinctlabs/sp1/${SP1_VERSION}/sp1up/sp1up" \
-                      -o "$HOME/.sp1/bin/sp1up"
-                  chmod +x "$HOME/.sp1/bin/sp1up"
-                  "$HOME/.sp1/bin/sp1up" --version "$SP1_VERSION"
-                  echo "$HOME/.sp1/bin" >> "$GITHUB_PATH"
+            # The release the lock names, and the installer at that release's
+            # tag, as prover-ci.yml fetches it. The token is the run's own, for
+            # GitHub's API rate limit; it is not a stored secret.
+            - name: Pinned SP1 release and its toolchain
+              uses: ./.github/actions/sp1
 
             - name: Install protoc
-              run: |
-                  sudo apt-get update -qq && sudo apt-get install -y -qq protobuf-compiler
-                  protoc --version
+              uses: ./.github/actions/protoc
 
             # The docker build runs as root and creates what it writes. On the
             # box every step is root's; here the later steps are the runner

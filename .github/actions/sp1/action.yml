@@ -1,0 +1,33 @@
+name: Pinned SP1 release
+description: >-
+    Reads the SP1 release from the sp1-sdk entry of prover/Cargo.lock, leaves it in the
+    job's environment as SP1_VERSION, installs that release's toolchain through sp1up and
+    puts it on the path.
+runs:
+    using: composite
+    steps:
+        - name: Read the pinned SP1 release
+          shell: bash
+          run: |
+              SP1_VERSION=v$(awk '/^name = "sp1-sdk"$/{getline; gsub(/version = |"/, ""); print; exit}' prover/Cargo.lock)
+              if [ "$SP1_VERSION" = "v" ]; then
+                  echo "could not read the sp1-sdk version from prover/Cargo.lock"
+                  exit 1
+              fi
+              echo "SP1_VERSION=$SP1_VERSION" >> "$GITHUB_ENV"
+              echo "pinned SP1 release (from the lock): $SP1_VERSION"
+        - name: Install the SP1 toolchain
+          shell: bash
+          env:
+              GITHUB_TOKEN: ${{ github.token }}
+          run: |
+              mkdir -p "$HOME/.sp1/bin"
+              # The installer script at the locked release's tag, never
+              # `main`: one caller holds a signing identity, and only code
+              # the lock names runs beside it. The script is fetched, never
+              # piped into bash: it exits when it cannot edit a shell profile.
+              curl -sSfL "https://raw.githubusercontent.com/succinctlabs/sp1/${SP1_VERSION}/sp1up/sp1up" \
+                  -o "$HOME/.sp1/bin/sp1up"
+              chmod +x "$HOME/.sp1/bin/sp1up"
+              "$HOME/.sp1/bin/sp1up" --version "$SP1_VERSION"
+              echo "$HOME/.sp1/bin" >> "$GITHUB_PATH"

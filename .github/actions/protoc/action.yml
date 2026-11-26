@@ -1,0 +1,14 @@
+name: Install protoc
+description: Installs the protocol buffers compiler, on Linux or macOS, and prints its version.
+runs:
+    using: composite
+    steps:
+        - name: Install protoc
+          shell: bash
+          run: |
+              if [ "$RUNNER_OS" = "macOS" ]; then
+                  brew install protobuf
+              else
+                  sudo apt-get update -qq && sudo apt-get install -y -qq protobuf-compiler
+              fi
+              protoc --version
