@@ -7,6 +7,7 @@
 //   I3. A registered minter's minted count never exceeds its cap
 //   R1. totalRegisteredCap is monotonic (never decreases)
 //   R2. Once deployerMintRenounced is true, it stays true
+//   R2b. Once deployerMintRenounced is true, registerMinter reverts
 //   R3. A registered minter's cap is immutable after registration
 //
 // Style note: properties that must hold in ALL reachable states are written
@@ -117,7 +118,12 @@ rule totalRegisteredCapMonotonic(method f) {
 // RULE R2: Once renounced, deployerMintRenounced stays true
 // ═══════════════════════════════════════════════════════════════════
 
-rule deployerMintRenouncedIsOneWayLatch(method f) {
+// `registerMinter` is left out of the parametric rule: once the deployer has
+// renounced it always reverts, so the rule would hold of it with no state to
+// read (the vacuity check says so). R2b states that revert on its own.
+rule deployerMintRenouncedIsOneWayLatch(method f) filtered {
+    f -> f.selector != sig:registerMinter(address,uint256).selector
+} {
     bool before = deployerMintRenounced();
     require before == true;
 
@@ -127,6 +133,20 @@ rule deployerMintRenouncedIsOneWayLatch(method f) {
 
     assert deployerMintRenounced() == true,
         "Once renounced, deployerMintRenounced must stay true forever";
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RULE R2b: Once renounced, no minter is registered
+// ═══════════════════════════════════════════════════════════════════
+
+rule registerMinterRevertsOnceRenounced(address minter, uint256 cap) {
+    require deployerMintRenounced() == true;
+
+    env e;
+    registerMinter@withrevert(e, minter, cap);
+
+    assert lastReverted,
+        "Once the deployer has renounced, registerMinter must revert";
 }
 
 // ═══════════════════════════════════════════════════════════════════

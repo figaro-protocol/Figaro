@@ -8,7 +8,8 @@ mod common;
 use common::run_both;
 use figaro_kernel::operation_stream::{
     compute_operations_hash, decode_operation_stream, encode_operation_stream, encode_stream_parts,
-    resolved_running_total, wallet_code_attestations, COMMITMENT_BYTES, SIGNATURE_BYTES,
+    resolved_running_total, wallet_code_attestations, COMMITMENT_BYTES,
+    RESOLVE_BY_WALLET_CODE_FIXED_BYTES, SIGNATURE_BYTES,
 };
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::{
@@ -286,6 +287,11 @@ fn a_wallet_code_resolve_round_trips_with_its_authorization() {
     let bytes = encode_operation_stream(&ops, &[]);
     assert_eq!(bytes.len(), 1 + 32 + 2 + 97 + 2 + 2 * COMMITMENT_BYTES);
     assert_eq!(bytes[0], 0x04, "the wallet-code resolve's tag");
+    assert_eq!(
+        bytes.len(),
+        RESOLVE_BY_WALLET_CODE_FIXED_BYTES + 97 + 2 * COMMITMENT_BYTES,
+        "the constant the relay plans a resolve's stream bytes with is the encoder's own width"
+    );
     let (ops2, _, _) = decode_operation_stream(&bytes).expect("decodes");
     assert_eq!(
         encode_operation_stream(&ops2, &[]),
