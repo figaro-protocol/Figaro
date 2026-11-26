@@ -1,0 +1,16 @@
+name: Check that HEAD is the commit
+description: Fails unless the checked-out HEAD is the commit the run was asked for.
+inputs:
+    commit:
+        description: The full sha the run was asked for.
+        required: true
+runs:
+    using: composite
+    steps:
+        - name: Compare HEAD with the commit
+          shell: bash
+          env:
+              WANTED: ${{ inputs.commit }}
+          run: |
+              head=$(git rev-parse HEAD)
+              [ "$head" = "$WANTED" ] || { echo "::error::HEAD is $head, not $WANTED"; exit 1; }

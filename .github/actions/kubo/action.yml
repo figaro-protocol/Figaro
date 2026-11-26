@@ -1,0 +1,23 @@
+name: Start Kubo (IPFS)
+description: Starts the IPFS node the local stack pins to, with the browser origins the app is served from.
+runs:
+    using: composite
+    steps:
+        - name: Start Kubo
+          shell: bash
+          run: |
+              docker run -d --name figaro-ipfs -p 5001:5001 -p 8080:8080 ipfs/kubo:v0.42.0
+              for _ in $(seq 1 60); do
+                  if curl -s -X POST http://127.0.0.1:5001/api/v0/version >/dev/null 2>&1; then break; fi
+                  sleep 1
+              done
+              docker exec figaro-ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin \
+                  '["http://localhost:3000","http://localhost:3100","http://127.0.0.1:3000","http://127.0.0.1:3100"]'
+              docker exec figaro-ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods \
+                  '["PUT","POST","GET"]'
+              docker restart figaro-ipfs
+              for _ in $(seq 1 60); do
+                  if curl -s -X POST http://127.0.0.1:5001/api/v0/version >/dev/null 2>&1; then break; fi
+                  sleep 1
+              done
+              curl -s -X POST http://127.0.0.1:5001/api/v0/version

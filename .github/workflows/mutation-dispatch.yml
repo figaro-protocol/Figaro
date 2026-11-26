@@ -110,25 +110,13 @@ jobs:
             # run code no branch of this repository holds. The input states
             # which commit the result is for, and the job refuses another.
             - name: Check that HEAD is the commit
-              run: |
-                  head=$(git rev-parse HEAD)
-                  [ "$head" = "$COMMIT" ] || { echo "::error::HEAD is $head, not $COMMIT"; exit 1; }
+              uses: ./.github/actions/check-head
+              with:
+                  commit: ${{ env.COMMIT }}
 
             # The same read prover-ci.yml makes: prover/rust-toolchain.toml.
-            - name: Read pinned Rust toolchain
-              run: |
-                  RUST_TOOLCHAIN=$(awk -F'"' '/^channel/{print $2}' prover/rust-toolchain.toml)
-                  if [ -z "$RUST_TOOLCHAIN" ]; then
-                      echo "could not read channel from prover/rust-toolchain.toml"
-                      exit 1
-                  fi
-                  echo "RUST_TOOLCHAIN=$RUST_TOOLCHAIN" >> "$GITHUB_ENV"
-
-            - name: Install Rust
-              run: |
-                  rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-                  rustup default "$RUST_TOOLCHAIN"
-                  rustc --version
+            - name: Pinned Rust toolchain
+              uses: ./.github/actions/rust-toolchain
 
             - name: Install cargo-mutants
               run: |

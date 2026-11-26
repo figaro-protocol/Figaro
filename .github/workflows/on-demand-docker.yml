@@ -475,9 +475,7 @@ jobs:
 
             # ── The devnet stack, as devnet-e2e-ci.yml runs it ──────────
             - name: Install Foundry
-              uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
-              with:
-                  version: v1.5.1
+              uses: ./.github/actions/foundry
 
             - name: Setup Node.js
               uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -485,22 +483,7 @@ jobs:
                   node-version-file: .nvmrc
 
             - name: Start Kubo (IPFS)
-              run: |
-                  docker run -d --name figaro-ipfs -p 5001:5001 -p 8080:8080 ipfs/kubo:v0.42.0
-                  for _ in $(seq 1 60); do
-                      if curl -s -X POST http://127.0.0.1:5001/api/v0/version >/dev/null 2>&1; then break; fi
-                      sleep 1
-                  done
-                  docker exec figaro-ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin \
-                      '["http://localhost:3000","http://localhost:3100","http://127.0.0.1:3000","http://127.0.0.1:3100"]'
-                  docker exec figaro-ipfs ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods \
-                      '["PUT","POST","GET"]'
-                  docker restart figaro-ipfs
-                  for _ in $(seq 1 60); do
-                      if curl -s -X POST http://127.0.0.1:5001/api/v0/version >/dev/null 2>&1; then break; fi
-                      sleep 1
-                  done
-                  curl -s -X POST http://127.0.0.1:5001/api/v0/version
+              uses: ./.github/actions/kubo
 
             - name: Build SDK
               run: npm ci --workspace sdk && npm run build --workspace sdk
@@ -513,13 +496,7 @@ jobs:
 
             # Port 8545: the broker's own chain is on 7545, so the two never meet.
             - name: Start Anvil
-              run: |
-                  anvil --port 8545 --accounts 47 >/tmp/anvil.log 2>&1 &
-                  for _ in $(seq 1 60); do
-                      if cast block-number --rpc-url http://127.0.0.1:8545 >/dev/null 2>&1; then break; fi
-                      sleep 0.5
-                  done
-                  cast block-number --rpc-url http://127.0.0.1:8545
+              uses: ./.github/actions/devnet-chain
 
             # The export inlines these at build time. deploy-local.sh keeps a
             # value already present (default_env), so the broker settings

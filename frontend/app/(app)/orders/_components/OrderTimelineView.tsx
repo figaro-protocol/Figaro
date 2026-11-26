@@ -21,7 +21,7 @@
  *     the builder (`deriveProcessModelFromRuntime`) from the clauses the
  *     agreement carries + the attestation state, executed through one path
  *     (`executeCapability`). Add a clause → its capability surfaces here with
- *     no edit to this page. (Enforced by `lint-no-hardcoded-clauses-in-runtime`.)
+ *     no edit to this page. (Enforced by `lint-no-clause-names`.)
  *
  * The resolution panel (FigaroCore proceeds — names no clause) renders once the
  * process is resolved. This page does NOT replace `/audit/view?process=<processId>`.

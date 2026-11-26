@@ -108,18 +108,16 @@ jobs:
             # commit an input names. The input states which commit the result
             # is for, and the job refuses another.
             - name: Check that HEAD is the commit
-              run: |
-                  head=$(git rev-parse HEAD)
-                  [ "$head" = "$COMMIT" ] || { echo "::error::HEAD is $head, not $COMMIT"; exit 1; }
+              uses: ./.github/actions/check-head
+              with:
+                  commit: ${{ env.COMMIT }}
 
             - name: Check that the contract is in the checkout
               run: |
                   [ -f "$CONTRACT" ] || { echo "::error::$CONTRACT is not in this checkout"; exit 1; }
 
             - name: Install Foundry
-              uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
-              with:
-                  version: v1.5.1
+              uses: ./.github/actions/foundry
 
             - name: Install mewt at its pinned revision
               run: |

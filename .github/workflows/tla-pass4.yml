@@ -147,9 +147,9 @@ jobs:
             # run code no branch of this repository holds. The input states
             # which commit the result is for, and the job refuses another.
             - name: Check that HEAD is the commit
-              run: |
-                  head=$(git rev-parse HEAD)
-                  [ "$head" = "$COMMIT" ] || { echo "::error::HEAD is $head, not $COMMIT"; exit 1; }
+              uses: ./.github/actions/check-head
+              with:
+                  commit: ${{ env.COMMIT }}
 
             # The runner image carries a JDK; TLC needs Java 11 or later.
             - name: Java version

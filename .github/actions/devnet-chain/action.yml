@@ -1,0 +1,16 @@
+name: Start Anvil
+description: >-
+    Starts the local chain on port 8545 with the accounts the browser tests need
+    (frontend/tests/anvilAccounts.ts holds the same number) and waits for it to answer.
+runs:
+    using: composite
+    steps:
+        - name: Start Anvil
+          shell: bash
+          run: |
+              anvil --port 8545 --accounts 47 >/tmp/anvil.log 2>&1 &
+              for _ in $(seq 1 60); do
+                  if cast block-number --rpc-url http://127.0.0.1:8545 >/dev/null 2>&1; then break; fi
+                  sleep 0.5
+              done
+              cast block-number --rpc-url http://127.0.0.1:8545
