@@ -13,9 +13,9 @@ the patterns that look like vulnerabilities and are intended: read it first.
 |---|---|
 | Repository | https://github.com/figaro-protocol/Figaro |
 | Baseline commit | none: no audit is engaged (§ "The baseline commit") |
-| Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, three crates) |
-| Solidity in scope | 14 contract files, 1,658 lines of code (3,989 physical); 3 deploy scripts, 398 lines of code (838 physical) |
-| Rust in scope | 4 crates, 24 files under `src/`, 7,788 lines of code (11,130 physical) net of their inline test modules |
+| Languages in scope | Solidity (`src/`, four deploy scripts) and Rust (`prover/`, three crates) |
+| Solidity in scope | 14 contract files, 1,630 lines of code (4,011 physical); 4 deploy scripts, 350 lines of code (771 physical) |
+| Rust in scope | 3 crates, 20 files under `src/`, 6,646 lines of code (9,648 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, the routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the testnet scripts, `frontend/`, `sdk/` |
@@ -37,7 +37,9 @@ change from one revision to another moves the scope's code is
 `scripts/frozen-scope.sh` `gate_layers`: "full gate" when a scope file's code,
 comments stripped, or a build configuration moved; "quick layers only"
 otherwise. NatSpec enters the compiler's metadata (`foundry.toml` sets no
-`bytecode_hash`), so a review builds at the commit it reviews.
+`bytecode_hash`), so a review builds at the commit it reviews. The benches
+last ran at `927013e75`, the revision most rows of § "Verification evidence"
+name; it is neither a baseline nor a tag.
 
 ## Scope
 
@@ -56,15 +58,16 @@ processes under one SP1 proof, in four parts:
 
 | Directory / file | Contents | Lines of code (physical) |
 |---|---|---|
-| `src/core/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` | 164 (303), 36 (67) |
-| `src/core/attestation/` | `AttestationCoordinator.sol` | 77 (197) |
-| `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 557 (1,043), 7 (23) |
-| `src/registries/` | `ClauseRegistry.sol`, `AgreementRegistry.sol`, `ProcessRegistry.sol`, `MembersRegistry.sol` | 49 (196), 53 (202), 47 (189), 60 (210) |
-| `src/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol`, `FlorinToken.sol`, `IFlorinMinter.sol` | 296 (884), 147 (344), 51 (83), 4 (9) |
-| `src/composability/` | `WitnessSwapAndCommitCoordinator.sol` | 110 (239) |
-| `script/Deploy.s.sol` | The devnet deploy | 198 (432) |
-| `script/DeployMainnet.s.sol` | The mainnet deploy: the audited mainnet surface | 169 (348) |
-| `script/DeploySwapCoordinator.s.sol` | The swap coordinator alone, onto a live stack | 31 (58) |
+| `src/core/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` | 160 (293), 36 (67) |
+| `src/core/attestation/` | `AttestationCoordinator.sol` | 77 (198) |
+| `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 519 (1,014), 7 (23) |
+| `src/registries/` | `ClauseRegistry.sol`, `AgreementRegistry.sol`, `ProcessRegistry.sol`, `MembersRegistry.sol` | 44 (178), 53 (203), 47 (189), 60 (218) |
+| `src/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol`, `FlorinToken.sol`, `IFlorinMinter.sol` | 295 (895), 147 (359), 50 (84), 4 (9) |
+| `src/composability/` | `WitnessSwapAndCommitCoordinator.sol` | 131 (281) |
+| `script/DeployBase.s.sol` | The deployment every chain's script runs: `DeployBase`, and `DeployPublicStack`, the deployment mainnet and Sepolia share | 205 (418) |
+| `script/Deploy.s.sol` | The devnet deploy | 122 (290) |
+| `script/DeployMainnet.s.sol` | The mainnet deploy: `DeployPublicStack` with nothing added, the audited mainnet surface | 3 (18) |
+| `script/DeploySwapCoordinator.s.sol` | The swap coordinator alone, onto a live stack | 20 (45) |
 
 ### In scope — Rust
 
@@ -74,8 +77,8 @@ in scope.
 | Crate | Package | Files, lines of code (physical) | What it is | What a defect costs |
 |---|---|---|---|---|
 | `prover/program/` | `figaro-prover` | 1, 9 (13) | The guest's entry point: reads the batch and the witness of the entries it touches, runs the mirror, commits the public values | A batch the chain resolves wrongly |
-| `prover/lib/` | `figaro-kernel` | 8, 2,068 (3,191) | The mirror of `FigaroCore`'s commit and resolve, the attestation's inclusion gate, the operation stream, the public values, the state tree and the witness the guest reads, the usage claims | A batch the chain resolves wrongly |
-| `prover/sequencer/` | `figaro-sequencer` | 11, 4,123 (5,987) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, rebuilds its state from the chain | Liveness and griefing |
+| `prover/lib/` | `figaro-kernel` | 8, 2,016 (3,022) | The mirror of `FigaroCore`'s commit and resolve, the attestation's inclusion gate, the operation stream, the public values, the state tree and the witness the guest reads, the usage claims | A batch the chain resolves wrongly |
+| `prover/sequencer/` | `figaro-sequencer` | 11, 4,621 (6,613) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, rebuilds its state from the chain | Liveness and griefing |
 
 The figures count the files under each crate's `src/`, net of their inline
 test modules.
@@ -85,7 +88,7 @@ test modules.
 | File | What it decides |
 |---|---|
 | `foundry.toml` | Compiler version (0.8.26), EVM version (cancun), optimizer (200 runs), remappings, the files a test may read and write |
-| `scripts/deploy-mainnet.sh` | The mainnet deploy's guards, and `--via-ir`, the pipeline the deployed bytecode is compiled with |
+| `scripts/deploy-mainnet.sh`, `scripts/deploy-common.sh` | The mainnet deploy's guards, the ones it shares with the Sepolia deploy kept in `deploy-common.sh`, and `--via-ir`, the pipeline the deployed bytecode is compiled with |
 | `scripts/check-sp1-gateway-route.sh` | The deploy-time lookup of the SP1 verifier Succinct's gateway routes, which the batch verifier binds (never the gateway) |
 | `prover/Cargo.toml` | The workspace; `[patch.crates-io]` routes the guest's signature recovery through SP1's patched `k256` |
 | `prover/Cargo.lock` | Every Rust dependency's exact version, SP1's among them; the verification key is a function of it |
@@ -159,16 +162,16 @@ and environment: `docs/LOCAL_DEV.md` § "Commands"; the harness inventory:
 
 | Command | Expected |
 |---|---|
-| `MAINNET_RPC_URL=<rpc> SEPOLIA_RPC_URL=<rpc> forge test --via-ir` | 0 failed, 0 skipped (without the URLs the three fork tests, against mainnet's Permit2 and Sepolia's SwapRouter02, skip) |
+| `MAINNET_RPC_URL=<rpc> SEPOLIA_RPC_URL=<rpc> forge test --via-ir` | 0 failed, 0 skipped. Without the URLs the three fork tests, against mainnet's Permit2 and Sepolia's SwapRouter02, fail, each naming the variable it lacks |
 | `./scripts/test-halmos.sh` | `✅ All 41 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 9 UsageCounter + 6 ClauseRegistry + 6 ProcessRegistry + 6 AgreementRegistry).` |
-| `CERTORAKEY=<key> CERTORA_WAIT=1 ./scripts/test-certora.sh` | all 8 specs green; the results table is the authority (`Failed on rule_not_vacuous` alone is the vacuity heuristic). The script first checks `certora/token-ops.inventory` against every token-moving call site |
+| `CERTORAKEY=<key> CERTORA_WAIT=1 ./scripts/test-certora.sh` | all 10 specs green, each `.conf` with `rule_sanity: basic`; the results table is the authority (`Failed on rule_not_vacuous` alone is the vacuity heuristic). The script first checks `certora/token-ops.inventory` against every token-moving call site, and refuses a named spec with no `.conf` before it dispatches any |
 | `./scripts/test-echidna.sh` | every property holds on both harnesses (Core, FlorinToken) |
-| `./scripts/test-tla.sh` | all five models verify every invariant, TLC exit 0 (`ResolutionUniverses.cfg`'s two named assumptions set FALSE is an experiment expected to fail) |
+| `./scripts/test-tla.sh` | all five models verify every invariant in their nine configurations, TLC exit 0, and the witness `RelayStateIsolateCap.cfg` is reported violated (`ResolutionUniverses.cfg`'s two named assumptions set FALSE is an experiment expected to fail) |
 | `(cd formal/lean && lake build)` | the equilibrium proof builds with no error |
-| `cd prover && cargo test --locked` | 0 failed; the tests ignored by design read a fuzz stream and run in the next row. Without SP1, `cargo test --locked -p figaro-kernel` runs the guest's crate |
-| `./scripts/test-cross-impl-fuzz.sh [seed]` | `✅ The implementations agree on every operation, agreement and clause case`; the same seed reproduces a run |
+| `cd prover && cargo test --locked` | 0 failed, none ignored. The differential fuzz's Rust half (`prover/lib/tests/fuzz_stream.rs`) needs the `cross-impl-fuzz` feature and runs in the next row. Without SP1, `cargo test --locked -p figaro-kernel` runs the guest's crate |
+| `./scripts/test-cross-impl-fuzz.sh [seed]` | `✅ The implementations agree on every operation and agreement`, with the rounds and the seed; the same seed reproduces a run |
 | `scripts/prover-box/build-guest.sh` on a host prepared by `scripts/prover-box/provision.sh` | the ELF's SHA-256 and the verification key |
-| `cd sdk && npx vitest run` | no failing suite; `sdk/tests/batch-e2e.test.ts` needs a running Anvil and the relay's release binary |
+| `cd sdk && npm test`, then `npm run test:chain` | no failing file. `npm test` leaves out the five chain files; `npm run test:chain` runs them against an Anvil (at `ANVIL_URL`) and, for the four batch files, the relay's release binary, and each fails, never skips, without them |
 
 ## The system on one page
 
@@ -180,7 +183,7 @@ every noun; the ones this document uses:
 - A **process** is one buyer's run of a trade: its **orders**, resolved together. An order is one buyer–seller commitment, an EIP-712 struct (`CommitmentTypes.Commitment`) both parties sign off-chain and anyone may submit. The **buyer** (`rootBuyer`, the same wallet in every order of a process) pays and is the only party who can resolve; a **seller** adds value in one order.
 - **Payment** P_i is what order i moves from buyer to seller. **Cumulative value** G_i (`runningTotal`) is the total payment through order i; each later order extends the process's accumulator by exactly its payment.
 - `commit` pulls the **bonds** into `FigaroCore` in the process's one ERC-20: the buyer 2·P_i, the seller 2·G_i. **Resolution** is one call by the buyer over every active order: each seller receives 2·G_i + P_i and the buyer P_i per order, every payment made and every bond refunded, atomically. Nothing else moves a bond.
-- A **clause** is a reusable term, registered in `ClauseRegistry` under the keccak256 of its spec's canonical bytes. An **agreement** is the clauses composed for one order, every field filled; its merkle root is the commitment's `checkoutHash`. A **registered agreement** (`AgreementRegistry`) and an **assembly** (`ProcessRegistry`, a merkle root over registered agreements) are value-free designs. A **designer** registers any of the three under a stake.
+- A **clause** is a reusable term, registered in `ClauseRegistry` under the keccak256 of its spec's canonical bytes without the top-level `block`. An **agreement** is the clauses composed for one order, every field filled; its merkle root is the commitment's `checkoutHash`. A **registered agreement** (`AgreementRegistry`) and an **assembly** (`ProcessRegistry`, a merkle root over registered agreements) are value-free designs. A **designer** registers any of the three under a stake.
 - An **attestation** is a party's statement about a clause of its own open order, bound by merkle proof to the agreement: through `AttestationCoordinator` on the direct path, authorized by `msg.sender`; inside the proof on the batch path, authorized by the party's ECDSA signature or by bytes its own wallet code validates (ERC-1271, asked by the verifier, which reverts the batch on any other answer). On both paths it carries the clause data's hash and the inclusion proof, and neither path validates its content.
 - A **member** is a wallet staked in `MembersRegistry`, with a withdrawal cooldown. **Designer rewards**: `UsageCounter` scores each clause, registered agreement and assembly by use alone (c uses, a use being one seller of one resolved process, d distinct staked sellers, `icbrt(c·d²·1e18)`) per annual period, in one tally both paths feed; `RpgfMinter` mints each closed period's budget of **florins** (`FlorinToken`, one billion cap) pro rata to the designers of record.
 - **The batch path.** The guest runs inside the zkVM over a stream of signed operations and commits nine public-value words. The relay collects operations, proves, and calls `settleBatch`, which is permissionless: it checks the proof, the public values (previous state root, chain id, its own address, a batch timestamp no later than its own block, of any age) and four calldata hashes, refuses a commit whose deadline is before its own block, asks a buyer's wallet code about a wallet-code resolve and an attesting party's wallet code about a wallet-code attestation (emitting it on the magic value), reverting on a refusal of either, moves the tokens (every pull before any payout), re-emits the Core's events, hands the uses to `UsageCounter` inside a try/catch, and advances the root. The two paths share no state: a process opened on one resolves on it, and `UsageCounter` is where they meet.
@@ -216,7 +219,6 @@ Every state-changing external function in scope, and who may call it:
 | `FigaroBatchVerifier` | `settleBatch` | anyone, with a valid proof over the current state root |
 | `ClauseRegistry`, `AgreementRegistry`, `ProcessRegistry` | `registerClause`, `registerAgreement`, `registerProcess` | anyone, with the exact stake; first write wins; the zero key refused, and in `AgreementRegistry` the two reserved keys |
 | the three registries | `withdrawDeposit` | the registrant, once |
-| `ClauseRegistry` | `setMechanismClause` | anyone, for a registered key; emits an event, writes nothing |
 | `UsageCounter` | `recordClauseUsage`, `recordAgreementUsage`, `recordProcessDesignUsage` | anyone, with merkle proofs over a resolved direct-path order |
 | `UsageCounter` | `applyBatchAccrual` | `FigaroBatchVerifier` only |
 | `RpgfMinter` | `claim` | a live member that registered every key it passes, once per closed period |
@@ -232,12 +234,12 @@ Every state-changing external function in scope, and who may call it:
 | Uniswap SwapRouter02 | the same constructor; the deploy script probes `factory()` and `WETH9()` | executing the swap the witness commits to |
 | The routed SP1 verifier | `FigaroBatchVerifier` constructor, immutable beside `programVKey`; the constructor reads `VERIFIER_HASH()` and refuses a gateway (`VerifierNotPinned`), so no route owner can change it | proof soundness |
 | SP1 zkVM and crates; the patched `k256`, `ecdsa`, `rfc6979` | `prover/Cargo.lock` | executing the guest as written |
-| `regex`, `serde_json`, `alloy-primitives` | compiled into the guest | pattern matching; exact JSON numbers; hashing and ABI encoding |
+| `alloy-primitives`, `serde` | compiled into the guest | hashing and ABI encoding; reading the batch's input |
 | IPFS | content behind every on-chain hash | availability, never integrity (`docs/DATA_LAYER.md`) |
 
 No oracle, no bridge, no upgrade proxy, no pause.
 
-The mainnet deploy (`script/DeployMainnet.s.sol`) fixes these, each immutable
+The mainnet deploy (`script/DeployMainnet.s.sol`, which runs `DeployPublicStack` in `script/DeployBase.s.sol`) fixes these, each immutable
 once deployed: a registration stake of 0.05 ETH for each of the three
 registries; a member stake of 0.05 ETH with a 28-day cooldown; a
 minimum-support floor of 3 distinct staked sellers; nine annual reward periods
@@ -344,31 +346,34 @@ neither covers:
 
 ## Verification evidence
 
-Each result stands at the revision its row names. Which invariant each bench
+Each result stands at the revision its row names; most name `927013e75`, where
+the benches last ran (§ "The baseline commit"). Which invariant each bench
 carries is `docs/VERIFICATION_MAP.md`; its § 14 is the per-component matrix
-these rows summarize.
+these rows summarize, with every run's id and job.
 
 | Bench | What it covers | Result | Revision |
 |---|---|---|---|
-| Foundry, `forge test --via-ir` | every contract's behaviour, the deploy wiring, the cross-language vectors | every test passes; the three fork tests skipped (no RPC URL) | `04611ead` |
-| Halmos | `FigaroCore`, `MembersRegistry`, `UsageCounter`, the three registries | 41 of 41 proved | `1d39092c` |
-| Certora | `FigaroCore`, `TokenOpsVerification`, `AttestationCoordinator`, `FlorinToken`, `RpgfMinterAuthor` | every rule verified | `1d39092c` |
-| Certora | `RpgfMinter` (built without via-IR) | 11 of 11 rules verified | `98a1e953` |
-| Certora | `BatchVerifierTokenOps`, `BatchVerifierStateRoot`, each narrowed to the step it is about | 4 of 4 and 3 of 3 rules verified, each mutation-checked | `7e0b3b43` |
-| Echidna | `FigaroCore`, `FlorinToken` | 15 of 15 properties hold | `1d39092c` |
-| TLA+ | five models in seven configurations (the Core, the florin, the swap coordinator, the two paths composed, the relay) | no error | `1d39092c` |
-| Lean 4 | the best responses over the A-8/A-9 payoff table | builds | `1d39092c` |
-| Rust, `cargo test` | the guest against the Core, the clause engine, the guest in the executor | 0 failed | `1d39092c` |
-| Rust, `cargo test -p figaro-sequencer` | the relay | 37 unit, 112 integration, 0 failed | `b1b26c54` |
-| Differential fuzz | Core operations (wallet-code resolves among them), agreements, clause cases: the Core and the SDK as oracles of the mirror and the Rust engine | no divergence over nine seeds | `0532cd3a` |
-| Batch end-to-end, SDK → relay → verifier | a batch on Anvil with the release binary | 5 of 5 pass, the pass test through `proveAndSettle` | `914719ab` |
-| Coverage, `scripts/coverage.sh` (legacy pipeline) | the eleven contracts then in scope that hold code | lines 99.81%, statements 99.44%, branches 97.04%, functions 100%; uncovered: the `DuplicateCommitment` and `RunningTotalOverflow` guards, `RpgfMinter`'s `score == 0` early return, `FlorinToken.mint`'s `MAX_SUPPLY` check | `f62b71cf` |
-| Mutation, `mewt` 4.0.0 (`scripts/mewt-run.sh`) | the same eleven contracts, high and medium severity | 912 mutants, 904 caught, 8 survived, each read as unreachable or equivalent: the `DuplicateCommitment` guard (2) and the `RunningTotalOverflow` guard in `FigaroCore`, `UsageCounter`'s seller-seen write, `RpgfMinter`'s `score == 0` return (2), `FlorinToken.mint`'s `MAX_SUPPLY` check (2); `AgreementRegistry` not run | `f62b71cf` |
-| Mutation, `cargo-mutants` (`scripts/cargo-mutants-run.sh`) | `figaro-kernel`, `figaro-clause` | 617 mutants: 550 caught, 26 timed out, 29 unviable, 12 survived, each read as equivalent | `f62b71cf` |
-| Static analysis | Slither 0.11.3, Semgrep (`p/smart-contracts`, `p/rust`), Clippy, `cargo audit` | Slither's High and Medium results equal the triaged set below; Semgrep no WARNING or ERROR; Clippy clean; `cargo audit` fails on no advisory but the five set aside | every push (`foundry-ci`, `prover-ci`, `guards-ci`) |
+| Foundry, `forge test --via-ir` | every contract's behaviour, the deploy wiring, the cross-language vectors | 613 of 613 pass, none skipped; the three fork tests pass against live nodes in their own job | `927013e75` |
+| Halmos | `FigaroCore`, `MembersRegistry`, `UsageCounter`, the three registries | 41 of 41 proved | `927013e75` |
+| Certora | the ten specs: `FigaroCore`, `FigaroCoreSums`, `TokenOpsVerification`, `AttestationCoordinator`, `FlorinToken`, `RpgfMinter` and `RpgfMinterAuthor` (both built without via-IR), `SwapCoordinatorTokenOps`, and `BatchVerifierTokenOps` and `BatchVerifierStateRoot`, each narrowed to the step it is about | every rule verified with its vacuity check; `FigaroCoreSums` also at six unrollings (§ 14) | `927013e75` |
+| Certora, mutation checks | `BatchVerifierTokenOps`, `BatchVerifierStateRoot` | each rule fails on a mutant; the one `BatchVerifierStateRoot` survivor is caught by Foundry (`VERIFICATION_MAP.md` § 10) | `7e0b3b43`, `1d94596e` |
+| Echidna | `FigaroCore`, `FlorinToken` | 15 of 15 properties hold | `927013e75` |
+| TLA+ | five models in nine configurations (the Core, the florin, the swap coordinator, the two paths composed, the relay) | no error in the nine configurations, and the relay's reachability witness violated as required (§ 14) | `927013e75` |
+| Lean 4 | the best responses over the A-8/A-9 payoff table, the merkle binding, the state tree | builds, no `sorry` | `927013e75` |
+| Rust, `cargo test` | the guest against the Core, the state tree, the guest in the executor | 0 failed, none ignored | `927013e75` |
+| Rust, `cargo test -p figaro-sequencer` | the relay | 58 unit, 130 integration, 0 failed | `927013e75` |
+| Differential fuzz | Core operations (wallet-code resolves among them) and agreements: the Core and the SDK as oracles of the mirror | no divergence over twelve seeds, eight on a checkout and four in CI | `927013e75` |
+| Batch end-to-end, SDK → relay → verifier | batches on Anvil with the release binary: the lifecycle, a revocation, a skipped accrual, every model trace | 7 of 7 pass across the four batch files, the pass test through `proveAndSettle` among them | `927013e75` |
+| Coverage, `scripts/coverage.sh` (legacy pipeline) | the twelve contracts in scope that hold code | lines 697 of 698 (99.86%), statements 934 of 937 (99.68%), branches 186 of 189 (98.41%), functions 90 of 90; what is left uncovered is in `FigaroCore` (one line, two statements, two branches) and `FlorinToken` (one statement, one branch) | `927013e75` |
+| Mutation, `mewt` (`.github/workflows/mewt-dispatch.yml`) | the twelve contracts in scope that hold code, every mutation type | 1,176 mutants, 1,166 caught, 10 uncaught, none timed out; the ten are the `DuplicateCommitment` guard (2) and the `RunningTotalOverflow` guard in `FigaroCore`, the genesis root's write and return in `FigaroBatchVerifier` (2), `UsageCounter`'s seller-seen write, `RpgfMinter`'s `score == 0` return (2) and `FlorinToken.mint`'s `MAX_SUPPLY` check (2), each read as unreachable or equivalent in § 14 | `927013e75` |
+| Mutation, `cargo-mutants` (`.github/workflows/mutation-dispatch.yml`) | `figaro-kernel` | 309 mutants: 270 caught, 30 unviable, 9 missed, none timed out; the nine, a buffer's capacity (7), `2 * 2` for `2 + 2` (1) and an error's text (1), each read as equivalent in § 14 | `927013e75` |
+| Static analysis | Slither 0.11.3, Semgrep (`p/smart-contracts`, `p/rust`), Clippy, `cargo audit` | Slither's High and Medium results equal the triaged set below; Semgrep no WARNING or ERROR; Clippy clean; `cargo audit` fails on no advisory but the five set aside | every push (`foundry-ci`, `prover-ci`, and `guards-ci`, the Dependency Audit CI); passed at `927013e75` |
 | Real proof | two Groth16 proofs through Succinct's gateway, resolved by a `FigaroBatchVerifier` deployed with the guest's key | both accepted; bonds, payouts, re-emitted attestation and state root read from the chain | `cf6ba4ab`, on a Sepolia fork |
 | Batch gas anchors against live receipts | the relay's plan (`prover/sequencer/src/gas.rs` `settle_gas_estimate`, from each transaction's own calldata) against the receipts of the seven `settleBatch` transactions on `FigaroBatchVerifier` `0x417A316F9B942a7f699Ed27cd88237C9b3E41b1a`, Sepolia blocks 12106569 to 12107150 | under `1ce96ade`'s anchors the first `settleBatch` (690,760) exceeded its plan (594,600) and the use's 270,000 sat under its live cost of about 366,000, both from EIP-8037's state-creation price; with a position at 120,000 and a use at 500,000 (`BatchGasCeilingTest`) every plan covers its receipt, the thinnest by 23,840 | `1ce96ade`, blocks 12106569–12107150 |
 | Guest build, `scripts/prover-box/build-guest.sh` | the ELF and key the Sepolia verifier pins | ELF `36de7f99f3c06cb807316ad0c295e21e0e46fe2e84aa4cc55dd97885e4846de4`, key `0x00569b319e52c0a8c173cd333a88177ea189879df483b9003b8b31f1429447d9` | `2fd6a376` |
+
+The guest's key at `927013e75`, built in SP1's image, is in
+`docs/VERIFICATION_MAP.md` § 14; no deployed verifier pins it.
 
 ### Static analysis
 
