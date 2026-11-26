@@ -13,6 +13,13 @@ Playwright — every project green, no test skipped by the devnet gate it expect
 to run under. Any harness ending some other way is a failure to investigate,
 never a variant of success.
 
+**No test skips.** A test whose prerequisite is missing fails and names it. The
+Foundry fork suites fail without `MAINNET_RPC_URL` or `SEPOLIA_RPC_URL`
+(§ Foundry); the SDK's five chain files are left out of `npm test` and run
+under `npm run test:chain`, failing without their Anvil or relay binary
+(§ "Rust — the proof apparatus"); the `devnet-relay` Playwright project fails
+without the relay binary (§ Playwright).
+
 ## Foundry (`test/`)
 
 The test tree mirrors `src/` (`test/core/{kernel,attestation,verifier}/`, `test/registries/`, `test/rewards/`, `test/composability/`,
@@ -143,13 +150,14 @@ four tests (`_part1` to `_part4`), because one test's gas does not hold every
 trace.
 
 `WitnessSwapAndCommitCoordinatorForkTest` is the mainnet-fork parity proof for the
-Permit2 witness digest: gated on `MAINNET_RPC_URL` (each test SKIPS without it,
-never silently passes), it proves the `swapWitness` convention is accepted by the
+Permit2 witness digest: it needs `MAINNET_RPC_URL`, and without it `setUp`
+reverts naming the variable, so every test FAILS (never skips, never silently
+passes). It proves the `swapWitness` convention is accepted by the
 canonical Permit2 deployment and that a substituted swap route is rejected by real
 Permit2's own signature check — the one claim the mocked suite proves only against
 our own digest reconstruction (`MockWitnessPermit2`). Its sibling contract in the
 same file, `WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest` (gated on
-`SEPOLIA_RPC_URL`, same skip discipline), is the real-VENUE proof: the coordinator
+`SEPOLIA_RPC_URL`, and failing the same way without it), is the real-VENUE proof: the coordinator
 drives the deployed Sepolia SwapRouter02 (`deployments/11155111.json`
 `swapRouter`) through the real WETH/USDC pool with `exactOutputSingle` calldata
 built the documented way (the SDK's `SWAP_ROUTER_02_ABI` shape), proving the
@@ -177,19 +185,24 @@ properties are mutation-checked: a deliberate recycling bug in
 any new property whose failure mode matters — "it proved" is not evidence that
 it *could* fail.
 
-## Certora (`certora/`) — 9 specs
+## Certora (`certora/`) — 10 specs
+
+Each `.conf` sets `rule_sanity: basic`, so every rule runs with its vacuity check. The Rules column counts the `rule` and `invariant` declarations of each `.spec` file.
 
 | Spec | Rules | Covers |
 |---|---|---|
 | `FigaroCore.spec` | 9 | Status monotonicity, transitions, active count, buyer dominance, no double-commit, cumulative monotonicity, rootBuyer immutable, currency immutable, and a successful commit leaves the order it returns committed. |
-| `AttestationCoordinator.spec` | 8 | Role-gate on `attestAsBuyer` and `attestAsSeller` (non-party reverts; success ⟹ caller is the commitment's buyer or seller; a `satisfy` twin shows each success reachable) + parametric Core-immutability (AC cannot change orderStatus or processes[]). No on-chain clause-content validator — well-formedness is an off-chain concern. |
+| `FigaroCoreSums.spec` | 11 | The sums `FigaroCore` keeps, for every reachable state: the running total, the open-order count, the bonds held, and what a resolution pays (`VERIFICATION_MAP.md` § 10 lists each). Six invariants and five rules; the preservation through `resolveProcess` is bounded by the conf's `loop_iter`. |
+| `AttestationCoordinator.spec` | 9 | Role-gate on `attestAsBuyer` and `attestAsSeller` (non-party reverts; success ⟹ caller is the commitment's buyer or seller; a `satisfy` twin shows each success reachable) + parametric Core-immutability (AC cannot change orderStatus or processes[]) + an attestation moves no token and writes no storage of the coordinator, the Core or a standard ERC-20 beside them (`anAttestationMovesNoTokenAndWritesNoStorage`). No on-chain clause-content validator — well-formedness is an off-chain concern. |
 | `TokenOpsVerification.spec` | 7 | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
-| `FlorinToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
+| `FlorinToken.spec` | 7 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch (over every function but `registerMinter`), `registerMinter` reverts once the deployer has renounced, minter cap immutability, minter within cap |
 | `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier's token step, `_executePositions`, alone, over two positions of any token addresses (each a standard ERC-20) and users, read through `certora/harness/FigaroBatchVerifierHarness.sol`'s `executePositions`: each user moves by payout−deposit, the verifier by the batch's pulls minus payouts per token, no other balance moves, and no payout asks the verifier for more than it holds once the batch's pulls are in (the two-pass order). The argument for longer lists is stated in the spec. Mutation-checked: all four, against five mutants over two runs (`VERIFICATION_MAP.md` §10). |
 | `BatchVerifierStateRoot.spec` | 3 | FigaroBatchVerifier's state root chains: a resolved batch's `prevRoot` is the root the verifier held and its `newRoot` the root it leaves; each resolved batch advances `batchCount` by one; no other function moves either. So the `BatchSettled` events form one unbroken, gap-free chain from the initial root. Read through `certora/harness/FigaroBatchVerifierHarness.sol` (the contract plus a pure `decodedRoots` view over its own `_decodePV`), with `_executePositions` and `_walkOperations` summarized, since neither writes the verifier's storage. Mutation-checked: all three. A mutant writing `batchCount` inside the summarized `_walkOperations` survives the spec, since the summary hides the body; Foundry's `BatchVerifierStepsWriteNoStorageTest` checks that the two summarized steps write no verifier storage, and catches it (`VERIFICATION_MAP.md` §10). |
-| `RpgfMinter.spec` | 10 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-clause-or-assembly rejection, live-stake eligibility (`_isAuthor`, the gate on a live registration), the designer-side membership gate (a claimant with no live member stake reverts and mints nothing; `claimable` quotes it zero), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked: conservation, double-claim, eligibility. |
+| `RpgfMinter.spec` | 12 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), one claim for a key in a period, never undone, no claim while the period is open, duplicate-clause-or-assembly rejection, live-stake eligibility (`_isAuthor`, the gate on a live registration), the claimant's own member stake, minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked: conservation, double-claim, eligibility. |
 | `RpgfMinterAuthor.spec` | 2 | `RpgfMinter._isAuthor` as written — the kind selection `RpgfMinter.spec` summarizes to a ghost: for each of the three kinds the answer is the live designer of record in the one registry that kind names, whatever the other two hold at the same key, and a kind past the three reverts. Read through `certora/harness/RpgfMinterAuthorHarness.sol` (the contract plus a view calling `_isAuthor`) against `certora/harness/AuthorRegistryMocks.sol` (one getter contract per registry family, linked to the minter's three registry addresses). Compiled without via-IR; the reason and the run are in `VERIFICATION_MAP.md` § "10) Certora formal verification — current posture". |
 | `SwapCoordinatorTokenOps.spec` | 1 | `WitnessSwapAndCommitCoordinator` keeps no token: on every completing path of `swapAndCommit`, linked to `FigaroCore` and to the Foundry stand-ins for Permit2 (`MockWitnessPermit2`) and the swap venue (`MockSwapVenue`), the coordinator's balance of each of the two tokens is what it was. The three `_fund` entries of `certora/token-ops.inventory` cite this rule. Its run is in `VERIFICATION_MAP.md` §14. |
+
+Run with `./scripts/test-certora.sh` (all ten, in the script's order) or `./scripts/test-certora.sh <Spec>` (the named ones); it needs `CERTORAKEY` and never runs in CI. Before it dispatches any spec, the script fails when a named spec has no `certora/<Spec>.conf`, so a spec that cannot run is a failure, never a skip. `CERTORA_WAIT=1` blocks until the cloud verdict. The last run of each spec, with its job id: `VERIFICATION_MAP.md` § "14) Component status matrix".
 
 Companion: `certora/token-ops.inventory` — declarative inventory of every ERC20 transfer call site and every Permit2 pull (`permitTransferFrom` / `permitWitnessTransferFrom`) in `src/`; `scripts/lint-token-ops.sh` (lint-staged on any staged `.sol` or on the inventory, and the prelude of `./scripts/test-certora.sh`) fails a commit that adds a transfer call without an inventory entry.
 
@@ -223,6 +236,9 @@ Run with `cargo +nightly fuzz run operation_stream --fuzz-dir fuzz/prover -- -ma
 Seeds: `python3 -I fuzz/prover/seed.py` writes the streams in
 `test/fixtures/operation-stream-vectors.json` into `fuzz/prover/corpus/`. A crash is saved under
 `fuzz/prover/artifacts/`. Success: the run ends on `Done N runs`, with no crash file.
+`prover-ci`'s job "cargo fuzz (operation stream decoder)" runs the same target on each push and pull
+request its path filter admits, for 300 seconds, on the nightly and the `cargo-fuzz` version its `env` pins, after the same
+seeding, and fails when the log holds no `Done N runs` line or a crash input is saved.
 
 ## Kani (`formal/kani/`) — 6 proof harnesses
 
@@ -336,8 +352,8 @@ bit, a short or surplus proof, a removed leaf), a property test that the
 descent reaches the root of the true post-state over random histories, and
 one that mutates honest proofs at random and requires every accepted one to
 reach it; the guest's cycles beside a growing stored state
-(`prover/script/examples/guest_cycles.rs`, a measurement and no test: `cargo run --release -p
-figaro-prove-test --example guest_cycles`); the three packer vectors (`packers.rs`) and the
+(`prover/script/examples/guest_cycles.rs`, a measurement and no test: `cargo run --release --locked -p
+figaro-prove-test --example guest_cycles`; the measured counts are `SCALING_STRATEGY.md`'s); the three packer vectors (`packers.rs`) and the
 Merkle leg of the agreement-tree lock (`merkle_parity.rs`), both asserted on
 the Solidity side too +
 the witness-gate suite in `parity.rs`: a seller's and a buyer's attestation
@@ -459,9 +475,12 @@ the buyer's signed resolve pays out through it, and the verifier's
 `OrderCommitted` and `OrderResolved` events name the order. A further case
 points `proveAndSettle` at a contract that is no batch verifier: the relay
 refuses to start, the call rejects with the relay's own output, and no batch
-lands. Anvil-gated (skips clean without it) locally;
-`prover-ci`'s `sp1` job runs it on main with `REQUIRE_BATCH_E2E=1`, where a
-skip is a failure.
+lands. It is one of the SDK's five chain files (`sdk/vitest.chain.config.ts`
+`CHAIN_TEST_FILES`), which `npm test` leaves out and `npm run test:chain`
+runs; with no Anvil reachable or no relay binary built, the file fails at
+collection naming what is missing, and never skips (`sdk/tests/batchHarness.ts`).
+`prover-ci`'s `sp1` job starts the Anvil, builds the binary and runs the five
+files, one `npm run test:chain` process per file.
 
 `sdk/tests/batch-revoke-e2e.test.ts` drives the relay's deterministic-revert
 arm on the same harness (`sdk/tests/batchHarness.ts`, which both files share):
@@ -470,7 +489,7 @@ its allowance after the funding check and before the send; the batch is
 refused, the revoker's op is dead-lettered alone and the other lands in the
 next batch — the balances, the one `BatchSettled` and the per-order answers
 read from the chain, the dead-letter count and its reason from `/status`.
-Same gate as the batch test; `prover-ci` runs both.
+A chain file, like the batch test; `prover-ci` runs both.
 
 `sdk/tests/batch-accrual-skip-e2e.test.ts` drives a use the counter leaves
 uncounted to a later batch that counts it, on the same harness with two
@@ -481,8 +500,8 @@ counter refuses the call whole and the verifier lands the batch with
 verifier's logs, the claim is sent again, and a later batch's use stands in
 `UsageCounter.accrualOf` for period 1, with nothing in period 0. It moves the
 chain's clock, so it starts an Anvil of its own on port 18555 and never runs
-on a shared chain. Same gate as the batch test; `prover-ci` runs it beside
-the other two.
+on a shared chain. A chain file, like the batch test; `prover-ci` runs it
+beside the other chain files.
 
 `frontend/tests/e2e/batch-events.devnet.spec.ts` is the app's end of the same
 path: it starts the built sequencer with nothing (`REBUILD_FROM_CHAIN=1`)
@@ -495,8 +514,9 @@ renders from chain events, its signatures "Proved in a batch", bound to the
 batch the chain names. After the batched resolution the seller splits part of
 its payout to two recipients through the public multisender on its order
 page, and the spec reads both recipients' balances and the seller's from the
-token. Skips when no binary is built, unless `REQUIRE_BATCH_E2E=1`, which
-turns the skip into a failure; the full scope of `Devnet E2E CI` sets it.
+token. It is in the `devnet-relay` Playwright project, and with no relay binary
+built it fails naming the binary (`requireRelayBinary`, `frontend/tests/e2e/relayProcess.ts`),
+never skips; the full scope of `Devnet E2E CI` builds the binary and runs the project.
 
 `frontend/tests/e2e/relay-transport.devnet.spec.ts` is the same path with every
 act in the app's UI. It starts the relay the same way (`frontend/tests/e2e/relayProcess.ts`
@@ -508,7 +528,8 @@ buyer resolves there. Each act goes to the relay the page found in the
 profile and checked against the chain. The spec reads the bonds' allowances
 to the verifier, the verifier's `OrderCommitted`, `Attestation`,
 `OrderResolved` and `ProcessResolved`, the silence of `FigaroCore` and the
-coordinator, and both parties' token balances, out of band. Same gate.
+coordinator, and both parties' token balances, out of band. Same project, same
+failure without the binary.
 
 ## Frontend Vitest (`frontend/tests/`) — 2 tiers
 
@@ -836,6 +857,10 @@ list, is the census):
   audit their OWN full cycle (`permissionless-clause`, `clause-coverage`,
   `assembly-withdraw`, `clause-authoring`); they share no seeded state, so they
   do not pull the authoring gate.
+- **`devnet-relay`** — the two runtime specs that start the relay binary this
+  tree builds (`batch-events`, `relay-transport`); depends on
+  `devnet-authoring`; `npm run test:e2e:devnet:relay`. With no binary built,
+  each fails naming it.
 - **`devnet`** — every other `*.devnet.spec.ts`; depends on `devnet-authoring`.
 
 The seed precondition is the config's `globalSetup`
@@ -1114,17 +1139,19 @@ Per workflow, what it runs and when:
   `scripts/emit-abi-bundle.sh` and fails when any ABI differs from the tracked
   `abi/*.json`, compared as parsed JSON in order; the workflow also runs on
   `abi/**`, so the bundle `sdk/tests/abiParity.test.ts` reads is the build's.
-- **`prover-ci`** — path-filtered. Three jobs: `test` on every push/PR —
+- **`prover-ci`** — path-filtered. Four jobs: `test` on every push/PR —
   `cargo test` and Clippy on the host-only prover crate (`figaro-kernel`),
-  and Semgrep over the guest's and the relay's sources; `cross-impl-fuzz` on every push — four
-  rounds of the differential fuzz seeded from the run id; `sp1` on push to
+  and Semgrep over the guest's and the relay's sources; `cross-impl-fuzz` on every push/PR — four
+  rounds of the differential fuzz seeded from the run id; `decoder-fuzz` on
+  every push/PR — `cargo fuzz` over the operation stream decoder for five
+  minutes (§ "cargo-fuzz"); `sp1` on push to
   main and dispatch — installs the SP1
   toolchain the way `sequencer-release` does, builds the sequencer, runs
-  `cargo test` on `figaro-sequencer` and `figaro-prove-test`, then runs
-  `sdk/tests/batch-e2e.test.ts`, `sdk/tests/batch-revoke-e2e.test.ts` and
-  `sdk/tests/batch-accrual-skip-e2e.test.ts` against a live Anvil with
-  `REQUIRE_BATCH_E2E=1`, so a missing chain or binary fails instead of
-  skipping.
+  Clippy and `cargo test` on `figaro-sequencer` and `figaro-prove-test`, then
+  starts an Anvil and runs the SDK's five chain files (`integration`,
+  `batch-e2e`, `batch-revoke-e2e`, `batch-accrual-skip-e2e`,
+  `batch-traces-e2e`), each through `npm run test:chain`; a missing chain or
+  binary fails a file, never skips it.
 - **`sdk-ci`** — push/PR, path-filtered (re-triggers on
   `frontend/public/sdk-api/**`, `ecosystem-agents/runtime/**`, `abi/**` and
   `docs/DATA_LAYER.md`, whose event-field table `sdk/tests/abiParity.test.ts`
@@ -1132,8 +1159,11 @@ Per workflow, what it runs and when:
   `npm test`, build, and the typedoc freshness gate — the committed API reference
   (`frontend/public/sdk-api`) must equal what typedoc emits from source. A second job runs the agent runtime's `node --test` suite
   (`ecosystem-agents/runtime/tests/`) against the SDK's build, on every push
-  that changes the SDK or the runtime; its macOS sandbox tests skip on the
-  Linux runner.
+  that changes the SDK or the runtime; `npm test` there leaves out the
+  OS-profile sandbox tests and the live model test. A third job runs the
+  sandbox tests (`ecosystem-agents/runtime/tests/sandbox.test.mjs`) on a macOS runner, which ships
+  `sandbox-exec`; the live model test needs a model account and runs in no
+  workflow.
 - **`frontend-ci`** — push/PR, path-filtered: type-check, ESLint, Vitest
   (+coverage), the **mobile** Playwright project, production build (its
   postbuild typesets the paper PDFs; the job installs Tectonic, pinned by
@@ -1176,9 +1206,9 @@ Per workflow, what it runs and when:
   `accessibility.stranger.spec.ts` runs in `frontend-ci`, over that job's
   export. For the full scope a `relay` job builds the relay's release binary,
   with the toolchain and the cargo cache of `prover-ci`'s `sp1` job, and hands
-  it on as an artifact; the deploy pins the guest it reports, and the suite
-  runs with `REQUIRE_BATCH_E2E=1`, so `batch-events.devnet.spec.ts` and
-  `relay-transport.devnet.spec.ts` run and a skip of either fails. The spine scope builds no relay, and the spec is not in
+  it on as an artifact; the deploy pins the guest it reports, and the job
+  runs the `devnet-relay` project (`batch-events.devnet.spec.ts` and
+  `relay-transport.devnet.spec.ts`), which fails without the binary. The spine scope builds no relay, and the project is not in
   its selection.
 - **`Dependency Audit CI`** — push/PR, NOT path-filtered: three npm-audit legs (root
   production deps at high+; frontend production deps at high+, through
@@ -1259,7 +1289,7 @@ Per workflow, what it runs and when:
   build-provenance attestation per archive — `gh attestation verify`);
   build-and-publish only, gates no merge.
 - **`sdk-release`** — on an `sdk-v<version>` tag (refused unless it equals
-  `sdk/package.json`'s version): type-check, pure-surface tests (`SKIP_ANVIL=1`),
+  `sdk/package.json`'s version): type-check, pure-surface tests (`npm test`, which leaves out the chain files),
   build, `npm publish --provenance` (the Sigstore attestation binds the tarball
   to this repo + commit); auth is npm Trusted
   Publishing (OIDC — the package's npm settings name this workflow as the
@@ -1271,7 +1301,9 @@ two halves unconditionally.
 ### Mutation runs and the test-first proof
 
 Four maintainer-side scripts, none run by CI. `scripts/mewt-run.sh <target.sol>`
-and `scripts/cargo-mutants-run.sh <crate>` launch one mutation run detached,
+(which reads a local, untracked `mewt.toml` naming one target) and
+`scripts/cargo-mutants-run.sh <crate>` launch one mutation run detached on a
+local machine,
 holding `.mewt.lock` (the two never overlap; `cargo-mutants-run.sh` runs
 `--in-place` over `figaro-kernel`, from a full checkout). Both
 print `gate_layers` from `scripts/frozen-scope.sh` first: "full gate" when a
@@ -1282,21 +1314,30 @@ test*` names a change adds under `test/` against `src/` as it stood before, and
 fails when every one passes there; a `Red-on-parent:` trailer in the commit
 message runs it from `.husky/commit-msg`.
 
-Five runs also have a GitHub Actions workflow, each started by hand
+Six runs also have a GitHub Actions workflow, each started by hand
 (`workflow_dispatch`) at a full commit sha given as input, which it checks out
 and names in its job summary and artifacts. `tla-pass4.yml` runs TLA+ pass 4
 (`ResolutionUniverses`) with TLC checkpoints, uploads the checkpoint when the
 run's time is out, and resumes it from an earlier run's id. `mutation-dispatch.yml`
 runs `cargo mutants --in-place` over `figaro-kernel`, split
-across a matrix with `--shard k/n`, one `mutants.out` per shard; `mewt` has no
-workflow, since its `mewt.toml` is not in the repository. `kani-dispatch.yml`
+across a matrix with `--shard k/n` (40 shards by default, dealt round-robin),
+one `mutants.out` per shard; a shard fails on a missed mutant. `mewt-dispatch.yml`
+is the Solidity mutation run: `mewt` at the revision its `MEWT_REV` pins, with
+`--comprehensive`, over every contract under `src/` that holds code, one job per
+contract and per group of mutation types (three groups, 36 jobs). Each job
+passes its whole configuration on the command line, so no `mewt.toml` is read
+or needed, and tests each mutant against the Foundry suite as `TEST_CMD` states
+it: the fuzz seed fixed, the gas-ceiling tests and the fork suite left out. A job
+fails on an uncaught or timed-out mutant, or when the unmutated suite fails; its
+summary lists each uncaught mutant. `kani-dispatch.yml`
 runs `cargo kani` in `formal/kani`. `guest-key-preview.yml` builds the proof
 program by `scripts/prover-box/build-guest.sh`, reads the key again from
 `sequencer --vkey`, and prints both. `.github/workflows/prover-box-provision.yml` runs
 `scripts/prover-box/provision.sh` on a clean Ubuntu 24.04 container, with no
 swap file, and then asks a shell that reads no profile for every tool the
 prover box's steps call. Each workflow's header states whether a
-standard runner carries the run.
+standard runner carries the run. The last run of each, with its counts and its
+surviving mutants read one by one: `VERIFICATION_MAP.md` § "14) Component status matrix".
 
 ## Opportunistic — Mythril
 
