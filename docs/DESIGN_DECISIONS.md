@@ -867,14 +867,10 @@ the two paths never share a signature, see `SCALING_STRATEGY.md`). A deadline
 is absent because the message's meaning is time-invariant: it authorizes the
 resolution of the process at the value the buyer signed, which pays exactly
 the prefix that value names, so late submission delivers precisely that.
-`formal/RelayState.tla` `ResolveSpec` models it, the buyer signing over the
-value the process holds or any it has not reached: `ResolveBoundToState` TRUE
-holds `ResolvePaysSignedPrefix` (every applied resolve pays exactly the prefix
-of the process's commits whose cumulative value the buyer signed), FALSE (a
-signature over the process id alone) fails it; the wallet-code form binds the
-same digest, so the same holds of it, and `VerifierChecksWalletCode` TRUE
-holds `OnlyBuyerWalletResolves` while FALSE (the second form taken on the
-guest's word) fails it. The asymmetry against `FigaroCore` is the deliberate cost of the
+`formal/RelayState.tla` `ResolveSpec` models it, and binding the signature to
+the value is what holds `ResolvePaysSignedPrefix`; the wallet-code form binds
+the same digest, so the same holds of it (each property and its mutation:
+`docs/VERIFICATION_MAP.md` § "7) TLA+ formal models — current posture"). The asymmetry against `FigaroCore` is the deliberate cost of the
 batch universe: `msg.sender` does not exist inside a proof, so authorization
 must be carried as a signature or as bytes the buyer's code answers for, in
 its minimal sufficient form.
@@ -893,27 +889,17 @@ the refused batch's wallet-code resolves alone, re-submittable, counts each
 buyer in the adversarial signal, and re-queues every other operation
 (`classify_deterministic_revert`). Such a wallet's cost is its own
 resubmission; each co-batched operation it sinks spends one of its three
-re-queues. A batch carrying no wallet-code operation that the chain refuses
-while nobody is named — a revoker who re-approved before the re-read, a token
-whose transfer reverts, any cause no re-read sees — is not dead-lettered
-whole: within the split budget, no operation is dead-lettered for a revert it
-may not have caused. Its operations wait apart from the queue, in halves of
-the batch's order, each half tried alone as a batch of its own
-(`Mempool::isolate`, `drain_up_to`), so the operation that reverts alone is
-dead-lettered alone, re-submittable, and, within the budget, every other
-lands, unless its deadline or deferral window passes while the queue waits.
-`/status` counts the operations waiting in the isolation (`isolating_ops`),
-and an operation that enters the isolation from a fresh refused batch more
-than `MAX_ISOLATION_ROUNDS` (3) times is dead-lettered with that reason. A
-split budget of ⌈log2 n⌉ plus
-`ISOLATION_SPLIT_SLACK` (8, enough for two offenders in a batch of 100) bounds
-the extra `settleBatch` calls at the batch and two per split; past it a set refused again
-is dead-lettered unattributed with that reason on `/status`, so a batch carrying
-more offenders than the budget covers can still cost an honest operation its
-batch. The queue waits while the isolation runs, and a deferred operation's
-window keeps running (`formal/RelayState.tla` `IsolateSpec`:
-`HonestNeverDroppedForAnother`, which `WholeBatchOnUnnamedRevert` TRUE, the old
-relay, fails). The relay's gas plan for
+re-queues. When the chain refuses a batch with no wallet-code operation in it
+and no re-read names anyone (a revoker who re-approved in time, a token whose
+transfer reverts), the relay does not drop the whole batch, since most of its
+operations did nothing wrong. It splits the refused set until the culprit
+stands alone (`Mempool::isolate`); the splits, the round cap and what `/status`
+shows are in `prover/sequencer/README.md` § "Mempool bounds". The split
+budget is finite, so a batch with more offenders than it covers can still
+cost an honest operation its batch; and while the isolation runs the queue
+waits and deferral windows keep running (`formal/RelayState.tla`
+`IsolateSpec`: `HonestNeverDroppedForAnother`, which `WholeBatchOnUnnamedRevert`
+TRUE, the old relay, fails). The relay's gas plan for
 the wallet's own code (`WALLET_CODE_EXECUTION_GAS`) and for the bytes'
 length (`MAX_WALLET_AUTHORIZATION_BYTES`) is the relay's, never the protocol's:
 the verifier sets no gas limit on the code, and the stream's 16-bit length
@@ -949,23 +935,13 @@ The relay plans the same `WALLET_CODE_EXECUTION_GAS` for the attestation's code
 as for the resolve's, asks the code at its door and at batch formation, and
 after a refused batch that names nobody dead-letters the wallet-code operations
 alone, attestations included, re-submittable, counting each party in the
-adversarial signal (`classify_deterministic_revert`). Code whose cost rises
-between the node's estimate and inclusion would starve under a limit set at the
-estimate, and revert the batch; the relay sends the `settleBatch` call with `SETTLE_GAS_HEADROOM_PCT` (25 percent)
-over the estimate, capped at the batch's own ceiling (`gas::settle_gas_limit`,
-`gas::settle_ceiling`): the batch's plan with one more planned transfer per
-net position and a quarter over that, never past the tick's budget. Gas a
-transaction does not use is not charged, so the headroom costs only block
-space. A node's estimate above that ceiling is refused before anything is
-sent, as a deterministic refusal that names nobody, so code that answers the
-relay's check cheaply and burns enough in the estimate to pass the ceiling
-costs the relay no transaction and is dead-lettered alone. The verifier
-forwards all the gas left, so code that burns it and then answers yes lands
-the batch at more than its plan; held to its own ceiling, never to the
-tick's whole budget, it costs the relay at most that ceiling. The margin of
-one planned transfer per position lets a batch in an honest token whose
-transfer costs up to twice the planned one land
-(`docs/SCALING_STRATEGY.md` § "What a batch may cost the relay").
+adversarial signal (`classify_deterministic_revert`). Because the verifier
+forwards the code all the gas left, code can cost more at inclusion than in
+the relay's check; the relay answers with headroom over the node's estimate
+and a per-batch ceiling it never sends past, so such code costs it no
+transaction or at most that ceiling. The send's limit, the ceiling and its
+margin are stated once in `docs/SCALING_STRATEGY.md` § "What a batch may cost
+the relay".
 
 ---
 
@@ -1074,9 +1050,10 @@ assembly tree's own leaf convention, `keccak256(keccak256(processLeafDomain ‖
 key ‖ dataHash))` with `processLeafDomain = keccak256("figaro-assembly-leaf")`, over one
 leaf per agreement — key the agreement's `agreementHash`, content the canonical
 `{"agreement":i,"clauses":{…}}` — plus, when any are composed, the assembly terms
-leaf (`keccak256("figaro-assembly-terms")`). The agreement format's leaf carries
-no domain, so a tree over agreements and a tree over clauses never share one
-shape and no tree over agreement-format leaves opens an assembly leaf. `ProcessRegistry` stores the root and
+leaf (`keccak256("figaro-assembly-terms")`). Only the assembly leaf carries the
+domain word, which is what stops an agreement-format tree from opening one
+(`docs/CLAUSES.md` § "The registered agreement and the assembly — units above
+the clause"). `ProcessRegistry` stores the root and
 a URI and checks nothing about the agreements inside it; `AgreementRegistry`
 knows no assembly. The counter's assembly leg takes the agreement's
 `agreementHash`, its `agreementContentHash` and a membership proof, and proves the
@@ -1368,14 +1345,11 @@ data hash is a `bytes32`; off chain the SDK refuses a withheld clause whose
 `TOPOLOGY_LEAF_DOMAIN` or `PROVENANCE_LEAF_KEY` (`agreementLeaves`,
 `sdk/src/agreement.ts`), so no entry of a served agreement rebuilds either
 format leaf, and `anchorAgreement` refuses a document that tries
-(`sdk/tests/topologyLeaf.test.ts`, `sdk/tests/anchored.test.ts`). The leaf
-stays double-hashed, so it never passes as an internal node. An assembly
-leaf's inner preimage is also 96 bytes (domain, key, data hash), and it is
-kept apart from the topology leaf by its first word, the domain:
-`PROCESS_LEAF_DOMAIN` = `keccak256("figaro-assembly-leaf")` against
-`TOPOLOGY_LEAF_DOMAIN` = `keccak256("figaro-agreement-topology")`. The cost is
-that no attestation can name it, and none is lost: the edges are fixed at
-commit and have no later stage. A reader proves them by rebuilding the root
+(`sdk/tests/topologyLeaf.test.ts`, `sdk/tests/anchored.test.ts`). The leaf's
+exact shape, and the domain word that keeps an assembly leaf of the same
+length apart from it, are in `docs/CLAUSES.md` § "Every clause is a merkle
+leaf". What the shape costs is that nothing can attest the edges, which
+matters nowhere, since they never change after commit. A reader proves them by rebuilding the root
 from the signed agreement, which carries them in full.
 
 **Tests**: `sdk/tests/topologyLeaf.test.ts` (no clause key and data hash
@@ -1459,10 +1433,9 @@ possibilities is published only as a fingerprint: the clause's data hash
 under the `checkoutHash`, and a witness's `contentRef`, while the spec is
 public. Without a random value inside the hashed bytes, anyone confirms the
 value by hashing each guess. The value sits inside the set as a declared
-field, so it enters the canonical JSON of stage 0 and the ABI bytes of a
-stage like any field: no hash function, leaf, content reference, CID or
-contract changes, and the validator and the encoder take a `bytes32-hex`
-string like any other. The published format states the set's rules, and the
+field, so it is hashed as every field is and nothing in the hashing or on
+chain treats it apart (`docs/CLAUSES.md` § "Clause-spec format"); the
+validator and the encoder take a `bytes32-hex` string like any other. The published format states the set's rules, and the
 SDK's parser applies them (`parseClauseSpec`). A reserved key that no spec declares would be
 refused as an undeclared field by the validator, dropped by the encoder
 from a witness's bytes, and refused by a stranger's validator written from
@@ -1929,12 +1902,10 @@ published format defines (`sdk/src/clauses/clause-spec.schema.json`,
 `MAX_PATTERN_EXPANSION` (4,096) does not parse. A
 value whose length in UTF-16 units times its pattern's size is past
 `MAX_PATTERN_WORK` (4,194,304) is refused with its own reason, "string too long
-for pattern", without the pattern run. One content, one call of
-`validateContent`, adds that work over every value a
-pattern is run on. Its values are visited in the spec's field order and by
-array index, depth first. When the next value would take the total past
-`MAX_CONTENT_PATTERN_WORK` (16,777,216), the content is refused once, at `$`,
-with the reason "content too long for its patterns". Every other value is run
+for pattern", without the pattern run. A whole content also has a budget,
+`MAX_CONTENT_PATTERN_WORK`, summed over its values in a fixed order
+(`docs/CLAUSES.md` § "The SDK's validation" states the order, the figure and
+the refusal). Every other value is run
 against its pattern, whatever the pattern's shape and the value's length.
 
 **Why it looks wrong**: the SDK matches in time linear in the value, so a
@@ -2101,9 +2072,9 @@ with no pattern.
 2. A field sits under at most 16 enclosing objects or arrays:
    `MAX_FIELD_DEPTH` (16) in `sdk/src/clauses/spec.ts`. A spec nested deeper does not parse, with
    "field nesting exceeds the maximum depth of 16".
-3. An `enum` names at most 256 values, since a value encodes as its `uint8`
-   position; a spec with more does not parse (`parseFieldSpecCore`,
-   `sdk/src/clauses/spec.ts`). A stage key is
+3. An `enum` has a ceiling of 256 values, set by its `uint8` encoding
+   (`parseFieldSpecCore`, `sdk/src/clauses/spec.ts`; `docs/CLAUSES.md`
+   § "The SDK's validation"). A stage key is
    the decimal of an integer 0..255, since the attestation's `stage` is a
    `uint8` (`stageOfKey`, `sdk/src/clauses/spec.ts`). The published definition
    (`sdk/src/clauses/clause-spec.schema.json`) and `docs/CLAUSES.md` § "The

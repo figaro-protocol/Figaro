@@ -210,10 +210,9 @@ that accepts any proof.
 2. each `resolveProcess` in the batch preserved buyer dominance, atomic
    resolution, conservation, and direct transfer semantics, its buyer's
    authorization over `ResolveProcess(bytes32 processId,uint256 runningTotal)`
-   applied only while the process holds the authorized cumulative value, so it
-   pays exactly the prefix of the process whose cumulative value the buyer
-   authorized, every order of which the buyer co-signed; a value the process has
-   not yet reached pre-authorizes exactly the orders that bring it there. The
+   applied only while the process holds the authorized cumulative value; which
+   orders it then pays is invariant E-14 (`docs/VERIFICATION_MAP.md`
+   § "5) Composition invariants → enforcement map"). The
    authorization is the buyer's ECDSA signature, which the proof recovers, or
    bytes the buyer's wallet code validates, which the proof publishes in the
    operation stream and the verifier checks against the buyer's code at
@@ -683,11 +682,17 @@ of one approval transaction, repeatable against specific counterparties.
 1. **Funding is checked twice, against the latest block.** A commit's two
    bonds — the buyer's 2 × payment, the seller's 2 × cumulative value — are
    read as balance and allowance to the verifier when the operation arrives
-   (`/submit` refuses an unfunded commit with `402` and a reason) and again at
-   batch formation, right before proving, where each wallet's funds are
+   (`/submit` refuses an unfunded commit with `402`, naming the party and the
+   shortfall) and again at
+   batch formation, right before proving, where each wallet's balance and allowance are
    allocated across the batch's commits in order (the verifier pulls a
-   wallet's bonds from one balance); a commit that does not fund is dropped
-   there and dead-lettered, never proved. A revocation inside the
+   wallet's bonds from one balance and one allowance, so a commit is kept only
+   if its wallet still covers it after the commits kept before it, and both
+   bonds of a commit whose buyer is its seller count together); a commit that
+   does not fund is dropped there and dead-lettered, never proved, and is
+   re-submittable once funded. A commit whose balance or allowance could not
+   be read is not dropped: it is deferred with what was filtered behind it and
+   read again when next drained. A revocation inside the
    proving window itself still reverts the batch; the chain's evaluated
    refusal is deterministic, so the batch is dead-lettered on the first
    attempt, never re-proved, and its operations are re-submittable.
@@ -730,6 +735,13 @@ batch's own plan, never by the tick's whole budget:
    operations are dead-lettered alone and the rest re-queued; a batch with
    none is isolated by splitting, so the operation that reverts alone is
    dead-lettered alone (`classify_deterministic_revert`, `Mempool::isolate`).
+   A party's code can answer the relay's check within
+   `WALLET_CODE_EXECUTION_GAS` and burn far more in the node's estimate; a
+   limit set at that estimate would make the relay pay past its plan for
+   every batch the code rides in. Past the most the node takes for one
+   transaction, the node refuses the send with an error that is not a revert;
+   read as transient, it would have the batch re-proved until the re-queue
+   cap dead-lettered every operation beside the wallet's.
 4. **The send never passes it.** The gas limit is the estimate with a quarter
    of headroom, capped at the ceiling (`gas::settle_gas_limit`), so code that
    burns whatever it is forwarded at inclusion burns at most the ceiling.
