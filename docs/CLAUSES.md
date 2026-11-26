@@ -114,15 +114,13 @@ a key and a data hash. No pair of a 32-byte key and a 32-byte data hash
 reproduces a 96-byte preimage's hash, so no clause key opens the topology
 leaf: no key exists to register in `ClauseRegistry`, no attestation can name
 it (`AttestationCoordinator` rebuilds the clause shape), and no usage claim
-counts it. A reserved key in the clause-leaf shape would not hold this,
-because `ClauseRegistry.registerClause` accepts any nonzero key and
-`UsageCounter` and the guest refuse only the two reserved keys
-(`is_reserved_key`, `prover/lib/src/kernel.rs`). An assembly leaf's inner
+counts it. Why a reserved key in the clause-leaf shape would not do is
+`docs/DESIGN_DECISIONS.md` § 31. An assembly leaf's inner
 preimage is also 96 bytes (domain, key, data hash), and it is kept apart from
 the topology leaf by its first word, the domain: `PROCESS_LEAF_DOMAIN` =
 `keccak256("figaro-assembly-leaf")` =
 `0xb44cab2cf6dbf97cfe57060c8f30ee31552bc93f52859b4f32bd145f2882dfc6`, against
-`TOPOLOGY_LEAF_DOMAIN` =
+`TOPOLOGY_LEAF_DOMAIN` = `keccak256("figaro-agreement-topology")` =
 `0xbb19ab0597c6d28223160cd73f765e7ab09fb47de53be100cb982aec5ebc63af`. The edges are fixed at
 commit and have no later stage, so no attestation of them is lost. The leaf stays
 double-hashed, so it never passes as an internal node.

@@ -403,9 +403,10 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   their trade.
 - **The two reserved keys earn nothing:** the provenance key
   (`provenanceLeaf`) and the assembly terms key (`processTermsLeaf =
-  keccak256("figaro-assembly-terms")`) are refused at accrual on every kind by
-  comparison with the constants, whatever a registry holds at either key (the
-  clause and process registries take any `bytes32`) — `_accrue` reverts on
+  keccak256("figaro-assembly-terms")`) are checked against those constants
+  before any registry is read, since the clause and process registries take any
+  `bytes32` (the rule: `DESIGNER_REWARDS.md` § "The boundary — the meter earns
+  nothing") — `_accrue` reverts on
   the direct path (`ReservedKeyIsNotARegistration`),
   the guest refuses a batch claim keyed on either (`apply_usage_claims`), and
   `applyBatchAccrual` skips both before the registration gate. Every
@@ -418,19 +419,17 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
 - **Periods, not checkpoints:** a period's counts are final once it ends;
   `totalScoreIn(period)` is maintained as an O(1) delta on every recording. The
   contract knows nothing about budgets or who pays.
-- **One tally, route-blind:** a use is a use whichever way its process
-  reached the chain. Both routes count through `_count` into `accrualOf`, the
-  same `sellerCounted` set and the same per-period `sellerSeen` set, so `c`
-  counts each seller of each process once and `d` each seller once across both routes;
+- **One tally, route-blind** (the rule: `DESIGNER_REWARDS.md` § "The meter is
+  uniform"). Both routes count through `_count` into `accrualOf`, the
+  same `sellerCounted` set and the same per-period `sellerSeen` set;
   `scoreOf(kind, clauseOrProcess, period)` is `accrualOf.score`, and
   `RpgfMinter` reads it. Both routes emit `UsageRecorded` (one use, with its
   process and seller), so an indexer folds one stream.
 - **Idempotence is global:** a seller of a process counts once ever per
   (kind, key) (`sellerCounted(kind, key, processId, seller)`; a direct call
   that repeats it reverts `AlreadyCounted`, a batch skips it), in whichever
-  period it is first counted and whichever route brought it. A process of
-  three sellers that carry the key is three uses, and a second order of the
-  same seller in the same process adds nothing. A seller of a process first
+  period it is first counted and whichever route brought it, so a second
+  order of one seller in one process adds no use. A seller of a process first
   presented in a later period is a use in that period; each period counts
   only usage new to it.
 - `icbrt` binary-searches the floor cube root with its ceiling at

@@ -49,16 +49,11 @@ contract integrates through a wire ABI, not a shared codebase.
 
 ### The offer envelope
 
-Originating a process is a two-party commit: the buyer builds a commitment and signs
-it; the seller must counter-sign the **same** EIP-712 struct before it can land. The
-message that carries this is the offer envelope (`CommitmentPayload`): the EIP-712
-commitment, the full off-chain agreement pinned inline (its merkle root ==
-`checkoutHash`, so the recipient hydrates everything from one message), the two
-signatures, and two optional legs (the buyer's witness-signed swap-funding leg; an
-RFQ `quoteRequest` naming the priced fields). It serializes to compact JSON
-(bigints → hex) and is the entire wire payload — there is no side channel. The wire
-spec — the JSON shape, the root-signs-`ZERO_PROCESS_ID` rule, and the
-deadline-is-CHAIN-time rule — is `sdk/README.md` § "The offer envelope".
+The one message an agent sends to open a process is the offer envelope
+(`CommitmentPayload`). It carries everything both signatures need, the agreement
+inline included, so the receiver reads nothing else. Its JSON shape, its fields,
+its optional legs and its rules are specified once, in `sdk/README.md` § "The
+offer envelope".
 
 ### The exchange
 
@@ -246,14 +241,10 @@ trade, and verifies each disclosed term by merkle inclusion against the source
 process's on-chain `checkoutHash`, and each delivered datum against the content
 hash a party attested under a clause leaf while the process was open. The buyer checks provenance against the chain
 rather than the seller's word; what no chain testifies to is whether the data is
-true about the world. Each declared or attested value is a party's declaration or attestation.
-What stands behind a seller's attestation is the buyer's decision to withhold
-resolution, at the price of its own bond, until a false one is put right; a declaration
-is backed by both signatures at commit; after resolution either stays in the public
-data, in the evidence a forum or court reads, and in the signer's resolution
-history. An agent weighs a declaration by that history and by the bond its signer had
-at stake — there is no protocol-issued score to read instead — and states that parties
-acting together can produce well-formed false data (`DATA_LAYER.md` § "Truth
+true about the world. A declared or attested value is only its signer's word; an agent
+weighs it by the signer's resolution history and the bond the signer had locked, reads no score the
+protocol issues, and tells its user that colluding parties can produce well-formed false
+data (`DATA_LAYER.md` § "Truth
 boundaries — what a row is worth").
 
 **Two limits worth stating before an agent claims more than it has.** Resolution

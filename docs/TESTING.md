@@ -161,7 +161,7 @@ allowance-pull composition end to end.
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
 | `HalmosMembersRegistry.t.sol` | 7 | The stake mechanics the designer-reward Sybil bound assumes: solvency, no stake recycling, de-surfacing at request, the counter reads that gate |
-| `HalmosUsageCounter.t.sol` | 9 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, `check_aUseCountsTheSameOnEitherRoute` — two uses, each brought by either route, leave the tally, the counted (process, seller) pairs, the seller set and the period total exactly as two direct calls do, a repeated process or seller included — `check_scoreOfIsTheOneTally` (`scoreOf == accrualOf.score`), period bucketing ×2, isolation across keys, `check_theKindsNeverShareAKey` — a use counted under any one of the three kinds, on either route, leaves every other kind's accrual at the same key empty — `check_aKindNeverDisturbsAnotherKindsAccrual` — it leaves another kind's existing accrual at the key exactly as it was — and `check_anUnknownKindIsSkipped` — a batch use whose kind names no registry writes nothing under any kind and leaves the period total where it was. Mutation-checked against three counters: one whose batch path counts a process already counted fails `check_aUseCountsTheSameOnEitherRoute`; one whose batch path counts every use under the clause kind fails `check_aKindNeverDisturbsAnotherKindsAccrual`; one whose `scoreOf` reads more than the tally fails `check_scoreOfIsTheOneTally`. |
+| `HalmosUsageCounter.t.sol` | 9 | The accrual arithmetic above the stake gate: direct-path monotonicity, `check_aUseCountsTheSameOnEitherRoute`, `check_scoreOfIsTheOneTally`, period bucketing ×2, isolation across keys, `check_theKindsNeverShareAKey`, `check_aKindNeverDisturbsAnotherKindsAccrual`, `check_anUnknownKindIsSkipped`. Each one's statement and the three mutant counters it was checked against: `VERIFICATION_MAP.md` § "9) Halmos symbolic testing — current posture". |
 | `HalmosClauseAgreementAndAssemblyRegistries.t.sol` | 18 (6 per contract) | `HalmosClauseRegistry` + `HalmosProcessRegistry` + `HalmosAgreementRegistry` — the stake machines `RpgfMinter._isAuthor` reads, one per kind: solvency under arbitrary interleavings by two registering wallets, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked: solvency + first-write-wins on the clause and assembly contracts, 4/4 counterexamples. |
 
 Run with `scripts/test-halmos.sh` (seven passes). **Halmos does not model
@@ -188,7 +188,7 @@ it *could* fail.
 | `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier's token step, `_executePositions`, alone, over two positions of any token addresses (each a standard ERC-20) and users, read through `certora/harness/FigaroBatchVerifierHarness.sol`'s `executePositions`: each user moves by payout−deposit, the verifier by the batch's pulls minus payouts per token, no other balance moves, and no payout asks the verifier for more than it holds once the batch's pulls are in (the two-pass order). The argument for longer lists is stated in the spec. Mutation-checked: all four, against five mutants over two runs (`VERIFICATION_MAP.md` §10). |
 | `BatchVerifierStateRoot.spec` | 3 | FigaroBatchVerifier's state root chains: a resolved batch's `prevRoot` is the root the verifier held and its `newRoot` the root it leaves; each resolved batch advances `batchCount` by one; no other function moves either. So the `BatchSettled` events form one unbroken, gap-free chain from the initial root. Read through `certora/harness/FigaroBatchVerifierHarness.sol` (the contract plus a pure `decodedRoots` view over its own `_decodePV`), with `_executePositions` and `_walkOperations` summarized, since neither writes the verifier's storage. Mutation-checked: all three. A mutant writing `batchCount` inside the summarized `_walkOperations` survives the spec, since the summary hides the body; Foundry's `BatchVerifierStepsWriteNoStorageTest` checks that the two summarized steps write no verifier storage, and catches it (`VERIFICATION_MAP.md` §10). |
 | `RpgfMinter.spec` | 10 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-clause-or-assembly rejection, live-stake eligibility (`_isAuthor`, the gate on a live registration), the designer-side membership gate (a claimant with no live member stake reverts and mints nothing; `claimable` quotes it zero), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked: conservation, double-claim, eligibility. |
-| `RpgfMinterAuthor.spec` | 2 | `RpgfMinter._isAuthor` as written — the kind selection `RpgfMinter.spec` summarizes to a ghost: for each of the three kinds the answer is the live designer of record in the one registry that kind names, whatever the other two hold at the same key, and a kind past the three reverts. Read through `certora/harness/RpgfMinterAuthorHarness.sol` (the contract plus a view calling `_isAuthor`) against `certora/harness/AuthorRegistryMocks.sol` (one getter contract per registry family, linked to the minter's three registry addresses). Compiled without via-IR: under via-IR the prover's call resolution fails on `_isAuthor`'s decoding of the dynamic `string` that `bindings` returns. Verified, both rules: https://prover.certora.com/output/9512759/f62a013cbdb44692b77bf04219670f75 |
+| `RpgfMinterAuthor.spec` | 2 | `RpgfMinter._isAuthor` as written — the kind selection `RpgfMinter.spec` summarizes to a ghost: for each of the three kinds the answer is the live designer of record in the one registry that kind names, whatever the other two hold at the same key, and a kind past the three reverts. Read through `certora/harness/RpgfMinterAuthorHarness.sol` (the contract plus a view calling `_isAuthor`) against `certora/harness/AuthorRegistryMocks.sol` (one getter contract per registry family, linked to the minter's three registry addresses). Compiled without via-IR; the reason and the run are in `VERIFICATION_MAP.md` § "10) Certora formal verification — current posture". |
 | `SwapCoordinatorTokenOps.spec` | 1 | `WitnessSwapAndCommitCoordinator` keeps no token: on every completing path of `swapAndCommit`, linked to `FigaroCore` and to the Foundry stand-ins for Permit2 (`MockWitnessPermit2`) and the swap venue (`MockSwapVenue`), the coordinator's balance of each of the two tokens is what it was. The three `_fund` entries of `certora/token-ops.inventory` cite this rule. Its run is in `VERIFICATION_MAP.md` §14. |
 
 Companion: `certora/token-ops.inventory` — declarative inventory of every ERC20 transfer call site and every Permit2 pull (`permitTransferFrom` / `permitWitnessTransferFrom`) in `src/`; `scripts/lint-token-ops.sh` (lint-staged on any staged `.sol` or on the inventory, and the prelude of `./scripts/test-certora.sh`) fails a commit that adds a transfer call without an inventory entry.
@@ -237,172 +237,31 @@ call the bond formula `apply_commit` itself calls. The netting in `TokenTracker`
 `kernel.rs`, so no harness outside the crate reaches it. Run with `cd formal/kani && cargo kani`. Success: every harness
 `VERIFICATION:- SUCCESSFUL`.
 
-## TLA+ (`formal/`) — 75 invariants across 5 models in 9 configurations, each configuration's type invariant counted (FigaroCore 9 + FlorinToken 9 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 8 + its deferral 10 + its resolve authorization 3 + its attestation authorization 2, `RTypeOK` and `OnlyPartyAttests`, `formal/RelayStateAttest.cfg` + its isolation 3, `ITypeOK`, `HonestNeverDroppedForAnother` and `IsolationBounded`, `formal/RelayStateIsolate.cfg`)
+## TLA+ (`formal/`) — 76 invariants across 5 models in 9 configurations, each configuration's type invariant counted (FigaroCore 9 + FlorinToken 9 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 22 + RelayState 8 + its deferral 10 + its resolve authorization 3 + its attestation authorization 2, `RTypeOK` and `OnlyPartyAttests`, `formal/RelayStateAttest.cfg` + its isolation 3, `ITypeOK`, `HonestNeverDroppedForAnother` and `IsolationBounded`, `formal/RelayStateIsolate.cfg`)
 
-FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
-`WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
-`ResolutionAlwaysPossible`, `TypeOK`, and the two that tie the equilibrium
-proof's payoff table to the machine — `DeterrentEscrowMagnitudes` (the held deposits
-is exactly 2×payment from the buyer + 2×runningTotal from the seller of every
-committed order) and `SettledNetPositions` (resolution moves exactly `payment`
-buyer → seller and returns both bonds whole).
+`scripts/test-tla.sh` runs one TLC pass per configuration, plus the
+reachability witness after pass 9, and fails unless that witness is reported
+violated. Java 11+ and `formal/tla2tools.jar` are its prerequisites
+(`docs/VERIFICATION_MAP.md` § "13) How to run verification (repeatable)").
 
-FlorinToken (`FlorinToken.tla` + `FlorinToken.cfg`): `Inv_MaxSupply`,
-`Inv_DeployerCannotMintAfterRenounce`, `Inv_MinterCap`,
-`Inv_CapBelowMaxSupply`, `Inv_SupplyEqualsSumMinted`, `Inv_NonNegative`,
-`Inv_NoMintToZero`, `Inv_BalancesSumToSupply`, `Inv_RegisteredCapsWithinMaxSupply`
-(`totalRegisteredCap` is the sum of the registered caps, and that sum is at most
-`MAX_SUPPLY`). The model starts with no minter, as the constructor does, refuses a
-registration that would carry `totalRegisteredCap` past `MAX_SUPPLY`, as
-`registerMinter` does, and moves balances by the inherited ERC-20 transfer —
-582,688 states generated, 25,454 distinct, depth 10. Mutation-checked: a
-registration checked against the supply in place of the registered caps fails
-`Inv_RegisteredCapsWithinMaxSupply` in three states (two registrations, caps 1
-and 5, at `MAX_SUPPLY = 5`).
+| Pass | Model + configuration | Run time |
+|---|---|---|
+| 1 | `FigaroCore.tla` + `MC.tla` / `MC.cfg` | 7–19 minutes (`formal/README.md`) |
+| 2 | `FlorinToken.tla` + `FlorinToken.cfg` | — |
+| 3 | `WitnessSwapAndCommitCoordinator.tla` + `.cfg` | ~3–4 min |
+| 4 | `ResolutionUniverses.tla` + `.cfg` (`MinSellers = 1`); the floor case is a second pass at `MinSellers = 2`, set by hand | ~29 min |
+| 5 | `RelayState.tla` + `RelayState.cfg` (`Spec`) | under four minutes |
+| 6 | `RelayState.tla` + `RelayStateDeferral.cfg` (`DeferSpec`) | about 21 minutes |
+| 7 | `RelayState.tla` + `RelayStateResolve.cfg` (`ResolveSpec`) | under a minute |
+| 8 | `RelayState.tla` + `RelayStateAttest.cfg` (`AttestSpec`) | — |
+| 9 | `RelayState.tla` + `RelayStateIsolate.cfg` (`IsolateSpec`); then the witness `RelayStateIsolateCap.cfg` | seconds |
 
-WitnessSwapAndCommitCoordinator (`WitnessSwapAndCommitCoordinator.tla` + `.cfg`):
-the swap-funded on-ramp at EVM-step granularity (revert frames
-explicit, so "swap landed, commit didn't" states are reachable and proved never
-quiescent): `Inv_TypeOK`, `Inv_Conservation`, `Inv_NonNegative`,
-`Inv_ZeroRetention`, `Inv_AllowanceHygiene`, `Inv_Atomicity`,
-`Inv_BondFormula`, `Inv_CoreEscrowExact`, `Inv_WitnessRouteBinding`,
-`Inv_CoordinatorNotCounterparty` — 38,028,525 states / 1,979,101 distinct,
-depth 17, ~3–4 min. Mutation-checked: 6 mutations, each caught.
-
-ResolutionUniverses (`ResolutionUniverses.tla` + `.cfg`): the
-CROSS-CONTRACT model — FigaroCore + FigaroBatchVerifier + UsageCounter + the
-off-chain guest mirror under arbitrary interleavings; the only harness that can
-see where the two paths meet (every other layer is per-contract).
-22 invariants: no double payout across the universes, token conservation +
-exact per-pool deposits, one route-blind tally (`scoreOf == accrualOf.score`, `c`
-the size of the one counted set of (process, seller) pairs, `d` the size of the period's one seller
-set, counted only for resolved trade), `FigaroCore` blindness (`settleBatch` writes
-no `FigaroCore` `orderStatus`) — 45,000,639 states generated, 12,828,199 distinct, depth 18, ~29 min, for the shipped `.cfg` (`MinSellers = 1`). Mutation-checked: four mutated actions, each failing the invariant it targets — the batch counting a process already counted (`CountIsDistinctProcesses`), the batch adding a seller already in the period's set to `d` (`SellersCountedOnce`), a score that ignores the floor at `MinSellers = 2` (`FloorApplied`), a claim proved on a committed but unresolved order (`AccrualNeverOverPays`); and four reachability witnesses, each violated as expected — a key counted from both routes, one seller carrying uses on both routes as one unit of `d`, a sub-floor tally with uses, a batch-path process in the counted set. The floor case runs as a second pass with `MinSellers = 2` set by hand; this document gives no state counts for that pass.
-The model's `Artifacts` are one abstract keyspace; it does not model the
-reward's kind, so the separation of clause and assembly accruals by (kind,
-key) is held by Foundry, Halmos (`check_theKindsNeverShareAKey`, `check_aKindNeverDisturbsAnotherKindsAccrual`, `check_anUnknownKindIsSkipped`), Certora (`RpgfMinterAuthor.spec`) and the
-guest's `usage.rs`, never by TLC.
-Two NAMED assumptions ride as `.cfg` constants: `AssumeDomainSeparation`
-(contract-enforced — EIP-712 `verifyingContract` disjointness carries
-no-double-payout) and `AssumeAccrualGatesAligned` (NOT contract-enforced — a
-batch whose period passed in flight has its uses uncounted until a later batch
-proves them again, under-pay only).
-Flipping either to FALSE is the experiment, is EXPECTED to fail, and is not a
-regression.
-
-RelayState (`RelayState.tla` + `.cfg`): the relay's state lifecycle
-(`prover/sequencer/src/state.rs`, `main.rs`) — 2 relays, 3 batches, a crash at
-any step, a kept-file write that fails, a batch the chain refuses, anyone
-resending a public proof, a start on the state rebuilt from the chain, and a
-foreign submitter, no relay of the model, that lands a batch on a copy of the
-state and publishes nothing. 8 invariants — `Recoverable` (whenever the
-verifier's root is past genesis, some relay has the state behind it on disk, or
-the chain carries every batch that landed so a stranger rebuilds it),
-`ChainCarriesEveryLandedBatch` (under the design no landing path, a relay's or
-a foreign submitter's, escapes the rule), `BuiltOnVerifierRoot`,
-`MirrorOnVerifierRoot`, `KeptOnVerifierRoot`, `JournalBuiltOnVerifierRoot`,
-`HistoryHasNoRepeat`, `TypeOK` — and two action properties:
-`MirrorNeverGoesBack`, and `SendsExcludeKnownRevoked` (a relay never sends a
-batch carrying a party whose revocation a refusal already showed it — the
-re-batch drops the revoker and rebuilds with everyone else):
-13,336,906 states / 2,403,260 distinct, under four minutes. The `.cfg` carries
-the world and the design: `ForeignSubmitters` admits the foreign submitter, and
-`OpsOnChain` is the accepted batch design, every batch carrying its signed
-operations in its own transaction so the chain rebuilds the state behind any
-root (`StartFromChain`, the relay's rebuild-from-chain start). Mutation-checked:
-`OpsOnChain` FALSE (a verifier that does not check the operation stream) fails
-`Recoverable` in two states, the foreign batch's state nowhere a stranger can
-reach; and four relay switches,
-each restoring one defect, checked with `OpsOnChain` and `ForeignSubmitters`
-FALSE (the world where the relays' discipline is the only keeper of the
-state): `HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot` —
-each FALSE fails `Recoverable` — and
-`RebatchDropsRevoker` — FALSE fails `SendsExcludeKnownRevoked`.
-
-RelayState's second spec, `DeferSpec` (`RelayState.tla` +
-`RelayStateDeferral.cfg`, the sixth pass of `scripts/test-tla.sh`): the
-deferral of an operation dropped at batch formation
-(`prover/sequencer/src/main.rs`, `mempool.rs`) — five operations (a commit
-and one built on its order, honest, of one process; two operations that
-never apply, which anyone may submit free, each once at any tick, one
-naming that process, the other naming a second; and a
-resolve listing one order twice), a drain cap of 3, a window of 2 ticks in
-4, a re-queue cap of 1, funding reads that fail or show a shortfall,
-transient send failures, and a copy resubmitted while a tick runs.
-Deferrals wait in drain groups — each operation touches one process, so a
-group is one process's operations — which decide
-what is drained together and nothing else; each operation expires on its
-own window, and what was filtered behind it goes with it.
-10 invariants — `DeferralBoundedInTime` (nothing deferred is held past its
-own window, retried or not, and nothing is dead-lettered before it unless
-with an operation it was filtered behind), `HonestWindowKept` (no honest
-operation is dead-lettered before its own window ends unless an operation
-it depends on was), `DependentLeavesWithItsDependency` (no operation stays
-deferred after one it was filtered behind is dead-lettered),
-`DrainGroupIsAClass` (every drain group is one class of the transitive
-closure of touching a common process over its formation's deferrals),
-`DoubleListingNeverAdmitted`, `RequeueCapCountsTransients`,
-`NoExtraDraining` (a drain that retries a deferred operation leaves nothing
-queued behind it), `BuiltOnOnlyBehindDead`, `NoTwoCopies`, `DTypeOK`:
-445,431 states / 116,190 distinct, depth 19, about 21 minutes.
-Mutation-checked through nine more `.cfg` switches, each FALSE failing the
-invariant it names: `DeferBoundedInTime` → `DeferralBoundedInTime`,
-`DeferOwnCounter` → `RequeueCapCountsTransients`,
-`DeferDrainsOnlyFreeSlots` → `NoExtraDraining`, `DeferMovesDependents` →
-`BuiltOnOnlyBehindDead`, `DeferDropsCopy` → `NoTwoCopies`,
-`DeferGroupsByProcess` → `DrainGroupIsAClass`, `DeferOwnWindow` (whole-group expiry) →
-`HonestWindowKept` (checked alone, with the honest side held to the commit
-so the window is cut by an operation that never applies),
-`DeferDependentEdge` (each operation on its own window alone) →
-`DependentLeavesWithItsDependency`, `AdmitRefusesDoubleListing` →
-`DoubleListingNeverAdmitted`; the counterexamples are 6, 6, 8, 5, 5, 5, 8,
-8 and 2 states long. `Spec` holds the deferral's variables at their
-initial values, so the lifecycle's figures above are unchanged by it.
-
-RelayState's third spec, `ResolveSpec` (`RelayState.tla` +
-`RelayStateResolve.cfg`, the seventh pass of `scripts/test-tla.sh`): the
-buyer's resolve authorization on the batch path (`prover/lib/src/kernel.rs`
-`apply_resolve`, `eip712.rs` `resolve_struct_hash`) — three orders, payments
-1–2, the buyer signing over the value the process holds or any it has not
-reached, and anyone holding a signature applying it under any later state;
-beside the signature, the wallet-code form (`KernelOp::ResolveByWalletCode`,
-checked by `FigaroBatchVerifier` against the buyer's code at resolution),
-the wallet installing its code only with its key and then able to lose the
-key, anyone submitting bytes in that form for any value.
-3 invariants — `ResolvePaysSignedPrefix` (every applied resolve pays exactly
-the prefix of the process's commits whose cumulative value the buyer signed),
-`OnlyBuyerWalletResolves` (every applied resolve was authorized by the
-buyer's key or by the code its wallet installed while it held the key) and
-`RTypeOK`: 3,293,884 states / 809,956 distinct, depth 19, under a minute.
-Mutation-checked: `ResolveBoundToState` FALSE (the authorization signs the
-process id alone, not its cumulative value) fails `ResolvePaysSignedPrefix`
-in 4 states — the root order commits at 1, the buyer signs over 2, the
-authorization applies at once and pays the one order, a set no prefix of
-value 2 names; `VerifierChecksWalletCode` FALSE (the wallet-code form taken
-on the guest's word) fails `OnlyBuyerWalletResolves` in 3 states — the root
-order commits and a stranger's bytes resolve it. `Spec` and
-`DeferSpec` hold its variables at their initial values.
-
-RelayState's fifth spec, `IsolateSpec` (`RelayState.tla` +
-`RelayStateIsolate.cfg`, the ninth pass of `scripts/test-tla.sh`): a batch
-the chain refuses while no re-read names a party and no operation is a
-wallet-code one (`prover/sequencer/src/submitter.rs`
-`classify_deterministic_revert`, `mempool.rs` `isolate` and `drain_up_to`)
-— four operations, any of them offenders chosen at the start, each
-reverting any `settleBatch` call it rides in, naming nobody, or letting it land; the
-refused set split into halves, each tried alone ahead of the queue, under a
-split budget of ⌈log2 4⌉ + 1. 3 invariants — `HonestNeverDroppedForAnother`
-(no operation outside the offenders is dead-lettered), `IsolationBounded`
-(the `settleBatch` calls sent are at most the batch and two per split) and `ITypeOK`:
-2,938 states / 1,718 distinct, depth 8, seconds. Mutation-checked:
-`WholeBatchOnUnnamedRevert` TRUE, the module's one switch whose TRUE restores
-the defect (the old relay's whole-batch dead-letter), fails
-`HonestNeverDroppedForAnother` in 2 states. A reachability witness,
-`IsolationCapWitness` (`RelayStateIsolateCap.cfg`, `ISlack` 0, run by the
-same script, which fails unless TLC reports the violation), is violated in 6
-states: the budget runs out and dead-letters an honest operation. The model
-has no time, no queue refill and splits into any two halves. The other specs
-hold its variables at their initial values, with no offender.
+`ResolutionUniverses.cfg` carries two named assumptions; setting either to
+FALSE is an experiment that must fail, never a regression of the suite. What
+each model holds, its mutation checks and its witnesses are in
+`docs/VERIFICATION_MAP.md` § "7) TLA+ formal models — current posture"; the
+last recorded state counts of every pass are in its § "14) Component status
+matrix".
 
 ## Lean 4 (`formal/lean/`) — the equilibrium, machine-checked
 
@@ -427,19 +286,27 @@ The same `lake build` checks two lemmas about the data, each a model of
 the code it names, with keccak a parameter. `FigaroKeccak.lean` states the
 assumption once: `CollisionFree keccak` (equal digests come from equal
 inputs). `FigaroMerkle.lean` models the agreement and assembly tree
-(`sdk/src/agreement.ts` `buildMerkleRoot`, OpenZeppelin `MerkleProof.verify`,
-`CommitmentTypes.clauseLeaf`) and proves `merkle_binding`: if
+(`sdk/src/agreement.ts` `hashPair` and `buildMerkleRoot`, OpenZeppelin `MerkleProof.verify`,
+`CommitmentTypes.clauseLeaf`, `prover/lib/src/merkle.rs`) and proves `merkle_binding`: if
 `verify(proof, root, leaf)` and `root = buildMerkleRoot(leaves)`, the
 leaves nonempty and each a digest of an input that is not 64 bytes long,
 then `leaf ∈ leaves`; `clause_binding` specializes it to the clause key and
-data hash. `FigaroStateTree.lean` models `prover/lib/src/state_tree.rs`
-whole and proves `state_tree_update`: when `verifyAndUpdate` accepts a
+data hash, so a clause opens against an agreement's `checkoutHash` only if
+it is one of the agreement's clauses. The tree tells leaves from nodes by
+length: a leaf is double-hashed, so its outer input is 32 bytes and a node's
+is 64. `FigaroStateTree.lean` models `prover/lib/src/state_tree.rs`
+whole (the `0x00` and `0x01` prefixes, the lone leaf that rises, the empty
+root zero, the descent over Empty, Leaf, Node and Descend, the refusal of a
+Descend at depth 256 and of an unconsumed proof) and proves `state_tree_update`: when `verifyAndUpdate` accepts a
 witness for a previous root that is the root of a state S, its new root is
 the root of S updated by the batch's writes. That lemma also assumes
 `ZeroUnreached keccak`, because the tree writes the zero word for an empty
 subtree. Each lemma has an `_or_collision` form that assumes nothing: the
 conclusion, or an exhibited keccak collision (or, for the state tree, a
-keccak preimage of zero). The shared vectors
+keccak preimage of zero). Two places differ from the code, both stated in
+the file: the model splits by filtering on the bit where the code splits a
+sorted slice, and it refuses where the code would read bit 256 and panic,
+which strictly increasing paths never reach. The shared vectors
 (`test/fixtures/merkle-vectors.json`, `prover/lib/tests/state_tree.rs`) tie
 the models to the code. Mutation-checked: a single-hashed clause leaf, the
 state tree without its leaf and node prefixes, without the lone leaf's rise,
@@ -724,11 +591,9 @@ another assembly's root. `test/core/attestation/MerkleParityTest.t.sol`
 its reserved key, a one-agreement root equal to its leaf) and
 `prover/lib/tests/parity.rs` (`every_vector_agreement_credits_its_agreement_and_its_assembly`,
 and the refusals of a foreign membership proof, a wrong `agreementHash` and the
-terms leaf as an agreement) do the same through the guest. The properties
-behind the fixture — every membership proof verifies under its own root and no
-other, editorial prose never moves the root or the key, any clause value moves
-the key, the two-key provenance bytes decode back to their keys — are
-`sdk/tests/assemblyInclusion.property.test.ts`.
+terms leaf as an agreement) do the same through the guest. The fixture's
+properties are held by `sdk/tests/assemblyInclusion.property.test.ts`; its row in
+`VERIFICATION_MAP.md` § "11) SDK test coverage" states them.
 
 **ABI parity — the SDK's ABIs against the compiled ones.**
 `sdk/tests/abiParity.test.ts` checks every fragment of `sdk/src/abis.ts`
@@ -737,9 +602,10 @@ error a contract compiles against the SDK's ABI for it, so a refused call
 decodes by name. lint-staged runs it when `abi/*.json`, `sdk/src/abis.ts` or the test is
 staged, and SDK CI re-runs on `abi/**`.
 
-**Clause keys — the two-language canonicalization lock.** A clause key is
-`keccak256` of the canonical bytes of the spec without its top-level `block`,
-so the SDK and the guest must canonicalize identically. `sdk/tests/clauseKeys.test.ts`
+**Clause keys — the two-language canonicalization lock.** The SDK and the
+proof program derive a clause key from the same canonical form of a spec
+(`docs/CLAUSES.md` § "On-chain anchoring"), so they must canonicalize
+identically. `sdk/tests/clauseKeys.test.ts`
 derives every `clauses/*.json` key with `computeClauseKey` and checks it against
 `test/fixtures/clause-keys.json` (`{ name: key }`, one entry per spec;
 `HARVEST_CLAUSE_KEYS=1` regenerates); it also holds that an edit to `block`, in
@@ -1331,12 +1197,9 @@ Per workflow, what it runs and when:
   the public CI tree.
 - **`Supply Chain CI`** (`supply-chain.yml`) — push/PR, NOT path-filtered,
   weekly (Mondays 04:41 UTC) and dispatch. Three jobs: `cargo deny check`
-  (0.20.2) over `prover/Cargo.lock` with `prover/deny.toml` — RustSec
-  advisories (the same five set aside as `prover/.cargo/audit.toml`, and
-  `bincode`'s unmaintained notice), unmaintained and unsound notices on the
-  crates a workspace member names directly, licenses
-  against a permissive allow list, sources limited to crates.io and the two
-  `sp1-patches` git repositories, duplicate versions as warnings only; the SP1
+  (0.20.2) over `prover/Cargo.lock` with `prover/deny.toml`, whose four
+  checks and set-aside advisories are stated in its row of
+  `VERIFICATION_MAP.md` § "16.7 The proof program"; the SP1
   advisory check — `scripts/test-check-sp1-advisories.mjs` over
   `test/fixtures/sp1-advisories/`, then `scripts/check-sp1-advisories.mjs`,
   which reads the GitHub advisory database and the published advisories of
