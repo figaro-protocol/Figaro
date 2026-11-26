@@ -34,7 +34,7 @@ vi.mock("@/lib/shared/runtimeServicesContext", () => ({
         },
     }),
 }));
-vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => chain.agreements }));
+vi.mock("@/hooks/useProcessAgreements", () => ({ useAgreementsOfOrders: () => chain.agreements }));
 vi.mock("@/lib/core/attestationIndexer", () => ({ getAttestationsByOrder: async () => chain.attestations }));
 vi.mock("@/lib/registries/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [], getActiveMembers: async () => [] }));
 vi.mock("@/lib/data/audit/processTimeline", () => ({ buildProcessTimeline: async () => ({ missing: [] }) }));

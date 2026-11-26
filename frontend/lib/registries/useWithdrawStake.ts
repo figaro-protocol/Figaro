@@ -19,7 +19,7 @@ import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import type { Abi } from "viem";
 import { AGREEMENT_REGISTRY_ABI } from "@figaro-protocol/sdk";
 import { PROCESS_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/registries/contracts";
-import { simulateWriteVerify } from "@/lib/shared/contractWrite";
+import { requirePresent, simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { withdrawRevertMessage } from "@/lib/registries/registryRevertMessages";
 import { clauseWithdrawRevertMessage, getClauseRegistry } from "@/lib/registries/useClauseRegistry";
 import { getProcessRegistry } from "@/lib/registries/useProcessRegistry";
@@ -49,21 +49,18 @@ function createUseWithdrawStake(config: WithdrawStakeConfig) {
         const { writeContractAsync, isPending } = useWriteContract();
 
         async function withdraw(key: `0x${string}`): Promise<`0x${string}`> {
-            const registry = getRegistry();
-            if (!registry) {
-                throw new Error(notConfiguredMessage);
-            }
-            if (!client) throw new Error("No public client available to submit the withdrawal.");
-            if (!address) throw new Error("Connect a wallet before reclaiming the stake.");
+            const registry = requirePresent(getRegistry(), notConfiguredMessage);
+            const reader = requirePresent(client, "No public client available to submit the withdrawal.");
+            const account = requirePresent(address, "Connect a wallet before reclaiming the stake.");
 
             return simulateWriteVerify({
-                client,
+                client: reader,
                 writeContractAsync,
                 address: registry,
                 abi,
                 functionName: "withdrawDeposit",
                 args: [key],
-                account: address,
+                account,
                 revertMessage: (errorName) => revertMessage(errorName),
                 failureMessage: "The stake was not reclaimed.",
             });

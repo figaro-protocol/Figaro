@@ -11,7 +11,7 @@
 
 import { validateContent, type FieldSpec } from "@figaro-protocol/sdk/clauses";
 import {
-    clauseCatalogFills,
+    clauseCatalogFills, entriesWithLoadedSpec,
     getClauseSpec,
     listCatalogSourcedClauses,
     type KnownClause,
@@ -26,10 +26,8 @@ export function validateCatalogClauseValues(item: CatalogItemMetadata): string[]
     const values = item.clauseValues;
     if (!values) return [];
     const errors: string[] = [];
-    for (const [clauseKey, data] of Object.entries(values)) {
-        // The catalog document names the clause by its key.
-        const spec = getClauseSpec(clauseKey);
-        if (!spec) continue; // spec not loaded — resolved-empty, not a failure
+    // The catalog document names the clause by its key.
+    for (const { value: data, spec } of entriesWithLoadedSpec(values)) {
         const result = validateContent(data, spec);
         if (!result.ok) {
             for (const e of result.errors) {

@@ -9,13 +9,13 @@
  * deterministic state machine and this surface is a reader; there are no
  * redacted distribution forms.
  */
-import { useMemo, useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";
 import type { Order } from "@/lib/core/store";
 import { buildAuditBundlePdfBlob } from "@/lib/data/audit/auditBundlePdf";
-import { useProcessAgreements } from "@/hooks/useProcessAgreements";
+import { useAgreementsOfOrders } from "@/hooks/useProcessAgreements";
 import { useWitnessHolder } from "@/lib/core/useWitnessHolder";
-import { extractErrorMessage } from "@/lib/shared/errors";
+import { useBusyAction } from "@/lib/shared/useBusyAction";
+import { saveBlob } from "@/lib/shared/download";
 import { Button } from "@/components/ui/Button";
 
 interface DownloadAuditBundleButtonProps {
@@ -23,28 +23,12 @@ interface DownloadAuditBundleButtonProps {
     orders: readonly Order[];
 }
 
-function triggerDownload(blob: Blob, filename: string): void {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-}
-
 export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBundleButtonProps) {
     const publicClient = usePublicClient();
     const chainId = useChainId();
     const holder = useWitnessHolder();
-    const checkoutHashes = useMemo(
-        () => orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
-        [orders],
-    );
-    const agreements = useProcessAgreements(checkoutHashes);
-    const [busy, setBusy] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const agreements = useAgreementsOfOrders(orders);
+    const { busy, error, run } = useBusyAction();
 
     const disabled = busy || orders.length === 0;
 
@@ -54,18 +38,10 @@ export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBu
                 type="button"
                 variant={disabled ? "secondary" : "default"}
                 size="compact"
-                onClick={async () => {
-                    setBusy(true);
-                    setError(null);
-                    try {
-                        const blob = await buildAuditBundlePdfBlob(processId, orders, publicClient, chainId, agreements, { holder });
-                        triggerDownload(blob, `audit-bundle-${processId.slice(0, 10)}.pdf`);
-                    } catch (e) {
-                        setError(extractErrorMessage(e, "PDF generation failed."));
-                    } finally {
-                        setBusy(false);
-                    }
-                }}
+                onClick={() => run("PDF generation failed.", async () => {
+                    const blob = await buildAuditBundlePdfBlob(processId, orders, publicClient, chainId, agreements, { holder });
+                    saveBlob(blob, `audit-bundle-${processId.slice(0, 10)}.pdf`);
+                })}
                 disabled={disabled}
                 className={`py-1.5 rounded ${disabled ? "text-ink-faint cursor-not-allowed disabled:opacity-100" : ""}`}
                 data-testid="download-audit-bundle-button"

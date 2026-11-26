@@ -1,18 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "@/components/shared/Link";
-import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
-import { useMounted } from "@/hooks/useMounted";
-import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/registries/onboardingState";
+import { onboardingPrevHref } from "@/lib/registries/onboardingState";
 import type {
     BuyerProcessSubscription,
 } from "@/lib/registries/memberProfileMetadata";
-import { type AssemblyChoice, useAssemblyChoices } from "@/lib/registries/assemblyChoices";
 import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
-import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps, toggledSet, useSubjectHydration } from "@/components/members/OnboardingStepChrome";
+import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps, toggledSet, useListedAssemblyChoices, useOnboardingStepState } from "@/components/members/OnboardingStepChrome";
 
 /**
  * The Buy through step of the member wizard — the twin of Sell through. The member SUBSCRIBES the
@@ -47,19 +43,11 @@ export function OnboardingBuyerForm({
     submitInFlight = false,
     externalError = null,
 }: OnboardingBuyerFormProps = {}) {
-    const router = useRouter();
-    const mounted = useMounted();
-    const { address, isConnected } = useAccount();
-    const { state, loaded, subject, update } = useOnboardingState(address);
+    const { mounted, state, loaded, update, hydrated, markHydrated, advance } = useOnboardingStepState("buyer");
 
-    const { read: choicesRead } = useAssemblyChoices();
-    const choices: AssemblyChoice[] = useMemo(
-        () => (choicesRead.status === "present" ? choicesRead.value : []),
-        [choicesRead],
-    );
+    const { choices } = useListedAssemblyChoices();
 
     const [subscribed, setSubscribed] = useState<Set<string>>(new Set());
-    const { hydrated, markHydrated } = useSubjectHydration(subject);
 
     // Hydrate during render, once: the draft is React state already read
     // (`loaded`), so the persistence effect below first runs with it.
@@ -81,10 +69,7 @@ export function OnboardingBuyerForm({
 
     function handleNext(e: React.FormEvent) {
         e.preventDefault();
-        finishStep(
-            onSave && (() => onSave(buildSubscriptions(subscribed))),
-            () => router.push(onboardingNextHref("buyer")),
-        );
+        finishStep(onSave && (() => onSave(buildSubscriptions(subscribed))), advance);
     }
 
     if (!mounted) {

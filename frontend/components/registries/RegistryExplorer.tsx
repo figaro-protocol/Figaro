@@ -15,8 +15,8 @@
  */
 
 import Link from "@/components/shared/Link";
-import { useCallback, useEffect, useMemo } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
+import { useUrlQueryState } from "@/lib/shared/useUrlQueryState";
 import { useAllRegisteredClauses } from "@/lib/registries/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/registries/useClauseSpecs";
 import { getClauseSpec, isLiveRegistration } from "@/lib/shared/clauseSpecSource";
@@ -54,26 +54,23 @@ const FAMILY_TABS = REGISTRY_FAMILIES.map((f) => ({ value: f, label: FAMILY_LABE
 /** Row descriptions — the spec's / assembly's / profile's own short words. */
 type RowText = { description: string };
 
-export function RegistryExplorer() {
-    const params = useSearchParams();
-    const router = useRouter();
-    const pathname = usePathname();
-    const state = useMemo(() => parseExplorerQuery(params), [params]);
+/** Fold a patch into the explorer's state. A family change resets the
+ *  family-specific facets the patch does not itself set (a hand-typed article
+ *  on the members family means nothing) — a cross-family link like
+ *  "assemblies composing it" carries its facet INTO the new family; wiping it
+ *  would land the reader on every assembly and break the button's promise. */
+function mergeExplorerPatch(state: ExplorerQuery, patch: Partial<ExplorerQuery>): ExplorerQuery {
+    const next = { ...state, ...patch };
+    if (patch.family && patch.family !== state.family) {
+        if (patch.article === undefined) next.article = "";
+        if (patch.clause === undefined) next.clause = "";
+        if (patch.sort === undefined) next.sort = parseExplorerQuery({ family: patch.family }).sort;
+    }
+    return next;
+}
 
-    const setState = useCallback((patch: Partial<ExplorerQuery>) => {
-        const next = { ...state, ...patch };
-        // A family change resets the family-specific facets the patch does not
-        // itself set (a hand-typed article on the members family means
-        // nothing) — a cross-family link like "assemblies composing it"
-        // carries its facet INTO the new family; wiping it would land the
-        // reader on every assembly and break the button's promise.
-        if (patch.family && patch.family !== state.family) {
-            if (patch.article === undefined) next.article = "";
-            if (patch.clause === undefined) next.clause = "";
-            if (patch.sort === undefined) next.sort = parseExplorerQuery({ family: patch.family }).sort;
-        }
-        router.replace(`${pathname}?${serializeExplorerQuery(next)}`, { scroll: false });
-    }, [state, router, pathname]);
+export function RegistryExplorer() {
+    const [state, setState] = useUrlQueryState(parseExplorerQuery, serializeExplorerQuery, mergeExplorerPatch);
 
     // ── The four registries, each through its own walletless reader ──
     // Each family is a `NetworkRead`: a failed read renders nothing for it.

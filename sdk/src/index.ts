@@ -244,6 +244,8 @@ export type { Agreement, AgreementProvenance, AgreementClause } from "./agreemen
 export { strippingReviver } from "./safeJson.js";
 // The one size-capped read of a response body
 export { readCappedBytes } from "./cappedRead.js";
+// The one bounded-concurrency walk over a list of reads
+export { forEachConcurrently } from "./boundedConcurrency.js";
 export {
     type Anchored,
     anchorClauseSpec,

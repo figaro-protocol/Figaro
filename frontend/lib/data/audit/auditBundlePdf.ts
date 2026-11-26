@@ -14,7 +14,7 @@
  * IPFS pin or evidence submission.
  */
 
-import { erc20Abi, type PublicClient } from "viem";
+import type { PublicClient } from "viem";
 import type { Order } from "@/lib/core/store";
 import { publicForm, type Agreement } from "@figaro-protocol/sdk";
 import { getAllMemberRegistered, getActiveMembers } from "@/lib/registries/membersRegistryIndexer";
@@ -30,9 +30,9 @@ import { projectDocuments, projectAllFinancialStatements } from "@/lib/data/audi
 import { DOCUMENT_LAYOUTS } from "@/lib/data/audit/documentLayouts";
 import type { AttestationRecord } from "@/lib/core/attestationIndexer";
 import {
-    buildProcessTimeline,
-    type ProcessTimeline,
+    buildProcessTimeline, type ProcessTimeline,
 } from "@/lib/data/audit/processTimeline";
+import { readProcessDecimals } from "@/lib/data/audit/tokenDecimals";
 import type { MissingPart } from "@/lib/data/audit/types";
 import type { AuditBundlePdfData } from "@/lib/data/audit/pdfBundle";
 
@@ -211,15 +211,11 @@ export async function buildAuditBundleData(
     let tokenDecimals: number | undefined;
     const processCurrency = orders[0]?.token as `0x${string}` | undefined;
     if (publicClient && processCurrency) {
-        try {
-            tokenDecimals = Number(await publicClient.readContract({ address: processCurrency, abi: erc20Abi, functionName: "decimals" }));
-        } catch {
-            tokenDecimals = undefined;
-            missing.push({
-                part: "Amounts of the contract pages, in the token's units",
-                reason: `the decimals of the token ${processCurrency} could not be read, so the amounts are shown in the token's smallest unit`,
-            });
-        }
+        tokenDecimals = await readProcessDecimals(
+            publicClient, processCurrency, missing,
+            "Amounts of the contract pages, in the token's units",
+            "so the amounts are shown in the token's smallest unit",
+        );
     } else if (orders.length > 0) {
         missing.push({
             part: "Amounts of the contract pages, in the token's units",

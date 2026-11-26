@@ -27,7 +27,7 @@ vi.mock("@/lib/shared/runtimeServicesContext", () => ({
     useRuntimeServices: () => ({ evidenceTransport: { pinBlob: async () => "cid", unpin: async () => undefined } }),
 }));
 vi.mock("@/lib/data/audit/auditBundlePdf", () => ({ buildAuditBundlePdfBlob: async () => new Blob(["pdf"]) }));
-vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => agreementsState.map }));
+vi.mock("@/hooks/useProcessAgreements", () => ({ useAgreementsOfOrders: () => agreementsState.map }));
 
 import { RecoursePanel } from "@/components/runtime/RecoursePanel";
 

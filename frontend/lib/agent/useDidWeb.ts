@@ -24,6 +24,7 @@ import {
 } from "@figaro-protocol/sdk/agent";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
+import { applyUntilCleanup } from "@/lib/shared/networkRead";
 
 export type { DIDDocument };
 
@@ -32,6 +33,7 @@ export type { DIDDocument };
  * Document. Returns `{ document, error, isLoading }`. Consumed by
  * `useDidConsistency` (and available directly for other resolution surfaces).
  */
+// lint-allow-duplicate-symbol: the hook that resolves a did:web identifier to the SDK's DIDDocument
 export function useDidDocument(did: string | undefined) {
     const [document, setDocument] = useState<DIDDocument | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -53,20 +55,19 @@ export function useDidDocument(did: string | undefined) {
     useEffect(() => {
         if (!did || !isDidWeb(did)) return;
 
-        let canceled = false;
-
-        resolveDidWeb(did).then((result) => {
-            if (canceled) return;
-            setDocument(result.document);
-            setError(result.error);
-            setIsLoading(false);
-        }).catch((e) => {
-            if (canceled) return;
-            setError(extractErrorMessage(e, String(e)));
+        const resolution = resolveDidWeb(did).then(
+            (result) => ({ resolved: true as const, result }),
+            (e: unknown) => ({ resolved: false as const, message: extractErrorMessage(e, String(e)) }),
+        );
+        return applyUntilCleanup(resolution, (outcome) => {
+            if (outcome.resolved) {
+                setDocument(outcome.result.document);
+                setError(outcome.result.error);
+            } else {
+                setError(outcome.message);
+            }
             setIsLoading(false);
         });
-
-        return () => { canceled = true; };
     }, [did]);
 
     return { document, error, isLoading };

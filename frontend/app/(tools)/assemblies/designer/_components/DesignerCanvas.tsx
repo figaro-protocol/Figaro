@@ -62,7 +62,7 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
-import { usePublishAgreement } from "@/lib/designer/publishAssembly";
+import { useRegisterDesignedAgreement } from "@/lib/designer/publishAssembly";
 import { AssemblyTermsPanel } from "./AssemblyTermsPanel";
 import { CompositionAssist } from "./CompositionAssist";
 import { AssemblyIdentity } from "./AssemblyIdentity";
@@ -364,11 +364,11 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
      *  stake and register on `AgreementRegistry`; then the agreement binds
      *  the registered key and its composed clauses clear — a entry binds OR
      *  composes, never both. */
-    const { publishAgreement } = usePublishAgreement();
-    type ComposedClauses = Parameters<typeof publishAgreement>[0]["clauses"];
+    const { registerDesignedAgreement } = useRegisterDesignedAgreement();
+    type ComposedClauses = Parameters<typeof registerDesignedAgreement>[0]["clauses"];
     const registerOrderAgreement = useCallback(async (orderId: string): Promise<`0x${string}`> => {
         const index = orders.findIndex((o) => o.orderHash === orderId);
-        const { agreementHash } = await publishAgreement({
+        const { agreementHash } = await registerDesignedAgreement({
             clauses: (clausesByOrderId[orderId] ?? {}) as ComposedClauses,
             ...(name ? { name: `${name} · order ${index + 1}` } : {}),
         });
@@ -379,7 +379,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         });
         bindAgreement(orderId, agreementHash);
         return agreementHash;
-    }, [orders, clausesByOrderId, name, publishAgreement, bindAgreement]);
+    }, [orders, clausesByOrderId, name, registerDesignedAgreement, bindAgreement]);
 
     const setClauseField = useCallback(
         (orderId: string, clauseKey: string, field: string, value: unknown) => {

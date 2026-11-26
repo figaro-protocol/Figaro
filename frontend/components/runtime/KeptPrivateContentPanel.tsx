@@ -14,6 +14,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDepsChanged } from "@/lib/shared/useDepsChanged";
+import { saveBlob } from "@/lib/shared/download";
 import {
     countHeldWitnessContent,
     exportKeptWitnessContent,
@@ -48,14 +49,10 @@ export function KeptPrivateContentPanel({ holder, refreshKey = 0, onChanged }: P
     const handleExport = useCallback(() => {
         const text = exportKeptWitnessContent(holder);
         if (!text) return;
-        const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `figaro-private-filings-${holder.chainId}-${holder.address.slice(0, 10).toLowerCase()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
+        saveBlob(
+            new Blob([text], { type: "application/json" }),
+            `figaro-private-filings-${holder.chainId}-${holder.address.slice(0, 10).toLowerCase()}.json`,
+        );
         setNote(`Exported ${plural(count, "entry", "entries")}. The file holds the content in plaintext: keep it where only you can open it.`);
     }, [holder, count]);
 

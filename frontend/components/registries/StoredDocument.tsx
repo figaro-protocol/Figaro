@@ -19,7 +19,7 @@
  * event's own `contentURI`, resolved through `lib/shared/ipfsService` (the
  * user's own gateway when they configured one) and size-capped, so a
  * permissionlessly-registered pointer at a huge pin aborts mid-stream instead
- * of hanging the page. The arithmetic is `storedDocument` in the registries
+ * of hanging the page. The arithmetic is `verifyStoredDocument` in the registries
  * read model — pure, and unit-tested there.
  *
  * The fetch fires only when the panel is OPENED: 100+ registered rows must not
@@ -35,9 +35,9 @@ import { Disclosure } from "@/components/ui/Disclosure";
 import { DEFAULT_IPFS_SERVICE, fetchCappedBinary } from "@/lib/shared/ipfsService";
 import {
     STORED_DOCUMENT_NOTE,
-    storedDocument,
+    verifyStoredDocument,
     type StoredDocumentAnchor,
-    type StoredDocument as StoredDocumentVerdict,
+    type StoredDocumentVerdict,
 } from "@/lib/registries/explorer";
 
 interface StoredDocumentProps {
@@ -88,7 +88,7 @@ export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredD
                     return;
                 }
                 const text = new TextDecoder().decode(response.bytes);
-                setRead({ state: "read", text, verdict: storedDocument(response.bytes, anchoredHash, anchor) });
+                setRead({ state: "read", text, verdict: verifyStoredDocument(response.bytes, anchoredHash, anchor) });
             } catch {
                 if (!canceled) setRead({ state: "unreachable" });
             }

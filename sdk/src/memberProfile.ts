@@ -29,6 +29,7 @@
 
 import {
     asAddress,
+    asArrayOf,
     asClauseKey,
     asOptionalAddress,
     asOptionalString,
@@ -253,23 +254,23 @@ export function parseClauseValueMap(
 
 // ── Assembly-binding parser helpers ──────────────────────────────────────────
 
+/** A binding's co-seller designations: per co-seller clause, the wallets the
+ *  seller designates for it and, per wallet, the item it names from that
+ *  wallet's own catalog. Absent is no designation. */
 function parseCoSellerBindingArray(value: unknown, path: string): CoSellerBinding[] | undefined {
     if (value === undefined) return undefined;
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array.`);
-    }
-    return value.map((entry, index) => {
-        const record = asRecord(entry, `${path}[${index}]`);
+    return asArrayOf(value, path, (entry, entryPath) => {
+        const record = asRecord(entry, entryPath);
         const addressesRaw = record.addresses;
         if (!Array.isArray(addressesRaw)) {
-            throw new Error(`${path}[${index}].addresses must be an array of addresses.`);
+            throw new Error(`${entryPath}.addresses must be an array of addresses.`);
         }
         const addresses = addressesRaw.map((addr, j) =>
-            asAddress(addr, `${path}[${index}].addresses[${j}]`),
+            asAddress(addr, `${entryPath}.addresses[${j}]`),
         );
-        const itemIds = parseCoSellerItemIds(record.itemIds, addresses, `${path}[${index}].itemIds`);
+        const itemIds = parseCoSellerItemIds(record.itemIds, addresses, `${entryPath}.itemIds`);
         return {
-            clauseKey: asClauseKey(record.clauseKey, `${path}[${index}].clauseKey`),
+            clauseKey: asClauseKey(record.clauseKey, `${entryPath}.clauseKey`),
             addresses,
             ...(itemIds ? { itemIds } : {}),
         };
@@ -351,20 +352,20 @@ function parseAcceptedToken(value: unknown, path: string): AcceptedTokenMetadata
     };
 }
 
+/** The tokens the member accepts, each an entry with its address and symbol,
+ *  or a bare address string, which reads as that address with no symbol.
+ *  Absent is no declaration. */
 function parseAcceptedTokens(value: unknown, path: string): AcceptedTokenMetadata[] | undefined {
     if (value === undefined) return undefined;
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array.`);
-    }
-    return value.map((entry, index) => {
+    return asArrayOf(value, path, (entry, entryPath) => {
         // Tolerate bare-address strings from legacy profiles; upgrade in place.
         if (typeof entry === "string") {
             return {
-                address: asAddress(entry, `${path}[${index}]`),
+                address: asAddress(entry, entryPath),
                 symbol: "",
             };
         }
-        return parseAcceptedToken(entry, `${path}[${index}]`);
+        return parseAcceptedToken(entry, entryPath);
     });
 }
 
@@ -412,25 +413,24 @@ function parseAssetsField(value: unknown, path: string): MemberAssetReferences |
     };
 }
 
+/** The process designs the member binds as a seller, each a binding record
+ *  (`parseProcessBindingDocument`). Absent is no binding; the registry, not
+ *  this list, decides which bindings are anchored. */
 function parseProcessBindings(value: unknown, path: string): ProcessBindingRecord[] | undefined {
     if (value === undefined) return undefined;
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array.`);
-    }
-    return value.map((entry, index) =>
-        parseProcessBindingDocument(entry, `${path}[${index}]`)
-    );
+    return asArrayOf(value, path, parseProcessBindingDocument);
 }
 
+/** The process designs the member buys through, each named by its hash: the
+ *  buyer's own list, apart from the seller bindings, because a wallet does not
+ *  buy through the process designs it sells through. Absent is no
+ *  subscription. */
 function parseBuyerAssemblies(value: unknown, path: string): BuyerProcessSubscription[] | undefined {
     if (value === undefined) return undefined;
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array.`);
-    }
-    return value.map((entry, index) => {
-        const record = asRecord(entry, `${path}[${index}]`);
+    return asArrayOf(value, path, (entry, entryPath) => {
+        const record = asRecord(entry, entryPath);
         return {
-            processDesignHash: asProcessDesignHash(record.processDesignHash, `${path}[${index}].processDesignHash`),
+            processDesignHash: asProcessDesignHash(record.processDesignHash, `${entryPath}.processDesignHash`),
         };
     });
 }

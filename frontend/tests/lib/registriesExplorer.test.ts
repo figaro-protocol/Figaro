@@ -3,7 +3,7 @@ import { agreementHashOf, canonicalContentHash, canonicalize, computeClauseKey, 
 import { keccak256, stringToBytes } from "viem";
 import {
     parseExplorerQuery, serializeExplorerQuery, selectRows, facetValues, explorerBreadcrumb,
-    anchorForFamily, storedDocument, STORED_DOCUMENT_NOTE,
+    anchorForFamily, verifyStoredDocument, STORED_DOCUMENT_NOTE,
     type ExplorerRow,
 } from "@/lib/registries/explorer";
 
@@ -111,12 +111,12 @@ describe("the document as stored — the reader re-derives the anchor themselves
 
     it("a clause's served canonical bytes reproduce its clause key", () => {
         const anchored = computeClauseKey(SPEC);
-        const v = storedDocument(canonicalize(SPEC), anchored, "content-hash");
+        const v = verifyStoredDocument(canonicalize(SPEC), anchored, "content-hash");
         expect(v.matches).toBe(true);
         expect(v.recomputed).toBe(anchored);
         expect(v.anchor).toBe("content-hash");
         // Bytes or their exact text — one verdict.
-        expect(storedDocument(stringToBytes(canonicalize(SPEC)), anchored, "content-hash").matches).toBe(true);
+        expect(verifyStoredDocument(stringToBytes(canonicalize(SPEC)), anchored, "content-hash").matches).toBe(true);
     });
 
     it("the check is on the spec without its block: a reformatted document, or another block, is the same clause", () => {
@@ -126,32 +126,32 @@ describe("the document as stored — the reader re-derives the anchor themselves
             null,
             4,
         );
-        const v = storedDocument(reordered, anchored, "content-hash");
+        const v = verifyStoredDocument(reordered, anchored, "content-hash");
         expect(v.matches).toBe(true);
         expect(v.recomputed).toBe(anchored);
         const restyled = canonicalize({ ...SPEC, block: { design: { article: "resolution" } } });
-        expect(storedDocument(restyled, anchored, "content-hash").matches).toBe(true);
+        expect(verifyStoredDocument(restyled, anchored, "content-hash").matches).toBe(true);
         expect(keccak256(stringToBytes(restyled))).not.toBe(anchored);
     });
 
     it("a drifted pin does NOT match, and says what it hashed to", () => {
         const anchored = computeClauseKey(SPEC);
         const drifted = canonicalize({ ...SPEC, title: "Applicable law (edited)" });
-        const v = storedDocument(drifted, anchored, "content-hash");
+        const v = verifyStoredDocument(drifted, anchored, "content-hash");
         expect(v.matches).toBe(false);
         expect(v.recomputed).not.toBeNull();
         expect(v.recomputed).not.toBe(anchored);
     });
 
     it("bytes that will not parse recompute NOTHING — absence, never a false verdict", () => {
-        const v = storedDocument("not json at all", canonicalContentHash(SPEC), "content-hash");
+        const v = verifyStoredDocument("not json at all", canonicalContentHash(SPEC), "content-hash");
         expect(v.recomputed).toBeNull();
         expect(v.matches).toBe(false);
     });
 
     it("an assembly's served bytes reproduce the registry's processDesignHash", () => {
         const anchored = processDesignHashOf(ASSEMBLY as Parameters<typeof processDesignHashOf>[0]);
-        const v = storedDocument(JSON.stringify(ASSEMBLY), anchored, "assembly-hash");
+        const v = verifyStoredDocument(JSON.stringify(ASSEMBLY), anchored, "assembly-hash");
         expect(v.matches).toBe(true);
         expect(v.anchor).toBe("assembly-hash");
     });
@@ -159,24 +159,24 @@ describe("the document as stored — the reader re-derives the anchor themselves
     it("an assembly's editorial wording is OUTSIDE its anchor — reword it and the hash holds", () => {
         const anchored = processDesignHashOf(ASSEMBLY as Parameters<typeof processDesignHashOf>[0]);
         const reworded = JSON.stringify({ ...ASSEMBLY, name: "Kit hire", summary: "Different words entirely." });
-        expect(storedDocument(reworded, anchored, "assembly-hash").matches).toBe(true);
+        expect(verifyStoredDocument(reworded, anchored, "assembly-hash").matches).toBe(true);
         // Changing the COMPOSITION does break it — the anchor is the terms.
         const retermed = JSON.stringify({ ...ASSEMBLY, agreements: [{ id: "agreement-0", agreementHash: `0x${"a2".repeat(32)}`, clauses: {} }] });
-        expect(storedDocument(retermed, anchored, "assembly-hash").matches).toBe(false);
+        expect(verifyStoredDocument(retermed, anchored, "assembly-hash").matches).toBe(false);
     });
 
     it("an agreement's served document reproduces its key; its name is outside the key", () => {
-        const v = storedDocument(JSON.stringify(AGREEMENT, null, 2), AGREEMENT_HASH, "agreement-hash");
+        const v = verifyStoredDocument(JSON.stringify(AGREEMENT, null, 2), AGREEMENT_HASH, "agreement-hash");
         expect(v.matches).toBe(true);
         expect(v.anchor).toBe("agreement-hash");
         const renamed = JSON.stringify({ ...AGREEMENT, name: "Kit hire" });
-        expect(storedDocument(renamed, AGREEMENT_HASH, "agreement-hash").matches).toBe(true);
+        expect(verifyStoredDocument(renamed, AGREEMENT_HASH, "agreement-hash").matches).toBe(true);
         const reclaused = JSON.stringify({ ...AGREEMENT, clauses: { [COMMERCE]: { x: 1 } } });
-        expect(storedDocument(reclaused, AGREEMENT_HASH, "agreement-hash").matches).toBe(false);
+        expect(verifyStoredDocument(reclaused, AGREEMENT_HASH, "agreement-hash").matches).toBe(false);
     });
 
     it("an honest document reads the same as what was hashed — no differences", () => {
-        const v = storedDocument(JSON.stringify(SPEC, null, 2), canonicalContentHash(SPEC), "content-hash");
+        const v = verifyStoredDocument(JSON.stringify(SPEC, null, 2), canonicalContentHash(SPEC), "content-hash");
         expect(v.differences).toEqual([]);
         expect(v.parsedCanonical).toBe(canonicalize(SPEC));
     });
@@ -189,7 +189,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
             '"title":"Applicable law","title":"Something else"',
         );
         const hashed = { ...SPEC, title: "Something else" };
-        const v = storedDocument(text, computeClauseKey(hashed), "content-hash");
+        const v = verifyStoredDocument(text, computeClauseKey(hashed), "content-hash");
         expect(v.matches).toBe(true);
         expect(v.differences).toEqual(["repeated-key"]);
         expect(v.parsedCanonical).toBe(canonicalize(hashed));
@@ -198,25 +198,25 @@ describe("the document as stored — the reader re-derives the anchor themselves
 
     it("a repeated key in DIFFERENT objects, or inside a string, is not a repetition", () => {
         const text = JSON.stringify({ a: { name: "x" }, b: { name: "y" }, c: '"name":"z","name"' });
-        expect(storedDocument(text, "0x00", "content-hash").differences).toEqual([]);
+        expect(verifyStoredDocument(text, "0x00", "content-hash").differences).toEqual([]);
     });
 
     it("a key the parse DROPS is named, and the hashed value carries none of it", () => {
         const text = '{"__proto__":{"admin":true},' + JSON.stringify(SPEC).slice(1);
-        const v = storedDocument(text, computeClauseKey(SPEC), "content-hash");
+        const v = verifyStoredDocument(text, computeClauseKey(SPEC), "content-hash");
         expect(v.matches).toBe(true);
         expect(v.differences).toEqual(["dropped-key"]);
         expect(v.parsedCanonical).not.toContain("admin");
     });
 
     it("bytes that will not parse carry no parsed value", () => {
-        const v = storedDocument("not json at all", canonicalContentHash(SPEC), "content-hash");
+        const v = verifyStoredDocument("not json at all", canonicalContentHash(SPEC), "content-hash");
         expect(v.parsedCanonical).toBeNull();
         expect(v.differences).toEqual([]);
     });
 
     it("compares hashes case-insensitively — hex casing is not a mismatch", () => {
         const anchored = computeClauseKey(SPEC);
-        expect(storedDocument(canonicalize(SPEC), anchored.toUpperCase(), "content-hash").matches).toBe(true);
+        expect(verifyStoredDocument(canonicalize(SPEC), anchored.toUpperCase(), "content-hash").matches).toBe(true);
     });
 });

@@ -20,20 +20,24 @@
  * Process-scoped. Mount it in any process detail view.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { usePublicClient, useChainId } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useMounted } from "@/hooks/useMounted";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { useBusyAction } from "@/lib/shared/useBusyAction";
+import { saveBlob } from "@/lib/shared/download";
 import { NO_PUBLISH_TARGET_LINE } from "@/lib/shared/ipfsService";
 import { PublishTargetNotice } from "@/components/shared/PublishTargetNotice";
 import type { Order } from "@/lib/core/store";
 import { buildAuditBundlePdfBlob } from "@/lib/data/audit/auditBundlePdf";
-import { useProcessAgreements } from "@/hooks/useProcessAgreements";
+import { useAgreementsOfOrders } from "@/hooks/useProcessAgreements";
 import { describeClause, composesForumUrl } from "@/lib/shared/clauseSpecSource";
 import type { RecourseClause } from "@/lib/semantic/processRecourse";
+
+const NO_ORDERS: readonly Order[] = [];
 
 interface RecoursePanelProps {
     processId: `0x${string}`;
@@ -57,14 +61,9 @@ export function RecoursePanel({
     const chainId = useChainId();
     const { evidenceTransport } = useRuntimeServices();
 
-    const checkoutHashes = useMemo(
-        () => (orders ?? []).map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
-        [orders],
-    );
-    const agreements = useProcessAgreements(checkoutHashes);
+    const agreements = useAgreementsOfOrders(orders ?? NO_ORDERS);
 
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const { busy: loading, error, setError, run } = useBusyAction();
     const [bundleCID, setBundleCID] = useState<string | null>(null);
     const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 
@@ -79,10 +78,8 @@ export function RecoursePanel({
     // explicitly once the dispute no longer needs it.
     const handlePrepareBundle = useCallback(async () => {
         if (!orders || orders.length === 0) return;
-        setLoading(true);
-        setError(null);
         const priorCID = bundleCID;
-        try {
+        await run("Failed to build the evidence bundle", async () => {
             const blob = await buildAuditBundlePdfBlob(
                 processId,
                 orders,
@@ -98,12 +95,8 @@ export function RecoursePanel({
                 // Best-effort: a superseded bundle must not outlive its successor.
                 await evidenceTransport.unpin(priorCID).catch(() => undefined);
             }
-        } catch (e: unknown) {
-            setError(extractErrorMessage(e, "Failed to build the evidence bundle"));
-        } finally {
-            setLoading(false);
-        }
-    }, [orders, processId, publicClient, chainId, agreements, evidenceTransport, bundleCID]);
+        });
+    }, [orders, processId, publicClient, chainId, agreements, evidenceTransport, bundleCID, run]);
 
     // Erase the pinned bundle (the PDF stays downloadable locally until the
     // panel unmounts) — the party who pinned the evidence erases it.
@@ -116,18 +109,11 @@ export function RecoursePanel({
         } catch (e: unknown) {
             setError(extractErrorMessage(e, "Failed to unpin the evidence bundle"));
         }
-    }, [bundleCID, evidenceTransport]);
+    }, [bundleCID, evidenceTransport, setError]);
 
     const handleDownload = useCallback(() => {
         if (!pdfBlob) return;
-        const url = URL.createObjectURL(pdfBlob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `figaro-evidence-${processId.slice(0, 10)}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        saveBlob(pdfBlob, `figaro-evidence-${processId.slice(0, 10)}.pdf`);
     }, [pdfBlob, processId]);
 
     // SSR-safe: async/wallet-dependent output. Server render disagrees with

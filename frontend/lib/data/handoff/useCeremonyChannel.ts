@@ -45,7 +45,7 @@ import {
     type AnchorVerificationState,
 } from "@/lib/data/handoff/handoffAnchorState";
 import { hexEqual } from "@/lib/shared/evm";
-import { extractErrorMessage } from "@/lib/shared/errors";
+import { useBusyAction } from "@/lib/shared/useBusyAction";
 import { useAttestationCoordinatorActions } from "@/lib/core/useAttestationCoordinatorActions";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
 
@@ -284,8 +284,7 @@ export function useCeremonyPanel<T>(options: UseCeremonyPanelOptions<T>) {
         : address && hexEqual(address, buyer) ? "buyer"
         : null;
     const counterparty = role === "seller" ? buyer : seller;
-    const [busy, setBusy] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const { busy, error, run } = useBusyAction();
 
     const decrypt = useCallback(
         (args: { myAddress: `0x${string}`; senderPubKeyHex: string; blobB64: string }) =>
@@ -303,9 +302,7 @@ export function useCeremonyPanel<T>(options: UseCeremonyPanelOptions<T>) {
 
     const handleRequest = useCallback(async () => {
         if (!channel || !address || !walletClient) return;
-        setBusy(true);
-        setError(null);
-        try {
+        await run("Request failed.", async () => {
             await request(channel, {
                 myAddress: address,
                 recipientAddress: counterparty,
@@ -313,12 +310,8 @@ export function useCeremonyPanel<T>(options: UseCeremonyPanelOptions<T>) {
                 signAuth: (message) => walletClient.signMessage({ message }),
             });
             markRequested();
-        } catch (e) {
-            setError(extractErrorMessage(e, "Request failed."));
-        } finally {
-            setBusy(false);
-        }
-    }, [channel, address, walletClient, counterparty, orderHash, markRequested, request]);
+        });
+    }, [channel, address, walletClient, counterparty, orderHash, markRequested, request, run]);
 
     const deliver = useCallback(async <R,>(
         failureMessage: string,
@@ -331,9 +324,7 @@ export function useCeremonyPanel<T>(options: UseCeremonyPanelOptions<T>) {
         }) => Promise<CeremonyDelivery<R>>,
     ): Promise<R | undefined> => {
         if (!channel || !address || !peerPubKey || !walletClient || !role) return undefined;
-        setBusy(true);
-        setError(null);
-        try {
+        return run(failureMessage, async () => {
             const { attestation, result } = await build({
                 channel, address, peerPubKey, counterparty,
                 signAuth: (message) => walletClient.signMessage({ message }),
@@ -348,13 +339,8 @@ export function useCeremonyPanel<T>(options: UseCeremonyPanelOptions<T>) {
                 });
             }
             return result;
-        } catch (e) {
-            setError(extractErrorMessage(e, failureMessage));
-            return undefined;
-        } finally {
-            setBusy(false);
-        }
-    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, attestationActions, role]);
+        });
+    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, attestationActions, role, run]);
 
     // The waiting line names the seat the request is waiting on.
     const waitingLabel = `Requested — waiting for the ${role === "seller" ? "buyer" : "seller"}`;

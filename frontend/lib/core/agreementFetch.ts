@@ -105,7 +105,7 @@ export async function fetchAgreement(
     return run;
 }
 
-export interface PublishedAgreement {
+export interface PinnedAgreement {
     checkoutHash: Hex;
     cid: string;
     uri: string;
@@ -184,7 +184,7 @@ async function warmAgreementSpecs(agreement: Agreement): Promise<void> {
 export async function publishAgreement(
     agreement: Agreement,
     options: AgreementFetchOptions = {},
-): Promise<PublishedAgreement> {
+): Promise<PinnedAgreement> {
     const checkoutHash = computeCheckoutHash(agreement);
     const t = transport(options);
     // Withhold every `private`-disposition clause from the PUBLIC pin — a paid-

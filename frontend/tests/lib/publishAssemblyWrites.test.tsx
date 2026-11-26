@@ -1,7 +1,7 @@
 /**
  * The designer's two publish writes, as they reach the registries.
  *
- * `usePublishAgreement` composes one order's clauses through the SDK's one
+ * `useRegisterDesignedAgreement` composes one order's clauses through the SDK's one
  * composition rule (exactly the clauses the designer selected), pins the
  * document and sends `AgreementRegistry.registerAgreement(key, uri)` with the
  * registry's stake, the key being the pinned document's own agreement hash.
@@ -64,7 +64,7 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => {
 });
 vi.mock("@/lib/shared/chainGasCeilings", () => ({ maxOrdersResolvablePerProcess: async () => s.cap }));
 
-import { usePublishAgreement, usePublishAssembly } from "@/lib/designer/publishAssembly";
+import { useRegisterDesignedAgreement, usePublishAssembly } from "@/lib/designer/publishAssembly";
 import { activeChain } from "@/lib/shared/chains";
 import { createSyntheticRootOrder, createSyntheticSubOrder, startSyntheticSession } from "@/lib/designer/syntheticProcess";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
@@ -125,11 +125,11 @@ async function caught(run: () => Promise<unknown>): Promise<unknown> {
     return out;
 }
 
-describe("usePublishAgreement — one order's agreement registered on its own", () => {
+describe("useRegisterDesignedAgreement — one order's agreement registered on its own", () => {
     it("pins the composed document and registers its own key with the registry's stake, simulated, sent and held to a success receipt", async () => {
-        const { result } = renderHook(() => usePublishAgreement());
-        let outcome: Awaited<ReturnType<typeof result.current.publishAgreement>> | undefined;
-        await act(async () => { outcome = await result.current.publishAgreement({ clauses: { [keyOf("figaro-schedule")]: {} }, name: "Scheduled work" }); });
+        const { result } = renderHook(() => useRegisterDesignedAgreement());
+        let outcome: Awaited<ReturnType<typeof result.current.registerDesignedAgreement>> | undefined;
+        await act(async () => { outcome = await result.current.registerDesignedAgreement({ clauses: { [keyOf("figaro-schedule")]: {} }, name: "Scheduled work" }); });
         const pinned = s.pins[0] as RegisteredAgreement;
         // Exactly the designer's clauses: nothing is written in.
         expect(Object.keys(pinned.clauses)).toEqual([keyOf("figaro-schedule")]);
@@ -144,8 +144,8 @@ describe("usePublishAgreement — one order's agreement registered on its own", 
     });
 
     it("an order with no clause registers nothing", async () => {
-        const { result } = renderHook(() => usePublishAgreement());
-        const e = await caught(() => result.current.publishAgreement({ clauses: {} }));
+        const { result } = renderHook(() => useRegisterDesignedAgreement());
+        const e = await caught(() => result.current.registerDesignedAgreement({ clauses: {} }));
         expect((e as Error).message).toMatch(/Compose at least one clause/);
         expect(s.calls).toEqual([]);
     });

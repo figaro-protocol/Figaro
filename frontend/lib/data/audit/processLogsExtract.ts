@@ -21,6 +21,7 @@
 
 import type { ResolutionUniverse } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/core/store";
+import type { HeldWitnessReader } from "@/lib/core/witnessContent";
 import type { AttestationRecord } from "@/lib/core/attestationIndexer";
 import type { ExtractedDocument, MissingPart } from "./types";
 import { attestationContentFields, attestationIsWitness, clauseIsProcessLog, getClauseSpec } from "@/lib/shared/clauseSpecSource";
@@ -53,15 +54,6 @@ interface ProcessLogEntry {
      *  party that asked. */
     heldReceived?: boolean;
 }
-
-/** The content a party holds for one attestation, checked against its
- *  `contentRef` by the reader that supplies it; null where it holds none. */
-export type HeldWitnessReader = (place: {
-    orderHash: string;
-    clauseId: string;
-    stage: number;
-    contentRef: string;
-}) => { content: `0x${string}`; values: Record<string, unknown> | null; received?: boolean } | null;
 
 /** One process clause's event timeline — the per-clause group the PDF
  *  renders as its own section. One group per clause key: two specs that

@@ -879,6 +879,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td>Parse ONE field spec — for fields declared outside a clause's content <code>fields</code>.</td>
 </tr>
 <tr>
+<td><code>parseEachFieldSpec</code></td>
+<td><code>/clauses</code></td>
+<td>Parse a list of field specs, element <code>i</code> at <code>path[i]</code>; returns the well-formed ones and reports every malformed one.</td>
+</tr>
+<tr>
 <td><code>parseMemberCatalogDocument</code></td>
 <td>root</td>
 <td>Strict parse of a pinned catalog document; throws on malformed input.</td>

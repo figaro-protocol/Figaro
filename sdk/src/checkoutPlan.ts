@@ -24,6 +24,7 @@ import {
     specCatalogueMeasures,
     specCheckoutDerivations,
     specDenominationPinField,
+    markedArrays,
     specEndpoints,
     specMarkedFields,
     specPricedLines,
@@ -103,13 +104,8 @@ export function derivePricedFields(
 ): { clause: Hex; path: string }[] {
     // Commercial terms are PUBLIC (never a content-withheld clause), so a
     // clause carrying only a fingerprint contributes no priced field.
-    return clauseEntries.flatMap(({ clause, data }) => {
-        const spec = specs.get(clause);
-        const mark = spec ? specPricedLines(spec) : undefined;
-        const lines = mark ? data?.[mark.field] : undefined;
-        if (!mark || !Array.isArray(lines)) return [];
-        return lines.map((_, i) => ({ clause, path: `${mark.field}.${i}.${mark.unitPrice}` }));
-    });
+    return markedArrays(clauseEntries, specs, specPricedLines, (mark) => mark.field).flatMap(({ clause, mark, values }) =>
+        values.map((_, i) => ({ clause, path: `${mark.field}.${i}.${mark.unitPrice}` })));
 }
 
 /**
@@ -170,12 +166,9 @@ export function readPricedLines(
     clauseEntries: readonly { clause: Hex; data?: Record<string, unknown> }[],
     specs: SpecSource,
 ): { clause: Hex; lines: PricedLine[] }[] {
-    return clauseEntries.flatMap(({ clause, data }) => {
-        const spec = specs.get(clause);
-        const mark = spec ? specPricedLines(spec) : undefined;
-        const raw = mark ? data?.[mark.field] : undefined;
-        if (!mark || !Array.isArray(raw)) return [];
-        const lines = raw.map((entry): PricedLine => {
+    return markedArrays(clauseEntries, specs, specPricedLines, (mark) => mark.field).map(({ clause, mark, values }) => ({
+        clause,
+        lines: values.map((entry): PricedLine => {
             const line = entry && typeof entry === "object" ? entry as Record<string, unknown> : {};
             const text = (role: string | undefined) => role !== undefined && typeof line[role] === "string" ? line[role] as string : undefined;
             return {
@@ -184,9 +177,8 @@ export function readPricedLines(
                 quantity: integerOf(line[mark.quantity]),
                 unitPrice: integerOf(line[mark.unitPrice]),
             };
-        });
-        return [{ clause, lines }];
-    });
+        }),
+    }));
 }
 
 /** The sum of the lines' quantity × unit price, in the token's smallest

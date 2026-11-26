@@ -62,6 +62,7 @@ const REQUEST_LABELS = { buyer: "Request the private filings", seller: "Request 
 const expectedAnchor = (received: ReceivedPrivateFilings, _blobB64: string, sender: string) =>
     privateFilingAnchors(received, sender);
 
+// lint-allow-duplicate-symbol: the panel that sends and receives an order's PrivateFiling entries
 export function PrivateFilingsPanel({ orderHash, buyer, seller, attestations, onKept }: Props) {
     const { address } = useAccount();
     const holder = useWitnessHolder();

@@ -1,18 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { HintedFieldList, type HintedFieldDef } from "@/components/ui/HintedFieldList";
-import { useMounted } from "@/hooks/useMounted";
-import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/registries/onboardingState";
+import { onboardingPrevHref } from "@/lib/registries/onboardingState";
 import type { MemberAgentServices } from "@/lib/registries/memberProfileMetadata";
 import { RELAY_SERVICE_KEY } from "@figaro-protocol/sdk";
-import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
+import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps, useOnboardingStepState } from "@/components/members/OnboardingStepChrome";
 
 /**
  * The agents step of the onboarding wizard. Collects ERC-8004-compatible
@@ -95,21 +92,15 @@ export function OnboardingAgentsForm({
     submitInFlight = false,
     externalError = null,
 }: OnboardingAgentsFormProps = {}) {
-    const router = useRouter();
-    const mounted = useMounted();
-    const { address, isConnected } = useAccount();
-    const { state, loaded, subject, update } = useOnboardingState(address);
+    const { mounted, state, loaded, update, hydrated, markHydrated, advance } = useOnboardingStepState("agents");
 
     const [services, setServices] = useState<MemberAgentServices>({});
-    // Hydrated for which subject: the wallet, or the anonymous draft before one connects.
-    const [hydratedFor, setHydratedFor] = useState<string | null>(null);
-    const hydrated = hydratedFor === subject;
 
     // Hydrate once `loaded === true` — see OnboardingProfileForm for
     // the race-condition rationale.
     if (!hydrated && loaded) {
         setServices(state.services ?? {});
-        setHydratedFor(subject);
+        markHydrated();
     }
 
     useEffect(() => {
@@ -143,7 +134,7 @@ export function OnboardingAgentsForm({
         // Same trim+filter as the persistence effect — only non-empty
         // endpoints survive into the pinned profile, and an entirely empty
         // set becomes `undefined` so the field gets stripped from the JSON.
-        finishStep(onSave && (() => onSave(nonEmptyServices(services))), () => router.push(onboardingNextHref("agents")));
+        finishStep(onSave && (() => onSave(nonEmptyServices(services))), advance);
     }
 
     if (!mounted) {

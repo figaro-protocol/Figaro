@@ -16,6 +16,7 @@
 
 import {
     asAddress,
+    asArrayOf,
     asBoolean,
     asEnum,
     asOptionalNumber,
@@ -182,10 +183,7 @@ function parseItem(value: unknown, path: string): CatalogItemMetadata {
 }
 
 function parseItems(value: unknown, path: string): CatalogItemMetadata[] {
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array.`);
-    }
-    return value.map((entry, index) => parseItem(entry, `${path}[${index}]`));
+    return asArrayOf(value, path, parseItem);
 }
 
 export function parseMemberCatalogDocument(

@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import Link from "@/components/shared/Link";
 import { listRateQuantitySources } from "@figaro-protocol/sdk";
-import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
@@ -13,13 +11,10 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { IpfsImageUpload } from "@/components/members/IpfsImageUpload";
-import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
-import { useMounted } from "@/hooks/useMounted";
+import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps, useOnboardingStepState } from "@/components/members/OnboardingStepChrome";
 import {
-    onboardingNextHref,
     onboardingPrevHref,
     onboardingStepLabel,
-    useOnboardingState,
 } from "@/lib/registries/onboardingState";
 import { parseCatalogCsv } from "@/lib/registries/parseCatalogCsv";
 import type {
@@ -209,17 +204,11 @@ export function OnboardingCatalogForm({
     submitInFlight = false,
     externalError = null,
 }: OnboardingCatalogFormProps = {}) {
-    const router = useRouter();
-    const mounted = useMounted();
-    const { address, isConnected } = useAccount();
-    const { state, loaded, subject, update } = useOnboardingState(address);
+    const { mounted, state, loaded, update, hydrated, markHydrated, advance } = useOnboardingStepState("catalog");
 
     const [items, setItems] = useState<FormItem[]>([emptyItem()]);
     const [unitSystem, setUnitSystem] = useState<UnitSystem>("metric");
     const [submitError, setSubmitError] = useState<string | null>(null);
-    // Hydrated for which subject: the wallet, or the anonymous draft before one connects.
-    const [hydratedFor, setHydratedFor] = useState<string | null>(null);
-    const hydrated = hydratedFor === subject;
     const [importErrors, setImportErrors] = useState<string[]>([]);
     const [importedCount, setImportedCount] = useState<number | null>(null);
 
@@ -253,7 +242,7 @@ export function OnboardingCatalogForm({
         if (stored && stored.length > 0) {
             setItems(stored.map((item) => fromItem(item, storedUnitSystem)));
         }
-        setHydratedFor(subject);
+        markHydrated();
     }
 
     // Persist on every form change.
@@ -335,7 +324,7 @@ export function OnboardingCatalogForm({
         }
         setSubmitError(null);
         // Edit mode: caller pins the catalog + chases with updateProfile.
-        finishStep(onSave && (() => onSave(savedItems, unitSystem)), () => router.push(onboardingNextHref("catalog")));
+        finishStep(onSave && (() => onSave(savedItems, unitSystem)), advance);
     }
 
     if (!mounted) {

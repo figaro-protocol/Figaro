@@ -102,7 +102,7 @@ vi.mock("@/lib/designer/assemblyToDraft", async (importOriginal) => ({
     assemblyToDraft: (hydrated: { draft: unknown }) => hydrated.draft,
 }));
 vi.mock("@/app/(tools)/assemblies/designer/_components/AssemblyIdentity", () => ({ AssemblyIdentity: () => null }));
-vi.mock("@/lib/designer/publishAssembly", () => ({ usePublishAgreement: () => ({ publishAgreement: vi.fn(), isPending: false }) }));
+vi.mock("@/lib/designer/publishAssembly", () => ({ useRegisterDesignedAgreement: () => ({ registerDesignedAgreement: vi.fn(), isPending: false }) }));
 
 import { NewAssemblyClient } from "@/app/(tools)/assemblies/designer/new/NewAssemblyClient";
 import { EditAssemblyClient } from "@/app/(tools)/assemblies/designer/edit/EditAssemblyClient";

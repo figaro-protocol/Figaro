@@ -23,8 +23,8 @@
  */
 
 import Link from "@/components/shared/Link";
-import { useCallback, useMemo } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
+import { useUrlQueryState } from "@/lib/shared/useUrlQueryState";
 import { walletRecord, type ValueFlowEdge } from "@figaro-protocol/sdk/derive";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 import { Card } from "@/components/ui/Card";
@@ -95,18 +95,7 @@ function BoundaryLine({ view }: { view: GraphView }) {
 }
 
 export function DataExplorer() {
-    const params = useSearchParams();
-    const router = useRouter();
-    const pathname = usePathname();
-    const state = useMemo(() => parseDataExplorerQuery(params), [params]);
-
-    const setState = useCallback(
-        (patch: Partial<DataExplorerQuery>) => {
-            const next = { ...state, ...patch };
-            router.replace(`${pathname}?${serializeDataExplorerQuery(next)}`, { scroll: false });
-        },
-        [state, router, pathname],
-    );
+    const [state, setState] = useUrlQueryState(parseDataExplorerQuery, serializeDataExplorerQuery);
 
     const corpusRead = useGraphCorpus();
     const corpus = corpusRead.status === "present" ? corpusRead.value : null;

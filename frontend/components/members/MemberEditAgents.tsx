@@ -21,41 +21,28 @@
  * leaves the wallet simply unreachable for inbound coordination.
  */
 
-import { MemberEditGate } from "@/components/members/MemberEditGate";
-import { useMemberProfileEditor } from "@/lib/registries/useMemberProfileEditor";
+import { MemberEditStep } from "@/components/members/MemberEditGate";
+import type { UseMemberProfileEditorResult } from "@/lib/registries/useMemberProfileEditor";
 import type { MemberAgentServices } from "@/lib/registries/memberProfileMetadata";
 import { OnboardingAgentsForm } from "@/components/members/OnboardingAgentsForm";
 
+async function saveServices(editor: UseMemberProfileEditorResult, services: MemberAgentServices | undefined): Promise<void> {
+    if (services === undefined) {
+        // Caller blanked every field — clear the field entirely
+        // from the on-chain profile rather than leaving an empty
+        // object behind.
+        await editor.updater.save({}, { clear: ["services"] });
+    } else {
+        await editor.updater.save({ services });
+    }
+}
+
 export function MemberEditAgents() {
-    const editor = useMemberProfileEditor({
-        seed: (existingProfile, update) => {
-            update({ services: existingProfile.services });
-        },
-    });
-
-    if (editor.gate) {
-        return <MemberEditGate gate={editor.gate} />;
-    }
-
-    async function handleSave(services: MemberAgentServices | undefined): Promise<void> {
-        if (services === undefined) {
-            // Caller blanked every field — clear the field entirely
-            // from the on-chain profile rather than leaving an empty
-            // object behind.
-            await editor.updater.save({}, { clear: ["services"] });
-        } else {
-            await editor.updater.save({ services });
-        }
-    }
-
     return (
-        <OnboardingAgentsForm
-            onSave={handleSave}
-            submitLabel="Save changes"
-            backHref="/members/manage"
-            backLabel="← Cancel"
-            submitInFlight={editor.saveInFlight}
-            externalError={editor.externalError}
-        />
+        <MemberEditStep seed={(existingProfile, update) => update({ services: existingProfile.services })}>
+            {(editor, chrome) => (
+                <OnboardingAgentsForm {...chrome} onSave={(services) => saveServices(editor, services)} />
+            )}
+        </MemberEditStep>
     );
 }

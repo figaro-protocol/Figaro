@@ -518,15 +518,16 @@ const CENSUS: Census = {
     "lib/rewards/useRpgfRewards.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRpgfRewards.claim"], pinnedBy: THIS_FILE },
     "lib/composability/useSwapAndCommitActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useSwapAndCommitActions"], pinnedBy: THIS_FILE },
     "lib/composability/useSwapFunding.ts": { tokens: {}, sites: ["useSwapFunding"], pinnedBy: "tests/lib/useSwapFunding.test.tsx" },
-    "lib/designer/publishAssembly.ts": { tokens: { useWriteContract: 2, simulateWrite: 2, simulateWriteVerify: 3 }, sites: ["usePublishAgreement", "usePublishAssembly"], pinnedBy: "tests/lib/publishAssemblyWrites.test.tsx" },
+    "lib/designer/publishAssembly.ts": { tokens: { useWriteContract: 1, simulateWrite: 2, simulateWriteVerify: 3 }, sites: ["useRegisterDesignedAgreement", "usePublishAssembly"], pinnedBy: "tests/lib/publishAssemblyWrites.test.tsx" },
     "lib/core/useFigaroActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useFigaroActions.commit", "useFigaroActions.resolveProcess"], pinnedBy: THIS_FILE },
     "lib/registries/useMembersRegistry.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRegisterMember", "useUpdateProfile", "useRequestWithdrawal", "useWithdrawDeposit"], pinnedBy: THIS_FILE },
-    "lib/registries/usePublishMemberProfile.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 2 }, sites: ["register", "updateProfile"], pinnedBy: "tests/lib/publishMemberProfileNoCatalog.test.tsx" },
+    "lib/registries/usePublishMemberProfile.ts": { tokens: { simulateWriteVerify: 2 }, sites: ["register", "updateProfile"], pinnedBy: "tests/lib/publishMemberProfileNoCatalog.test.tsx" },
         "lib/registries/useRegisterClause.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRegisterClause"], pinnedBy: THIS_FILE },
     "lib/rewards/useUsageRecorder.ts": { tokens: { useWriteContract: 1, simulateWrite: 1, simulateWriteVerify: 1 }, sites: ["useUsageRecorder.recordUsage (clause)", "useUsageRecorder.recordUsage (agreement)", "useUsageRecorder.recordUsage (assembly)"], pinnedBy: THIS_FILE },
     "lib/registries/useWithdrawStake.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useWithdrawClause", "useWithdrawAssembly", "useWithdrawAgreement"], pinnedBy: THIS_FILE },
     "lib/shared/contractWrite.ts": { tokens: { simulateWrite: 2, simulateWriteVerify: 1 }, notASite: "the shared helper itself: its two definitions and simulateWriteVerify's own simulate" },
     "lib/shared/devShims.ts": { tokens: { sendTransaction: 1 }, notASite: "the dev signer's EIP-1193 transport, which forwards a write the wallet was asked for" },
+    "lib/shared/useTrackedWrite.ts": { tokens: { useWriteContract: 1 }, notASite: "the shared write-state hook: it opens wagmi's write for the publish hooks that send through it, each listed above" },
 };
 
 /** Files whose writes reach the wallet only through a write hook listed

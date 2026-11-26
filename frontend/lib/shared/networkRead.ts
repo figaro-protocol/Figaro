@@ -29,6 +29,12 @@ export function present<T>(value: T): NetworkRead<T> {
     return { status: "present", value };
 }
 
+/** A present read's value, or null while the read is pending or absent: for a
+ *  consumer that waits for the value and tells absence apart by `status`. */
+export function presentValue<T>(read: NetworkRead<T>): T | null {
+    return read.status === "present" ? read.value : null;
+}
+
 /** Map a present read's value; pending and absent pass through. */
 export function mapRead<T, U>(read: NetworkRead<T>, fn: (value: T) => U): NetworkRead<U> {
     return read.status === "present" ? present(fn(read.value)) : read;
