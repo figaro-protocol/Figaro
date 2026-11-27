@@ -175,6 +175,9 @@ Score(c, d) == IF c = 0 \/ d < MinSellers THEN 0 ELSE c * d * d
 \* agreement; for a process design the process is the use (UsesAdded).
 UseOf(rec) == << rec.pid, rec.seller >>
 
+\* No period: the process is not yet a use of the process design.
+NotUsed == -1
+
 \* The processes a set of recorded (process, seller) pairs names.
 ProcsOf(S) == { u[1] : u \in S }
 
@@ -215,6 +218,8 @@ VARIABLES
   \* ── UsageCounter state — ONE tally, both routes ──
   accrual,      \* [Artifacts -> [Periods -> Accrual]]  — accrualOf
   counted,      \* [Artifacts -> SUBSET (Procs \X Sellers)] — sellerCounted
+  usedIn,       \* [Artifacts -> [Procs -> Periods \union {NotUsed}]] — processCounted:
+                \* the period a process became a use of a process design
   seen,         \* [Artifacts -> [Periods -> SUBSET Sellers]] — sellerSeen
   totalScore,   \* [Periods -> Int]                     — totalScoreIn
   period,       \* the OPEN period (ClosedPeriod == accrual closed forever)
@@ -230,8 +235,17 @@ vars ==
      gStatus, gProc, gRec, verifBal,
      batchOpen, penNet, penUse, penPeriod,
      wallets,
-     accrual, counted, seen, totalScore, period,
+     accrual, counted, usedIn, seen, totalScore, period,
      kResolvedGhost, gSettled, dropped >>
+
+\* UsageCounter._usedInAnEarlierPeriod: the process is already a use of the
+\* process design, in a period other than q. A seller of it presented in q
+\* then adds nothing, neither a use nor breadth. Never true for a clause or
+\* an agreement.
+UsedEarlier(a, pid, q) ==
+  /\ a \in ProcessDesigns
+  /\ usedIn[a][pid] # NotUsed
+  /\ usedIn[a][pid] # q
 
 
 \* ── Derived state ────────────────────────────────────────────
@@ -288,6 +302,7 @@ Init ==
   /\ wallets = [p \in Participants |-> InitialBalance]
   /\ accrual = [a \in Artifacts |-> [q \in Periods |-> ZeroAcc]]
   /\ counted = [a \in Artifacts |-> {}]
+  /\ usedIn = [a \in Artifacts |-> [p \in Procs |-> NotUsed]]
   /\ seen = [a \in Artifacts |-> [q \in Periods |-> {}]]
   /\ totalScore = [q \in Periods |-> 0]
   /\ period = 0
@@ -322,7 +337,7 @@ KCommitRoot(pid, b, s, pay) ==
                                  - ( IF p = s THEN sBond ELSE 0 )]
      /\ UNCHANGED << gStatus, gProc, gRec, verifBal,
                      batchOpen, penNet, penUse, penPeriod,
-                     accrual, counted, seen, totalScore, period,
+                     accrual, counted, usedIn, seen, totalScore, period,
                      kResolvedGhost, gSettled, dropped >>
 
 \* FigaroCore.commit() with c.processId != bytes32(0).
@@ -350,7 +365,7 @@ KCommitSub(pid, s, pay) ==
                                        - ( IF p = s THEN sBond ELSE 0 )]
      /\ UNCHANGED << gStatus, gProc, gRec, verifBal,
                      batchOpen, penNet, penUse, penPeriod,
-                     accrual, counted, seen, totalScore, period,
+                     accrual, counted, usedIn, seen, totalScore, period,
                      kResolvedGhost, gSettled, dropped >>
 
 \* FigaroCore.resolveProcess() — buyer dominance, ATOMIC over every active
@@ -371,7 +386,7 @@ KResolve(pid) ==
      /\ kResolvedGhost' = kResolvedGhost \union ro
      /\ UNCHANGED << kRec, gStatus, gProc, gRec, verifBal,
                      batchOpen, penNet, penUse, penPeriod,
-                     accrual, counted, seen, totalScore, period,
+                     accrual, counted, usedIn, seen, totalScore, period,
                      gSettled, dropped >>
 
 
@@ -399,7 +414,7 @@ GCommitRoot(pid, b, s, pay) ==
      /\ batchOpen' = TRUE
      /\ UNCHANGED << kStatus, kProc, kRec, coreBal, verifBal,
                      penUse, penPeriod, wallets,
-                     accrual, counted, seen, totalScore, period,
+                     accrual, counted, usedIn, seen, totalScore, period,
                      kResolvedGhost, gSettled, dropped >>
 
 GCommitSub(pid, s, pay) ==
@@ -423,7 +438,7 @@ GCommitSub(pid, s, pay) ==
      /\ batchOpen' = TRUE
      /\ UNCHANGED << kStatus, kProc, kRec, coreBal, verifBal,
                      penUse, penPeriod, wallets,
-                     accrual, counted, seen, totalScore, period,
+                     accrual, counted, usedIn, seen, totalScore, period,
                      kResolvedGhost, gSettled, dropped >>
 
 GResolve(pid) ==
@@ -439,7 +454,7 @@ GResolve(pid) ==
      /\ batchOpen' = TRUE
      /\ UNCHANGED << kStatus, kProc, kRec, coreBal, gRec, verifBal,
                      penUse, penPeriod, wallets,
-                     accrual, counted, seen, totalScore, period,
+                     accrual, counted, usedIn, seen, totalScore, period,
                      kResolvedGhost, gSettled, dropped >>
 
 \* One in-proof usage claim (prover/lib/src/kernel.rs apply_usage_claims):
@@ -459,7 +474,7 @@ GClaimUsage(a, o) ==
   /\ batchOpen' = TRUE
   /\ UNCHANGED << kStatus, kProc, kRec, coreBal, gStatus, gProc, gRec, verifBal,
                   penNet, wallets,
-                  accrual, counted, seen, totalScore, period,
+                  accrual, counted, usedIn, seen, totalScore, period,
                   kResolvedGhost, gSettled, dropped >>
 
 \* FigaroBatchVerifier.settleBatch(). Steps modeled, in the contract's order:
@@ -481,7 +496,9 @@ SettleBatch ==
       \* the uses the counter counts — none when the call reverts
       cnt     == [a \in Artifacts |->
                     IF gateOK
-                    THEN { e \in penUse: e.art = a /\ UseOf(gRec[e.ord]) \notin counted[a] }
+                    THEN { e \in penUse: /\ e.art = a
+                                          /\ UseOf(gRec[e.ord]) \notin counted[a]
+                                          /\ ~UsedEarlier(a, gRec[e.ord].pid, pp) }
                     ELSE {}]
       newP    == [a \in Artifacts |-> { UseOf(gRec[e.ord]) : e \in cnt[a] }]
       newS    == [a \in Artifacts |-> { gRec[e.ord].seller : e \in cnt[a] }]
@@ -500,6 +517,10 @@ SettleBatch ==
      /\ verifBal' = verifBal + netSum
      \* the counter's one tally, one counted set, one seller set
      /\ counted' = [a \in Artifacts |-> counted[a] \union newP[a]]
+     /\ usedIn' = [a \in Artifacts |->
+                    [p \in Procs |->
+                       IF a \in ProcessDesigns /\ usedIn[a][p] = NotUsed /\ p \in ProcsOf(newP[a])
+                       THEN pp ELSE usedIn[a][p]]]
      /\ seen' = [a \in Artifacts |->
                    [q \in Periods |-> IF q = pp THEN seen[a][q] \union newS[a]
                                                 ELSE seen[a][q]]]
@@ -534,12 +555,16 @@ RecordUsage(a, o) ==
   /\ period < ClosedPeriod
   /\ kStatus[o] = "Resolved"                  \* reverts OrderNotResolved
   /\ UseOf(kRec[o]) \notin counted[a]         \* reverts AlreadyCounted
+  /\ ~UsedEarlier(a, kRec[o].pid, period)     \* reverts AlreadyCounted
   /\ LET s     == kRec[o].seller
          first == s \notin seen[a][period]
          c1    == accrual[a][period].c + UsesAdded(a, { UseOf(kRec[o]) }, counted[a])
          d1    == accrual[a][period].d + ( IF first THEN 1 ELSE 0 )
          sc    == Score(c1, d1)
      IN /\ counted' = [counted EXCEPT ![a] = @ \union { UseOf(kRec[o]) }]
+        /\ usedIn' = IF a \in ProcessDesigns /\ usedIn[a][kRec[o].pid] = NotUsed
+                      THEN [usedIn EXCEPT ![a][kRec[o].pid] = period]
+                      ELSE usedIn
         /\ seen' = [seen EXCEPT ![a] =
                       [@ EXCEPT ![period] = @ \union { s }]]
         /\ accrual' = [accrual EXCEPT ![a] =
@@ -566,7 +591,7 @@ AdvancePeriod ==
   /\ UNCHANGED << kStatus, kProc, kRec, coreBal,
                   gStatus, gProc, gRec, verifBal,
                   batchOpen, penNet, penUse, penPeriod, wallets,
-                  accrual, counted, seen, totalScore,
+                  accrual, counted, usedIn, seen, totalScore,
                   kResolvedGhost, gSettled, dropped >>
 
 
@@ -601,6 +626,7 @@ TypeOK ==
   /\ period \in 0 .. ClosedPeriod
   /\ penPeriod \in Periods
   /\ \A q \in Periods: totalScore[q] \in Nat
+  /\ \A a \in Artifacts, p \in Procs: usedIn[a][p] \in Periods \union { NotUsed }
   /\ \A a \in Artifacts, q \in Periods:
        /\ accrual[a][q].c \in Nat /\ accrual[a][q].d \in Nat
 
@@ -662,11 +688,15 @@ TotalScoreIntegrity ==
 \* the counter's one counted set. For a process design a use is a process:
 \* the periods' c add up to exactly the processes that set names.
 CountIsDistinctUses ==
-  \A a \in Artifacts:
-    SumFn(Periods, [q \in Periods |-> accrual[a][q].c])
-      = IF a \in ProcessDesigns
-        THEN Cardinality(ProcsOf(counted[a]))
-        ELSE Cardinality(counted[a])
+  /\ \A a \in Artifacts:
+       SumFn(Periods, [q \in Periods |-> accrual[a][q].c])
+         = IF a \in ProcessDesigns
+           THEN Cardinality(ProcsOf(counted[a]))
+           ELSE Cardinality(counted[a])
+  \* and for a process design the processes its counted pairs name are
+  \* exactly the processes held as a use of it (processCounted)
+  /\ \A a \in ProcessDesigns:
+       ProcsOf(counted[a]) = { p \in Procs: usedIn[a][p] # NotUsed }
 
 \* d counts each seller ONCE per period, whichever route carried them: it is
 \* exactly the size of the period's one seller set.
@@ -675,11 +705,15 @@ SellersCountedOnce ==
 
 \* For a clause and an agreement the breadth never exceeds the uses: a
 \* seller enters a period's seller set only with a use counted in that
-\* period, so d <= c in every period. A process design is outside this: each
-\* seller of a process enters the seller set while the process is one use.
+\* period, so d <= c in every period. For a process design each seller of a
+\* process enters the seller set while the process is one use, so d may
+\* exceed c; but a process belongs whole to the period of its use, so no
+\* period holds breadth without a use.
 BreadthWithinUses ==
-  \A a \in Artifacts \ ProcessDesigns, q \in Periods:
-    accrual[a][q].d <= accrual[a][q].c
+  /\ \A a \in Artifacts \ ProcessDesigns, q \in Periods:
+        accrual[a][q].d <= accrual[a][q].c
+  /\ \A a \in ProcessDesigns, q \in Periods:
+        accrual[a][q].c = 0 => accrual[a][q].d = 0
 
 \* The minimum-support floor is applied to the one tally.
 FloorApplied ==
@@ -730,8 +764,15 @@ AccrualNeverOverPays ==
 \* flight; applyBatchAccrual reverts PeriodMismatch, settleBatch catches it
 \* and resolves the tokens anyway, and the batch's uses go uncounted until a
 \* later batch proves them again.
+\*
+\* One settled use stays uncounted by rule, never by loss: a seller of a
+\* process that is already a use of a process design in an earlier period
+\* (UsedEarlier). The process belongs whole to the period of its use, so the
+\* counter skips that seller under the process design for good.
 AccrualNotLost ==
-  \A a \in Artifacts: gSettled[a] \subseteq counted[a]
+  \A a \in Artifacts:
+    \A u \in gSettled[a] \ counted[a]:
+      a \in ProcessDesigns /\ usedIn[a][u[1]] # NotUsed /\ usedIn[a][u[1]] < period
 
 \* No BatchAccrualSkipped was ever emitted. CARRIED BY:
 \* AssumeAccrualGatesAligned.

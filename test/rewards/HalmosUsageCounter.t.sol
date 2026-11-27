@@ -247,33 +247,61 @@ contract HalmosUsageCounter is Test {
     /// `processCounted`. Under the clause kind and the agreement kind the
     /// same two records are two uses, and neither kind ever writes
     /// `processCounted`. The key, the process and the sellers are symbolic.
-    function check_aProcessIsOneUseOfItsProcessDesign(bytes32 key, bytes32 processId, address seller1, address seller2)
-        public
-    {
+    function check_aProcessIsOneUseOfItsProcessDesign(
+        bytes32 key,
+        bytes32 processId,
+        address seller1,
+        address seller2,
+        address seller3
+    ) public {
         vm.assume(seller1 != seller2);
         vm.assume(key != PROVENANCE_LEAF && key != PROCESS_TERMS_LEAF);
         UsageCounterHarness counter = _deploy();
         uint8 kindProcess = counter.KIND_PROCESS();
-        uint8 kindAgreement = counter.KIND_AGREEMENT();
 
         counter.accrueAs(kindProcess, key, 0, processId, seller1);
         counter.accrueAs(kindProcess, key, 0, processId, seller2);
-        (uint64 c, uint64 d,) = counter.accrualOf(kindProcess, key, 0);
-        assertEq(c, 1, "one process is one use of its process design");
-        assertEq(d, 2, "each of its sellers is counted in the breadth");
-        assertTrue(counter.processCounted(key, processId), "the process is flagged as a use");
+        _assertUsesAndBreadth(counter, kindProcess, key, 0, 1, 2);
+        {
+            (bool counted, uint8 inPeriod) = counter.processCounted(key, processId);
+            assertTrue(counted, "the process is flagged as a use");
+            assertEq(inPeriod, 0, "in the period its first seller was counted in");
+        }
 
+        // Once a later period is open, another seller of that process adds
+        // nothing to the process design: the call reverts and the later
+        // period's tally stays empty.
+        {
+            (bool ok,) =
+                address(counter).call(abi.encodeCall(counter.accrueAs, (kindProcess, key, 1, processId, seller3)));
+            assertFalse(ok, "a seller of a process used in an earlier period is refused");
+        }
+        _assertUsesAndBreadth(counter, kindProcess, key, 1, 0, 0);
+
+        // An agreement and a clause have one use for each seller.
+        uint8 kindAgreement = counter.KIND_AGREEMENT();
         counter.accrueAs(kindAgreement, key, 0, processId, seller1);
         counter.accrueAs(kindAgreement, key, 0, processId, seller2);
-        (uint64 aC, uint64 aD,) = counter.accrualOf(kindAgreement, key, 0);
-        assertEq(aC, 2, "an agreement has one use for each seller");
-        assertEq(aD, 2);
+        _assertUsesAndBreadth(counter, kindAgreement, key, 0, 2, 2);
 
         counter.accrueAs(KIND_CLAUSE, key, 0, processId, seller1);
         counter.accrueAs(KIND_CLAUSE, key, 0, processId, seller2);
-        (uint64 kC, uint64 kD,) = counter.accrualOf(KIND_CLAUSE, key, 0);
-        assertEq(kC, 2, "a clause has one use for each seller");
-        assertEq(kD, 2);
+        _assertUsesAndBreadth(counter, KIND_CLAUSE, key, 0, 2, 2);
+    }
+
+    /// @dev The uses and the breadth of one key in one period, asserted in a
+    ///      frame of its own to keep the property under the stack limit.
+    function _assertUsesAndBreadth(
+        UsageCounterHarness counter,
+        uint8 kind,
+        bytes32 key,
+        uint8 period,
+        uint64 uses,
+        uint64 breadth
+    ) internal view {
+        (uint64 c, uint64 d,) = counter.accrualOf(kind, key, period);
+        assertEq(c, uses, "the uses");
+        assertEq(d, breadth, "the breadth");
     }
 
     // ── 2. A use counts the same on either route ─────────────────────

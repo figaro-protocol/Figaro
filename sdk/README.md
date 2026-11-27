@@ -249,7 +249,7 @@ does NOT, and neither does hand-rolled `cast`.
 
 *`AccrualClosed()`.* `recordClauseUsage`, `recordAgreementUsage` and `recordProcessDesignUsage` all open by
 calling `UsageCounter.currentPeriod()`, which reverts `AccrualClosed()` once the
-last accrual period has ended (`src/rewards/UsageCounter.sol:450-456`) —
+last accrual period has ended (`src/rewards/UsageCounter.sol:466-472`) —
 the nine annual periods are the reward's whole life, and after the ninth
 boundary usage is permanently unrecordable. Two consequences before that day: a recording is attributed to the period **open when you call**, not the one the
 process resolved in, so crossing a boundary between resolving and recording moves the

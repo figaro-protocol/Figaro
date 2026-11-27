@@ -189,7 +189,10 @@ function emptyEntry(kind: UsageKind, clauseOrProcess: Hex): ClauseOrProcessAccru
  *  earlier period's trade. Under a clause or an agreement each recorded
  *  seller is one use; under a process design a process is ONE use whatever
  *  the number of its sellers (`UsageCounter.processCounted`), counted in the
- *  period its first seller is recorded in. Then the
+ *  period its first seller is recorded in, and the process belongs to that
+ *  period whole: a seller of it first met in a later period adds nothing
+ *  under the process design (the counter refuses it, so the chain's own
+ *  stream never carries one). Then the
  *  distinct-STAKED-SELLER count PER PERIOD (breadth counts
  *  only what a stake has priced; pairs were free to mint on the buyer side)
  *  and the uniform floored score. Records are replayed in (blockNumber,
@@ -206,7 +209,7 @@ export function computeUsageAccruals(
     const periods = new Map<number, UsagePeriodAccrual>();
     const countedUses = new Map<string, Set<string>>(); // (kind, key) → processId|seller (GLOBAL)
     const sellersSeen = new Map<string, Set<string>>(); // (kind, key)|period → sellers
-    const countedProcesses = new Map<string, Set<string>>(); // process design → processId (GLOBAL)
+    const countedProcesses = new Map<string, Map<string, number>>(); // process design → processId → period of its use (GLOBAL)
 
     for (const record of sorted) {
         const clauseOrProcess = record.clauseOrProcess.toLowerCase() as Hex;
@@ -217,6 +220,12 @@ export function computeUsageAccruals(
 
         const seenUses = countedUses.get(id) ?? new Set<string>();
         if (seenUses.has(use)) continue; // AlreadyCounted
+        // A process already a use of its process design in an earlier period
+        // adds nothing to it in a later one (AlreadyCounted too).
+        const processes = countedProcesses.get(id) ?? new Map<string, number>();
+        const processId = record.processId.toLowerCase();
+        const usedIn = record.kind === USAGE_KIND_PROCESS ? processes.get(processId) : undefined;
+        if (usedIn !== undefined && usedIn !== record.period) continue;
         const sellers = sellersSeen.get(scopeKey) ?? new Set<string>();
         const firstSeller = !sellers.has(seller);
 
@@ -229,10 +238,8 @@ export function computeUsageAccruals(
         // agreement have one use for each seller of the process.
         let newUse = true;
         if (record.kind === USAGE_KIND_PROCESS) {
-            const processes = countedProcesses.get(id) ?? new Set<string>();
-            const processId = record.processId.toLowerCase();
-            newUse = !processes.has(processId);
-            processes.add(processId);
+            newUse = usedIn === undefined;
+            if (newUse) processes.set(processId, record.period);
             countedProcesses.set(id, processes);
         }
 
@@ -401,8 +408,10 @@ const BATCH_OPERATIONS_EVENT = BATCH_VERIFIER_ABI.find(
  * id and `batchVerifier`); the proof binds them to the `settleBatch`
  * argument. A use the counter skips one by one inside a call that does not
  * revert (an unstaked seller, a key without a live registration, a seller of
- * a process already counted) emits no event, and this reader does not see it;
- * `UsageCounter.sellerCounted` answers for it.
+ * a process already counted, a process already a use of its process design in
+ * an earlier period) emits no event, and this reader does not see it;
+ * `UsageCounter.sellerCounted` answers for the seller, and
+ * `UsageCounter.processCounted`, with its period, for the process.
  *
  * `fromBlock` is required: a scan of a deployment starts at its
  * `FigaroDeploymentRecord.deploymentBlock`. The node is asked for the two

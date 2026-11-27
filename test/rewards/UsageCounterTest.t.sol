@@ -1919,36 +1919,127 @@ contract UsageCounterTest is Test {
         assertEq(counter.totalScoreIn(0), score);
     }
 
-    /// The use of a process design lands in the period its process is first
-    /// recorded in. A seller of that process first presented in a later
-    /// period adds to that period's breadth and adds no use.
-    function test_aLaterSellerOfACountedProcessAddsBreadthAndNoUse() public {
+    /// The use of a process design lands in the period open when its process
+    /// is first presented, and the process belongs to that period whole. A
+    /// seller of that process first presented in a later period adds nothing
+    /// to the process design there, neither a use nor breadth: the direct
+    /// path refuses it and a batch skips it. The same order still counts its
+    /// agreement and its clause in the later period, each a use of its own.
+    function test_aLaterSellerOfAProcessCountedInAnEarlierPeriodAddsNothingToItsProcessDesign() public {
         (CommitmentTypes.Commitment[] memory o, bytes32[][] memory p) = _settledThreeSellerProcessOfTheDesign(5400);
         bytes32 root = _asmRoot();
         _recordAssembly(counter, o[0], 0, p[0]);
 
         vm.warp(P0_END + 1);
+        vm.expectRevert(UsageCounter.AlreadyCounted.selector);
         _recordAssembly(counter, o[1], 0, p[1]);
+        {
+            UsageCounter.BatchUse[] memory u = new UsageCounter.BatchUse[](1);
+            u[0] = UsageCounter.BatchUse(root, KIND_PROCESS, _pid(o[0]), seller2);
+            vm.prank(batchVerifier);
+            counter.applyBatchAccrual(1, PROVENANCE_LEAF, u);
+        }
 
-        (uint64 c0, uint64 d0,) = counter.accrualOf(KIND_PROCESS, root, 0);
-        (uint64 c1, uint64 d1, uint256 score1) = counter.accrualOf(KIND_PROCESS, root, 1);
-        assertEq(c0, 1, "the use stays in the period the process was first recorded in");
-        assertEq(d0, 1);
-        assertEq(c1, 0, "the process is not a use again in a later period");
-        assertEq(d1, 1, "its later seller is breadth in the period open at its record");
-        assertEq(score1, 0, "and a period with no use of the key scores nothing for it");
+        _assertAccrual(KIND_PROCESS, root, 0, 1, 1, "the use stays in the period the process was first presented in");
+        _assertAccrual(KIND_PROCESS, root, 1, 0, 0, "the later period holds neither a use nor breadth for it");
+        assertFalse(counter.sellerCounted(KIND_PROCESS, root, _pid(o[0]), seller2), "nothing is written for it");
+        assertFalse(counter.sellerSeen(KIND_PROCESS, root, 1, seller2));
         assertEq(counter.totalScoreIn(0), _score(1, 1), "the first period's total is its one score");
         assertEq(counter.totalScoreIn(1), 0, "the later period's total holds no score");
+        {
+            (bool counted, uint8 inPeriod) = counter.processCounted(root, _pid(o[0]));
+            assertTrue(counted);
+            assertEq(inPeriod, 0, "the process is held in the period of its use");
+        }
+
+        // The later seller's own agreement and clause are each a use in the
+        // later period.
+        counter.recordAgreementUsage(o[1], AGR_KEY, root, p[1]);
+        _assertAccrual(KIND_AGREEMENT, AGR_KEY, 1, 1, 1, "an agreement keeps one use for each seller");
+        counter.recordClauseUsage(
+            o[1], CARGO_KEY, keccak256(CLAUSE_DATA), AgreementTestHelper.proofFor(_twoLeaves(o[1], 0), 0)
+        );
+        _assertAccrual(KIND_CLAUSE, CARGO_KEY, 1, 1, 1, "and so does a clause");
 
         // Another process of the process design, counted in the later period,
-        // is a use there, and the breadth already standing counts with it.
-        (CommitmentTypes.Commitment memory again, bytes32[] memory proof) = _settledUnderAgreement(AGR_KEY, root, 5410);
-        _recordAssembly(counter, again, 0, proof);
-        (c1, d1, score1) = counter.accrualOf(KIND_PROCESS, root, 1);
-        assertEq(c1, 1, "the new process is one use in the later period");
-        assertEq(d1, 2, "seller1 joins the breadth seller2 already gave the period");
-        assertEq(score1, _score(1, 2));
-        assertEq(counter.totalScoreIn(1), score1);
+        // is a use there with its own seller.
+        {
+            (CommitmentTypes.Commitment memory again, bytes32[] memory proof) =
+                _settledUnderAgreement(AGR_KEY, root, 5410);
+            _recordAssembly(counter, again, 0, proof);
+        }
+        _assertAccrual(KIND_PROCESS, root, 1, 1, 1, "the new process is one use, with its seller as breadth");
+        assertEq(
+            counter.totalScoreIn(1),
+            3 * _score(1, 1),
+            "the total holds the agreement's, the clause's and the process design's scores"
+        );
+    }
+
+    /// @dev One key's uses and breadth in one period, in a frame of its own.
+    function _assertAccrual(uint8 kind, bytes32 key, uint8 period, uint64 uses, uint64 breadth, string memory why)
+        internal
+        view
+    {
+        (uint64 c, uint64 d,) = counter.accrualOf(kind, key, period);
+        assertEq(c, uses, why);
+        assertEq(d, breadth, why);
+    }
+
+    /// Within one period a later seller of a counted process still adds its
+    /// breadth, and breadth never stands in a period without a use of the key.
+    function testFuzz_aProcessDesignsBreadthNeverStandsWithoutAUse(uint256 seed) public {
+        (CommitmentTypes.Commitment[] memory o, bytes32[][] memory p) = _settledThreeSellerProcessOfTheDesign(5500);
+        bytes32 root = _asmRoot();
+        for (uint256 k = 0; k < 3; ++k) {
+            uint256 i = uint256(keccak256(abi.encode(seed, k))) % 3;
+            if (uint256(keccak256(abi.encode(seed, "warp", k))) % 3 == 0 && block.timestamp <= P0_END) {
+                vm.warp(P0_END + 1);
+            }
+            try this.recordAssemblyExternal(o[i], i == 2 ? 1 : 0, p[i]) {}
+            catch (bytes memory reason) {
+                assertEq(bytes4(reason), UsageCounter.AlreadyCounted.selector, "the only refusal is AlreadyCounted");
+            }
+        }
+        for (uint8 q = 0; q < 2; ++q) {
+            (uint64 c, uint64 d,) = counter.accrualOf(KIND_PROCESS, root, q);
+            assertTrue(c > 0 || d == 0, "breadth stands only in a period that holds a use");
+            assertLe(c, 1, "one process is at most one use");
+        }
+    }
+
+    function recordAssemblyExternal(CommitmentTypes.Commitment memory c, uint256 entry, bytes32[] memory proof)
+        external
+    {
+        _recordAssembly(counter, c, entry, proof);
+    }
+
+    /// On the batch route alone: a process first counted through a batch in
+    /// one period is not a use again in a later one, and a seller of it that
+    /// a later period's batch brings adds nothing and stays uncounted.
+    function test_batchAccrual_aLaterPeriodsBatchAddsNothingForAnEarlierPeriodsProcess() public {
+        bytes32 root = _asmRoot();
+        bytes32 process = keccak256("a-batch-process-across-a-boundary");
+        UsageCounter.BatchUse[] memory first = new UsageCounter.BatchUse[](1);
+        first[0] = UsageCounter.BatchUse(root, KIND_PROCESS, process, seller1);
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, first);
+
+        vm.warp(P0_END + 1);
+        UsageCounter.BatchUse[] memory later = new UsageCounter.BatchUse[](2);
+        later[0] = UsageCounter.BatchUse(root, KIND_PROCESS, process, seller2);
+        later[1] = UsageCounter.BatchUse(root, KIND_PROCESS, keccak256("a-new-batch-process"), seller3);
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(1, PROVENANCE_LEAF, later);
+
+        (uint64 c0, uint64 d0,) = counter.accrualOf(KIND_PROCESS, root, 0);
+        (uint64 c1, uint64 d1,) = counter.accrualOf(KIND_PROCESS, root, 1);
+        assertEq(c0, 1);
+        assertEq(d0, 1);
+        assertEq(c1, 1, "only the new process is a use in the later period");
+        assertEq(d1, 1, "and only its seller is breadth there");
+        assertFalse(counter.sellerCounted(KIND_PROCESS, root, process, seller2));
+        assertFalse(counter.sellerSeen(KIND_PROCESS, root, 1, seller2));
     }
 
     /// In a batch, a first seller skipped for want of a live stake does not
@@ -1970,7 +2061,8 @@ contract UsageCounterTest is Test {
         assertEq(c, 1, "the staked seller adds the process's one use");
         assertEq(d, 1);
         assertFalse(counter.sellerCounted(KIND_PROCESS, root, process, seller1));
-        assertTrue(counter.processCounted(root, process));
+        (bool counted,) = counter.processCounted(root, process);
+        assertTrue(counted);
 
         vm.prank(seller1);
         members.register("ipfs://seller1-again");

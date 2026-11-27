@@ -245,7 +245,8 @@ contract UsageCounter {
         /// @dev Distinct live-staked sellers counted under this key in the
         ///      period. For a clause and an agreement `d <= c`. For a process
         ///      design every seller of a process is counted here while the
-        ///      process is one use, so `d` may exceed `c`.
+        ///      process is one use, so `d` may exceed `c`; it is zero where
+        ///      `c` is zero (`processCounted`).
         uint64 d;
         /// @dev `icbrt(c * d^2 * 1e18)` — cached so `totalScore` can be
         ///      maintained in O(1) as a delta on every record.
@@ -278,7 +279,8 @@ contract UsageCounter {
     ///         assembly, in whichever period it is first presented, whichever
     ///         route brought it. Under a clause or an agreement the pair is
     ///         one use; under an assembly the process is the one use
-    ///         (`processCounted`) and the pair is its seller. A batch-resolved process's id is derived under the
+    ///         (`processCounted`) and the pair is its seller, counted only
+    ///         while the period of that use is open. A batch-resolved process's id is derived under the
     ///         verifier's EIP-712 domain and a direct one's under
     ///         `FigaroCore`'s, so the two routes never present the same id.
     /// @dev    Why the seller is in the key. A process may have several
@@ -305,21 +307,35 @@ contract UsageCounter {
     ///         fixed per-period budget schedule assumes.
     mapping(uint8 => mapping(bytes32 => mapping(bytes32 => mapping(address => bool)))) public sellerCounted;
 
+    /// @dev Whether a process is already a use of a process design, and the
+    ///      period that use landed in. One storage slot.
+    struct ProcessUse {
+        bool counted;
+        uint8 period;
+    }
+
     /// @notice processDesignHash → processId → this process is already a use
-    ///         of this process design. Read and written under `KIND_PROCESS`
-    ///         alone. One buyer buys one process, so a process is ONE use of
-    ///         its process design, counted in the period open when its first
-    ///         seller is presented, whichever seller that is and whichever
-    ///         route brought it.
-    /// @dev    Every seller of the process is still counted once as a seller
-    ///         (`sellerCounted`) and still feeds the breadth of the period
-    ///         open when it is presented (`sellerSeen`); only the count of
-    ///         uses stops at one. So the tally of a process is the same
-    ///         whoever presents its orders and in whatever sequence: one
-    ///         use, and its sellers.
+    ///         of this process design, and in which period. Read and written
+    ///         under `KIND_PROCESS` alone. One buyer buys one process, so a
+    ///         process is ONE use of its process design, counted in the period
+    ///         open when its first seller is presented, whichever seller that
+    ///         is and whichever route brought it.
+    /// @dev    The process belongs to that period whole. While the period is
+    ///         open every seller of the process is counted once as a seller
+    ///         (`sellerCounted`) and feeds that period's breadth
+    ///         (`sellerSeen`); only the count of uses stops at one. So within
+    ///         a period the tally of a process is the same whoever presents
+    ///         its orders and in whatever sequence: one use, and its sellers.
+    ///         Once a later period is open, a seller of that process not yet
+    ///         counted adds nothing under the process design, neither a use
+    ///         nor breadth: the direct path reverts `AlreadyCounted` and a
+    ///         batch skips it. A period therefore holds breadth for a process
+    ///         design only from processes used in it, and `d` is never above
+    ///         zero where `c` is zero.
     ///         A clause and an agreement never read this set: each keeps one
-    ///         use for each seller of the process.
-    mapping(bytes32 => mapping(bytes32 => bool)) public processCounted;
+    ///         use for each seller of the process, in the period open when
+    ///         that seller is presented.
+    mapping(bytes32 => mapping(bytes32 => ProcessUse)) public processCounted;
 
     /// @notice kind → clause, agreement or assembly → period → seller → has this seller already contributed
     ///         to `d` in this period. Its only job is the distinct-staked-seller
@@ -685,7 +701,9 @@ contract UsageCounter {
     ///           3. whether the clause, assembly or agreement holds a live
     ///              registration — each use in its own kind's registry only,
     ///           4. whether that seller of the process is already counted
-    ///              under that key.
+    ///              under that key,
+    ///           5. whether the process is already a use of its process
+    ///              design in an earlier period.
     ///         The verifier deliberately checks none of them: it owns the
     ///         proof, this contract owns the reward's gates.
     ///
@@ -718,9 +736,11 @@ contract UsageCounter {
             // revert here would take down the whole batch's TOKEN resolution (a
             // reward-tier gate blocking the resolution tier). A use that fails
             // a gate simply is not counted, exactly as a direct call that
-            // fails it counts nothing, and it may be presented again on either
-            // route. (The direct path reverts instead — it is a standalone tx
-            // with nothing else to unwind.)
+            // fails it counts nothing. One skipped for its key's registration
+            // or its seller's stake may be presented again on either route;
+            // one skipped as already counted, or for a process used in an
+            // earlier period, never counts. (The direct path reverts instead
+            // — it is a standalone tx with nothing else to unwind.)
             // The two reserved keys are constants of their formats, never a
             // registration: the provenance leaf opens under every agreement that
             // names an agreement and an assembly, the terms leaf under every
@@ -743,6 +763,9 @@ contract UsageCounter {
             // SELLER-SIDE GATE, the direct path's own: the use's seller holds a
             // LIVE stake now.
             if (!members.registered(u.seller)) continue;
+            // A process already a use of its process design in an earlier
+            // period adds nothing to it now, the direct path's own gate.
+            if (_usedInAnEarlierPeriod(u.kind, u.clauseOrProcess, u.processId, period)) continue;
             // Once ever, the direct path's own set.
             if (sellerCounted[u.kind][u.clauseOrProcess][u.processId][u.seller]) continue;
 
@@ -793,10 +816,26 @@ contract UsageCounter {
         // genuine one), which is why it is the registries' stake terms —
         // deposit AND withdrawal cooldown — that carry it.
         if (!members.registered(seller)) revert SellerNotStaked(seller);
+        // A process already a use of its process design in an earlier period
+        // adds nothing to it now — see `processCounted`.
+        if (_usedInAnEarlierPeriod(kind, clauseOrProcess, processId, period)) revert AlreadyCounted();
         // Once ever, not once per period — see `sellerCounted`.
         if (sellerCounted[kind][clauseOrProcess][processId][seller]) revert AlreadyCounted();
 
         _count(kind, clauseOrProcess, period, processId, seller);
+    }
+
+    /// @dev Whether `processId` is already a use of the process design
+    ///      `clauseOrProcess` in a period before `period`. Always false for a
+    ///      clause and an agreement.
+    function _usedInAnEarlierPeriod(uint8 kind, bytes32 clauseOrProcess, bytes32 processId, uint8 period)
+        internal
+        view
+        returns (bool)
+    {
+        if (kind != KIND_PROCESS) return false;
+        ProcessUse storage use = processCounted[clauseOrProcess][processId];
+        return use.counted && use.period != period;
     }
 
     /// @dev The counting itself, the one path both routes take once their
@@ -817,8 +856,8 @@ contract UsageCounter {
         // of its sellers; a clause and an agreement have one use per seller.
         bool newUse = true;
         if (kind == KIND_PROCESS) {
-            newUse = !processCounted[clauseOrProcess][processId];
-            if (newUse) processCounted[clauseOrProcess][processId] = true;
+            newUse = !processCounted[clauseOrProcess][processId].counted;
+            if (newUse) processCounted[clauseOrProcess][processId] = ProcessUse(true, period);
         }
 
         Accrual storage a = accrualOf[kind][clauseOrProcess][period];

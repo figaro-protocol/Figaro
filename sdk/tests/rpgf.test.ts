@@ -251,16 +251,16 @@ describe("computeUsageAccruals", () => {
         expect(accruals.get(0)!.byClauseOrProcess.get(id(ASSEMBLY))!).toMatchObject({ c: 2n, d: 3n });
     });
 
-    it("keeps a process design's use in the period its process was first recorded in; a later seller is breadth there only", () => {
+    it("keeps a process design's use in the period its process was first recorded in; a later seller adds nothing in a later period", () => {
         const accruals = computeUsageAccruals([
             record(ASSEMBLY, "pd-4", sellerOf("seller1")),
             record(ASSEMBLY, "pd-4", sellerOf("seller2"), { period: 1, blockNumber: 200n }),
         ], 1n);
         expect(accruals.get(0)!.byClauseOrProcess.get(id(ASSEMBLY))!).toMatchObject({ c: 1n, d: 1n });
-        expect(accruals.get(1)!.byClauseOrProcess.get(id(ASSEMBLY))!).toMatchObject({ c: 0n, d: 1n, score: 0n });
+        expect(accruals.get(1)).toBeUndefined();
     });
 
-    it("a replayed process-design record adds nothing, and the stranded breadth counts once a new process lands", () => {
+    it("a replayed process-design record adds nothing, and a new process in a later period is a use there with its own seller", () => {
         const s1 = sellerOf("seller1");
         const s2 = sellerOf("seller2");
         const accruals = computeUsageAccruals([
@@ -271,7 +271,7 @@ describe("computeUsageAccruals", () => {
         ], 1n);
         expect(accruals.get(0)!.byClauseOrProcess.get(id(ASSEMBLY))!).toMatchObject({ c: 1n, d: 1n });
         expect(accruals.get(1)!.byClauseOrProcess.get(id(ASSEMBLY))!).toMatchObject({
-            c: 1n, d: 2n, score: usageScore(1n, 2n, 1n),
+            c: 1n, d: 1n, score: usageScore(1n, 1n, 1n),
         });
     });
 

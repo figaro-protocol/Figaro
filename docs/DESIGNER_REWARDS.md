@@ -67,7 +67,9 @@ clause of A and one of each clause of B. A second order of the same seller in
 the same process adds nothing (`UsageCounter.sellerCounted`). Every seller of a
 process enters `d` under each key its order carries, the process design
 included, so for a clause and an agreement `d <= c`, and for a process design
-`d` may exceed `c`. The tally is one and route-blind: a use is
+`d` may exceed `c`. A process belongs whole to the period of its use: a seller
+of it first presented in a later period adds nothing under the process design
+(`docs/DESIGN_DECISIONS.md` § 43). The tally is one and route-blind: a use is
 a use whichever way its process reached the chain, through `FigaroCore` or in a
 proved batch, so each use and each seller is counted once across
 both routes, and the score never depends on the route. Distinct sellers are weighted above raw

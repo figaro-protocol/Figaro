@@ -14,7 +14,7 @@ the patterns that look like vulnerabilities and are intended: read it first.
 | Repository | https://github.com/figaro-protocol/Figaro |
 | Baseline commit | none: no audit is engaged (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, four deploy scripts) and Rust (`prover/`, three crates) |
-| Solidity in scope | 14 contract files, 1,630 lines of code (4,011 physical); 4 deploy scripts, 350 lines of code (771 physical) |
+| Solidity in scope | 14 contract files, 1,651 lines of code (4,089 physical); 4 deploy scripts, 350 lines of code (771 physical) |
 | Rust in scope | 3 crates, 20 files under `src/`, 6,646 lines of code (9,648 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, the routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
@@ -62,7 +62,7 @@ processes under one SP1 proof, in four parts:
 | `src/core/attestation/` | `AttestationCoordinator.sol` | 77 (198) |
 | `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 519 (1,014), 7 (23) |
 | `src/registries/` | `ClauseRegistry.sol`, `AgreementRegistry.sol`, `ProcessRegistry.sol`, `MembersRegistry.sol` | 44 (178), 53 (203), 47 (189), 60 (218) |
-| `src/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol`, `FlorinToken.sol`, `IFlorinMinter.sol` | 295 (895), 147 (359), 50 (84), 4 (9) |
+| `src/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol`, `FlorinToken.sol`, `IFlorinMinter.sol` | 316 (973), 147 (359), 50 (84), 4 (9) |
 | `src/composability/` | `WitnessSwapAndCommitCoordinator.sol` | 131 (281) |
 | `script/DeployBase.s.sol` | The deployment every chain's script runs: `DeployBase`, and `DeployPublicStack`, the deployment mainnet and Sepolia share | 205 (418) |
 | `script/Deploy.s.sol` | The devnet deploy | 122 (290) |

@@ -44,7 +44,9 @@ breadth (`test_aProcessIsOneUseOfItsProcessDesign_andEverySellerIsBreadth`,
 `test_aProcessDesignsTallyIsTheSameInEverySequenceOfItsSellers`,
 `test_aSecondProcessIsASecondUseOfTheProcessDesign`,
 `test_batchAccrual_aProcessIsOneUseOfItsProcessDesign`,
-`test_aLaterSellerOfACountedProcessAddsBreadthAndNoUse`), and a
+`test_aLaterSellerOfAProcessCountedInAnEarlierPeriodAddsNothingToItsProcessDesign`,
+`testFuzz_aProcessDesignsBreadthNeverStandsWithoutAUse`,
+`test_batchAccrual_aSkippedFirstSellerLeavesTheUseToTheNext`), and a
 second order of the same seller in the process adds nothing:
 `test_aTwoSellerProcessEndsInOneTallyWhicheverOrderIsRecordedFirst`,
 `test_twoOrdersOfOneSellerInOneProcessAreOneUse`,
