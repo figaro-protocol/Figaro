@@ -1822,8 +1822,10 @@ contract FigaroBatchVerifierTest is Test {
         this.landWith(full * 95 / 100, pv, positions, events, usage);
         assertEq(verifier.stateRoot(), GENESIS, "the root does not move");
 
-        // With the gas a full run takes, the same batch lands with its uses counted.
-        this.landWith(full, pv, positions, events, usage);
+        // With the gas a full run takes, the same batch lands with its uses counted. The
+        // measured run had gas to spare, so it does not show the 64th the EVM holds back
+        // at the call to the counter (EIP-150); a caller funds that too.
+        this.landWith(full + full / 63, pv, positions, events, usage);
         assertEq(verifier.stateRoot(), newRoot, "the batch lands");
         (uint64 c,,) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
         assertEq(c, 64, "every use counted");
