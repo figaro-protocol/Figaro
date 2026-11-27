@@ -32,6 +32,13 @@ name: Mutation (dispatch)
 # limited number of jobs at once (20 on the free plan), so the matrix
 # queues: two rounds of up to six hours.
 #
+# Each mutant runs against figaro-kernel's own tests alone (`-p`). The crates
+# that depend on it, the proof program and the relay, are not built for a
+# mutant: each would rebuild the guest for every one. So a mutant that only a
+# dependent crate's test catches is counted as missed. That errs on the strict
+# side: it marks a rule this crate's own suite does not hold, and each missed
+# mutant is read by hand (docs/VERIFICATION_MAP.md, the benches' table).
+#
 # mewt over the contracts has its own workflow, mewt-dispatch.yml, which
 # passes mewt's configuration on the command line.
 

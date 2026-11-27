@@ -20,7 +20,9 @@ name: Prover CI
 # generates agreements and both Merkle verifiers open their proofs. The seed
 # is the run id, so every run draws new streams, and the log prints it.
 #
-# `sp1` — push to main and dispatch only: the other three workspace members —
+# `sp1` — every push to main, every dispatch, and every PR that touches the
+# proof program, the relay, the Core or a contract the batch e2e deploys: the
+# other three workspace members —
 # `figaro-prover` (prover/program, the SP1 guest), `figaro-prove-test`
 # (prover/script) and `figaro-sequencer` (prover/sequencer) — pull in
 # `sp1-build`/`sp1-zkvm`/`sp1-sdk`, and their `build.rs` calls
@@ -31,7 +33,9 @@ name: Prover CI
 # files): the four-layer batch e2e (TypeScript signs, the Rust sequencer
 # proves and submits, the Solidity verifier settles on a live Anvil) and the
 # SDK's round-trip on that Anvil. A missing chain or binary fails each file.
-# Paying that cost on every PR is what the split avoids.
+# The PR trigger's paths are the narrower list below: a change to the relay or
+# to what it proves is tested before it merges, and a PR that touches only the
+# SDK or a document does not pay the toolchain's cost.
 
 on:
     workflow_dispatch:
@@ -94,6 +98,10 @@ on:
             - "fuzz/prover/**"
             - "test/fixtures/operation-stream-vectors.json"
             - "test/fixtures/public-values-vectors.json"
+            # The contracts the `sp1` job's batch e2e deploys beside the Core.
+            - "src/registries/**"
+            - "src/rewards/UsageCounter.sol"
+            - ".github/workflows/prover-ci.yml"
 
 permissions:
     contents: read
@@ -236,8 +244,7 @@ jobs:
                   if-no-files-found: ignore
 
     sp1:
-        name: SP1 crates + batch e2e (main only)
-        if: github.event_name != 'pull_request'
+        name: SP1 crates + batch e2e
         runs-on: ubuntu-24.04
         timeout-minutes: 90
         steps:
