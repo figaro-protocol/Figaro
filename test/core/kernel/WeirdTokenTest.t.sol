@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
+import {MockERC20} from "src/mocks/MockERC20.sol";
 import {MockERC20NoReturn} from "src/mocks/MockERC20NoReturn.sol";
 import {MockERC20Blocklist} from "src/mocks/MockERC20Blocklist.sol";
 import {MockERC20Rebasing} from "src/mocks/MockERC20Rebasing.sol";
@@ -164,6 +165,47 @@ contract WeirdTokenTest is Test {
         rbs.rebase(1e18);
         _resolve(processId, c);
         assertEq(rbs.balanceOf(address(core)), 0, "resolves once the balance is back");
+    }
+
+    // ── A balance that shrinks, taken to its limit ───────────────
+
+    /// The guard in `resolveProcess` that refuses a running total above a
+    /// third of the largest value. A token that keeps FigaroCore's balance
+    /// can never bring a process there: an order locks four times its
+    /// running total or more, so the balance would pass the largest value
+    /// first. Only a token whose balance for FigaroCore shrinks between two
+    /// commits lets such a total be committed, and then the guard is what
+    /// stops the resolution, before any transfer. The shrinking is set here
+    /// with `deal`, a downward rebase taken to its limit.
+    function test_shrunkBalance_aRunningTotalPastAThirdIsRefusedAtResolution() public {
+        MockERC20 tok = new MockERC20("Shrinking", "SHR");
+        address[3] memory parties = [buyer, seller1, seller2];
+        for (uint256 i = 0; i < parties.length; i++) {
+            vm.prank(parties[i]);
+            tok.approve(address(core), type(uint256).max);
+        }
+
+        uint256 rootPayment = type(uint256).max / 4;
+        deal(address(tok), buyer, rootPayment * 2);
+        deal(address(tok), seller1, rootPayment * 2);
+        (bytes32 processId, CommitmentTypes.Commitment memory root) =
+            _commitRoot(address(tok), seller1, SELLER1_KEY, rootPayment, 1);
+
+        deal(address(tok), address(core), 0);
+
+        uint256 total = type(uint256).max / 3 + 1;
+        uint256 payment = total - rootPayment;
+        deal(address(tok), buyer, payment * 2);
+        deal(address(tok), seller2, total * 2);
+        CommitmentTypes.Commitment memory sub =
+            _commitSub(address(tok), processId, seller2, SELLER2_KEY, payment, total, 2);
+
+        CommitmentTypes.Commitment[] memory list = new CommitmentTypes.Commitment[](2);
+        list[0] = sub;
+        list[1] = root;
+        vm.prank(buyer);
+        vm.expectRevert(bytes("RunningTotalOverflow"));
+        core.resolveProcess(processId, list);
     }
 
     // ── Helpers ──────────────────────────────────────────────────

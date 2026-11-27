@@ -35,6 +35,7 @@
 #   >0 — at least one property failed OR the environment is misconfigured
 
 set -e
+bash "$(dirname "$0")/bench-stamp.sh" "$0"
 
 MEDUSA="$(command -v medusa || true)"
 if [ -z "$MEDUSA" ] && command -v go >/dev/null 2>&1; then

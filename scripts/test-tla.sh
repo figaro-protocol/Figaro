@@ -121,6 +121,7 @@
 #   >0 — an invariant violation was found OR the environment is misconfigured
 
 set -e
+bash "$(dirname "$0")/bench-stamp.sh" "$0"
 
 TLA2TOOLS="${TLA2TOOLS:-formal/tla2tools.jar}"
 

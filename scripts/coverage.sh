@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+bash "$(dirname "$0")/bench-stamp.sh" "$0"
 
 cd "$(dirname "$0")"
 
