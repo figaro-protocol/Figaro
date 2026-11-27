@@ -48,6 +48,7 @@
 #   >0 — a divergence, or a half that did not run
 
 set -euo pipefail
+bash "$(dirname "$0")/bench-stamp.sh" "$0"
 
 cd "$(dirname "$0")/.."
 

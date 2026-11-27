@@ -43,6 +43,7 @@
 #   >0 — at least one property failed or the environment is misconfigured
 
 set -e
+bash "$(dirname "$0")/bench-stamp.sh" "$0"
 
 # ── A pass that proved nothing is a failure ────────────────────────────────
 # Halmos exits 0 and prints "No tests" when its artifacts lack the compiler AST

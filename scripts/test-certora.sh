@@ -46,6 +46,7 @@
 #        (with CERTORA_WAIT=1) the prover reported a violated rule
 
 set -e
+bash "$(dirname "$0")/bench-stamp.sh" "$0"
 
 # The repo's .env carries an empty `CERTORAKEY=` on purpose (the key is supplied
 # inline at run time, never stored). A shell that sources .env after the env
