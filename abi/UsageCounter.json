@@ -346,9 +346,14 @@
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "counted",
         "type": "bool",
         "internalType": "bool"
+      },
+      {
+        "name": "period",
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "stateMutability": "view"

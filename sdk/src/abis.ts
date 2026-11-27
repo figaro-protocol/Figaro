@@ -454,7 +454,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "function scoreOf(uint8 kind, bytes32 clauseOrProcess, uint8 period) view returns (uint256)",
     "function totalScoreIn(uint8 period) view returns (uint256)",
     "function sellerCounted(uint8 kind, bytes32 clauseOrProcess, bytes32 processId, address seller) view returns (bool)",
-    "function processCounted(bytes32 processDesignHash, bytes32 processId) view returns (bool)",
+    "function processCounted(bytes32 processDesignHash, bytes32 processId) view returns (bool counted, uint8 period)",
     "function sellerSeen(uint8 kind, bytes32 clauseOrProcess, uint8 period, address seller) view returns (bool)",
     "function minSellers() view returns (uint64)",
     "function icbrt(uint256 n) pure returns (uint256)",

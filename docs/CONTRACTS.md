@@ -378,9 +378,11 @@ Three permissionless functions and one proof-gated writer:
   each use meets the gates a direct call meets — a reserved key, a key without
   a live registration in its own kind's registry (kind 2 in
   `AgreementRegistry`), an unknown kind, a seller without a live stake, a
-  seller of the process already counted under the key — and is skipped, never reverted, when
-  it fails one, so the batch's resolution stands and the skipped use may be
-  presented again. A use that passes is counted through `_count`, the one
+  seller of the process already counted under the key, a process already a use
+  of its process design in an earlier period — and is skipped, never reverted, when
+  it fails one, so the batch's resolution stands. A use skipped for a
+  registration or a stake may be presented again; one skipped as counted, or
+  for an earlier period's process, never counts. A use that passes is counted through `_count`, the one
   counting path the direct calls take. An empty call returns before
   `currentPeriod()` is consulted, so the reward's end never blocks the batch
   path.
@@ -390,7 +392,7 @@ route-blind (`accrualOf`): `c` (uses), `d` (distinct live-staked sellers), and
 `score = icbrt(c·d²·1e18)`. For a clause and an agreement a use is one seller of
 one resolved process, so `d <= c`. For a process design a use is one resolved
 process, whatever the number of its sellers (`processCounted`), and each of its
-sellers still enters `d`, so `d` may exceed `c`. The score is that figure
+sellers enters `d` in the period of that use, so `d` may exceed `c`. The score is that figure
 when `d ≥ minSellers`, else zero. Uniform: no tag, category, or weight. The
 formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
 - **Seller-side stake gate:** a use counts only if the order's
@@ -437,7 +439,8 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   only usage new to it.
 - **The process-design kind stops `c` at one per process:**
   `processCounted(processDesignHash, processId)` is set by the first seller
-  counted; later sellers of that process raise `d` alone
+  counted, with the period; later sellers of that process raise `d` alone
+  while that period is open, and add nothing once a later one is
   (`DESIGN_DECISIONS.md` § 43).
 - `icbrt` binary-searches the floor cube root with its ceiling at
   `floor(cbrt(2^256−1))`, so the cube cannot overflow.

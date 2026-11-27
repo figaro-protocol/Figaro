@@ -302,7 +302,7 @@ not the absence of an exception. **Every clause EARNS**: commerce rides on the a
 a designer composed with it and is scored for its designer of record like any other (the
 topology leaf is no clause and earns nothing). The counter counts each (key, process, seller) once, so pass every order of the process:
 a clause and an agreement gain one use for each seller, and the assembly gains one use for the
-process and one unit of breadth for each seller.
+process and one unit of breadth for each seller counted within the period of that use.
 `recordProcessUsage` sends one clause leg for each distinct clause key and seller among the
 orders (`attempted` / `recorded`), and a key two orders of one seller carry is sent once. The
 agreement and assembly credits, one for each seller whose order carries them, are
